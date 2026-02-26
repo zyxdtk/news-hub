@@ -35,6 +35,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// 搜索功能
+function searchNews() {
+    const input = document.getElementById('search-input');
+    const filterText = input.value.toLowerCase();
+    const taskFilter = document.getElementById('task-filter').value;
+    const tagFilter = document.getElementById('tag-filter').value;
+    
+    const newsCards = document.querySelectorAll('.news-card');
+    
+    newsCards.forEach(card => {
+        const title = (card.dataset.title || '').toLowerCase();
+        const titleZh = (card.dataset.titleZh || '').toLowerCase();
+        const tags = (card.dataset.tags || '').toLowerCase();
+        const task = (card.dataset.task || '').toLowerCase();
+        
+        // 检查搜索词
+        const matchSearch = !filterText || 
+                           title.includes(filterText) || 
+                           titleZh.includes(filterText) || 
+                           tags.includes(filterText);
+        
+        // 检查任务过滤
+        const matchTask = taskFilter === 'all' || task === taskFilter;
+        
+        // 检查标签过滤
+        const matchTag = tagFilter === 'all' || tags.includes(tagFilter.toLowerCase());
+        
+        if (matchSearch && matchTask && matchTag) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// 任务过滤
+function filterNews() {
+    searchNews();  // 复用搜索逻辑
+}
+
 // 显示文章详情
 function showArticle(event, link) {
     event.preventDefault();
