@@ -1,27 +1,57 @@
 // 全局变量
 let currentArticle = null;
 let translatedContent = null;
+let activeFilters = [];  // 当前激活的筛选条件 [{type: 'task', value: 'agi-watcher'}, ...]
+
+// 添加筛选条件
+function addFilter(type, value) {
+    // 检查是否已存在
+    const exists = activeFilters.some(f => f.type === type && f.value === value);
+    if (exists) return;
+    
+    activeFilters.push({ type, value });
+    renderFilters();
+    filterNews();
+}
+
+// 移除筛选条件
+function removeFilter(index) {
+    activeFilters.splice(index, 1);
+    renderFilters();
+    filterNews();
+}
+
+// 清除所有筛选
+function clearFilters() {
+    activeFilters = [];
+    renderFilters();
+    filterNews();
+}
+
+// 渲染筛选标签
+function renderFilters() {
+    const container = document.getElementById('active-filters');
+    if (!container) return;
+    
+    if (activeFilters.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    activeFilters.forEach((filter, index) => {
+        const label = filter.value;
+        html += `<span class="filter-tag">
+            ${filter.type === 'task' ? '📋' : filter.type === 'date' ? '📅' : filter.type === 'tag' ? '🏷️' : '🌐'} ${label}
+            <span class="remove" onclick="removeFilter(${index})">×</span>
+        </span>`;
+    });
+    
+    container.innerHTML = html;
+}
 
 // 来源过滤
 document.addEventListener('DOMContentLoaded', () => {
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const newsCards = document.querySelectorAll('.news-card');
-
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const source = btn.dataset.source;
-            newsCards.forEach(card => {
-                if (source === 'all' || card.classList.contains(`source-${source}`)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-    });
-
     // 下拉刷新
     let startY = 0;
     document.addEventListener('touchstart', e => {
@@ -35,12 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// 搜索功能
+// 搜索和筛选功能
 function searchNews() {
+    filterNews();  // 使用统一的筛选逻辑
+}
+
+// 筛选逻辑（支持多个筛选条件，且的关系）
+function filterNews() {
     const input = document.getElementById('search-input');
-    const filterText = input.value.toLowerCase();
-    const taskFilter = document.getElementById('task-filter').value;
-    const tagFilter = document.getElementById('tag-filter').value;
+    const filterText = input ? input.value.toLowerCase() : '';
     
     const newsCards = document.querySelectorAll('.news-card');
     
@@ -49,6 +82,8 @@ function searchNews() {
         const titleZh = (card.dataset.titleZh || '').toLowerCase();
         const tags = (card.dataset.tags || '').toLowerCase();
         const task = (card.dataset.task || '').toLowerCase();
+        const date = (card.dataset.date || '').toLowerCase();
+        const source = (card.dataset.source || '').toLowerCase();
         
         // 检查搜索词
         const matchSearch = !filterText || 
@@ -56,23 +91,33 @@ function searchNews() {
                            titleZh.includes(filterText) || 
                            tags.includes(filterText);
         
-        // 检查任务过滤
-        const matchTask = taskFilter === 'all' || task === taskFilter;
+        // 检查所有筛选条件（且的关系）
+        let matchAllFilters = true;
+        for (const filter of activeFilters) {
+            if (filter.type === 'task' && task !== filter.value.toLowerCase()) {
+                matchAllFilters = false;
+                break;
+            }
+            if (filter.type === 'date' && date !== filter.value.toLowerCase()) {
+                matchAllFilters = false;
+                break;
+            }
+            if (filter.type === 'tag' && !tags.includes(filter.value.toLowerCase())) {
+                matchAllFilters = false;
+                break;
+            }
+            if (filter.type === 'source' && source !== filter.value.toLowerCase()) {
+                matchAllFilters = false;
+                break;
+            }
+        }
         
-        // 检查标签过滤
-        const matchTag = tagFilter === 'all' || tags.includes(tagFilter.toLowerCase());
-        
-        if (matchSearch && matchTask && matchTag) {
+        if (matchSearch && matchAllFilters) {
             card.style.display = 'block';
         } else {
             card.style.display = 'none';
         }
     });
-}
-
-// 任务过滤
-function filterNews() {
-    searchNews();  // 复用搜索逻辑
 }
 
 // 显示文章详情
