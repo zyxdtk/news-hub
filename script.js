@@ -152,7 +152,10 @@ function removeFilter(type, event) {
     activeFilters[type] = null;
     if (type === 'date') {
         dateFilterValue = null;
-        document.getElementById('datePicker').value = '';
+        const datePicker = document.getElementById('calendarDatePicker');
+        if (datePicker) {
+            datePicker.value = '';
+        }
     }
     updateFilterUI();
     updateActiveFiltersUI();
