@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashOptim：内存高效训练优化器 - News Hub</title>
+    <title>FlashOptim：面向内存高效训练的优化器 - News Hub</title>
     <link rel="stylesheet" href="../style.css">
     <style>
         .fulltext-container {
@@ -63,7 +63,7 @@
         <a href="../index.html" class="back-link">← 返回首页</a>
         
         <div class="fulltext-header">
-            <h1 class="fulltext-title">FlashOptim：内存高效训练优化器</h1>
+            <h1 class="fulltext-title">FlashOptim：面向内存高效训练的优化器</h1>
             <div class="fulltext-meta">
                 <span>📅 2026-02-26</span>
                 <span>📄 unknown</span>
@@ -72,94 +72,104 @@
         </div>
         
         <div class="fulltext-content">
-<p>计算机科学 &gt; 机器学习  
-arXiv:2602.23349  
-(cs)  
-[提交于 2026 年 2 月 26 日]</p>
+<p>FlashOptim：面向内存高效训练的优化器
+何塞·哈维尔·冈萨雷斯·奥尔蒂斯（Jose Javier Gonzalez Ortiz）
+Databricks AI 研究院
+j.gonzalez@databricks.com
+同等贡献
+阿布hay·古普塔（Abhay Gupta）
+Databricks AI 研究院
+abhay.gupta@databricks.com
+克里斯·雷纳德（Chris Renard）
+Databricks AI 研究院
+chris@standardkernel.co
+现任职于 Standard Kernel Co.
+戴维斯·布莱洛克（Davis Blalock）
+1
+1
+脚注标记：
+1
+Databricks AI 研究院
+daviswblalock@gmail.com
+现任职于 Google DeepMind</p>
 
-<p>**标题：**  
-FlashOptim：面向内存高效训练的优化器</p>
+<p>摘要
+神经网络的标准混合精度训练需为每个模型参数占用大量加速器内存（以字节计）。这些字节不仅包含参数本身，还包含其梯度及一个或多个优化器状态变量。由于这些值通常各需 4 字节，即使训练一个 70 亿参数模型，对加速器内存不足 100GB 的研究人员而言也可能难以实现。</p>
 
-<p>**作者：**  
-Jose Javier Gonzalez Ortiz  
-,  
-Abhay Gupta  
-,  
-Chris Renard  
-,  
-Davis Blalock</p>
+<p>我们提出 FlashOptim，一套优化方案，可在保持模型质量与 API 兼容性的前提下，将每参数内存占用降低超过 50%。</p>
 
-<p>[查看论文 PDF：FlashOptim：面向内存高效训练的优化器，作者：Jose Javier Gonzalez Ortiz 及另外三位作者]  
-[查看 PDF](https://arxiv.org/pdf/2602.23349)  
-[HTML（实验性）](https://arxiv.org/html/2602.23349)</p>
+<p>我们的方法引入两项关键技术：首先，通过发现并利用主权重拆分（master weight splitting）量化误差的紧致上界，改进该技术；其次，设计压缩扩展（companding）函数，大幅降低 8 位优化器状态量化误差。</p>
 
-<p>**摘要：**  
-标准的神经网络混合精度训练要求为每个模型参数占用大量加速器显存（以字节计）。这些显存不仅用于存储参数本身，还用于存储其梯度以及一个或多个优化器状态变量。由于这些值通常各需 4 字节，即使训练一个仅含 70 亿参数的模型，对显存不足 100GB 的研究人员而言也可能难以实现。</p>
+<p>结合 16 位梯度，这些技术将 AdamW 的内存占用从 16 字节降至每参数 7 字节，若启用梯度释放（gradient release），则进一步降至 5 字节；同时，模型检查点体积减少超过一半。</p>
 
-<p>我们提出了 FlashOptim，一套优化方案，可在保持模型性能与 API 兼容性的前提下，将每参数显存占用降低超过 50%。我们的方法引入了两项关键技术：首先，我们改进了主权重拆分（master weight splitting）技术，通过推导并利用其量化误差的紧致上界来提升效率；其次，我们设计了压缩扩展（companding）函数，显著降低了 8 位优化器状态量化带来的误差。结合 16 位梯度，这些技术可将 AdamW 的显存占用从每参数 16 字节降至 7 字节，若配合梯度释放策略，则可进一步降至 5 字节。此外，模型检查点（checkpoint）体积也减少了超过一半。</p>
+<p>在 SGD、AdamW 和 Lion 上应用 FlashOptim 的实验表明，在包括 Llama-3.1-8B 微调在内的多项标准视觉与语言基准任务中，模型质量无任何可测下降。</p>
 
-<p>将 FlashOptim 应用于 SGD、AdamW 和 Lion 的实验表明，其对模型性能无显著负面影响。</p>
+<p>1 引言
+近期深度学习的进展主要由模型与数据规模驱动：更大模型在更多数据上训练，可持续提升语言（Kaplan et al., 2020; Hoffmann et al., 2022; Chowdhery et al., 2023）与视觉（Rosenfeld et al., 2019; Tan and Le, 2019; Dehghani et al., 2023）任务性能。</p>
 
-<p>在任何来自标准视觉与语言基准测试集合（包括 Llama-3.1-8B 的微调任务）上的任务中出现的性能下降。  
-**评论：**  
-源代码可在以下链接获取：  
-[this https URL](this https URL)</p>
+<p>训练大模型需大量加速器内存，每次迭代需存储参数、激活、梯度及优化器状态。</p>
 
-<p>**学科分类：**  
-机器学习（cs.LG）；人工智能（cs.AI）</p>
+<p>这些张量需多少内存？
+表 1 展示典型分配情况。排除随批次大小而非参数量缩放的激活部分，使用 Adam 训练约需每参数 16 字节内存。因此训练 70 亿参数大语言模型至少需 112GB 加速器内存，外加激活所需额外内存。</p>
 
-<p>**引用方式：**  
-arXiv:2602.23349 [cs.LG]  
-（或针对本文版本：arXiv:2602.23349v1 [cs.LG]）  
-[https://doi.org/10.48550/arXiv.2602.23349](https://doi.org/10.48550/arXiv.2602.23349)  
-[点击此处了解更多](https://doi.org/10.48550/arXiv.2602.23349)  
-通过 DataCite 发布的 arXiv 官方 DOI（待注册）</p>
+<p>表 1：模型训练每参数内存（字节）</p>
 
-<p>**提交历史：**  
-提交人：Jose Javier Gonzalez Ortiz  
-[查看网页](view email)  
-[v1]  
-2026年2月26日 星期四 18:52:22 UTC（484 KB）</p>
+<p>FlashOptim 将 Adam 从 16 字节降至 7 字节，SGD 从 12 字节降至 6 字节。
+（⋆）
+启用梯度释放后，总内存需求进一步减少 2 字节。</p>
 
-<p>**全文链接：**  
-**获取论文：**  
-查看由 Jose Javier Gonzalez Ortiz 与另外三位作者撰写的论文《FlashOptim: Optimizers for Memory Efficient Training》的 PDF 版本  
-[查看 PDF](View PDF)  
-HTML（实验性）  
-TeX 源码  
-[查看许可协议](view license)</p>
+<p>张量
+SGD
+FlashSGD
+Adam
+FlashAdam
+主权重
+4
+2
+(0⋆)
+4
+2
+(0⋆)
+权重校正
+1
+(0⋆)
+1
+(0⋆)
+梯度
+4
+2 (0⋆)
+4
+2 (0⋆)
+动量
+4
+1
+(0⋆)
+4
+1
+(0⋆)
+方差
+4
+1
+(0⋆)
+总计
+12
+6 (4⋆)
+16
+7 (5⋆)</p>
 
-<p>**当前浏览主题：**  
-cs.LG  
-&lt; 上一篇 | 下一篇 &gt;  
-最新 | 近期 | 2026-02</p>
+<p>多种方法可缓解此内存消耗。张量分片（tensor sharding）的分布式训练（Rajbhandari et al., 2020）将内存负载分散至多加速器，虽为资源充足机构的标准做法，却要求访问多加速器——许多从业者缺乏此条件。</p>
 
-<p>**切换浏览方式：**  
-cs | cs.AI</p>
+<p>另一方案是 CPU 卸载（CPU offloading）（Ren et al., 2021），将部分张量移至主机内存，但会引入额外开销与复杂性。第三类为参数高效方法（Li and Liang, 2021; Hu et al., 2022），通过冻结大部分权重、仅训练少量原始权重子集或新增辅助权重来减少可训练参数，但从根本上改变了训练动态（Biderman et al., 2024）。</p>
 
-<p>**参考文献与引用：**  
-NASA ADS | Google Scholar | Semantic Scholar</p>
+<p>本文介绍 FlashOptim：一套减少常见深度学习优化器参数相关内存占用的技术方案。
+图 1 展示示例：应用 FlashOptim 后，Llama-3.1-8B 微调峰值内存从 175 GiB 降至 113 GiB。</p>
 
-<p>[导出 BibTeX 引用](export BibTeX citation)  
-加载中……  
-BibTeX 格式引用  
-×  
-加载中……  
-数据由以下机构提供：</p>
+<p>关键的是，这些内存节省近乎“零成本”——FlashOptim 运行速度与标准优化器相当，且在多项成熟训练任务中未造成可测模型质量下降（§4），使其可作为原版优化器的即插即用替代方案。FlashOptim 整合现有增强技术，如梯度释放（Zhang et al., 2023; Warner, 2024），并引入改进的浮点拆分（float splitting）（Zamirai et al., 2020; Warner, 2024）与简化版 8 位优化器状态量化（Dettmers et al., 2022; Peng et al., 2023; Xi et al., 2025; Fishman et al., 2025）。此外，FlashOptim 可与现有内存缩减技术（如跨加速器分片、CPU 卸载或参数冻结）无缝组合。</p>
 
-<p>**收藏书签**  
-**文献工具**  
-Bibliographic and Citation Tools  
-Bibliographic Explorer（[什么是 Bibliographic Explorer？](Bibliographic Explorer Toggle)）  
-Connected Papers（[什么是 Connected Papers？](Connected Papers Toggle)）  
-Litmaps（[什么是 Litmaps？](Litmaps Toggle)）  
-scite.ai（[什么是 Smart Citations？](scite Smart Citations Toggle)）</p>
+<p>图 1：Llama-3.1-8B 微调内存分解。
+FlashOptim 通过压缩参数与优化器状态，将峰值内存从 175 GiB 降至 113 GiB。</p>
 
-<p>**代码、数据与媒体资源**  
-与本文相关的代码、数据和媒体资源  
-alphaXiv（[什么是 alphaXiv？](alphaXiv Toggle)）  
-[代码链接](Links to Code Toggle)  
-Catal</p>
+<p>本文贡献如下：</p>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
@@ -167,7 +177,7 @@ Catal</p>
         <div class="fulltext-footer">
             <p><strong>原文标题：</strong> FlashOptim: Optimizers for Memory Efficient Training</p>
             <p><strong>原文链接：</strong> <a href="https://arxiv.org/abs/2602.23349">https://arxiv.org/abs/2602.23349</a></p>
-            <p><strong>标签：</strong> Language Model, cs.LG, cs.AI</p>
+            <p><strong>标签：</strong> 内存优化, 混合精度训练, 优化器压缩, 大模型训练, 参数高效</p>
         </div>
     </div>
 </body>

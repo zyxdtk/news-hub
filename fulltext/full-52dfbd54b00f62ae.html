@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大语言模型中的知识归因探测 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">大语言模型中的知识归因探测</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-02-26</span>
+                <span>📄 unknown</span>
+                <a href="https://arxiv.org/abs/2602.22787" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+        
+        <div class="fulltext-content">
+<p>大语言模型中的知识归因探测
+伊沃·布林克（Ivo Brink）
+毕马威荷兰 / 阿姆斯特丹大学
+荷兰阿姆斯特丹
+ivobrink00@gmail.com
+&amp; 亚历山大·博尔（Alexander Boer）
+毕马威荷兰
+荷兰阿姆斯特丹
+boer.alexander@kpmg.nl
+&amp; 丹尼斯·乌尔默（Dennis Ulmer）
+阿姆斯特丹大学
+荷兰阿姆斯特丹
+dennis.ulmer@mailbox.org</p>
+
+<p>摘要
+大语言模型（LLMs）常生成流畅但无根据的陈述（即“幻觉”），分为两类：（i）忠实性违规——误用用户上下文；（ii）事实性违规——源于模型内部知识的错误。
+有效缓解措施依赖于判断模型回答是基于提示（prompt）还是其内部权重。
+本研究聚焦于贡献性归因（contributive attribution）问题：识别每个输出背后的主导知识来源。
+我们证明，一个在模型隐藏表示上训练的简单线性分类器（探测器）可可靠预测贡献性归因。
+为训练该探测器，我们构建了自监督数据管道 AttriWiki，通过引导模型从记忆中召回被隐藏实体或从上下文中读取实体，自动生成带标签样本。
+在 Llama-3.1-8B、Mistral-7B 和 Qwen-7B 上，基于 AttriWiki 数据训练的探测器展现出强归因信号，Macro-F₁ 分数最高达 0.96；且无需重新训练即可迁移到域外基准（SQuAD、WebQuestions），Macro-F₁ 达 0.94–0.99。归因错误可使错误率最高上升 70%，表明知识来源混淆与不忠实回答存在直接关联。然而，即使归因正确，模型仍可能给出错误回答，凸显构建更广泛检测框架的必要性。
+IvoBrink/AttriWiki</p>
+
+<p>1 引言
+设想你正匆忙预订一场葬礼的临时航班，向航空公司聊天机器人询问“能否在旅行后申请丧亲票价”，系统自信地回复：“可以，您有90天期限。”然而，该规定从未存在，数月后退款被拒。
+此案例源于真实事件：不列颠哥伦比亚省民事解决法庭在一项里程碑式裁决中，判定加拿大航空对其聊天机器人提供的错误信息承担法律责任（Cecco, 2024；Lifshitz and Hung, 2024）。
+一条虽具权威感却失实的回应，可能带来严重的财务、法律或实际后果。
+尽管 LLM 幻觉（如丧亲票价案例中的失实输出）（Huang et al., 2025）已成为研究焦点，现有检测技术常忽略一个更根本问题：用户无法看清模型回答的来源。
+若航空公司能获知聊天机器人的真正来源，即可据此核查官方政策，从而避免误判。
+当前研究中的既有方法——包括以 LLM 为裁判（LLMs-as-a-judge）（Manakul et al., 2023; Ravi et al., 2024; Friel and Sanyal, 2023）与不确定性度量（Wilson and Izmailov, 2020; Shafer and Vovk, 2008）——均存在局限：模型可能自信地犯错（Kuhn et al., 2023），且“幻觉”缺乏统一的操作性定义（Qi et al., 2024）。此外，这些方法评估输出正确性，却未考察来源（provenance），而来源是用户能否信任答案的关键因素。
+为弥补此缺口，我们引入贡献性归因（contributive attribution）（Worledge et al., 2024），区分上下文知识（来自提示或检索证据）与参数知识（存储于模型权重中）。该框架补充了现有幻觉分类中广为人知的忠实性错误与事实性错误划分（Huang et al., 2025; Qi et al., 2024; Ye et al., 2024），但转向更关键的问题：模型是否依赖了用户预期的知识来源？
+归因信号可帮助用户识别模型是否误用内部参数知识，或过度依赖无关上下文。这在检索增强生成系统（RAG）（Lewis et al., 2020; Guu et al., 2020; Borgeaud et al., 2022; Izacard et al., 2023）中尤为重要——错误常非源于检索质量差，而在于模型忽略已检索信息（Petroni et al., 2020; Li et al., 2023）。
+本文贡献如下：
+我们利用维基百科段落、实体选择与受控提示变体，构建了 AttriWiki 数据集，其中每个生成结果均具有明确、可验证的知识来源（参数或上下文）。生成过程中，我们在关键 token 位置记录隐藏状态，大规模生成归因特征，无需人工标注。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>原文标题：</strong> Probing for Knowledge Attribution in Large Language Models</p>
+            <p><strong>原文链接：</strong> <a href="https://arxiv.org/abs/2602.22787">https://arxiv.org/abs/2602.22787</a></p>
+            <p><strong>标签：</strong> 知识归因, 大语言模型, 幻觉检测, 贡献性归因, 检索增强生成</p>
+        </div>
+    </div>
+</body>
+</html>

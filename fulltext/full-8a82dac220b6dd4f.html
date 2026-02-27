@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>残差Koopman谱分析预测与预防Trans... - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">残差Koopman谱分析预测与预防Trans...</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-02-26</span>
+                <span>📄 unknown</span>
+                <a href="https://arxiv.org/abs/2602.22988" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+        
+        <div class="fulltext-content">
+<p>残差Koopman谱分析用于预测与预防Transformer训练失稳
+金文俊（Bum Jun Kim）
+日本东京大学工学研究科
+谷口翔（Shohei Taniguchi）
+日本东京大学工学研究科
+川野诚（Makoto Kawano）
+日本东京大学工学研究科
+伊泽裕介（Yusuke Iwasawa）
+日本东京大学工学研究科
+松尾裕也（Yutaka Matsuo）
+日本东京大学工学研究科
+摘要
+Transformer训练发散浪费大量计算资源，而工程师往往在昂贵训练启动后才发现不稳定性。因此，亟需在训练开始前提供模型发散的预期失败概率。本文提出的残差Koopman谱分析（Residual Koopman Spectral Profiling, RKSP）可实现该估计。RKSP仅需一次前向传播，在初始化阶段即通过对各层残差快照施加白化动态模态分解（whitened DMD）提取Koopman谱特征。核心诊断指标——近单位圆谱质量（near-unit spectral mass）量化了模态集中在单位圆附近的占比，从而表征失稳风险。在多种配置下预测发散时，该指标AUROC达0.995，优于最优梯度基线方法。我们进一步提出Koopman谱整形（Koopman Spectral Shaping, KSS），在训练中主动重塑谱结构以实现风险干预。实证表明：RKSP可在初始化阶段预测发散；当RKSP标记高风险时，启用KSS可成功避免发散。在无归一化层的高学习率困难场景下，KSS将发散率从66.7%降至12.5%，并支持提升50%~150%的学习率。上述方法可推广至WikiText-103语言建模、CIFAR-10视觉Transformer、预训练语言模型（包括GPT-2和LLaMA-2达7B规模），以及MoE、Mamba类SSM和KAN等新兴架构。
+1
+引言
+Transformer模型[vaswani2017attention]尽管采用了层归一化[ba2016layernorm]与精心初始化等稳定化技术，其训练动态仍具不可预测性。尤其，梯度爆炸型失稳仍是深度网络的已知失效模式[pascanu2013difficulty]。训练发散的不可预知性导致计算资源浪费：实践中常在昂贵训练启动后方才发现问题。解决该问题需一种经校准的、基于初始化阶段的风险评估指标，以支持早期剔除高风险配置。该指标应输出与经验频率一致的概率，而非启发式分数。
+为提供此类估计，本文提出残差Koopman谱分析（RKSP），将Transformer各层建模为离散时间动力系统。RKSP仅需一次前向传播，即对残差流演化
+$$\mathbf{h}_{0}\to\mathbf{h}_{1}\to\cdots\to\mathbf{h}_{L}$$
+施加白化动态模态分解（DMD）[tu2014dmd]，估计局部线性算子。所得逐层谱提供简洁且具预测性的稳定性表征。
+直观上，当某层局部线性化接近正规算子时，单位圆附近的特征值意味着近等距传播，导致信号与梯度衰减微弱；在高学习率场景下，这种弱衰减会使扰动与优化噪声难以抑制，提升发散风险；相反，强收缩谱通常更稳定，但可能导致梯度快速衰减。我们以近单位圆谱质量
+$$M_{\approx 1}$$
+（即单位圆附近模态占比）与非正规性独立度量共同总结该权衡；第4节给出该行为的理论解释。
+近单位圆谱质量
+$$M_{\approx 1}$$
+展现出强失稳信号：仅用单调风险分数
+$$M_{\approx 1}$$
+即可在多种归一化策略、任务与架构下实现0.995的发散预测AUROC。为使该信号更具操作性，我们提出Koopman谱整形（KSS），在训练中主动重塑谱结构以抑制发散。
+本文贡献如下：
+• 提出RKSP，通过白化DMD在初始化阶段估计逐层Koopman谱（第3.2节）；
+• 提出KSS，在训练中重塑谱结构，防止失稳并支持更大学习率（第3.3节）；
+• 给出理论界，关联近单位圆质量、近正规性与失稳-表达能力权衡（第4节）；
+• 在多种归一化策略、数据集与架构（包括语言模型、视觉Transformer（ViT）及新兴神经网络家族）上验证RKSP有效性（第5节与附录G）。
+2
+背景
+含
+$$L$$
+层的Transformer更新其</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>原文标题：</strong> Residual Koopman Spectral Profiling for Predicting and Preventing Transformer Training Instability</p>
+            <p><strong>原文链接：</strong> <a href="https://arxiv.org/abs/2602.22988">https://arxiv.org/abs/2602.22988</a></p>
+            <p><strong>标签：</strong> Transformer训练稳定性, Koopman谱分析, 动态模态分解, 学习率优化, 失稳预测</p>
+        </div>
+    </div>
+</body>
+</html>
