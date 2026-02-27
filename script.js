@@ -1,4 +1,4 @@
-
+// 筛选状态
 let activeFilters = {
     task: null,
     source: null,
@@ -7,19 +7,16 @@ let activeFilters = {
 
 let dateFilterValue = null;
 
+// 显示日期筛选提示
 function showDateFilter() {
-    // 点击 Header 时间时，滚动到统计区域并显示日期选择器提示
     const statsSection = document.querySelector('.stats-section');
     if (statsSection) {
         statsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // 高亮统计区域
         statsSection.style.borderColor = 'var(--primary-color)';
         setTimeout(() => {
             statsSection.style.borderColor = 'var(--border-color)';
         }, 2000);
     }
-    // 提示用户点击任务/来源标签进行筛选
-    alert('💡 提示：点击下方的任务或来源标签进行筛选。日期筛选功能开发中...');
 }
 
 // 显示日历选择器
@@ -30,22 +27,8 @@ function showCalendarPicker() {
     }
 }
 
+// 初始化日期选择器
 function initDatePicker() {
-    // 主日期选择器（已移除）
-    if (document.getElementById('datePicker')) {
-        flatpickr("#datePicker", {
-            locale: "zh",
-            dateFormat: "Y-m-d",
-            maxDate: "today",
-            onChange: function(selectedDates, dateStr, instance) {
-                if (dateStr) {
-                    toggleFilter('date', dateStr);
-                }
-            }
-        });
-    }
-    
-    // 日历选择器（用于"更多日期"按钮）
     flatpickr("#calendarDatePicker", {
         locale: "zh",
         dateFormat: "Y-m-d",
@@ -58,10 +41,7 @@ function initDatePicker() {
     });
 }
 
-function showFilters() {
-    document.getElementById('filterPanel').style.display = 'block';
-}
-
+// 清除搜索
 function clearSearch() {
     const searchInput = document.getElementById('searchInput');
     searchInput.value = '';
@@ -69,14 +49,16 @@ function clearSearch() {
     filterNews();
 }
 
+// 清除日期筛选
 function clearDateFilter() {
     dateFilterValue = null;
     activeFilters.date = null;
-    document.getElementById('datePicker').value = '';
+    document.getElementById('calendarDatePicker').value = '';
     updateActiveFiltersUI();
     filterNews();
 }
 
+// 切换筛选
 function toggleFilter(type, value) {
     if (type === 'date') {
         dateFilterValue = value;
@@ -94,6 +76,7 @@ function toggleFilter(type, value) {
     filterNews();
 }
 
+// 更新筛选 UI
 function updateFilterUI() {
     document.querySelectorAll('.filter-option').forEach(option => {
         const type = option.dataset.type;
@@ -106,6 +89,7 @@ function updateFilterUI() {
     });
 }
 
+// 更新已选筛选标签 UI
 function updateActiveFiltersUI() {
     const container = document.getElementById('activeFilters');
     const list = document.getElementById('activeFiltersList');
@@ -132,7 +116,6 @@ function updateActiveFiltersUI() {
                 <span class="remove" data-type="${type}">✕</span>
             `;
             
-            // 添加点击事件监听器
             const removeBtn = tag.querySelector('.remove');
             if (removeBtn) {
                 removeBtn.addEventListener('click', function(e) {
@@ -147,6 +130,7 @@ function updateActiveFiltersUI() {
     container.style.display = hasFilters ? 'flex' : 'none';
 }
 
+// 移除筛选
 function removeFilter(type, event) {
     event.stopPropagation();
     activeFilters[type] = null;
@@ -162,14 +146,20 @@ function removeFilter(type, event) {
     filterNews();
 }
 
+// 添加筛选
 function addFilter(type, value) {
     activeFilters[type] = value;
     updateFilterUI();
     updateActiveFiltersUI();
     filterNews();
-    document.getElementById('filterPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 滚动到新闻列表
+    const newsGrid = document.querySelector('.news-grid');
+    if (newsGrid) {
+        newsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
+// 过滤新闻
 function filterNews() {
     const searchInput = document.getElementById('searchInput');
     const searchTerm = searchInput.value.toLowerCase().trim();
@@ -211,6 +201,7 @@ function filterNews() {
     });
 }
 
+// DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     initDatePicker();
 });
