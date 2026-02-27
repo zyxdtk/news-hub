@@ -129,8 +129,17 @@ function updateActiveFiltersUI() {
             tag.className = 'active-filter-tag';
             tag.innerHTML = `
                 ${typeLabels[type] || type}: ${value}
-                <span class="remove" onclick="removeFilter('${type}', event)">✕</span>
+                <span class="remove" data-type="${type}">✕</span>
             `;
+            
+            // 添加点击事件监听器
+            const removeBtn = tag.querySelector('.remove');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    removeFilter(type, e);
+                });
+            }
             list.appendChild(tag);
         }
     });
