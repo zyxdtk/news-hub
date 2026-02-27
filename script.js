@@ -22,6 +22,14 @@ function showDateFilter() {
     alert('💡 提示：点击下方的任务或来源标签进行筛选。日期筛选功能开发中...');
 }
 
+// 显示日历选择器
+function showCalendarPicker() {
+    const picker = document.getElementById('calendarDatePicker');
+    if (picker) {
+        picker.click();
+    }
+}
+
 function initDatePicker() {
     // 主日期选择器（已移除）
     if (document.getElementById('datePicker')) {
