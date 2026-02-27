@@ -23,7 +23,22 @@ function showDateFilter() {
 }
 
 function initDatePicker() {
-    flatpickr("#datePicker", {
+    // 主日期选择器（已移除）
+    if (document.getElementById('datePicker')) {
+        flatpickr("#datePicker", {
+            locale: "zh",
+            dateFormat: "Y-m-d",
+            maxDate: "today",
+            onChange: function(selectedDates, dateStr, instance) {
+                if (dateStr) {
+                    toggleFilter('date', dateStr);
+                }
+            }
+        });
+    }
+    
+    // 日历选择器（用于"更多日期"按钮）
+    flatpickr("#calendarDatePicker", {
         locale: "zh",
         dateFormat: "Y-m-d",
         maxDate: "today",
