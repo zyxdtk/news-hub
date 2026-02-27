@@ -7,6 +7,21 @@ let activeFilters = {
 
 let dateFilterValue = null;
 
+function showDateFilter() {
+    // 点击 Header 时间时，滚动到统计区域并显示日期选择器提示
+    const statsSection = document.querySelector('.stats-section');
+    if (statsSection) {
+        statsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // 高亮统计区域
+        statsSection.style.borderColor = 'var(--primary-color)';
+        setTimeout(() => {
+            statsSection.style.borderColor = 'var(--border-color)';
+        }, 2000);
+    }
+    // 提示用户点击任务/来源标签进行筛选
+    alert('💡 提示：点击下方的任务或来源标签进行筛选。日期筛选功能开发中...');
+}
+
 function initDatePicker() {
     flatpickr("#datePicker", {
         locale: "zh",
