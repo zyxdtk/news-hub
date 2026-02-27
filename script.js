@@ -201,7 +201,43 @@ function filterNews() {
     });
 }
 
+// 保存滚动位置并跳转
+function saveAndNavigate(url) {
+    sessionStorage.setItem('news_hub_scroll_pos', window.scrollY);
+    window.location.href = url;
+}
+
+// 首页初始化：恢复滚动位置
+function initScrollRestore() {
+    const savedPos = sessionStorage.getItem('news_hub_scroll_pos');
+    if (savedPos !== null) {
+        // 延迟一点点执行，确保列表已渲染
+        setTimeout(() => {
+            window.scrollTo({
+                top: parseInt(savedPos),
+                behavior: 'instant'
+            });
+            sessionStorage.removeItem('news_hub_scroll_pos');
+        }, 100);
+    }
+}
+
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     initDatePicker();
+    // 仅在首页初始化滚动恢复
+    if (document.querySelector('.news-grid')) {
+        initScrollRestore();
+        
+        // 为详情页链接添加点击处理
+        document.querySelectorAll('.news-title a').forEach(link => {
+            const originalHref = link.getAttribute('href');
+            if (originalHref && originalHref.includes('fulltext/')) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveAndNavigate(originalHref);
+                });
+            }
+        });
+    }
 });
