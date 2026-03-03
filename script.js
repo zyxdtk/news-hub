@@ -1,3 +1,122 @@
+// ========== 侧边栏状态管理 ==========
+// 侧边栏展开/折叠状态（使用 localStorage 持久化）
+let sidebarState = {
+    collapsed: false,
+    sections: {
+        task: false,
+        source: false,
+        date: false
+    }
+};
+
+// 从 localStorage 加载侧边栏状态
+function loadSidebarState() {
+    try {
+        const saved = localStorage.getItem('news_hub_sidebar');
+        if (saved) {
+            sidebarState = JSON.parse(saved);
+        }
+    } catch (e) {
+        console.error('Failed to load sidebar state:', e);
+    }
+}
+
+// 保存侧边栏状态到 localStorage
+function saveSidebarState() {
+    try {
+        localStorage.setItem('news_hub_sidebar', JSON.stringify(sidebarState));
+    } catch (e) {
+        console.error('Failed to save sidebar state:', e);
+    }
+}
+
+// 切换侧边栏展开/折叠
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebarState.collapsed = !sidebarState.collapsed;
+    
+    if (sidebarState.collapsed) {
+        sidebar.classList.add('collapsed');
+        if (mainContent) mainContent.classList.add('expanded');
+        if (overlay) overlay.style.display = 'none';
+    } else {
+        sidebar.classList.remove('collapsed');
+        if (mainContent) mainContent.classList.remove('expanded');
+        if (window.innerWidth <= 768 && overlay) overlay.style.display = 'block';
+    }
+    
+    saveSidebarState();
+}
+
+// 关闭侧边栏（移动端）
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebarState.collapsed = true;
+    sidebar.classList.add('collapsed');
+    if (mainContent) mainContent.classList.add('expanded');
+    if (overlay) overlay.style.display = 'none';
+    
+    saveSidebarState();
+}
+
+// 切换导航分区展开/折叠
+function toggleNavSection(section) {
+    const content = document.getElementById('nav-' + section);
+    const header = content.previousElementSibling;
+    
+    sidebarState.sections[section] = !sidebarState.sections[section];
+    
+    if (sidebarState.sections[section]) {
+        content.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+    } else {
+        content.classList.add('collapsed');
+        header.classList.add('collapsed');
+    }
+    
+    saveSidebarState();
+}
+
+// 应用侧边栏状态
+function applySidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    // 应用侧边栏折叠状态
+    if (sidebarState.collapsed && sidebar) {
+        sidebar.classList.add('collapsed');
+        if (mainContent) mainContent.classList.add('expanded');
+    }
+    
+    // 应用各分区展开/折叠状态
+    Object.entries(sidebarState.sections).forEach(([section, collapsed]) => {
+        const content = document.getElementById('nav-' + section);
+        const header = content ? content.previousElementSibling : null;
+        
+        if (content && header) {
+            if (collapsed) {
+                content.classList.add('collapsed');
+                header.classList.add('collapsed');
+            } else {
+                content.classList.remove('collapsed');
+                header.classList.remove('collapsed');
+            }
+        }
+    });
+    
+    // 移动端显示遮罩层
+    if (!sidebarState.collapsed && window.innerWidth <= 768 && overlay) {
+        overlay.style.display = 'block';
+    }
+}
+
 // 筛选状态
 let activeFilters = {
     task: null,
@@ -224,6 +343,10 @@ function initScrollRestore() {
 
 // DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 加载并应用侧边栏状态
+    loadSidebarState();
+    applySidebarState();
+    
     initDatePicker();
     // 仅在首页初始化滚动恢复
     if (document.querySelector('.news-grid')) {
