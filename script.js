@@ -1,7 +1,8 @@
 // ========== 侧边栏状态管理 ==========
 // 侧边栏展开/折叠状态（使用 localStorage 持久化）
+// 默认折叠 (collapsed: true)，首次访问时侧边栏隐藏
 let sidebarState = {
-    collapsed: false,
+    collapsed: true,
     sections: {
         task: false,
         source: false,
@@ -39,12 +40,14 @@ function toggleSidebar() {
     sidebarState.collapsed = !sidebarState.collapsed;
     
     if (sidebarState.collapsed) {
+        // 折叠：隐藏侧边栏
         sidebar.classList.add('collapsed');
-        if (mainContent) mainContent.classList.add('expanded');
+        if (mainContent) mainContent.classList.remove('with-sidebar');
         if (overlay) overlay.style.display = 'none';
     } else {
+        // 展开：显示侧边栏
         sidebar.classList.remove('collapsed');
-        if (mainContent) mainContent.classList.remove('expanded');
+        if (mainContent) mainContent.classList.add('with-sidebar');
         if (window.innerWidth <= 768 && overlay) overlay.style.display = 'block';
     }
     
@@ -59,7 +62,7 @@ function closeSidebar() {
     
     sidebarState.collapsed = true;
     sidebar.classList.add('collapsed');
-    if (mainContent) mainContent.classList.add('expanded');
+    if (mainContent) mainContent.classList.remove('with-sidebar');
     if (overlay) overlay.style.display = 'none';
     
     saveSidebarState();
@@ -89,10 +92,13 @@ function applySidebarState() {
     const mainContent = document.getElementById('mainContent');
     const overlay = document.getElementById('sidebarOverlay');
     
-    // 应用侧边栏折叠状态
+    // 应用侧边栏折叠状态（默认折叠）
     if (sidebarState.collapsed && sidebar) {
         sidebar.classList.add('collapsed');
-        if (mainContent) mainContent.classList.add('expanded');
+        if (mainContent) mainContent.classList.remove('with-sidebar');
+    } else if (sidebar) {
+        sidebar.classList.remove('collapsed');
+        if (mainContent) mainContent.classList.add('with-sidebar');
     }
     
     // 应用各分区展开/折叠状态
