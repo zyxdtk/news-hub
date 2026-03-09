@@ -95,126 +95,133 @@
         </div>
         
         <div class="fulltext-content">
-<p>Accelerating Text-to-Video Generation with Calibrated Sparse Attention  
+<p>加速文本到视频生成的校准稀疏注意力  
 Shai Yehezkel  
-Apple Tel Aviv University  
+Apple 特拉维夫大学  
 Shahar Yadin  
-Apple Tel Aviv University  
+Apple 特拉维夫大学  
 Noam Elata  
-Apple Tel Aviv University  
+Apple 特拉维夫大学  
 Yaron Ostrovsky-Berman  
-Apple Tel Aviv University  
+Apple 特拉维夫大学  
 Bahjat Kawar  
-Apple Tel Aviv University</p>
+Apple 特拉维夫大学</p>
 
-<p>Abstract  
-Recent diffusion models enable high-quality video generation, but suffer from slow runtimes.  
-The large transformer-based backbones used in these models are bottlenecked by spatiotemporal attention.  
-In this paper, we identify that a significant fraction of token-to-token connections consistently yield negligible scores across various inputs, and their patterns often repeat across queries.  
-Thus, the attention computation in these cases can be skipped with little to no effect on the result.  
-This observation continues to hold for connections among local token blocks.  
-Motivated by this, we introduce CalibAtt, a training-free method that accelerates video generation via calibrated sparse attention. CalibAtt performs an offline calibration pass that identifies block-level sparsity and repetition patterns that are stable across inputs, and compiles these patterns into optimized attention operations for each layer, head, and diffusion timestep.  
-At inference time, we compute the selected input-dependent connections densely, and skip the unselected ones in a hardware-efficient manner.  
-Extensive experiments on Wan 2.1 14B, Mochi 1, and few-step distilled models at various resolutions show that CalibAtt achieves up to  
+<p>摘要  
+最近的扩散模型能够生成高质量的视频，但运行速度较慢。  
+这些模型中使用的大型基于Transformer的骨干网络在时空注意力计算上成为瓶颈。  
+在本文中，我们发现，在各种输入下，大量token-to-token连接始终产生可忽略的得分，且其模式在不同查询中经常重复。  
+因此，在这些情况下，可以跳过注意力计算，而对结果几乎没有影响。  
+这一观察同样适用于局部token块之间的连接。  
+受此启发，我们提出了CalibAtt，一种无需训练的方法，通过校准稀疏注意力来加速视频生成。CalibAtt执行一次离线校准过程，识别出在不同输入下保持稳定的块级稀疏性和重复模式，并将这些模式编译为每一层、每个注意力头和每个扩散时间步的优化注意力操作。  
+在推理阶段，我们密集计算选定的输入相关连接，并以硬件高效的方式跳过未选中的连接。  
+我们在Wan 2.1 14B、Mochi 1以及多种步数蒸馏模型上进行了大量实验，验证了该方法的有效性。</p>
+
+<p>s 分辨率下，CalibAtt 实现了高达  
 1.58  
 ×  
 1.58\times  
-end-to-end speedup, outperforming existing training-free methods while maintaining video generation quality and text-video alignment.</p>
+端到端加速，优于现有的无训练方法，同时保持了视频生成质量和文本-视频对齐效果。</p>
 
 <p>sparsity=0%  
-Dense Attention  
-latency=20m44s  
+密集注意力（Dense Attention）  
+延迟=20分44秒  
 sparsity=62%  
 CalibAtt  
-latency=13m05s  
-“A panda drinking coffee in a cafe in Paris.” (720p)</p>
+延迟=13分05秒  
+“一只熊猫在巴黎的咖啡馆里喝咖啡。”（720p）</p>
 
 <p>sparsity=0%  
-Dense Attention  
-latency=6m03s  
+密集注意力（Dense Attention）  
+延迟=6分03秒  
 sparsity=68%  
 CalibAtt  
-latency=4m10s  
-“An astronaut flying in space, featuring a steady and smooth perspective.” (480p)</p>
+延迟=4分10秒  
+“一名宇航员在太空中飞行，视角稳定流畅。”（480p）</p>
 
-<p>Figure 1: Comparison of two prompts and resolutions generated with the same seed on Wan2.1 14B text-to-video. CalibAtt achieves higher attention sparsity and lower end-to-end latency while maintaining visual quality and prompt alignment.</p>
+<p>图1：在 Wan2.1 14B 文本到视频模型上，使用相同种子生成的两个提示和分辨率的对比。CalibAtt 在保持视觉质量和提示对齐的同时，实现了更高的注意力稀疏度和更低的端到端延迟。</p>
 
-<p>1 Introduction  
-Transformers [vaswani2017attention] have been established as a foundational architecture, revolutionizing many domains such as natural language processing [brown2020language, grattafiori2024llama], computer vision [dosovitskiy2021an, oquab2024dinov2], and generative models such as image and video diffusion models [ho2020denoisingdiffusionprobabilisticmodels, peebles2023scalable, esser2024scaling, wan2025].  
-Their state-of-the-art performance, however, comes at a significant inference-time computational cost.  
-The self-attention mechanism, central to the transformer architecture, has a quadratic complexity with respect to sequence length, making it particularly challenging for longer sequences inherent in many applications.  
-In this work, we propose training-free optimizations for self-attention, focusing on the video generation application for several reasons:  
-(i) they represent a powerful and increasingly useful tool for content generation;  
-(ii) they inherently require long sequences to support higher resolutions and larger frame counts;  
-and (iii) video data often contains high levels of spatiotemporal redundancy, making it an ideal candidate for compute savings.</p>
+<p>1 引言  
+Transformer [vaswani2017attention] 已成为一种基础架构，彻底改变了自然语言处理 [brown2020language, grattafiori2024llama]、计算机视觉 [dosovitskiy2021an, oquab2024dinov2] 以及图像和视频扩散模型 [ho2020denoisingdiffusionprobabilisticmodels, peebles2023scalable, esser2024scaling, wan2025] 等多个领域。  
+然而，其最先进的性能伴随着显著的推理计算开销。  
+Transformer 架构中的自注意力机制（self-attention mechanism）在序列长度上具有二次复杂度，这使得处理较长序列时尤为具有挑战性。</p>
 
-<p>To mitigate the computational demands of attention, various innovations have been proposed [zhang2026survey].  
-Most notably, FlashAttention [dao2022flashattention, dao2023flashattention2fasterattentionbetter, shah2024flashattention3] significantly reduces the memory and runtime of the attention operation. However, it does not change the number of multiplication operations.  
-Many papers [zhang2026survey] explore reducing the amount of computation required for attention, often adhering to FlashAttention-friendly constraints leading to improved runtime gains.  
-Despite their advancements, these methods often require fine-tuning, or offer limited acceleration by disabling their methods on certain layers or diffusion timesteps.</p>
+<p>在许多应用中发挥着重要作用。  
+在本研究中，我们提出了一种无需训练的自注意力优化方法，重点针对视频生成应用，原因如下：  
+(i) 它们是内容生成的强大且日益重要的工具；  
+(ii) 它们本质上需要长序列以支持更高分辨率和更多帧数；  
+(iii) 视频数据通常包含高水平的时空冗余，使其成为计算节省的理想候选对象。</p>
 
-<p>In this work, we propose CalibAtt, a novel training-free method for accelerating attention in video diffusion transformers that automatically calibrates to any model, works in tandem with FlashAttention3 [shah2024flashattention3], and offers state-of-the-art runtime savings.</p>
+<p>为了缓解注意力机制的计算需求，已提出多种创新方法 [zhang2026survey]。  
+其中最显著的是 FlashAttention [dao2022flashattention, dao2023flashattention2fasterattentionbetter, shah2024flashattention3]，它显著降低了注意力操作的内存占用和运行时间。然而，它并未减少乘法操作的数量。  
+许多论文 [zhang2026survey] 探索了降低注意力计算量的方法，通常遵循与 FlashAttention 兼容的约束条件，从而获得更好的运行时性能提升。  
+尽管这些方法取得了进展，但它们通常需要微调，或通过在某些层或扩散时间步中禁用其方法来提供有限的加速效果。</p>
 
-<p>We begin by inspecting attention maps in video models and making observations about their typical behaviors at the token level and the block level.  
-We identify sparse and repetitive attention patterns, many of which are well-replicated across various text prompts and latent initial noise inputs. However, these patterns vary significantly in different transformer layers, attention heads, and in some cases, diffusion timesteps.  
-Based on these observations, we devise an algorithm that automatically identify data-independent patterns at the FlashAttention block level, and calibrate either an attention mask or mark repeating queries for each layer, head, and timestep combination in a model.</p>
+<p>在本研究中，我们提出 CalibAtt，一种新颖的无需训练的加速方法，用于视频扩散变换器中的注意力机制。该方法可自动适配任意模型，与 FlashAttention3 [shah2024flashattention3] 协同工作，并提供当前最先进的运行时节省效果。</p>
 
-<p>We conduct extensive experiments on several prominent open-source video diffusion models: Wan 2.1 [wan2025], Mochi 1 [genmo2024mochi], and LightX2V [lightx2v], a few-step distilled model. We apply our method on different output resolutions and number of diffusion steps.  
-In all scenarios, CalibAtt consistently maintains the generation quality of the slower dense attention baseline, while achieving state-of-the-art attention sparsity and end-to-end runtime among training-free acceleration methods.  
-Furthermore, because of the calibration’s minimal reliance on heuristics, CalibAtt’s performance persists across models with negligible sensitivity to hyperparameter tuning, and does not require arbitrary exclusion of specific layers or timesteps.  
-Finally, we conduct hyperparameter ablations that affect CalibAtt’s inference runtime, memory footprint, and the one-time cost of the calibration step. Notably, the results show that CalibAtt produces impressively sparse masks even at low calibration budgets.</p>
+<p>我们首先检查视频模型中的注意力图，并在 token 级别和 block 级别上观察其典型行为。我们发现稀疏且重复的注意力模式，其中许多模式在各种文本提示和潜在初始噪声输入下都能很好地复现。然而，这些模式在不同的 Transformer 层、注意力头，以及在某些情况下在扩散时间步中存在显著差异。基于这些观察，我们设计了一种算法，能够自动识别在 FlashAttention block 级别上与数据无关的模式，并为模型中每一层、每个注意力头以及每个时间步的组合校准注意力掩码或标记重复查询。</p>
 
-<p>2 Preliminaries and Related Work  
-Attention [vaswani2017attention] has become a fundamental building block in modern neural architectures. Formally, the attention operation is defined over queries  
-𝐐 ∈ ℝ^{N_q × d}, keys  
-𝐊 ∈ ℝ^{N_kv × d}, and values  
-𝐕 ∈ ℝ^{N_kv × d}, where d is the feature dimension, and N_q, N_kv are the query and key-value sequence lengths, respectively.  
-The attention output  
-𝐀 ∈ ℝ^{N_q × d} is computed as  
+<p>我们在多个主流开源视频扩散模型上进行了大量实验：Wan 2.1 [wan2025]、Mochi 1 [genmo2024mochi] 和 LightX2V [lightx2v]（一种多步蒸馏模型）。我们在不同的输出分辨率和扩散步数下应用我们的方法。在所有场景中，CalibAtt 始终保持与较慢的密集注意力基线相当的生成质量，同时在无训练加速方法中实现了最先进的注意力稀疏度和端到端运行时性能。此外，由于校准过程对启发式方法的依赖极小，CalibAtt 的性能在不同模型上表现稳定，对超参数调优几乎不敏感，且无需任意排除特定层或时间步。最后，我们进行了超参数消融实验。</p>
+
+<p>影响 CalibAtt 的推理运行时、内存占用以及校准步骤的一次性成本。值得注意的是，结果表明，即使在校准预算较低的情况下，CalibAtt 也能生成令人印象深刻的稀疏掩码。</p>
+
+<p>## 2 预备知识与相关工作</p>
+
+<p>注意力机制 [vaswani2017attention] 已成为现代神经网络架构中的基本构建模块。形式上，注意力操作定义在查询矩阵  
+𝐐 ∈ ℝ^{N_q × d}、键矩阵  
+𝐊 ∈ ℝ^{N_kv × d} 和值矩阵  
+𝐕 ∈ ℝ^{N_kv × d} 上，其中 d 是特征维度，N_q 和 N_kv 分别是查询序列和键-值序列的长度。  
+注意力输出  
+𝐀 ∈ ℝ^{N_q × d} 通过以下公式计算：  
 𝐏 = softmax(𝐐𝐊^⊤ / √d),  
 𝐀 = 𝐏𝐕.  
 (2)  
-Typically, multi-headed attention is used, repeating this operation for h heads, each with its own set of keys, queries, and values.</p>
+通常使用多头注意力机制，即对 h 个头重复该操作，每个头拥有各自独立的键、查询和值。</p>
 
-<p>As sequence lengths grow, materializing the dense attention matrix  
-𝐏 ∈ ℝ^{N_q × N_kv} quickly becomes prohibitive due to memory constraints, and when N_q, N_kv ≫ d, the cost of processing this matrix also comes to dominate runtime.  
-FlashAttention [dao2022flashattention] (FA) addresses this by tiling the computation into blocks, ensuring that only a small portion of the attention matrix resides in fast memory at any given time. This approach avoids the quadratic memory consumption while also providing significant runtime improvements through better hardware utilization.</p>
+<p>随着序列长度的增长，显式构建密集注意力矩阵  
+𝐏 ∈ ℝ^{N_q × N_kv} 会因内存限制而变得不可行；当 N_q, N_kv ≫ d 时，处理该矩阵的计算成本也会主导推理运行时间。  
+FlashAttention [dao2022flashattention]（FA）通过将计算划分为块（tiling）来解决这一问题，确保在任意时刻只有注意力矩阵的一小部分驻留在高速内存中。该方法避免了二次方的内存消耗，同时通过更优的硬件利用率实现了显著的运行时性能提升。</p>
 
-<p>Concretely, FA partitions the query and key/value sequences into contiguous blocks of size B_q and B_kv, respectively.  
-Let  
-ℐ_r = {i | rB_q ≤ i &lt; (r+1)B_q}, ℐ_c = {j | cB_kv ≤ j &lt; (c+1)B_kv},  
+<p>具体而言，FA 将查询序列和键/值序列划分为连续的块。</p>
+
+<p>分别对应大小为 $B_q$ 和 $B_{kv}$ 的块。  
+令  
+ℐ_r = {i | rB_q ≤ i &lt; (r+1)B_q}, ℐ_c = {j | cB_{kv} ≤ j &lt; (c+1)B_{kv}},  
 (3)  
-denote the index sets of the r-th query block and c-th key/value block.  
-We denote the corresponding query, key, and value blocks by  
+表示第 r 个查询块和第 c 个键/值块的索引集合。  
+我们用  
 𝐐_r = 𝐐[ℐ_r, :],  
 𝐊_c =𝐊[ℐ_c, :],  
-and  
-𝐕_c =𝐕[ℐ_c, :].  
-The block-wise attention computation is then given by  
+和  
+𝐕_c =𝐕[ℐ_c, :]  
+表示对应的查询、键和值块。  
+块级注意力计算如下：  
 𝐀̃_{r,c} = softmax(𝐐_r𝐊_c^⊤ / √d − m_r)𝐕_c,  
 (4)  
-where m_r is a running maximum used for numerical stability. The final output for each query block is obtained by rescaling and accumulating contributions across all key-value blocks using online softmax [milakov2018online]. For full derivations, see [dao2022flashattention].</p>
+其中 $m_r$ 是用于数值稳定性的运行最大值。每个查询块的最终输出通过在线 softmax [milakov2018online] 对所有键值块的贡献进行重新缩放和累积得到。完整推导见 [dao2022flashattention]。</p>
 
-<p>While FlashAttention improves the runtime of attention computation, the total number of multiplication operations remains unchanged.  
-To reduce computational cost, many recent methods propose constraining attention to specific structures or patterns that reflect assumptions about token-to-token correlations [Beltagy2020Longformer, liu2021swin, hassani2023neighborhood, huang2019ccnet, wang2020axial, yang2021focal, zhu2021deformable].  
-Due to the restrictive nature of these attention patterns, they are typically chosen during architectural design and can rarely be applied to models trained with dense (standard) attention without fine-tuning.</p>
+<p>虽然 FlashAttention 提高了注意力计算的运行效率，但乘法操作的总次数保持不变。  
+为了降低计算成本，许多近期方法提出将注意力限制在特定结构或模式中，这些模式反映了对 token 间相关性的假设 [Beltagy2020Longformer, liu2021swin, hassani2023neighborhood, huang2019ccnet, wang2020axial, yang2021focal, zhu2021deformable]。  
+由于这些注意力模式具有较强的限制性，它们通常在架构设计阶段选定，并且很少能直接应用于使用密集（标准）注意力训练的模型，除非进行微调。</p>
 
-<p>A complementary line of research exploits the inherent sparsity of typical attention maps, enabling acceleration without architectural modifications.  
-These methods observe that when tokens are mismatched, the corresponding elements of  
-𝐏 are nearly zero, and thus their computation in Eq. 2 can be skipped entirely, eliminating redundant operations.  
-However, identifying which elements or blocks can be safely skipped a priori is non-trivial, and a variety of approaches have been proposed to address this challenge. For a detailed survey, see [zhang2026survey].</p>
+<p>另一条互补的研究路线利用典型注意力图的内在稀疏性，从而在不改变架构的前提下实现加速。</p>
 
-<p>Several approaches [zhang2025sla, wu2025vmoba, liu2025fpsattention, zhang2025vsa] achieve sparsity by finetuning the model to adapt its attention layers.  
-While these methods can reach high sparsity levels by explicitly optimizing models to do so, they require access to significant computational resources and high-quality training data which may not be available.  
-Alternatively, training-free sparsity methods apply sparse attention mechanisms to pre-trained models without additional training.  
-Some works [zhang2025fast, liradial] pre-compute attention masks based on positional and structural priors and apply them on  
-𝐏 at inference time with minimal runtime overhead.  
-For instance, Radial Attention [liradial] employs a static sparse attention mask, where each token attends to a window of spatially nearby tokens, with the window size shrinking exponentially with temporal distance.  
-In contrast, methods with online decisions [xi2025sparse, zhang2025spargeattn, shmilovich2025liteattention, xu2025xattentionblocksparseattention, xia2025trainingfreeadaptivesparseattention, ohayon2025blocksparseflashattention] identify sparsity patterns during inference by profiling attention characteristics, enabling input-adaptive sparsity at the cost of inference-time overhead. For instance, SpargeAttention [zhang2025spargeattn] estimates block importance online by computing attention on compressed queries and keys, skipping blocks below a threshold, and introduces skip lists to specify which block intervals to compute. LiteAttention [shmilovich2025liteattention] builds upon SpargeAttention, adapting it into a FlashAttention3-based kernel and reusing skip lists across timesteps. Sparse VideoGen 2 [yang2025sparse] clusters tokens, computes attention among cluster centroids, and computes token-level attention only within high-scoring cluster interactions.</p>
+<p>修改。  
+这些方法观察到，当令牌不匹配时，对应的 𝐏 元素几乎为零，因此可以在公式 2 中完全跳过其计算，从而消除冗余操作。  
+然而，预先确定哪些元素或块可以安全跳过并非易事，为此已提出多种方法来应对这一挑战。有关详细综述，请参见 [zhang2026survey]。</p>
 
-<p>In our work, we focus on the idea of using pre-computed masks to accelerate attention without inference-time overhead.  
-Instead of assuming fixed decay patterns, we compute masks through model-dependent calibration.  
-Our calibration algorithm adapts to the inherent attention patterns of each model, diffusion timestep, layer, and attention head, while remaining largely agnostic to the specific calibration data, thereby achieving higher sparsity than methods relying on pre-defined masks.</p>
+<p>几种方法 [zhang2025sla, wu2025vmoba, liu2025fpsattention, zhang2025vsa] 通过微调模型以适应其注意力层来实现稀疏性。  
+尽管这些方法可以通过显式优化模型来达到较高的稀疏度，但它们需要大量的计算资源和高质量的训练数据，而这些资源可能并不可用。  
+另一种方法是无训练稀疏性方法，即在无需额外训练的情况下，将稀疏注意力机制应用于预训练模型。  
+一些研究 [zhang2025fast, liradial] 基于位置和结构先验预计算注意力掩码，并在推理时以极小的运行时开销将其应用于 𝐏。  
+例如，Radial Attention [liradial] 使用静态稀疏注意力掩码，其中每个令牌仅关注空间上邻近的令牌，且窗口大小随时间距离呈指数级缩小。  
+相比之下，具有在线决策能力的方法 [xi2025sparse, zhang2025spargeattn, shmilovich2025liteattention, xu2025xattentionblocksparseattention, xia2025trainingfree]</p>
+
+<p>adaptivesparseattention, ohayon2025blocksparseflashattention] 通过分析注意力特征，在推理过程中识别稀疏模式，从而实现输入自适应稀疏，但需付出推理时开销的代价。例如，SpargeAttention [zhang2025spargeattn] 通过在压缩后的查询和键上计算注意力，实时估计块的重要性，跳过低于阈值的块，并引入跳过列表来指定需要计算的块区间。LiteAttention [shmilovich2025liteattention] 在 SpargeAttention 的基础上，将其适配为基于 FlashAttention3 的内核，并在不同时间步之间重用跳过列表。Sparse VideoGen 2 [yang2025sparse] 对 token 进行聚类，在聚类中心之间计算注意力，并仅在高分聚类交互内部计算 token 级别的注意力。</p>
+
+<p>在我们的工作中，我们专注于使用预计算掩码来加速注意力计算，且不产生推理时开销。  
+我们不假设固定的衰减模式，而是通过模型相关的校准过程来计算掩码。  
+我们的校准算法能够适应每个模型、扩散时间步、层和注意力头的内在注意力模式，同时对具体的校准数据保持很大程度的无关性，从而实现比依赖预定义掩码的方法更高的稀疏度。</p>
 
 <p>Token-level (B=1)  
 l=20  
@@ -240,226 +247,239 @@ h=0
 h=32  
 (d) t=49</p>
 
-<p>Figure 2: Attention patterns across timesteps (t), layers (l), and heads (h).  
-We compare post-softmax attention maps (queries × keys) for different t,l,h for the same prompt with Wan 2.1 14B [wan2025].  
-Each row fixes the attention granularity (token-level or block-level).  
-For ease of visualization, we show the first 12544 tokens out of the full sequence length of 32760.  
-Notably, the large block structure visible in some of the maps reflects intra-frame token correspondences in the video.</p>
+<p>F</p>
 
-<p>3 Method  
-3.1 Initial Inspection and Observations  
-We begin by analyzing the typical behavior of attention layers in text-to-video diffusion models for various input prompts and seeds.  
-Specifically, we focus on the use case of generating 480p videos with Wan 2.1 14B [wan2025], and we find that the observations generalize across other settings.  
-We make four key observations.</p>
+<p>图 2：在时间步（t）、层（l）和头（h）上的注意力模式。  
+我们比较了相同提示下 Wan 2.1 14B [wan2025] 在不同 t、l、h 下的 softmax 后注意力图（查询 × 键）。  
+每一行固定注意力粒度（token 级或 block 级）。  
+为便于可视化，我们展示了完整序列长度 32760 中的前 12544 个 token。  
+值得注意的是，某些图中可见的大块结构反映了视频中帧内 token 的对应关系。</p>
 
-<p>Observation 1: Many attention maps are sparse.  
-We examine the N × N post-softmax attention matrix  
-𝐏.  
-In the vast majority of cases, we notice that it focuses on a small number of token-to-token interactions (see Fig. 2).  
-The rest of the tokens receive a negligible amount of attention, rendering their inclusion in the output value summation redundant.  
-Furthermore, we observe that the sparsity remains very apparent, even when considering B × B blocks in the attention matrix  
-𝐏, where each block represents the query-wise average of the post-softmax attention, summed over keys.  
-This observation highlights attention as a prime candidate for compute savings at inference time, especially since block-wise sparsity is compatible with hardware-friendly efficient attention kernels [dao2022flashattention, shah2024flashattention3].  
-Similar observations have been made in previous work [xi2025sparse, liradial, zhang2025vsa].</p>
+<p>3 方法  
+3.1 初步检查与观察  
+我们首先分析文本到视频扩散模型在不同输入提示和种子下注意力层的典型行为。  
+具体而言，我们聚焦于使用 Wan 2.1 14B [wan2025] 生成 480p 视频的场景，并发现这些观察结果在其他设置中也具有普遍性。  
+我们得出四个关键观察。</p>
 
-<p>Observation 2: Attention patterns do not replicate across heads, layers, and timesteps.  
-As can be seen in Fig. 2, the attention patterns are inconsistent for different heads in the same layer, different layers in the same timestep, as well as for different timesteps in the same layer and head.  
-In a successful model training run, different attention layers and heads usually learn to focus on different semantic concepts [voita2019analyzing].  
-Hence, when proposing a sparsity-based acceleration technique, we argue it is preferable to fit a specific attention mask for each combination of layer, head, timestep, rather than use a fixed mask for all of them [liradial].  
-That being said, we note that timesteps are a special case. Later timesteps, corresponding to lower noise levels, often exhibit highly similar attention patterns for a given layer and head, a phenomenon also observed in prior work [shmilovich2025liteattention].  
-We analyze this behavior in Sec. 0.A.3.</p>
+<p>观察 1：许多注意力图是稀疏的。  
+我们检查 N × N 的 softmax 后注意力矩阵 **P**。  
+在绝大多数情况下，我们注意到它仅关注少量 token 之间的交互（见图 2）。  
+其余 token 获得的注意力微乎其微，使其在输出值求和中的包含变得冗余。  
+此外，我们观察到，即使在考虑注意力矩阵 **P** 中的 B × B 块时，稀疏性依然非常明显，其中每个块表示在键上对 softmax 后注意力进行查询方向平均后的结果。  
+这一观察</p>
 
-<p>(a) Attention maps across prompts  
-(b) Block keep-rate histogram</p>
+<p>高亮了注意力机制作为推理阶段计算节省的首选候选，尤其是因为块级稀疏性与硬件友好的高效注意力内核兼容 [dao2022flashattention, shah2024flashattention3]。  
+类似观察在先前工作中也已被提出 [xi2025sparse, liradial, zhang2025vsa]。</p>
 
-<p>Figure 3: Data-independence of block sparsity.  
-(a) Attention maps from layer 20, head 24, at timestep 10 across four different prompts, showing consistent sparsity patterns.  
-(b) Histogram showing how often each block is marked to be kept across calibration prompts. A value of 0 means the block is skipped for all prompts, while 1 means it is always computed.  
-Many blocks cluster near 0 or 1, indicating a largely data-independent sparsity pattern.  
-The curve (purple) shows the cumulative fraction of blocks skipped under different agreement thresholds.</p>
+<p>**观察 2：注意力模式在不同注意力头、层和时间步之间并不重复。**  
+如图 2 所示，同一层中不同注意力头、同一时间步中不同层，以及同一层和头在不同时间步之间的注意力模式均不一致。  
+在成功的模型训练过程中，不同的注意力层和头通常会学习关注不同的语义概念 [voita2019analyzing]。  
+因此，在提出基于稀疏性的加速技术时，我们认为更优的方法是为每一组层、头和时间步的组合设计特定的注意力掩码，而不是对所有组合使用固定的掩码 [liradial]。  
+尽管如此，我们注意到时间步是一个特殊情况。较晚的时间步（对应较低的噪声水平）在给定层和头下通常表现出高度相似的注意力模式，这一现象也在先前工作中被观察到 [shmilovich2025liteattention]。  
+我们在第 0.A.3 节中分析了这种行为。</p>
 
-<p>Observation 3: Attention patterns persist across inputs.  
-We observe that the sparsity patterns of attention maps are persistent for various input prompts and initial diffusion noise vectors.  
-Despite the different semantic contents generated with different prompts, attention connections tend to focus on the same spatio-temporal areas in most cases, as shown in Fig. 3(a).  
-This observation motivates the one-time offline calibration of data-independent sparse attention masks, to be used online and alleviate the computational cost of video generation inference with no significant overhead. We explore this in Sec. 3.2.</p>
+<p>(a) 不同提示下的注意力图  
+(b) 块保留率直方图</p>
 
-<p>Observation 4: Attention patterns repeat across spatial rows.  
-We further observe that some attention maps exhibit a repetition structure within frame to frame blocks.  
-In such cases, attention scores in  
-𝐏 corresponding to queries of spatial rows within the same frame exhibit highly similar patterns.  
-For these maps, computing attention for a single representative row per frame may suffice [willettedelta], with remaining rows recoverable via repeating the attention output.  
-We visualize an example of this behavior in Fig. 4.  
-Interestingly, we find that attention maps exhibiting this repetition structure tend to have low block sparsity, suggesting that spatial replication and block sparsification are complementary acceleration strategies. We elaborate on this in Sec. 3.3.</p>
+<p>图 3：块稀疏性的数据无关性。  
+(a) 在时间步 10 时，第 20 层、第 24 个头的注意力图，跨不同提示（prompts）</p>
 
-<p>3.2 Attention Mask Calibration  
+<p>我们的不同提示词，显示出一致的稀疏性模式。  
+(b) 直方图展示了在不同校准提示词中，每个块被标记为保留的频率。值为 0 表示该块在所有提示词中都被跳过，而值为 1 表示该块始终被计算。  
+许多块聚集在 0 或 1 附近，表明稀疏性模式在很大程度上与数据无关。  
+曲线（紫色）展示了在不同一致性阈值下被跳过的块的累积比例。</p>
+
+<p>**观察 3：注意力模式在不同输入中保持稳定。**  
+我们观察到，注意力图的稀疏性模式在各种输入提示词和初始扩散噪声向量下均保持稳定。  
+尽管不同提示词生成了不同的语义内容，但注意力连接在大多数情况下仍倾向于聚焦于相同的时空区域，如图 3(a) 所示。  
+这一观察促使我们进行一次性的离线校准，以生成与数据无关的稀疏注意力掩码，用于在线推理中，从而在无显著开销的情况下降低视频生成推理的计算成本。我们在第 3.2 节中探讨了这一点。</p>
+
+<p>**观察 4：注意力模式在空间行之间重复。**  
+我们进一步观察到，某些注意力图在帧与帧之间的块内表现出重复结构。  
+在这些情况下，对应于同一帧内空间行的查询的注意力分数在矩阵 **𝐏** 中表现出高度相似的模式。  
+对于这些图，每帧只需计算一个代表性行的注意力即可满足需求 [willettedelta]，从而进一步减少计算量。</p>
+
+<p>剩余行可通过重复注意力输出恢复。  
+我们在图 4 中可视化了这种行为的一个示例。  
+有趣的是，我们发现表现出这种重复结构的注意力图通常具有较低的块稀疏性，这表明空间复制和块稀疏化是互补的加速策略。我们在第 3.3 节中对此进行详细阐述。</p>
+
+<p>3.2 注意力掩码校准  
 (a)  
 (b)</p>
 
-<p>Figure 4: Spatial repetition within frames.  
-(a) Token-level attention map at layer 30, head 24, timestep 0, showing two frames (3120 of 32760 tokens). Frame boundaries are marked in red.  
-(b) Zoomed-in slices from each frame-to-frame block with white grid lines separating spatial rows. The attention pattern repeats across spatial rows within each query frame.</p>
+<p>图 4：帧内的空间重复。  
+(a) 第 30 层、第 24 个注意力头、时间步 0 的 token 级注意力图，显示两个帧（共 32760 个 token 中的 3120 个）。帧边界以红色标记。  
+(b) 每个帧到帧块的放大切片，白色网格线分隔空间行。在每个查询帧内，注意力模式在空间行之间重复。</p>
 
-<p>We now turn to describing CalibAtt.  
-Given a model and an inference configuration, our goal is to produce a binary block mask  
-𝐌^{(t,l,h)} for each diffusion timestep t, transformer layer l, and attention head h,  
-whose entries indicate whether each block is computed (1) or skipped (0).</p>
+<p>我们现在转向描述 CalibAtt。  
+给定一个模型和推理配置，我们的目标是为每个扩散时间步 t、Transformer 层 l 和注意力头 h 生成一个二值块掩码 𝐌^{(t,l,h)}，其条目指示每个块是被计算（1）还是跳过（0）。</p>
 
-<p>(a) Offline calibration per timestep/layer/head  
-(b) Inference</p>
+<p>(a) 每时间步/层/头的离线校准  
+(b) 推理</p>
 
-<p>Figure 5: Schematic description of CalibAtt.  
-(a) We threshold the top key blocks per query block. Then, we aggregate the resulting masks across prompts and store them in a mask dictionary. In addition, we identify attention heads that exhibit spatial row repetition and store them in a dictionary.  
-(b) At inference time, for non-repetitive heads (top), we load block masks into memory and skip the computation of the unset blocks accordingly. For heads flagged as spatially repetitive (bottom), we compute attention only for selected anchor rows per frame and broadcast the outputs to neighboring rows.</p>
+<p>图 5：CalibAtt 的示意图。  
+(a) 我们对每个查询块的 top 关键块进行阈值处理。然后，我们跨提示聚合生成的掩码，并将其存储在掩码字典中。此外，我们识别表现出空间行重复的注意力头，并将其存储在字典中。  
+(b) 在推理时，对于非重复头（t</p>
 
-<p>Per-prompt energy-based block selection.  
-At a fixed (t,l,h), we consider the post-softmax attention map  
-𝐏 (queries × keys) of size N × N defined in Eq. 1.  
-Motivated by Observation 1, we adopt an energy viewpoint: for each query, attention mass is often concentrated on a small subset of keys, while the remaining entries contribute negligibly to the output.  
-To identify which parts of  
-𝐏 can be skipped efficiently in hardware, we operate at block granularity.  
-We partition  
-𝐏 into contiguous blocks of size B × B, assuming equal block sizes for queries and keys/values for simplicity, and ablate on different configurations in Sec. 0.B.3. This yields N_B = N/B blocks per dimension.  
-For each query block-row r and key block-column c, we define the block energy as the sum of attention scores over keys in c, averaged over queries in r:  
+<p>op)，我们将块掩码加载到内存中，并相应地跳过未设置块的计算。对于被标记为在空间上具有重复性的头（底部），我们仅对每帧中选定的锚点行计算注意力，并将输出广播到相邻行。</p>
+
+<p>基于能量的每提示块选择。  
+在固定的 (t,l,h) 下，我们考虑在公式 1 中定义的、大小为 N × N 的 softmax 后注意力图 𝐏（查询 × 键）。  
+受观察 1 的启发，我们采用能量视角：对于每个查询，注意力质量通常集中在一小部分键上，而其余部分对输出的贡献可忽略不计。  
+为了识别在硬件中可以高效跳过的 𝐏 的哪些部分，我们在块粒度上进行操作。  
+我们将 𝐏 划分为大小为 B × B 的连续块，为简化起见，假设查询和键/值具有相等的块大小，并在第 0.B.3 节中对不同配置进行消融实验。这在每个维度上产生 N_B = N/B 个块。  
+对于每个查询块行 r 和键块列 c，我们定义块能量为在 c 中键的注意力分数之和，对 r 中的查询取平均：  
 𝐄_{r,c} = (1/B) ∑_{i∈ℐ_r} ∑_{j∈𝒥_c} 𝐏_{ij},  
 (5)  
-where ℐ_r and 𝒥_c are the query and key/value index sets defined in Eq. 3.  
-Intuitively, 𝐄_{r,c} measures how much attention mass the queries in block-row r allocate to keys in block-column c, averaged across the B queries. Averaging this way ensures that a block-row energy 𝐄_r sums up to 1.</p>
+其中 ℐ_r 和 𝒥_c 是公式 3 中定义的查询和键/值索引集。  
+直观上，𝐄_{r,c} 衡量了块行 r 中的查询分配给块列 c 中键的注意力质量，对 B 个查询取平均。这样平均确保每个块行能量 𝐄_r 的总和为 1。</p>
 
-<p>For each query block-row r, our goal is to keep the smallest number of key blocks whose cumulative energy reaches a prescribed threshold:  
+<p>对于每个查询块行 r，我们的目标是</p>
+
+<p>为保留最少数量的关键块，使其累积能量达到预设阈值：  
 min_{𝒮_r ⊆ {1,…,N_B}} |𝒮_r| s.t. ∑_{c∈𝒮_r} 𝐄_{r,c} ≥ ε.  
 (6)  
-We define the energy threshold to be timestep-dependent via ε(t).  
-This follows prior observations that applying aggressive sparsification too early in the denoising process can lead to noticeably larger degradation in output quality [liradial, yang2025sparse]. In practice, we use an exponential schedule over timesteps t ∈ {0,…,T−1}, where t=0 denotes the highest-noise step:  
+我们定义能量阈值为与时间步相关的 ε(t)。  
+这遵循先前观察到的现象：在去噪过程早期过早应用激进的稀疏化会导致输出质量明显下降 [liradial, yang2025sparse]。在实践中，我们使用在时间步 t ∈ {0,…,T−1} 上的指数调度，其中 t=0 表示噪声最大的步骤：  
 ε(t) = A + (C−A) exp(−kt/T),  
 (7)  
-where T is the total number of diffusion steps, and A, C, and k are schedule hyperparameters.  
-In practice, ε(t) remains high throughout, ranging from 0.99 to 0.84 in Wan [wan2025].  
-We provide details on the schedule hyperparameter search in the supplementary material Sec. 0.A.1.</p>
+其中 T 是扩散过程的总步数，A、C 和 k 是调度超参数。  
+在实践中，ε(t) 始终保持较高水平，在 Wan [wan2025] 中范围从 0.99 到 0.84。  
+我们在补充材料 Sec. 0.A.1 中提供了调度超参数搜索的详细信息。</p>
 
-<p>Given ε(t) and a text prompt p, we compute 𝒮_r by sorting {𝐄_{r,c}}_c in descending order and selecting the smallest prefix whose cumulative energy reaches ε(t), marking the selected blocks as kept and the remainder as skipped.  
-This algorithm optimally solves Eq. 6 and yields a per-prompt binary block mask  
-𝐌_p^{(t,l,h)} ∈ {0,1}^{N_B × N_B}, where  
-[𝐌_p^{(t,l,h)}]_{r,c} = 1 indicates that block (r,c) is computed and 0 indicates it is skipped. This procedure is illustrated in Fig. 5(a) (top).</p>
+<p>给定 ε(t) 和文本提示 p，我们通过将 {𝐄_{r,c}}_c 按降序排序，并选择累积能量达到 ε(t) 的最短前缀来计算 𝒮_r，将选中的块标记为保留，其余标记为跳过。  
+该算法最优地解决了公式 (6)，并生成每个提示对应的二值块掩码  
+𝐌_p^{(t,l,h)} ∈ {0,1}^{N_B × N_B}，其中  
+[𝐌_p^{(t,l,h)}]_{r,c} = 1 表示块 (r,c) 被计算，0 表示被跳过。该过程如图 5(a)（上部）所示。</p>
 
-<p>Cross-prompt mask aggregation.  
-Motivated by Observation 3, we aim to identify block connections that can be safely skipped in a data-independent manner.  
-While the per-prompt energy selection described above yields a binary mask for a single input, our goal is to compile a single calibrated mask per (t,l,h) that is robust across different prompts and noise initializations.  
-Concretely, for each (t,l,h) we run the energy-based selection procedure on a set of calibration prompts  
-𝒟, producing prompt-specific masks  
-𝐌_p^{(t,l,h)} for all p ∈ 𝒟.  
-We aggregate these masks by averaging them elementwise:  
+<p>跨提示掩码聚合。  
+受观察 3 的启发，我们旨在识别可以安全跳过的块连接。</p>
+
+<p>一种与数据无关的方式。  
+虽然上述按提示（prompt）的能耗选择方法为单个输入生成一个二值掩码，但我们的目标是为每个 (t,l,h) 编译一个单一的校准掩码，使其在不同提示和噪声初始化下具有鲁棒性。  
+具体而言，对于每个 (t,l,h)，我们在一组校准提示 𝒟 上运行基于能量的选择过程，生成针对每个提示 p ∈ 𝒟 的特定掩码 𝐌_p^{(t,l,h)}。  
+我们通过逐元素平均这些掩码进行聚合：  
 𝐌̄^{(t,l,h)} = (1/|𝒟|) ∑_{p∈𝒟} 𝐌_p^{(t,l,h)}.  
 (8)  
-where each entry  
-[𝐌̄^{(t,l,h)}]_{r,c} ∈ [0,1] indicates how frequently block (r,c) was computed across prompts.  
-In all experiments, we use |𝒟| = 64 calibration prompts and ablate its effect in Fig. 7.  
-As shown in Fig. 3(b), the distribution is bimodal: many blocks are either almost always computed or almost always skipped, suggesting that many connections can be pruned reliably.  
-We then obtain the final calibrated mask  
-𝐌^{(t,l,h)} by thresholding each mask block  
-[𝐌̄^{(t,l,h)}]_{r,c} with an agreement threshold ρ:  
-[𝐌^{(t,l,h)}]_{r,c} = {1, if [𝐌̄^{(t,l,h)}]_{r,c} ≥ ρ; 0, otherwise},  
+其中每个元素 [𝐌̄^{(t,l,h)}]_{r,c} ∈ [0,1] 表示块 (r,c) 在不同提示中被计算的频率。  
+在所有实验中，我们使用 |𝒟| = 64 个校准提示，并在图 7 中消融其影响。  
+如图 3(b) 所示，该分布呈双峰：许多块要么几乎总是被计算，要么几乎总是被跳过，这表明许多连接可以可靠地被剪枝。  
+然后，我们通过对每个掩码块 [𝐌̄^{(t,l,h)}]_{r,c} 应用一个一致性阈值 ρ 来获得最终的校准掩码 𝐌^{(t,l,h)}：  
+[𝐌^{(t,l,h)}]_{r,c} = {1, 如果 [𝐌̄^{(t,l,h)}]_{r,c} ≥ ρ；0，否则}，  
 (9)  
-where repeating this for all (t,l,h) yields a dictionary of calibrated masks {𝐌^{(t,l,h)}}, as illustrated in Fig. 5(a) (center).  
-At inference time, we retrieve the appropriate mask by indexing this dictionary with the current diffusion step, layer, and head, as illustrated in Fig. 5(b) (top).  
-The threshold ρ determines how to handle the non-unanimous blocks, controlling the tradeoff between increased sparsity as ρ increases, at the cost of decreased fidelity to the original model behavior since we skip more blocks.  
-This threshold is largely independent of the underlying algorithm used in per-prompt mask calibration.  
-In all experiments, we set ρ = 0.5, and ablate its effect on quality in Sec. 4.2.</p>
+对所有 (t,l,h) 重复此操作，即可得到一组校准掩码 {𝐌^{(t,l,h)}}，如图 5(a)（中心）所示。  
+在推理时，我们通过当前扩散步、层和头索引该字典来检索相应的掩码，如图 5(b)（顶部）所示。  
+阈值 ρ 决定了如何处理非-</p>
 
-<p>3.3 Spatial Repetition Detection  
-Motivated by Observation 4, we identify attention maps that exhibit repetitive patterns across spatial query positions within each frame, enabling additional computational savings beyond block skipping. We examine the attention patterns for tokens within a spatial row i of a video frame f.  
-Due to row-major ordering, these tokens have consecutive indices  
+<p>一致地屏蔽块，控制着随着 ρ 增大而增加的稀疏性与因跳过更多块而导致的对原始模型行为保真度下降之间的权衡。  
+该阈值在很大程度上独立于用于每提示掩码校准的底层算法。  
+在所有实验中，我们设置 ρ = 0.5，并在第 4.2 节中对其对质量的影响进行消融分析。</p>
+
+<p>## 3.3 空间重复检测</p>
+
+<p>受观察 4 的启发，我们识别出在每个帧内空间查询位置上表现出重复模式的注意力图，从而在块跳过之外实现额外的计算节省。我们分析视频帧 f 中空间行 i 内的 token 的注意力模式。  
+由于行优先顺序，这些 token 具有连续索引  
 ℐ^{(f,i)} = {l | fHW + iW ≤ l &lt; fHW + (i+1)W},  
 (10)  
-where W is the number of tokens in a row, and H is the number of rows in a frame.  
-Their corresponding post-softmax attention values are denoted as  
-𝐏^{(f,i)} = flatten(𝐏[ℐ^{(f,i)}, :]), referring to  
-𝐏 from Eq. 1.</p>
+其中 W 是每行的 token 数量，H 是帧中的行数。  
+它们对应的 softmax 后的注意力值记为  
+𝐏^{(f,i)} = flatten(𝐏[ℐ^{(f,i)}, :])，其中 𝐏 来自公式 1。</p>
 
 <p>(a)  
 (b)</p>
 
-<p>Figure 6: Spatial repetition analysis.  
-(a) Complementarity with block sparsity: Spatial similarity vs. calibrated mask sparsity for each attention map. The negative correlation indicates that the two strategies target different maps.  
-(b) Cross-prompt consistency: Standard deviation of spatial similarity across calibration prompts. Low variance for high-similarity maps enables their reliable identification from few samples.</p>
+<p>图 6：空间重复性分析。  
+(a) 与块稀疏性的互补性：每个注意力图的空间相似性与校准掩码稀疏性之间的关系。负相关性表明这两种策略针对的是不同的注意力图。  
+(b) 跨提示一致性：在不同校准提示下空间相似性的标准差。高相似性图的方差较低，使其可以从少量样本中可靠地识别出来。</p>
 
-<p>We observe that for some attention maps, attention patterns are highly similar across spatial rows within a frame, i.e.,  
-𝐏^{(f,i)} ≈ 𝐏^{(f,j)} for all i,j ∈ {1,…,H}.  
-Thus, in these maps, we can select k equispaced anchor spatial rows per frame, compute their attention against all keys and values, and broadcast each result to its nearest spatial rows within that frame. This reduces the number of computed query tokens per frame from HW to kW, inducing a sparsity of 1 − k/H.  
-To identify which attention maps exhibit this structure, we compute a spatial similarity score s^{(t,l,h)} at each (t,l,h) as follows:  
-We compute the cosine similarity between each  
-𝐏^{(f,i)} and its nearest anchor row, then average over f, i, and the input prompts to obtain s^{(t,l,h)}. When s^{(t,l,h)} exceeds a threshold γ, we mark the corresponding (t,l,h) to be computed as spatially repetitive during inference (Fig. 5(a) bottom). We ablate on the number of anchor rows k and the similarity threshold γ in Sec. 0.B.1, and choose k = 5, γ = 0.87 in all experiments.  
-We find that attention maps with high spatial similarity tend to have lower block sparsity, and vice versa, as shown in Fig. 6(a). Hence, these two acceleration strategies are complementary.  
-Additionally, maps exhibiting high spatial similarity do so consistently across different input prompts, as shown in Fig. 6(b), allowing us to reliably identify repetitive maps using a few prompts.</p>
+<p>我们观察到</p>
 
-<p>3.4 Efficient Implementation  
-Calibration stage.  
-For block-level attention energies  
-𝐄_{r,c} (Eq. 5), we implemented a custom CUDA kernel that operates at block granularity and accumulates the required statistics without materializing the full attention matrix  
-𝐏.  
-Spatial similarity scores s^{(t,l,h)} (Sec. 3.3) are computed separately using an optimized batched PyTorch implementation.</p>
+<p>对于某些注意力图，注意力模式在帧内空间行之间高度相似，即  
+𝐏^{(f,i)} ≈ 𝐏^{(f,j)} 对所有 i,j ∈ {1,…,H} 成立。  
+因此，在这些图中，我们可以在每帧中选择 k 个等间距的锚点空间行，计算它们对所有键和值的注意力，然后将每个结果广播到该帧内最近的空间行。这将每帧计算的查询标记数量从 HW 减少到 kW，引入了 1 − k/H 的稀疏性。  
+为了识别哪些注意力图具有这种结构，我们在每个 (t,l,h) 处计算空间相似性得分 s^{(t,l,h)}，方法如下：  
+我们计算每个 𝐏^{(f,i)} 与其最近锚点行之间的余弦相似度，然后对 f、i 和输入提示进行平均，得到 s^{(t,l,h)}。当 s^{(t,l,h)} 超过阈值 γ 时，我们在推理过程中将对应的 (t,l,h) 标记为具有空间重复性（图 5(a) 底部）。我们在第 0.B.1 节中对锚点行数量 k 和相似性阈值 γ 进行消融实验，并在所有实验中选择 k = 5，γ = 0.87。  
+我们发现，空间相似性高的注意力图往往具有较低的块稀疏性，反之亦然，如图 6(a) 所示。因此，这两种加速策略是互补的。  
+此外，如图 6(b) 所示，表现出高空间相似性的图在不同输入提示下具有一致性，这使得我们能够仅使用少量提示可靠地识别出重复的图。</p>
 
-<p>Inference stage.  
-Several inference frameworks support block-sparse attention computation [dong2024flexattentionprogrammingmodel, ye2025flashinferefficientcustomizableattention].  
-We opt to build a separate custom CUDA kernel for CalibAtt, implementing optimizations specific to pre-computed masks that vary per timestep, layer, and head.  
-Our implementation is based on FlashAttention3 [shah2024flashattention3] and block-sparse kernels proposed in prior work [zhang2025spargeattn, shmilovich2025liteattention].  
-The kernel operates on read-only skip lists, precomputed from the calibrated attention masks as such:  
-For each calibrated binary block mask  
-𝐌^{(t,l,h)} and each query block-row r, we encode the contiguous ranges of key block-columns c for which the corresponding attention blocks should be computed.  
-All skip lists are precomputed once during calibration and preloaded onto the GPU before inference.  
-During generation, the appropriate skip list is selected based on (t,l,h) and passed to the attention kernel at launch time (Fig. 5(b) top).  
-For attention heads flagged as spatially repetitive, we instead use standard FlashAttention3 with a reduced query set containing only the anchor spatial rows, and broadcast the result to all spatial rows within each frame (Fig. 5(b) bottom).  
-We provide more details and optimizations in Sec. 0.A.2.</p>
+<p>3.4 高效实现  
+校准阶段。  
+对于</p>
 
-<p>Table 1: VBench scores, averaged attention sparsity, and end-to-end latency for high-timestep different text-to-video generation models and different resolutions.</p>
+<p>块级注意力能量  
+𝐄_{r,c}（公式 5），我们实现了一个自定义的 CUDA 内核，该内核在块粒度上运行，并在不显式生成完整注意力矩阵 𝐏 的情况下累积所需的统计信息。  
+空间相似性得分 s^{(t,l,h)}（第 3.3 节）则通过优化的批处理 PyTorch 实现分别计算。</p>
 
-<p>Model | Method | VBench ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑  
-Semantic | Quality | Total  
-Wan 2.1 14B 480p 81 frames | Dense (FA3) | 72.71 | 82.19 | 80.29 | 0% | 363 s | 1.00×  
-| SpargeAttention | 72.87 | 82.03 | 80.20 | 49.5% | 317 s | 1.15×  
-| RadialAttention | 76.69 | 81.24 | 80.33 | 49.0% | 302 s | 1.20×  
-| SVG2 | 67.84 | 82.27 | 79.38 | 53.4% | 291 s | 1.25×  
-| CalibAtt (Ours) | 72.80 | 82.30 | 80.40 | **68.1%** | 250 s | **1.45×**  
-Wan 2.1 14B 720p 81 frames | Dense (FA3) | 71.65 | 81.27 | 79.35 | 0% | 1244 s | 1.00×  
-| SpargeAttention | 71.12 | 80.78 | 78.85 | 49.9% | 930 s | 1.33×  
-| RadialAttention | 72.44 | 79.33 | 77.95 | 54.7% | 936 s | 1.32×  
-| SVG2 | 70.03 | 81.61 | 79.30 | 46.3% | 846 s | 1.47×  
-| CalibAtt (Ours) | 72.81 | 81.41 | 79.69 | **62.5%** | 785 s | **1.58×**  
-Mochi 1 480p 85 frames | Dense (FA3) | 67.02 | 76.42 | 74.54 | 0% | 188 s | 1.00×  
-| SpargeAttention | 69.03 | 75.64 | 74.32 | 49.6% | 178 s | 1.05×  
-| RadialAttention | 66.16 | 75.47 | 73.61 | 37.8% | 175 s | 1.07×  
-| SVG2 | 65.24 | 74.89 | 72.96 | 55.6% | 237 s | 0.79×  
-| CalibAtt (Ours) | 67.34 | 76.38 | 74.57 | **69.1%** | 161 s | **1.16×**</p>
+<p>推理阶段。  
+多个推理框架支持块稀疏注意力计算 [dong2024flexattentionprogrammingmodel, ye2025flashinferefficientcustomizableattention]。  
+我们选择为 CalibAtt 构建一个独立的自定义 CUDA 内核，实现针对每时间步、每层、每注意力头变化的预计算掩码的特定优化。  
+我们的实现基于 FlashAttention3 [shah2024flashattention3] 以及先前工作提出的块稀疏内核 [zhang2025spargeattn, shmilovich2025liteattention]。  
+该内核在只读跳表（skip lists）上运行，这些跳表从校准后的注意力掩码预先计算得到：  
+对于每个校准后的二值块掩码 𝐌^{(t,l,h)} 和每个查询块行 r，我们编码出需要计算对应注意力块的连续键块列 c 的范围。  
+所有跳表在校准阶段一次性预计算，并在推理前预先加载到 GPU 上。  
+在生成过程中，根据 (t,l,h) 选择合适的跳表，并在启动注意力内核时传入（图 5(b) 上部）。  
+对于被标记为具有空间重复性的注意力头，我们则改用标准的 FlashAttention。</p>
 
-<p>4 Experiments  
-4.1 Setup  
-Models.  
-We evaluate CalibAtt on two different model architectures: (i) Wan2.1 14B [wan2025], a 14B-parameter model, generating 5-second videos (81 frames) in T = 50 timesteps in two resolutions: 480p and 720p, and (ii) Mochi 1 [genmo2024mochi], a 10B-parameter model which generates 480p videos of 85 frames in T = 64 timesteps.  
-We also evaluate on LightX2V [lightx2v], a 4-step distilled variant of Wan2.1 14B, using the same resolutions and frame counts.</p>
+<p>ion3 采用一个仅包含锚点空间行的缩减查询集，并将结果广播到每个帧内的所有空间行（图 5(b) 底部）。  
+我们在第 0.A.2 节中提供了更多细节和优化。</p>
 
-<p>Baselines.  
-We use FlashAttention3 (FA3) [shah2024flashattention3] as a reference dense attention baseline.  
-We additionally compare against training-free attention acceleration methods: RadialAttention [liradial], SparseVideoGen2 (SVG2) [yang2025sparse], and SpargeAttention [zhang2025spargeattn]. All methods are evaluated using identical pretrained checkpoints and model inference settings, and they are all implemented with a FlashAttention3 backend or equivalent.  
-For more details, please refer to Sec. 0.A.4.</p>
+<p>表 1：高时间步长下不同文本到视频生成模型及不同分辨率的 VBench 分数、平均注意力稀疏度和端到端延迟。</p>
 
-<p>Metrics.  
-We evaluate generation quality as well as text–video alignment using VBench [huang2023vbench] on its official evaluation prompts and metric suite, reporting Semantic, Quality, and Total scores.  
-We focus on generation quality and prompt adherence rather than per-seed reconstruction metrics (e.g., PSNR), as our goal is to preserve the overall quality level of generated videos rather than to exactly replicate the dense baseline outputs.  
-To quantify efficiency, we report Sparsity, defined as the fraction of skipped query-key interactions out of all spatiotemporal token pairs in self-attention, averaged over all timesteps, layers, and attention heads.  
-Additionally, we report end-to-end Latency, defined as the wall-clock time of the diffusion process to generate a single video, averaged over all evaluation prompts, and Speedup relative to dense FA3.</p>
+<p>| 模型 | 方法 | VBench ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑ |
+|------|------|----------|------------|-----------|-----------|
+|      |      | 语义 | 质量 | 总体 |       |       |
+| Wan 2.1 14B 480p 81 帧 | Dense (FA3) | 72.71 | 82.19 | 80.29 | 0% | 363 s | 1.00× |
+|      | SpargeAttention | 72.87 | 82.03 | 80.20 | 49.5% | 317 s | 1.15× |
+|      | RadialAttention | 76.69 | 81.24 | 80.33 | 49.0% | 302 s | 1.20× |
+|      | SVG2 | 67.84 | 82.27 | 79.38 | 53.4% | 291 s | 1.25× |
+|      | CalibAtt (Ours) | 72.80 | 82.30 | 80.40 | **68.1%** | 250 s | **1.45×** |
+| Wan 2.1 14B 720p 81 帧 | Dense (FA3) | 71.65 | 81.27 | 79.35 | 0% | 1244 s | 1.00× |
+|      | SpargeAttention | 71.12 | 80.78 | 78.85 | 49.9% | 930 s | 1.33× |
+|      | RadialAttention | 72.44 | 79.33 | 77.95 | 54.7% | 936 s | 1.32× |
+|      | SVG2 | 70.03 | 81.61 | 79.30 | 46.3% | 846 s | 1.47× |
+|      | CalibAtt (Ours) | 72.81 | 81.41 | 79.69 | **62.5%** | 785 s | **1.58×** |
+| Mochi 1 480p 85 帧 | Dense (FA3) | 67.02 | 76.42 | 74.54 | 0% | 188 s | 1.00× |
+|      | SpargeAttention | 69.03 | 75.64 | 74.32 | 49.6% | 178 s | 1.05× |
+|      | RadialAttention | 66.16 | 75.47 | 73.61 | 37.8% | 175 s | 1.07× |
+|      | SVG2 | 65.24 | 74.89 | 72.96 | 55.6% | 237 s | 0.79× |
+|      | CalibAtt (Ours) | 67.34 | 76.3 | | | | |</p>
 
-<p>Implementation details.  
-All evaluations are performed on a single NVIDIA H100 GPU. A single calibration trial consists of estimating sparse attention masks using a calibration set of |𝒟| = 64 prompts sampled from MovieGenBench [polyak2025moviegencastmedia] with an agreement threshold of ρ = 0.5.  
-All masks are defined at FlashAttention block granularity of 128 × 128.  
-We choose energy threshold schedule ε(t) hyperparameters that perform reasonably well without model-specific tuning.  
-Specifically, in low-step regimes, we set A, C, k to constants, and in high-step regimes, we set C, k to constants and A to be linearly dependent on the sequence length.  
-We provide more details in Sec. 0.A.1.</p>
+<p>8 | 74.57 | **69.1%** | 161 s | **1.16×**</p>
 
-<p>Table 2: VBench scores, averaged attention sparsity, and end-to-end latency on 4-step distilled LightX2V [lightx2v] at 480p and 720p resolutions with 81 frames.</p>
+<p>4 实验  
+4.1 设置  
+模型。  
+我们在两种不同的模型架构上评估 CalibAtt：(i) Wan2.1 14B [wan2025]，一个140亿参数的模型，在 T = 50 个时间步内生成5秒的视频（81帧），支持两种分辨率：480p 和 720p；(ii) Mochi 1 [genmo2024mochi]，一个100亿参数的模型，在 T = 64 个时间步内生成480p分辨率的85帧视频。  
+我们还评估了 LightX2V [lightx2v]，它是 Wan2.1 14B 的4步蒸馏变体，使用相同的分辨率和帧数。</p>
+
+<p>基线方法。  
+我们使用 FlashAttention3 (FA3) [shah2024flashattention3] 作为密集注意力的参考基线。  
+此外，我们还与无需训练的注意力加速方法进行对比：RadialAttention [liradial]、SparseVideoGen2 (SVG2) [yang2025sparse] 和 SpargeAttention [zhang2025spargeattn]。所有方法均使用相同的预训练检查点和模型推理设置，并且均基于 FlashAttention3 后端或等效实现。  
+更多细节请参见 Sec. 0.A.4。</p>
+
+<p>指标。  
+我们使用 VBench [huang2023vbench] 在其官方评估提示和指标套件上评估生成质量以及文本-视频对齐度，报告语义（Semantic）、质量（Quality）和总分（Total）得分。  
+我们重点关注生成质量和提示遵循度，而非逐种子重建指标（例如 PSNR），因为我们的目标是保持生成视频的整体质量水平，而非精确复制密集基线。</p>
+
+<p>输出。  
+为量化效率，我们报告稀疏度（Sparsity），定义为在自注意力机制中跳过的查询-键交互对占所有时空token对的比例，对所有时间步、层和注意力头取平均值。  
+此外，我们报告端到端延迟（Latency），定义为生成单个视频的扩散过程所花费的墙钟时间，对所有评估提示词取平均值，并报告相对于密集FA3的加速比（Speedup）。</p>
+
+<p>实现细节。  
+所有评估均在单个NVIDIA H100 GPU上进行。单次校准试验包括使用从MovieGenBench [polyak2025moviegencastmedia] 中采样的 |𝒟| = 64 个提示词校准集，以同意阈值 ρ = 0.5 估计稀疏注意力掩码。  
+所有掩码均定义在FlashAttention块粒度（128 × 128）上。  
+我们选择能量阈值调度 ε(t) 的超参数，使其在无需针对特定模型调优的情况下表现良好。  
+具体而言，在低步数情况下，我们将 A、C、k 设为常数；在高步数情况下，将 C、k 设为常数，而 A 设为与序列长度线性相关。  
+更多细节见第0.A.1节。</p>
+
+<p>表2：在4步蒸馏LightX2V [lightx2v] 上，480p和720p分辨率、81帧下的VBench得分、平均注意力稀疏度和端到端延迟。</p>
 
 <p>Res. | Method | VBench ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑  
 Semantic | Quality | Total  
 480p | Dense (FA3) | 76.06 | 82.28 | 81.04 | 0% | 14.5 s | 1.00×  
-| SpargeAttention | 76.40 | 82.08 | 80.94 | 49.6% | 13.5 s | 1.07×  
+| SpargeAttention | 76.40 | 82.08</p>
+
+<p>| 80.94 | 49.6% | 13.5 s | 1.07×  
 | RadialAttention | 77.02 | 82.46 | 81.37 | 48.4% | 12.7 s | 1.14×  
 | SVG2 | 76.19 | 82.64 | 81.35 | 62.7% | 24.0 s | 0.60×  
 | CalibAtt (Ours) | 77.17 | 82.29 | 81.26 | **70.9%** | 11.2 s | **1.29×**  
@@ -469,97 +489,104 @@ Semantic | Quality | Total
 | SVG2 | 73.19 | 78.83 | 77.70 | 61.9% | 47.3 s | 1.02×  
 | CalibAtt (Ours) | 74.04 | 78.80 | 77.84 | **73.9%** | 30.6 s | **1.57×**</p>
 
-<p>Results.  
-We summarize our results on high-timestep regimes in Tab. 1.  
-CalibAtt achieves the best attention sparsity and latency, while maintaining VBench performance comparable to dense FA3, across different models and different resolutions.  
-Qualitative examples in Fig. 1 show that CalibAtt preserves visual fidelity and temporal coherence relative to dense attention.  
-Additional qualitative comparisons are provided in Appendix 0.C.  
-CalibAtt continues to show state-of-the-art results when evaluated on a distilled 4-step version of Wan 2.1 14B (Tab. 2).  
-Previous training-free acceleration methods may offer lower sparsity, or incur an inference-time overhead that becomes significant when applied on few-step generation, whereas CalibAtt continues to provide gains even in this setting.</p>
+<p>结果。  
+我们在表1中总结了高步数场景下的实验结果。  
+CalibAtt 在不同模型和不同分辨率下均实现了最佳的注意力稀疏度和推理延迟，同时保持了与密集 FA3 相当的 VBench 性能。  
+图1中的定性示例表明，CalibAtt 相较于密集注意力能够保持视觉保真度和时间连贯性。  
+附录0.C中提供了额外的定性对比。  
+当在蒸馏后的4步版本 Wan 2.1 14B 上进行评估时，CalibAtt 仍能保持最先进的性能（表2）。  
+以往的无训练加速方法可能稀疏度较低，或在推理时引入显著开销，尤其在少步生成场景下更为明显，而 CalibAtt 即使在这种设置下仍能持续带来性能提升。</p>
 
-<p>4.2 Calibration Stage Ablation  
-Fig. 7 analyzes the sensitivity of CalibAtt to the calibration budget and the cross-prompt agreement threshold ρ.  
-We find that the sparsity–quality tradeoff curves stabilize quickly as the number of calibration prompts increases, indicating that reliable data-independent masks can be obtained with a relatively small calibration set, further validating Observation 3.  
-Varying ρ exposes the expected tradeoff, where lower values enforce stricter cross-prompt consensus on skipped blocks and yield lower sparsity, while overly aggressive thresholds slightly degrades quality score.  
-Based on this analysis, we use ρ = 0.5 and 64 calibration prompts in all experiments, which provides a strong balance between sparsity and quality.  
-Under a restricted budget, we can use 16 prompts and reduce the Wan 2.1 14B [wan2025] 720p calibration cost from 89.6 to 13.7 H100 GPU-hours with minimal effect on sparsity and quality. We elaborate on this in Sec. 0.B.2.</p>
+<p>4.2 校准阶段消融实验  
+图7 分析了 CalibAtt 对校准预算和 cr 的敏感性。</p>
 
-<p>5 Limitations  
-While CalibAtt achieves impressive sparsity and speedup numbers, our algorithm design has three key inherent limitations.  
-First, due to CalibAtt being a strictly offline method producing data-independent masks, it may miss out on additional potential runtime gains that are specific to certain prompts or prompt types.  
-Second, the calibration stage requires investing an initial compute budget. This one-time cost can be considered as amortized, which makes it preferable to alternative methods with inference-time overhead.  
-Third, because it must store the calibrated masks in memory, CalibAtt increases memory usage at inference time. On Wan2.1 14B at 720p, the mask memory overhead is 21.5 GB, and it can be reduced to 3.6 GB with minimal effect, as we show in Sec. 0.A.2.</p>
+<p>oss-prompt 同意阈值 ρ。  
+我们发现，随着校准提示数量的增加，稀疏性–质量权衡曲线迅速趋于稳定，这表明即使使用相对较小的校准集，也能获得可靠的与数据无关的掩码，进一步验证了观察 3。  
+调整 ρ 会暴露预期的权衡关系：较低的值会强制要求跨提示对跳过块达成更严格的共识，从而产生更低的稀疏性；而过于激进的阈值则会略微降低质量得分。  
+基于此分析，我们在所有实验中采用 ρ = 0.5 和 64 个校准提示，这在稀疏性和质量之间提供了良好的平衡。  
+在预算受限的情况下，我们可以使用 16 个提示，将 Wan 2.1 14B [wan2025] 720p 校准成本从 89.6 降低到 13.7 H100 GPU 小时，同时对稀疏性和质量的影响极小。我们在第 0.B.2 节中对此进行了详细说明。</p>
 
-<p>Figure 7: Calibration set size and agreement threshold.  
-VBench Quality Score over sparsity for different calibration set sizes and agreement thresholds ρ.</p>
+<p>5 局限性  
+尽管 CalibAtt 实现了令人印象深刻的稀疏性和加速效果，但我们的算法设计存在三个关键的内在局限性。  
+首先，由于 CalibAtt 是一种严格的离线方法，生成与数据无关的掩码，因此可能会错过某些特定提示或提示类型所带来的额外运行时收益。  
+其次，校准阶段需要投入初始计算预算。这一一次性成本可以视为摊销成本，因此相较于带有推理时开销的替代方法，它更具优势。  
+第三，由于必须将校准后的掩码存储在内存中，CalibAtt 在内存使用上存在限制。</p>
 
-<p>6 Conclusion  
-We present CalibAtt, a training-free method for accelerating attention in video diffusion transformers. Our approach is grounded in the observation that attention sparsity and repetition patterns, while varying across layers, heads, and timesteps, remain largely consistent across different input prompts.  
-By performing a one-time offline calibration, our algorithm automatically identifies block-level sparsity patterns and spatially repetitive attention heads, to be leveraged for fast inference. We additionally contribute a FlashAttention3-based kernel that supports pre-computed block-sparse skip lists varying per timestep, layer, and head.  
-Notably, CalibAtt is robust across different model architectures, output resolutions, and diffusion configurations, with no manual tuning of layer- or timestep-specific exclusions.  
-Several future directions related to our work remain open.  
-First, the training-free calibration can be extended to identify attention redundancies beyond sparsity and spatial row repetition. For example, while our calibration is performed independently per timestep, exploring correlations among attention maps across consecutive timesteps may reveal additional sparsity patterns and further reduce computation.  
-Second, the memory footprint of calibrated masks could be reduced through more compact skip list representation.  
-Third, richer parameterizations of the energy threshold schedule ε(t) and the similarity threshold γ, including layer-, head-, or timestep-dependent variants, may yield improved sparsity–quality tradeoffs.  
-Finally, while we focus on video diffusion models, the proposed calibration framework could be generalized to other transformer-based contexts such as image diffusion and language models.</p>
+<p>在推理时增加了内存使用量。在 Wan2.1 14B 模型于 720p 分辨率下，掩码内存开销为 21.5 GB，而如我们在第 0.A.2 节中所示，可通过最小影响将其降低至 3.6 GB。</p>
 
-<p>References  
-Accelerating Video Generation with Calibrated Sparse Attention  
-Supplementary Material  
+<p>Figure 7: 校准集大小与一致性阈值。  
+不同校准集大小和一致性阈值 ρ 下的 VBench 质量得分随稀疏度的变化。</p>
+
+<p>6 结论  
+我们提出了 CalibAtt，一种无需训练即可加速视频扩散变换器中注意力机制的方法。我们的方法基于以下观察：尽管注意力稀疏性和重复模式在不同层、注意力头和时间步之间有所变化，但在不同输入提示下它们基本保持一致。  
+通过一次性的离线校准，我们的算法能够自动识别出块级稀疏模式和空间上重复的注意力头，从而用于快速推理。此外，我们还贡献了一个基于 FlashAttention3 的内核，支持按时间步、层和注意力头动态变化的预计算块稀疏跳过列表。  
+值得注意的是，CalibAtt 在不同模型架构、输出分辨率和扩散配置下均表现出鲁棒性，且无需手动调整针对特定层或时间步的排除设置。  
+与我们的工作相关的几个未来方向仍待探索。  
+首先，无训练校准可以扩展到识别稀疏性和空间行重复之外的注意力冗余。例如，尽管我们的校准是按时间步独立进行的，但探索注意力之间的相关性仍有潜力。</p>
+
+<p>在连续时间步的注意力图中，可能会揭示额外的稀疏模式，从而进一步减少计算量。  
+其次，通过更紧凑的跳表（skip list）表示方式，可以降低校准掩码的内存占用。  
+第三，对能量阈值调度 ε(t) 和相似性阈值 γ 进行更丰富的参数化，包括基于层、注意力头或时间步的变体，可能会带来更好的稀疏性-质量权衡。  
+最后，尽管我们专注于视频扩散模型，但所提出的校准框架可以推广到其他基于 Transformer 的场景，例如图像扩散模型和语言模型。</p>
+
+<p>参考文献  
+使用校准稀疏注意力加速视频生成  
+补充材料  
 Shai Yehezkel Shahar Yadin Noam Elata Yaron Ostrovsky-Berman Bahjat Kawar</p>
 
-<p>Appendix 0.A Additional Implementation Details  
-This section provides additional implementation details for CalibAtt.  
-Sec. 0.A.1 describes the hyperparameter search procedure for the energy threshold schedule.  
-Sec. 0.A.2 details memory optimizations for skip-list storage.  
-Sec. 0.A.3 explains how masks can be shared across similar timesteps to further reduce memory.  
-Sec. 0.A.4 provides implementation details for the baseline methods.  
-When using classifier-free guidance (CFG), we calibrate the sparse masks and spatial similarity scores using only the conditional branch. At inference time, the same calibrated mask for each timestep, layer, and head is applied to both the conditional and unconditional branches.</p>
+<p>附录 0.A 额外实现细节  
+本节提供 CalibAtt 的额外实现细节。  
+第 0.A.1 节描述了能量阈值调度的超参数搜索过程。  
+第 0.A.2 节详细说明了跳表存储的内存优化方法。  
+第 0.A.3 节解释了如何在相似时间步之间共享掩码以进一步减少内存占用。  
+第 0.A.4 节提供了基线方法的实现细节。  
+在使用无分类器引导（CFG）时，我们仅使用条件分支来校准稀疏掩码和空间相似性得分。在推理阶段，每个时间步、层和注意力头的相同校准掩码将同时应用于条件分支和无条件分支。</p>
 
-<p>0.A.1 Hyperparameter search for energy threshold schedule  
-We tune the timestep-dependent energy threshold schedule ε(t) in Eq. 7 using hyperparameter optimization with Optuna [akiba2019optunanextgenerationhyperparameteroptimization].  
-For each model and inference configuration reported in the paper, we run an independent search over the schedule parameters A, C, and k, which control the exponential profile.  
-Each trial evaluates a candidate schedule by calibrating masks using |𝒟| = 64 prompts and measuring the resulting VBench score and sparsity on the calibration set.  
-Across settings, we find that the fitted schedules exhibit simple regularities.  
-In the low-step (distilled) regime, the optimal parameters are highly consistent across resolutions, and we therefore use the same schedule for both 480p and 720p distilled LightX2V: A = 0.763, C = 0.863, and k = 5.64.  
-In the high-step regime, we find that the schedule is dominated by the base level A, while C and k remain relatively stable.  
-In practice, we use A(N) = 0.796 + (1.41·10^{-6}) N, C = 0.99, k = 16,  
+<p>l 和无条件分支。</p>
+
+<p>0.A.1 能量阈值调度的超参数搜索  
+我们使用 Optuna [akiba2019optunanextgenerationhyperparameteroptimization] 进行超参数优化，调整公式 7 中的时间步依赖能量阈值调度 ε(t)。  
+对于论文中报告的每个模型和推理配置，我们独立搜索控制指数分布的参数 A、C 和 k。  
+每次试验通过使用 |𝒟| = 64 个提示校准掩码，并在校准集上测量相应的 VBench 分数和稀疏度，来评估候选调度方案。  
+在各种设置下，我们发现拟合的调度方案表现出简单的规律性。  
+在低步数（蒸馏）模式下，最优参数在不同分辨率下高度一致，因此我们对 480p 和 720p 蒸馏 LightX2V 使用相同的调度：A = 0.763，C = 0.863，k = 5.64。  
+在高步数模式下，我们发现调度主要由基础水平 A 主导，而 C 和 k 保持相对稳定。  
+在实践中，我们使用 A(N) = 0.796 + (1.41·10^{-6}) N，C = 0.99，k = 16，  
 (S11)  
-where N is the attention sequence length for the given model and configuration.  
-Fig. S8 plots the energy threshold ε as a function of the normalized timestep t/T for different models and resolutions.</p>
+其中 N 是给定模型和配置下的注意力序列长度。  
+图 S8 绘制了能量阈值 ε 作为归一化时间步 t/T 的函数，针对不同模型和分辨率。</p>
 
-<p>Figure S8: Energy threshold schedule. ε as a function of the normalized timestep t/T for different models and resolutions.</p>
+<p>Figure S8: 能量阈值调度。ε 作为归一化时间步 t/T 的函数，针对不同模型和分辨率。</p>
 
-<p>0.A.2 Skip-List Memory Optimization  
-At inference, each calibrated block mask  
-𝐌^{(t,l,h)} is converted into a skip-list representation that specifies, at block granularity, which attention blocks should be computed.</p>
+<p>0.A.2 跳表内存优化  
+在推理过程中，</p>
 
-<p>Figure S9: Skip-list row length distribution. Histogram of the number of intervals per skip-list row, measured on skip lists calibrated for 720p generation on Wan2.1-14B text-to-video with N = 75,600. 95% of query rows require at most ≤ 50 intervals, out of a theoretical maximum of 295.</p>
+<p>在推理过程中，每个校准后的块掩码 $\mathbf{M}^{(t,l,h)}$ 都被转换为跳表（skip-list）表示形式，该表示在块粒度上指定了哪些注意力块需要被计算。</p>
 
-<p>For a sequence of length N and block size B, each mask is stored as a matrix of size N_B × N_B + 1.  
-Each row corresponds to a query block-row, while the columns encode a variable-length list of contiguous intervals along the key dimension.  
-The additional column stores the number of valid intervals for each query block-row.  
-In the worst case, an alternating compute–skip pattern would require storing N_B / 2 single-block intervals per row (each represented by start/end indices), forcing the skip-list matrix to retain its full width (Fig. 10(a)).  
-Although such patterns are theoretically possible, we do not observe them in practice (Fig. S9).  
-Motivated by this observation, we implement skip-list matrices with mask-dependent column lengths in our kernel.  
-Concretely, instead of allocating a fixed-width matrix of size N_B columns for every mask, we trim each skip-list matrix to the maximum interval index populated by any query block-row (Fig. 10(b)), preserving a dense layout shared across rows while significantly reducing padding.  
-For Wan-T2V 14B at 720p, the full set of untrimmed skip-list matrices totals 52 GB.  
-Per-layer trimming alone reduces this to 21.5 GB with no effect on correctness or sparsity which we use for the 720p results reported in Tab. 1.  
-Tab. S3 further reports the effect of progressively merging nearby intervals, which intentionally marks a small number of additional blocks for computation in exchange for reduced padding (Fig. 10(c)).  
-In particular, interval merging reduces the footprint to 6.3 GB with neglible sparsity loss.  
-Finally, a more compact alternative stores all intervals in a flat one-dimensional array and maintains a per-row offset and length for each query block-row, eliminating padding entirely.  
-Tab. S3 shows that this representation alone reduces the footprint to 4.0 GB without any merging. The same interval merging strategy applies, yielding identical merged intervals for each percentile. We leave the efficient kernel implementation of the 1D representation to future work and report only VBench scores and sparsity levels.</p>
+<p>图 S9：跳表行长度分布。在 Wan2.1-14B 文本到视频模型上针对 720p 生成任务校准的跳表中，每行跳表的区间数量直方图，其中 $N = 75,600$。95% 的查询行最多只需要 ≤ 50 个区间，而理论最大值为 295。</p>
 
-<p>(a) Full allocation  
-(b) Trimmed  
-(c) Interval merging</p>
+<p>对于长度为 $N$、块大小为 $B$ 的序列，每个掩码存储为一个大小为 $N_B \times N_B + 1$ 的矩阵。每一行对应一个查询块行，列则编码了沿键维度的可变长度连续区间列表。额外的一列存储每个查询块行的有效区间数量。在最坏情况下，交替计算-跳过模式需要每行存储 $N_B / 2$ 个单块区间（每个区间由起始/结束索引表示），从而迫使跳表矩阵保持其完整宽度（图 10(a)）。尽管这种模式在理论上是可能的，但在实践中我们并未观察到这种情况（图 S9）。基于这一观察，我们在内核中实现了具有掩码依赖列长度的跳表矩阵。具体而言，我们不再为每个掩码分配固定宽度的 $N_B$ 列矩阵，而是将每个跳表矩阵裁剪至任意查询块行所填充的最大区间索引（图 10(b)），从而在行之间保持密集布局，同时显著减少存储开销。</p>
 
-<p>Figure S10: Skip-list memory optimization. Each row stores interval pairs for a (timestep, head, query-block) entry within a layer; columns beyond the data are padding.  
-(a) Full allocation to theoretical maximum width.  
-(b) Per-layer trimming to the widest row used across all entries in the layer (red line).  
-(c) Merging outlier rows (orange) reduces the layer’s maximum width, enabling further trimming.</p>
+<p>当前正在减少填充（padding）。  
+对于 Wan-T2V 14B 在 720p 分辨率下的情况，完整的未裁剪跳表（skip-list）矩阵总大小为 52 GB。  
+仅通过逐层裁剪（per-layer trimming），即可将其减少至 21.5 GB，且不会影响正确性或稀疏性，我们使用该结果作为表 1 中报告的 720p 性能数据。  
+表 S3 进一步报告了逐步合并相邻区间（interval merging）的效果，该方法有意标记少量额外块进行计算，以换取减少填充（如图 10(c) 所示）。  
+特别是，区间合并可将内存占用降低至 6.3 GB，同时稀疏性损失可忽略不计。  
+最后，一种更紧凑的替代方案是将所有区间存储在一个扁平的一维数组中，并为每个查询块行（query block-row）维护行偏移量和长度，从而完全消除填充。  
+表 S3 显示，仅采用这种表示方式即可在不进行任何合并的情况下将内存占用降低至 4.0 GB。相同的区间合并策略依然适用，且每个百分位数对应的合并区间完全相同。我们将在未来工作中实现该一维表示的高效内核，目前仅报告 VBench 分数和稀疏性水平。</p>
 
-<p>Table S3: Skip-list memory footprint for Wan-T2V 14B at 720p. Reductions are relative to the per-layer trimmed 2D baseline (21.5 GB). Timestep sharing clusters masks with pair-wise IoU ≥ τ.</p>
+<p>(a) 完整分配  
+(b) 裁剪后  
+(c) 区间合并</p>
+
+<p>图 S10：跳表内存优化。每一行存储某一层内 (时间步, 头, 查询块) 条目对应的区间对；数据之外的列均为填充。  
+(a) 分配至理论最大宽度。  
+(b) 逐层裁剪至该层所有条目中宽度最大的行（红色线）。  
+(c) 合并异常行（橙色）可减少</p>
+
+<p>层的最大宽度，从而实现进一步裁剪。</p>
+
+<p>表 S3：Wan-T2V 14B 在 720p 下的跳表内存占用。减少量相对于每层裁剪后的 2D 基线（21.5 GB）计算。时间步共享将 IoU ≥ τ 的掩码聚类。</p>
 
 <p>Merge % | τ | Size (GB) | Red. | VBench ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑  
 Qual. | Sem. | Total  
@@ -576,74 +603,97 @@ Dense (FA3) | – | – | – | 81.27 | 81.27 | 71.65 | 71.65 | 79.35 | 0% | 124
 90 | 0.98 | 2.8 | 87% | 81.25 | 81.25 | 72.55 | 72.55 | 79.51 | 62.00% | – | –  
 90 | 0.97 | 2.2 | 90% | 81.40 | 81.40 | 72.77 | 72.77 | 79.67 | 61.74% | – | –</p>
 
-<p>Figure S11: Timestep similarity of calibrated masks. Each cell (t1, t2) reports the intersection-over-union (IoU) between the skipped-block masks at timesteps t1 and t2, averaged over all layers l and heads h. Later timesteps show higher cross-timestep similarity (brighter off-diagonal region), suggesting that masks can be shared across consecutive late denoising steps, reducing the memory footprint of storing per-timestep masks. Red contour lines mark constant-similarity levels.</p>
+<p>图 S11：校准掩码的时间步相似性。每个单元格 (t1, t2) 报告 t</p>
 
-<p>0.A.3 Timestep Mask Sharing  
-We observe that calibrated masks become increasingly similar at later timesteps. To quantify this, we compute pairwise Intersection over Union (IoU):  
-IoU(t1, t2) = |S(t1) ∩ S(t2)| / |S(t1) ∪ S(t2)|,  
+<p>在时间步 t1 和 t2 的跳过块掩码之间的交并比（IoU），对所有层 l 和头 h 取平均。较晚的时间步显示出更高的跨时间步相似性（对角线外区域更亮），表明掩码可以在连续的后期去噪步骤之间共享，从而减少存储每个时间步掩码所需的内存开销。红色等高线标记了恒定相似度水平。</p>
+
+<p>0.A.3 时间步掩码共享  
+我们观察到，校准后的掩码在后期时间步中变得越来越相似。为了量化这一点，我们计算成对的交并比（IoU）：  
+IoU(t1, t2) = |S(t1) ∩ S(t2)| / |S(t1) ∪ S(t2)|，  
 (S12)  
-where S(t) denotes the set of skipped blocks at timestep t, averaged over layers and heads.  
-As shown in Fig. S11, later timesteps exhibit high pairwise IoU.  
-This suggests that masks can be shared across timesteps, reducing memory footprint without affecting inference.  
-For each (layer, head) pair, we greedily cluster timesteps into cliques: a timestep joins a cluster only if its IoU with all existing cluster members exceeds a threshold τ. All timesteps in a cluster share a single mask, obtained by taking the logical OR over the kept-block masks of all cluster members.  
-Combined with the skip-list optimizations described in Sec. 0.A.2, timestep sharing further reduces the inference-time footprint to 3.6 GB for 2D skip lists and 2.2 GB for 1D skip lists.  
-Tab. S3 reports results for τ ∈ {0.97, 0.98}, showing the trade-off between memory reduction and sparsity loss.</p>
+其中 S(t) 表示在时间步 t 的跳过块集合，对所有层和头取平均。  
+如图 S11 所示，后期时间步表现出较高的成对 IoU。  
+这表明掩码可以在不同时间步之间共享，从而在不影响推理性能的前提下减少内存占用。  
+对于每个（层，头）对，我们贪心地将时间步聚类为团（clique）：一个时间步仅当其与现有团中所有成员的 IoU 超过阈值 τ 时才加入该团。团内所有时间步共享一个单一掩码，该掩码通过取团内所有成员保留块掩码的逻辑或（logical OR）得到。  
+结合第 0.A.2 节中描述的跳过列表优化，时间步共享进一步将推理时的内存占用降低至 2D 跳过列表的 3.6 GB 和 1D 跳过列表的 2.2 GB。  
+表 S3 报告了 τ ∈ {0.97, 0.98} 的结果，展示了内存占用与性能之间的权衡。</p>
 
-<p>0.A.4 Baselines Implementation Details  
-For RadialAttention [liradial], we use the authors’ official implementation.  
-We apply the default configuration reported for Wan2.1-14B in the repository for both 480p and 720p settings, including a FlashAttention block size of 128 × 128.  
-For the dense/warmup portions of RadialAttention, we set the attention backend to FlashAttention3 (FA3) to match our dense baseline.  
-For Sparse VideoGen2 (SVG2) [yang2025sparse], we use the authors’ official implementation.  
-For evaluation at 480p, we adopt the hyperparameters provided in the official implementation for Wan2.1 14B Image-to-Video, and for 720p Text-to-Video we use the hyperparameters reported in the SVG2 paper for Wan2.1 14B.  
-SVG2 uses customized sparse attention kernels built on FlashInfer [ye2025flashinferefficientcustomizableattention] supporting FA3, including support for varied block sizes.  
-For the dense/warmup portions of SVG2, we set the attention backend to FA3 to match our dense baseline.  
-SVG2 performs k-means clustering on query and key tokens at each attention layer to enable semantic-aware permutation. While a centroid caching mechanism reduces this overhead across denoising steps [yang2025sparse], an initialization cost remains at the start of inference. In distilled models with a small number of sampling timesteps (Tab. 2), this initialization overhead constitutes a larger fraction of the total runtime, limiting the effective speedup. For other models, the per-step clustering overhead alongside initialization may outweigh the speedup gained, as observed with Mochi (Tab. 1).  
-For SpargeAttention [zhang2025spargeattn], we use the authors’ official implementation.  
-Following the repository recommendation, we use the SageAttention2 [zhang2025sageattention2efficientattentionthorough] backend for sparse attention.</p>
+<p>y 减少和稀疏性损失。</p>
 
-<p>Appendix 0.B Additional Experiments  
-This section presents additional experiments and ablations.  
-Sec. 0.B.1 analyzes the spatial repetition mechanism, studying the effect of anchor row count and similarity threshold on speedup and approximation quality.  
-Sec. 0.B.2 reports the compute cost of the calibration stage and explores trade-offs between calibration budget and output quality.  
-Sec. 0.B.3 ablates the effect of FlashAttention block size on achievable sparsity and end-to-end speedup.</p>
+<p>0.A.4 基线实现细节  
+对于 RadialAttention [liradial]，我们使用作者提供的官方实现。  
+在 480p 和 720p 设置下，我们均采用仓库中为 Wan2.1-14B 报告的默认配置，包括 FlashAttention 块大小为 128 × 128。  
+对于 RadialAttention 的密集/预热部分，我们将注意力后端设置为 FlashAttention3（FA3），以匹配我们的密集基线。  
+对于 Sparse VideoGen2（SVG2）[yang2025sparse]，我们使用作者提供的官方实现。  
+在 480p 评估时，我们采用官方实现中为 Wan2.1 14B 图像到视频任务提供的超参数；在 720p 文本到视频任务中，我们使用 SVG2 论文中为 Wan2.1 14B 报告的超参数。  
+SVG2 使用基于 FlashInfer [ye2025flashinferefficientcustomizableattention] 构建的自定义稀疏注意力内核，支持 FA3，并包括对不同块大小的支持。  
+对于 SVG2 的密集/预热部分，我们将注意力后端设置为 FA3，以匹配我们的密集基线。  
+SVG2 在每个注意力层对查询和键 token 执行 k-means 聚类，以实现语义感知的排列。虽然中心点缓存机制减少了去噪步骤中的开销 [yang2025sparse]，但在推理开始时仍存在初始化成本。在采样步数较少的蒸馏模型中（表 2），这种初始化开销占总运行时间的比例较大，从而限制了有效</p>
 
-<p>(a) Sparsity vs. relative error.  
-(b) Attention speedup vs. relative error.</p>
+<p>加速。对于其他模型，每步聚类开销加上初始化成本可能会抵消所获得的加速效果，如在 Mochi 模型中观察到的（表 1）。  
+对于 SpargeAttention [zhang2025spargeattn]，我们使用作者提供的官方实现。  
+根据仓库推荐，我们使用 SageAttention2 [zhang2025sageattention2efficientattentionthorough] 作为稀疏注意力的后端。</p>
 
-<p>Figure S12: Trade-off between anchor row count k and approximation quality for different similarity thresholds γ. Each curve sweeps k from 1 to 15; circle and square markers highlight the k = 1 and k = 15 endpoints.  
-(a) Sparsity vs. relative error (lower-right is better). (b) Weighted attention speedup vs. relative error, accounting for the fraction of repetitive heads at each γ (lower-right is better).</p>
+<p>附录 0.B 额外实验  
+本节展示额外的实验和消融研究。  
+0.B.1 节分析空间重复机制，研究锚点行数量和相似度阈值对加速效果和近似质量的影响。  
+0.B.2 节报告校准阶段的计算成本，并探讨校准预算与输出质量之间的权衡。  
+0.B.3 节消融研究 FlashAttention 块大小对可实现稀疏度和端到端加速的影响。</p>
 
-<p>0.B.1 Spatial Repetition Anchor Rows  
-We study the effect of the number of anchor rows k and the similarity threshold γ on the spatial repetition mechanism introduced in Sec. 3.3, evaluated on Wan 2.1 14B T2V at 480p resolution. Each generated video consists of 21 frames with 1,560 spatial tokens per frame (H = 30 spatial rows × W = 52 spatial columns), yielding a total sequence length of 32,760 tokens.  
-We first benchmark the raw kernel-level speedup of the anchor row attention against full Flash Attention 3 (Tab. S4) corresponding to selecting all rows as anchors (k = 30). By using a single anchor row kernel achieves a 20.5× speedup by reducing the query count from HW = 1,560 to W = 52 tokens per frame.</p>
+<p>(a) 稀疏度 vs. 相对误差。  
+(b) 注意力加速 vs. 相对误差。</p>
 
-<p>Table S4: Spatial repetition attention benchmark. Speedup of computing attention over k anchor query rows versus full attention, measured with FA3 on a single H100 GPU (batch 1, 40 heads, head dim 128, sequence length 32,760). Sparsity is the fraction of query rows skipped per attention map.</p>
+<p>图 S12：锚点行数量 k 与近似质量在不同相似度阈值 γ 下的权衡。每条曲线从 k=1 到 k=15 扫描；圆圈和方块标记突出显示 k=1 和 k=15 的端点。  
+(a) 稀疏度 vs. 相对误差（右下角更优）。(b) 加权注意力加速 vs. 相对误差，考虑每个 γ 下重复头的比例（右下角更优）。</p>
 
-<p>k | ms ↓ | Speedup ↑ | Sps. ↑  
-30 (baseline) | 31.62 | 1.0× | 0%  
-15 | 18.60 | 1.7× | 50.0%  
-10 | 11.52 | 2.8× | 66.7%  
-5 | 5.99 | 5.3× | 83.3%  
-4 | 4.79 | 6.6× | 86.7%  
-3 | 3.72 | 8.5× | 90.0%  
-2 | 2.77 | 11.4× | 93.3%  
-1 | 1.54 | 20.5× | 96.7%</p>
+<p>0.B.1 空间重复锚点行  
+我们研究锚点行数量 k 和相似度阈值 t 的影响。</p>
 
-<p>To evaluate the quality–speedup trade-off, we run inference on our calibration set of 64 prompts using different combinations of γ and k. For each configuration, a different number of attention heads are marked as spatially repetitive: lower thresholds γ mark more heads, while higher thresholds are more conservative. For each head at every (t,l,h), we compute the relative error between the sparse and full attention outputs as ∥𝐀_sparse − 𝐀∥_2 / ∥𝐀∥_2, where 𝐀 is defined in Eq. 2, then average over all (t,l,h) and all prompts. We report the overall sparsity induced by spatial repetition at each (γ,k) configuration in Fig. 12(a) and the effective attention speedup, weighted by the fraction of heads marked repetitive at each γ in Fig. 12(b).  
-As shown, using multiple anchor rows at a lower threshold almost always achieves the same or lower relative error compared to using a single anchor row at a more conservative threshold while attaining higher sparsity and speedup. This suggests that increasing spatial coverage through additional anchors is more effective than restricting the set of repetitive heads. Based on these results, we set γ = 0.87 and k = 5 in all experiments.  
-To visualize where repetitive heads occur, Fig. S13 plots the percentage of heads exceeding τ = 0.87 per timestep and layer. Repetitive heads cluster in the first and last layers throughout the denoising trajectory, while the earliest timesteps exhibit slightly higher repetition overall.</p>
+<p>阈值 γ 对第 3.3 节中引入的空间重复机制进行评估，测试环境为 Wan 2.1 14B T2V 模型，分辨率为 480p。每个生成的视频包含 21 帧，每帧有 1,560 个空间 token（H = 30 个空间行 × W = 52 个空间列），总序列长度为 32,760 个 token。</p>
 
-<p>Figure S13: Spatial repetition heads count at τ = 0.87. Percentage of attention heads whose spatial-similarity score exceeds τ, per timestep and layer for Wan 2.1 14B 480p.</p>
+<p>我们首先对锚点行注意力（anchor row attention）相对于完整 Flash Attention 3（FA3）的原始内核级加速进行基准测试（见表 S4），其中完整 FA3 对应选择所有行作为锚点（k = 30）。通过使用单个锚点行内核，每帧将查询数量从 HW = 1,560 降低到 W = 52 个 token，从而实现了 20.5× 的加速。</p>
 
-<p>0.B.2 Calibration Stage Compute Cost  
-The calibration stage consists of two main components: computing block energies for mask calibration (Sec. 3.2), for which we implemented a custom CUDA kernel, and computing spatial similarity scores for repetition detection (Sec. 3.3), which uses an optimized PyTorch implementation. Both computations run over a set of calibration prompts, but can use different numbers of prompts independently.  
-As shown in Fig. 6(b), the standard deviation of spatial similarity scores across prompts is low for high-similarity maps, suggesting that fewer prompts suffice for reliable repetition detection.  
-Similarly, Fig. 7 shows that for our selected threshold ρ = 0.5, quality remains stable across different calibration set sizes beyond a minimal number of prompts, motivating the use of fewer prompts for mask calibration as well.  
-We ablate on different numbers of prompts for each component in Tab. S5 for Wan 2.1 14B at 720p with 50 timesteps, reporting the total calibration cost in H100 GPU-hours. Since similarity computation has lower cross-prompt variance, we can use as few as 1 prompt for similarity while using more prompts for mask calibration. This allows trading off calibration time against quality, enabling faster calibration under restricted compute budgets.  
-In particular, using 16 prompts for mask calibration and just 1 prompt for similarity computation reduces calibration time to 13.7 GPU-hours while maintaining quality and semantic scores comparable to the dense FA3 baseline.  
-The calibration cost could be reduced further through a more efficient implementation of the similarity computation, or by fusing the similarity and block energy computations into a single kernel. We leave these optimizations for future work.</p>
+<p>表 S4：空间重复注意力基准测试。在单个 H100 GPU 上使用 FA3 测量的注意力计算速度提升，对比 k 个锚点查询行与完整注意力（batch 1，40 个注意力头，头维度 128，序列长度 32,760）。稀疏度（Sparsity）表示每个注意力图中跳过的查询行比例。</p>
 
-<p>Table S5: Impact of calibration budget on VBench scores for Wan 2.1 14B at 720p. Block energies are computed on all calibration prompts; spatial similarity uses a subset. GPU-hours on a single H100. Dense FA3 as reference.</p>
+<p>| k       | ms ↓   | Speedup ↑ | Sps. ↑  |
+|---------|--------|-----------|---------|
+| 30 (baseline) | 31.62 | 1.0×      | 0%      |
+| 15      | 18.60  | 1.7×      | 50.0%   |
+| 10      | 11.52  | 2.8×      | 66.7%   |
+| 5       | 5.99   | 5.3×      | 83.3%   |
+| 4       | 4.79   | 6.6×      | 86.7%   |
+| 3       | 3.72   | 8.5×      | 90.0%   |
+| 2       | 2.77   | 11.4×     | 93.3%   |
+| 1       | 1.54   | 20.5×     | 96.7%   |</p>
+
+<p>为了评估质量与加速之间的权衡，我们在包含 64 个提示词的校准集上运行推理，采用不同的 γ 和 k 组合。对于每种配置，不同数量的注意力头被标记为具有空间重复性：较低的阈值 γ 会标记更多头，而较高的阈值则更为保守。对于每个注意力头，在 e</p>
+
+<p>very (t,l,h)，我们计算稀疏注意力与完整注意力输出之间的相对误差，即 ∥𝐀_sparse − 𝐀∥_2 / ∥𝐀∥_2，其中 𝐀 的定义见公式 2，然后对所有 (t,l,h) 和所有提示进行平均。我们在图 12(a) 中报告了在每个 (γ,k) 配置下由空间重复引起的总体稀疏度，以及在图 12(b) 中报告了加权有效注意力加速，权重为每个 γ 下标记为重复的注意力头的比例。</p>
+
+<p>如图所示，在较低阈值下使用多个锚点行，几乎总是能获得与在更保守阈值下使用单个锚点行相同或更低的相对误差，同时实现更高的稀疏度和加速。这表明，通过增加锚点来扩展空间覆盖范围比限制重复注意力头的集合更为有效。基于这些结果，我们在所有实验中将 γ 设置为 0.87，k 设置为 5。</p>
+
+<p>为了可视化重复注意力头出现的位置，图 S13 绘制了每个时间步和每一层中超过 τ = 0.87 的注意力头的百分比。在整个去噪轨迹中，重复注意力头主要聚集在第一层和最后一层，而最早的时间步整体上表现出略高的重复性。</p>
+
+<p>图 S13：在 τ = 0.87 下的空间重复注意力头数量。对于 Wan 2.1 14B 480p，每个时间步和每一层中空间相似性得分超过 τ 的注意力头的百分比。</p>
+
+<p>0.B.2 校准阶段计算成本  
+校准阶段包含两个主要部分：计算用于掩码校准的块能量（第 3.2 节），为此我们实现了</p>
+
+<p>自定义 CUDA 内核，以及用于重复检测的空间相似性分数计算（第 3.3 节），该部分采用优化的 PyTorch 实现。这两项计算均在一组校准提示上运行，但可以独立使用不同数量的提示。</p>
+
+<p>如图 6(b) 所示，对于高相似性图，不同提示间空间相似性分数的标准差较低，表明较少的提示即可实现可靠的重复检测。</p>
+
+<p>类似地，图 7 显示，在我们选定的阈值 ρ = 0.5 下，当校准集大小超过最小提示数量后，质量保持稳定，这促使我们同样在掩码校准中使用更少的提示。</p>
+
+<p>我们在表 S5 中对 Wan 2.1 14B 在 720p 分辨率、50 步时间步长下，针对每个组件的不同提示数量进行了消融实验，并报告了以 H100 GPU 小时为单位的总校准成本。由于相似性计算的跨提示方差较低，我们可以仅使用 1 个提示进行相似性计算，而使用更多提示进行掩码校准。这使得我们可以在校准时间与质量之间进行权衡，在计算资源受限的情况下实现更快的校准。</p>
+
+<p>特别是，使用 16 个提示进行掩码校准，仅使用 1 个提示进行相似性计算，可将校准时间减少至 13.7 GPU 小时，同时保持与密集 FA3 基线相当的质量和语义分数。</p>
+
+<p>通过更高效的相似性计算实现，或通过融合 si</p>
+
+<p>相似度和块能量计算合并到单个内核中。我们将在未来的工作中进行这些优化。</p>
+
+<p>表 S5：校准预算对 Wan 2.1 14B 在 720p 下 VBench 得分的影响。块能量在所有校准提示上计算；空间相似度使用子集。单个 H100 GPU 上的 GPU 小时数。以密集 FA3 作为参考。</p>
 
 <p>Mask. | Sim. | Quality ↑ | Semantic ↑ | Total ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑  
 GPU | Prompts | Prompts | hrs ↓  
@@ -654,50 +704,41 @@ Dense (FA3) | – | – | – | 81.27 | 81.27 | 71.65 | 71.65 | 79.35 | 0% | 124
 16 | 1 | 81.36 | 81.36 | 71.81 | 71.81 | 79.45 | 61.3% | 801 s | 1.55× | 13.7  
 8 | 1 | 80.41 | 80.41 | 71.02 | 71.02 | 78.53 | 62.7% | 784 s | 1.58× | 7.1</p>
 
-<p>0.B.3 Kernel Block Size  
-(a) Fine block size  
-(b) Large block size</p>
+<p>0.B.3 内核块大小  
+(a) 细粒度块大小  
+(b) 大块大小</p>
 
-<p>Figure S14: Effect of block size on achievable sparsity. (a) Fine blocks enable finer-grained selection. (b) Large blocks reduce sparsity.</p>
+<p>图 S14：块大小对可实现稀疏度的影响。(a) 细粒度块允许更精细的选择。(b) 大块会降低稀疏度。</p>
 
-<p>FlashAttention [dao2022flashattention] partitions the attention computation into blocks of size B_q × B_kv, where the optimal sizes depend on the head dimension d and available shared memory (SHMEM) on the GPU. For a given head dimension, larger block sizes improve hardware utilization up to the SHMEM limit. For d = 128 as in Wan [wan2025], FlashAttention uses 128 × 176 as its native configuration on H100 GPUs.  
-Our energy-based block selection in Eq. 6 is largely invariant to block size since the energy threshold ε specifies the fraction of attention mass to retain and the same spatial regions are selected regardless of how they are partitioned into blocks.  
-However, larger block sizes can reduce achievable sparsity. When a block is selected, all its entries are computed, even if only a subset contributes significant attention mass. Thus, coarser blocks may include more redundant computation, or fewer blocks may be marked as skippable. We illustrate this effect in Fig. S14.  
-This reveals a tradeoff where larger blocks are faster per block but yield lower sparsity, while smaller blocks achieve higher sparsity but with reduced per-block efficiency. We evaluate this in Tab. S6 on the VBench evaluation suite using block sizes supported by FlashAttention, using the same calibrated ε schedule throughout and reporting mask sparsity only (excluding spatial repetition from 3.3) to isolate the effect, with dense FA3 included as reference. As expected, smaller blocks yield higher sparsity. However, the improved hardware utilization of larger blocks compensates for the reduced sparsity, and these two effects balance out across a wide range of configurations. From 128 × 96 onward, all block sizes achieve comparable speedups of 1.41–1.42× while maintaining comparable VBench scores, demonstrating that our method is robust to block size choice and compatible with the native FA3 configuration.</p>
+<p>FlashAttention [dao2022flashattention] 将注意力计算划分为大小为 B_q × B_kv 的块，其中最优大小取决于头维度 d 和 GPU 上可用的共享内存（SHMEM）。对于给定的头维度，更大的块大小可提高硬件利用率，直到达到 SHMEM 限制。对于 Wan [wan2 中的 d = 128</p>
 
-<p>Table S6: Effect of kernel block size on sparsity and quality for Wan 2.1 14B at 480p. Speedup is relative to dense FlashAttention-3 baseline. Latency is per-prompt wall-clock time on a single H100 GPU.</p>
+<p>025]，FlashAttention 在 H100 GPU 上使用 128 × 176 作为其原生配置。  
+我们在公式 6 中基于能量的块选择方法在很大程度上对块大小不敏感，因为能量阈值 ε 指定了要保留的注意力质量比例，无论这些空间区域如何被划分为块，所选区域保持一致。  
+然而，更大的块大小可能会降低可实现的稀疏性。当一个块被选中时，其所有条目都会被计算，即使只有其中一部分贡献了显著的注意力质量。因此，较粗的块可能包含更多的冗余计算，或者更少的块会被标记为可跳过。我们在图 S14 中展示了这一效应。  
+这揭示了一个权衡：更大的块在每个块上的计算速度更快，但稀疏性较低；而更小的块能实现更高的稀疏性，但每个块的效率较低。我们在 Tab. S6 中使用 FlashAttention 支持的块大小，在 VBench 评估套件上评估了这一权衡，全程使用相同的校准 ε 调度，并仅报告掩码稀疏性（排除 3.3 节中的空间重复），以隔离该效应，同时将密集 FA3 作为参考。如预期，更小的块实现了更高的稀疏性。然而，更大块的硬件利用率提升弥补了稀疏性下降的不足，这两种效应在广泛的配置范围内相互抵消。从 128 × 96 开始，所有块大小均实现了相当的速度提升（1.41–1.42×），同时保持了相似的 VBench 得分，这表明我们的方法在不同块大小下具有鲁棒性。</p>
 
-<p>Method | B_q × B_kv | Quality ↑ | Semantic ↑ | Total ↑ | Sparsity ↑ | Latency ↓ | Speedup ↑  
-Dense (FA3) | 128 × 176 | 82.19 | 82.19 | 72.71 | 72.71 | 80.29 | 0% | 363 s | 1.00×  
-CalibAtt (Ours) | 128 × 64 | 82.16 | 82.16 | 72.91 | 72.91 | 80.31 | 64.9% | 265 s | 1.37×  
-128 × 80 | 82.08 | 82.08 | 73.12 | 73.12 | 80.29 | 64.6% | 259 s | 1.40×  
-128 × 96 | 81.92 | 81.92 | 74.00 | 74.00 | 80.34 | 64.1% | 258 s | 1.41×  
-128 × 128 | 82.23 | 82.23 | 72.91 | 72.91 | 80.37 | 63.4% | 257 s | 1.41×  
-128 × 144 | 82.18 | 82.18 | 73.05 | 73.05 | 80.35 | 63.1% | 258 s | 1.41×  
-128 × 176 | 82.27 | 82.27 | 72.68 | 72.68 | 80.35 | 62.5% | 255 s | 1.42×  
-128 × 192 | 82.34 | 82.34 | 72.47 | 72.47 | 80.37 | 62.1% | 257 s | 1.41×</p>
+<p>对块大小选择具有鲁棒性，并且与原生 FA3 配置兼容。</p>
 
-<p>Appendix 0.C Additional Qualitative Results  
-Figs. S15 and S16 provide additional qualitative comparisons between CalibAtt and FlashAttention3 [shah2024flashattention3] dense attention on Wan2.1 [wan2025] 14B at 480p and 720p.  
-Fig. S17 shows comparisons on Mochi 1 [genmo2024mochi] at 480p.  
-Figs. S18 and S19 show comparisons on the distilled LightX2V [lightx2v] model at 480p and 720p.  
-Across diverse prompts, CalibAtt preserves visual fidelity, temporal coherence, and prompt alignment while substantially increasing attention sparsity.</p>
+<p>表 S6：在 Wan 2.1 14B 模型 480p 分辨率下，核块大小对稀疏性和质量的影响。加速比相对于密集 FlashAttention-3 基线。延迟为单个 H100 GPU 上每提示的墙钟时间。</p>
 
-<p>sparsity=0%  
-Dense Attention  
-latency=6m03s  
-sparsity=68%  
-CalibAtt  
-latency=4m10s  
-“A cute happy Corgi playing in park, sunset.”</p>
+<p>| 方法 | B_q × B_kv | 质量 ↑ | 语义 ↑ | 总体 ↑ | 稀疏性 ↑ | 延迟 ↓ | 加速比 ↑ |
+|------|----------|--------|--------|--------|----------|--------|----------|
+| Dense (FA3) | 128 × 176 | 82.19 | 82.19 | 72.71 | 72.71 | 80.29 | 0% | 363 s | 1.00× |
+| CalibAtt (Ours) | 128 × 64 | 82.16 | 82.16 | 72.91 | 72.91 | 80.31 | 64.9% | 265 s | 1.37× |
+| 128 × 80 | 82.08 | 82.08 | 73.12 | 73.12 | 80.29 | 64.6% | 259 s | 1.40× |
+| 128 × 96 | 81.92 | 81.92 | 74.00 | 74.00 | 80.34 | 64.1% | 258 s | 1.41× |
+| 128 × 128 | 82.23 | 82.23 | 72.91 | 72.91 | 80.37 | 63.4% | 257 s | 1.41× |
+| 128 × 144 | 82.18 | 82.18 | 73.05 | 73.05 | 80.35 | 63.1% | 258 s | 1.41× |
+| 128 × 176 | 82.27 | 82.27 | 72.68 | 72.68 | 80.35 | 62.5% | 255 s | 1.42× |
+| 128 × 192 | 82.34 | 82.34 | 72.47 | 72.47 | 80.37 | 62.1% | 257 s | 1.41× |</p>
 
-<p>sparsity=0%  
-Dense Attention  
-latency=6m03s  
-sparsity=68%  
-CalibAtt  
-latency=4m10s  
-“A cat eating food out of a bowl.”</p>
+<p>附录 0.C 额外定性结果  
+图 S15 和 S16 提供了 CalibAtt 与 FlashAttention3 [shah2024flashattention3] 密集注意力在 Wan2.1 [wan2025] 14B 模型 480p 和 720p 分辨率下的额外定性对比。  
+图 S17 展示了在 Mochi 1 [genmo2024mochi] 480p 分辨率下的对比。  
+图 S18 和 S19 展示了在蒸馏后的 LightX2V [lightx2v] 模型 480p 和 720p 分辨率下的对比。  
+在各种提示下，CalibAtt 保持了视觉保真度、时间连贯性和提示一致性。</p>
+
+<p>对齐的同时显著提高注意力稀疏性。</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -705,7 +746,7 @@ latency=6m03s
 sparsity=68%  
 CalibAtt  
 latency=4m10s  
-“A koala bear playing piano in the forest.”</p>
+“一只可爱的快乐柯基犬在公园里玩耍，日落时分。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -713,9 +754,25 @@ latency=6m03s
 sparsity=68%  
 CalibAtt  
 latency=4m10s  
-“A jellyfish floating through the ocean, with bioluminescent tentacles.”</p>
+“一只猫从碗里吃食物。”</p>
 
-<p>Figure S15: Comparison of four prompts generated with the same seed on Wan2.1 14B 480p text-to-video. CalibAtt achieves higher attention sparsity and lower end-to-end latency while maintaining visual quality and prompt alignment.</p>
+<p>sparsity=0%  
+Dense Attention  
+latency=6m03s  
+sparsity=68%  
+CalibAtt  
+latency=4m10s  
+“一只考拉熊在森林里弹钢琴。”</p>
+
+<p>sparsity=0%  
+Dense Attention  
+latency=6m03s  
+sparsity=68%  
+CalibAtt  
+latency=4m10s  
+“一只水母在海洋中漂浮，带有生物发光的触手。”</p>
+
+<p>Figure S15: 在 Wan2.1 14B 480p 文本到视频模型上，使用相同种子生成的四个提示的对比。CalibAtt 在保持视觉质量和提示对齐的同时，实现了更高的注意力稀疏性和更低的端到端延迟。</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -723,7 +780,7 @@ latency=20m44s
 sparsity=62%  
 CalibAtt  
 latency=13m05s  
-“A beautiful coastal beach in spring, waves lapping on sand.”</p>
+“春天美丽的海滨沙滩，海浪拍打着沙滩。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -731,7 +788,7 @@ latency=20m44s
 sparsity=62%  
 CalibAtt  
 latency=13m05s  
-“A boat sailing leisurely along the Seine River with the Eiffel Tower in background, animated style.”</p>
+“一艘船悠闲地沿着塞纳河航行，背景是埃菲尔铁塔，动画风格。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -739,7 +796,7 @@ latency=20m44s
 sparsity=62%  
 CalibAtt  
 latency=13m05s  
-“A person is cleaning windows.”</p>
+“一个人正在擦窗户。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -747,43 +804,71 @@ latency=20m44s
 sparsity=62%  
 CalibAtt  
 latency=13m05s  
-“Snow rocky mountains peaks canyon… through the high elevated mountain peaks.”</p>
+“雪覆盖的岩石山脉峰顶峡谷……穿过高海拔地区”</p>
 
-<p>Figure S16: Comparison of four prompts generated with the same seed on Wan2.1 14B 720p text-to-video. CalibAtt achieves higher attention sparsity and lower end-to-end latency while maintaining visual quality and prompt alignment.</p>
+<p>d 山峰。”</p>
+
+<p>图 S16：在 Wan2.1 14B 720p 文本到视频模型上，使用相同种子生成的四个提示的对比。CalibAtt 在保持视觉质量和提示对齐的同时，实现了更高的注意力稀疏性和更低的端到端延迟。</p>
 
 <p>sparsity=0%  
-Dense Attention  
+密集注意力  
 latency=3m08s  
 sparsity=69%  
 CalibAtt  
 latency=2m41s  
-“A drone view of celebration with Christmas tree and fireworks, starry sky.”</p>
+“无人机视角下的庆祝场景，有圣诞树和烟花，星空背景。”</p>
 
 <p>sparsity=0%  
-Dense Attention  
+密集注意力  
 latency=3m08s  
 sparsity=69%  
 CalibAtt  
 latency=2m41s  
-“Few big purple plums rotating on the turntable… isolated on the white background.”</p>
+“几个大紫李子在转盘上旋转……白色背景隔离。”</p>
 
 <p>sparsity=0%  
-Dense Attention  
+密集注意力  
 latency=3m08s  
 sparsity=69%  
 CalibAtt  
 latency=2m41s  
-“A tranquil tableau of cliff.”</p>
+“宁静的悬崖景象。”</p>
 
 <p>sparsity=0%  
-Dense Attention  
+密集注意力  
 latency=3m08s  
 sparsity=69%  
 CalibAtt  
 latency=2m41s  
-“A tranquil tableau of a tranquil lakeside cabin nestled… in the calm water.”</p>
+“宁静湖畔小屋的静谧画面，依偎在平静的水面中。”</p>
 
-<p>Figure S17: Comparison of four prompts generated with the same seed on Mochi. CalibAtt achieves higher attention sparsity and lower end-to-end latency while maintaining visual quality and prompt alignment.</p>
+<p>图 S17：在 Mochi 模型上，使用相同种子生成的四个提示的对比。CalibAtt 在保持视觉质量和提示对齐的同时，实现了更高的注意力稀疏性和更低的端到端延迟。</p>
+
+<p>sparsity=0%  
+密集注意力  
+latency=14s  
+sparsity=70%  
+CalibAtt  
+latency=11s  
+“一只大脚怪在暴风雪中行走。”</p>
+
+<p>sparsity=0%  
+密集注意力  
+latency=14s  
+sparsity=70%  
+CalibAtt  
+latency=11s  
+“一只戴着太阳镜的猫在泳池边担任救生员。”</p>
+
+<p>sparsity=0%  
+密集注意力  
+latency=14s  
+sparsity=70%  
+CalibAtt  
+latency=11s  
+“一对穿着正式晚礼服的情侣”</p>
+
+<p>穿着回家……暴雨中撑伞。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -791,33 +876,9 @@ latency=14s
 sparsity=70%  
 CalibAtt  
 latency=11s  
-“A bigfoot walking in the snowstorm.”</p>
+“一只柯基犬正在演奏架子鼓。”</p>
 
-<p>sparsity=0%  
-Dense Attention  
-latency=14s  
-sparsity=70%  
-CalibAtt  
-latency=11s  
-“A cat wearing sunglasses and working as a lifeguard at a pool.”</p>
-
-<p>sparsity=0%  
-Dense Attention  
-latency=14s  
-sparsity=70%  
-CalibAtt  
-latency=11s  
-“A couple in formal evening wear going home… downpour with umbrellas.”</p>
-
-<p>sparsity=0%  
-Dense Attention  
-latency=14s  
-sparsity=70%  
-CalibAtt  
-latency=11s  
-“A corgi is playing drum kit.”</p>
-
-<p>Figure S18: Comparison of four prompts generated with the same seed on LightX2V (distilled Wan2.1 14B) at 480p.</p>
+<p>Figure S18: 在 LightX2V（蒸馏版 Wan2.1 14B）480p 分辨率下，使用相同种子生成的四个提示词的对比。</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -825,7 +886,7 @@ latency=48s
 sparsity=74%  
 CalibAtt  
 latency=30s  
-“A fat rabbit wearing a purple robe walking through a fantasy landscape.”</p>
+“一只胖兔子穿着紫色长袍，行走在奇幻景观中。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -833,7 +894,7 @@ latency=48s
 sparsity=74%  
 CalibAtt  
 latency=30s  
-“A happy fuzzy panda playing guitar nearby a campfire, snow mountain…”</p>
+“一只快乐的毛茸茸熊猫在篝火旁弹吉他，背景是雪山……”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -841,7 +902,7 @@ latency=48s
 sparsity=74%  
 CalibAtt  
 latency=30s  
-“A teddy bear is playing drum kit in NYC Times Square.”</p>
+“一只泰迪熊在纽约时代广场演奏架子鼓。”</p>
 
 <p>sparsity=0%  
 Dense Attention  
@@ -849,9 +910,9 @@ latency=48s
 sparsity=74%  
 CalibAtt  
 latency=30s  
-“An astronaut feeding ducks on a sunny afternoon, reflection from the water.”</p>
+“一名宇航员在阳光明媚的下午喂鸭子，水面倒影清晰可见。”</p>
 
-<p>Figure S19: Comparison of four prompts generated with the same seed on LightX2V (distilled Wan2.1 14B) at 720p.</p>
+<p>Figure S19: 在 LightX2V（蒸馏版 Wan2.1 14B）720p 分辨率下，使用相同种子生成的四个提示词的对比。</p>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
