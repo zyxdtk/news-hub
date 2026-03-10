@@ -1,0 +1,3800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FVG-PT: Adaptive Foregrou - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">FVG-PT: Adaptive Foregrou</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-03-09</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2603.08708" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：FVG-PT: Adaptive Foreground View-Guided Prompt Tuning for Vision-Language Models</h4>
+            <p><strong>中文摘要：</strong> 暂无摘要</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>1
+1
+institutetext:
+University of Technology Sydney, NSW 2007, Australia
+2
+2
+institutetext:
+Shanghai University, Shanghai 200444, China
+2
+2
+email:
+haoyang.li-3@student.uts.edu.au
+FVG-PT: Adaptive Foreground View-Guided Prompt Tuning for Vision-Language Models
+Haoyang Li
+Liang Wang
+Siyu Zhou
+Jiacheng Sun
+Jing Jiang
+Chao Wang
+Corresponding authors.
+Guodong Long
+1
+1
+footnotemark:
+1
+Yan Peng
+1
+1
+footnotemark:
+1
+Abstract
+CLIP-based prompt tuning enables pretrained Vision-Language Models (VLMs) to efficiently adapt to downstream tasks. Although existing studies have made significant progress, they pay limited attention to changes in the internal attention representations of VLMs during the tuning process. In this paper, we attribute the failure modes of prompt tuning predictions to shifts in foreground attention of the visual encoder, and propose
+F
+oreground
+V
+iew-
+G
+uided
+P
+rompt
+T
+uning (
+FVG-PT
+), an adaptive plug-and-play foreground attention guidance module, to alleviate the shifts. Concretely,
+FVG-PT
+introduces a learnable Foreground Reliability Gate to automatically enhance the foreground view quality, applies a Foreground Distillation Compensation module to guide visual attention toward the foreground, and further introduces a Prior Calibration module to mitigate generalization degradation caused by excessive focus on the foreground. Experiments on multiple backbone models and datasets show the effectiveness and compatibility of
+FVG-PT
+. Codes are available at:
+https://github.com/JREion/FVG-PT
+.
+1
+Introduction
+In recent years, Vision-Language Models (VLMs) such as CLIP
+[
+radford2021clip
+]
+have achieved strong cross-modal alignment and zero-shot generalization on open-set recognition and multi-modal perception tasks. To adapt pretrained CLIP to specific classification-related downstream tasks, prompt tuning is proposed as a parameter efficient strategy
+[
+han2024peft
+,
+xing2024peft2
+]
+. This approach keeps all parameters of the foundation CLIP frozen and introduces lightweight learnable prompts as input queries, thereby guiding the model outputs toward the target task distribution
+[
+zhou2022coop
+]
+.
+Recent studies propose various forms of prompt tuning, including text prompts
+[
+zhou2022cocoop
+,
+li2025atprompt
+]
+, visual prompts
+[
+jia2022vpt
+,
+pei2024sa2vp
+]
+, cross-modal prompts
+[
+khattak2023promptsrc
+,
+li2025dpc
+]
+, and mid-layer plugins of encoders
+[
+seputis2024mma
+,
+guo2025mmrl
+]
+. Despite their success, these methods typically focus on refining the design of learnable prompts or the interaction patterns between visual and textual features, while paying limited attention on the impact of prompt tuning process on the internal attention representations of VLMs.
+Specifically, because CLIP performs image-text alignment through contrastive learning
+[
+radford2021clip
+]
+, the text prompt used as a query determines the response weights of image patch tokens in the feature space, which implies that the input prompts directly shape the internal attention distribution over the image (details are in Sec.
+2
+). Therefore, during prompt tuning, as the learnable prompts are continuously optimized, the corresponding image attention distribution changes accordingly. To study how this evolution influences the predictions, we conduct Grad-CAM-based
+[
+selvaraju2017gradcam
+]
+case studies and analyze the attention behavior of prompt tuning method (CoOp
+[
+zhou2022coop
+]
+) before and after fine-tuning. We focus on samples where CLIP and CoOp produce inconsistent predictions to characterize failure cases of prompt tuning. As in Fig.
+1
+(a-b), we observe that for misclassified images, the attention in the visual ViT encoder often deviates from the main object (
+foreground
+) to irrelevant background, thereby preventing the foreground semantics from aligning well with text. Quantitative analysis in
+Supplementary Material
+0.A
+further shows that higher-performing models tend to exhibit smaller foreground shifts. These results suggest that
+many incorrect predictions in prompt tuning can be attributed to shifted allocation of foreground attention of the visual encoder
+. As a result, to mitigate such shift, it is crucial to guide attention to focus on the image foreground during prompt tuning.
+Figure 1
+:
+Comparison of visual encoder attention maps generated by Grad-CAM
+[
+selvaraju2017gradcam
+]
+for the same image under (a) original CLIP
+[
+radford2021clip
+]
+, (b) CoOp
+[
+zhou2022coop
+]
+, and (c) our
+FVG-PT
+. In the bad cases of (a) and (b), attention deviates from the foreground view, where
+FVG-PT
+effectively suppresses this shift and leads to a correct prediction.
+Although some researches make initial attempts to guide VLM attention toward the foreground (e.g., by leveraging gradients
+[
+zhu2023prograd
+]
+or explicit visual supervision
+[
+shtedritski2023redcircle
+,
+yang2023fgvp
+,
+zhang2025dapt
+]
+), several key limitations remain unaddressed: (1) the quality of the foreground view is not controllable and may be incorrect, incomplete, or overly large, which can lead the model to learn inaccurate alignment patterns; (2) since image backgrounds often contain commonsense features
+[
+an2023backgroundCLIP
+,
+zhang2025dapt
+]
+, over-focusing attention on the foreground in target (
+base
+) classes may weaken these commonsense, thereby harming generalization to unseen (
+new
+) classes, which is referred to as the base-new trade-off (BNT)
+[
+zhang2024dept
+,
+li2025dpc
+,
+li2025mao
+]
+. In summary, the central bottleneck of foreground-guided methods is the lack of an
+adaptive mechanism
+: the model cannot flexibly adjust its trust in the foreground view or dynamically balance base-class adaptation and new-class generalization.
+To address these issues, we propose
+F
+oreground
+V
+iew-
+G
+uided
+P
+rompt
+T
+uning (
+FVG-PT
+), a plug-and-play prompt tuning framework that adaptively controls the quality of foreground view, balances base and new branches, and integrates seamlessly with diverse prompt tuning backbones. To obtain high-quality foreground views, we first apply a pretrained external segmentation model
+[
+zou2023seem
+]
+and extract explicit foreground regions of the input image from semantic masks. On top of this prior, we introduce a learnable
+Foreground Reliability Gate
+, implemented as a multi-layer perceptron (MLP) that takes multiple foreground reliability indicators as input and outputs a scalar coefficient
+r
+r
+as the foreground trust score. This gate encourages the model to learn an adaptive weighting scheme for foreground features under a set of combined criteria. Since the gate is class-agnostic, it can assess the reliability of any foreground view input.
+To guide VLM attention toward the foreground, we then design a
+Foreground Distillation Compensation
+module driven by
+r
+r
+. We insert lightweight learnable adapters
+[
+houlsby2019Adapter
+]
+into the visual and textual branches of frozen pretrained backbone models (e.g., CoOp
+[
+zhou2022coop
+]
+) after original feature alignment stage, with the goal of learning a foreground-oriented feature re-projection pattern on top of the backbones, while remaining compatible with the backbones’ original optimization direction. Finally, to overcome the BNT problem, we propose a
+Prior Calibration
+module that structurally decouples the new branch from foreground-enhanced base branch, thereby isolating their optimization paths. In the new branch, we introduce Backbone Reliability Gate that learns adaptive weights between the base-branch backbone and the original CLIP prior, preserving sufficient commonsense and improving generalization to new classes.
+In experiments, we attach
+FVG-PT
+to 4 backbone models
+[
+zhou2022coop
+,
+yao2023kgcoop
+,
+khattak2023promptsrc
+,
+guo2025mmrl
+]
+and evaluate it on 11 datasets, which verifies the effectiveness of optimizing prompt tuning through foreground view and its compatibility. The main contributions of this paper are summarized as follows.
+•
+We conduct an insightful analysis that attributes the failure modes of prompt tuning to the attention shifts of the visual encoder relative to the foreground, and propose Foreground View-Guided Prompt Tuning to introduce explicit foreground supervision to alleviate this shift, thereby achieving plug-and-play prompt tuning enhancement.
+•
+To guide visual attention to correct foreground regions, we propose a Foreground Reliability Gate that adaptively addresses uncertainty in the foreground view, and design a Foreground Distillation Compensation module to provide plug-and-play attention guidance.
+•
+We propose Prior Calibration module, which decouples base and new branches and adaptively balances the backbone and CLIP prior, mitigating the negative effect of foreground-focused learning on new-class generalization.
+2
+Related Work
+Prompt Tuning in VLMs.
+Vision-Language Models (VLMs)
+[
+lu2019vilbert
+,
+radford2021clip
+,
+jia2021align
+,
+li2023blip
+,
+li2026hardnegative
+]
+receive significant attention for their ability to deeply align and fuse image and text representations, achieving strong performance on a wide range of cross-modal perception and understanding tasks. Given the high computational cost of training and fine-tuning VLMs due to their large parameter scale and data requirements, prompt tuning is proposed as a parameter-efficient alternative that adapts pretrained VLMs
+[
+han2024peft
+]
+. Unlike hand-crafted hard prompt templates
+[
+li2021prefix
+,
+wei2022chain
+]
+in LLMs or CLIP (e.g., “
+A photo of a [CLASS]
+”), prompt tuning introduces a set of lightweight learnable vectors as queries to the frozen model, guiding its outputs toward domain-specific data through continuous optimization. Existing work primarily focuses on improving the design of learnable prompts to enhance task-specific image-text alignment, including text prompts
+[
+zhou2022coop
+,
+tian2024argue
+]
+, visual prompts
+[
+jia2022vpt
+,
+pei2024sa2vp
+,
+xu2024provp
+]
+, cross-modal prompts
+[
+zang2022upt
+,
+khattak2023promptsrc
+,
+li2024promptkd
+,
+li2025augpt
+]
+, and mid-layer plugins of encoders
+[
+seputis2024mma
+,
+guo2025mmrl
+]
+. More recent studies incorporate external knowledge into prompt tuning
+[
+yao2023kgcoop
+,
+roy2023coprompt
+,
+li2025atprompt
+]
+. In contrast, our work focuses on guiding the visual encoder’s attention, offering a plug-and-play solution that is orthogonal to these approaches.
+Visual Attention Guidance for CLIP.
+In prompt tuning, the changes in visual attention representations deserve closer examination. Specifically, in CLIP, the image and text inputs are encoded into global features using Transformer-based
+[
+dosovitskiy2020vit
+]
+encoders, and classification is performed based on image-text similarity. The visual encoder constructs global image representations by selectively aggregating patch features through self-attention, emphasizing regions that exhibit higher similarity to the corresponding text features
+[
+radford2021clip
+]
+. Under this alignment paradigm, the prompt (whether textual or visual) serves as a semantic query that shapes the model’s similarity-driven preferences over different image regions. Therefore, variations in the prompt alter the similarity objective, leading to a reallocation of response weights across image patches and resulting in observable shifts in the visual attention distribution. As prompt tuning involves continuously optimizing learnable prompts, tracking and analyzing these attention dynamics is particularly important.
+As shown in Fig.
+1
+, our empirical analysis confirms that guiding visual attention toward the image foreground can enhance prompt tuning. Existing methods attempt to influence the visual attention of foundation CLIP model by optimizing gradient propagation
+[
+zhu2023prograd
+]
+or adding visual cues (e.g., visual markers
+[
+shtedritski2023redcircle
+,
+zhuang2024falip
+]
+, alpha channels
+[
+sun2024AlphaCLIP
+]
+, or foreground boundaries
+[
+yang2023fgvp
+,
+zhang2025dapt
+]
+). However, most of these approaches do not provide explicit evaluation or control over the guidance process (e.g., assessing the quality of the foreground view). In this paper, we address this gap by introducing an adaptive Foreground Reliability Gate, followed by a Foreground Distillation Compensation module to enable plug-and-play foreground attention guidance across multiple prompt tuning backbones.
+Base-New Trade-off.
+In prompt tuning, the base-new trade-off (BNT) problem receives considerable attention
+[
+zhou2022cocoop
+]
+. It can be attributed to the overfitting of learnable prompts to the target task (base classes) during optimization, which leads to reduced generalization on new classes. In this paper, BNT manifests as excessive attention to the foreground, which may cause the model to overlook commonsense knowledge embedded in the background. Existing approaches attempt to mitigate BNT through conditional context
+[
+zhou2022cocoop
+,
+yao2024tcp
+]
+, consistency constraints
+[
+khattak2023promptsrc
+]
+, external knowledge
+[
+khattak2024protext
+,
+wang2024hpt
+,
+li2024promptkd
+]
+, or decoupling at the feature or prompt level
+[
+zhang2024dept
+,
+li2025dpc
+,
+zhang2025dapt
+]
+. In contrast, our
+FVG-PT
+introduces a model-agnostic Prior Calibration strategy that fully decouples the foreground (base) and new branches, and learns an adaptive balance between the backbone model and the CLIP prior, resulting in consistent improvements on both base and new classes.
+Figure 2
+:
+Framework of our proposed
+FVG-PT
+. As a plug-and-play method, in (a) tuning stage,
+FVG-PT
+obtains the foreground view
+x
+fg
+x^{\mathrm{fg}}
+of image
+x
+x
+and fine-tunes the (b) Foreground Reliability Gate to learn a foreground trust score
+r
+r
+. Meanwhile, Foreground Distillation Compensation module inserts adapters after image-text alignment of frozen backbone model to guide visual attention toward the foreground. In parallel, independent Prior Calibration fine-tunes the (c) Backbone Reliability Gate on new branch (indicated by
+dashed lines
+) to balance the tuned model and the CLIP prior.
+3
+Proposed Method
+The framework of
+FVG-PT
+is illustrated in Fig.
+2
+. As a plug-and-play enhancement method, our approach is built upon pre-tuned backbone models (e.g., CoOp
+[
+zhou2022coop
+]
+). For an input image-text pair
+(
+x
+,
+t
+)
+(x,t)
+used in backbone,
+FVG-PT
+first obtains the foreground view
+x
+fg
+x^{\mathrm{fg}}
+of the image
+x
+x
+. Next, guided by the adaptive trust score
+r
+r
+from the Foreground Reliability Gate (Sec.
+3.2
+),
+FVG-PT
+fine-tunes the Foreground Distillation Compensation module (Sec.
+3.3
+) to focus visual attention on the foreground. Meanwhile, the independent Prior Calibration module (Sec.
+3.4
+) is simultaneously fine-tuned to address the BNT problem.
+3.1
+Preliminaries
+Identical to other prompt tuning backbone models,
+FVG-PT
+builds on the frozen CLIP as the foundation VLM, which consists of a pretrained ViT-based
+[
+dosovitskiy2020vit
+]
+visual encoder
+f
+​
+(
+⋅
+)
+f(\cdot)
+and a text encoder
+g
+​
+(
+⋅
+)
+g(\cdot)
+. To enable efficient adaptation to downstream tasks, prompt tuning introduces a set of learnable prompt vectors of length
+L
+L
+, which are appended to the visual input
+x
+x
+, text input
+t
+t
+, or intermediate layers of the encoder:
+𝑷
+=
+[
+θ
+]
+1
+​
+[
+θ
+]
+2
+​
+…
+​
+[
+θ
+]
+L
+\displaystyle\boldsymbol{P}=[\mathrm{\theta}]_{1}[\mathrm{\theta}]_{2}\ldots[\mathrm{\theta}]_{L}
+(1)
+The text prompt
+𝑷
+t
+\boldsymbol{P}_{t}
+is typically constructed by concatenating a learnable prompt
+𝑷
+\boldsymbol{P}
+with the [CLASS] token covering all candidate classes
+𝐂
+=
+{
+t
+i
+}
+i
+=
+1
+n
+\mathbf{C}=\left\{t_{i}\right\}_{i=1}^{n}
+. For visual prompts, the prompt vectors are normally organized as the prefix of the patch tokens of the image
+x
+x
+, forming the sequence
+(
+𝑷
+v
+,
+x
+)
+(\boldsymbol{P}_{v},x)
+. Prompts applied within intermediate encoder layers follow a similar pattern. To optimize the predicted output of the classification head, in image-text alignment stage, prompt tuning updates the parameters of the learnable prompts using a cross-entropy loss:
+ℒ
+CE
+=
+−
+∑
+i
+h
+i
+​
+log
+⁡
+exp
+⁡
+(
+s
+​
+i
+​
+m
+​
+(
+g
+​
+(
+𝑷
+t
+y
+)
+,
+f
+​
+(
+𝑷
+v
+,
+x
+)
+)
+/
+τ
+)
+∑
+i
+=
+1
+n
+exp
+⁡
+(
+s
+​
+i
+​
+m
+​
+(
+g
+​
+(
+𝑷
+t
+i
+)
+,
+f
+​
+(
+𝑷
+v
+,
+x
+)
+)
+/
+τ
+)
+\displaystyle\mathcal{L}_{\mathrm{CE}}=-\sum_{i}{h}_{i}\log\frac{\exp\left(sim(g({\boldsymbol{P}_{t}}_{y}),f(\boldsymbol{P}_{v},x))/\tau\right)}{\sum_{i=1}^{n}\exp\left(sim(g(\boldsymbol{P}_{t_{i}}),f(\boldsymbol{P}_{v},x))/\tau\right)}
+(2)
+where
+h
+i
+h_{i}
+is the one-hot label corresponding to the
+i
+i
+-th candidate in the set
+𝐂
+\mathbf{C}
+, and
+sim
+​
+(
+⋅
+,
+⋅
+)
+\text{sim}(\cdot,\cdot)
+denotes the cosine similarity. The term
+τ
+\tau
+is a predefined temperature parameter in CLIP. Further details on the workflow of the backbone models used in
+FVG-PT
+are provided in
+Supplementary Material
+0.B.3
+.
+3.2
+Foreground Reliability Gate
+Motivated by the empirical findings in Sec.
+1
+that suggest guiding visual attention toward the foreground,
+FVG-PT
+constructs a high-quality explicit foreground to serve as supervision for attention guidance.
+Specifically, inspired by DAPT
+[
+zhang2025dapt
+]
+, we employ a pretrained SEEM
+[
+zou2023seem
+]
+segmentation model to generate a foreground mask
+m
+∈
+{
+0
+,
+1
+}
+H
+×
+W
+m\in\{0,1\}^{H\times W}
+for the raw image
+x
+x
+(details and visualizations of SEEM are provided in
+Supplementary Material
+0.B.2
+). This yields an initial foreground view
+x
+fg
+=
+x
+⊙
+m
+x^{\mathrm{fg}}=x\odot m
+, where
+⊙
+\odot
+denotes the Hadamard product. To enable adaptive assessment, the Foreground Reliability Gate (FRG) introduces a two-layer MLP during base-class tuning that learns a dynamic weighting scheme between
+x
+fg
+x^{\mathrm{fg}}
+and
+x
+x
+.
+Supervision.
+FRG first leverages the backbone model to obtain hard supervision for reliability. Let
+𝐳
+​
+(
+x
+)
+∈
+ℝ
+C
+\mathbf{z}(x)\in\mathbb{R}^{C}
+denote the prediction logits over the base-class candidates
+𝐂
+\mathbf{C}
+produced by the fully frozen backbone for input image
+x
+x
+. FRG computes cross-entropy (CE) losses on both the full image and foreground view:
+ℓ
+full
+=
+CE
+⁡
+(
+𝐳
+​
+(
+x
+)
+,
+t
+)
+,
+ℓ
+fg
+=
+CE
+⁡
+(
+𝐳
+​
+(
+x
+fg
+)
+,
+t
+)
+\displaystyle\ell_{\text{full }}=\operatorname{CE}(\mathbf{z}(x),t),\quad\ell_{\mathrm{fg}}=\operatorname{CE}\left(\mathbf{z}(x^{\mathrm{fg}}),t\right)
+(3)
+Clearly, if
+ℓ
+fg
+&lt;
+ℓ
+full
+\ell_{\mathrm{fg}}&lt;\ell_{\mathrm{full}}
+, the foreground view brings a lower classification loss, indicating higher reliability. Therefore, we construct a binary supervision target
+r
+∗
+=
+𝕀
+​
+[
+ℓ
+fg
+&lt;
+ℓ
+full
+]
+∈
+{
+0
+,
+1
+}
+r^{*}=\mathbb{I}\left[\ell_{\mathrm{fg}}&lt;\ell_{\mathrm{full}}\right]\in\{0,1\}
+to supervise FRG during fine-tuning.
+Gating Mechanism.
+To ensure plug-and-play compatibility, FRG constructs its input features based on the final logits (after image-text alignment) of the backbone. To improve the robustness of foreground quality assessment, we introduce
+N
+frg
+=
+3
+N_{\text{frg}}=3
+reliability indicators. Specifically, given the soft distributions
+𝐩
+\mathbf{p}
+(computed with temperature
+τ
+d
+\tau_{d}
+) over base classes for
+x
+x
+and
+x
+fg
+x^{\mathrm{fg}}
+:
+𝐩
+full
+=
+softmax
+⁡
+(
+𝐳
+​
+(
+x
+)
+/
+τ
+d
+)
+,
+𝐩
+fg
+=
+softmax
+⁡
+(
+𝐳
+​
+(
+x
+fg
+)
+/
+τ
+d
+)
+\displaystyle\mathbf{p}_{\text{full}}=\operatorname{softmax}\left({\mathbf{z}(x)}/{\tau_{d}}\right),\quad\mathbf{p}_{\mathrm{fg}}=\operatorname{softmax}\left({\mathbf{z}(x^{\mathrm{fg}})}/{\tau_{d}}\right)
+(4)
+FRG constructs a statistics vector
+𝐮
+\mathbf{u}
+with dimension
+N
+frg
+=
+3
+N_{\text{frg}}=3
+as the input to the MLP, as illustrated in Fig.
+2
+(b):
+𝐮
+=
+[
+Δ
+​
+H
+,
+cos
+⁡
+(
+𝐩
+full
+,
+𝐩
+fg
+)
+,
+A
+​
+(
+m
+)
+]
+\displaystyle\mathbf{u}=[\Delta H,\cos(\mathbf{p}_{\text{full}},\mathbf{p}_{\text{fg}}),A(m)]
+(5)
+The first indicator is a
+distribution-based
+criterion
+Δ
+​
+H
+=
+H
+​
+(
+𝐩
+full
+)
+−
+H
+​
+(
+𝐩
+fg
+)
+\begin{aligned} \Delta H=H(\mathbf{p}_{\text{full}})-H(\mathbf{p}_{\text{fg}})\end{aligned}
+, where
+H
+​
+(
+⋅
+)
+H(\cdot)
+denotes the entropy of a probability distribution. If the foreground view is more reliable,
+𝐩
+fg
+\mathbf{p}_{\text{fg}}
+becomes sharper and has lower entropy, leading to
+Δ
+​
+H
+&gt;
+0
+\Delta H&gt;0
+, indicating higher foreground confidence. The second indicator is a
+similarity-based
+criterion, which constrains
+𝐩
+fg
+\mathbf{p}_{\text{fg}}
+to remain close to
+𝐩
+full
+\mathbf{p}_{\text{full}}
+, thereby reducing the risk of distributional shift caused by inaccurate masks. The third indicator is a
+geometric
+criterion that measures the foreground-to-full area ratio, ensuring the foreground is sufficiently informative and not overly small.
+During fine-tuning, FRG predicts a trust score
+r
+=
+sigmoid
+​
+(
+q
+)
+∈
+(
+0
+,
+1
+)
+r=\text{sigmoid}(q)\in(0,1)
+based on output scalar logit
+q
+=
+MLP
+​
+(
+𝐮
+)
+q=\text{MLP}(\mathbf{u})
+. Since the supervision signal
+r
+⋆
+r^{\star}
+is binary-labeled, we apply binary cross-entropy (BCE) loss to train FRG to identify which weighting mode of indicators in the input corresponds to reliable foreground view:
+ℒ
+FRG
+=
+−
+r
+⋆
+​
+log
+⁡
+r
+−
+(
+1
+−
+r
+⋆
+)
+​
+log
+⁡
+(
+1
+−
+r
+)
+\displaystyle\mathcal{L}_{\mathrm{FRG}}=-r^{\star}\log r-(1-r^{\star})\log(1-r)
+(6)
+3.3
+Foreground Distillation Compensation
+FDC aims to guide visual attention toward the filtered foreground view, thereby correcting shifted attention. Since the alignment pattern of foreground guidance is different from original backbone, to avoid conflicts in optimization direction, FDC inserts a standard bottleneck adapter
+[
+houlsby2019Adapter
+]
+after original feature alignment stage of backbones, as in Fig.
+2
+(a). Unlike common task-driven adapters (e.g., CLIP-Adapter
+[
+gao2024clipadapter
+]
+), it is a compensation module that encourages foreground-oriented attention. It aligns the
+backbone image-text logits using foreground view
+with
+compensated logits of full image
+x
+x
+, prompting the model to learn a feature re-projection that guides attention toward the foreground. Adapters are inserted into both visual and textual branches with separate parameters, thus avoiding disruption of cross-modal alignment due to unilateral fine-tuning.
+Specifically, for the image and text features
+f
+​
+(
+x
+)
+f(x)
+and
+g
+​
+(
+t
+)
+g(t)
+output by the backbone, FDC introduces two-layer bottleneck MLPs (i.e., dimension of the hidden layers of MLPs are smaller than the input) with residual connections as adapters, producing re-projected features
+f
+~
+​
+(
+x
+)
+\tilde{f}(x)
+and
+g
+~
+​
+(
+t
+)
+\tilde{g}(t)
+:
+f
+~
+​
+(
+x
+)
+=
+L2Norm
+⁡
+(
+f
+​
+(
+x
+)
++
+MLP
+​
+(
+f
+​
+(
+x
+)
+)
+)
+,
+g
+~
+​
+(
+t
+)
+=
+L2Norm
+⁡
+(
+g
+​
+(
+t
+)
++
+MLP
+​
+(
+g
+​
+(
+t
+)
+)
+)
+\displaystyle\tilde{f}(x)=\operatorname{L2Norm}(f(x)+\text{MLP}\left(f(x)\right)),\ \ \tilde{g}(t)=\operatorname{L2Norm}(g(t)+\text{MLP}\left(g(t)\right))
+(7)
+Then, through image-text interaction of the compensated features, we obtain the FDC logit
+𝐳
+FDC
+​
+(
+x
+)
+\mathbf{z}_{\text{FDC}}(x)
+and the predicted distribution
+𝐩
+FDC
+\mathbf{p}_{\text{FDC}}
+:
+𝐳
+FDC
+​
+(
+x
+)
+=
+[
+f
+~
+​
+(
+x
+)
+]
+⊤
+​
+g
+~
+​
+(
+t
+)
+,
+𝐩
+FDC
+=
+softmax
+⁡
+(
+𝐳
+FDC
+​
+(
+x
+)
+/
+τ
+d
+)
+\displaystyle\mathbf{z}_{\text{FDC}}(x)=[\tilde{f}(x)]^{\top}\tilde{g}(t),\quad\mathbf{p}_{\text{FDC}}=\operatorname{softmax}\left({\mathbf{z}_{\text{FDC}}(x)}/{\tau_{d}}\right)
+(8)
+During fine-tuning, FDC employs a KL divergence-based distillation objective. The target distribution is selected adaptively based on the trust score
+r
+r
+. When the foreground is reliable (
+r
+→
+1
+r\to 1
+), FDC aligns more closely with the foreground distribution
+𝐩
+fg
+\mathbf{p}_{\mathrm{fg}}
+. Otherwise, it falls back to the full image distribution
+𝐩
+full
+\mathbf{p}_{\text{full}}
+:
+ℒ
+dist
+=
+r
+⋅
+KL
+⁡
+(
+𝐩
+fg
+∥
+𝐩
+FDC
+)
++
+(
+1
+−
+r
+)
+⋅
+KL
+⁡
+(
+𝐩
+full
+∥
+𝐩
+FDC
+)
+\displaystyle\mathcal{L}_{\text{dist}}=r\cdot\operatorname{KL}\left(\mathbf{p}_{\mathrm{fg}}\|\mathbf{p}_{\mathrm{FDC}}\right)+(1-r)\cdot\operatorname{KL}\left(\mathbf{p}_{\mathrm{full}}\|\mathbf{p}_{\mathrm{FDC}}\right)
+(9)
+The overall loss for the base branch combines the FRG loss
+ℒ
+FRG
+\mathcal{L}_{\mathrm{FRG}}
+, the FDC cross-entropy loss, and the distillation loss weighted by
+λ
+d
+\lambda_{d}
+.
+ℒ
+base
+=
+CE
+⁡
+(
+𝐳
+FDC
+​
+(
+x
+)
+,
+t
+)
++
+ℒ
+FRG
++
+λ
+d
+​
+ℒ
+dist
+\displaystyle\mathcal{L}_{\text{base}}=\operatorname{CE}(\mathbf{z}_{\text{FDC}}(x),t)+\mathcal{L}_{\text{FRG}}+\lambda_{d}\mathcal{L}_{\text{dist}}
+(10)
+Figure 3
+:
+Inference stage of
+FVG-PT
+on (a) base branch and (b) new branch. The design of Prior Calibration (Sec.
+3.4
+) enables full decoupling between the two branches during inference, addressing the BNT problem.
+3.4
+Prior Calibration
+Since the foreground emphasis of FDC may reduce new-class generalization due to the BNT problem (empirical results are in Sec.
+4.3
+), the Prior Calibration (PC) module adopts a decoupled design at the logit level that fully separates the new branch from base (foreground) branch to avoid interference on the optimization direction. For optimizing the new branch, PC employs a Backbone Reliability Gate (BRG) to learn an adaptive balance with the CLIP prior.
+Decoupled Branches.
+Although FDC and PC are both fine-tuned on the same base-class data, the logit-level design of
+FVG-PT
+allows complete decoupling between the base and new branches. As illustrated in Fig.
+3
+, during inference, the base branch uses the fine-tuned FDC adapters to compute the re-projected image-text logits
+𝐳
+FDC
+​
+(
+x
+)
+\mathbf{z}_{\text{FDC}}(x)
+for an input image
+x
+x
+. For the new branch, PC first applies the original zero-shot CLIP and obtains prior logits for the same image using the initial text features
+t
+CLIP
+t_{\text{CLIP}}
+(e.g., “
+A photo of a [CLASS]
+”):
+𝐳
+CLIP
+​
+(
+x
+)
+=
+[
+f
+CLIP
+​
+(
+x
+)
+]
+⊤
+​
+g
+CLIP
+​
+(
+t
+CLIP
+)
+\displaystyle\mathbf{z}_{\text{CLIP}}(x)=[{f^{\text{CLIP}}}(x)]^{\top}{g^{\text{CLIP}}}(t_{\text{CLIP}})
+(11)
+Next, PC learns a sample-adaptive CLIP trust score
+b
+∈
+[
+0
+,
+1
+]
+b\in[0,1]
+that controls the strength of CLIP prior on backbone and produces calibrated logits
+𝐳
+PC
+​
+(
+x
+)
+\mathbf{z}_{\text{PC}}(x)
+:
+y
+^
+=
+arg
+⁡
+max
+c
+∈
+𝐂
+new
+⁡
+𝐳
+PC
+​
+(
+x
+)
+c
+,
+𝐳
+PC
+​
+(
+x
+)
+=
+(
+1
+−
+b
+)
+⋅
+𝐳
+full
+​
+(
+x
+)
++
+b
+⋅
+𝐳
+CLIP
+​
+(
+x
+)
+\displaystyle\hat{y}=\arg\max_{c\in\mathbf{C}_{\text{new}}}\mathbf{z}_{\text{PC}}(x)_{c},\quad\mathbf{z}_{\text{PC}}(x)=(1-b)\cdot\mathbf{z}_{\text{full}}(x)+b\cdot\mathbf{z}_{\text{CLIP}}(x)
+(12)
+Under this design, the new branch does not call FDC, thus isolating it from base.
+Backbone Reliability Gate.
+Similar to FRG (Sec.
+3.2
+), BRG introduces a learnable two-layer MLP that combines
+N
+brg
+=
+3
+N_{\text{brg}}=3
+logit-based statistics as an input vector
+𝐬
+\mathbf{s}
+, and outputs a predicted scalar
+b
+=
+sigmoid
+​
+(
+MLP
+​
+(
+𝐬
+)
+)
+b=\text{sigmoid}(\text{MLP}(\mathbf{s}))
+:
+𝐬
+=
+[
+H
+​
+(
+𝐩
+full
+)
+,
+H
+​
+(
+𝐩
+CLIP
+)
+,
+cos
+​
+(
+𝐩
+full
+,
+𝐩
+CLIP
+)
+]
+\displaystyle\mathbf{s}=\left[H(\mathbf{p}_{\text{full}}),\,H(\mathbf{p}_{\text{CLIP}}),\,\text{cos}(\mathbf{p}_{\text{full}},\mathbf{p}_{\text{CLIP}})\right]
+(13)
+𝐩
+CLIP
+=
+softmax
+⁡
+(
+𝐳
+CLIP
+​
+(
+x
+)
+/
+τ
+d
+)
+\displaystyle\mathbf{p}_{\text{CLIP}}=\operatorname{softmax}\left({\mathbf{z}_{\text{CLIP}}(x)}/{\tau_{d}}\right)\quad\quad
+(14)
+During fine-tuning, BRG learns how to allocate weights across these statistics based on image-text feature distribution to achieve adaptive calibration. For example, low
+H
+​
+(
+𝐩
+CLIP
+)
+H(\mathbf{p}_{\text{CLIP}})
+or high
+H
+​
+(
+𝐩
+full
+)
+H(\mathbf{p}_{\text{full}})
+indicate more confident CLIP prior (the distribution is sharper), therefore, the model is encouraged to assign a larger
+b
+b
+, encouraging
+𝐳
+PC
+​
+(
+x
+)
+\mathbf{z}_{\text{PC}}(x)
+to follow CLIP. The indicator
+cos
+​
+(
+⋅
+,
+⋅
+)
+\text{cos}(\cdot,\cdot)
+constrains the similarity between the two distributions and drives
+b
+b
+toward the more confident one when the similarity is low.
+To realize this behavior, BRG is trained with a joint objective that combines the cross-entropy loss for base-class discrimination and a KL regularization term that keeps the calibrated distribution close to the CLIP prior:
+ℒ
+PC
+=
+CE
+⁡
+(
+𝐳
+PC
+​
+(
+x
+)
+,
+t
+)
++
+KL
+⁡
+(
+𝐩
+CLIP
+∥
+softmax
+⁡
+(
+𝐳
+PC
+​
+(
+x
+)
+/
+τ
+d
+)
+)
+\displaystyle\mathcal{L}_{\text{PC}}=\operatorname{CE}(\mathbf{z}_{\text{PC}}(x),t)+\operatorname{KL}\left(\mathbf{p}_{\text{CLIP}}\|\operatorname{softmax}\left({\mathbf{z}_{\text{PC}}(x)}/{\tau_{d}}\right)\right)
+(15)
+This objective learns the optimal trust score
+b
+b
+for each input sample, and learns the optimal mapping from
+𝐬
+\mathbf{s}
+to
+b
+b
+on the entire training set.
+4
+Experiments
+Table 1
+:
+Base-to-new generalization performance of 4 backbone models w/ or w/o our
+FVG-PT
+on 11 datasets.
+FVG-PT
+achieves performance improvements on both base-class fine-tuning and new-class generalization across all backbones.
+Average over 11
+ImageNet
+Caltech101
+Food101
+Method
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+CoOp
+[
+zhou2022coop
+]
+80.94
+70.03
+75.09
+75.96
+68.93
+72.27
+97.81
+94.65
+96.20
+90.14
+91.48
+90.81
++FVG-PT
+82.40
+73.62
+77.76
+76.65
+70.20
+73.28
+98.13
+94.76
+96.42
+89.43
+91.74
+90.57
+KgCoOp
+[
+yao2023kgcoop
+]
+80.28
+73.75
+76.88
+76.18
+70.26
+73.10
+98.19
+94.21
+96.16
+90.59
+91.65
+91.12
++FVG-PT
+82.06
+74.51
+78.10
+77.14
+70.28
+73.55
+98.26
+94.76
+96.48
+90.07
+91.63
+90.84
+PromptSRC
+[
+khattak2023promptsrc
+]
+80.81
+73.98
+77.24
+77.00
+70.60
+73.66
+98.00
+94.32
+96.12
+90.80
+91.74
+91.27
++FVG-PT
+81.21
+74.82
+77.89
+77.31
+70.64
+73.82
+98.06
+94.65
+96.32
+90.72
+91.79
+91.25
+MMRL
+[
+guo2025mmrl
+]
+85.51
+75.33
+80.10
+78.52
+70.84
+74.48
+98.52
+94.43
+96.43
+90.05
+91.47
+90.75
++FVG-PT
+86.04
+76.06
+80.75
+78.55
+70.82
+74.48
+98.77
+94.32
+96.49
+89.76
+91.54
+90.64
+StanfordCars
+OxfordPets
+Flowers102
+DTD
+Method
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+CoOp
+[
+zhou2022coop
+]
+69.17
+69.70
+69.43
+95.11
+97.04
+96.07
+96.77
+71.42
+82.18
+78.24
+48.67
+60.01
++FVG-PT
+73.99
+75.34
+74.66
+93.94
+97.76
+95.81
+97.53
+75.39
+85.04
+81.13
+53.99
+64.83
+KgCoOp
+[
+yao2023kgcoop
+]
+69.42
+75.74
+72.44
+95.00
+97.54
+96.25
+94.97
+73.40
+82.80
+77.31
+60.14
+67.65
++FVG-PT
+74.56
+76.01
+75.28
+94.95
+97.65
+96.28
+97.06
+74.54
+84.32
+80.44
+60.02
+68.75
+PromptSRC
+[
+khattak2023promptsrc
+]
+72.26
+75.27
+73.73
+95.53
+97.43
+96.47
+95.54
+73.48
+83.07
+79.63
+61.23
+69.23
++FVG-PT
+74.11
+75.98
+75.03
+95.37
+97.20
+96.28
+96.58
+74.47
+84.10
+81.71
+63.41
+71.41
+MMRL
+[
+guo2025mmrl
+]
+82.11
+73.98
+77.83
+95.32
+97.32
+96.31
+98.67
+76.95
+86.47
+85.19
+65.46
+74.03
++FVG-PT
+83.53
+74.94
+79.00
+95.43
+97.48
+96.44
+98.86
+77.52
+86.90
+85.42
+67.51
+75.42
+EuroSAT
+FGVCAircraft
+SUN397
+UCF101
+Method
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+Base
+New
+HM
+CoOp
+[
+zhou2022coop
+]
+88.43
+45.87
+60.41
+35.59
+31.01
+33.14
+80.21
+73.84
+76.89
+82.94
+77.72
+80.25
++FVG-PT
+89.76
+58.28
+70.67
+39.38
+35.45
+37.31
+81.55
+77.26
+79.35
+84.90
+79.66
+82.20
+KgCoOp
+[
+yao2023kgcoop
+]
+82.60
+60.38
+69.76
+34.51
+35.39
+34.94
+80.46
+76.57
+78.47
+83.82
+75.99
+79.71
++FVG-PT
+85.74
+65.00
+73.94
+36.79
+35.87
+36.32
+82.04
+76.84
+79.35
+85.63
+76.96
+81.06
+PromptSRC
+[
+khattak2023promptsrc
+]
+79.12
+58.38
+67.19
+35.95
+35.39
+35.67
+81.93
+77.86
+79.84
+83.14
+78.10
+80.54
++FVG-PT
+76.43
+61.36
+68.07
+36.61
+36.47
+36.54
+82.50
+78.13
+80.26
+83.92
+78.96
+81.36
+MMRL
+[
+guo2025mmrl
+]
+95.98
+64.08
+76.85
+45.44
+35.03
+39.56
+82.69
+79.21
+80.91
+88.11
+79.88
+83.79
++FVG-PT
+96.31
+65.38
+77.89
+48.56
+36.71
+41.81
+82.53
+79.57
+81.02
+88.73
+80.91
+84.64
+4.1
+Experimental Setup
+Datasets.
+Following mainstream prompt tuning practice
+[
+zhou2022coop
+,
+khattak2023promptsrc
+]
+,
+FVG-PT
+is evaluated by base-to-new generalization and cross-dataset transfer tasks on 11 datasets with diverse data distributions, containing ImageNet
+[
+deng2009imagenet
+]
+, Caltech101
+[
+fei2004caltech
+]
+, Food101
+[
+bossard2014food
+]
+, StanfordCars
+[
+krause2013cars
+]
+, OxfordPets
+[
+parkhi2012pets
+]
+, Flowers102
+[
+nilsback2008flowers
+]
+, DTD
+[
+cimpoi2014dtd
+]
+, EuroSAT
+[
+helber2019eurosat
+]
+, FGVCAircraft
+[
+maji2013aircraft
+]
+, SUN397
+[
+xiao2010sun
+]
+, and UCF101
+[
+soomro2012ucf101
+]
+. Crucially, to avoid
+data leakage
+,
+FVG-PT
+uses exactly the same training data as the backbone models during fine-tuning.
+Backbone Models.
+To verify the plug-and-play property of
+FVG-PT
+, we select 4 backbone models with different forms of learnable prompts as baselines. These include CoOp
+[
+zhou2022coop
+]
+with text prompts, PromptSRC
+[
+khattak2023promptsrc
+]
+with cross-modal prompts, KgCoOp
+[
+yao2023kgcoop
+]
+with external knowledge, and MMRL
+[
+guo2025mmrl
+]
+with mid-layer encoder plugins. Pipelines of the backbone models are in
+Supplementary Material
+0.B.3
+. We also compare with prompt tuning methods that consider the attention pattern of the visual encoder, namely ProGrad
+[
+zhu2023prograd
+]
+and DAPT-S
+[
+zhang2025dapt
+]
+. Furthermore, we report additional baseline comparisons in
+Supplementary Material
+0.C.2
+.
+Table 2
+:
+Cross-Dataset Transfer performance of 4 backbone models w/ or w/o our
+FVG-PT
+on 11 datasets.
+FVG-PT
+achieves performance improvements on both the ImageNet source and multiple target datasets across all backbones.
+Source
+Target
+Method
+ImgNet
+Avg.
+Caltech
+Pets
+Cars
+Flower
+Food
+Aircraft
+SUN
+DTD
+EuroSAT
+UCF
+CoOp
+71.55
+64.57
+93.67
+90.11
+64.23
+70.00
+86.52
+22.11
+65.54
+43.97
+41.49
+68.07
++FVG-PT
+72.09
+65.72
+94.16
+89.75
+65.56
+71.66
+86.77
+24.75
+66.54
+45.39
+43.77
+68.89
+KgCoOp
+71.20
+65.41
+93.96
+90.49
+65.22
+71.05
+86.37
+23.85
+66.86
+46.39
+41.41
+68.49
++FVG-PT
+72.17
+65.82
+94.04
+90.27
+65.58
+71.25
+86.55
+24.93
+66.93
+46.63
+43.24
+68.81
+PromptSRC
+72.43
+64.76
+92.13
+90.90
+65.34
+68.57
+86.12
+23.46
+66.80
+45.04
+41.25
+67.94
++FVG-PT
+72.86
+65.03
+92.29
+90.54
+65.73
+68.53
+86.14
+23.55
+66.86
+44.86
+43.10
+68.65
+MMRL
+73.70
+66.47
+94.20
+91.63
+65.78
+71.74
+85.06
+24.78
+67.26
+43.79
+51.95
+68.54
++FVG-PT
+73.91
+66.99
+94.14
+91.14
+66.46
+72.15
+86.15
+25.44
+67.42
+44.74
+53.43
+68.81
+Implementation Details.
+FVG-PT
+is fine-tuned with exactly the same input data, initialization, and hyperparameters as the backbone models. For a fair comparison, all methods adopt a 16-shot setting with
+e
+​
+p
+=
+10
+ep=10
+training epochs and learning rate
+l
+​
+r
+=
+0.0035
+lr=0.0035
+. For
+FVG-PT
+, we set the hidden dimension of the FDC bottleneck adapters to
+d
+​
+i
+​
+m
+FDC
+=
+64
+{dim}_{\text{FDC}}=64
+, the hidden dimension of both Reliability Gate MLPs to
+d
+​
+i
+​
+m
+RG
+=
+32
+{dim}_{\text{RG}}=32
+, and the temperature coefficient to
+τ
+d
+=
+2.0
+\tau_{d}=2.0
+. Based on the ablation results in Sec.
+4.3
+, we choose the weight of the FDC distillation loss
+ℒ
+dist
+\mathcal{L}_{\text{dist}}
+to
+λ
+d
+=
+10.0
+\lambda_{d}=10.0
+. Further details of the experimental settings are provided in
+Supplementary Material
+0.B
+.
+4.2
+Experimental Results
+Base-to-New Generalization.
+Following mainstream prompt tuning practice
+[
+zhou2022coop
+,
+khattak2023maple
+,
+guo2025mmrl
+]
+, each dataset splits its categories evenly into base and new classes. To prevent data leakage, we ensure that (1)
+FVG-PT
+and the backbone model use exactly the same base-class data for fine-tuning, and (2) the model only accesses the base training set during the fine-tuning stage, while inference is performed on both base and new classes. HM denotes the harmonic mean of the accuracies on base and new tasks. As reported in Tab.
+1
+,
+FVG-PT
+achieves consistent improvements on both base adaptation and new-class generalization across various forms of backbone models. Particularly, the logit-level plug-and-play structure of
+FVG-PT
+overcomes the difficulty that previous plug-and-play methods
+[
+zhang2024dept
+,
+li2025dpc
+,
+li2025augpt
+]
+face when adapting to prompt tuning with mid-layer encoder plugins
+[
+seputis2024mma
+,
+guo2025mmrl
+]
+, resulting in the improvements based on the state-of-the-art MMRL
+[
+guo2025mmrl
+]
+on multiple datasets. Error bar analysis is provided in
+Supplementary Material
+0.C.1
+.
+Cross-Dataset Transfer.
+To evaluate the generalization ability of prompt tuning across data distributions, we perform cross-dataset transfer by fine-tuning on all categories of ImageNet as the source dataset, and then conducting zero-shot inference on the remaining target datasets described in Sec.
+4.1
+using the fine-tuned model. As shown in Tab.
+2
+,
+FVG-PT
+improves the performance of all 4 backbones on the ImageNet source, indicating the effectiveness of foreground attention guidance. Moreover,
+FVG-PT
+achieves clear zero-shot gains on most target datasets, which suggests that the weight allocation scheme learned by Prior Calibration (Sec.
+3.4
+) generalizes well across different data distributions.
+Compare with Other Related Methods.
+To further verify the effectiveness of the foreground attention guidance in
+FVG-PT
+, we compare its HM performance with two prompt tuning methods that also consider visual attention in Fig.
+4
+(a), namely ProGrad
+[
+zhu2023prograd
+]
+, which implicitly regulates attention by constraining gradient propagation, and DAPT-S
+[
+zhang2025dapt
+]
+, which directly uses all foreground cues for optimization. It can be observed that
+FVG-PT
+achieves better overall performance than the others, indicating that (1) explicit foreground supervision provides more effective control over visual attention, and (2) the combination of Foreground Reliability Gate (Sec.
+3.2
+) and Foreground Distillation Compensation (Sec.
+3.3
+) guides attention toward the correct foreground regions more reliably. In addition, benefiting from its plug-and-play property,
+FVG-PT
+has the potential to further improve performance when combined with stronger backbone models.
+(a)
+Visual attention-related methods
+(b)
+λ
+d
+\lambda_{d}
+Figure 4
+:
+Base-to-new performance comparison across (a) visual attention-related prompt tuning methods and (b) different weights of the FDC distillation loss
+λ
+d
+\lambda_{d}
+.
+Table 3
+:
+Ablation study of components in
+FVG-PT
+on base-to-new tasks. Detailed ablation of losses and segmentation module are in
+Supplementary Material
+0.C.3
+.
+FRG
+FDC
+PC
+Average over 11
+ℒ
+FRG
+\mathcal{L}_{\text{FRG}}
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+ℒ
+dist
+\mathcal{L}_{\text{dist}}
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+ℒ
+KL
+\mathcal{L}_{\text{KL}}
+Base
+New
+HM
+Δ
+\Delta
+✗
+✗
+✗
+✗
+✗
+80.94
+70.03
+75.09
+(baseline)
+(1)
+✗
+✓
+✓
+✗
+✗
+81.04
+63.14
+70.98
+−
+-
+4.11
+(2)
+✗
+✗
+✗
+✓
+✓
+80.94
+73.62
+77.11
++
++
+2.02
+(3)
+✓
+✓
+✓
+✗
+✗
+82.40
+63.45
+71.69
+−
+-
+3.40
+(4)
+✗
+✓
+✓
+✓
+✓
+81.04
+73.62
+77.15
++
++
+2.06
+(5)
+✓
+✓
+✓
+✓
+✓
+82.40
+73.62
+77.76
++
++
+2.67
+4.3
+Ablation Study
+In this section, we discuss the impact of each
+FVG-PT
+sub-module, the weight of the distillation loss
+λ
+d
+\lambda_{d}
+, and the construction of learnable layers and gating indicators on model performance. The evaluation is based on base-to-new tasks of CoOp. Further experimental details can be found in
+Supplementary Material
+0.C
+.
+Validity of Proposed Components.
+Tab.
+3
+presents the contributions of each sub-module. We observe that (1) introducing
+FDC
+(Foreground Distillation Compensation, Sec.
+3.3
+) and (3) introducing both FDC and
+FRG
+(Foreground Reliability Gate, Sec.
+3.2
+) consistently improve base performance, which indicates that guiding visual attention toward the foreground benefits the target task. Meanwhile, controlling foreground quality is necessary, and (4) full model without FRG further confirms this point. However, both configurations (1) and (3) lack
+PC
+(Prior Calibration, Sec.
+3.4
+), leading to a clear drop in new-class performance, revealing a strong BNT effect. In contrast, (4) and (5) that include PC achieve significant gains on new, which shows that PC effectively mitigates BNT. The configuration of (2) enabling only PC module also demonstrates that PC fully decouples the base and new branches, eliminating the interference of base class fine-tuning on generalization. More detailed ablations in
+Supplementary Material
+0.C.3
+show that each loss term contributes positively to
+FVG-PT
+.
+Impact of FDC Distillation Loss.
+Since
+FVG-PT
+introduces an adaptive design into most of its components, we mainly examine the impact of the distillation loss weight
+λ
+d
+\lambda_{d}
+(Eqn.
+10
+) in FDC. Fig.
+4
+(b) shows that
+FVG-PT
+achieves the best HM performance when
+λ
+d
+=
+10
+\lambda_{d}=10
+. However, it is worth noting that even without adjusting
+λ
+d
+\lambda_{d}
+(for example, simply setting
+λ
+d
+=
+1
+\lambda_{d}=1
+),
+FVG-PT+CoOp
+still significantly outperforms the CoOp backbone. This result suggests that
+FVG-PT
+can achieve
+fully adaptive
+behavior with only a small performance cost.
+Table 4
+:
+HM Performance under different hidden layer dimensions.
+Hidden layer dimension
+Modules
+16
+32
+64
+128
+Adapters in FDC
+77.50
+77.53
+77.76
+77.62
+MLPs in RG
+77.68
+77.76
+77.58
+77.63
+Table 5
+:
+Performance under different numbers of layers.
+Average over 11
+Layers of
+MLPs
+Base
+New
+HM
+1
+81.90
+73.51
+77.48
+2
+82.40
+73.62
+77.76
+3
+82.28
+73.57
+77.68
+Table 6
+:
+Ablation study of indicators in
+FVG-PT
+on base-to-new tasks. Detailed ablation of losses and segmentation module are in
+Supplementary Material
+0.C.3
+.
+FRG indicators
+BRG indicators
+Average over 11
+Distribution
+Similarity
+Geometric
+Distribution
+Similarity
+Base
+New
+HM
+Δ
+\Delta
+✓
+✓
+✓
+✓
+✓
+82.40
+73.62
+77.76
+(full)
+(1)
+✗
+✓
+✓
+✓
+✓
+82.18
+73.62
+77.66
+−
+-
+0.10
+(2)
+✓
+✗
+✓
+✓
+✓
+82.23
+73.62
+77.69
+−
+-
+0.07
+(3)
+✓
+✓
+✗
+✓
+✓
+82.32
+73.62
+77.73
+−
+-
+0.03
+(4)
+✓
+✓
+✓
+✗
+✓
+82.40
+73.53
+77.71
+−
+-
+0.05
+(5)
+✓
+✓
+✓
+✓
+✗
+82.40
+73.33
+77.60
+−
+-
+0.16
+Influence of Hidden Layer Dimension.
+In this section, we study how different values of hidden dimension at initialization affect the performance of
+FVG-PT
+. As shown in Tab.
+5
+,
+FVG-PT
+achieves the highest HM score when the hidden dimension of the FDC adapters is set to
+d
+​
+i
+​
+m
+FDC
+=
+64
+{dim}_{\text{FDC}}=64
+and the hidden dimension of the MLPs in Reliability Gates (RGs) is set to
+d
+​
+i
+​
+m
+RG
+=
+32
+{dim}_{\text{RG}}=32
+. However, overall, the performance does not decrease significantly under other dimensional settings. We hypothesize that this is because prompt tuning is performed on small scale few-shot data, so relatively small hidden layers are already sufficient to model the modest foreground feature compensation in FDC and the mapping from statistics to scalar weights in RGs.
+Different MLP Depths in Reliability Gates.
+We further examine how the number of MLP layers in the RGs affects the performance of
+FVG-PT
+. Results in Tab.
+5
+show that a single-layer MLP (without a hidden layer) causes a slight drop in HM, while the performances of 2-layer and 3-layer MLPs are very similar. This observation suggests that the RGs mainly learn an approximately monotonic reliability mapping in the statistics space, so the decision function has low complexity and does not rely on strong nonlinear representations in hidden layers. In summary, the RGs are insensitive to the capacity of the MLP.
+Table 7
+:
+Computation cost of MMRL
+[
+guo2025mmrl
+]
+backbone and
+FVG-PT
+on Flowers102 dataset.
+Stage
+Learnable Params
+Tuning FPS
+↑
+\uparrow
+GPU Memory
+↓
+\downarrow
+Inference FPS
+↑
+\uparrow
+HM
+↑
+\uparrow
+MMRL
+4.99 M
+87.52
+2009.9 MB
+610.6
+80.10
+FVG-PT
+0.13 M
+153.36
+808.4 MB
+847.6
+80.75
+Effect of Indicators in Reliability Gates.
+In Tab.
+6
+, we analyze the contribution of each indicator introduced in the RGs by removing exactly one indicator at a time from the full
+FVG-PT
+model, and measuring the performance drop while keeping other indicators unchanged. We observe that removing any single indicator reduces the HM score, indicating that all of them play a positive role in constraining the foreground view quality and the CLIP prior. Meanwhile, the performance degradation remains small, suggesting that the RGs are robust and do not heavily rely on any individual indicator.
+Computational Cost.
+For prompt tuning backbones with ViT-B/16 encoders,
+FVG-PT
+activates only 0.13M trainable parameters during fine-tuning, which is more parameter-efficient than advanced baseline models. As reported in Tab.
+7
+, compared with the backbone,
+FVG-PT
+achieves advantages in terms of parameter count, memory cost, and processing FPS (Frame Per Second) during fine-tuning.
+5
+Conclusion
+We present
+FVG-PT
+, a plug-and-play prompt tuning enhancement method that exploits explicit foreground supervision. We trace the failure modes of existing prompt tuning to shifts in attention away from the foreground. To correct this shift, built on pre-tuned backbones,
+FVG-PT
+uses model-agnostic Foreground Distillation Compensation to guide visual attention under the supervision of foreground view, while a Foreground Reliability Gate is introduced to maintain the view quality. Meanwhile, to avoid BNT, Prior Calibration fully decouples the new branch from the base, and learns to balance the new branch with the CLIP prior via a Backbone Reliability Gate. During fine-tuning, the two Reliability Gates learn adaptive weighting patterns that allow the model to assess both the foreground view or the CLIP prior adaptively. Experiments confirm that
+FVG-PT
+is compatible with diverse backbones and remains consistent and robust across different hyperparameter settings, which validates its adaptive behavior.
+Limitation and Future Work.
+Although
+FVG-PT
+is compatible with most prompt tuning methods (especially mid-layer plugin approaches), a few exceptions remain.
+FVG-PT
+is not suitable for visual-only prompt tuning methods that lack a text branch (e.g., VPT
+[
+jia2022vpt
+]
+). In addition, for knowledge distillation methods that use all unlabeled images in the dataset (e.g., PromptKD
+[
+li2024promptkd
+]
+), the cost of obtaining foreground views increases significantly. As future work, we plan to further improve the adaptability of
+FVG-PT
+, for instance, by developing self-supervised variants that can better adapt to arbitrary backbones.
+References
+FVG-PT: Adaptive Foreground View-Guided Prompt Tuning for Vision-Language Models
+Supplementary Material
+FVG-PT
+is a foreground-guided plug-and-play prompt tuning enhancement method. To adaptively focus the attention of visual encoder on the image foreground,
+FVG-PT
+employs a
+Foreground Reliability Gate
+(FRG) to improve the quality of foreground supervision, a
+Foreground Distillation Compensation
+(FDC) module built on backbone models to control the focus of visual attention, and a
+Prior Calibration
+(PC) module to mitigate the BNT problem.
+In supplementary material, we provide further details on
+FVG-PT
+, including:
+•
+Appendix
+0.A
+: quantitative analysis and additional case studies of foreground attention shift in prompt tuning.
+•
+Appendix
+0.B
+: more implementation details, e.g., configurations of the SEEM semantic segmentation model and backbones, to support reproducibility.
+•
+Appendix
+0.C
+: additional experiments, including error bar analysis, data efficiency analysis, and more detailed ablations.
+•
+Appendix
+0.D
+: bad case studies that further analyze the limitations of
+FVG-PT
+and potential directions for improvement.
+Appendix 0.A
+Details of Shifts in Foreground Attention
+In Sec.
+1
+of the main text, we use attention map-based case studies in Fig.
+1
+to attribute the failure modes of prompt tuning to an attention shift of the visual encoder away from the image foreground. In this section, we further validate this conclusion through quantitative analysis and additional case studies.
+0.A.1
+Quantitative Analysis
+(a)
+Caltech101 dataset
+(b)
+Flowers102 dataset
+Figure 5
+:
+Trends of the foreground shift index and base-class accuracy for CLIP, fine-tuned CoOp, and our
+FVG-PT
+on the (a) Caltech101 and (b) Flowers102 datasets.
+Figure 6
+:
+Failure cases of (a) the original CLIP compared with (b) CoOp and (c) our
+FVG-PT
+. Attention maps of visual encoders are generated by Grad-CAM
+[
+selvaraju2017gradcam
+]
+.
+Figure 7
+:
+Failure cases of (b) CoOp compared with (a) the original CLIP and (c) our
+FVG-PT
+. Attention maps of visual encoders are generated by Grad-CAM
+[
+selvaraju2017gradcam
+]
+.
+We quantitatively evaluate how attention shifts in attention affect performance on the target task (base classes) on the entire test set of the datasets. Specifically, we define a
+foreground shift index
+based on foreground consistency, denoted as the KL divergence between the full-image and foreground prediction distributions
+D
+fg
+=
+KL
+⁡
+(
+𝐩
+full
+∥
+𝐩
+fg
+)
+D_{\text{fg}}=\operatorname{KL}\left(\mathbf{p}_{\mathrm{full}}\|\mathbf{p}_{\mathrm{fg}}\right)
+. For an input image at inference time, if the discriminative evidence for prompt tuning predictions focuses more on the foreground, then its prediction distribution on the full image should be more consistent with that on the foreground view, leading to a smaller
+D
+fg
+D_{\text{fg}}
+. In contrast, a larger
+D
+fg
+D_{\text{fg}}
+indicates that the model does not primarily rely on foreground regions for prediction, thereby reflecting an attention shift away from the main object.
+As examples, Fig.
+5
+reports the foreground shift index and base-class performance for 3 progressively refined models, namely the foundation CLIP
+[
+radford2021clip
+]
+, fine-tuned CoOp
+[
+zhou2022coop
+]
+built on CLIP, and
+FVG-PT
+that further focuses on the foreground based on CoOp. We observe that the base performance increases while the foreground shift index decreases. In other words, for CoOp and
+FVG-PT
+, the attention shift with respect to the image foreground is gradually corrected, which in turn leads to higher accuracy than CLIP.
+0.A.2
+More Visualization Results
+In this section, building on Fig.
+1
+in the main text, we present additional Grad-CAM based attention visualizations as case studies to illustrate the failure modes of CLIP and CoOp. Fig.
+6
+reports examples where CLIP makes incorrect predictions while CoOp succeeds, and Fig.
+7
+reports cases where CoOp fails but CLIP predicts correctly.
+Across these images, the attention maps exhibit a pattern similar to Fig.
+1
+, that is, for misclassified examples, the visual encoder tends to shift attention away from the foreground. This observation motivates
+FVG-PT
+, which guides the visual encoder to correct such shifts in attention, and thereby improves prediction accuracy.
+Appendix 0.B
+More Implementation Details
+0.B.1
+Experimental Setup
+Table 8
+:
+Training settings of backbones on base-to-new tasks.
+Params
+CoOp
+KgCoOp
+PromptSRC
+MMRL
+Depth of text prompt
+1
+1
+9
+-
+Depth of visual prompt
+-
+-
+9
+-
+Text token length
+4
+4
+4
+5
+Visual token length
+-
+-
+4
+5
+Layers that insert learnable tokens
+1
+1
+1-9
+6-12
+Optimizer
+SGD
+SGD
+SGD
+AdamW
+As a plug-and-play module,
+FVG-PT
+is evaluated on 4 prompt tuning backbones
+[
+zhou2022coop
+,
+yao2023kgcoop
+,
+khattak2023promptsrc
+,
+guo2025mmrl
+]
+that all use a ViT-B/16-based CLIP as the foundation model. It shares exactly the same fine-tuning data and initialization parameters with each backbone to ensure a fair comparison. The basic hyperparameters of the backbones are summarized in Tab.
+8
+, and their architectures and initialization procedures are detailed in
+Supplementary Material
+0.B.3
+. For the learnable parameters in prompt tuning, CoOp
+[
+zhou2022coop
+]
+and KgCoOp
+[
+yao2023kgcoop
+]
+are randomly initialized from a zero-mean Gaussian
+X
+∼
+𝒩
+​
+(
+0
+,
+0.02
+2
+)
+X\sim\mathcal{N}(0,0.02^{2})
+. PromptSRC
+[
+khattak2023promptsrc
+]
+is initialized from the tokenized prompt template “A photo of a [CLASS]”, and MMRL
+[
+guo2025mmrl
+]
+uses the same Gaussian initialization
+X
+∼
+𝒩
+​
+(
+0
+,
+0.02
+2
+)
+X\sim\mathcal{N}(0,0.02^{2})
+for the mid-layer encoder plugins, with the representation space for cross-modal feature interaction set to dimension 512. We use SEEM (
+Supplementary Material
+0.B.2
+) to pre-construct offline foreground masks.
+During fine-tuning, we set the batch size to
+b
+​
+s
+=
+4
+bs=4
+and use
+b
+​
+s
+=
+100
+bs=100
+for inference. For MMRL, the weight of the FDC distillation loss (Sec.
+3.3
+of the main text) is set to
+λ
+d
+=
+5.0
+\lambda_{d}=5.0
+, while other models use
+λ
+d
+=
+10.0
+\lambda_{d}=10.0
+. For the cross-dataset transfer experiments, we follow the PromptSRC protocol and fine-tune on ImageNet using all categories with
+e
+​
+p
+=
+5
+ep=5
+and
+l
+​
+r
+=
+0.0035
+lr=0.0035
+. All experiments are conducted on a single NVIDIA V100 GPU with 3 runs on each dataset.
+Table 9
+:
+Textual prompts used in SEEM model for generating foreground masks.
+Dataset
+SEEM Textual Prompt
+ImageNet
+The whole [CLASS] in the middle.
+Caltech101
+A huge [CLASS].
+Food101
+The whole [CLASS] in the middle.
+StanfordCars
+A huge and whole car.
+OxfordPets
+The pet in the middle.
+Flowers102
+The flower in the middle.
+DTD
+The [CLASS].
+EuroSAT
+The satellite [CLASS].
+FGVCAircraft
+The huge airplane in the middle.
+SUN397
+The [CLASS].
+UCF101
+The people with [CLASS].
+Figure 8
+:
+Illustration of the foreground mask generated by SEEM
+[
+zou2023seem
+]
+, where (a) shows the raw image and (b) presents the corresponding foreground mask visualization.
+0.B.2
+Details of Segmentation Model
+In this paper, we use an advanced pretrained SEEM
+[
+zou2023seem
+]
+semantic segmentation model as an optional approach to obtain pixel-level foreground masks. SEEM (Segment Everything Everywhere All at Once) is a promptable and interactive general segmentation model that accepts an image and a textual prompt as input and supports a variety of segmentation tasks in a unified manner. Specifically, we use a strategy similar to DAPT
+[
+zhang2025dapt
+]
+, directly using
+the simplest, un-optimized textual prompts
+as queries to generate foreground views, as summarized in Tab.
+9
+. For fine-grained object names that SEEM may find difficult to recognize (e.g., specific car models in StanfordCars or animal breeds in OxfordPets), we use same object name (e.g., “car” or “pet”) across the entire dataset.
+It is important to note that, because
+FVG-PT
+can adaptively assess foreground quality through FRG, the prompts used for SEEM do not require careful manual design or optimization. During fine-tuning, the data processing speed of SEEM is
+∼
+190
+\sim 190
+FPS, which does not constitute a computational bottleneck.
+0.B.3
+FVG-PT Optimization for Backbones
+In this section, we briefly introduce the frameworks of the 4 backbones used by
+FVG-PT
+and explain how
+FVG-PT
+integrates seamlessly with them.
+CoOp
+[
+zhou2022coop
+]
+.
+CoOp directly introduces a set of randomly initialized learnable prompt tokens to replace the fixed textual template “A photo of a [CLASS]” in the foundation CLIP and is fine-tuned with the cross-entropy loss
+ℒ
+CE
+\mathcal{L}_{\mathrm{CE}}
+. Since CoOp performs image-text alignment directly after the standard ViT encoders,
+FVG-PT
+attaches the FDC adapters and the PC branch to the CoOp image-text encoders and then performs foreground-guided fine-tuning on top of the pre-tuned CoOp backbone.
+KgCoOp
+[
+yao2023kgcoop
+]
+.
+KgCoOp uses the same learnable parameters as CoOp, but integrates prior textual prompt templates as additional knowledge and applies a knowledge-guided loss
+ℒ
+KG
+\mathcal{L}_{\mathrm{KG}}
+based on minimizing Euclidean distance together with the standard cross-entropy loss
+ℒ
+CE
+\mathcal{L}_{\mathrm{CE}}
+for fine-tuning. Since this injected knowledge does not alter the original image-text feature embedding pattern of the ViT encoders,
+FVG-PT
+inserts its modules into KgCoOp in the same way as in CoOp and performs foreground-guided fine-tuning on the frozen pre-tuned KgCoOp backbone.
+PromptSRC
+[
+khattak2023promptsrc
+]
+.
+PromptSRC is a cross-modal prompting model that adopts the IVLP
+[
+rasheed2023ivlp
+]
+setting, where modality-specific prompt vectors are independently injected into the visual and textual branches, and inserted into both the model input and the first
+K
+K
+layers of the 12 Transformer blocks in the ViT encoder. During fine-tuning, in addition to the standard cross-entropy loss
+ℒ
+CE
+\mathcal{L}_{\mathrm{CE}}
+, PromptSRC introduces 3 consistency-based losses to alleviate the BNT problem
+[
+li2025dpc
+]
+, which are consistency between prompts and their corresponding modality features (
+ℒ
+SCL
+−
+image
+\mathcal{L}_{\mathrm{SCL-image}}
+and
+ℒ
+SCL
+−
+text
+\mathcal{L}_{\mathrm{SCL-text}}
+) and consistency between the logits after cross-modal interaction (
+ℒ
+SCL
+−
+logits
+\mathcal{L}_{\mathrm{SCL-logits}}
+). When initializing
+FVG-PT
+, we load and freeze all prompt vectors from the pre-tuned PromptSRC backbone, and then append branch-specific FDC adapters and PC branches after the last Transformer block of the corresponding encoders in the visual and textual branches.
+Table 10
+:
+Error bar analysis of
+FVG-PT
+on 4 backbone models.
+Method
+Avg.
+ImageNet
+Caltech101
+Food101
+StanfordCars
+OxfordPets
+CoOp
+75.09
+72.27
+96.20
+90.81
+69.43
+96.07
++FVG-PT
+77.16 (±0.20)
+73.28 (±0.02)
+96.42 (±0.02)
+90.57 (±0.01)
+74.66 (±0.22)
+95.81 (±0.14)
+KgCoOp
+76.88
+73.10
+96.16
+91.12
+72.44
+96.25
++FVG-PT
+78.10 (±0.15)
+73.55 (±0.04)
+96.48 (±0.03)
+90.84 (±0.03)
+75.28 (±0.17)
+96.28 (±0.04)
+PromptSRC
+77.24
+73.66
+96.12
+91.27
+73.73
+96.47
++FVG-PT
+77.89 (±0.12)
+73.82 (±0.01)
+96.32 (±0.02)
+91.25 (±0.03)
+75.03 (±0.07)
+96.28 (±0.03)
+MMRL
+80.10
+74.48
+96.43
+90.75
+77.83
+96.31
++FVG-PT
+80.75 (±0.11)
+74.48 (±0.02)
+96.49 (±0.03)
+90.64 (±0.06)
+79.00 (±0.14)
+96.44 (±0.05)
+Method
+Flowers102
+DTD
+EuroSAT
+FGVCAircraft
+SUN397
+UCF101
+CoOp
+82.18
+60.01
+60.41
+33.14
+76.89
+80.25
++FVG-PT
+85.04 (±0.19)
+64.83 (±0.80)
+70.67 (±0.12)
+37.31 (±0.32)
+79.35 (±0.17)
+82.20 (±0.18)
+KgCoOp
+82.80
+67.65
+69.76
+34.94
+78.47
+79.71
++FVG-PT
+84.32 (±0.26)
+68.75 (±0.65)
+73.94 (±0.08)
+36.32 (±0.19)
+79.35 (±0.13)
+81.06 (±0.11)
+PromptSRC
+83.07
+69.23
+67.19
+35.67
+79.84
+80.54
++FVG-PT
+84.10 (±0.16)
+71.41 (±0.41)
+68.07 (±0.19)
+36.54 (±0.15)
+80.26 (±0.07)
+81.36 (±0.23)
+MMRL
+86.47
+74.03
+76.85
+39.56
+80.91
+83.79
++FVG-PT
+86.90 (±0.25)
+75.42 (±0.34)
+77.89 (±0.02)
+41.81 (±0.17)
+81.02 (±0.02)
+84.64 (±0.09)
+MMRL
+[
+guo2025mmrl
+]
+.
+MMRL adapts to downstream tasks by introducing learnable mid-layer plugins into the encoders of the image and text branches. Unlike the above models, MMRL uses a fixed prompt template at the input, and constructs a shared cross-modal representation space to learn task-specific features, which are projected into the last
+K
+K
+Transformer blocks of the two branches. To integrate with this type of model,
+FVG-PT
+does not modify the mid-layer feature transformation and embedding process. Instead, it takes the final-block features from the MMRL-optimized image and text encoders and feeds them into the respective FDC adapters and PC branches.
+It is also worth noting that MMRL applies different feature processing pipelines to the base and new branches. Since the PC branch in
+FVG-PT
+for new classes is fully decoupled from the base branch, we do not alter the original MMRL branches. Rather, for each branch, we perform additional foreground-guided fine-tuning on the logits after image-text interaction.
+Table 11
+:
+Comparison with additional prompt tuning baselines.
+Avg. over 11
+Method
+Model
+Base
+New
+HM
+zero-shot
+CLIP
+[
+radford2021clip
+]
+69.34
+74.22
+71.70
+prompt
+optimization
+CoCoOp
+[
+zhou2022cocoop
+]
+80.47
+71.69
+75.83
+ProDA
+[
+lu2022proda
+]
+81.56
+72.30
+76.65
+MaPLe
+[
+khattak2023maple
+]
+82.28
+75.14
+78.55
+knowledge
+integration
+KAPT
+[
+kan2023kapt
+]
+78.41
+70.45
+74.22
+KDPL
+[
+mistretta2024kdpl
+]
+77.11
+71.61
+74.26
+mid-layer
+plugins
+CLIP-Adapter
+[
+gao2024clipadapter
+]
+80.83
+72.93
+76.67
+TCP
+[
+yao2024tcp
+]
+84.13
+75.36
+79.51
+MMA
+[
+seputis2024mma
+]
+83.20
+76.80
+79.87
+FVG-PT+MMRL
+[
+guo2025mmrl
+]
+86.04
+76.06
+80.75
+Appendix 0.C
+More Experimental Results
+0.C.1
+Error Bar Analysis
+To assess the robustness of
+FVG-PT
+under different random seeds, we fine-tune
+FVG-PT
+with
+s
+​
+e
+​
+e
+​
+d
+=
+1
+,
+2
+,
+3
+seed=1,2,3
+for splitting the data, and run 3 trials accordingly. To avoid data leakage, the same seeds are also used for the backbone models so that
+FVG-PT
+and the corresponding backbones always see exactly the same sampled data in each run. The results of base-to-new tasks are reported in Tab.
+10
+, including both the mean performance and the standard deviation (SD).
+In most datasets,
+FVG-PT
+reports relatively small standard deviations, indicating stable behavior under different fine-tuning conditions. For some fine-grained datasets (e.g., Flowers102, DTD, and FGVCAircraft), the standard deviation is slightly larger. A possible explanation is that the quality of the foreground views is less stable on fine-grained categories, so different splits provide different amounts of reliable foreground information for
+FVG-PT
+(which interacts with the FRG-based quality control) and leads to performance fluctuation. Even in these cases, the overall performance of
+FVG-PT
+remains consistently higher than that of the backbone models.
+0.C.2
+Compare with More Baselines
+To further highlight the performance advantages of our
+FVG-PT
+, Tab.
+11
+reports the average HM performance on base-to-new tasks for zero-shot CLIP and mainstream prompt tuning models. These models include CoCoOp
+[
+zhou2022cocoop
+]
+, ProDA
+[
+lu2022proda
+]
+, MaPLe
+[
+khattak2023maple
+]
+, KAPT
+[
+kan2023kapt
+]
+, KDPL
+[
+mistretta2024kdpl
+]
+, CLIP-Adapter
+[
+gao2024clipadapter
+]
+, TCP
+[
+yao2024tcp
+]
+, and MMA
+[
+seputis2024mma
+]
+. We observe that the combination of
+FVG-PT
+and MMRL achieves higher performance than all of the above models, thereby demonstrating its superiority.
+Table 12
+:
+Ablation study of losses in
+FVG-PT
+on base-to-new tasks.
+FRG
+FDC
+PC
+Average over 11
+ℒ
+FRG
+\mathcal{L}_{\text{FRG}}
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+ℒ
+dist
+\mathcal{L}_{\text{dist}}
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+ℒ
+KL
+\mathcal{L}_{\text{KL}}
+Base
+New
+HM
+Δ
+\Delta
+✗
+✗
+✗
+✗
+✗
+80.94
+70.03
+75.09
+(baseline)
+(6)
+✓
+✗
+✓
+✓
+✓
+81.01
+73.62
+77.14
++ 2.05
+(7)
+✓
+✓
+✗
+✓
+✓
+81.56
+73.62
+77.38
++ 2.29
+(8)
+✓
+✓
+✓
+✗
+✓
+82.40
+72.58
+77.18
++ 2.09
+(9)
+✓
+✓
+✓
+✓
+✗
+82.40
+71.11
+76.33
++ 1.24
+✓
+✓
+✓
+✓
+✓
+82.40
+73.62
+77.76
+(full)
+0.C.3
+Detailed Ablation Study
+Losses of
+FVG-PT
+.
+Building on Tab.
+3
+in the main text, this section presents a more fine-grained loss-level ablation to validate the effectiveness of each loss in
+FVG-PT
+. Specifically, we study 5 losses used during fine-tuning:
+ℒ
+FRG
+\mathcal{L}_{\text{FRG}}
+in the FRG module (Sec.
+3.2
+of the main text) for training the adaptive foreground trust score,
+ℒ
+dist
+\mathcal{L}_{\text{dist}}
+and
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+in the FDC module (Sec.
+3.3
+of the main text) for guiding attention toward the foreground view, and
+ℒ
+CE
+\mathcal{L}_{\text{CE}}
+and
+ℒ
+KL
+\mathcal{L}_{\text{KL}}
+in the PC module of the new branch (Sec.
+3.4
+of the main text) for BRG to learn the weight assigned to the CLIP prior.
+Tab.
+12
+shows that removing any one of these losses prevents the model from reaching its best performance, which indicates that all five losses contribute positively to the fine-tuning of
+FVG-PT
+. Among them, the KL loss in PC module has the most pronounced impact on new-class accuracy, suggesting that aligning the weighted distribution
+𝐩
+PC
+\mathbf{p}_{\text{PC}}
+with the CLIP prior
+𝐩
+CLIP
+\mathbf{p}_{\text{CLIP}}
+is crucial for strong generalization on the new branch.
+Table 13
+:
+Ablation study of the branches of FDC adapters (Sec.
+3.3
+) in
+FVG-PT
+on base-to-new tasks.
+Average over 11
+Method
+Branch
+Base
+New
+HM
+Δ
+\Delta
+CoOp
+-
+80.94
+70.03
+75.09
+(baseline)
++FVG-PT
+visual + textual
+82.40
+73.62
+77.76
++2.67
+visual only
+81.80
+73.62
+77.49
++2.40
+Table 14
+:
+Ablation study of the ViT encoders of foundation CLIP used in CoOp
+[
+zhou2022coop
+]
+and
+FVG-PT
+on base-to-new tasks.
+Average over 11
+Foundation
+CLIP
+Method
+Base
+New
+HM
+Δ
+\Delta
+ViT-B/16
+CoOp
+80.94
+70.03
+75.09
++FVG-PT
+82.40
+73.62
+77.76
++2.67
+ViT-L/14
+CoOp
+83.40
+75.05
+79.01
++FVG-PT
+83.98
+80.39
+82.15
++3.14
+Table 15
+:
+Failure case study of
+FVG-PT
+on EuroSAT dataset.
+EuroSAT
+Method
+epoch
+Base
+New
+HM
+Δ
+\Delta
+CoOp
+10
+88.43
+45.87
+60.41
++FVG-PT
+10
+72.62
+58.15
+64.58
++4.18
+15
+86.98
+58.21
+69.74
++9.34
+20
+89.76
+58.28
+70.67
++10.27
+Figure 9
+:
+Data efficiency analysis using different proportions of the 11 datasets as the training set on base-to-new tasks.
+Adapters in Image and Text Branches.
+In Sec.
+3.3
+of the main text,
+FVG-PT
+introduces separate adapters with non-shared parameters into both the visual and textual branches of the FDC module to learn a foreground-oriented feature re-projection. To verify the necessity of this design, we report an ablation on adapters in Tab.
+13
+. Specifically, since feature re-projection in the visual branch is necessary, we construct a variant that removes the adapter from the text branch while keeping all other fine-tuning settings unchanged. We observe that
+FVG-PT
+with a visual-only adapter shows lower base performance than the dual-branch adapter configuration. This result indicates that inserting adapters into both the visual and textual branches helps
+FVG-PT
+maintain cross-modal alignment during fine-tuning.
+Scaling of ViT Encoders in Foundation CLIP.
+In this section, we adopt more powerful ViT-L/14 encoders in CLIP as the foundation model for both the CoOp backbone and
+FVG-PT
+to assess the performance gain of
+FVG-PT
+on a scaled CLIP. Results in Tab.
+14
+show that
+FVG-PT
+achieves clear improvements over the CoOp backbone under both encoder settings, with a larger boost on new classes when using ViT-L/14. This observation suggests that a stronger CLIP prior allows
+FVG-PT
+to unlock better generalization on new classes.
+0.C.4
+Data Efficiency Analysis
+In this section, we examine how the performance of
+FVG-PT
+and the CoOp backbone varies under different proportions of training data (25%, 50%, 75%, 100%). To avoid data leakage,
+FVG-PT
+is always fine-tuned on top of a CoOp backbone trained with exactly the same subset of data. Fig.
+9
+shows that
+FVG-PT
+already matches the HM performance of CoOp with full data when only 50% of the training samples are used, which indicates that
+FVG-PT
+achieves better data efficiency and requires fewer image-text pairs to reach a similar accuracy level.
+Appendix 0.D
+Failure Case Study
+Performance Degradation of
+FVG-PT
++CoOp on EuroSAT.
+In the experiments of
+FVG-PT
++CoOp, we observe that using the default configuration in Sec.
+3.1
+of the main text leads to a severe drop in base performance on EuroSAT dataset, from 88.43 to 72.62 (
+−
+15.81
+-15.81
+points). We attribute this behavior to the very limited data scale on EuroSAT, where the base set contains only 5 classes, and the 16-shot setting provides only 80 image-text pairs for prompt tuning. This scale is much smaller than the amount of learnable parameters in the FDC adapters (0.06M, Sec.
+3.3
+of the main text), which causes underfitting during fine-tuning and degrades the alignment of the re-projected features. As supporting evidence, the new-class branch of
+FVG-PT
+, which has only 0.19K learnable parameters, achieves a clear improvement on new classes under the same setting.
+To mitigate this degradation, Tab.
+15
+evaluates a simple solution that increases the number of training epochs from 10 to 15 and 20. The results show that with
+e
+​
+p
+=
+20
+ep=20
+,
+FVG-PT
+achieves higher base performance than CoOp and also better new generalization than the
+e
+​
+p
+=
+10
+ep=10
+setting, resulting in an HM improvement of 10.27 points over the CoOp backbone. Therefore, in the main experiments (Tab.
+1
+and Tab.
+2
+of the main text), we set
+e
+​
+p
+=
+20
+ep=20
+for EuroSAT on the CoOp backbone and
+FVG-PT
+for a better performance. Since EuroSAT contains very few samples, increasing the number of epochs does not noticeably increase the computational cost.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+</body>
+</html>
