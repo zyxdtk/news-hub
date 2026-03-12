@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentar-Fin-OCR - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Agentar-Fin-OCR</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-03-11</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2603.11044" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Agentar-Fin-OCR</h4>
+            <p><strong>中文摘要：</strong> 暂无摘要</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>\reportnumber
+001
+1
+1
+footnotetext:
+Equal contribution.
+2
+2
+footnotetext:
+Corresponding to minghua.zp@antgroup.com
+Agentar-Fin-OCR
+Siyi Qian
+∗
+Xiongfei Bai
+∗
+Bingtao Fu
+   Yichen Lu
+   Gaoyang Zhang
+   Xudong Yang
+   Peng Zhang
+†
+Ant Group
+{
+siyi.qsy
+,
+baixiongfei.bxf
+,
+biaotao.bf
+,
+luyichen.lyc
+,
+zgy528076
+,
+jiegang.yxd
+,
+minghua.zp
+}@antgroup.com
+Abstract
+In this paper, we propose
+Agentar-Fin-OCR
+, a document parsing system tailored to financial-domain documents, transforming ultra-long financial PDFs into semantically consistent, highly accurate, structured outputs with auditing-grade provenance. To address finance-specific challenges such as complex layouts, cross-page structural discontinuities, and cell-level referencing capability,
+Agentar-Fin-OCR
+combines (1) a Cross-page Contents Consolidation algorithm to restore continuity across pages and a Document-level Heading Hierarchy Reconstruction (DHR) module to build a globally consistent Table of Contents (TOC) tree for structure-aware retrieval, and (2) a difficulty-adaptive curriculum learning training strategy for table parsing, together with a CellBBoxRegressor module that uses structural anchor tokens to localize table cells from decoder hidden states without external detectors. Experiments demonstrate that our model shows high performance on the table parsing metrics of OmniDocBench. To enable realistic evaluation in the financial vertical, we further introduce
+FinDocBench
+, a benchmark that includes six financial document categories with expert-verified annotations and evaluation metrics including Table of Contents edit-distance-based similarity (TocEDS), cross-page concatenated TEDS, and Table Cell Intersection over Union (C-IoU). We evaluate a wide range of state-of-the-art models on
+FinDocBench
+to assess their capabilities and remaining limitations on financial documents. Overall,
+Agentar-Fin-OCR
+and
+FinDocBench
+provide a practical foundation for reliable downstream financial document applications.
+1
+Introduction
+Document parsing
+zhang2024document
+;
+li2025monkeyocr
+;
+niu2025mineru2
+;
+feng2025dolphin
+extracts machine-readable data from unstructured files like PDFs. As a core component of document intelligence, it is essential for powering Retrieval-Augmented Generation (RAG)
+lewis2020retrieval
+;
+gao2023retrieval
+;
+jiang2023active
+pipelines with structured, reliable context. Although recent research has explored a variety of approaches, including pipeline-based frameworks, multi-stage systems, and Multimodal Large Language Model (MLLM)
+achiam2023gpt
+;
+qwen2.5
+;
+bai2025qwen3
+end-to-end solutions. Although existing frameworks have already achieved substantial results in page-level analysis, most document parsing models and benchmarks
+zhong2019publaynet
+;
+pfitzmann2022doclaynet
+;
+ouyang2025omnidocbench
+continue to focus predominantly on treating pages as isolated entities. This narrow focus fails to capture the global logical flow and hierarchical structure of long documents, leading to semantic fractures and a loss of vital context.
+In the financial and insurance domain, document parsing must satisfy much stricter business requirements, including accurate understanding of business scenarios, high-precision information extraction, and audit traceability. Unlike general documents, financial materials are characterized by their vast diversity and extreme length, ranging from A-share, Hong Kong, and US annual reports to audit reports and prospectuses that often span hundreds of pages. Despite the progress in existing methods, they have seen limited practical adoption in real financial scenarios due to their insufficient alignment with industry requirements. Financial document parsing introduces several unique challenges:
+•
+Layout Complexity
+: Financial documents often use multi-column designs; standard parsers frequently read across columns, incorrectly merging unrelated text and destroying semantic meaning.
+•
+Semantic Fragmentation and Hierarchical Disconnect:
+Financial documents are intrinsically governed by a rigorous, multi-level structural logic. However, physical pagination forcefully severs headers from their corresponding clauses, fragmenting this global hierarchy. When downstream applications like RAG and DocQA
+mathew2021docvqa
+;
+mathew2022infographicvqa
+rely on isolated page-level parsing, they suffer from severe context loss.
+•
+Visual Reference Requirements
+: Unlike general documents, financial institutions require reliable source referencing over intricate tables like financial statements, requiring every data point to be mapped back to precise page coordinates or specific table cells for visual auditing and compliance.
+•
+Absence of Financial Document Benchmark
+: Existing document parsing benchmarks focus on general or academic contents, failing to represent the unique structural challenges and precision needs of the financial sector.
+To comprehensively evaluate these capabilities under financial scenarios, we further construct
+FinDocBench
+, a document parsing benchmark oriented to financial vertical. FinDocBench comprises six distinct sub-categories of financial documents, accompanied by meticulously human-labeled and expert-verified annotations. As mentioned above, the data embodies the characteristics of financial documentation: extreme length, hierarchical headings, complex layouts, intricate cross-page tables and precise table cell localization. Alongside the dataset, we further introduce a corresponding evaluation pipeline to measure model capability when facing the mentioned challenges, including a new metric,
+Table of Contents edit-distance-based similarity
+(TocEDS), tree edit-distance-based similarity (TEDS) of concatenated cross-page tables and normalized edit distance (NED).
+In summary, this work presents a financial scenario oriented document parsing system designed to meet the strict, precise, and auditable requirements of real‑world financial enterprise workflows.
+Our contributions are as follows:
+•
+Document-level Parsing.
+To handle the structural complexity of financial documents, we propose a document-level content reconstruction algorithm with two core components: cross-page contents consolidation, which semantically concatenates cross-page text blocks and tables; and document-level heading hierarchy reconstruction, which reassigns heading levels across the entire document to ensure structural consistency.
+•
+Precision Table Parsing with Visual Reference.
+To address the structural complexity of financial tables, we adopt a curriculum based difficulty adaptive sampling to ensure table parsing accuracy; and a cell-level visual reference that localizes cells via structural anchor token hidden states and regresses them into bounding boxes to enable finance-grade visual auditing for compliance-critical workflows.
+•
+Financial vertical document parsing benchmark: FinDocBench.
+To evaluate parsing models in real-world financial scenarios, we introduce FinDocBench, covering diverse documents with quintessential financial characteristics and the corresponding evaluation pipeline.
+2
+Related Work
+This section surveys the existing landscape of document parsing technologies, covering general-purpose OCR frameworks
+cui2025paddleocr3
+;
+cui2025paddleocr
+;
+niu2025mineru2
+;
+team2025hunyuanocr
+, layout analysis models
+zhao2024doclayoutyoloenhancingdocumentlayout
+, table structure recognition methods
+Zhong2019ImagebasedTR
+;
+smock2022pubtables
+, and multimodal large language models for document understanding
+wang2024docllm
+;
+ye2023mplug
+. We identify key limitations of current approaches when applied to financial scenarios: single-page processing, absence of cross-page semantic linking, and no audit traceability.
+2.1
+Traditional OCR Pipelines
+Early approaches to document parsing primarily relied on modular pipelines, which decouple the process into text detection, recognition, and layout analysis. Traditional engines like Tesseract
+smith2007overview
+and ABBYY FineReader
+abbyy_finereader_software
+laid the foundation by focusing on character-level accuracy. More recently, frameworks such as PaddleOCR
+cui2025paddleocr3
+have gained significant traction. Specifically, PaddleOCR’s PP-OCR series
+du2020pp
+provides a robust, lightweight pipeline for multi-language recognition, while its PP-Structure module
+li2022pp
+introduces sophisticated tools for layout analysis and table recovery.
+Furthermore, the integration of deep learning led to the development of layout-aware models like LayoutLM (v1-v3)
+xu2020layoutlm
+;
+xu2021layoutlmv2
+;
+huang2022layoutlmv3
+and LayoutXLM
+xu2021layoutxlm
+, which utilize spatial coordinates and visual features as additional embeddings. While these models excel at identifying localized components (e.g., headers, footers, or individual table cells), they still operate within a “detect-then-recognize” paradigm. This modularity often leads to error accumulation across stages—where a minor detection flaw propagates into a semantic error. Crucially, even advanced frameworks like PaddleOCR are typically optimized for single-page processing. In financial contexts, they often fail to maintain semantic coherence when a single table spans multiple pages or when a financial term requires a cross-page definition, and they lack the intrinsic referencing capability needed to link extracted data back to its specific pixel-level origin for auditing purposes.
+2.2
+General Vision Language Models
+The emergence of Vision Language Models (VLMs), such as commercial GPT series
+achiam2023gpt
+, Gemini family
+team2023gemini
+and open-source Qwen collection
+wang2024qwen2
+;
+qwen2.5
+;
+bai2025qwen3
+, has demonstrated remarkable zero-shot capabilities in document reasoning. These models treat document images as visual inputs and leverage the linguistic power of LLMs to interpret contents. However, general VLMs are often criticized for their “hallucination” tendencies regarding numerical data
+chen2021finqa
+;
+li2023evaluating
+, which is a critical failure point for financial auditing. Moreover, their architectural design is usually optimized for natural scenes rather than document-specific features like small-font footnotes or complex cross-cell dependencies in tables.
+2.3
+OCR Specialized Vision Language Models
+To bridge the gap between general vision and precise text extraction, recent research has pivoted towards OCR-specialized VLMs. Models like Donut
+kim2022ocr
+and Nougat
+blecher2023nougat
+proposed an end-to-end Transformer architecture that maps document images directly to structured markups (e.g., JSON or LaTeX) without intermediate OCR steps. More recently, models such as Vary
+wei2024vary
+and GOT-OCR
+wei2024general
+have enhanced the resolution and granularity of visual encoders to handle high-density text. Despite their progress, these models are predominantly designed for single-page or snippet-level processing. They lack the mechanism to handle long-form financial documents where semantic coherence must be maintained across dozens of pages.
+3
+Method
+3.1
+Overall Framework
+As show in Figure
+1
+, our framework transforms complex, unstructured financial documents into high-fidelity, machine-readable formats while maintaining a rigorous, end-to-end audit trail. To preserve semantic and structural continuity across fragmented layouts, the pipeline integrates cross-page consolidation with a Document-level Heading Hierarchy Reconstruction (DHR) module, which leverages multimodal features to reconstruct a coherent document-level heading hierarchy, serving as the document’s unified structural skeleton. For dense data extraction, we employ curriculum-based table parsing to adaptively handle structural complexity and utilize a novel “structural anchor token” mechanism to enable direct cell-level spatial grounding from decoder hidden states. By mapping extracted data units back to their original visual coordinates without auxiliary detectors, this unified approach ensures the precision, narrative integrity, and empirical referencing capability required for professional financial table auditing.
+Figure 1
+:
+Agentar-Fin-OCR overall architecture.
+3.2
+Cross-page Contents Consolidation
+To ensure linguistic and structural continuity, we implement a consolidation mechanism that transforms disjointed pages into a fluid semantic content. This process employs semantic restoration logics for unstructured text and structured tables:
+•
+Cross-page Text Merge
+: The system identifies cross-page text fragments at page boundaries, stripping away non-content elements such as headers and footers before merging the body text with the leading contents of the subsequent page to maintain syntactic and contextual integrity.
+•
+Cross-page Table Merge
+:
+To ensure the structural integrity of long financial document with cross-page tables, we implement an adaptive heuristic-based splicing mechanism. A table fragment
+T
+n
+T_{n}
+on page
+n
+n
+is evaluated for merging with
+T
+n
++
+1
+T_{n+1}
+on the succeeding page based on three hierarchical criteria:
+(i)
+Structural Alignment
+: The column dimensions must be strictly consistent, i.e.,
+Dim
+(
+T
+n
+.
+c
+o
+l
+s
+)
+=
+Dim
+(
+T
+n
++
+1
+.
+c
+o
+l
+s
+)
+\text{Dim}(T_{n}.cols)=\text{Dim}(T_{n+1}.cols)
+.
+(ii)
+Contextual Proximity
+: To ensure physical continuity, the set of intervening semantic elements
+E
+E
+between fragments (excluding non-content artifacts such as page headers and footers) must be empty(
+E
+=
+∅
+E=\emptyset
+).This condition confirms that the table fragments are not separated by unrelated discourse or structural interruptions.
+(iii)
+Adaptive Header Splicing
+: Upon satisfying (i) and (ii), the merging strategy adapts to the header content:
+(a)
+Homogeneous Splicing
+: If
+T
+n
++
+1
+T_{n+1}
+lacks a header or possesses one identical to
+T
+n
+T_{n}
+, it is treated as a seamless continuation. The redundant header is discarded, and only the
+&lt;tbody&gt;
+is appended.
+(b)
+Heterogeneous Splicing
+: If
+T
+n
++
+1
+T_{n+1}
+contains a distinct header, it indicates a categorical transition within the same structural entity. The entire fragment
+T
+n
++
+1
+T_{n+1}
+is merged into
+T
+n
+T_{n}
+to preserve the sub-header information.The table cases are shown in Appendix
+A
+.
+The formal reconstruction procedure is detailed in Algorithm
+1
+.
+Algorithm 1
+Adaptive Cross-page Table Reconstruction
+1:
+Sequence of table fragments
+𝒯
+=
+{
+T
+1
+,
+T
+2
+,
+…
+,
+T
+k
+}
+\mathcal{T}=\{T_{1},T_{2},\dots,T_{k}\}
+2:
+A set of unified tables
+ℳ
+\mathcal{M}
+3:
+ℳ
+←
+∅
+,
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+←
+T
+1
+\mathcal{M}\leftarrow\emptyset,T_{anchor}\leftarrow T_{1}
+4:
+for
+i
+=
+2
+i=2
+to
+k
+k
+do
+5:
+T
+n
+​
+e
+​
+x
+​
+t
+←
+T
+i
+T_{next}\leftarrow T_{i}
+6:
+// (i) &amp; (ii) Preliminary Constraint Check
+7:
+C
+a
+​
+l
+​
+i
+​
+g
+​
+n
+←
+(
+Dim
+(
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+.
+c
+o
+l
+s
+)
+=
+Dim
+(
+T
+n
+​
+e
+​
+x
+​
+t
+.
+c
+o
+l
+s
+)
+)
+C_{align}\leftarrow(\text{Dim}(T_{anchor}.cols)=\text{Dim}(T_{next}.cols))
+8:
+E
+←
+GetInterveningElements
+​
+(
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+,
+T
+n
+​
+e
+​
+x
+​
+t
+)
+E\leftarrow\text{GetInterveningElements}(T_{anchor},T_{next})
+9:
+if
+C
+a
+​
+l
+​
+i
+​
+g
+​
+n
+∧
+(
+E
+=
+∅
+)
+C_{align}\land(E=\emptyset)
+then
+10:
+// (iii) Adaptive Header Logic
+11:
+if
+¬
+HasHeader
+​
+(
+T
+n
+​
+e
+​
+x
+​
+t
+)
+∨
+(
+TableHead
+​
+(
+T
+n
+​
+e
+​
+x
+​
+t
+)
+=
+TableHead
+​
+(
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+)
+)
+\neg\text{HasHeader}(T_{next})\lor(\text{TableHead}(T_{next})=\text{TableHead}(T_{anchor}))
+then
+12:
+// Case a: Seamless Merge (Append rows only)
+13:
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+←
+MergeBody
+​
+(
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+,
+T
+n
+​
+e
+​
+x
+​
+t
+)
+T_{anchor}\leftarrow\text{MergeBody}(T_{anchor},T_{next})
+14:
+else
+15:
+// Case b: Direct Full Merge (Append entire table structure)
+16:
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+←
+MergeFullTable
+​
+(
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+,
+T
+n
+​
+e
+​
+x
+​
+t
+)
+T_{anchor}\leftarrow\text{MergeFullTable}(T_{anchor},T_{next})
+17:
+end
+if
+18:
+else
+19:
+ℳ
+←
+ℳ
+∪
+{
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+}
+\mathcal{M}\leftarrow\mathcal{M}\cup\{T_{anchor}\}
+20:
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+←
+T
+n
+​
+e
+​
+x
+​
+t
+T_{anchor}\leftarrow T_{next}
+21:
+end
+if
+22:
+end
+for
+23:
+ℳ
+←
+ℳ
+∪
+{
+T
+a
+​
+n
+​
+c
+​
+h
+​
+o
+​
+r
+}
+\mathcal{M}\leftarrow\mathcal{M}\cup\{T_{anchor}\}
+24:
+return
+ℳ
+\mathcal{M}
+3.3
+Document-Level Heading Hierarchy Reconstruction
+Real-world financial documents often exhibit complex heading
+hierarchies that span dozens to hundreds of pages.
+This
+significantly undermines downstream tasks performance due to severe semantic
+fragmentation caused by physical pagination.
+To solve this problem,
+We propose a module for document hierarchy structure extraction,
+dubbed Document-level Heading Hierarchy Reconstruction (DHR).
+DHR transforms a sequence of isolated page-level headings into a globally
+consistent Table of Contents (TOC) tree, which serves as a structural
+abstraction for the entire document, fueling downstream tasks like RAG and
+document QA. The MMRAG-DocQA framework
+gong2025mmrag
+validates that hierarchical indices integrating cross-page dependencies are essential for high-quality retrieval in multi-page documents
+. Similarly, HiChunk
+lu2025hichunk
+proves that multi-level document structuring and auto-merge retrieval algorithms significantly enhance the overall reasoning precision and quality of downstream RAG systems.
+As we will show in Section
+4.3
+, DHR yields substantial
+improvements on longer documents, while providing comparable performance on
+shorter documents where simpler structures are already well-captured by text
+alone.
+In this section,
+we first formalize the notations and define the goal of the DHR module.
+We then propose its core component that achieves this TOC tree abstraction.
+Finally, we demonstrate its impact on document intelligence applications.
+3.3.1
+Notations
+Given a document
+𝒟
+\mathcal{D}
+, we denote
+ℋ
+=
+{
+h
+1
+,
+h
+2
+,
+…
+,
+h
+n
+}
+\mathcal{H}=\{h_{1},h_{2},\dots,h_{n}\}
+as the ordered sequence of candidate headings within
+𝒟
+\mathcal{D}
+.
+We can then characterize an entry
+h
+i
+h_{i}
+in this sequence using 4 attributes:
+h
+i
+=
+⟨
+𝒯
+i
+,
+𝒱
+i
+,
+𝒮
+i
+,
+ℓ
+i
+⟩
+,
+where
+h_{i}=\langle\mathcal{T}_{i},\mathcal{V}_{i},\mathcal{S}_{i},\ell_{i}\rangle,\;\text{where}
+(1)
+•
+𝒯
+i
+\mathcal{T}_{i}
+is the raw textual content of the heading.
+•
+𝒱
+i
+\mathcal{V}_{i}
+denotes the visual appearance of the header, reflecting latent typographic properties like font weight, style, and point size.
+•
+𝒮
+i
+\mathcal{S}_{i}
+is the spatial coordinates (bounding box) and page-index
+anchor.
+•
+ℓ
+i
+∈
+{
+1
+,
+…
+,
+L
+}
+\ell_{i}\in\{1,\dots,L\}
+is the heading’s level (e.g.,
+ℓ
+=
+1
+\ell=1
+for “Chapter”,
+ℓ
+=
+2
+\ell=2
+for “Section”, etc.).
+Among the 4 attributes listed above,
+ℓ
+i
+\ell_{i}
+encodes the heading hierarchy.
+However, only
+𝒯
+i
+\mathcal{T}_{i}
+,
+𝒱
+i
+\mathcal{V}_{i}
+, and
+𝒮
+i
+\mathcal{S}_{i}
+are
+available from upstream layout analysis results.
+We therefore propose the DHR module to recover
+ℓ
+i
+\ell_{i}
+,
+effectively reconstructing the heading hierarchy of the whole document.
+3.3.2
+Reconstruction Pipeline
+(a)
+Pseudo-TOC Aggregation
+(b)
+VLM Prompting
+Figure 2
+:
+Conceptual overview of the DHR pipeline.
+Headings are cropped from the original documents (
+left
+) and
+aggregated into a pseudo-TOC (
+middle
+).
+The pseudo-TOC is then fed to a VLM, along with available textual
+information (Eq.
+1
+), obtaining the heading
+hierarchy (
+right
+).
+The proposed DHR module recovers the heading hierarchy of the entire document
+with the help of the multi-modal reasoning ability of Fin-OCR.
+As illustrated in Figure
+2
+, the module first extracts headings
+from the original document to form a set of images that resemble a pseudo-TOC,
+then it feeds the available textual results and the pseudo-TOC into Fin-OCR to
+reconstruct the document’s heading hierarchy.
+We detail the process in the following.
+Pseudo-TOC Aggregation.
+We find the layout analysis results on the original documents to provide a solid
+ground for accurate hierarchy reconstruction.
+Specifically, this includes:
+•
+Textual semantics from
+𝒯
+i
+\mathcal{T}_{i}
+:
+A heading
+h
+i
+h_{i}
+’s text content contextualizes itself in the whole
+document.
+When provided as additional text prompts to a VLM, it steers the VLM for
+more robust headings understanding (e.g., “Note 5.3” often follows
+“Note 5.2”), resolving potential ambiguities.
+•
+Visual style from
+𝒱
+i
+\mathcal{V}_{i}
+:
+In financial reports, the heading level is often indicated by consistent
+typography (e.g., all top-level headings share the same font size and
+weight, and larger-scope headings are often formatted with more
+prominent typesetting).
+In a long sequence of headings,
+𝒱
+i
+\mathcal{V}_{i}
+provides helpful cues to
+mitigate level drift.
+•
+Spatial information from
+𝒮
+i
+\mathcal{S}_{i}
+:
+Bounding box coordinates from the layout analysis encode the
+indentation pattern of headings,
+which provide additional cues for deeply nested heading hierarchies.
+To effectively preserve these cues,
+we directly crop the document pages using each heading’s grounded bounding box
+coordinates available from the previous layout analysis stage, obtaining an
+image crop
+𝒞
+i
+\mathcal{C}_{i}
+for each heading
+h
+i
+h_{i}
+(Figure
+2
+left).
+These image crops are then pasted onto an empty page-sized image, preserving
+their horizontal offset from the original document.
+By laying out all headings vertically, we can obtain a set of page-sized images,
+forming a
+pseudo-TOC
+(Figure
+2
+middle).
+Inspired by widely-used practices from the GUI agents
+literature
+browser_use2024
+,
+we also annotate the pasted heading crops with colored bounding boxes and
+corresponding monotonically increasing numeric labels to further boost VLM’s
+grounding.
+This pseudo-TOC is later fed to the VLM and serves as the main source of
+heading hierarchy reconstruction.
+Document-Level Heading Hierarchy Reconstruction.
+To finally recover the level
+ℓ
+i
+\ell_{i}
+of every heading from the document, we
+prompt the
+Fin-OCR model with the generated pseudo-TOC images and relevant layout analysis
+results (Figure
+2
+top-right).
+Specifically, we craft the text-image prompt from the following components:
+•
+A brief, task-oriented textual instruction. E.g., “
+Parse the
+TOC pages into the following JSONL format:...
+”.
+•
+The text content
+𝒯
+i
+\mathcal{T}_{i}
+of each heading extracted from the
+layout analysis result and the numeric label of the corresponding
+heading.
+•
+The pseudo-TOC pages in order as image prompts.
+The level of each heading is then recovered in the specified format,
+the heading hierarchy of the whole document can be easily decoded and visualized
+from this format (Figure
+2
+bottom-right).
+3.4
+Curriculum Learning and Reinforcement Optimization for Table Parsing
+Difficulty assessment is useful not only for filtering high-quality training data but also for guiding RL optimization. Motivated by this, we collect training data from a mixture of public and in-house sources, and construct a multi-dimensional tabular annotation schema that encompasses structural attributes and stylistic formatting attributes (e.g., table line styles, blank-cell ratio, the maximum rowspan/colspan, and the distribution of rowspan/colspan values). We then build a finely annotated in-house dataset to guide targeted optimization. To identify which attributes materially affect parsing performance, we conduct a Pearson correlation analysis between each attribute
+a
+∈
+𝒜
+a\in\mathcal{A}
+and the model’s TEDS score
+y
+y
+on the in-house dataset:
+ρ
+​
+(
+a
+,
+y
+)
+=
+cov
+⁡
+(
+a
+,
+y
+)
+σ
+a
+​
+σ
+y
+.
+\rho(a,y)=\frac{\operatorname{cov}(a,y)}{\sigma_{a}\,\sigma_{y}}.
+(2)
+We then rank attributes by
+|
+ρ
+​
+(
+a
+,
+y
+)
+|
+|\rho(a,y)|
+and treat those with the largest magnitude correlations as the primary difficulty factors. We find that the following two categories of attributes are significantly negatively correlated with the final TEDS: structural complexity (e.g., the values of rowspan/colspan), and the Inference Consistency Difficulty (ICD), defined as the standard deviation of TEDS across repeated high-temperature inference runs for a given sample
+niu2025mineru2
+, which serves to quantify instability in structural parsing.
+Based on these findings, we define a unified difficulty score
+d
+​
+(
+x
+)
+d(x)
+by combining structural complexity and ICD, and use it to organize training samples for curriculum learning:
+d
+​
+(
+x
+)
+=
+α
+​
+Structural Complexity
+​
+(
+x
+)
++
+β
+​
+ICD
+​
+(
+x
+)
+.
+d(x)=\alpha\,\text{Structural Complexity}(x)+\beta\,\text{ICD}(x).
+(3)
+We first perform supervised fine-tuning (SFT) on the curriculum-organized samples to establish a strong initialization. We then apply reinforcement learning with Group Relative Policy Optimization (GRPO)
+shao2024deepseekmath
+after SFT to improve table row/column alignment. In each iteration, GRPO samples a group of responses
+(
+o
+1
+,
+…
+,
+o
+G
+)
+(o_{1},\ldots,o_{G})
+for a query
+q
+q
+from the old policy
+π
+θ
+old
+\pi_{\theta^{\mathrm{old}}}
+, and updates
+π
+θ
+\pi_{\theta}
+by maximizing:
+ℒ
+GRPO
+​
+(
+θ
+)
+\displaystyle\mathcal{L}_{\mathrm{GRPO}}(\theta)
+=
+𝔼
+q
+∼
+D
+,
+{
+o
+i
+}
+i
+=
+1
+G
+∼
+π
+θ
+old
+(
+⋅
+∣
+q
+)
+[
+1
+G
+∑
+i
+=
+1
+G
+(
+min
+(
+r
+i
+A
+i
+,
+clip
+(
+r
+i
+,
+1
+−
+ε
+,
+1
++
+ε
+)
+A
+i
+)
+\displaystyle=\mathbb{E}_{q\sim D,\ \{o_{i}\}_{i=1}^{G}\sim\pi_{\theta^{\mathrm{old}}}(\,\cdot\mid q\,)}\Bigg[\frac{1}{G}\sum_{i=1}^{G}\Big(\min\!\big(r_{i}A_{i},\ \mathrm{clip}(r_{i},1-\varepsilon,1+\varepsilon)\,A_{i}\big)
+(4)
+−
+β
+D
+KL
+(
+π
+θ
+(
+⋅
+∣
+q
+)
+∥
+π
+ref
+(
+⋅
+∣
+q
+)
+)
+)
+]
+,
+r
+i
+=
+π
+θ
+​
+(
+o
+i
+∣
+q
+)
+π
+θ
+old
+​
+(
+o
+i
+∣
+q
+)
+.
+\displaystyle\hskip 32.00002pt-\beta\,D_{\mathrm{KL}}\!\big(\pi_{\theta}(\,\cdot\mid q\,)\,\|\,\pi_{\mathrm{ref}}(\,\cdot\mid q\,)\big)\Big)\Bigg],\qquad r_{i}=\frac{\pi_{\theta}(o_{i}\mid q)}{\pi_{\theta^{\mathrm{old}}}(o_{i}\mid q)}.
+In our preliminary analysis, we observe that for structurally complex tables, the model may fail to generate row/column-aligned parses, with errors concentrated at the boundaries, in particular the last few rows and the last few columns. Beyond the TEDS reward
+zhang2025trivia
+, we explicitly introduce a grid-consistency signal that rewards outputs whose extracted grid signature matches the ground truth, i.e.,
+𝕀
+​
+[
+g
+​
+(
+o
+)
+=
+g
+​
+(
+o
+∗
+)
+]
+\mathbb{I}\!\left[g(o)=g(o^{\ast})\right]
+.
+The reward for each output
+o
+o
+is a weighted sum of grid-consistency and TEDS:
+R
+​
+(
+q
+,
+o
+)
+=
+λ
+1
+​
+𝕀
+​
+[
+g
+​
+(
+o
+)
+=
+g
+​
+(
+o
+∗
+)
+]
++
+λ
+2
+​
+TEDS
+​
+(
+norm
+​
+(
+o
+)
+,
+norm
+​
+(
+o
+∗
+)
+)
+,
+R(q,o)=\lambda_{1}\,\mathbb{I}\!\left[g(o)=g(o^{\ast})\right]+\lambda_{2}\,\mathrm{TEDS}\!\left(\mathrm{norm}(o),\mathrm{norm}(o^{\ast})\right),
+(5)
+where
+g
+​
+(
+⋅
+)
+g(\cdot)
+extracts the logical grid signature (expanded rowspan/colspan row-width list), and
+o
+∗
+o^{\ast}
+is the ground-truth table. The advantage
+A
+i
+A_{i}
+is computed from group rewards using a mean-baseline within the sampled group.
+To stabilize training, outputs that exceed the maximum length or violate the required table schema are assigned zero reward.
+We apply an ensemble of table parsers (PaddleOCR-VL
+cui2025paddleocr
+, Mineru2.5
+niu2025mineru2
+, and HunyuanOCR
+team2025hunyuanocr
+) for automatic pre-filtering to bootstrap an easy-stage subset with reliable supervision. Building on the difficulty score
+d
+​
+(
+x
+)
+d(x)
+, we further stratify the remaining data into different difficulty levels and prioritize samples with higher difficulty for later-stage training. We continuously monitor and adjust the difficulty distribution in each sampling round to construct the advanced-stage subset, and conduct an additional training cycle on these challenging samples, thereby improving table parsing accuracy. With GRPO, the model generates better row/column-aligned parses on complex tables, especially improving alignment in the last few rows and columns. More results are given in Appendix
+D
+.
+3.5
+Table Parsing with Cell-Level Visual Reference
+Figure 3
+:
+Architecture of CellBBoxRegressor
+. CellBBoxRegressor grounds each table cell by regressing its bounding box from decoder hidden states anchored at cell-start tokens.
+Financial document understanding in real-world business settings, such as auditing and compliance, often requires fine-grained cell-level visual references. However, most existing table parsing models focus on recovering the table structure (e.g., HTML) and do not provide reliable cell-level grounding that maps each predicted cell back to its precise location in the source document.
+While modern VLMs
+bai2025qwen3
+have been explored for generic grounding tasks, a common remedy is to inject dedicated special tokens (e.g.,
+&lt;bbox&gt;
+)
+lu2025bounding
+and train the model to emit coordinates.
+However, introducing extra special tokens increases sequence length and decoding burden, especially for tables with enormous cells, and may require non-trivial changes to the vocabulary and training recipe.
+To meet the cell-level grounding requirement for document tables, we propose CellBBoxRegressor, as shown in Figure
+3
+, which leverages structural anchor tokens in the HTML stream to regress bounding boxes for each cell without introducing additional special tokens.
+3.5.1
+Structural anchor tokens.
+To enable cell-level grounding with minimal changes to the generation pipeline, we avoid introducing an extra
+&lt;bbox&gt;
+token and instead reuse cell-start anchor tokens from the HTML stream. Due to different HTML serialization styles and the tokenization, the beginning
+of a cell start tag
+&lt;td ...&gt;
+can be detected in two ways: (i) a start-tag token
+‘‘&lt;td’’
+; or (ii) an adjacent tag-boundary pair
+‘‘&gt;&lt;’’
++
+‘‘td’’
+in compact HTML.
+We unify both cases by defining an anchor index
+P
+k
+P_{k}
+that is aligned to the start of the
+k
+k
+-th cell
+start tag:
+P
+k
+∈
+{
+t
+∣
+y
+t
+=
+‘‘&lt;td’’
+}
+∪
+{
+t
++
+1
+∣
+(
+y
+t
+=
+‘‘&gt;&lt;’’
+∧
+y
+t
++
+1
+=
+‘‘td’’
+)
+}
+.
+P_{k}\in\{\,t\mid y_{t}=\texttt{``&lt;td''}\,\}\ \cup\ \{\,t+1\mid(y_{t}=\texttt{``&gt;&lt;''}\wedge y_{t+1}=\texttt{``td''})\,\}.
+(6)
+Given the HTML token sequence
+Y
+=
+{
+y
+t
+}
+t
+=
+1
+T
+Y=\{y_{t}\}_{t=1}^{T}
+and decoder hidden states
+𝐇
+=
+{
+𝐇
+t
+}
+t
+=
+1
+T
+\mathbf{H}=\{\mathbf{H}_{t}\}_{t=1}^{T}
+with
+𝐇
+t
+∈
+ℝ
+D
+\mathbf{H}_{t}\in\mathbb{R}^{D}
+, we represent each cell
+using a fixed two-token anchor window:
+𝐬
+k
+=
+Pool
+​
+(
+𝐇
+P
+k
+,
+𝐇
+P
+k
++
+1
+)
+∈
+ℝ
+D
+s
+.
+\mathbf{s}_{k}=\mathrm{Pool}\big(\mathbf{H}_{P_{k}},\mathbf{H}_{P_{k}+1}\big)\in\mathbb{R}^{D_{s}}.
+(7)
+Here
+𝐇
+P
+k
++
+1
+\mathbf{H}_{P_{k}+1}
+corresponds to the immediate next token after the anchor (e.g.,
+‘‘&gt;’’
+or
+an attribute-related token), providing local context while keeping a consistent representation across
+cells.
+3.5.2
+Training and inference.
+Training uses teacher forcing so the anchor indices
+P
+k
+P_{k}
+appear deterministically in
+Y
+Y
+, enabling
+one-to-one alignment between
+𝐬
+k
+\mathbf{s}_{k}
+and
+𝐛
+k
+\mathbf{b}_{k}
+. We optimize a box loss (e.g.,
+ℓ
+1
+\ell_{1}
+with optional GIoU):
+ℒ
+box
+=
+1
+M
+​
+∑
+k
+=
+1
+M
+∥
+𝐛
+^
+k
+−
+𝐛
+k
+∥
+1
+​
+(
++
+λ
+​
+ℒ
+giou
+)
+.
+\mathcal{L}_{\text{box}}=\frac{1}{M}\sum_{k=1}^{M}\lVert\hat{\mathbf{b}}_{k}-\mathbf{b}_{k}\rVert_{1}\;(+\lambda\,\mathcal{L}_{\text{giou}}).
+(8)
+Each cell is supervised by a normalized box
+𝐛
+m
+=
+(
+x
+1
+(
+m
+)
+,
+y
+1
+(
+m
+)
+,
+w
+(
+m
+)
+,
+h
+(
+m
+)
+)
+,
+𝐛
+m
+∈
+[
+0
+,
+1
+]
+4
+,
+\mathbf{b}_{m}=\big(x^{(m)}_{1},y^{(m)}_{1},w^{(m)},h^{(m)}\big),\quad\mathbf{b}_{m}\in[0,1]^{4},
+(9)
+where
+(
+x
+1
+,
+y
+1
+)
+(x_{1},y_{1})
+is the top-left corner and
+(
+w
+,
+h
+)
+(w,h)
+is width/height (normalized by
+(
+W
+,
+H
+)
+(W,H)
+).
+, where
+(
+x
+1
+,
+y
+1
+)
+(x_{1},y_{1})
+is the top-left corner and
+(
+w
+,
+h
+)
+(w,h)
+is width/height. A lightweight regressor predicts
+𝐛
+^
+m
+=
+g
+θ
+​
+(
+𝐬
+m
+)
+,
+g
+θ
+:
+ℝ
+D
+s
+→
+ℝ
+4
+,
+𝐁
+^
+=
+g
+θ
+​
+(
+𝐒
+)
+∈
+ℝ
+M
+×
+4
+.
+\hat{\mathbf{b}}_{m}=g_{\theta}(\mathbf{s}_{m}),\quad g_{\theta}:\mathbb{R}^{D_{s}}\rightarrow\mathbb{R}^{4},\qquad\hat{\mathbf{B}}=g_{\theta}(\mathbf{S})\in\mathbb{R}^{M\times 4}.
+(10)
+For GIoU, we convert to corners
+𝐛
+^
+m
+x
+​
+y
+​
+x
+​
+y
+=
+(
+x
+^
+1
+,
+y
+^
+1
+,
+x
+^
+1
++
+w
+^
+,
+y
+^
+1
++
+h
+^
+)
+\hat{\mathbf{b}}^{xyxy}_{m}=(\hat{x}_{1},\hat{y}_{1},\hat{x}_{1}+\hat{w},\hat{y}_{1}+\hat{h})
+and clamp to
+[
+0
+,
+1
+]
+[0,1]
+.
+During inference, we locate all anchor indices
+P
+k
+P_{k}
+in the generated HTML using the same rule as in
+training, extract
+𝐇
+P
+k
+\mathbf{H}_{P_{k}}
+and
+𝐇
+P
+k
++
+1
+\mathbf{H}_{P_{k}+1}
+to form
+𝐬
+k
+\mathbf{s}_{k}
+, and apply
+g
+θ
+g_{\theta}
+to obtain
+𝐁
+^
+\hat{\mathbf{B}}
+, achieving cell-level localization without external detectors.
+3.6
+FinDocBench
+While OmniDocBench v1.5
+ouyang2025omnidocbench
+offers comprehensive evaluations across various general document parsing sub-tasks, the financial vertical imposes following distinct requirements:
+1.
+financial documents are characterized by
+extreme length
+, e.g., prospectuses and annual reports typically encompass hundreds of pages;
+2.
+the inherent complexity of financial vertical manifests in
+hierarchical headings
+, prevalent
+cross-page content
+,
+complex layouts
+and
+intricate tables
+;
+3.
+the auditing demands in financial scenarios necessitate
+precise cell-level localization in tables
+.
+Existing benchmarks only sporadically address these critical features. To bridge these gaps, we introduce FinDocBench, a benchmark specifically designed to evaluate document parsing performance within the financial vertical. The overview of key features of FinDocBench is illustrated in Figure
+4
+.
+Figure 4
+:
+Overview of FinDocBench.
+It contains six financial document categories and provides a comprehensive evaluation focusing on ultra-long document parsing, hierarchical heading reconstruction, and advanced table recognition.
+3.6.1
+Data Collection
+We collect publicly available financial documents via search engines and various financial consulting websites. To ensure a comprehensive distribution, the benchmark encompasses six distinct sub-categories: annual reports, research reports, audit reports, debt issuance announcements, prospectuses, and insurance documents. Their individual examples are visualized in Figure
+5
+.
+Figure 5
+:
+Typical cases of each financial document sub-category.
+3.6.2
+Data Annotation
+Pre-annotation Phase
+: Given that state-of-the-art (SOTA) closed-source commercial pipelines and open-source multimodal models have demonstrated robust performance in single-page parsing, we adopted a ensembling pre-annotation strategy.
+Manual Correction Phase
+: Beyond refining the pre-annotations, we put more emphasis on annotations of heading hierarchies in long documents, reading order with complex financial layouts, and intricate cross-page tables. Due to the parsing challenges in financial documents, current models still struggle with such complex structural content recovery, which necessitates meticulous human intervention to ensure the accuracy of annotations.
+Expert Quality Assurance
+: We further engaged Chartered Financial Analysts (CFAs) to perform data refinement, specifically focusing on the reading order of documents with highly complex layouts. This step ensures that the annotations in FinDocBench strictly adhere to professional financial standards and industry conventions.
+3.6.3
+Statistics of FinDocBench
+Table 1
+:
+Statistics of the table recognition, layout with reading order parts in FinDocBench.
+Table Recognition
+Layout with Reading Order
+# of single-page
+tables
+# of cross-page tables
+Total
+# of layout
+category
+# of bboxes
+2
+3
+Above
+Text
+Others
+Total
+572
+425
+28
+19
+1,044
+17
+18,349
+20,284
+38,633
+Following the data collection and annotation phases, the dataset is partitioned into three parts: table recognition, layout with reading order and heading hierarchy reconstruction. The corresponding statistical details are summarized in Table
+1
+and Table
+2
+. In the table recognition part, we intentionally emphasized cross-page tables due to their prevalence in financial scenarios. This part comprises a total of 1,044 tables, 472 of which span at least two pages. Regarding layout detection, we categorize document elements into 17 classes, with a total of 38,633 annotated instances with layout categories, reading order and contents. This part can serve as the benchmark for layout detection, reading order prediction and OCR simultaneously. For heading hierarchy reconstruction, we labeled 12,467 headings from 176 financial documents; these annotations contain the textual contents, hierarchical levels and spatial positions. The distribution of document lengths is illustrated in Figure
+6
+, where 19.3% of the documents are long-form, exceeding 30 or even 100 pages. We also calculated the average heading depth for various document types. Specifically, annual reports, audit reports, and prospectuses all reach the average depth of 3, reflecting the inherent structural complexity of these three document categories.
+Table 2
+:
+Statistics of the heading hierarchy part in FinDocBench.
+Document Type
+# of Docs
+# of Pages
+# of Headings
+Avg Heading Depth
+Annual Reports
+27
+1,328
+4,331
+3.32
+Research Reports
+67
+842
+1,257
+1.63
+Audit Reports
+10
+765
+2,271
+3.58
+Debt Issuance
+19
+449
+654
+1.87
+Prospectuses
+25
+1,409
+2,850
+3.52
+Insurance Documents
+28
+286
+1,104
+2.10
+Total
+176
+5,079
+12,467
+3.06
+Figure 6
+:
+Page count distribution in the heading hierarchy reconstruction part.
+3.7
+Evaluation of FinDocBench
+Table of Contents edit-distance-based similarity (TocEDS).
+The heading hierarchy of a document could be represented as an ordered multi-way tree. Based on the parsing results, we segment the document into fragments by recursively splitting according to heading levels. Within each fragment, headings of the same level are sorted by their reading order to reconstruct the Table of Contents as an ordered tree. TocEDS calculates the tree edit-distance-based similarity (TEDS) between the predicted tree and the ground truth, reflecting the model capability in recognizing heading contents and hierarchical levels.
+Tree edit-distance-based similarity (TEDS) of concatenated cross-page table.
+This evaluation extends TEDS to concatenated cross-page tables. It first prunes the table headers from non-initial pages and concatenates the fragments before calculating the TEDS metric against the ground truth. This metric provides an end-to-end assessment of table recognition accuracy across page boundaries.
+Table Cell Intersection over Union (C-IoU).
+This evaluation measures cell-level localization accuracy by computing the Intersection over Union (IoU) between the predicted and ground-truth bounding boxes for each table cell. Since general-purpose VLMs and OCR systems typically do not provide explicit cell grounding outputs, we report the cell-level grounding results of our CellBBoxRegressor; as shown in Table
+8
+, it achieves strong localization performance, indicating accurate and audit-friendly cell-level referencing capability.
+4
+Evaluation
+4.1
+OmniDocBench v1.5
+To establish a comprehensive baseline for general document parsing, we first evaluate our model on OmniDocBench v1.5
+ouyang2025omnidocbench
+, a widely recognized benchmark comprising 1,355 bilingual pages. Although our model is specifically tailored for financial scenarios, benchmarking on this public dataset allows for a standardized comparison with state-of-the-art methods. Given that financial documents are dominated by textual narratives and structured data, we focus our evaluation on text recognition, table parsing, and reading order. For formula recognition, we directly employ the module from PaddleOCR-VL-1.5, as formulas are less prevalent in financial reports than in scientific literature. This evaluation serves as a foundation before assessing the model on our specialized financial benchmark.
+Table 3
+:
+Comparison of different models on document parsing tasks.
+Best results are in
+bold
+.
+Model Type
+Methods
+Overall
+↑
+Overall
+∗↑
+Text
+↓
+Edit
+{}^{\text{Edit}}\downarrow
+Formula
+↑
+CDM
+{}^{\text{CDM}}\uparrow
+Table
+↑
+TEDS
+{}^{\text{TEDS}}\uparrow
+Table
+↑
+TEDS-S
+{}^{\text{TEDS-S}}\uparrow
+Reading Order
+↓
+Edit
+{}^{\text{Edit}}\downarrow
+Pipeline Tools
+Marker-1.8.2
+paruchuri2025marker
+71.30
+68.64
+0.206
+76.66
+57.88
+71.17
+0.250
+MinerU-pipeline
+wang2024mineru
+75.51
+75.00
+0.209
+76.55
+70.90
+79.11
+0.225
+PP-StructureV3
+cui2025paddleocr3
+86.73
+87.19
+0.073
+85.79
+81.68
+89.48
+0.073
+General VLMs
+InternVL3.5-241B
+wang2025internvl3
+82.67
+80.4
+0.142
+87.23
+75.00
+81.28
+0.125
+Gemini-2.5 Pro
+team2023gemini
+88.03
+89.11
+0.075
+85.82
+85.71
+90.29
+0.097
+Qwen3-VL-235B-Instruct
+bai2025qwen3
+89.15
+89.66
+0.069
+88.14
+86.21
+90.55
+0.068
+Specialized VLMs
+Dolphin
+feng2025dolphin
+74.67
+78.10
+0.125
+67.85
+68.70
+77.77
+0.124
+OCRFlux-3B
+chatdoccom2025ocrflux
+74.82
+78.23
+0.193
+68.03
+75.75
+80.23
+0.202
+Mistral OCR
+mistralai2025mistralocr
+78.83
+76.82
+0.164
+82.84
+70.03
+78.04
+0.144
+POINTS-Reader
+liu2025points
+80.98
+81.87
+0.134
+79.20
+77.13
+81.66
+0.145
+olmOCR-7B
+poznanski2025olmocr
+81.79
+79.66
+0.096
+86.04
+68.92
+74.77
+0.121
+MinerU2-VLM
+wang2024mineru
+85.56
+87.87
+0.078
+80.95
+83.54
+87.66
+0.086
+Nanonets-OCR-s
+mandal2025nanonets
+85.59
+85.42
+0.093
+85.90
+80.14
+85.57
+0.108
+MonkeyOCR-pro-1.2B
+li2025monkeyocr
+86.96
+87.92
+0.084
+85.02
+84.24
+89.02
+0.130
+MonkeyOCR-3B
+li2025monkeyocr
+87.13
+86.95
+0.075
+87.45
+81.39
+85.92
+0.129
+dots.ocr
+li2025dots
+88.41
+90.99
+0.048
+83.22
+86.78
+90.62
+0.053
+MonkeyOCR-pro-3B
+li2025monkeyocr
+88.85
+89.64
+0.075
+87.25
+86.78
+90.63
+0.128
+MinerU2.5
+niu2025mineru2
+90.67
+91.76
+0.047
+88.46
+88.22
+92.38
+0.044
+DeepSeek-OCR2
+wei2026deepseek
+91.09
+91.48
+0.048
+90.31
+87.75
+92.06
+0.057
+PaddleOCR-VL
+cui2025paddleocr
+92.86
+93.70
+0.035
+91.22
+90.89
+94.76
+0.043
+GLM-OCR
+glmocr2026
+93.94
+94.15
+0.043
+93.51
+92.60
+94.84
+0.043
+PaddleOCR-VL-1.5
+cui2026paddleocr1_5
+94.50
+94.63
+0.035
+94.21
+92.76
+95.79
+0.042
+Ours
+94.08
+94.01
+0.048
+94.21
+∗
+92.82
+95.88
+0.055
+•
+The formula of Overall is calculated as: ((1 - Text
+Edit
+)
+×
+\times
+100 +Formula
+CDM
++Table
+TEDS
+) / 3.
+•
+The formula of Overall
+∗
+is calculated as: ((1 - Text
+Edit
+)
+×
+\times
+100 + Table
+TEDS
+) / 2.
+•
+94.21
+∗
+: Formula result from PaddleOCR-VL-1.5.
+As illustrated in Table
+3
+, our model achieves state-of-the-art results in table parsing, with a Table
+TEDS
+{}^{\text{TEDS}}
+score of 92.82 and a Table
+TEDS-S
+{}^{\text{TEDS-S}}
+score of 95.88. These results represent a significant improvement over the current leading specialized models, such as MinerU2.5
+niu2025mineru2
+, DeepSeek-OCR2
+wei2026deepseek
+. Given that financial reports often contain dense and structurally intricate tables, this superior performance in TEDS metrics validates our model’s robustness in recovering complex cell relationships and hierarchical structures.
+In terms of text recognition and reading order, PaddleOCR-VL-1.5
+cui2026paddleocr1_5
+maintains a slight lead, achieving the best scores of 0.035 and 0.042, respectively. Nevertheless, our model remains highly competitive, ranking within the top tier with a Text
+Edit
+{}^{\text{Edit}}
+score of 0.048, which is on par with other high-performing models like dots.ocr and DeepSeek-OCR2
+wei2026deepseek
+.
+Overall, the evaluation on OmniDocBench v1.5
+ouyang2025omnidocbench
+confirms that while our model is optimized for financial scenarios, it possesses robust general document parsing capabilities. Its exceptional accuracy in table parsing provides a reliable foundation for downstream financial data analysis, where structured information is the primary focus.
+4.2
+Layout Detection &amp; Reading Order Results
+To evaluate the performance of our framework on complex financial documents, we conducted comparative experiments against the general-purpose PP-DocLayoutV3 baseline. Our layout analysis module is built upon the PP-DocLayout-plus-L architecture, which was further fine-tuned on a domain-specific dataset comprising insurance policies, financial reports, and bank statements. This specialized training allows the model to better capture the intricate structures (e.g., nested tables and dense multi-column text) common in financial scenarios.
+Furthermore, to address reading order prediction, we implemented a 6-layer Transformer-based module that incorporates the spatial-relation modeling approach from PaddleOCR-VL. This architecture leverages self-attention mechanisms to effectively capture global dependencies among disparate layout elements. As demonstrated in Table
+4
+, our proposed model achieves superior performance on FinDocBench, reaching a 0.873 mAP@0.5:0.95, a 0.112 improvement over PP-DocLayoutV3. More notably, our model significantly reduces the Average Relative Distance (ARD) from 0.443 to 0.075. These results validate the necessity of domain-specific fine-tuning and robust sequence modeling for maintaining logical coherence in financial document parsing. Qualitative results provided in Appendix
+B
+and Appendix
+C
+further illustrate the model’s precision in layout detection and reading order prediction.
+4.3
+Document-level Heading Hierarchy Reconstruction
+Table
+5
+compares our method against
+the text-only baseline across six financial document types, sorted by average
+document length. Our method achieves a higher overall TocEDS score (0.6273 vs.
+0.5643), with the largest gains on longer document types: +18.5% on Audit
+Reports (76.50p) and +7.4% on IPO Prospectuses (56.36p). This confirms that the
+pseudo-TOC’s visual and spatial cues are particularly effective when heading
+hierarchies span many pages, where text alone struggles to resolve level
+ambiguities.
+On shorter documents, however, the two methods perform comparably, with
+Text-Only marginally outperforming ours on Research Reports (12.57p) and
+Insurance Documents (10.21p).
+This is expected, as shorter documents tend to have simpler and less ambiguous
+heading structures that are already well-captured by text alone.
+4.4
+Table Parsing Results
+Attribute Correlation with Parsing Quality.
+We analyze how each attribute in our tabular label schema correlates with parsing quality. Table
+6
+reports the Pearson correlation between attribute values and TEDS on our in-house set. Overall, structural complexity (e.g., larger rowspan/colspan) and ICD show the strongest negative correlations with TEDS, making them effective signals for selecting high quality training data.
+Table 4
+:
+Financial Layout Analysis
+Method
+mAP
+0.5:0.95
+{}^{\text{0.5:0.95}}
+↑
+\uparrow
+Reading Order (ARD)
+↓
+\downarrow
+PP-DocLayoutV3
+0.761
+0.443
+Ours
+0.873
+0.075
+Table 5
+:
+Effect of the pseudo-TOC on document-level heading hierarchy
+reconstruction.
+Numbers in the header row (e.g., 76.50p) denote the average document
+length in pages.
+Method
+Overall
+(avg. pages)
+Audit
+Reports
+(76.50p)
+IPO
+Prospectuses
+(56.36p)
+Annual
+Reports
+(49.19p)
+Debt
+Issuance
+(23.63p)
+Research
+Reports
+(12.57p)
+Insurance
+Documents
+(10.21p)
+Text-Only
+0.5643
+0.4322
+0.7641
+0.5290
+0.7448
+0.3808
+0.3539
+Text+Image (Ours)
+0.6273
+0.6168
+0.8385
+0.5893
+0.7457
+0.3749
+0.3487
+Table 6
+:
+Pearson correlation between table attributes and TEDS.
+Abbreviations: Empty Rat.=empty-cell ratio; RS=count of rowspan; CS=count of colspan; Max RS/Max CS=maximum value of rowspan/colspan; Diff. Std/Diff. Range are defined as the standard deviation/range of TEDS across repeated high-temperature inference runs for a given sample.
+Attribute
+Empty Rat.
+Max RS
+RS
+Max CS
+CS
+Diff. Std
+Diff. Range
+Correlation
+-0.027
+-0.116
+-0.174
+-0.283
+-0.318
+-0.324
+-0.332
+Quantitative results.
+As shown in Table
+7
+, our approach outperforms or matches representative SOTA methods like MinerU2.5
+niu2025mineru2
+and PaddleOCR-VL-1.5
+cui2026paddleocr1_5
+across diverse benchmarks. The consistent performance gains across both public and private datasets demonstrate the efficacy of the proposed Curriculum Learning and Reinforcement Optimization strategies.
+Table 7
+:
+TEDS comparison on different benchmarks.
+∗
+denotes the Table subset, †denotes results measured by ourselves.
+Method
+OmniDocBench v1.5
+∗
+PubTabNet
+In-house
+FinDocBench
+∗
+MinerU2.5
+niu2025mineru2
+88.2
+89.1
+88.7
+94.2
+PaddleOCR-VL-1.5
+cui2026paddleocr1_5
+92.8
+84.6
+80.7
+90.5
+GLM-OCR
+glmocr2026
+†
+92.6
+85.2
+84.4
+93.0
+Our
+92.8
+87.8
+90.1
+95.7
+Visualization of Cell-Level Visual Reference.
+We visualize the predicted cell bounding boxes derived from structural anchor tokens and overlay them on the original table images. Figure
+7
+shows representative examples. The visualizations indicate that our CellBBoxRegressor can localize most cells accurately, including merged cells and cells at arbitrary positions, providing reliable cell-level visual references for downstream auditing and provenance tracing.
+Figure 7
+:
+Audit visualization of cell-level referencing.
+Predicted cell boxes are overlaid on the input table images.
+Quantitative results.
+We further report quantitative localization performance using Intersection-over-Union (IoU) between the predicted and ground-truth cell bounding boxes. In FinDocBench, we collect 572 tables from financial documents as the test set. Table
+8
+summarizes the results on our evaluation set. The model achieves reasonable cell-level IoU, indicating that the proposed anchor-token-based regression learns a stable mapping from structural decoding states to spatial layout.
+Table 8
+:
+Cell-level grounding performance (C-IoU).
+Method
+IoU@0.3
+↑
+\uparrow
+IoU@0.5
+↑
+\uparrow
+IoU@0.7
+↑
+\uparrow
+Mean IoU
+↑
+\uparrow
+Median IoU
+↑
+\uparrow
+Ours
+0.9765
+0.9095
+0.6411
+0.7199
+0.7555
+Cross-page Table Merging Results
+To evaluate the efficacy of the proposed cross-page merging mechanism, we curated a specialized dataset comprising 472 cross-page table instances. The experimental pipeline involved two stages: first, individual table fragments on each page were parsed using our VLM model ; second, the adaptive merging algorithm described in Section 3.2 was applied to unify these fragments into integrated entities. The results demonstrate that our approach achieves an average TEDS of
+0.8915
+across the entire test set. This high similarity score validates the robustness of the heuristic-based splicing logic in preserving the global structural integrity of complex, cross-page tables.
+5
+Conclusion
+In this work, we introduced Agentar-Fin-OCR, a system designed to overcome semantic fragmentation in long financial documents by shifting from page-level to document-level parsing. Our framework ensures structural continuity through cross-page consolidation and Document-level Heading Hierarchy Reconstruction, which provides a consistent structural skeleton for high-performance downstream RAG application. To meet rigorous compliance standards, we achieved audit-grade table parsing by integrating curriculum learning with a novel CellBBoxRegressor. This mechanism leverages structural anchor tokens to enable cell-level visual referencing capability, allowing every data point to be mapped back to its source coordinates. Furthermore, we established FinDocBench, a specialized benchmark designed to evaluate the unique challenges of financial verticality, such as extreme length and complex layouts. Quantitative evaluations show that Agentar-Fin-OCR achieves state-of-the-art results in table parsing while remaining highly competitive in general document understanding. By addressing the “last-mile” precision challenge, this system provides a robust foundation for automated financial workflows, with future work focusing on multilingual expansion and deeper agentic integration to further advance automated financial intelligence.
+References
+Appendix
+Appendix A
+Cross-page table cases
+(a)
+(b)
+Homogeneous Splicing table
+(c)
+Heterogeneous Splicing table
+Figure 8
+:
+Visualization of cross-page tables.
+Appendix B
+Layout Analysis Results
+(a)
+(b)
+(c)
+(d)
+Figure 9
+:
+Visualization of layout analysis results.
+Appendix C
+Layout analysis bad cases
+(a)Raw image
+(b)MinerU2.5
+(c)PP-DocLayoutV3
+(d)Ours
+Figure 10
+:
+Visualization of insurance document case.
+Appendix D
+GRPO Alignment Improvements
+Figure 11
+:
+Qualitative comparison of table parsing results before and after GRPO.
+GRPO improves row/column alignment on complex tables, with particularly noticeable gains in the last few rows and columns.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+</body>
+</html>
