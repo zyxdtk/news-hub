@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扩展DoRA：基于因子范数与融合核的高秩适配 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">扩展DoRA：基于因子范数与融合核的高秩适配</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-03-23</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2603.22276" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Scaling DoRA: High-Rank Adaptation via Factored Norms and Fused Kernels</h4>
+            <p><strong>中文摘要：</strong> 本文提出两项系统性优化，以解决高秩DoRA（权重分解低秩适配）在推理与训练中因显式计算稠密矩阵乘积$\mathbf{B}\mathbf{A}$而导致的显存占用高、计算效率低的问题。首先，提出**因子化范数**方法，将$\left\lVert\mathbf{W}+s\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}^2$分解为三项，通过$\mathcal{O}...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>Scaling DoRA：通过因子化范数与融合核实现高秩适配  
+Alexandra Zelenin  
+通讯邮箱：  
+alexa@eyes.ml  
+Alexandra Zhuravlyova</p>
+
+<p>摘要  
+权重分解低秩适配（Weight-Decomposed Low-Rank Adaptation, DoRA；Liu 等人 [2024]）通过将权重的幅度与方向解耦，扩展了 LoRA 方法。然而，其前向传播需要计算行范数 $\left\lVert\mathbf{W}+s\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}$，而我们调研的所有主流框架均通过显式计算稠密矩阵乘积 $\mathbf{B}\mathbf{A}$（维度为 $[d_{\text{out}}, d_{\text{in}}]$）来实现该计算。当 $d_{\text{in}}=8192$ 且秩 $r=384$ 时，单个模块的范数计算在 bf16 精度下需要约 512 MB 的临时工作内存，使得高秩 DoRA 在涉及数百个适配模块和检查点保存的常见单 GPU 配置下变得昂贵且常常不可行。</p>
+
+<p>我们提出两项系统性贡献：一种**因子化范数**（factored norm），将平方范数分解为基项、交叉项和 Gram 项，可通过 $\mathcal{O}(d_{\text{out}}r + r^{2})$ 的中间计算完成，从而消除了稠密乘积 $\mathbf{B}\mathbf{A}$ 的显式计算。**融合 Triton 核**（Fused Triton kernels）将原本四核组成的 DoRA 计算流程合并为单次遍历，减少了约 4 倍的内存访问，并采用数值稳定的计算形式，避免了在实际中幅度缩放集中于接近 1 的重缩放区域时可能出现的灾难性抵消问题。</p>
+
+<p>我们在三种 NVIDIA GPU（RTX 6000 PRO、H200、B200）上，对六种 8–32B 视觉语言模型（VLMs）进行了评估，结果显示：</p>
+
+<p>r = 384  
+在 bf16 精度下，融合实现相比 HF PEFT 的 DoRA 实现，在推理时快 1.5–2.0×，在梯度计算（不包括优化器步骤）时快 1.5–1.9×，且峰值显存最多降低 7 GB。在六款 GPU 上（涵盖四代架构：L40S、A100、RTX 6000 PRO、H200、B200、B300）进行的微基准测试确认了 1.5–2.7× 的 compose-kernel 加速。所有模型/GPU 组合的最终 logit 余弦相似度均超过 0.9999，且多种子训练曲线在 2000 步内，每步平均损失差值在 7.1×10⁻⁴ 范围内匹配。</p>
+
+<p>## 1 引言</p>
+
+<p>低秩适应（LoRA；Hu 等，2022）是参数高效微调的主流方法。DoRA [Liu 等，2024] 通过将适应权重分解为幅度和方向扩展了 LoRA：</p>
+
+<p>$$
+\mathbf{W}^{\prime}=\mathbf{m}\odot\frac{\mathbf{W}+s\mathbf{B}\mathbf{A}}{\left\lVert\mathbf{W}+s\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}}
+\quad (1)
+$$</p>
+
+<p>其中 $\mathbf{W}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}$ 是冻结的基础权重，$\mathbf{B}\in\mathbb{R}^{d_{\text{out}}\times r}$ 和 $\mathbf{A}\in\mathbb{R}^{r\times d_{\text{in}}}$ 是低秩因子，$s$ 是缩放系数（例如 rsLoRA；Kalajdzievski 2023），$\mathbf{m}\in\mathbb{R}^{d_{\text{out}}}$ 是可学习的幅度向量。高秩配置缩小了与全参数微调的差距。</p>
+
+<p>在复杂下游任务上的应用  
+[Hu et al., 2022, Liu et al., 2024]。我们将权重视为 $[d_{\text{out}}, d_{\text{in}}]$，并计算每个输出行的范数（dim=1），这与 PEFT 和 torchtune 保持一致。瓶颈是组合权重 $\mathbf{W}+s\mathbf{B}\mathbf{A}$ 的逐行 $L_2$ 范数。  
+Hugging Face PEFT [Mangrulkar et al., 2022]（以及我们调查的另外五个主流框架：torchtune、Unsloth、SWIFT、LLaMA-Factory、Axolotl；详见附录 G）通过构造一个 $d_{\text{in}} \times d_{\text{in}}$ 的单位矩阵来计算该范数，从而显式计算密集乘积 $\mathbf{B}\mathbf{A}$：</p>
+
+<p>```python
+x_eye = torch.eye(lora_A.weight.shape[1], ...)  # [d_in, d_in]
+lora_weight = lora_B(lora_A(x_eye)).T  # [d_out, d_in]
+weight_norm = torch.linalg.norm(weight + scaling * lora_weight, dim=1)
+```</p>
+
+<p>这仅单位矩阵本身就需要 $\mathcal{O}(d_{\text{in}}^{2})$ 的内存：当 $d_{\text{in}}=4096$ 时为 32 MB，当 $d_{\text{in}}=8192$ 时为 128 MB（bf16 精度）。  
+包括密集乘积 $\mathbf{B}\mathbf{A}$ 和组合权重的拷贝，单个模块会分配 3–4 个密集的 $[d_{\text{out}}, d_{\text{in}}]$ 临时张量：当 $d_{\text{in}}=8192$ 时约为 512 MB。在使用梯度检查点（gradient checkpointing）[Chen et al., 2016] 时，这些临时张量每步会被分配两次。在 8–32B 模型中包含数百个适配模块的情况下，这种累积的内存压力是导致显存占用过高的主要因素之一。</p>
+
+<p>速度退化和高秩下的 OOM 失败。  
+最直接的修复方法（直接计算 `lora_B.weight @ lora_A.weight`）虽然消除了单位矩阵，但仍会显式生成完整的 `[d_out, d_in]` 乘积，这是主要开销。我们在 §5.3 中表明，这种“密集 (B@A)”路径提供的加速效果不一致，依赖于 GPU 带宽等级，有时甚至比 PEFT 基线更慢。</p>
+
+<p>本文不提出新的适配器架构、优化器或训练方案。我们的贡献是系统层面的：在相同 DoRA 计算下，使用更小的工作集和更低的内存流量。具体包括：</p>
+
+<p>1. **因子化范数计算**（§2）将 `‖W + sBA‖_row²` 分解为三项，每项均可通过 `𝒪(d_out r + r²)` 的中间结果计算，无需显式生成 `BA`。在 `d=8192`、`r=512` 的 fp32 精度下，理论上的持久内存减少可达 15×（表 1）。</p>
+
+<p>2. **融合的 Triton 内核**（§3）将 DoRA 组合 `(g−1) ⊙ base + g ⊙ s ⊙ lora` 从四次 CUDA 内核调用压缩为一次执行。数值稳定的表达式避免了当 `g ≈ 1` 时的灾难性抵消。前向加速：1.5–2.7×（几何平均）；反向加速：1.06–1.23×。一个三级运行时调度机制（§4）选择最适配的执行路径。</p>
+
+<p>最优路径（训练时使用融合反向传播，推理时使用融合前向传播，CPU 或子交叉形状时回退到 eager 模式），兼容 torch.compile [Ansel et al., 2024]、梯度检查点（gradient checkpointing）、DeepSpeed ZeRO [Rajbhandari et al., 2020] 和 FSDP1。这两项贡献在六块 NVIDIA GPU 上进行了验证，覆盖了四代架构（L40S、A100、RTX 6000 PRO、H200、B200、B300；48–268 GB），并在三个 GPU 上对六个 8–32B 视觉语言模型（VLMs）进行了模型级基准测试（§5）。在本文中，我们比较了四种配置：PEFT（未修改的 HF PEFT 单位矩阵路径）、Dense (B@A)（直接乘积，仍会显式生成完整矩阵）、Eager（我们的因子化范数，使用 PyTorch 组合）和 Fused（我们的因子化范数，使用 Triton 内核）。</p>
+
+<p>2 因子化范数计算  
+2.1 代数分解  
+组合权重的逐行平方范数可展开为三项：  
+$$
+\left\lVert\mathbf{W}+s\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}^{2}=\underbrace{\left\lVert\mathbf{W}\right\rVert_{\text{row}}^{2}}_{\text{base}}+\underbrace{2s\langle\mathbf{W},\mathbf{B}\mathbf{A}\rangle_{\text{row}}}_{\text{cross}}+\underbrace{s^{2}\left\lVert\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}^{2}}_{\text{BA norm}}
+\quad (2)
+$$  
+其中 $\langle\cdot,\cdot\rangle_{\text{row}}$ 表示逐行内积。每一项均可通过低秩中间量计算：  
+**基础范数**。$\left\lVert\mathbf{W}\right\rVert_{\text{row}}^{2}$  
+**交叉项**。$2s\langle\mathbf{W},\mathbf{B}\mathbf{A}\rangle_{\text{row}}$  
+**BA 范数**。$s^{2}\left\lVert\mathbf{B}\mathbf{A}\right\rVert_{\text{row}}^{2}$</p>
+
+<p>2  
+$\left\lVert\mathbf{W}\right\rVert_{\text{row}}^{2}$ 沿着 $d_{\text{in}}$ 通过分块（chunks）累积，生成一个大小为 $d_{\text{out}}$ 的向量。分块机制将工作内存限制在可配置的预算内（默认：256 MB）。</p>
+
+<p>**交叉项（Cross term）**  
+行方向的内积可重写为：  
+$$
+\langle\mathbf{W},\mathbf{B}\mathbf{A}\rangle_{j}=\sum_{\ell}B_{j\ell}\cdot U_{j\ell}=(\mathbf{B}\odot\mathbf{U})_{j}\cdot\mathbf{1}
+\tag{3}
+$$  
+其中 $\mathbf{U}=\mathbf{W}\mathbf{A}^{\top}\in\mathbb{R}^{d_{\text{out}}\times r}$ 以分块方式累积：  
+$$
+\mathbf{U}\leftarrow\mathbf{U}+\mathbf{W}_{c}\mathbf{A}_{c}^{\top}
+$$</p>
+
+<p>**BA 范数（BA norm）**  
+行方向的平方范数通过 Gram 矩阵分解：  
+$$
+\left\lVert\mathbf{B}\mathbf{A}\right\rVert_{j}^{2}=(\mathbf{B}\mathbf{G}\odot\mathbf{B})_{j}\cdot\mathbf{1}
+\tag{4}
+$$  
+其中 $\mathbf{G}=\mathbf{A}\mathbf{A}^{\top}\in\mathbb{R}^{r\times r}$ 也以分块方式累积。当 $r=512$ 且使用 fp32 时，$\mathbf{G}$ 占用 1 MB 内存。</p>
+
+<p>## 2.2 组装与精度（Assembly and Precision）  
+三个每行标量组装成权重范数：  
+$$
+w_{\text{norm}}=\sqrt{\max\!\left(\left\lVert\mathbf{W}\right\rVert_{\text{row}}^{2}+2s\cdot\text{cross}+s^{2}\cdot\text{ba\_norm},\;0\right)}
+\tag{5}
+$$  
+幅度除法始终在内核返回后由 PyTorch 计算：  
+$$
+g\triangleq\mathbf{m}/\max(w_{\text{norm}},\epsilon)
+$$</p>
+
+<p>m}\,/\,\max(w_{\text{norm}},\epsilon)
+(6)
+这确保了无论 Triton 还是 PyTorch 的 norm 路径生成了 $w_{\text{norm}}$，精度都保持一致，消除了我们在大激活规模下观察到的保真度差异（见 §5.8）。
+所有累加操作均在 `torch.no_grad()` 下以 fp32 执行，并禁用了 `autocast`。仅禁用 `autocast` 并不能强制在输入为 bf16 时使用 fp32，因此 $\mathbf{W}$、$\mathbf{A}$、$\mathbf{B}$ 以及中间变量 $\mathbf{U}_{c}$ 的每个分块在累加前都显式转换为 fp32。这与 DoRA 论文（第 4.3 节）中将 norm 视为分离常量的说明一致 [Liu et al., 2024]。我们始终使用 $g$ 表示除法后的缩放因子，与可学习的幅度 $\mathbf{m}$ 区分开来。</p>
+
+<p>2.3 复杂度</p>
+
+<p>表 1 对比了渐近和具体内存开销。</p>
+
+<p>表 1：在 $d=8192$、$r=512$ 的 fp32 环境下，因子化 norm 将秩相关的持久内存减少了 15×。实际测量的减少量较小（3.2×），因为分配器的差值包含了与秩无关的基础 norm 临时内存（§2.3）。</p>
+
+<p>| PEFT | 因子化（我们） |
+|------|--------------|
+| 秩相关的持久内存 | $\mathcal{O}(d_{\text{in}}^{2}+d_{\text{out}}d_{\text{in}})$ | $\mathcal{O}(d_{\text{out}}r+r^{2})$ |
+| 分块缓冲区（临时） | 上述包含 | 每分块 $[d_{\text{out}},\text{cs}]$ † |
+| 每模块临时变量 | 3–4 个稠密 $[d_{\text{out}},d_{\text{in}}]$ | — |</p>
+
+<p>```markdown
+	ext{in}}]
+𝐔
+​
+[
+d
+out
+,
+r
+]
+\mathbf{U}\![d_{\text{out}},r]
++
+𝐆
+​
+[
+r
+,
+r
+]
+\mathbf{G}\![r,r]
+单位矩阵
+每次前向调用
+从不创建
+具体值：
+d
+out
+=
+d
+in
+=
+8192
+d_{\text{out}}\!=\!d_{\text{in}}\!=\!8192
+,
+r
+=
+512
+r\!=\!512
+, fp32
+理论：稠密 (B@A)
+256 MB
+N/A
+理论：U + G
+N/A
+17.0 MB
+理论减少倍数
+15.1
+\mathbf{15.1}
+×
+测量：分配器差值
+768 MB
+241 MB
+测量减少倍数
+3.2
+\mathbf{3.2}
+×
+†
+\dagger
+cs
+=
+min
+⁡
+(
+d
+in
+,
+⌊
+budget
+/
+(
+d
+out
+⋅
+4
+)
+⌋
+)
+\text{cs}=\min(d_{\text{in}},\lfloor\text{budget}/(d_{\text{out}}\cdot 4)\rfloor)
+；
+在 256 MB 和
+d
+=
+8192
+d{=}8192
+时，cs 覆盖完整的
+d
+in
+d_{\text{in}}
+。
+为什么测量的减少倍数较小。
+主要的临时内存开销来自基础范数计算（公式 2 的第 1 项）：分块的
+‖
+𝐖
+‖
+row
+2
+\left\lVert\mathbf{W}\right\rVert_{\text{row}}^{2}
+累加会创建一个
+[
+d
+out
+,
+chunk_size
+]
+[d_{\text{out}},\text{chunk\_size}]
+fp32 缓冲区，在默认预算和
+d
+=
+8192
+d=8192
+时接近 256 MB，占了测量差值 241 MB 的大部分。这个开销是
+与秩无关的
+：在
+r
+=
+16
+r=16
+和
+r
+=
+768
+r=768
+时完全相同。
+理论减少倍数仅计算与秩相关的张量（
+𝐔
+\mathbf{U}
+和
+𝐆
+\mathbf{G}
+），正确预测了随着秩增长的渐近收益。
+由于
+𝐖
+\mathbf{W}
+是固定的，
+‖
+𝐖
+‖
+row
+2
+\left\lVert\mathbf{W}\right\rVert^{2}_{\text{row}}
+可以
+预先计算到一个
+[
+d
+out
+]
+[d_{\text{out}}]
+缓冲区中（在
+d
+out
+=
+4096
+d_{\text{out}}=4096
+时为 16 KB），从而消除这一临时内存开销。
+```</p>
+
+<p>完全。我们将其缓存留待未来工作处理。</p>
+
+<p>bf16 注意事项。  
+无论权重数据类型如何，因子化范数（factored norm）均在 fp32 中累积。与半精度 PEFT 基线相比，这种 fp32 开销会反转孤立范数（isolated-norm）的内存比例（PEFT/factored）至 0.8 ×（即，在 bf16 下，因子化方法在范数微操作上消耗更多内存）。但这并不否定模型级别的显存节省（见表 8），因为该节省包含融合的 compose 内核消除了前向传播中的中间结果。</p>
+
+<p>计算权衡。  
+在隔离测量（H200，fp32）下，因子化范数比稠密参考实现慢 ∼4.8×，因为参考实现仅执行一次连续的 `torch.linalg.norm` 调用，而因子化路径则使用多个分块矩阵乘法（chunked matmuls）。然而，系统端到端速度更快，因为参考实现首先需要显式生成完整的 [d_out, d_in] 乘积；正是这一显式生成过程（而非范数计算本身）主导了时间和内存消耗。在带宽较低的硬件上（RTX 6000 PRO，GDDR7），因子化范数在生产级秩（r ≤ 384）下对大型权重矩阵可匹配或超越参考实现，因此 4.8× 的数值是一个保守的上限。</p>
+
+<p>算法 1：因子化逐行范数  
+输入：  
+**W** ∈ ℝ^{d_out × d_in}（冻结）；  
+**A** ∈ ℝ^{r × d_in}，**B** ∈ ℝ^{d_out × r}；  
+s ∈ ℝ；  
+ε（依赖数据类型）；  
+chunk_budget（字节，用于控制分块大小）</p>
+
+<p>默认 256 MB)
+cs
+←
+min
+⁡
+(
+d
+in
+,
+⌊
+budget
+/
+(
+d
+out
+⋅
+4
+)
+⌋
+)
+\text{cs}\leftarrow\min(d_{\text{in}},\,\lfloor\text{budget}/(d_{\text{out}}\cdot 4)\rfloor)
+，对齐到 64 个元素。
+所有累积操作在 fp32 下进行，使用 `torch.no_grad()`，禁用 autocast。动态将
+𝐖
+\mathbf{W}
+块、
+𝐀
+\mathbf{A}
+、
+𝐁
+\mathbf{B}
+转换为 fp32。
+初始化：
+base_sq
+←
+𝟎
+d
+out
+\text{base\_sq}\leftarrow\mathbf{0}_{d_{\text{out}}}
+，
+cross
+←
+𝟎
+d
+out
+\text{cross}\leftarrow\mathbf{0}_{d_{\text{out}}}
+，
+𝐆
+←
+𝟎
+r
+×
+r
+\mathbf{G}\leftarrow\mathbf{0}_{r\times r}
+（全部为 fp32）
+for
+每个大小为 cs 的块 c：
+W_c = W[:, c:c+cs].float()
+[
+d
+out
+,
+cs
+]
+[d_{\text{out}},\text{cs}]
+A_c = A[:, c:c+cs].float()
+[
+r
+,
+cs
+]
+[r,\text{cs}]
+base_sq += (W_c**2).sum(dim=1)
+𝐆
+←
+𝐆
++
+𝐀
+c
+​
+𝐀
+c
+⊤
+\mathbf{G}\leftarrow\mathbf{G}+\mathbf{A}_{c}\mathbf{A}_{c}^{\top}
+𝐔
+c
+←
+𝐖
+c
+​
+𝐀
+c
+⊤
+\mathbf{U}_{c}\leftarrow\mathbf{W}_{c}\mathbf{A}_{c}^{\top}
+[
+d
+out
+,
+r
+]
+[d_{\text{out}},r]
+（不保留）
+cross += (B.float() * U_c).sum(dim=1)
+ba_sq = (B.float() @ G * B.float()).sum(dim=1)
+[
+d
+out
+]
+[d_{\text{out}}]
+w
+norm
+←
+max
+⁡
+(
+base_sq
++
+2
+​
+s
+⋅
+cross
++
+s
+2
+⋅
+ba_sq
+,
+0
+)
+w_{\text{norm}}\leftarrow\sqrt{\max(\text{base\_sq}+2s\cdot\text{cross}+s^{2}\cdot\text{ba\_sq},\;0)}
+[
+d
+out
+]
+[d_{\text{out}}]
+return
+w_norm.to(input_dtype)
+注释：
+块大小对齐到 64 以适配 Tensor Core MMA。
+𝐔
+c
+\mathbf{U}_{c}
+不会同时为多个块存储。
+当
+s
+=
+0
+s\!=\!0
+时，跳过 cross 和 ba_sq；
+𝐔
+c
+\mathbf{U}_{c}
+和
+𝐆
+\mathbf{G}
+不分配内存。</p>
+
+<p>𝐆  
+$\mathbf{G}$  
+在 $r=768$ 且使用 fp32 时大小 ≤ 2.4 MB。</p>
+
+<p>### 3 融合的 Triton 内核  
+#### 3.1 组合内核  
+DoRA 的组合操作 $(g{-}1)\odot\text{base}+g\odot s\odot\text{lora}$ 在标准 PyTorch 中分解为四个连续的逐元素操作，每个操作启动一个独立的 CUDA 内核：每个操作包含 3 次读取 + 1 次写入，总共约 12 次内存访问。而融合的 Triton 内核 [Tillet et al., 2019] 将这些操作合并为单次遍历：3 次读取（base, lora, $g$）+ 1 次写入，内存流量减少约 4×。实际加速比为 2.0–2.7×（而非 4×），这是因为急切路径（eager path）部分受限于内核启动间隙的延迟；融合内核实现了约 50% 的峰值 HBM 带宽（见图 7），而急切路径仅约 20%。</p>
+
+<p>**数值稳定性**。  
+代数等价形式 $g\odot(s\cdot\text{lora}+\text{base})-\text{base}$ 在 $g \approx 1$ 时会遭遇灾难性抵消（catastrophic cancellation）。这种情况并非假设。存储的幅度参数反映了预训练权重的异构行范数，自然在不同层和模型间变化，但 DoRA 初始化 $\mathbf{m}=\left\lVert\mathbf{W}\right\rVert_{\text{row}}$，且在训练过程中幅度参数始终跟踪权重范数，因此组合缩放因子 $g = \mathbf{m}/w_{\text{norm}}$ 紧密集中在 1 附近（均值 ≈ 1.0，标准差 ≈ 0.0015）。Me</p>
+
+<p>在 Qwen2-VL-7B 适配器（$r=128$，326 个模块，1.77M 个元素）上的测量表明，100% 的 $g$ 值落在 bf16 崩溃区间（$|g-1| &lt; \varepsilon_{\text{bf16}}/2$），20% 落在 fp16 区间：如果 $(g-1)\odot\text{base}$ 在 bf16 下计算，每个元素的基底修正都会消失；在 fp16 下，则每五个元素中有一个会消失。稳定形式 $(g-1)\odot\text{base} + g\odot s\odot\text{lora}$ 显式保留了小修正项 $(g-1)$，但其精度优势依赖于 fp32 中间计算，以防止 $(g-1)$ 被舍入为零。Triton 内核和 PyTorch 备用实现均采用此形式并使用 fp32 计算。图 1 显示，在 $g \approx 1$ 附近，相比朴素替代方案，稳定形式的峰值误差降低了 3.0×。除了代数形式外，bf16 乘法不满足结合律：所有代码路径强制采用单一规范计算顺序（先计算 $s\cdot\text{lora}$，再计算 $g\cdot(\cdot)$），以确保所有 PyTorch 组合路径在位级别上保持一致。</p>
+
+<p>**图 1**：稳定组合形式在 $g \approx 1$ 附近（bf16，$d_{\text{out}}=8192$，$d_{\text{in}}=2048$）实现了 3.0× 的峰值误差降低。朴素形式 $g\odot(s\cdot\text{lora}+\text{base})-\text{base}$ 出现灾难性抵消；稳定形式和融合内核均保持在 bf16 量化下限附近。参考：fp64。</p>
+
+<p>**自动调优。** Optima</p>
+
+<p>l 内核配置在不同 GPU 之间差异显著（在六款 GPU 上，成对匹配率约为 9%），因此需要针对每款设备进行自动调优，而非使用静态表。首次运行自动调优每个内核耗时 10–30 秒，缓存会保存在 Triton 的默认目录中。详细信息见附录 B。</p>
+
+<p>3.2 反向传播内核  
+融合的反向传播在单次 Triton 传递中计算：  
+$d_{\text{lora}} = g \cdot s \cdot d_{\text{out}}$  
+和  
+$d_{\text{base}} = (g - 1) \cdot d_{\text{out}}$。</p>
+
+<p>两个设计决策值得指出：  
+• **降低 ROWS_PER_PROGRAM**：写入两个输出张量会使每元素流量翻倍；减少每个程序处理的行数可降低寄存器压力并提升 SM 利用率。  
+• **通过 PyTorch reduction 计算 $d_{\text{mag}}$**：梯度幅度使用独立的 `.sum()` 而非 `tl.atomic_add`，避免在大 `num_rows` 时产生竞争，并规避浮点原子操作的非确定性排序问题。</p>
+
+<p>3.3 归一化组装内核  
+第二个 Triton 内核融合公式 5，从三个因子项计算 $w_{\text{norm}}$。存储-重载屏障防止 FMA 融合，内联 PTX 指令 `sqrt.rn.f32` 替代 Triton 默认的近似 `sqrt`，精确复现 PyTorch 的计算顺序。该内核在计算 $w_{\text{norm}}$ 后停止；幅度除法（公式 6）仍保留在 PyTorch 中，以确保两条归一化路径共享相同的精度上下文。附录 C 提供了这三个内核的精确规格说明。</p>
+
+<p>4 运行时分发  
+组合路径的选</p>
+
+<p>在运行时由 `_compose_with_dispatch` 控制（见图 2、表 2）。四个环境变量控制内核的可用性和工作集预算；默认设置无需配置。</p>
+
+<p>**图 2**：三层调度：训练时的融合反向传播（Tier 1）、推理时的融合前向传播（Tier 2）、CPU、无 Triton 或子交叉形状时的急切回退（Tier 3）。</p>
+
+<p>**表 2**：调度层级及其选择标准。</p>
+
+<p>| Tier | 路径             | 何时使用                                 | 权衡                                 |
+|------|------------------|----------------------------------------|--------------------------------------|
+| 1    | 融合反向传播     | 训练 + CUDA + Triton + auto-gate/force-on | 超过交叉点时最快；节省反向传播的 inner 内存 |
+| 2    | 融合前向传播     | 推理 + CUDA + Triton                     | 无反向传播内存开销下的速度             |
+| 3    | 急切回退         | CPU / 无 Triton / force-off / 子交叉形状 | 通用兼容性                           |</p>
+
+<p>**Tier 1（融合反向传播）**。一个双输出 Triton 内核在单次遍历中同时计算输出和保存的张量 `inner = s·lora + base`，消除了由顺序 PyTorch 操作引起的前向传播显存峰值。当梯度被冻结（`requires_grad=False`）时，完全跳过 `inner` 的内存分配。默认的自动模式交叉点要求 `d_out ≥ 2048` 且 `(batch × seq) × d_out ≥ 2048 × 6144`；较小的激活使用 Tier 3，因为启动延迟占主导地位。在评估的六个 VLM 中，KV 投影（`d_out` 低至 512）低于交叉点，因此在训练期间每层约有 `∼71%` 的适配模块调度至 Tier 1，且 `∼2`</p>
+
+<p>9  
+%  
+{\sim}29\%  
+回退至 Tier 3。  
+Tier 2（融合前向）。  
+一个仅前向传播的 Triton 内核，不包含 autograd 图节点，在 `requires_grad` 为 false 时被调用。  
+Tier 3（急切回退）。  
+纯 PyTorch 实现；处理 CPU、非 Triton 以及子交叉训练场景。当 autograd 激活时，使用非原地（out-of-place）组合以避免别名问题。  
+精度。  
+所有 PyTorch 组合路径通过强制单一求值顺序，产生位对位完全相同的前向输出。Triton 内核保持相同的代数结构，但不保证位对位相等（FMA 合并和归约树可能扰动最后几位）；我们将 Triton 与 PyTorch 的一致性视为经验性边界：fp32 输出保持在 $10^{-4}$ 最大绝对误差内，bf16/fp16 保持在对应数据类型允许的容差范围内（§ 5.8）。  
+兼容性。  
+融合组合操作通过 `torch.library` 注册为自定义操作（`peft::fused_dora_compose`），在 dropout 未激活（$p \ne 0$）时，使 `torch.compile` 的调度图保持无断点（graph-break-free）。  
+支持 DeepSpeed ZeRO-2/3 和 FSDP1；不支持 FSDP2/DTensor（§ 6）。前向合约、`torch.compile` 详细信息以及分块 dropout 路径在附录 A 和 B 中指定。  
+幅度除法。  
+在所有层级中，$g = \mathbf{m} / \max(w_{\text{norm}}, \epsilon)$ 在 PyTorch 中于 `no_grad` 的 norm 上下文之外计算，确保无论执行层级如何，精度保持一致。  
+5  
+实验  
+5.1  
+设置  
+微基准测试使用六块 GPU，覆盖四代架构（表 3）；模型级基准测试</p>
+
+<p>我们使用三块 GPU（RTX 6000 PRO、H200、B200），它们具有足够的显存以支持所测试的模型。  
+所有 GPU 运行相同的软件环境：PyTorch 2.10.0+cu130、Triton 3.6.0、Transformers 5.2.0、CUDA 13.1、驱动版本 580.126.09。PEFT 基线采用上游提交版本 20a9829（v0.18.0.rc0）。  
+1  
+1  
+1  
+后续的 HEAD 版本 9cf86c7（2026-02-24）在训练算法上与之完全相同；详见 §7。  
+模型级基准测试排除了优化器步骤，以隔离 DoRA 的开销，并采用部分序列损失（1024 个损失 token），以匹配生产环境中 RLHF/GRPO 的显存使用模式；全序列损失会产生 6–12 GB 的 logit 峰值，掩盖了适配器工作集的差异。在 4096 个损失 token 下进行的敏感性检查确认加速效果保持不变。  
+每个微基准测试报告 200 次 CUDA 事件计时试验的中位数（前 10 次为预热）；模型级基准测试使用 20 次重复（前 3 次为预热，CV &lt;&lt; 1.7%）。  
+内存测量方法和完整可复现性说明见附录 D。</p>
+
+<p>**表 3：基准测试硬件**。“Micro”：微基准测试覆盖范围。“Model”：完整的模型级梯度计算和推理基准测试。</p>
+
+<p>| GPU         | Arch             | Memory         | BW (TB/s) | Scope       |
+|-------------|------------------|----------------|-----------|-------------|
+| L40S        | SM89 Ada         | 48 GB GDDR6      | 0.86      | Micro       |
+| A100-SXM4   | SM80 Ampere      | 80 GB HBM2e      | 2.04      | Micro       |
+| RTX 6000 PRO| SM120 Blackwell  | 96 GB GDDR7      | 1.60      | Micro+Model |
+| H200        | SM90 Hopper      | 141 GB HBM3e     | 4.80      | Micro+Model |
+| B200        | SM100 Blackwell  | 192 GB HBM3e     | 7.70      | Micro+Model |
+| B300        | SM103 Blackwell  | 268 GB HBM3e     | 7.70      | Micro       |</p>
+
+<p>**5.2 模型级性能**  
+表 4 总结了主要结果：在 s 上的梯度计算加速情况。</p>
+
+<p>ix 8–32B VLMs 在三块 GPU 上运行。  
+融合实现相比 HF PEFT 的 DoRA 实现快 1.46–1.87×，相比我们自己的 eager 基线快 1.18–1.24×，且峰值显存占用低 1.3–6.7 GB（见表 8）。  
+这些时间仅包含前向+反向传播（不包括优化器更新），因此端到端的墙钟时间提升较小：在 2000 步收敛训练中，包含优化器、数据加载和框架开销后，相同优化方法使总训练时间减少了 8.3%（§5.9）。  
+32B 模型在所有配置下均超出 RTX 6000 PRO（96 GB）的显存容量；这是容量限制，而非方法特定的性能退化。</p>
+
+<p>**表 4**：8–32B VLMs 上梯度计算加速比（r=384，bf16，seq=4096，bs=1，ga=8，loss_tokens=1024，重复 20 次）。  
+HF PEFT DoRA 基线每迭代耗时比融合实现长 46–87%。  
+32B 模型在所有配置下于 RTX 6000 PRO（96 GB）上均出现 OOM。  
+绝对时间见表 5。</p>
+
+<p>| 模型             | Speedup vs. PEFT DoRA (RTX) | Speedup vs. PEFT DoRA (H200) | Speedup vs. PEFT DoRA (B200) | Speedup vs. Eager (RTX) | Speedup vs. Eager (H200) | Speedup vs. Eager (B200) |
+|------------------|---------------------------|----------------------------|----------------------------|-----------------------|------------------------|------------------------|
+| Qwen2.5-VL-32B    | OOM                       | 1.73×                        | 1.74×                        | OOM                   | 1.20×                   | 1.22×                   |
+| Qwen3-VL-32B      | OOM                       | 1.66×                        | 1.67×                        | OOM                   | 1.18×                   | 1.21×                   |
+| Qwen3.5-27B       | 1.51×                     | 1.57×                        | 1.57×                        | 1.22×                 | 1.21×                   | 1.23×                   |
+| Gemma3-27B        | 1.53×                     | 1.61×                        | 1.56×                        | 1.20×                 | 1.19×                   | 1.21×                   |
+| Mistral-Sm-24B    | 1.66×                     | 1.87×                        | 1.87×                        | 1.22×                 | 1.21×                   | 1.23×                   |
+| Qwen3-VL-8B       | 1.46×                     | 1.50×                        | 1.47×                        | 1.23×                 | 1.21×                   | 1.24×                   |</p>
+
+<p>**表 5**：梯度计算绝对时间（秒）。每次迭代包含 8 个梯度累积微步；总 token 数为 32,768。标准差 ≤ 0.13 秒（</p>
+
+<p>（注：原文末尾未完成句子，此处保留原样）</p>
+
+<p>CV  
+&lt;  
+&lt;  
+1.7%)。  
+Fused (s)  
+Eager (s)  
+PEFT (s)  
+Model  
+RTX  
+H200  
+B200  
+RTX  
+H200  
+B200  
+RTX  
+H200  
+B200  
+Qwen2.5-VL-32B  
+OOM  
+30.9  
+23.3  
+OOM  
+37.1  
+28.5  
+OOM  
+53.6  
+40.4  
+Qwen3-VL-32B  
+OOM  
+33.4  
+25.4  
+OOM  
+39.5  
+30.6  
+OOM  
+55.4  
+42.3  
+Qwen3.5-27B  
+39.5  
+25.4  
+19.4  
+48.1  
+30.6  
+23.9  
+59.5  
+39.8  
+30.5  
+Gemma3-27B  
+41.6  
+27.5  
+21.4  
+50.0  
+32.7  
+25.8  
+63.6  
+44.1  
+33.4  
+Mistral-Sm-24B  
+32.5  
+20.9  
+15.9  
+39.7  
+25.2  
+19.6  
+53.9  
+39.1  
+29.8  
+Qwen3-VL-8B  
+12.9  
+9.1  
+7.1  
+15.9  
+11.0  
+8.8  
+18.8  
+13.7  
+10.5  
+推理。  
+推理加速高于梯度计算：  
+1.5  
+1.5  
+–  
+2.0  
+2.0  
+× 相对于 PEFT，  
+1.14  
+1.14  
+–  
+1.20  
+1.20  
+× 相对于 eager  
+（图 4），因为前向传播集中了组合节省，而不会被反向传播工作稀释。  
+RTX 6000 PRO 在所有六种模型上运行推理，包括 32B（峰值 84–88 GB），但在梯度计算时出现 OOM。  
+图 3：在三种 GPU 上六种 VLM 的梯度计算加速（bf16，r=384，seq=4096）。（a）Fused 与 HF PEFT DoRA 基线相比：1.46–1.87×。（b）Fused 与 eager 相比：1.18–1.24×。32B 模型在 RTX 6000 PRO 上所有配置下均出现 OOM。  
+图 4：推理加速：1.5–2.0× 相对于 HF PEFT DoRA 基线。所有六种模型在所有三种 GPU 上运行，包括 RTX 6000 PRO 上的 32B（96 GB），在梯度计算时出现 OOM。  
+高秩缩放。  
+表 6 验证了在 r=384、512 和 768 下的高秩框架。32B 模型相对于 PEFT DoRA 的加速随秩增加而提升（1.66× → 1.74×），因为 PEFT 的显存占用成本 g</p>
+
+<p>rows with  
+r  
+r  
+，而分解范数的秩相关开销（  
+𝐔  
+\mathbf{U}  
+和  
+𝐆  
+\mathbf{G}  
+）保持较小。与 eager 相比的加速比适度下降（  
+1.18  
+1.18  
+×  
+→  
+\to  
+1.14  
+1.14  
+×），因为更大的 LoRA matmuls 稀释了 compose kernel 的贡献。  
+Table 6  
+：与 HF PEFT DoRA 基线相比，加速比随秩增大而提升；与 eager 相比的加速比适度下降（H200，bf16，seq=4096，20 次重复）。  
+vs. PEFT DoRA  
+vs. Eager  
+Model  
+Rank  
+Grad.  
+Infer.  
+Grad.  
+Infer.  
+Qwen3.5-27B  
+384  
+1.57×  
+1.65×  
+1.21×  
+1.16×  
+512  
+1.61×  
+1.68×  
+1.18×  
+1.14×  
+768  
+1.53×  
+1.59×  
+1.15×  
+1.11×  
+Qwen3-VL-32B  
+384  
+1.66×  
+1.78×  
+1.18×  
+1.14×  
+512  
+1.70×  
+1.82×  
+1.16×  
+1.12×  
+768  
+1.74×  
+1.87×  
+1.14×  
+1.10×  
+5.3  
+为什么 Dense (B@A) 不够  
+直接计算  
+lora_B.weight @ lora_A.weight  
+（最直观的修复方式）消除了单位矩阵，但仍会生成完整的  
+[  
+d  
+out  
+,  
+d  
+in  
+]  
+[d_{\text{out}},d_{\text{in}}]  
+乘积。图  
+5  
+显示，在某些模型/GPU 组合中，dense (B@A) 仅捕获了 eager 到 fused 之间差距的 0%，有时甚至比 eager 基线更慢。  
+dense (B@A) 在所有测试模型中比 fused 方法多消耗 1–2 GB 峰值 VRAM。完整的分解范数对于在不同 GPU 架构上获得稳定收益是必要的。  
+Figure 5  
+：dense (B@A) 在 eager 到 fused 之间的差距中的位置（0% = eager，100% = fused）。负值表示 dense (B@A) 比 eager 更慢。  
+该收益对 GPU 带宽敏感；分解方法则更稳健。  
+5.4  
+Compose Kernel 性能  
+图  
+6  
+展示了在六种 GPU 上不同激活尺寸下的 compose 加速比。几何测量</p>
+
+<p>n 前向加速（bf16，所有 20 种形状）：
+2.70  
+2.70  
+× B200，  
+2.62  
+2.62  
+× B300，  
+2.00  
+2.00  
+× H200，  
+1.92  
+1.92  
+× RTX 6000 PRO，  
+1.73  
+1.73  
+× A100，  
+1.47  
+1.47  
+× L40S。  
+从 GDDR6（0.86 TB/s）到 HBM3e（7.7 TB/s）的一致性表明，性能提升源于内存流量减少，而非架构特定效应。  
+**图 6**：  
+六款 GPU 上融合内核相对于即时执行（bf16）的加速比。  
+(a) 前向：1.5–4.5×。  
+(b) 自动梯度：收益随激活大小增加而累积。  
+**带宽利用率**。  
+融合内核在 B200/B300 上达到 3950–4070 GB/s（约为峰值的 ∼53%），在 H200 上为 2490–2540 GB/s（∼53%），在 A100 上为 1040–1050 GB/s（∼52%），在 RTX 6000 PRO 上为 880–890 GB/s（∼55%），在 L40S 上为 460–470 GB/s（∼54%），在最大形状下（见图 7）。  
+在 B200 上，即时执行路径仅达到峰值的 17%，导致绝对带宽差距最大。吞吐量在 0.86–7.7 TB/s 的整个范围内几乎与峰值带宽呈线性增长，证实这些内核受内存带宽限制。  
+**图 7**：  
+带宽利用率（fp32，六款 GPU）。融合方法在所有架构上均达到约 ∼50% 的峰值；即时执行值为近似下限。  
+5.5 反向内核性能  
+反向内核表现出明显的交叉点：当尺寸小于 ∼2048 × 6144（行 × d_out）时，启动开销占主导，融合内核可能落后于即时执行（0.88–0.99×）；当尺寸大于 ∼8192 × 8192 时，融合内核在所有六款 GPU 上均表现更优（见图 8）。Ge</p>
+
+<p>几何平均加速比（bf16，所有形状）：
+1.23  
+1.23  
+× B200，  
+1.22  
+1.22  
+× B300/RTX 6000 PRO，  
+1.16  
+1.16  
+× A100，  
+1.08  
+1.08  
+× H200，  
+1.06  
+1.06  
+× L40S。梯度正确性：fp32 下，  
+d  
+lora  
+d_{\text{lora}}  
+和  
+d  
+base  
+d_{\text{base}}  
+在容差范围内与 eager 基线一致；  
+d  
+mag  
+d_{\text{mag}}  
+由于独立的归约路径，显示差异 ≤ 2.14×10⁻⁴。  
+**图 8**：反向传播加速比（bf16）。在 ∼4096×4096 以下，启动开销占主导；在 ∼8192×8192 以上，融合版本在所有 GPU 上均胜出。  
+**5.6 规范化内存减少**  
+**图 9** 和 **表 7** 展示了理论和实测的内存减少情况。8192×28672 的 MoE 形状实现了 11× 的实测减少。因子化规范的延迟权衡（**图 10**）依赖于硬件：在 RTX 6000 PRO 上，对于 8192×8192 的矩阵，当 r ≤ 384 时，因子化版本匹配或优于参考实现。  
+**图 9**：规范化内存减少。（a）理论持久工作集。（b）实测分配器差值。MoE 形状 8192×28672 实现了 11× 的实测减少。  
+**表 7**：规范化内存：实测分配差值和理论减少（fp32，H200）。实测减少值小于理论值，因为包含与秩无关的 base-norm 临时内存（§2.3）。  
+| Shape         | Rank | PEFT     | Factored | Meas. × | Theory × |  
+|---------------|------|----------|----------|---------|----------|  
+| 4096×4096     | 64   | 192 MB   | 65 MB    | 3.0×    | 63×      |  
+| 4096×4096     | 384  | 192 MB   | 71 MB    | 2.7×    | 9.8×     |  
+| 4096×4096     | ...  | ...      | ...      | ...     | ...      |</p>
+
+<p>mes 4096  
+512  
+192 MB  
+73 MB  
+2.6×  
+7.1×  
+8192  
+×  
+8192  
+8192\times 8192  
+384  
+768 MB  
+245 MB  
+3.1×  
+20.4×  
+8192  
+×  
+8192  
+8192\times 8192  
+512  
+768 MB  
+241 MB  
+3.2×  
+15.1×  
+8192  
+×  
+8192  
+8192\times 8192  
+768  
+768 MB  
+236 MB  
+3.2×  
+9.8×  
+4096  
+×  
+11008  
+4096\times 11008  
+384  
+516 MB  
+179 MB  
+2.9×  
+26.2×  
+8192  
+×  
+28672  
+8192\times 28672  
+384  
+2688 MB  
+245 MB  
+11.0×  
+71.3×</p>
+
+<p>**图 10**：归一化延迟与秩的关系（RTX 6000 PRO, fp32）。PEFT 时间在 \( r \) 上为常数；factored 随 \( r \) 线性缩放。当 \( r \leq 128 \) 时，factored 由于内存访问减少而与参考值匹配。</p>
+
+<p>### 5.7 内存性能分析</p>
+
+<p>融合后的反向传播路径通过消除中间结果的显式存储，在保持相同反向峰值显存的同时，降低了前向峰值显存（见**图 11**）。在模型级别（见**表 8**），融合方法比 eager 方法节省 0.1–1.0 GB 峰值显存，比 PEFT 方法节省 1.2–6.7 GB。Dense (B@A) 在所有模型上均比融合方法消耗更多峰值显存。</p>
+
+<p>**图 11**：内存性能分析（H200, bf16, \( d = 4096 \), bs=4, seq=2048）。  
+(a) 融合方法将前向峰值显存减少了 64 MB。  
+(b) 节省量随 batch×seq 增大而增加；反向峰值显存保持不变。</p>
+
+<p>**表 8**：模型级别峰值显存（GB）。融合方法在所有模型上均优于所有基线方法。32B 模型在 RTX 6000 PRO 上出现 OOM。</p>
+
+<p>| 模型             | 方法         | RTX     | H200    | B200    |
+|------------------|--------------|---------|---------|---------|
+| Qwen2.5-VL-32B   | Eager        | OOM     | 99.2    | 99.2    |
+|                  | Fused        | OOM     | 98.4    | 98.4    |
+|                  | Dense (B@A)  | OOM     | 100.6   | 100.6   |
+|                  | PEFT         | OOM     | 103.5   | 103.5   |
+| Mistral-Sm-24B   | Eager        | 71.6    | 71.7    | 71.6    |
+|                  | Fused        | 70.6    | 70.7    | 70.6    |
+|                  | Dense (B@A)  | 73.3    | 73.4    | 73.3    |
+|                  | PEFT         | 77.3    | 77.4    | 77.3    |
+| Qwen3-VL-8B      | Eager        | 29.8    | 29.9    | 29.8    |
+|                  | Fused        | 29.5    | 29.5    | 29.5    |
+|                  | Dense (B@A)  | 30.1    | 30.2    | 30.1    |
+|                  | PEFT         | 30.7    | 30.8    | 30.7    |</p>
+
+<p>.7  
+完整表格（全部6个模型）见附录 E。</p>
+
+<p>5.8 跨架构一致性  
+表 9 总结了所有六款 GPU 上的微基准测试加速比。  
+模型级别的 eager/fused 加速比范围为 1.18× 至 1.24×，跨 GPU 的 CV &lt; 2%，提供了比在单个 GPU 上重复更多次更强的统计证据。</p>
+
+<p>表 9：几何平均微基准测试加速比（所有形状，200 次重复）。  
+Norm memory 0.8× 在 bf16 中表示因 fp32 累加中间结果（§2.3）导致孤立归一化操作占用更多内存。</p>
+
+<p>| Compose fwd | Backward | E2E | Norm mem |
+|-------------|----------|-----|----------|
+| L40S bf16   | 1.47×    | 1.06× | 1.05×    | 0.8× |
+| A100 bf16   | 1.73×    | 1.16× | 1.07×    | 0.8× |
+| RTX 6000 PRO bf16 | 1.92× | 1.22× | 1.08×    | 0.8× |
+| H200 bf16   | 2.00×    | 1.08× | 1.06×    | 0.8× |
+| B200 bf16   | 2.70×    | 1.23× | 1.08×    | 0.8× |
+| B300 bf16   | 2.62×    | 1.22× | 1.08×    | 0.8× |</p>
+
+<p>fp32 数据行见附录 F。</p>
+
+<p>**精度（Fidelity）**  
+在所有三款 GPU 上，所有六个模型的融合与非融合最终 logits 之间的余弦相似度均超过 0.9999（在 HBM 类 GPU 上，cos ≥ 0.999996）。  
+早期代码版本在 Gemma-3-12B 上显示精度下降（cos = 0.991–0.999）；根本原因是将幅度除法操作融合进 Triton，这允许 FMA 合并和近似 sqrt 在大激活值尺度下扰动舍入误差。通过取消融合除法操作（§4）、添加存储-重载屏障，并用内联 PTX 替换 sqrt，解决了该差异，使所有 GPU 上的精度提升至 cos &gt; 0.9999。</p>
+
+<p>5.9 收敛等价性  
+为验证融合核函数不会影响</p>
+
+<p>训练动态方面，我们在长度过滤后的 MMFineReason-SFT-123K [Lin et al., 2026] 数据集上进行了受控的 SFT 实验，使用 Qwen3.5-9B-Base 模型，配置为 DoRA $r=384$，$\alpha=192$，rsLoRA，bf16，AdamW，ZeRO-2，梯度检查点（gradient checkpointing），批量大小 $\text{bs}=3$，梯度累积步数 $\text{ga}=2$，序列长度 $\text{seq}=5120$，在单个 RTX 6000 PRO 上训练 2000 步，采用 SWIFT 框架 [Zhao et al., 2024]，并使用三个随机种子（× eager/fused = 6 次运行）。表 10 和图 12 总结了实验结果。</p>
+
+<p>**表 10：多种子收敛性：eager 与 fused 训练损失对比**  
+（Qwen3.5-9B-Base，$r=384$，2000 步）  
+每步平均差值：$7.1 \times 10^{-4}$；最终评估损失差值小于 $1.5 \times 10^{-4}$。</p>
+
+<p>| Seed | Steps | Mean $|\Delta|$ | Max $|\Delta|$ | Eval $|\Delta|$ | Wall (fused/eager) |
+|------|-------|----------------|----------------|----------------|------------------|
+| 1    | 2000  | $7.2 \times 10^{-4}$ | $1.1 \times 10^{-2}$ | $9.2 \times 10^{-5}$ | 330/362 min        |
+| 2    | 2000  | $6.9 \times 10^{-4}$ | $3.3 \times 10^{-3}$ | $1.4 \times 10^{-4}$ | 330/359 min        |
+| 3    | 2000  | $7.1 \times 10^{-4}$ | $4.1 \times 10^{-3}$ | $3.3 \times 10^{-5}$ | 330/359 min        |
+| Grand mean | — | $7.1 \times 10^{-4}$ | — | $8.9 \times 10^{-5}$ | 330/360 min        |</p>
+
+<p>**图 12：收敛性：eager 与 fused 在视觉上无法区分**  
+（Qwen3.5-9B-Base，$r=384$，第 3 个种子）  
+(a) 训练损失（25 步平滑）。(b) 评估损失（200 步间隔）</p>
+
+<p>s).
+(c) 梯度范数。
+最坏情况下的单步 delta（1.1 × 10⁻²，种子 1，第 398 步）是训练初期的瞬时发散，不会传播：到第 1000 步时，所有 delta 均低于 3.3 × 10⁻³。梯度范数完全一致，证实了 d_mag 的减小顺序差异在 2000 步内不会累积。
+墙钟时间。
+融合路径在 330 分钟内完成了 2000 步，而急切基线需要 360 分钟（减少了 8.3%），这与梯度计算加速 21% 被优化器步骤、数据加载和框架开销稀释的结果一致。
+跨模型和跨优化器验证。
+在 Qwen3-VL-8B-Instruct 上使用 Muon+AdamW（r=256，单种子）的另一组实验也显示了相似结果：平均 |Δloss| = 7.7 × 10⁻⁴，最终评估 |Δ| = 3.9 × 10⁻⁵，墙钟时间减少 8.2%。
+6 讨论
+6.1 部署场景
+当训练和推理竞争 GPU 内存时，因子化范数尤其有价值。我们的 GRPO [Shao et al., 2024] 流水线在 4×B200（每块 192 GB）上将 vLLM [Kwon et al., 2023]（张量并行推理）与 DoRA 微调（r=384）共置，针对 38B 视觉语言模型（VLM），采用 ZeRO-2 和梯度检查点技术实现大全局批次。在 vLLM 预留其 KV-cache 分配后，每块 GPU 的训练可用内存空间非常紧张；内存挑战是累积性的而非灾难性的。每个 500+ a</p>
+
+<p>dapted 模块在梯度检查点重计算（gradient checkpointing recomputation）过程中会重新生成其归一化（norm）的临时变量，这些临时分配会碎片化缓存分配器（caching allocator）。跨设备带宽本身已因梯度 all-reduce 和张量并行推理通信而承受压力，难以再容纳密集的每模块重新生成带来的额外内存流量。而因子化归一化（factored norm）消除了这些临时变量，我们观察到融合并未导致数值漂移。（这是一个说明性轶事，并未在 §5 的方法论下进行基准测试。）</p>
+
+<p>6.2 权衡与局限性</p>
+
+<p>表 11 汇总了实践者的推荐配置。</p>
+
+<p>表 11：按场景推荐的配置。</p>
+
+<p>| 场景 | 配置 | 理由 |
+|------|------|------|
+| 训练，CUDA，高于交叉点 | Tier 1（融合反向传播） | 完全加速；比 eager 模式节省 0.1–1.0 GB VRAM |
+| 训练，内存受限 | Tier 1 + frozen mag inner skipped | 峰值 VRAM 更低 |
+| 推理，CUDA | Tier 2（融合前向传播） | 组合加速，无反向传播内存开销 |
+| CPU / 无 Triton | Tier 3（eager） | 自动回退 |
+| $r \geq 384$，任意单 GPU | 因子化归一化 | PEFT 路径慢 46–87% |
+| $r \leq 64$，$d \leq 4096$ | 任一归一化 | 因子化开销最小 |
+| 共置训练 + 推理 | 因子化归一化 | 密集临时变量与推理预算竞争 |</p>
+
+<p>在融合无优势的情况下，当激活量低于 $\sim 2048 \times 6144$ 时，启动延迟占主导；调度器保守地编码了这一交叉点。在非 CUDA 平台上，Triton 内核不可用。</p>
+
+<p>Fused backward</p>
+
+<p>d VRAM。  
+融合后的反向传播每模块节省一个激活大小的张量（inner），同时双输出核也消除了顺序操作在前向传播中的峰值。综合效果：在模型级别，融合模式比急切模式（eager）峰值显存（VRAM）减少 0.1–1.0 GB。当幅度冻结（frozen magnitude）时，inner 完全被跳过。</p>
+
+<p>数值精度。  
+所有 PyTorch 组合路径在位级别上完全相同。Triton 保持相同的代数结构，但不保证位级别相等（§4）。残差漂移主要集中在 d_mag（d_{\text{mag}}）的归约操作中，而非逐点组合操作。收敛性研究（§5.9）证实这些差异不会累积。</p>
+
+<p>分布式训练。  
+支持 DeepSpeed ZeRO-2/3 和 FSDP1。不支持 FSDP2/DTensor：因子化范数假设可以访问完整的基权重 𝐖 \mathbf{W}。扩展到 FSDP2 需要分布式累积分块部分和，然后在分片维度上执行 all-reduce；每行输出（[d_out] [d_{\text{out}}]）足够小，可以复制。我们将其留作未来工作。</p>
+
+<p>嵌入公式修正。  
+PEFT 的嵌入路径仅计算 g ⊙ lora ⋅ s，遗漏了 (g−1) ⊙ base。我们的实现对所有层类型一致应用完整的 DoRA 公式。目前没有基准测试包含适配的嵌入；使用 PEFT 嵌入路径微调的检查点可能需要重新微调或回退到旧版组合方式。</p>
+
+<p>消融实验。  
+模型级别的加速效果反映了两个贡献（因子化范数 + 融合）的共同作用。</p>
+
+<p>sed  
+kernels) 联合进行。微基准测试（表 9 和表 7）提供了组件级别的测量结果，而模型级别的 eager-vs.-fused 对比则部分消融了 kernel-fusion 的贡献。在更多模型家族上进行更全面的因子消融实验将增强证据的说服力。</p>
+
+<p>7 相关工作</p>
+
+<p>参数高效微调。  
+LoRA [Hu et al., 2022] 引入了低秩适配器分解；DoRA [Liu et al., 2024] 增加了幅度-方向分离机制。rsLoRA [Kalajdzievski, 2023] 提供了秩稳定缩放，其与我们的因子化范数（s 出现在公式 2 的三项中）相互作用。</p>
+
+<p>DoRA 变体。  
+EDoRA [Nasiri and Garraghan, 2025] 通过 SVD 减少静态参数数量；DoRAN [Diep et al., 2025] 在归一化分母中注入噪声。两者均关注统计效率而非瞬时内存；我们的优化与其互补。</p>
+
+<p>Chronicals [Nair, 2026] 和 LoRAFusion [Zhu et al., 2026] 融合了 LoRA 相关操作，但未针对 DoRA 特定的范数或组合进行优化。</p>
+
+<p>框架实现。  
+我们检查的所有主流框架（HF PEFT、torchtune、Unsloth、SWIFT、LLaMA-Factory、Axolotl）均采用相同的 `torch.eye` 材料化模式。Unsloth 在 DoRA 激活时显式禁用其自定义内核；编排框架完全依赖 PEFT。截至 2026 年 2 月，尚无现有框架能够避免显式生成稠密矩阵乘积 $\mathbf{B}\mathbf{A}$（附录 G）。</p>
+
+<p>内核融合。  
+FlashAttention [Dao et al., 2020]</p>
+
+<p>22  
+, Dao,  
+2024  
+]  
+证明了分块融合内核在注意力机制中同时提升了速度和内存效率。Liger Kernel  
+[Hsu et al., 2024]  
+将类似原理应用于交叉熵、SwiGLU 和 RMSNorm。我们的工作针对 DoRA 组合，这是一种更简单（逐元素带广播）但同样内存受限的模式。  
+因子范数背后的代数恒等式（将平方和展开为基、交叉和 Gram 项）在数值线性代数中是标准方法；我们的贡献在于将其应用于 DoRA 特定计算，并结合数据类型规范、分块处理以及融入融合流水线。</p>
+
+<p>LLM 指导的优化。  
+Meta 的 KernelAgent  
+[PyTorch, 2025]  
+验证了我们的组合内核接近理论峰值性能（89% 内存带宽 SOL，提升 1.5%）。对于反向传播，KernelAgent 发现了一种两阶段部分归约策略，融合了  
+d  
+mag  
+d_{\text{mag}}  
+的归约操作，实现了 3.58× 的性能提升（88.5% SOL），而我们的实现为 1.06–1.23×。我们的发布版本优先考虑即插即用兼容性以及在真实模型上的端到端收益；将该策略集成是未来工作的直接方向。KernelAgent 生成的代码列表包含在  
+code/kernelagent_sols  
+中。</p>
+
+<p>8 结论  
+我们提出了 DoRA 的系统实现：一种因子范数，将工作内存从  
+𝒪  
+​  
+(  
+d  
+out  
+×  
+d  
+in  
+)  
+\mathcal{O}(d_{\text{out}}\times d_{\text{in}})  
+降低至  
+𝒪  
+​  
+(  
+d  
+out  
+×  
+r  
++  
+r  
+2  
+)  
+\mathcal{O}(d_{\text{out}}\times r+r^{2})  
+，并设计了融合的 Triton 内核，将多步组合操作合并为单步执行。</p>
+
+<p>ion into single-pass GPU operations.  
+在六个 8–32B 的 VLMs 上，融合实现相比 HF PEFT 的 DoRA 推理实现快 **1.5–2.0×**，梯度计算（不包括优化器步骤）快 **1.5–1.9×**，且峰值显存最高降低 **7 GB**。在跨越四代架构的六款 GPU 上的微基准测试确认了 **1.5–2.7×** 的 compose-kernel 加速。  
+保真度在三个层面得到验证：在量化感知范围内通过算子测试、最终 logits 的余弦相似度 **cos &gt; 0.9999**，以及在不同随机种子下训练曲线一致。  
+**已知局限性。** 不支持 FSDP2。收敛性验证覆盖了两个模型家族、两个优化器和一个 SFT 数据集；在 RL 流水线中的泛化能力仍有待确认。模型级基准测试仅覆盖六款 GPU 中的三款；L40S、A100 和 B300 仅具备微基准测试覆盖。调度切换点是一个经验性启发式方法，未来硬件可能需要重新调优。  
+**数据可用性**  
+所有源代码、基准测试脚本、原始 JSON 结果、Triton 自动调优缓存以及图表生成脚本均可在  
+[https://github.com/sockeye44/dorafactors](https://github.com/sockeye44/dorafactors)  
+（标签 **v1.0**）获取。  
+收敛性验证使用公开数据集（MMFineReason-SFT-123K；Lin et al. 2026）进行完全可复现的确认。作者声明无利益冲突。  
+**致谢**  
+本工作通过与 Claude Opus 4.6（Anthropic）的广泛协作编程完成，其在内核实现、测试设计等方面做出了贡献。</p>
+
+<p>数值分析和迭代调试。作者对工作的准确性和完整性负全部责任。</p>
+
+<p>参考文献  
+J. Ansel, E. Yang, H. He, N. Gimelshein, A. Jain, M. Voznesensky, B. Bao, P. Bell, D. Berard, E. Burovski, 等. (2024)  
+**PyTorch 2: 通过动态 Python 字节码转换和图编译实现更快的机器学习**  
+在 *第29届 ACM 国际编程语言与操作系统体系结构支持会议*（**ASPLOS ’24**）上发表，第2卷。  
+外部链接：[文档](https://dl.acm.org/doi/10.1145/3618855.3636855)  
+被引用：item 2。</p>
+
+<p>T. Chen, B. Xu, C. Zhang, 和 C. Guestrin (2016)  
+**使用亚线性内存成本训练深度网络**  
+arXiv 预印本 [arXiv:1604.06174](https://arxiv.org/abs/1604.06174)  
+被引用：§1。</p>
+
+<p>T. Dao, D. Y. Fu, S. Ermon, A. Rudra, 和 C. Ré (2022)  
+**FlashAttention：具有 IO 意识的快速且内存高效的精确注意力机制**  
+在 *神经信息处理系统进展*（**NeurIPS**），第35卷，第16344–16359页。  
+注：[arXiv:2205.14135](https://arxiv.org/abs/2205.14135)  
+被引用：§7。</p>
+
+<p>T. Dao (2024)  
+**FlashAttention-2：通过更好的并行性和工作划分实现更快的注意力机制**  
+在 *国际学习表示会议*（**ICLR**）上发表。  
+注：[arXiv:2307.08691](https://arxiv.org/abs/2307.08691)  
+被引用：§7。</p>
+
+<p>N. T. Diep, H. Dang, T. Truong, T. Dinh, H. Nguyen, 和 N. Ho (2025)  
+**DoRAN：通过噪声注入和辅助网络稳定权重分解低秩适配**  
+arXiv 预印本 [arXiv:2510.04331](https://arxiv.org/abs/2510.04331)  
+被引用：§7。</p>
+
+<p>P. Hsu, Y. Dai, V. Kothapalli, Q. Song, S. Tang, S. Zhu, S. Shimizu, S. Sahni, H. Ning, 和 Y. Chen (2024)  
+**Liger kernel: effic**</p>
+
+<p>高效 Triton 内核用于大语言模型训练  
+.  
+arXiv 预印本 arXiv:2410.10989  
+.  
+被引用于：  
+§7  
+.  
+E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, 和 W. Chen (2022)  
+LoRA：大语言模型的低秩适配  
+.  
+在  
+国际学习表示会议  
+,  
+注：  
+arXiv:2106.09685  
+被引用于：  
+§1  
+,  
+§1  
+,  
+§7  
+.  
+D. Kalajdzievski (2023)  
+用于 LoRA 微调的秩稳定缩放因子  
+.  
+arXiv 预印本 arXiv:2312.03732  
+.  
+被引用于：  
+§1  
+,  
+§7  
+.  
+W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. E. Gonzalez, H. Zhang, 和 I. Stoica (2023)  
+使用 PagedAttention 进行大语言模型服务的高效内存管理  
+.  
+在  
+第 29 届操作系统原理研讨会  
+,  
+SOSP ’23  
+,  
+pp. 611–626  
+.  
+注：  
+arXiv:2309.06180  
+外部链接：  
+文档  
+被引用于：  
+§6.1  
+.  
+H. Lin, Z. Liu, Y. Zhu, C. Qin, J. Lin, X. Shang, C. He, W. Zhang, 和 L. Wu (2026)  
+MMFineReason：通过开放数据驱动方法弥合多模态推理差距  
+.  
+arXiv 预印本 arXiv:2601.21821  
+.  
+注：  
+https://mmfinereason.github.io/  
+被引用于：  
+附录 D  
+,  
+§5.9  
+,  
+数据可用性  
+.  
+S. Liu, C. Wang, H. Yin, P. Molchanov, Y. F. Wang, K. Cheng, 和 M. Chen (2024)  
+DoRA：权重分解低秩适配  
+.  
+在  
+第 41 届国际机器学习会议  
+,  
+机器学习研究会议论文集  
+, 卷  
+235  
+,  
+pp. 32100–32121  
+.  
+注：  
+arXiv:2402.09353  
+被引用于：  
+第 2 项  
+,  
+§1  
+,  
+§1  
+,  
+§2.2  
+,  
+§7  
+.  
+S. Mangrulkar, S. Gugger, L. Debut, Y. Belkada,</p>
+
+<p>S. Paul, B. Bossan 和 M. Tietz (2022)  
+PEFT：最先进的参数高效微调方法  
+.  
+注释：  
+https://github.com/huggingface/peft  
+引用来源：  
+§1  
+.  
+A. S. Nair (2026)  
+Chronicals：一个高性能的LLM微调框架，相比unsloth提速3.51倍  
+.  
+arXiv预印本 arXiv:2601.02609  
+.  
+引用来源：  
+§7  
+.  
+H. Nasiri 和 P. Garraghan (2025)  
+EDoRA：通过奇异值分解实现高效权重分解低秩适配  
+.  
+arXiv预印本 arXiv:2501.12067  
+.  
+引用来源：  
+§7  
+.  
+PyTorch (2025)  
+KernelAgent — 多智能体GPU内核合成  
+外部链接：  
+Link  
+引用来源：  
+§7  
+.  
+S. Rajbhandari, J. Rasley, O. Ruwase 和 Y. He (2020)  
+ZeRO：面向万亿参数模型训练的内存优化  
+.  
+在  
+高性能计算、网络、存储与分析国际会议论文集  
+，  
+SC ’20  
+.  
+注释：  
+arXiv:1910.02054  
+外部链接：  
+Document  
+引用来源：  
+item 2  
+.  
+Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. K. Li, Y. Wu 和 D. Guo (2024)  
+DeepSeekMath：推动开放语言模型在数学推理方面的极限  
+.  
+arXiv预印本 arXiv:2402.03300  
+.  
+引用来源：  
+§6.1  
+.  
+P. Tillet, H. T. Kung 和 D. Cox (2019)  
+Triton：用于分块神经网络计算的中间语言和编译器  
+.  
+在  
+第3届ACM SIGPLAN机器学习与编程语言国际研讨会论文集  
+，  
+MAPL 2019  
+，  
+pp. 10–19  
+.  
+外部链接：  
+Document  
+引用来源：  
+§3.1  
+.  
+Y. Zhao, J. Huang, J. Hu, X. Wang, Y. Mao, D. Z</p>
+
+<p>hang, Z. Jiang, Z. Wu, B. Ai, A. Wang, W. Zhou, 和 Y. Chen (2024)  
+SWIFT: 一种可扩展的轻量级微调基础设施  
+外部链接:  
+2408.05517,  
+Link  
+被引用于:  
+Appendix D,  
+§5.9</p>
+
+<p>Z. Zhu, Q. Su, Y. Ding, K. Song, S. Wang, 和 G. Pekhimenko (2026)  
+LoRAFusion: 用于大语言模型的高效 LoRA 微调  
+发表于  
+第十九届欧洲计算机系统会议论文集  
+EuroSys ’26  
+注: arXiv:2510.00206  
+被引用于:  
+§7</p>
+
+<p>Appendix A  
+前向合约与执行语义  
+前向合约与执行语义  
+1. 模块接口与组合语义  
+• 输出:  
+模块计算一个增量  
+Δ  
+​  
+𝐘  
+\Delta\mathbf{Y}  
+；调用者应用  
+𝐘  
+=  
+𝐘  
+base  
++  
+Δ  
+​  
+𝐘  
+\mathbf{Y}=\mathbf{Y}_{\text{base}}+\Delta\mathbf{Y}  
+。  
+• 组合方程:  
+Δ  
+​  
+𝐘  
+=  
+g  
+⊙  
+(  
+s  
+​  
+𝐗  
+𝐀  
+⊤  
+​  
+𝐁  
+⊤  
+)  
++  
+(  
+g  
+−  
+1  
+)  
+⊙  
+𝐘  
+base  
+\Delta\mathbf{Y}=g\odot(s\mathbf{X}\mathbf{A}^{\top}\mathbf{B}^{\top})+(g-1)\odot\mathbf{Y}_{\text{base}}</p>
+
+<p>2. 归一化策略  
+• 每次前向传播重新计算；从不跨步骤缓存。  
+• 断开梯度（无梯度流），参考 Liu 等人 [2024] §4.3。  
+• 在禁用 autocast 的情况下以 FP32 累积。  
+•  
+ϵ  
+=  
+10  
+−  
+12  
+\epsilon=10^{-12}  
+(fp32/fp64) 或  
+10  
+−  
+6  
+10^{-6}  
+(bf16/fp16)。  
+• 在组合前减去偏置，组合后重新添加。  
+用于洁净室复现的正式合约。</p>
+
+<p>Appendix B  
+实现细节  
+块对齐。  
+块大小在 CUDA/XPU 设备上对齐到 64 个元素，以适配自 Volta 架构以来所有 NVIDIA 架构的 Tensor Core MMA 对齐。  
+环境变量。  
+PEFT_DORA_FUSED  
+(0 = 强制使用 eager 模式)，  
+PEFT_</p>
+
+<p>DORA_FUSED_BACKWARD  
+(1 = 强制融合反向传播，0 = 禁用，  
+未设置 = 自动选择)，  
+PEFT_DORA_NORM_CHUNK_MB  
+和  
+PEFT_DORA_FWD_CHUNK_MB  
+(覆盖默认的 256 MB)。</p>
+
+<p>**Scale-is-zero 快速路径**。  
+当 $ s = 0 $ 时，跳过 cross 和 ba_sq；  
+$ \mathbf{U} $ 和 $ \mathbf{G} $ 不会被分配内存。</p>
+
+<p>**数据类型感知的 epsilon**。  
+fp32/fp64 使用 $ 10^{-12} $；  
+bf16/fp16 使用 $ 10^{-6} $。对于 fp16（最大值 ≈ 65504），  
+$ \varepsilon = 10^{-6} $ 将商限制在 $ \sim 10^6 $，  
+从而降低饱和风险。</p>
+
+<p>**Compose 内核自动调优**。  
+在 95% 的自动调优条目中（1149/1206）选择了 RPP=1。  
+GPU 之间的精确配置匹配率约为 $ \sim 9\% $，  
+证实了按设备进行自动调优的必要性。</p>
+
+<p>**分块 Dropout 路径**。  
+当 Dropout 激活时，_compose_with_base_chunks  
+会以自适应尺寸遍历输出维度的切片，并使用 @dynamo_disable 装饰器  
+避免无限重新编译。</p>
+
+<p>**幅度广播形状保护**。  
+一个形状保护机制控制 Triton 内核的调度，判断幅度向量是否仅沿激活张量的最后一个维度进行广播。  
+Triton 的 compose 内核将幅度视为沿最后一个维度的 1-D 向量；  
+例如，形状为 $[1, C, 1, 1]$ 的卷积风格输入应用于 $[N, C, H, W]$ 的激活张量时，  
+会违反这一假设。该保护机制检查元素数量和最后一个维度对齐；  
+不符合的形状将转向 PyTorch 的回退实现。</p>
+
+<p>**用于 torch.compile 的自定义操作**。  
+注册的反向传播使用 PyTorch（而非 Triton），因为 AOTAutograd 会追踪</p>
+
+<p>h FakeTensors。Eager 训练使用 Triton 进行前向和反向计算；编译训练使用 Inductor 来融合 PyTorch 的反向图。</p>
+
+<p>附录 C  
+内核规格说明  
+本附录提供了三个 Triton 内核和 PyTorch 幅值除法阶段的精确规格，包括类型转换点、融合操作、形状约束和归约顺序，以支持无依赖的重新实现。</p>
+
+<p>1. Compose Forward 内核。  
+融合计算：  
+$(g-1)\odot\text{base}+g\odot s\odot\text{lora}$  
+在一次遍历中完成。  
+输入：base $[\text{bs},\text{seq},d_{\text{out}}]$，lora $[\text{bs},\text{seq},d_{\text{out}}]$，g $[d_{\text{out}}]$，s（标量）。  
+输出：delta $[\text{bs},\text{seq},d_{\text{out}}]$。  
+所有输入张量使用相同数据类型（fp16/bf16/fp32）；中间计算不进行数据类型转换。  
+g 沿除最后一个维度外的所有维度进行广播。</p>
+
+<p>2. Compose Backward 内核。  
+在单次 Triton 遍历中融合计算：  
+$d_{\text{lora}}=g\cdot s\cdot d_{\text{out}}$  
+和  
+$d_{\text{base}}=(g-1)\cdot d_{\text{out}}$。  
+$d_{\text{mag}}$ 通过在 inner 激活上对 batch/sequence 维度进行 `.sum()` 归约单独计算；这避免了非确定性的 `tl.atomic_add` 顺序问题。</p>
+
+<p>3. Norm Assembly 内核（仅归一化）。  
+输入：base_sq $[d_{\text{out}}]$，cross $[d_{\text{out}}]$，ba_sq $[d_{\text{out}}]$（均为 fp32），two_s（标量，$=2s$）。</p>
+
+<p>precomputed in fp64),  
+s2  
+(scalar,  
+=  
+s  
+2  
+= s^{2}  
+, precomputed in fp64).  
+Computes  
+w  
+norm  
+=  
+max  
+⁡  
+(  
+base_sq  
++  
+two_s  
+⋅  
+cross  
++  
+s2  
+⋅  
+ba_sq  
+,  
+0  
+)  
+w_{\text{norm}}=\sqrt{\max(\text{base\_sq}+\texttt{two\_s}\cdot\text{cross}+\texttt{s2}\cdot\text{ba\_sq},\,0)}  
+in fp32 with store-reload barriers after each multiply-add to prevent FMA fusion, exactly reproducing PyTorch’s separate-kernel evaluation order. The clamp preserves NaN semantics (matching  
+torch.clamp_min  
+, which propagates NaNs per  
+IEEE 754) rather than collapsing NaNs to zero.  
+The square root uses  
+inline PTX  
+sqrt.rn.f32  
+for IEEE 754 correctly-rounded results  
+(Triton’s  
+tl.sqrt  
+compiles to  
+sqrt.approx.ftz.f32  
+on SM90).  
+The kernel returns the result in the input dtype. In default mode, it uses a fixed block size of 256 (norm kernels are launch-latency bound; see  
+Appendix  
+B  
+); comprehensive autotuning over 36 configurations (block sizes 32–2048) is available for new GPU architectures. If future Triton versions change the lowering of  
+tl.sqrt  
+to IEEE-compliant rounding, the inline PTX can be removed; the Tier-3 eager fallback provides a portable alternative on any platform.  
+4. Magnitude division (PyTorch).  
+The division  
+g  
+=  
+𝐦  
+/  
+max  
+⁡  
+(  
+w  
+norm  
+,  
+ε  
+)  
+g=\mathbf{m}/\max(w_{\text{norm}},\varepsilon)  
+is always computed in PyTorch after the norm assembly kernel returns. This ensures identical precision regardless of whether the Triton or PyTorch norm path was used, at the cost of one additional element-wise kernel launch (negligible relat</p>
+
+<p>ive to surrounding matmuls).  
+形状约束。  
+输出维度 $d_{\text{out}}$ 必须能被 BLOCK_SIZE（128）整除。幅度向量只能沿激活张量的最后一个维度进行广播；其他广播形状（例如，$[1,C,1,1]$ 应用于 $[N,C,H,W]$）将回退到 Tier-3 的急切执行路径。非连续输入张量也会回退到 Tier 3。</p>
+
+<p>测试兼容性矩阵。  
+表 12 总结了明确测试的集成点，并附有范围和注意事项说明。“Tested” 表示该功能已在本文报告的基准测试或收敛实验中使用；“CI only” 表示仅通过测试套件（1041 个测试）覆盖，但未在模型级别实验中使用。</p>
+
+<p>**表 12：兼容性矩阵。范围：Bench = 模型级别基准测试，Conv = 收敛实验，CI = 操作符级别测试套件。**</p>
+
+<p>| 功能 | 状态 | 范围 | 备注 |
+|------|------|------|------|
+| 混合精度 bf16 | ✓ | Bench+Conv | 所有模型基准测试和收敛实验 |
+| 混合精度 fp16 | ✓ | CI | 仅操作符测试；无模型级别 fp16 实验 |
+| 梯度检查点 | ✓ | Bench+Conv | 所有模型基准测试均使用梯度检查点 |
+| ZeRO-2 | ✓ | Conv | 所有收敛实验均使用 ZeRO-2 |
+| ZeRO-3 | ✓ | CI | 已测试参数收集；无模型级别实验 |
+| FSDP1 | ✓ | CI | 已测试 summon_full_params 路径 |
+| FSDP2 / DTensor | ✗ | — | 不支持；见 §6 |
+| torch.compile | ✓ | CI | 当 $p \ne 0$ 时无图断点；见 §6 |
+| 线性层 | ✓ | Bench+Conv | 主要目标；所有基准测试 |
+| Conv1d / Conv2d / Conv3d | ✓ | CI | 正确性测试；无性能基准测试 |
+| Embedding 层 | ✓ | CI | F |</p>
+
+<p>公式修正（§6）；无性能基准测试  
+附录 D  
+可复现性  
+代码与数据。  
+所有源代码、基准测试脚本、原始 JSON 结果、Triton 自动调优缓存以及图表生成脚本均可在以下地址获取：  
+https://github.com/sockeye44/dorafactors  
+（标签 v1.0）。  
+修补后的 PEFT 模块作为 git 子模块包含在内（路径：vendor/dorafactors-peft，分支 v1）；使用 --recurse-submodules 克隆时会自动获取。  
+或者，可通过 git apply hf.patch 对上游 PEFT 提交 20a9829 进行补丁重建。  
+2  
+2  
+2  
+PEFT 提交：20a9829（v0.18.0.rc0，2025-09-16）。  
+以下所有命令均假设仓库根目录为工作目录。  
+软件环境。  
+所有基准测试均在单一、固定的软件栈下运行：  
+PyTorch 2.10.0+cu130（针对 CUDA 13.0 构建以保证兼容性），  
+Triton 3.6.0，Transformers 5.2.0，  
+CUDA 工具包 13.1（ptxas V13.1.115），驱动版本 580.126.09，  
+Python 3.12.12，运行于 Linux 6.8.0（Ubuntu 22.04，glibc 2.35）。  
+完整的环境已发布为 Docker 镜像  
+3  
+3  
+3  
+Docker 镜像：https://hub.docker.com/r/alexazel/dorafactors-env。标签：cu131-pt210-vllm-t52-base。  
+以实现全栈可复现性；同时包含 code/requirements.txt 文件。  
+内存测量方法。  
+我们报告三种互补的内存指标，每种适用于不同层次的分析：  
+• 分配器峰值（torch.cuda.max_memory_allocated()）：PyTorch 缓存分配器实际分配的最大字节数。用于微基准测试内存差值（表 1 和 表 7），测量</p>
+
+<p>在调用 `reset_peak_memory_stats()` 和 `empty_cache()` 之后进行测量，以隔离单个操作的内存占用。</p>
+
+<p>- **工作集增量**（`max_memory_allocated` − `baseline_allocated`）：峰值内存减去模型静止状态下的内存分配，反映 DoRA 前向/反向传播的真实瞬时开销。用于模型级别的梯度计算分析（§5.3，表4）。
+- **保留的显存**（`memory_reserved`）：GPU 实际保留给当前进程的显存总量，包括缓存分配器碎片化开销。用于峰值显存比较（表8），因为它决定了共存工作负载是否可以共享设备。</p>
+
+<p>本文中所有内存指标均明确标注了度量标准和数据类型（fp32 vs. bf16），以避免混淆。</p>
+
+<p>微基准测试复现。⬇  
+```bash
+# 200 次重复，扩展形状，bf16
+python bench_dora_comprehensive.py \
+  --shapes extended \
+  --repeats 200 \
+  --warmup 10 \
+  --dtype bf16 \
+  --json-out results.json
+```</p>
+
+<p>每次运行生成一个独立的 JSON 文件，包含每个测试的时序分布（200 个样本）、内存测量结果和预计算的汇总统计量。`--shapes extended` 标志会生成本文中使用的 20 个唯一激活形状（跨 3 个秩共 60 个条目）。</p>
+
+<p>模型标识符。  
+所有模型级别的基准测试均使用以下 Hugging Face 模型 ID（权重下载于 2026 年 3 月；精确文件哈希值见 JSON 艺术品文件）：
+- Qwen/Qwen2.5-VL-32B-Instruct
+- Qwen/Qwen3-VL-32B-Instruct
+- Qwen/Qwen3.5-27B
+- google/gemma-3-27b-it
+- unsloth/</p>
+
+<p>Mistral-Small-3.2-24B-Instruct-2506  
+•  
+Qwen/Qwen3-VL-8B-Instruct</p>
+
+<p>收敛验证数据集。  
+收敛验证（§5.9）使用了 OpenDataArena/MMFineReason-SFT-123K-Qwen3-VL-235B-Thinking [Lin et al., 2026] 的一个经过 token 长度过滤的子集，该子集经过机械字段重命名（`question` → `query`，`qwen3vl_235b_thinking_response` → `response`），并过滤为 `tok_len ≤ 4096`。  
+重打包后的数据集发布在 Hugging Face Hub 上：[eyes-ml/MMFineReason-SFT-123K-Qwen3-VL-235B-Thinking-QR-max4096](https://huggingface.co/eyes-ml/MMFineReason-SFT-123K-Qwen3-VL-235B-Thinking-QR-max4096)；过滤脚本包含在仓库中（`code/scripts/repack_mmfinereason_qr.py`）。</p>
+
+<p>收敛验证环境。  
+训练使用 SWIFT [Zhao et al., 2024]（commit a807cb9），搭配 PyTorch 2.10.0+cu130、Transformers 5.2.0、Triton 3.6.0、DeepSpeed 0.18.6、Flash-Attention 2.8.3。  
+完整环境（包括 qwen-vl-utils、mamba_ssm、flash-linear-attention）使用与基准测试相同的 Docker 镜像（见上文“软件环境”），并额外安装了训练依赖项。</p>
+
+<p>模型基准复现。  
+⬇  
+# 6 个模型，r=384，loss_tokens=1024  
+```bash
+python code/bench_dora_comprehensive.py \
+  --suite models \
+  --rank 384 \
+  --batch 1 \
+  --seqlen 4096 \
+  --grad-accum 8 \
+  --loss-tokens 1024 \
+  --repeats 20 \
+  --json-out models.json
+```</p>
+
+<p>图表再生。  
+所有图表均可通过包含的 JSON 艺术品重新生成：  
+⬇  
+```bash
+python paper/generate_figures.py
+```  
+这将在 `paper/figures/` 目录中生成 13 个 PDF 图表，源自 `cod`</p>
+
+<p>e/bench_it6/
+数据目录（6个GPU × 3种数据类型用于微基准测试，3个GPU用于模型级测试）。收敛图（图12）通过 `python paper/generate_training_figure.py` 从TensorBoard日志中单独生成。</p>
+
+<p>测试套件。
+完整的测试套件（共1041个测试）已在SM 80至SM 120（Ampere–Blackwell）上验证；Triton内核测试要求SM ≥ 80：</p>
+
+<p>⬇
+cp code/scripts/dora.reference_hf_peft.py \
+vendor/dorafactors-peft/docs/
+cd vendor/dorafactors-peft
+pytest tests/test_lora_variants.py \
+tests/tuners/lora/test_dora_fused.py \
+tests/tuners/lora/test_dora_math.py -v</p>
+
+<p>附录 E  
+完整的模型级内存表  
+表13将正文中的内存对比（表8）扩展至全部六个模型。</p>
+
+<p>表13：在三种GPU上，六个模型的模型级梯度计算峰值显存（GB）。设置与表8相同。数值来自 `peak_vram_mb`。</p>
+
+<p>| Model             | Method         | RTX 6000 PRO | H200   | B200   |
+|-------------------|----------------|------------|--------|--------|
+| Qwen2.5-VL-32B    | Eager          | OOM        | 99.2   | 99.2   |
+|                   | Fused          | OOM        | 98.4   | 98.4   |
+|                   | Dense (B@A)      | OOM        | 100.6  | 100.6  |
+|                   | PEFT           | OOM        | 103.5  | 103.5  |
+| Qwen3-VL-32B      | Eager          | OOM        | 99.2   | 99.1   |
+|                   | Fused          | OOM        | 98.4   | 98.4   |
+|                   | Dense (B@A)      | OOM        | 100.5  | 100.4  |
+|                   | PEFT           | OOM        | 103.0  | 102.9  |
+| Qwen3.5-27B       | Eager          | 83.4       | 83.5   | 83.4   |
+|                   | Fused          | 83.3       | 83.4   | 83.3   |
+|                   | Dense (B@A)      | 84.3       | 84.4   | 84.3   |
+|                   | PEFT           | 85.4       | 85.5   | 85.4   |
+| Gemma3-27B        | Eager          | 83.2       | 83.2   | 83.1   |
+|                   | Fused          | 82.9       | 83.0   | 82.9   |
+|                   | Dense (B@A)      | 84.3       | 84.4   | 84.3   |
+|                   | PEFT           | 86.1       | 86.1   | 86.1   |
+| Mistral-Sm-24B    | Eager          | 71.6       | 71.7   | 71.6   |
+|                   | Fused          | 70.6       | 70.7   | 70.6   |
+|                   | Dense (B@A)      | 73.3       | 73.4   | 73.3   |
+|                   | PEFT           | 77.3       | 77.4   | 77.3   |
+| Qwen3-VL-8B       | Eager          | 29.8       | 29.9   | 29.8   |
+|                   | Fused          | 29.5       | 29.5   | 29.5   |
+|                   | Dense (B@A)      | 30.1       | 30.1   | 30.1   |
+|                   | PEFT           | 31.4       | 31.4   | 31.4   |</p>
+
+<p>e (B@A)  
+30.1  
+30.2  
+30.1  
+PEFT  
+30.7  
+30.8  
+30.7  
+附录 F  
+单层端到端分解  
+以下图表展示了单层端到端（E2E）加速效果，该效果隔离了每层的开销，但**不**预测模型级别的加速。在真实模型中，Compose 的收益会跨约 ∼500 个 DoRA 模块复合增长，同时每层反向传播开销被摊销，因此单层 E2E 可能低估了模型级别的收益。</p>
+
+<p>**图 13**：单层 E2E 开销分解（B200，bf16，d=4096，bs=4，seq=2048）。单层 E2E 无法预测模型级别的加速：Compose 的收益在 ∼500 个 DoRA 模块中复合增长，同时每层反向传播开销被摊销。</p>
+
+<p>**图 14**：六块 GPU 和 rank 上的单层 E2E 加速（eager/fused）（bf16，d=4096，bs=4，seq=2048）。所有 GPU 均表现出一致的性能提升。</p>
+
+<p>**图 15**：单层 E2E 加速与隐藏维度的关系（bf16，r=384，六块 GPU）。收益在 h=3072–4096 时达到峰值，对应常见的大语言模型尺寸。</p>
+
+<p>fp32 微基准测试总结。  
+表 14 提供了主文中总结（表 9）省略的 fp32 行。fp32 中的 Norm 内存开销为 3.2×，反映了完整的理论收益，因为两条路径均在 fp32 中累积，且 PEFT 基线也分配了 fp32 临时变量。</p>
+
+<p>**表 14**：几何平均微基准测试加速（fp32，所有形状，重复 200 次）。表 9 的补充。</p>
+
+<p>|          | Compose fwd | Backward | E2E    | Norm mem |
+|----------|-------------|----------|--------|----------|
+| L40S fp32 | 1.53×       | 1.21×    | 1.04×  | 3.2×     |
+| A100 fp32 | 1.64×       | 1.20×    | 1.02×  | 3.2×     |
+| RTX 6000 PRO fp32 | 1.97× | —      | —      | —        |</p>
+
+<p>1.27×  
+1.06×  
+3.2×  
+H200 fp32  
+1.84×  
+1.13×  
+1.03×  
+3.2×  
+B200 fp32  
+2.35×  
+1.26×  
+1.03×  
+3.2×  
+B300 fp32  
+2.23×  
+1.21×  
+1.03×  
+3.2×  
+附录 G  
+框架调研  
+表 15 总结了截至 2026 年 2 月五大主流微调框架中的 DoRA 范数实现情况。我们手动检查了每个框架主分支在指定提交/版本中的 DoRA 相关源代码，查找范数计算的实现。路径以各框架源码根目录为基准，便于阅读。所有框架均使用相同的密集化算法；均未提供内存高效的替代方案。</p>
+
+<p>表 15：主流微调框架中的 DoRA 范数实现（2026 年 2 月）  
+| 框架 | 版本 | 文件路径 | 实现模式 |  
+|------|------|----------|----------|  
+| HF PEFT | 20a9829 | peft/tuners/lora/dora.py | torch.eye |  
+| torchtune | v0.5.0 | modules/peft/dora.py | 相同算法 |  
+| Unsloth | 2026.3.7 | 禁用自定义内核 | 回退至 PEFT |  
+| SWIFT (ms-swift) | a807cb9 | 委托至 PEFT/Unsloth | 无自定义代码 |  
+| LLaMA-Factory | v0.9.3 | 委托至 PEFT | 无自定义代码 |  
+| Axolotl | v0.6.0 | 委托至 PEFT | 无自定义代码 |</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 高效适配, 低秩分解, 分解范数, 融合内核, 内存优化</p>
+        </div>
+    </div>
+</body>
+</html>
