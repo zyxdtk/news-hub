@@ -1,0 +1,3655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图克尔注意力：近似注意力机制的泛化 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">图克尔注意力：近似注意力机制的泛化</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-03-31</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2603.30033" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Tucker Attention: A generalization of approximate attention mechanisms</h4>
+            <p><strong>中文摘要：</strong> 本文提出了一种名为“Tucker 注意力”的参数高效注意力机制，通过将多头自注意力（MHA）中的预softmax和后softmax权重结构化为三阶张量，并对其施加低秩Tucker分解，实现对注意力权重的统一、灵活压缩。该方法在头、查询/输出、键/值三个维度上独立控制压缩秩，显著减少参数量，同时兼容Flash-Attention、旋转位置编码（RoPE）和KV缓存。实验表明，Tucker 注意力在大...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>Tucker 注意力：近似注意力机制的泛化  
+Timon Klein  
+Jonas Kusch  
+Sebastian Sager  
+Stefan Schnake  
+Steffen Schotthöfer</p>
+
+<p>摘要  
+为了减少多头自注意力（MHA）中自注意力机制的内存占用，涌现出一系列方法，例如组查询注意力（GQA）和多头潜在注意力（MLA）。这些方法利用嵌入维度或注意力头之间的专用低秩分解。从经典低秩近似的角度来看，这些方法非传统，引发了关于它们实际近似的是哪些对象，以及如何解释所得表示的低秩行为的问题。  
+为了解答这些问题，本文提出了一种对自注意力层中权重对象的泛化视角和分解策略，从而构建了一种参数高效的方案，称为 Tucker 注意力。  
+在大语言模型（LLM）和视觉Transformer（ViT）测试案例中，与GQA和MLA相比，Tucker 注意力在可比验证指标下所需的参数数量减少了约一个数量级。此外，Tucker 注意力涵盖了GQA、MLA和MHA作为特例，并且完全兼容 flash-attention 和旋转位置编码（RoPE）。  
+该泛化策略揭示了MHA、GQA和MLA实际达到的秩，并进一步为MLA提供了简化方案。  
+机器学习，ICML</p>
+
+<p>1  
+引言  
+注意力机制的发展  
+(Bahdanau e</p>
+
+<p>t al.,  
+2014)  
+以及其在 Transformer 架构中的应用 (Vaswani et al.,  
+2017)  
+对深度学习产生了显著影响。然而，依赖多头注意力（MHA）及相关方法的 Transformer 架构会带来巨大的计算成本。MHA 在键（key）、查询（query）、值（value）和输出权重矩阵中引入了大量参数，这在预训练过程中存储优化器状态和梯度时导致了显著的内存开销。这些内存开销体现在多个阶段：训练过程中通过优化器状态和梯度体现，推理过程中通过 KV-cache（其大小随头数和头维度线性增长）体现，以及在注意力计算过程中通过 flash-attention 等内核（Dao et al.,  
+2022）的 GPU 缓存压力体现。设计一种能够同时解决上述三个瓶颈的压缩、参数高效的注意力权重表示方法，仍然是一个开放性挑战。</p>
+
+<p>减少 KV-cache 开销和 Transformer 架构整体参数量的主要方法是利用参数冗余性以及单个注意力头的有限效用。大量研究探讨了此类冗余性，总结如下：(Voita et al.,  
+2019)  
+表明多头注意力中的许多头贡献甚微，可以被剪枝，这暗示了头之间存在低秩结构。(Brunner et al.,  
+2020)  
+证明了部分注意力权重可能不会影响模型输出。(Bhojanapalli</p>
+
+<p>et al., 2020）识别出某些注意力头维度会引发低秩瓶颈，从而阻碍任意上下文向量的表示。  
+(Behnke &amp; Heafield, 2020) 提出了在训练过程中进行注意力头剪枝的方法。  
+(Li et al., 2018) 通过不一致正则化（disagreement regularization）缓解了不同注意力头之间的冗余学习。  
+(Li et al., 2021) 应用可微分子集剪枝（differentiable subset pruning）来移除冗余的注意力头信息。  
+(Michel et al., 2019) 观察到某些层包含大量冗余注意力头，而其他层则高度依赖较大的注意力头维度。  
+已有多种方法被提出以利用参数冗余性。  
+其中最广泛使用的方法之一是多查询注意力（Multi-Query Attention, MQA），它在键（key）和值（value）投影中仅使用单个注意力头（Shazeer, 2019）。  
+MQA 降低了参数数量，并支持高效的 KV 缓存，其中缓存大小与注意力头的数量无关。  
+为了在参数效率和准确性之间取得平衡，分组查询注意力（Grouped-Query Attention, GQA）（Ainslie et al., 2023）采用有限数量的注意力头用于键和值投影，从而在准确性上优于 MQA。  
+另一个方向是多头潜在注意力（Multi-Head Latent Attention, MLA）（Liu et al., 2024），它以低秩格式压缩查询、键和值的权重，从而减少参数数量。  
+此外，MLA 的 KV 缓存仅随低秩潜在维度扩展，而非随每个头的嵌入维度和注意力头数量扩展。  
+近年来，多项研究探讨了低秩结构（low-rank structure）的应用。</p>
+
+<p>通过类似于低秩适配器（LoRA）的方法（Hu et al., 2022）对注意力权重进行结构化，以实现微调。  
+(Cordonnier et al., 2020) 利用多头注意力中的低秩结构，通过学习一个混合向量来从共享投影图中选择相关信息，从而强制信息共享。  
+与 MLA 方法相关，(Zhang et al., 2025) 将查询（query）、键（key）和值（value）权重分别通过低秩张量积分解（CP分解）表示，同时保持与旋转位置编码（RoPE）（Su et al., 2023）等位置编码的兼容性。  
+类似地，(Gu et al., 2025) 将查询、键、值和输出权重表示为三阶张量，然后将它们堆叠为四阶张量，再以低秩 Tucker 格式对对象进行分解。  
+(Meng et al., 2025) 成功地将 GQA 层表示为 MLA 层，这进一步激励了方法的推广。  
+我们指出，存在大量近似注意力方法，可以避免由多头注意力（MHA）及类似方法引起的序列长度二次成本，例如线性注意力（Wang et al., 2020）。  
+这些方法涉及效率与准确性的权衡讨论，超出了本文的范围。  
+这包括稀疏注意力机制（Beltagy et al., 2020; Zaheer et al., 2020），它们专注于从输入序列中选择子块，以强制预 softmax 注意力矩阵的稀疏性。  
+这些方法与本文提出的工作是正交的，可以与之结合使用。</p>
+
+<p>e combined.
+1.1
+贡献
+在本文中，我们提供了一种关于注意力权重表示的原理性、可解释且通用的视角。  
+我们不再单独检查和操作查询（query）、键（key）、值（value）和输出矩阵，而是将预softmax注意力权重（query和key）以及后softmax注意力权重（value和output）作为独立对象进行分析。前者在token序列上构成一个双线性形式，每头生成一个预softmax注意力矩阵；后者则是一个线性形式，用于将后softmax注意力矩阵组合成注意力输出，相对于当前输入序列。  
+因此，预softmax和后softmax注意力权重各自被结构化为一个三阶张量对象。  
+作为推论，我们观察到多头注意力（MHA）本身是该张量对象的一种特殊分解。我们提出以下问题：  
+• 在此背景下，MHA假设了哪些张量秩？  
+• 与现有相关工作（如所列文献）通过近似MHA不同，直接近似张量结构是否更高效？  
+我们发现，如果假设预softmax和后softmax张量均为满秩，则MHA是最高效的分解方式。  
+在合理的假设下（Voita et al., 2019; Brunner et al., 2020），即预softmax和后softmax张量中存在低秩结构，我们提出对这些对象进行**直接**的低秩Tucker分解，简称为Tucker Attention。  
+该提出的Tucker Attention具有两个关键特性：  
+• **表达能力强**：MHA、MQA、GQA 和 MLA 均可视为其特例。</p>
+
+<p>特殊情况下的 Tucker Attention 对应于特定的 Tucker 秩。这种统一视角揭示了这些方法均未压缩注意力张量的头模式，从而留下了可利用的冗余（第 2.2 节）。</p>
+
+<p>- **信息丰富性**：与以往针对单个权重矩阵的方法不同，Tucker Attention 允许在头、查询、键、值和输出模式上独立选择秩。这种灵活性在保持相当精度的前提下，最多可实现 9× 的参数减少（第 4 节）。</p>
+
+<p>在第 3 节中，我们展示了所提出的 Tucker Attention 与 KV 缓存、RoPE 的一种变体（Su 等，2023）以及 Flash-Attention 兼容。作为推论，我们证明 MLA 在所提出的 RoPE 变体下兼容，即使没有 DeepSeek-AI 等（2024）提出的解耦 RoPE 辅助结构，MLA 与 RoPE 的兼容性依然成立。因此，MLA 与 RoPE 的结合可以显著简化。</p>
+
+<p>此外，与现有 Flash-Attention 实现的兼容性统一了 MQA 和 MLA 的优势，从而减轻 Flash-Attention 的内存压力。</p>
+
+<p>Tucker Attention 为所有查询嵌入的头加载一个键和值嵌入向量，类似于 MQA。通过控制键和值嵌入的秩，Tucker Attention 可直接控制 KV 缓存，从而在推理模式下像 MLA 一样控制 GPU 缓存压力。我们指出，Tucker Attention 在训练和推理阶段均可享受这些收益。</p>
+
+<p>最后，在第 4 节中，我们在视觉变换器上展示了实验结果。</p>
+
+<p>er transfer learning scenario and GPT2 pretraining.  
+结果表明，Tucker Attention 产生的分解在参数效率上通常比 GQA、MLA 或相关方法高出一个数量级。  
+1  
+1  
+1  
+在此上下文中，我们将参数效率定义为验证指标与参数数量之比。</p>
+
+<p>**符号说明**  
+我们使用以下符号：向量和标量用斜体小写字母表示（$x$），矩阵用斜体大写字母表示（$W$），张量用花体大写字母表示（$\mathcal{C}$）。  
+张量在模式 $j$ 下的矩阵展开（又称矩阵化）记作 $\operatorname{\mathrm{Mat}}_{j}(\cdot)$，模式 $j$ 下的 $n$-模式乘积记作 $\times_{j}$。这两种操作的定义见 (Kolda &amp; Bader, 2009) [第2节]。</p>
+
+<p>(a) 多头注意力（MHA）  
+(b) 分组查询注意力（GQA）  
+(c) 多头潜在注意力（MLA）  
+(d) Tucker 注意力  
+**图1**：现有分解方式下预softmax注意力张量 $\mathcal{W}$ 的示意图；彩色边表示收缩维度。  
+**MHA**：$\mathcal{W}$ 由每个头 $n_{\rm{H}}$ 的 $d_{\rm{model}} \times d_{\rm{H}}$ 查询和键矩阵沿 $d_{\rm{H}}$（橙色）收缩形成，得到张量秩为 $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{model}})$。  
+**GQA**：查询的参数化方式与 MHA 相同，但仅使用 $n_{\rm{KV}}$ 个键矩阵。在沿 $d_{\rm{H}}$（橙色）收缩时，每个键</p>
+
+<p>矩阵被广播到其头组中的所有查询，得到秩为 $(n_{\rm{H}}, d_{\rm{model}}, n_{\rm{KV}}d_{\rm{H}})$ 的张量。</p>
+
+<p>**MLA**：  
+键和查询矩阵被替换为下投影和上投影，其中上投影被重塑为 $n_{\rm{H}} \times d_{\rm{c}} \times d_{\rm{H}}$。在 $d_{\rm{c}}^{Q}$、$d_{\rm{c}}^{K}$（红色/蓝色）以及每个头的 $d_{\rm{H}}$ 上进行收缩，得到秩为 $(n_{\rm{H}}, d_{\rm{c}}^{\rm{Q}}, d_{\rm{c}}^{\rm{K}})$ 的结果。在推理阶段，沿 $d_{\rm{c}}^{\rm{Q}}$ 和 $d_{\rm{H}}$ 的收缩会被预先计算。对于 MHA 和 GQA，softmax 后的张量 $\widetilde{\mathcal{W}}$ 的参数化方式类似；而对于 MLA，只有值矩阵具有低秩分解，输出矩阵仍保持满秩。</p>
+
+<p>## 2 张量注意力重写</p>
+
+<p>我们的策略是将多头注意力形式重写为张量值操作，从而允许我们为各种注意力形式定义灵活的低秩训练方法。设 $X \in \mathbb{R}^{N \times d_{\rm{model}}}$ 为长度为 $N$ 的嵌入序列，嵌入维度为 $d_{\rm{model}}$。</p>
+
+<p>标准 MHA 通过列分割将 $d_{\rm{model}} \times d_{\rm{model}}$ 的键、查询和值矩阵划分为 $n_{\rm{H}}$ 个头：</p>
+
+<p>$$
+W^{\rm{Q}} = [W_1^{\rm{Q}}, \cdots, W_{n_{\rm{H}}}^{\rm{Q}}], \quad
+W^{\rm{K}} = [W_1^{\rm{K}}, \cdots, W_{n_{\rm{H}}}^{\rm{K}}], \quad
+W^{\rm{V}} = [W_1^{\rm{V}}, \cdots, W_{n_{\rm{H}}}^{\rm{V}}],
+$$</p>
+
+<p>W^{\rm{Q}}_{1},\cdots,W^{\rm{Q}}_{n_{\rm{H}}}],\\
+W^{\rm{K}}&amp;=[W^{\rm{K}}_{1},\cdots,W^{\rm{K}}_{n_{\rm{H}}}],\\
+W^{\rm{V}}&amp;=[W^{\rm{V}}_{1},\cdots,W^{\rm{V}}_{n_{\rm{H}}}],\end{split}
+其中
+W
+i
+Q
+,
+W
+i
+K
+,
+W
+i
+V
+∈
+ℝ
+d
+model
+×
+d
+H
+W^{\rm{Q}}_{i},W^{\rm{K}}_{i},W^{\rm{V}}_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{H}}}
+是查询、键和值头，且
+d
+H
+:=
+d
+model
+/
+n
+H
+d_{\rm{H}}:=d_{\rm{model}}/{n_{\rm{H}}}
+是头的维度。
+使用一个稍作改进的头定义，其中包含输出投影矩阵
+W
+i
+O
+∈
+ℝ
+d
+H
+×
+d
+model
+W^{\rm{O}}_{i}\in\mathbb{R}^{d_{\rm{H}}\times d_{\rm{model}}}
+，我们有
+head
+i
+=
+Attention
+​
+(
+X
+​
+W
+i
+Q
+,
+X
+​
+W
+i
+K
+,
+X
+​
+W
+i
+V
+)
+​
+W
+i
+O
+=
+σ
+​
+(
+X
+​
+W
+i
+Q
+​
+(
+X
+​
+W
+i
+K
+)
+⊤
+d
+H
+)
+​
+X
+​
+W
+i
+V
+​
+W
+i
+O
+.
+\displaystyle\begin{aligned} \text{head}_{i}=\,&amp;\text{Attention}(XW^{\rm{Q}}_{i},XW^{\rm{K}}_{i},XW^{\rm{V}}_{i})W^{\rm{O}}_{i}\\
+=\,&amp;\sigma\left(\frac{XW^{\rm{Q}}_{i}(XW^{\rm{K}}_{i})^{\top}}{\sqrt{d_{\rm{H}}}}\right)XW^{\rm{V}}_{i}W^{\rm{O}}_{i}.\end{aligned}
+(1)
+其中
+σ
+\sigma
+是逐行 softmax 激活函数。
+此外，
+head
+i
+∈
+ℝ
+N
+×
+d
+model
+\text{head}_{i}\in\mathbb{R}^{N\times d_{\rm{model}}}
+，这使得我们可以将多头注意力（MHA）形式重写为
+MHA
+​
+(
+X
+)
+=
+∑
+i
+=
+1
+n
+H
+head
+i
+.
+\displaystyle\text{MHA}(X)=\sum_{i=1}^{n_{\rm{H}}}\text{head}_{i}\,.
+我们提出重新表述注意力机制，以支持构建更节省内存的表示。我们的推导基于两个关键观察：
+首先，t</p>
+
+<p>键矩阵和查询矩阵构成每个头 $i$ 的预 softmax 权重矩阵 $W_i := W_i^{\rm{Q}} W_i^{{\rm K},\top} \in \mathbb{R}^{d_{\rm{model}} \times d_{\rm{model}}}$ 的秩 $d_{\rm{H}}$ 分解。类似地，值矩阵和输出矩阵构成每个头 $i$ 的后 softmax 权重矩阵 $\widetilde{W}_i := W_i^{\rm{V}} W_i^{\rm{O}} \in \mathbb{R}^{d_{\rm{model}} \times d_{\rm{model}}}$ 的秩 $d_{\rm{H}}$ 分解。于是，多头注意力机制（MHA）的形式化表达为：</p>
+
+<p>$$
+\text{MHA}(X) = \sum_{i=1}^{n_{\rm{H}}} \sigma\left(\frac{X W_i X^{\top}}{\sqrt{d_{\rm{H}}}}\right) X \widetilde{W}_i\,.
+$$</p>
+
+<p>因此，MHA 只能在每个头内部编码低秩行为，而不能在头之间进行低秩编码。其次，每个头的矩阵 $W_i$ 和 $\widetilde{W}_i$ 可以通过堆叠所有头索引收集为张量，即：</p>
+
+<p>$$
+\mathcal{W} = (W_i)_{i=1}^{n_{\rm{H}}} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}, \tag{2}
+$$</p>
+
+<p>$$
+\widetilde{\mathcal{W}} = (\widetilde{W}_i^{\top})_{i=1}^{n_{\rm{H}}} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}. \tag{3}
+$$</p>
+
+<p>对于 $\mathcal{W}$ 和 $\widetilde{\mathcal{W}}$，第一个模式被称为头模式。对于 $\mathcal{W}$，其头模式对应于每个头的权重矩阵 $W_i$。</p>
+
+<p>}
+，第二和第三模态对应于查询和键的计算。  
+对于  
+$\widetilde{\mathcal{W}}$  
+，第二和第三模态对应于输出和值的计算。  
+我们为了符号方便，将 (3) 中的 $\widetilde{W}_{i}$ 的转置堆叠起来；键和值模态（通常被类似处理）现在对齐到第三模态。  
+为了将 MHA 公式重新表述为这些张量值权重的形式，我们定义  
+$\mathcal{H}^{(1)}(X):=\, \sigma\left(\frac{\mathcal{W}\times_{2}X\times_{3}X}{\sqrt{d_{\rm{H}}}}\right)\in\mathbb{R}^{{n_{\rm{H}}}\times N\times N}\,,$  
+(4)  
+$\mathcal{H}^{(2)}(X):=\, \widetilde{\mathcal{W}}\times_{3}X\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times N}\,.$  
+(5)  
+这里，$\mathcal{H}^{(1)}$ 收集了所有头上的 $N\times N$ 注意力矩阵，而 $\mathcal{H}^{(2)}$ 收集了投影后的值表示。然后通过在头和序列维度上收缩这些张量来恢复 MHA 输出：  
+$\text{MHA}(X;\mathcal{W},\widetilde{\mathcal{W}})_{jk}=\sum_{i,\ell}\mathcal{H}^{(1)}_{ij\ell}(X;\mathcal{W})\mathcal{H}^{(2)}_{ik\ell}(X;\widetilde{\mathcal{W}})\,.$  
+(6)  
+2.1  
+Tucker 注意力  
+我们现在旨在找到一种公式化方法</p>
+
+<p>n 使我们能够进一步利用共享信息，例如，当不同注意力头 $i$ 的 $W_i$ 或 $\widetilde{W}_i$ 的列空间或行空间共享相同基底时。捕捉这种共享结构的自然框架是 Tucker 分解，它将张量分解为一个紧凑的核心张量和沿每个模态的一组基矩阵。这促使我们给出以下定义。</p>
+
+<p>**定义 2.1**（Tucker 注意力）  
+令 $\mathcal{W} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}$ 和 $\widetilde{\mathcal{W}} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}$ 表示来自 (2)–(3) 的预 softmax 和后 softmax 注意力张量。Tucker 注意力通过 Tucker 分解参数化这些张量：</p>
+
+<p>$$
+\mathcal{W} = \mathcal{C} \bigtimes_{j=1}^{3} U_j, \qquad \widetilde{\mathcal{W}} = \widetilde{\mathcal{C}} \bigtimes_{j=1}^{3} \widetilde{U}_j,
+\tag{7}
+$$</p>
+
+<p>其中 $\mathcal{C} \in \mathbb{R}^{r_{\rm{1}} \times r_{\rm{2}} \times r_{\rm{3}}}$ 和 $\widetilde{\mathcal{C}} \in \mathbb{R}^{\widetilde{r}_{\rm{1}} \times \widetilde{r}_{\rm{2}} \times \widetilde{r}_{\rm{3}}}$ 是可学习的核心张量，且 $U_1 \in \mathbb{R}^{n_{\rm{H}} \times r_{\rm{1}}}$，$U_2 \in \mathbb{R}^{d_{\rm{model}} \times r_{\rm{2}}}$，$U_3 \in \mathbb{R}^{d_{\rm{model}} \times r_{\rm{3}}}$，$\widetilde{U}_1 \in \mathbb{R}^{n_{\rm{H}} \times \widetilde{r}_{\rm{1}}}$，$\widetilde{U}_2 \in \mathbb{R}^{d_{\rm{model}} \times \widetilde{r}_{\rm{2}}}$，$\widetilde{U}_3 \in \mathbb{R}^{d_{\rm{model}} \times \widetilde{r}_{\rm{3}}}$ 是可学习的基矩阵。</p>
+
+<p>$\mathbb{R}^{d_{\rm{model}}\times r_{\rm{3}}}$  
+（类似地适用于 $\widetilde{U}_{1,2,3}$）是可学习的基矩阵。Tucker 秩 $(r_{\rm{1}},r_{\rm{2}},r_{\rm{3}})$ 和 $(\widetilde{r}_{\rm{1}},\widetilde{r}_{\rm{2}},\widetilde{r}_{\rm{3}})$ 分别控制在头（head）、查询/输出（query/output）和键/值（key/value）模式上的压缩。注意力计算通过 (6) 式完成。基矩阵 $U_{2},U_{3}$（分别对应 $\widetilde{U}_{2},\widetilde{U}_{3}$）捕捉查询/键（resp. 输出/值计算）中跨头的共享子空间，而 $U_{1}$ 和 $\widetilde{U}_{1}$ 则实现对头模式本身的压缩。这种能力在 MHA、GQA 和 MLA 中并不存在。Tucker Attention 既具有**表达能力**，又对参数高效的注意力机制具有**信息性**。我们下面对这些特性分别进行概述。</p>
+
+<p>### 表达能力（Expressivity）</p>
+
+<p>Tucker Attention 具有表达能力，因为当前最先进的注意力方法（如 MQA、GQA 和 MLA）都是具有特定秩的 Tucker Attention 的特例。该结论的关键在于证明（见 **定理 B.2**），(2) 式中的 $\mathcal{W}$ 可以进行如下 Tucker 分解：</p>
+
+<p>$$
+\mathcal{W} = \mathcal{C} \times_{2} W^{\rm{Q}} \Pi \times_{3} W^{\rm{K}} \Pi
+\tag{8}
+$$</p>
+
+<p>其中 $\Pi$ 是一个列置换矩阵。因此，$W^{\rm{Q}}$ 和 $W^{\rm{K}}$ 的低秩分解可以直接推导出 $\mathcal{W}$ 的 Tucker 秩。由于 MQA、GQA 和 MLA 都采用特定的秩结构，它们自然成为 Tucker Attention 的特例。</p>
+
+<p>对所有或部分键矩阵 $W^{\rm{K}}$、查询矩阵 $W^{\rm{Q}}$ 和值矩阵 $W^{\rm{V}}$ 应用指定的低秩分解后，这些方法中 $\mathcal{W}$ 和 $\widetilde{\mathcal{W}}$ 的 Tucker 秩如下：</p>
+
+<p>- **MHA** – $\mathcal{W}$ &amp; $\widetilde{\mathcal{W}}$: $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{model}})$
+- **MQA** – $\mathcal{W}$ &amp; $\widetilde{\mathcal{W}}$: $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{H}})$
+- **GQA** – $\mathcal{W}$ &amp; $\widetilde{\mathcal{W}}$: $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{H}}n_{\rm{KV}})$，其中 $n_{\rm{KV}}$ 是 GQA 的 KV 头数量。
+- **MLA** – $\mathcal{W}$: $(n_{\rm{H}}, d_{\rm{c}}^{\rm{Q}}, d_{\rm{c}}^{\rm{K}})$，$\widetilde{\mathcal{W}}$: $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{c}}^{\rm{K}})$，其中 $d_{\rm{c}}^{\rm{K}}$ 是键和值头的潜在维度，$d_{\rm{c}}^{\rm{Q}}$ 是查询头的潜在维度。</p>
+
+<p>图 1 展示了典型近似注意力机制的低秩表示及其收缩模式，其中 MQA 是 GQA 在 $n_{\rm{KV}}=1$ 时的特例。第 2.2 节简要概述了 MQA、GQA 和 MLA，并解释了上述秩的动机。更正式的理论见附录 B.1。</p>
+
+<p>**跨所有模式的知情压缩**</p>
+
+<p>通过 Tucker 分解的视角看待参数减少，Tucker</p>
+
+<p>注意力机制能够沿所有张量模式进行压缩：头（head）、查询（query）、键（key）、值（value）和输出（output）。这揭示了在头模式和输出模式中存在的压缩机会，而MQA、GQA和MLA由于其结构设计，未能利用这些机会。</p>
+
+<p>为了验证这种可压缩结构在实践中确实存在，我们对完全训练好的GPT-2模型中的注意力张量 $\mathcal{W}$ 和 $\widetilde{\mathcal{W}}$ 进行了事后（post-hoc）奇异值分析（详见第4.2节的训练细节）。对于每个模式，我们计算其矩阵化形式，并在图5（附录）中绘制归一化的奇异值谱，其中头模式的谱如图2所示。</p>
+
+<p>该分析揭示了三个关键发现：</p>
+
+<p>首先，MHA在所有模式中表现出相似的谱衰减（见图5(c)、5(d)、5(e)和5(f)），然而GQA和MLA并未压缩输出模式，因此保留了本可移除的参数。</p>
+
+<p>其次，尽管GQA在键和值投影中共享头，但一旦应用查询和输出投影后，头模式中的低秩行为即被破坏（见图5(a)和5(b)）。</p>
+
+<p>最后，图2显示，MLA和Tucker Attention（其中 $r_{\rm{1}}=8$）在头模式中表现出相似的低秩结构，但MLA的参数化方式无法利用这种冗余性。只有通过Tucker视角，才能实现这种头模式的压缩。</p>
+
+<p>我们声称，Tucker Attention 将上述低秩特性转化为可量化的参数减少。在表1中，我们列出了训练和</p>
+
+<p>推理成本的比较：MHA、MQA、GQA、MLA 和 Tucker Attention。  
+推理成本是在组件融合后（对于 MLA）计算的，以获得额外的节省。  
+为清晰起见，我们仅考虑 Tucker Attention 的情况，其中键（key）、查询（query）、值（value）和输出的秩均等于给定的秩 $ r $，而 softmax 前后头的秩为 $ r_1 $。  
+结果显示，除 Tucker Attention 外，所有方法的参数数量均随 $ \mathcal{O}(d_{\rm{model}}^{2}) $ 增长，而 Tucker Attention 通过在输出模式上进行压缩，其参数数量增长为 $ \mathcal{O}(rd_{\rm{model}} + r_1 r^2) $。  
+因此，如果我们假设 $ r \ll d_{\rm{model}} $，则预期 Tucker Attention 相较于其他所有方法能实现参数节省，且不会显著降低验证指标（验证指标详情见第 4 节）。  
+图 5 表明，在 GPT2 训练中，假设 $ r \ll d_{\rm{model}} $ 成立，且第 4 节的结果表明低秩假设不会损害性能。  
+**图 2**：GPT2 预训练中预 softmax 头模式的归一化奇异谱，即 $ \operatorname{\mathrm{Mat}}_{1}(\mathcal{W}) $。详细描述见图 5。MLA 在各头中表现出与 Tucker Attention 相似的低秩行为，但无法利用这一特性来减少参数。  
+**表 1**：MHA、MQA（具有 $ n_{\rm{KV}} $ 个 KV 头）、GQA、MLA 以及所提出的 Tucker Attention 的内存占用比较。</p>
+
+<p>tion。我们统计了键（key）、查询（query）、值（value）和输出权重矩阵的总参数量。MLA 在推理过程中融合了查询的降维和升维投影，因此参数量会发生变化。我们假设对于 MHA、MQA 和 GQA，有 $d = n_{\rm{H}}d_{\rm{H}}$，其中 $n_{\rm{KV}}$ 是 GQA 的 kv 头数，$d_{\rm{c}}$ 是 MLA 的潜在维度/秩，$(r_{\rm{1}},r,r)$ 是 Tucker Attention 中 $\mathcal{W}$ 和 $\widetilde{\mathcal{W}}$ 的 Tucker 秩。序列长度记为 $N$。Tucker Attention 相比其他方法具有更优的 $\mathcal{O}(rd_{\rm{model}})$ 缩放特性。</p>
+
+<p>| Method | #Params (train) | #Params (inference) | KV Cache | Eq. (6) |
+|--------|---------------|-------------------|----------|---------|
+| 4$n_{\rm{H}}d_{\rm{model}}^2$ | 4$d_{\rm{model}}^2$ | 4$Nd_{\rm{model}}$ | 4$n_{\rm{H}}d_{\rm{model}}$ |
+| MHA | 4$d_{\rm{model}}^2$ | same as training | 2$Nd_{\rm{model}}$ |
+| MQA | 2$d_{\rm{model}}^2 + 2d_{\rm{H}}d_{\rm{model}}$ | same as training | 2$Nd_{\rm{H}}$ |
+| GQA-$n_{\rm{KV}}$ | 2$d_{\rm{model}}^2 + 2n_{\rm{KV}}d_{\rm{H}}d_{\rm{model}}$ | same as training | 2$Nn_{\rm{KV}}d_{\rm{H}}$ |
+| MLA (separated KV) | $d_{\rm{model}}^2 + 6d_{\rm{model}}d_{\rm{c}}$ | $d_{\rm{model}}^2 + 4d_{\rm{model}}d_{\rm{c}}$ | 2$Nd_{\rm{c}}$ |
+| MLA (shared KV) | $d_{\rm{model}}^2 + 5d_{\rm{model}}d_{\rm{c}}$ | | |</p>
+
+<p>}}d_{\rm{c}}
+d
+model
+2
++
+2
+​
+d
+model
+​
+d
+c
+d_{\rm{model}}^{2}+2d_{\rm{model}}d_{\rm{c}}
+N
+​
+d
+c
+Nd_{\rm{c}}
+Tucker (separated KV)
+2
+​
+(
+n
+H
+​
+r
+1
++
+2
+​
+r
+​
+d
+model
++
+r
+1
+​
+r
+2
+)
+2({n_{\rm{H}}}r_{\rm{1}}+2rd_{\rm{model}}+r_{\rm{1}}r^{2})
+same as training
+2
+​
+N
+​
+r
+2Nr
+Tucker (shared KV)
+2
+​
+n
+H
+​
+r
+1
++
+3
+​
+r
+​
+d
+model
++
+2
+​
+r
+1
+​
+r
+2
+2{n_{\rm{H}}}r_{\rm{1}}+3rd_{\rm{model}}+2r_{\rm{1}}r^{2}
+same as training
+N
+​
+r
+Nr
+2.2
+MQA、GQA 和 MLA 是 Tucker Attention 的特例
+在本节中，我们展示诸如 MQA、GQA 和 MLA 等注意力形式与 Tucker Attention 兼容，并且在给定的 Tucker 秩下成立。
+在本讨论中，我们仅关注上述方法相对于预 softmax 压缩的秩，即公式 (2) 中的
+𝒲
+\mathcal{W}
+。关于
+𝒲
+~
+\widetilde{\mathcal{W}}
+的后 softmax 秩以及更完整的理论，请参见
+Section
+B.1
+。
+我们的讨论分析了不同注意力机制中
+W
+Q
+W^{\rm{Q}}
+和
+W
+K
+W^{\rm{K}}
+的秩，并利用定理
+B.2
+得出 Tucker 秩。
+2.2.1
+多查询和组查询注意力
+组查询注意力选择
+n
+KV
+n_{\rm{KV}}
+个 K 头
+W
+i
+K
+W^{\rm{K}}_{i}
+（类似地，也选择 V 头），每个头的大小为
+d
+model
+×
+d
+H
+d_{\rm{model}}\times d_{\rm{H}}
+，见
+Figure
+1(b)
+。
+因此，
+W
+K
+W^{\rm{K}}
+的最大秩为
+n
+KV
+​
+d
+H
+n_{\rm{KV}}d_{\rm{H}}
+。
+对值头也应用了类似的共享压缩技术。
+因此，
+𝒲
+\mathcal{W}
+和
+𝒲
+~
+\widetilde{\mathcal{W}}
+在键和值模式中的秩最多为</p>
+
+<p>ost  
+n  
+KV  
+​  
+d  
+H  
+n_{\rm{KV}}d_{\rm{H}}  
+.  
+我们将 MQA 视为 GQA 的特例，其中  
+n  
+KV  
+=  
+1  
+n_{\rm{KV}}=1  
+.</p>
+
+<p>2.2.2 多头潜在注意力（Multihead Latent Attention）  
+在 MLA 的情况下，键头（key heads）被分解为  
+W  
+i  
+K  
+=  
+W  
+DKV  
+​  
+W  
+i  
+UK  
+W^{\rm{K}}_{i}=W^{\rm{DKV}}W^{\rm{UK}}_{i}  
+，其中  
+W  
+DKV  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+c  
+K  
+W^{\rm{DKV}}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}^{\rm{K}}}  
+将输入投影到维度为  
+d  
+c  
+K  
+d_{\rm{c}}^{\rm{K}}  
+的潜在空间，而  
+W  
+i  
+K  
+W^{\rm{K}}_{i}  
+则将输入扩展到特定头的环境空间。  
+定义  
+W  
+UK  
+=  
+[  
+W  
+1  
+UK  
+,  
+⋯  
+,  
+W  
+n  
+H  
+UK  
+]  
+∈  
+ℝ  
+d  
+c  
+Q  
+×  
+d  
+model  
+W^{\rm{UK}}=[W^{\rm{UK}}_{1},\cdots,W^{\rm{UK}}_{n_{\rm{H}}}]\in\mathbb{R}^{d_{\rm{c}}^{\rm{Q}}\times d_{\rm{model}}}  
+，我们有  
+W  
+K  
+=  
+W  
+DKV  
+​  
+W  
+UK  
+W^{\rm{K}}=W^{\rm{DKV}}W^{\rm{UK}}  
+，且容易看出  
+W  
+K  
+W^{\rm{K}}  
+的秩为  
+d  
+c  
+K  
+d_{\rm{c}}^{\rm{K}}  
+。  
+查询头（query heads）以类似方式分解，得到  
+W  
+Q  
+=  
+W  
+DQ  
+​  
+W  
+UQ  
+W^{\rm{Q}}=W^{\rm{DQ}}W^{\rm{UQ}}  
+，其中  
+W  
+DQ  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+c  
+Q  
+W^{\rm{DQ}}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}^{\rm{Q}}}  
+，且  
+W  
+Q  
+W^{\rm{Q}}  
+的秩为  
+d  
+c  
+Q  
+d_{\rm{c}}^{\rm{Q}}  
+。  
+将  
+W  
+i  
+UK  
+W^{\rm{UK}}_{i}  
+和  
+W  
+i  
+UQ  
+W^{\rm{UQ}}_{i}  
+分别堆叠为张量  
+𝒲  
+UK  
+∈  
+ℝ  
+n  
+H  
+×  
+d  
+H  
+×  
+d  
+c  
+K  
+\mathcal{W}^{\rm UK}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{H}}\times d_{\rm{c}}^{\rm{K}}}  
+和  
+𝒲  
+UQ  
+∈  
+ℝ  
+n  
+H  
+×  
+d  
+H  
+×  
+d  
+c  
+Q  
+\mathcal{W}^{\rm UQ}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{H}}\times d_{\rm{c}}^{\rm{Q}}}  
+，从而得到 MLA 的公式表示。</p>
+
+<p>rated in  
+Figure  
+1(c)  
+. 显然，两个上投影张量可以被吸收进公式 (8) 的 Tucker 核中，从而得到一种更节省参数的表示，即 Tucker Attention 表示。  
+最后，我们考虑两种值头压缩版本。第一种，称为 **shared KV**，是标准方法，其中下投影 $W^{\rm{DKV}}$ 也被用于值头，即 $W^{\rm{V}}_{i}=W^{\rm{DKV}}W^{\rm{UV}}_{i}$。  
+我们还考虑另一种情况，称为 **separated KV**，其中 $W^{\rm{V}}$ 使用其自身的下投影，即 $W^{\rm{V}}_{i}=W^{\rm{DV}}W^{\rm{UV}}_{i}$，其中 $W^{\rm{UV}}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}^{\rm{K}}}$。</p>
+
+<p>3  
+Tucker Attention 的兼容性  
+在本节中，我们展示 Tucker Attention 与 KV 缓存、RoPE 的修改版本以及 Flash-Attention 兼容。</p>
+
+<p>3.1  
+KV 缓存  
+为简化符号，我们假设 $r_{\rm{3}}=\widetilde{r_{\rm{3}}}$.  
+KV 缓存可以通过计算并缓存 $K=XU_{3}\in\mathbb{R}^{N\times r_{\rm{3}}}$ 和 $V=X\widetilde{U}_{3}\in\mathbb{R}^{N\times r_{\rm{3}}}$ 来实现。  
+此外，我们可以更新最后一个 token $x\in\mathbb{R}^{d_{\mathrm{model}}}$（即注意力矩阵的最后一行）的注意力矩阵，公式如下：  
+$\displaystyle\sigma\left(\frac{\widetilde{\mathcal{C}}\times_{1}U_{1}\times_{2}xU_{2}\times_{3}K}{d_{H}}\right)\times_{3}V$.</p>
+
+<p>}\times_{2}xU_{2}\times_{3}K}{\sqrt{d_{\rm{H}}}}\right)\times_{3}V\,.
+(9)
+缓存
+K
+K
+和
+V
+V
+会产生存储开销
+2
+​
+N
+​
+r
+3
+2Nr_{\rm{3}}
+。
+此外，Tucker Attention 可以通过在公式 (9) 中将
+K
+,
+V
+K,V
+替换为
+L
+KV
+=
+X
+​
+U
+3
+∈
+ℝ
+N
+×
+r
+3
+L^{\rm KV}=XU_{3}\in\mathbb{R}^{N\times r_{\rm{3}}}
+，兼容共享的键-值下投影，从而进一步将所需的 KV 缓存减少至
+N
+​
+r
+3
+Nr_{\rm{3}}
+。
+当
+r
+3
+=
+d
+c
+r_{\rm{3}}=d_{\rm{c}}
+且共享 KV 投影时，其中
+d
+c
+d_{\rm{c}}
+是 MLA 中的潜在维度，MLA 与 Tucker Attention 的缓存大小需求相等。
+3.2
+旋转位置编码 (RoPE)
+一个关键问题是 Tucker Attention 是否兼容旋转位置编码 (RoPE)（Su 等，2023），这是现代大语言模型中主流的位置编码方式。标准 RoPE
+2
+2
+2
+我们参考 (Su 等，2023) 的公式 15 获取完整定义。
+在标记位置
+ℓ
+\ell
+处，对查询和键向量应用旋转矩阵
+R
+​
+(
+ℓ
+,
+d
+)
+∈
+ℝ
+d
+×
+d
+R(\ell,d)\in\mathbb{R}^{d\times d}
+，其中旋转频率依赖于嵌入维度
+d
+d
+。关键性质是旋转后的查询与键之间的内积仅依赖于相对位置：
+R
+​
+(
+m
+,
+d
+)
+​
+R
+​
+(
+n
+,
+d
+)
+⊤
+=
+R
+​
+(
+m
+−
+n
+,
+d
+)
+.
+\displaystyle R(m,d)R(n,d)^{\top}=R(m-n,d).
+(10)
+在标准多头注意力 (MHA) 中，RoPE 应用于头维度
+d
+H
+d_{\rm{H}}
+，从而在查询位置
+m
+m
+和键位置
+n
+n
+处得到 softmax 前的项：
+X
+m
+​
+W
+i
+Q
+​
+R
+​
+(</p>
+
+<p>$$
+X_{m}W^{\rm{Q}}_{i}R(m,d_{\rm{H}})R(n,d_{\rm{H}})^{\top}W_{i}^{{\rm K},\top}X_{n}^{\top}.
+\quad (11)
+$$</p>
+
+<p>由于 Tucker Attention 对融合乘积 $W^{\rm{Q}}_{i}W_{i}^{{\rm K},\top}$ 进行参数化，而不是对单独的查询和键矩阵进行参数化，因此在标准头维度中放置 RoPE 是不兼容的。我们通过将旋转从头维度移动到潜在键维度来解决此问题，从而得到我们称之为 **潜在 RoPE（latent RoPE）** 的方法。</p>
+
+<p>**定义 3.1**（Tucker Attention 的潜在 RoPE）  
+令 $\hat{Q} = \mathcal{C} \times_{1} U_{1} \times_{2} (XU_{2}) \in \mathbb{R}^{n_{\rm{H}} \times N \times r_{\rm{3}}}$ 和 $K = XU_{3} \in \mathbb{R}^{N \times r_{\rm{3}}}$，其中 $\hat{Q}_{m}$ 和 $K_{n}$ 分别表示在 token 位置 $m$ 和 $n$ 处的表示。潜在 RoPE 计算位置感知注意力如下：</p>
+
+<p>$$
+\hat{Q}_{m} \times_{3} \left(K_{n}R(n,r_{\rm{3}})R(m,r_{\rm{3}})^{\top}\right) \in \mathbb{R}^{n_{\rm{H}}},
+\quad (12)
+$$</p>
+
+<p>其中 $R(\ell,r_{\rm{3}}) \in \mathbb{R}^{r_{\rm{3}} \times r_{\rm{3}}}$ 是潜在键空间中的旋转嵌入。</p>
+
+<p>潜在 RoPE 满足相对位置属性（10）；证明详见 **Section B.2**。关键洞察在于，无论旋转矩阵放置在何处，旋转不变性都成立；我们的修改仅改变了旋转矩阵的位置。</p>
+
+<p>通过在潜在维度（latent dimension）而非头维度（head dimension）上操作，实现了旋转频率的控制。  
+重要的是，潜在 RoPE 完全兼容 KV 缓存：旋转矩阵位于 Tucker 下投影器 $U_3$ 和核心 $\mathcal{C}$ 之间，因此键旋转 $R(n,r_{\rm{3}})$ 只需计算一次，并可共享于所有头，相比 MHA 中的每头 RoPE 和 MLA 中的解耦 RoPE，显著降低了计算开销。</p>
+
+<p>### 3.2.1 推论：MLA 的简化 RoPE  
+潜在 RoPE 的一个重要实际后果是，它为 MLA（DeepSeek-AI 等，2024）中使用的解耦 RoPE 方法提供了一个更简洁的替代方案。据我们所知，这是首次证明 MLA 可以在无需解耦位置编码的情况下兼容 RoPE。</p>
+
+<p>原始 MLA 实现（DeepSeek-AI 等，2024）[第 2.1.3 节] 引入了解耦 RoPE 作为一种变通方案：将查询和键矩阵划分为“语义”和“旋转”部分，仅对旋转部分应用 RoPE。这增加了架构复杂性，并阻止了推理时的完整权重融合。</p>
+
+<p>由于 Tucker Attention 通用化了 MLA（定理 B.4），潜在 RoPE 可直接应用于 MLA 本征的 KV-潜在空间：  
+$$
+X_{m}W^{\rm{DQ}}W^{\rm{UQ}}_{i}W^{\rm UV}_{i}R(m,d_{\rm{c}})R(n,d_{\rm{c}})^{\top}W^{\rm DKV,\top}X_{n}.
+\tag{13}
+$$  
+该公式实现了推理时的完整权重融合。</p>
+
+<p>融合查询侧矩阵为单个投影  
+W  
+i  
+Q  
+,  
+MLA  
+:=  
+W  
+DQ  
+​  
+W  
+i  
+UQ  
+​  
+W  
+i  
+U  
+​  
+V  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+c  
+W^{\rm Q,MLA}_{i}:=W^{\rm{DQ}}W^{\rm{UQ}}_{i}W^{UV}_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}}  
+:  
+X  
+m  
+​  
+W  
+i  
+Q  
+,  
+MLA  
+​  
+R  
+(  
+m  
+,  
+d  
+c  
+)  
+​  
+R  
+(  
+n  
+,  
+d  
+c  
+)  
+⊤  
+​  
+W  
+DKV  
+,  
+⊤  
+​  
+X  
+n  
+.  
+\displaystyle X_{m}W^{\rm Q,MLA}_{i}R(m,d_{\rm{c}})R(n,d_{\rm{c}})^{\top}W^{\rm DKV,\top}X_{n}.  
+(14)  
+此简化消除了对独立语义路径和旋转路径的需求，在保持 KV-cache 效率的同时降低了 MLA 的实现复杂度。我们在  
+表 6  
+中通过实验证明，MLA 与潜在 RoPE 具有可比性。  
+(a) ViT32l top-5 准确率  
+(b) ViT14g top-5 准确率  
+图 3  
+: ViT32l（左）和 ViT14g（右）在 ImageNet1k 上的 top-5 验证性能，对比 MHA 和近似注意力机制在总注意力参数数量下的表现（左上角最佳）。GQA 以  
+n  
+KV  
+=  
+1  
+n_{\rm{KV}}=1  
+到  
+4  
+4  
+个 KV 头展示，其中 GQA-1 对应 MQA。MLA 以潜在维度 16-64 并带有独立 kv-权重展示。Tucker Attention 以秩  
+[  
+r  
+1  
+,  
+r  
+2  
+,  
+r  
+3  
+]  
+[r_{\rm{1}},r_{\rm{2}},r_{\rm{3}}]  
+展示。显然，Tucker Attention 在达到相当准确率水平时所需参数数量少一个数量级，从而将参数-准确率帕累托前沿向左上角移动。  
+3.3  
+Flash Attention  
+所提出的 Tucker Attention 完全兼容现有的 flash-attention 实现，无需自定义内核。  
+我们简要回顾内存操作</p>
+
+<p>优化闪存注意力（Flash-Attention）  
+(Dao, 2023)  
+核心思想是计算公式 (1) 中的  
+$$
+\sigma\left(\frac{XW^{\rm{Q}}_{i}(XW^{\rm{K}}_{i})^{\top}}{\sqrt{d_{\rm{H}}}}\right)XW^{\rm{V}}_{i}
+$$  
+而不显式生成 $N \times N$ 的注意力矩阵，因为对于长序列而言，显式存储该矩阵会带来不可接受的内存开销。记 $Q_i = XW^{\rm{Q}}_{i}$，$K_i = XW^{\rm{K}}_{i}$，$V_i = XW^{\rm{V}}_{i}$，Flash-Attention 通过将 $Q_i$、$K_i$、$V_i$ 划分为大小为 $C \times d_{\rm{H}}$ 的序列块，这些块可容纳在 SRAM 中，并通过在线 softmax 归一化逐步累加输出，从而避免存储完整的注意力矩阵。此时，瓶颈转为需要从 HBM 加载多少次块到 SRAM 中。</p>
+
+<p>3  
+3  
+3  
+SRAM（静态随机存取存储器）指的是 GPU 上的小型、高速片上缓存；HBM（高带宽存储器）则是容量更大但速度较慢的片外存储器。在现代 GPU（如 NVIDIA H100）上，SRAM 访问速度大约是 HBM 的 10–20 倍，因此 HBM 到 SRAM 的数据传输成为内存受限操作（如注意力机制）的主要瓶颈。</p>
+
+<p>Tucker 注意力统一了 MQA 和 MLA 的优势  
+现有的高效注意力方法为 Flash-Attention 提供了互补的优势：  
+首先，MQA 和 GQA 通过在查询头之间共享键-值头，减少了 HBM 访问次数，因此对于所有 $n_{\rm{H}}$ 个查询头，只需加载 $n_{\rm{H}}/n_{\rm{KV}}$ 个 KV 块。</p>
+
+<p>m{H}}}
+查询头。
+第二，MLA（在融合推理模式下）通过加载在潜在维度 $d_{\rm{c}}^{\rm{K}}$ 中编码的键和查询块，而非头维度 $d_{\rm{H}}$，从而减轻了 SRAM 压力，使得可以使用更大的块大小。
+Tucker Attention 在训练和推理过程中同时实现了上述两个优势：
+首先，键和值投影 $K=XU_{3}\in\mathbb{R}^{N\times r_{\rm{3}}}$ 和 $V=X\widetilde{U}_{3}\in\mathbb{R}^{N\times r_{\rm{3}}}$ 在所有头之间共享，因此每次注意力计算只需加载一个 KV 块对，适用于所有查询头，类似于 MQA。
+其次，块在 $r_{\rm{3}}$ 潜在维度中编码，对应于键和值的秩。因此，与 MLA 类似，加载到 SRAM 中的块比 MHA 或 GQA 中以 $d_{\rm{H}}$ 为编码维度的块所引起的内存压力更小。
+实现
+在评估时，我们预先计算 $K=XU_{r_{\rm{3}}}\in\mathbb{R}^{N\times r_{\rm{3}}}$、$V=X\widetilde{U}_{r_{\rm{3}}}\in\mathbb{R}^{N\times r_{\rm{3}}}$（或从 KV-cache 加载 $K, V$），并计算每个头的查询 $Q_{i}=\mathcal{C}\times_{1}U_{1}\times_{2}(XU_{2})\in\mathbb{R}^{N\times r_{\rm{3}}}$。然后调用 PyTorch 中的生产级 flash-attention 内核，该内核原生支持 GQA 风格的分组头。由于 Tucker Attention 对所有查询头使用一个共享的 KV 对，</p>
+
+<p>query heads，这对应于从内核视角来看的 GQA（其中 $n_{\rm{KV}}=1$，即 MQA）。我们注意到，这种评估策略是多种可能方法之一；Tucker 结构可能允许更高效的定制内核，直接利用因子化核心 $\mathcal{C}$。我们将在未来的工作中探索专用内核。</p>
+
+<p>**表 2**：在 OpenWebText 上使用相同训练超参数训练的 GPT-2 [ $d_{\rm{model}}=768$, $n_{\rm{H}}=12$, $d_{\rm{H}}=64$ ] 变体的零样本结果，序列长度 $N=1024$，未进行微调。对于每种 RoPE 设置，我们以粗体标出 GQA、MLA 和 Tucker Attention 的最低 KV 缓存和参数存储（以 MB 为单位，假设使用 BF16 编码）。Tucker Attention 在参数量和 KV 缓存更少的情况下，实现了与基线方法相当的验证准确率和困惑度得分。</p>
+
+<p>| 方法 | Attn params | KV Cache | Val loss | WikiText2 | LAMBADA | Mean | LAMBADA | CBT-CN | CBT-NE | HellaSwag | WinoGrande | PIQA | ARC-E | ARC-C | Mean | Metric |
+|------|-------------|----------|----------|-----------|---------|------|---------|--------|--------|-----------|------------|------|-------|-------|------|--------|
+|      | [MB]        | [MB]     | (lower is better) | Perplexity (lower is better) | Accuracy [%] (higher is better) |        |        |        |        |           |            |      |       |       |      |        |
+| w/o RoPE | MHA         | 56.62    | 37.74    | 2.861     | 37.15   | 16.95 | 27.05   | 27.17  | 82.44  | 62.84     | 31.28      | 51.30 | 64.25 | 41.96 | 24.40 | 48.20  |
+|        | GQA [$n_{\rm{KV}}=4$] | 37.74    | 12.85    | 2.896     | 42.97   | 22.30 | 32.63   | 25.13  | 82.24  | 61.52     | 30.77      | 51.78 | 63.17 | 42.17 | 25.94 | 47.84  |
+|        | GQA [$n_{\rm{KV}}=2$] | 33.02    | 6.29     | 2.869     | 40.63   | 21.67 | 31.15   | 24.37  | 81.44  | 59.80     | 30.42      | 50.99 | 63.38 | 41.25 | 25.94 | 47.20  |
+|        | MLA [GQA, $n_{\rm{KV}}=2$] | 33.02    | 6.29     | 2.871     | 40.75   | 21.75 | 31.25   | 24.45  | 81.35  | 59.75     | 30.35      | 51.05 | 63.30 | 41.30 | 25.90 | 47.15  |
+|        | Tucker Attention | 33.02    | 6.29     | 2.867     | 40.55   | 21.60 | 30.95   | 24.25  | 81.50  | 59.90     | 30.50      | 51.10 | 63.40 | 41.20 | 25.85 | 47.10  |</p>
+
+<p>KV  
+=  
+2  
+n_{\rm{KV}}=2  
+equiv.]  
+37.74  
+6.29  
+2.882  
+40.32  
+23.68  
+32.00  
+22.38  
+82.04  
+61.60  
+30.66  
+51.93  
+62.79  
+40.91  
+25.17  
+47.19  
+MLA shared K,V [  
+d  
+c  
+K  
+,  
+d  
+c  
+Q  
+=128  
+d_{\rm{c}}^{\rm{K}},d_{\rm{c}}^{\rm{Q}}=128  
+]  
+26.00  
+3.14  
+2.937  
+43.30  
+24.01  
+33.66  
+22.13  
+80.92  
+59.72  
+29.76  
+50.59  
+60.93  
+41.30  
+25.09  
+46.31  
+Tucker [8, 128, 128]  
+15.74  
+6.28  
+2.868  
+39.36  
+22.26  
+30.81  
+25.03  
+82.32  
+63.64  
+30.41  
+51.38  
+63.44  
+40.70  
+25.34  
+47.78  
+Tucker [8,128,64]  
+10.24  
+3.14  
+2.917  
+39.73  
+23.22  
+31.47  
+20.96  
+79.84  
+59.80  
+29.63  
+51.78  
+61.48  
+41.84  
+24.49  
+46.23  
+Tucker [8,64,64]  
+6.31  
+3.14  
+2.950  
+44.53  
+23.41  
+33.97  
+22.47  
+80.28  
+58.96  
+28.78  
+51.70  
+63.11  
+41.54  
+25.51  
+46.54  
+w/ RoPE  
+MHA (Full RoPE)  
+56.62  
+37.74  
+2.831  
+35.72  
+20.27  
+27.99  
+25.77  
+83.16  
+64.44  
+32.10  
+49.80  
+63.44  
+43.18  
+25.51  
+48.42  
+GQA [  
+n  
+KV  
+=4  
+n_{\rm{KV}}=4  
+]  
+37.74  
+12.85  
+2.851  
+36.35  
+19.02  
+27.69  
+26.35  
+82.52  
+63.20  
+31.83  
+52.96  
+63.71  
+43.69  
+26.11  
+48.80  
+GQA [  
+n  
+KV  
+=2  
+n_{\rm{KV}}=2  
+]  
+33.02  
+6.29  
+2.872  
+37.95  
+22.36  
+30.16  
+24.78  
+81.48  
+63.88  
+31.41  
+51.14  
+62.02  
+42.13  
+26.02  
+47.86  
+MLA shared K,V [  
+d  
+c  
+K  
+,  
+d  
+c  
+Q  
+=128  
+d_{\rm{c}}^{\rm{K}},d_{\rm{c}}^{\rm{Q}}=128  
+]  
+26.00  
+3.14  
+2.885  
+39.14  
+21.45  
+30.30  
+24.22  
+80.88  
+62.12  
+30.70  
+50.99  
+63.76  
+40.78  
+24.91  
+47.30  
+Tucker [8, 128, 128]  
+15.74  
+6.28  
+2.881  
+38.57  
+23.23  
+30.90  
+22.10  
+81.52  
+63.00  
+30.42  
+51.93  
+62.13  
+41.96  
+25.60  
+47.33  
+Tucker [8,128,64]  
+10.24  
+3.14  
+2.908  
+40.16  
+22.94  
+31.55  
+21.93  
+80.56  
+60.84  
+29.93  
+51.54  
+62.62  
+41.16  
+26.71  
+46.91  
+Tucker [8, 64, 64]  
+6.31  
+3.14  
+2.950  
+39.90  
+24.94  
+32.42  
+21.73  
+81.00  
+60.60  
+29.58  
+50.91  
+62.51  
+40.45  
+24.06  
+46.36  
+4  
+数值结果  
+在本节中，</p>
+
+<p>我们比较了 MHA、GQA、MLA 以及所提出的 Tucker Attention 参数化方法在视觉 Transformer 和 GPT2 上的表现。  
+我们采用第 2.2 节中介绍的 GQA 和 MLA 的符号表示。  
+对于 Tucker Attention，我们固定 $ r_{\rm{1}} = \widetilde{r_{\rm{1}}} $、$ r_{\rm{2}} = \widetilde{r_{\rm{2}}} $、$ r_{\rm{3}} = \widetilde{r_{\rm{3}}} $，并以 $ (r_{\rm{1}}, r_{\rm{2}}, r_{\rm{3}}) $ 的形式呈现秩值。</p>
+
+<p>### 4.1 ViT16b 在 Cifar10/Cifar100 上，以及 ViT32l、ViT16g 在 ImageNet1k 上的表现</p>
+
+<p>#### 设置
+我们从 ViT Huggingface 接口初始化模型权重，并在相应的下游数据集上进行训练。低秩参数化方法 GQA、MLA 和 Tucker Attention 通过 MHA 权重的 SVD 基础近似进行初始化；详见附录 C.1 部分，包含完整训练设置和额外测试。</p>
+
+<p>&gt; 注：我们避免进行完整训练，因为其计算成本较高。完整预训练结果见第 4.2 节。</p>
+
+<p>#### 发现
+图 3 报告了 5 次训练运行的平均值，每种设置的标准差均小于 0.1%。  
+我们观察到，所提出的 Tucker Attention 在参数与准确率的比率方面显著优于 GQA 和 MLA：Tucker Attention 仅需比 GQA 和 MLA 少一个数量级的可训练参数，即可达到相似的性能。  
+我们进一步观察到，降低秩 $ r_{\rm{2}} $ 和 $ r_{\rm{3}} $ 对 Tucker Attention 的收益大于极低的 $ r_{\rm{1}} $ 秩，例如 $ r_{\rm{1}} \leq 2 $。</p>
+
+<p>\rm{1}}\leq 2
+.
+表 3
+：在 OpenWebText2 上对 LLaMA3-1B 各变体进行验证性能及每轮训练耗时分析，其中
+N
+=
+4096
+N=4096
+。注意 LLaMa3 1B 默认设置为
+n
+KV
+=
+8
+n_{\rm{KV}}=8
+。
+训练：耗时基于 2 个集群节点（每个节点配备 2 块 H100 GPU）每轮训练迭代报告。
+解码：我们使用查询序列长度为 1，缓存的 KV 序列长度为
+N
+=
+4096
+N=4096
+。
+耗时基于 1 块 H100 GPU 报告。峰值解码 GPU 内存负载以 GB 为单位，批量大小为 1。
+所有耗时均表示 10 轮迭代的平均值（单位：毫秒）。我们指出，此实现为非优化的研究代码。Tucker Attention 在训练和解码模式下显著减少了参数量和延迟，同时实现了具有竞争力的验证损失和困惑度得分。
+评估
+训练效率
+解码效率
+方法
+Attn Params [MB]
+PPL
+↓
+\downarrow
+Val loss
+↓
+\downarrow
+Fwd [ms]
+↓
+\downarrow
+Bwd [ms]
+↓
+\downarrow
+Opt [ms]
+↓
+\downarrow
+Train Iter [ms]
+↓
+\downarrow
+KV Cache [MB]
+Peak Mem [GB]
+Latency [ms]
+↓
+\downarrow
+MHA
+268
+12.87
+2.55
+1.58
+3.51
+0.101
+5.19
+268
+6.5
+1.379
+GQA  [
+n
+KV
+=
+8
+n_{\rm{KV}}=8
+]
+168
+13.62
+2.61
+1.47
+3.30
+0.087
+4.87
+67
+5.7
+1.310
+GQA  [
+n
+KV
+=
+2
+n_{\rm{KV}}=2
+]
+142
+13.87
+2.63
+1.44
+3.20
+0.086
+4.73
+16.7
+5.7
+1.305
+MQA [
+n
+KV
+=
+1
+n_{\rm{KV}}=1
+]
+138
+14.27
+2.64
+1.43
+3.13
+0.083
+4.67
+8.38
+5.6
+1.296
+MLA [
+d
+c
+K
+,
+d
+c
+Q
+=
+128
+d_{\rm{c}}^{\rm{K}},d_{\rm{c}}^{\rm{Q}}=128
+]
+93.3
+14.54
+2.68
+1.37
+2.96
+0.079
+4.42
+16.7
+5.9
+1.341
+MLA [
+d
+c
+K
+,
+d
+c
+Q
+=
+64
+d_{\rm{c}}^{\rm{K}},d_{\rm{c}}^{\rm{Q}}=64
+]</p>
+
+<p>rm{c}}^{\rm{Q}}=64
+]
+79.2
+14.77
+2.69
+1.34
+2.94
+0.076
+4.36
+8.38
+5.6
+1.317
+MLA [
+d
+c
+K
+,
+d
+c
+Q
+=
+32
+d_{\rm{c}}^{\rm{K}},d_{\rm{c}}^{\rm{Q}}=32
+]
+73.4
+15.65
+2.75
+1.33
+2.88
+0.075
+4.30
+4.19
+5.4
+1.292
+Tucker [
+32
+,
+128
+,
+128
+32,128,128
+]
+33.5
+14.29
+2.65
+1.40
+3.02
+0.071
+4.41
+16.7
+5.4
+1.306
+Tucker [
+32
+,
+128
+,
+64
+32,128,64
+]
+21.0
+14.60
+2.68
+1.35
+2.89
+0.069
+4.33
+8.38
+5.2
+1.294
+Tucker [
+32
+,
+64
+,
+64
+32,64,64
+]
+12.6
+14.76
+2.69
+1.30
+2.70
+0.067
+4.05
+8.38
+5.2
+1.274
+4.2
+GPT2 on OpenWebText
+设置
+我们在 GPT2 上比较 MHA、GQA、MLA 和所提出的 Tucker Attention 注意力参数化方法。我们从随机权重初始化模型，并固定随机种子以确保方法之间的可比性。所有方法使用相同的训练超参数，详见
+第 C.2 节
+。对于每种注意力机制，我们训练两次 GPT2：一次在嵌入层中使用位置嵌入向量，另一次使用 RoPE，此时移除位置嵌入向量，而是在每个预 softmax 注意力层应用 RoPE。
+MHA 和 GQA 设置：
+两种方法均采用标准实现。
+MLA 设置：
+除非另有说明，我们遵循
+(DeepSeek-AI 等, 2024)
+的实现以保持一致性。因此，我们在
+未融合模式
+下训练 MLA，并使用
+解耦的 RoPE
+。
+Tucker Attention 设置：
+我们采用
+公式 7
+中的参数化方法，以及
+第 3.2 节
+中提出的变体。
+发现
+图 9
+（附录）报告了 GPT2 的验证损失曲线
+5
+5
+5
+训练损失曲线具有相同的结构。</p>
+
+<p>使用经典的 position embedding 进行 MHA，GQA（$n_{\rm{KV}}=2$），MLA（$d_{\rm{c}}^{\rm{Q}}=d_{\rm{c}}^{\rm{K}}=128$）并共享 KV 下投影，以及 Tucker Attention（秩为 $(8,128,64)$）。在这种情况下，MLA 和 Tucker Attention 在推理过程中具有相同的 KV 缓存大小。我们观察到 Tucker Attention 的收敛速度与经典方法相同，并且达到比 MLA 更低的损失。在整个 GPT2 实验中，我们发现当 $d_{\rm{c}}^{\rm{K}}=d_{\rm{c}}^{\rm{Q}}\leq 128$ 时，共享 KV 的 MLA 会出现轻微的不稳定性，甚至发散。</p>
+
+<p>表 2 比较了 GPT2 各变体在一组单次验证测试中的验证性能，报告了困惑度（越低越好）、验证损失（越低越好）、验证准确率（越高越好），以及注意力层中可训练参数的总数和推理过程中所需的总 KV 缓存大小。在无 RoPE 的类别中，我们观察到 Tucker Attention（秩为 $(8,128,64)$）仅需 MHA 约 18% 的参数和 MLA 约 39% 的参数，即可获得具有竞争力的验证结果。也就是说，Tucker Attention 达到了与基线方法相似的平均困惑度和相似的平均准确率。</p>
+
+<p>类似地，我们在表格的第二部分观察到，Tucker Attention 与使用公式 12 实现的潜在 RoPE 兼容。GPT 的困惑度和测试准确率值显示，Tucker Attention 在结合 RoPE 后仍能保持良好的性能。</p>
+
+<p>-2 相比于没有使用 RoPE 的模型略有提升，这与 MLA、GQA 和 MHA 在测试分数上的小幅增益相一致。  
+接下来，我们验证了第 2.1 节中关于 GQA 和 MLA 表达能力的见解。具体而言，当 MLA 的 $d_{\rm{c}}^{\rm{Q}}=768$、$d_{\rm{c}}^{\rm{K}}=128$，并采用独立的 KV 下投影时，其表达的 $\mathcal{W}$ 的秩与 GQA 在 $n_{\rm{KV}}=2$ 时相同。由于查询权重是满秩的，我们为了训练稳定性将 $W^{\rm{DQ}}W^{\rm{UQ}}_{i}W^{UV}_{i}$ 融合为一个矩阵。我们在表 2 中将此 MLA 设置称为“MLA [GQA, $n_{\rm{KV}}=2$ equiv.]”，并观察到其平均困惑度和平均验证准确率与 GQA $n_{\rm{KV}}=2$ 相当，从而验证了表达能力假设。</p>
+
+<p>## 4.3 GPT2 在莎士比亚数据集上的实验</p>
+
+<p>### Setup  
+我们重复第 4.2 节的设置，使用较小的莎士比亚数据集，并将序列长度减少至 $N=256$，详见附录 C.2。</p>
+
+<p>### Findings  
+我们在表 6 中观察到，Tucker Attention 在使用比基线方法（包括 MLA）少一个数量级以上的注意力参数和 KV 缓存的情况下，仍能达到相当的验证损失值。此外，我们发现共享 KV 下投影与 Tucker Attention 兼容，且验证准确率略有提升，这归因于可训练参数的进一步减少。当比较 MLA 使用独立与共享 KV 下投影时，也能观察到类似效果。</p>
+
+<p>n.
+验证推论
+第
+3.2.1
+节
+，我们观察到 MLA 与潜在 RoPE 兼容。
+(a)
+训练损失历史。Tucker Attention 的收敛效果与基线方法相当。
+(b)
+验证损失与参数数量的关系图。Tucker Attention 将帕累托前沿推向左下角。
+图 4
+：
+在 OpenWebtext2 上使用 Bf16 浮点精度和 RoPE 的 Llama3-1B 训练交叉熵损失（左）和最终时间验证交叉熵损失（右）。近似注意力方法包括 MLA GQA 和 Tucker Attention。尽管 Tucker Attention 的可训练参数仅为其他方法的一小部分，但其收敛良好，且未表现出不稳定性。
+4.4
+LLaMA3-1B 在 OpenWebText2 上的实验
+设置
+我们在 OpenWebText2
+(Gao 等，2020)
+上从头开始训练一个 10 亿参数的 LLaMA 3 风格的解码器仅模型，使用 GPT-NeoX
+(Andonian 等，2023)
+。
+基线注意力机制为 GQA，具有
+n
+H
+=
+32
+{n_{\rm{H}}}=32
+查询头，头维度
+d
+H
+=
+64
+d_{\rm{H}}=64
+和
+n
+KV
+=
+8
+n_{\rm{KV}}=8
+KV 头，序列长度
+N
+=
+4096
+N=4096
+。有关训练超参数的完整细节，请参见
+C.3
+。
+我们在
+表 3
+中与 MHA、MQA 和 Tucker Attention 进行比较，每种设置均使用固定随机种子运行一次。
+在所有方法中，非注意力组件（嵌入、MLP、归一化、RoPE 设置）和训练超参数均保持不变。
+GPT-NeoX
+6
+6
+6
+我们使用 Eleuther AI 的 GitHub 仓库的分支
+https://github.com/eleutherai/gpt-neox
+。
+作为框架</p>
+
+<p>为测试工作，我们使用 Megatron 后端内置的计时器来测量墙钟时间成本。报告的时间反映了端到端评估，包括未压缩的 MLP 层。我们指出，Tucker Attention 层是非优化的研究代码，因此时间结果应视为一般性指示，而非绝对上限。训练在 2 个集群节点上进行，每个节点配备 2 块 Nvidia H100 GPU，训练时间结果特定于该配置。推理解码在单个 H100 GPU 上进行，使用 $N = 4096$ 个缓存的 KV token、1 个查询 token 和批量大小为 1。</p>
+
+<p>**发现**</p>
+
+<p>与 GPT-2 的结果类似，Tucker Attention 仅使用 LLaMA3 基线（GQA，$n_{\rm{KV}}=8$）的 10–20%，验证交叉熵损失仅轻微增加 1–3%。它将 KV 缓存减少了 4–8 倍，具体取决于秩（rank）。这种参数和 KV 缓存的减少降低了训练成本，使迭代墙钟时间相比 MHA 最多减少 20%，相比 GQA（$n_{\rm{KV}}=8$）基线减少 15%。此外，Tucker Attention 在验证损失和参数数量方面均优于 MLA。</p>
+
+<p>我们得出结论：将预 softmax 和后 softmax 权重分别视为一个张量值对象的观点带来了若干实用优势。推导出的 Tucker Attention 方案比现有方法更节省参数，允许引入潜在的 RoPE，兼容 KV 缓存，并结合了 MLA 和 GQA 在 FlashA 中的内存优势。</p>
+
+<p>训练和推理过程中的注意力机制。  
+致谢  
+本手稿由UT-Battelle, LLC根据与美国能源部签订的合同号DE-AC05-00OR22725撰写。美国政府保留权利，且出版商在接收本文发表时亦承认，美国政府保留一项非独占、全额支付、不可撤销、全球范围的许可，允许其出版或复制本手稿的已发表版本，或允许他人为此目的进行出版或复制，以满足美国政府的需求。能源部将根据DOE公共获取计划（http://energy.gov/downloads/doe-public-access-plan）向公众提供这些由联邦资助的研究成果。  
+S. Schotthöfer 和 S. Schnake 的研究得到了橡树岭国家实验室（ORNL）实验室定向研究与发展计划（Laboratory Directed Research and Development Program）的支持，该计划由UT-Battelle, LLC为美国能源部管理。  
+本研究使用了橡树岭国家实验室实验计算实验室（ExCL）的资源，该实验室由美国能源部科学办公室根据合同号DE-AC05-00OR22725资助支持。  
+T. Klein 和 S. Sager 的研究获得了德国联邦联合委员会（资助编号01VSF23017）、欧洲区域发展基金（资助项目Timing Matters 和 IntelAlgen）在欧盟“地平线欧洲”研究与创新计划下的支持，以及德国研究基金会DFG（资助编号GRK 2297）的支持，对此我们深表感谢。</p>
+
+<p>y acknowledge.  
+影响声明  
+本文介绍的工作旨在推动参数高效机器学习领域的发展。我们的工作可能带来许多社会影响，但在此我们不认为有必要特别强调其中任何一项。</p>
+
+<p>参考文献  
+Ainslie 等 (2023)  
+Ainslie, J., Lee-Thorp, J., de Jong, M., Zemlyanskiy, Y., Lebron, F., 和 Sanghai, S.  
+GQA: 从多头检查点训练通用多查询 Transformer 模型。  
+在  
+《2023 年自然语言处理经验方法会议》  
+，2023。</p>
+
+<p>Andonian 等 (2023)  
+Andonian, A., Anthony, Q., Biderman, S., Black, S., Gali, P., Gao, L., Hallahan, E., Levy-Kramer, J., Leahy, C., Nestler, L., Parker, K., Pieler, M., Phang, J., Purohit, S., Schoelkopf, H., Stander, D., Songz, T., Tigges, C., Thérien, B., Wang, P., 和 Weinbach, S.  
+GPT-NeoX: PyTorch 中的大规模自回归语言建模，2023 年 9 月。  
+URL  
+https://www.github.com/eleutherai/gpt-neox  
+。</p>
+
+<p>Bahdanau 等 (2014)  
+Bahdanau, D., Cho, K., 和 Bengio, Y.  
+通过联合学习对齐和翻译的神经机器翻译。  
+arXiv 预印本 arXiv:1409.0473  
+，2014。</p>
+
+<p>Behnke &amp; Heafield (2020)  
+Behnke, M. 和 Heafield, K.  
+在彩票中失去头部：剪枝 Transformer。  
+在  
+《2020 年自然语言处理经验方法会议论文集 (EMNLP)》  
+，第 2664–2674 页。计算语言学协会 (ACL)，2020 年 11 月。  
+ISBN 978-1-952148-60-6。  
+URL  
+https://2020.emnlp.org/  
+。  
+2020 年自然语言处理经验方法会议</p>
+
+<p>在自然语言处理领域，EMNLP 2020；会议日期：2020年11月16日至2020年11月20日。  
+Beltagy 等人 (2020)  
+Beltagy, I., Peters, M. E., 和 Cohan, A.  
+Longformer: 长文档Transformer。  
+在  
+arXiv 预印本 arXiv:2004.05150  
+，2020。  
+Bhojanapalli 等人 (2020)  
+Bhojanapalli, S., Yun, C., Rawat, A. S., Reddi, S., 和 Kumar, S.  
+多头注意力模型中的低秩瓶颈。  
+在  
+国际机器学习会议  
+，第 864–873 页。 PMLR，2020。  
+Brunner 等人 (2020)  
+Brunner, G., Liu, Y., Pascual, D., Richter, O., Ciaramita, M., 和 Wattenhofer, R.  
+关于Transformer中的可识别性。  
+在  
+国际学习表示会议  
+，2020。  
+URL  
+https://openreview.net/forum?id=BJg1f6EFDB  
+。  
+Chaturantabut &amp; Sorensen (2010)  
+Chaturantabut, S. 和 Sorensen, D. C.  
+通过离散经验插值进行非线性模型降维。  
+SIAM 科学计算杂志  
+，32(5):2737–2764，2010。  
+doi:  
+10.1137/090766498  
+。  
+URL  
+https://doi.org/10.1137/090766498  
+。  
+Cordonnier 等人 (2020)  
+Cordonnier, J.-B., Loukas, A., 和 Jaggi, M.  
+多头注意力：协作而非拼接。  
+arXiv 预印本 arXiv:2006.16362  
+，2020。  
+Dao (2023)  
+Dao, T.  
+FlashAttention-2：更快的注意力机制，具有更好的并行性和工作划分，2023。  
+URL  
+https://arxiv.org/abs/2307.08691  
+。  
+Dao 等人 (2022)  
+Dao, T., Fu, D. Y., Ermon, S., Rudra, A., 和 Ré, C.  
+FlashAttention：快速且内存高效的精确注意力，具有I/O感知能力，2022。  
+URL  
+https://arxiv.org/abs/2205.14135  
+。  
+DeepSeek-AI e</p>
+
+<p>t 等. (2024)  
+DeepSeek-AI, 刘 A., 冯 B., 王 B., 王 B., 刘 B., 赵 C., 邓 C., 阮 C., 戴 D., 郭 D., 杨 D., 陈 D., 吉 D., 李 E., 林 F., 罗 F., 郝 G., 陈 G., 李 G., 张 H., 徐 H., 杨 H., 张 H., 丁 H., 辛 H., 高 H., 李 H., 曲 H., 蔡 J. L., 梁 J., 郭 J., 倪 J., 李 J., 陈 J., 袁 J., 邱 J., 宋 J., 董 K., 高 K., 关 K., 王 L., 张 L., 徐 L., 夏 L., 赵 L., 张 L., 李 M., 王 M., 张 M., 张 M., 唐 M., 李 M., 田 N., 黄 P., 王 P., 张 P., 朱 Q., 陈 Q., 杜 Q., 陈 R. J., 金 R. L., 葛 R., 潘 R., 徐 R., 陈 R., 李 S. S., 陆 S., 周 S., 陈 S., 吴 S., 叶 S., 马 S., 王 S., 周 S., 于 S., 周 S., 郑 S., 王 T., 裴 T., 袁 T., 孙 T., 肖 W. L., 曾 W., 安 W., 刘 W., 梁 W., 高 W., 张 W., 李 X. Q., 金 X., 王 X., 毕 X., 刘 X., 王 X., 沈 X., 陈 X., 陈 X., 聂 X., 孙 X., 王 X., 刘 X., 谢 X., 余 X., 宋 X., 周 X., 杨 X., 陆 X., 苏 X., 吴 Y., 李 Y. K., 魏 Y. X., 朱 Y. X., 徐 Y., 黄 Y., 李 Y., 赵 Y., 孙 Y., 李 Y., 王 Y., 郑 Y., 张 Y., 熊 Y., 赵 Y., 何 Y., 唐 Y., 庞 Y., 董 Y., 谭 Y., 刘 Y., 王 Y., 郭 Y., 朱 Y., 王 Y., 邹 Y., 查 Y., 马 Y., 严 Y., 由 Y., 刘 Y., 任 Z. Z., 任 Z., 沙 Z., 傅 Z., 黄 Z., 张 Z., 谢 Z., 郝 Z., 邵 Z., 温 Z., 徐 Z., 张 Z., 李 Z., 王 Z., 顾 Z., 李,</p>
+
+<p>Z., 和 Xie, Z.  
+Deepseek-v2: 一种强大、经济且高效的专家混合语言模型，2024。  
+URL  
+https://arxiv.org/abs/2405.04434</p>
+
+<p>Gao 等 (2020)  
+Gao, L., Biderman, S., Black, S., Golding, L., Hoppe, T., Foster, C., Phang, J., He, H., Thite, A., Nabeshima, N., Presser, S., 和 Leahy, C.  
+The Pile: 用于语言建模的 800GB 多样化文本数据集。  
+arXiv 预印本 arXiv:2101.00027，2020。</p>
+
+<p>Gokaslan &amp; Cohen (2019)  
+Gokaslan, A. 和 Cohen, V.  
+Openwebtext 数据集。  
+http://Skylion007.github.io/OpenWebTextCorpus，2019。</p>
+
+<p>Gu 等 (2025)  
+Gu, Y., Zhou, W., Iacovides, G., 和 Mandic, D.  
+Tensorllm: 通过张量化多头注意力机制增强大语言模型的推理与压缩能力。  
+arXiv 预印本 arXiv:2501.15674，2025。</p>
+
+<p>Hu 等 (2022)  
+Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., 和 Chen, W.  
+LoRA: 大语言模型的低秩适应。  
+在  
+国际学习表征会议 (ICLR)  
+，2022。  
+URL  
+https://arxiv.org/abs/2106.09685</p>
+
+<p>Karpathy (2015)  
+Karpathy, A.  
+循环神经网络的不合理有效性。  
+http://karpathy.github.io/2015/05/21/rnn-effectiveness/，2015。</p>
+
+<p>Kolda &amp; Bader (2009)  
+Kolda, T. G. 和 Bader, B. W.  
+张量分解及其应用。  
+SIAM Review，51(3):455–500，2009。</p>
+
+<p>Li 等 (2018)  
+Li, J., Tu, Z., Yang, B., Lyu, M. R., 和 Zhang, T.  
+带分歧正则化的多头注意力机制。  
+在  
+2018 年自然语言处理经验方法会议论文集  
+，pp</p>
+
+<p>.  2897–2903, 2018.  
+Li 等 (2021)  
+Li, J., Cotterell, R., 和 Sachan, M.  
+可微分的 Transformer 头子集剪枝。  
+*计算语言学协会事务*，9:1442–1459，2021年12月。  
+doi: 10.1162/tacl_a_00436。  
+URL https://doi.org/10.1162/tacl_a_00436。  
+Liu 等 (2024)  
+Liu, A., Feng, B., Wang, B., Wang, B., Liu, B., Zhao, C., Dengr, C., Ruan, C., Dai, D., Guo, D., 等。  
+Deepseek-v2：一个强大、经济且高效的专家混合语言模型。  
+arXiv 预印本 arXiv:2405.04434，2024。  
+Meng 等 (2025)  
+Meng, F., Tang, P., Tang, X., Yao, Z., Sun, X., 和 Zhang, M.  
+Transmla：多头潜在注意力就是你所需要的全部。  
+arXiv 预印本 arXiv:2502.07864，2025。  
+Michel 等 (2019)  
+Michel, P., Levy, O., 和 Neubig, G.  
+十六个头真的比一个更好吗？  
+在 Wallach, H., Larochelle, H., Beygelzimer, A., d'Alché-Buc, F., Fox, E., 和 Garnett, R. (编)，  
+*神经信息处理系统进展*，第32卷。Curran Associates, Inc., 2019。  
+URL https://proceedings.neurips.cc/paper_files/paper/2019/file/2c601ad9d2ff9bc8b282670cdd54f69f-Paper.pdf。  
+Radford 等 (2019)  
+Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., 和 Sutskever, I.  
+语言模型是无监督的多任务学习者，2019。  
+Shazeer (2019)  
+Shazeer, N.  
+快速 Transformer 解码：一个写头就是你所需要的全部。  
+arXiv 预印本 arXiv:1911.02150，2019。  
+Su 等 (2023)  
+Su, J., Lu, Y., Pan, S., Murtadha, A., Wen, B., 和 Liu, Y.  
+Roformer：带有 r 的增强型 Transformer</p>
+
+<p>旋转位置编码，2023。  
+URL  
+https://arxiv.org/abs/2104.09864  
+.  
+Vaswani 等人 (2017)  
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, Ł., 和 Polosukhin, I.  
+注意力就是你所需要的。  
+《神经信息处理系统进展》（Advances in neural information processing systems）, 30, 2017。  
+Voita 等人 (2019)  
+Voita, E., Talbot, D., Moiseev, F., Sennrich, R., 和 Titov, I.  
+分析多头自注意力：专用头承担主要工作，其余部分可被剪枝。  
+在《计算语言学协会第57届年度会议》（57th Annual Meeting of the Association for Computational Linguistics）中，第 5797–5808 页。ACL Anthology, 2019。  
+Wang 等人 (2020)  
+Wang, S. 等人。  
+Linformer：线性复杂度的自注意力机制。  
+在《arXiv 预印本 arXiv:2006.04768》中，2020。  
+Zaheer 等人 (2020)  
+Zaheer, M. 等人。  
+Big Bird：适用于更长序列的 Transformer。  
+在《神经信息处理系统进展会议（NeurIPS）》（Advances in Neural Information Processing Systems (NeurIPS)）中，2020。  
+Zhang 等人 (2025)  
+Zhang, Y., Liu, Y., Yuan, H., Qin, Z., Yuan, Y., Gu, Q., 和 Yao, A. C.-C.  
+张量积注意力就是你所需要的。  
+arXiv 预印本 arXiv:2501.06425，2025。  
+附录 A  
+符号概览  
+我们在表 4 中总结了本文中使用的符号。  
+表 4：符号概览。  
+| 符号 | 描述 |  
+|------|------|  
+| **通用约定** | |  
+| $x$, $y$ | 标量和向量（小写斜体） |  
+| $W$, $X$ | 矩阵（大写斜体） |  
+| $\mathcal{C}$, $\mathcal{W}$ | 张量（大写花体） |  
+| **维度** | |  
+| $N$ | 序列长度（标记数量） |  
+| $d_{\rm{model}}$ | 模型嵌入维度 |  
+| $n_{\rm{H}}$ | 注意力头的数量 |</p>
+
+<p>ads  
+d  
+H  
+d_{\rm{H}}  
+每头维度（d_{\rm{H}} = d_{\rm{model}} / n_{\rm{H}}）  
+n_{\rm{KV}}  
+GQA 中的 KV 头数量  
+d_{\rm{c}}, d_{\rm{c}}^{\rm{Q}}, d_{\rm{c}}^{\rm{K}}  
+MLA 中的潜在维度  
+输入和注意力权重  
+X \in \mathbb{R}^{N \times d_{\rm{model}}}  
+嵌入输入序列  
+W^{\rm{Q}}, W^{\rm{K}}, W^{\rm{V}} \in \mathbb{R}^{d_{\rm{model}} \times d_{\rm{model}}}  
+查询、键、值权重矩阵  
+W^{\rm{Q}}_{i}, W^{\rm{K}}_{i}, W^{\rm{V}}_{i} \in \mathbb{R}^{d_{\rm{model}} \times d_{\rm{H}}}  
+每头查询、键、值权重  
+W^{\rm{O}}_{i} \in \mathbb{R}^{d_{\rm{H}} \times d_{\rm{model}}}  
+每头输出投影  
+W_{i} = W^{\rm{Q}}_{i} {W^{\rm{K}}_{i}}^{\top}  
+第 i 个头的预 softmax 权重  
+\widetilde{W}_{i} = W^{\rm{V}}_{i} W^{\rm{O}}_{i}  
+第 i 个头的后 softmax 权重  
+注意力张量  
+\mathcal{W} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}  
+预 softmax 注意力张量  
+\widetilde{\mathcal{W}} \in \mathbb{R}^{n_{\rm{H}} \times d_{\rm{model}} \times d_{\rm{model}}}  
+后 softmax 注意力张量  
+Tucker 分解  
+\mathcal{C} \in \mathbb{R}^{r_{\rm{1}} \times r_{\rm{2}} \times r_{\rm{3}}}  
+\mathcal{W} 的核心张量  
+\widetilde{\mathcal{C}} \in \mathbb{R}^{\widetilde{r}_{\rm{1}} \times \widetilde{r}_{\rm{2}} \times \widetilde{r}_{\rm{3}}}</p>
+
+<p>在 $\mathbb{R}^{\widetilde{r}_{\rm{1}}\times\widetilde{r}_{\rm{2}}\times\widetilde{r}_{\rm{3}}}$ 中  
+$\widetilde{\mathcal{W}}$ 的核心张量  
+$(r_{\rm{1}},r_{\rm{2}},r_{\rm{3}})$  
+$\mathcal{W}$ 在 (head, query, key 模式) 下的 Tucker 秩  
+$(\widetilde{r}_{\rm{1}},\widetilde{r}_{\rm{2}},\widetilde{r}_{\rm{3}})$  
+$\widetilde{\mathcal{W}}$ 在 (head, output, value 模式) 下的 Tucker 秩  
+$U_{1}\in\mathbb{R}^{{n_{\rm{H}}}\times r_{\rm{1}}}$  
+$\mathcal{W}$ 在 head 模式下的基矩阵  
+$U_{2}\in\mathbb{R}^{d_{\rm{model}}\times r_{\rm{2}}}$  
+$\mathcal{W}$ 在 query 模式下的基矩阵  
+$U_{3}\in\mathbb{R}^{d_{\rm{model}}\times r_{\rm{3}}}$  
+$\mathcal{W}$ 在 key 模式下的基矩阵  
+$\widetilde{U}_{1}\in\mathbb{R}^{{n_{\rm{H}}}\times\tilde{r}_{1}}$  
+$\widetilde{\mathcal{W}}$ 在 (softmax 后) head 模式下的基矩阵  
+$\widetilde{U}_{2}\in\mathbb{R}^{d_{\rm{model}}\times\tilde{r}_{2}}$  
+$\widetilde{\mathcal{W}}$ 在 output 模式下的基矩阵  
+$\widetilde{U}_{3}\in\mathbb{R}^{d_{\rm{model}}\times\tilde{r}_{3}}$  
+$\widetilde{\mathcal{W}}$ 在 value 模式下的基矩阵</p>
+
+<p>MLA 特定符号  
+$W^{\rm{DKV}}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}^{\rm{K}}}$  
+键/值的降维投影  
+$W^{\rm{DQ}}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{c}}^{\rm{Q}}}$  
+查询的降维投影</p>
+
+<p>es  
+W  
+UK  
+,  
+W  
+UQ  
+,  
+W  
+UV  
+W^{\rm{UK}},W^{\rm{UQ}},W^{\rm{UV}}  
+上投影矩阵</p>
+
+<p>Tensor operations  
+Mat  
+j  
+⁡  
+(  
+𝒯  
+)  
+\operatorname{\mathrm{Mat}}_{j}(\mathcal{T})  
+张量  
+𝒯  
+\mathcal{T}  
+的第  
+j  
+j  
+模矩阵化（展开）</p>
+
+<p>𝒯  
+×  
+j  
+M  
+\mathcal{T}\times_{j}M  
+张量  
+𝒯  
+\mathcal{T}  
+与矩阵  
+M  
+M  
+的第  
+j  
+j  
+模乘积</p>
+
+<p>×  
+j  
+=  
+1  
+3  
+\bigtimes_{j=1}^{3}  
+连续模乘积的简写</p>
+
+<p>Other notation  
+σ  
+​  
+(  
+⋅  
+)  
+\sigma(\cdot)  
+逐行 softmax 激活函数</p>
+
+<p>R  
+​  
+(  
+ℓ  
+,  
+d  
+)  
+∈  
+ℝ  
+d  
+×  
+d  
+R(\ell,d)\in\mathbb{R}^{d\times d}  
+位置  
+ℓ  
+\ell  
+处的 RoPE 旋转矩阵</p>
+
+<p>col  
+i  
+⁡  
+(  
+Z  
+)  
+\operatorname{col}_{i}(Z)  
+矩阵  
+Z  
+Z  
+的第  
+i  
+i  
+列</p>
+
+<p>Appendix B  
+证明</p>
+
+<p>B.1  
+MQA、GQA 和 MLA 的 Tucker 表示</p>
+
+<p>在此我们对第 2.1 节中给出的 MQA、GQA 和 MLA 的秩进行形式化处理。  
+在展示 (8) 之前，我们先给出一个技术性引理，该引理包含在定理 B.2 中。</p>
+
+<p>引理 B.1.  
+假设  
+D  
+i  
+=  
+A  
+i  
+​  
+B  
+i  
+⊤  
+D_{i}=A_{i}B_{i}^{\top}  
+，其中  
+A  
+i  
+,  
+B  
+i  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+H  
+A_{i},B_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{H}}}  
+，且  
+D  
+i  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+model  
+D_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}}  
+为矩阵。进一步，令  
+𝒜  
+,  
+ℬ  
+∈  
+ℝ  
+n  
+H  
+×  
+d  
+model  
+×  
+d  
+H  
+\mathcal{A},\mathcal{B}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times d_{\rm{H}}}  
+，以及  
+𝒟  
+∈  
+ℝ  
+n  
+H  
+×  
+d  
+model  
+×  
+d  
+model  
+\mathcal{D}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times d_{\rm{model}}}  
+为对应的张量，满足  
+𝒜  
+i  
+​  
+j  
+​  
+k  
+=  
+(  
+A  
+i  
+)  
+j  
+​  
+k  
+\mathcal{A}_{ijk}=(A_{i})_{jk}  
+对所有  
+i  
+=  
+1  
+,  
+…  
+,  
+n  
+H  
+i=1,\ldots,{n_{\rm{H}}}  
+成立。</p>
+
+<p>_{\rm{H}}}
+。然后，
+𝒟
+\mathcal{D}
+可以写成一个张量
+𝒟
+=
+𝒞
+×
+2
+Mat
+2
+⁡
+(
+𝒜
+)
+×
+3
+Mat
+2
+⁡
+(
+ℬ
+)
+\mathcal{D}=\mathcal{C}\times_{2}\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})\times_{3}\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})
+，其中
+𝒞
+∈
+ℝ
+n
+H
+×
+d
+model
+×
+d
+model
+\mathcal{C}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times d_{\rm{model}}}
+。更精确地，记向量化索引
+(
+i
+​
+ℓ
+)
+:=
+(
+i
+−
+1
+)
+⋅
+d
+H
++
+ℓ
+∈
+{
+1
+,
+⋯
+,
+d
+model
+}
+(i\ell):=(i-1)\cdot d_{\rm{H}}+\ell\in\{1,\cdots,d_{\rm{model}}\}
+，我们有
+𝒞
+i
+​
+n
+​
+m
+=
+∑
+ℓ
+=
+1
+d
+H
+δ
+n
+,
+(
+i
+​
+ℓ
+)
+​
+δ
+m
+,
+(
+i
+​
+ℓ
+)
+.
+\displaystyle\mathcal{C}_{inm}=\sum_{\ell=1}^{d_{\rm{H}}}\delta_{n,(i\ell)}\delta_{m,(i\ell)}\,.
+证明。
+结果由以下计算直接得出：
+𝒟
+i
+​
+j
+​
+k
+=
+\displaystyle\mathcal{D}_{ijk}=\,
+∑
+ℓ
+=
+1
+d
+H
+𝒜
+i
+​
+j
+​
+ℓ
+​
+ℬ
+i
+​
+k
+​
+ℓ
+\displaystyle\sum_{\ell=1}^{d_{\rm{H}}}\mathcal{A}_{ij\ell}\mathcal{B}_{ik\ell}
+=
+\displaystyle=\,
+∑
+ℓ
+=
+1
+d
+H
+Mat
+2
+(
+𝒜
+)
+j
+,
+(
+i
+​
+ℓ
+)
+Mat
+2
+(
+ℬ
+)
+k
+,
+(
+i
+​
+ℓ
+)
+\displaystyle\sum_{\ell=1}^{d_{\rm{H}}}\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})_{j,(i\ell)}\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})_{k,(i\ell)}
+=
+\displaystyle=\,
+∑
+m
+,
+n
+=
+1
+d
+model
+∑
+ℓ
+=
+1
+d
+H
+Mat
+2
+(
+𝒜
+)
+j
+,
+n
+δ
+n
+,
+(
+i
+​
+ℓ
+)
+δ
+m
+,
+(
+i
+​
+ℓ
+)
+Mat
+2
+(
+ℬ
+)
+k
+,
+m
+=
+∑
+m
+,
+n
+=
+1
+d
+model
+𝒞
+i
+​
+n
+​
+m
+Mat
+2
+(
+𝒜
+)
+j
+,
+n
+Mat
+2
+(
+ℬ
+)
+k
+,
+m
+.
+\displaystyle\sum_{m,n=1}^{d_{\rm{model}}}\sum_{\ell=1}^{d_{\rm{H}}}\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})_{j,n}\delta_{n,(i\ell)}\delta_{m,(i\ell)}\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})_{k,m} = \sum_{m,n=1}^{d_{\rm{model}}}\mathcal{C}_{inm}\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})_{j,n}\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})_{k,m}.</p>
+
+<p>$\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})_{k,m}=\sum_{m,n=1}^{d_{\rm{model}}}\mathcal{C}_{inm}\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})_{j,n}\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})_{k,m}\,.$  
+∎  
+**定理 B.2**  
+假设 $W_{i}=W^{\rm{Q}}_{i}W_{i}^{K,\top}$，其中 $W^{\rm{Q}}_{i},W^{\rm{K}}_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{H}}}$，且 $W_{i}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}}$ 是矩阵。  
+则预 softmax 张量 $\mathcal{W}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times d_{\rm{model}}}$，其中 $\mathcal{W}_{ijk}=(W_{i})_{jk}$，具有公式 (8) 中的 Tucker 分解，且其最大 Tucker 秩为 $(n_{\rm{H}},\text{rank}(W^{\rm{Q}}),\text{rank}(W^{\rm{K}}))$。  
+**证明。**  
+定义 $\mathcal{A},\mathcal{B}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{H}}\times d_{\rm{model}}}$，使得 $\mathcal{A}_{ijk}=(W^{\rm{Q}}_{i})_{jk}$ 和 $\mathcal{B}_{ijk}=(W^{\rm{Q}}_{i})_{jk}$，其中我们选择张量化方式使得 $\mathcal{A}_{ijk}=(W^{\rm{Q}}_{i})_{jk}$ 和 $\mathcal{B}_{ijk}=(W^{\rm{Q}}_{i})_{jk}$。  
+注意 $\operatorname{\mathrm{Mat}}_{2}(\mathcal{A})$ 和 $\operatorname{\mathrm{Mat}}_{2}(\mathcal{B})$ 是列</p>
+
+<p>n 个排列的  
+W  
+Q  
+W^{\rm{Q}}  
+和  
+W  
+K  
+W^{\rm{K}}  
+分别。然后应用  
+Lemma  
+B.1  
+，其中  
+𝒟  
+=  
+𝒲  
+\mathcal{D}=\mathcal{W}  
+，得到  
+𝒲  
+=  
+𝒞  
+×  
+2  
+Mat  
+2  
+​  
+(  
+𝒜  
+)  
+×  
+3  
+Mat  
+2  
+​  
+(  
+ℬ  
+)  
+=  
+𝒞  
+×  
+2  
+W  
+Q  
+​  
+Π  
+×  
+3  
+W  
+K  
+​  
+Π  
+,  
+\displaystyle\mathcal{W}=\mathcal{C}\times_{2}\text{Mat}_{2}(\mathcal{A})\times_{3}\text{Mat}_{2}(\mathcal{B})=\mathcal{C}\times_{2}W^{\rm{Q}}\Pi\times_{3}W^{\rm{K}}\Pi,  
+其中  
+Π  
+\Pi  
+是一个置换矩阵。  
+因此，(8) 是直接成立的。  
+令  
+r  
+Q  
+:=  
+rank  
+⁡  
+(  
+W  
+Q  
+)  
+r_{\rm Q}:=\operatorname{rank}(W^{\rm{Q}})  
+，则我们可以写成  
+W  
+Q  
+=  
+V  
+Q  
+​  
+C  
+Q  
+W^{\rm{Q}}=V^{\rm Q}C^{\rm Q}  
+，其中  
+V  
+Q  
+∈  
+ℝ  
+d  
+model  
+×  
+r  
+Q  
+V^{\rm Q}\in\mathbb{R}^{d_{\rm{model}}\times r_{\rm Q}}  
+且  
+C  
+Q  
+∈  
+ℝ  
+r  
+Q  
+×  
+d  
+model  
+C^{\rm Q}\in\mathbb{R}^{r_{\rm Q}\times d_{\rm{model}}}  
+。以同样的方式，我们有  
+W  
+K  
+=  
+V  
+K  
+​  
+C  
+K  
+W^{\rm{K}}=V^{\rm K}C^{\rm K}  
+，其中  
+V  
+K  
+∈  
+ℝ  
+d  
+model  
+×  
+r  
+K  
+V^{\rm K}\in\mathbb{R}^{d_{\rm{model}}\times r_{\rm K}}  
+，  
+C  
+K  
+∈  
+ℝ  
+r  
+K  
+×  
+d  
+model  
+C^{\rm K}\in\mathbb{R}^{r_{\rm K}\times d_{\rm{model}}}  
+，且  
+r  
+K  
+:=  
+rank  
+⁡  
+(  
+W  
+K  
+)  
+r_{\rm K}:=\operatorname{rank}(W^{\rm{K}})  
+。  
+因此，  
+𝒲  
+=  
+𝒞  
+×  
+2  
+V  
+Q  
+​  
+C  
+Q  
+×  
+3  
+V  
+K  
+​  
+C  
+K  
+=  
+(  
+𝒞  
+×  
+2  
+C  
+Q  
+×  
+3  
+C  
+K  
+)  
+×  
+2  
+V  
+Q  
+×  
+3  
+V  
+K  
+,  
+\displaystyle\mathcal{W}=\mathcal{C}\times_{2}V^{Q}C^{Q}\times_{3}V^{K}C^{K}=(\mathcal{C}\times_{2}C^{Q}\times_{3}C^{K})\times_{2}V^{Q}\times_{3}V^{K}\,,  
+其中  
+𝒞  
+^  
+:=  
+𝒞  
+×  
+2  
+C  
+Q  
+×  
+3  
+C  
+K  
+\widehat{\mathcal{C}}:=\mathcal{C}\times_{2}C^{Q}\times_{3}C^{K}  
+是  
+ℝ  
+n  
+H  
+×  
+r  
+Q  
+×  
+r  
+K  
+\mathbb{R}^{{n_{\rm{H}}}\times r_{Q}\times r_{K}}  
+中的一个元素。  
+因此，Tucker 秩 o</p>
+
+<p>f  
+W  
+W  
+的 Tucker 秩至多为  
+(  
+n  
+H  
+,  
+rank  
+⁡  
+(  
+W  
+Q  
+)  
+,  
+rank  
+⁡  
+(  
+W  
+K  
+)  
+)  
+({n_{\rm{H}}},\text{rank}(W^{\rm{Q}}),\text{rank}(W^{\rm{K}}))  
+。  
+∎  
+我们现在展示 GQA 和 MLA 的最大 Tucker 秩，如公式 (2.2) 所示。  
+我们注意到，MQA 是 GQA 的一种特殊情况，其中  
+n  
+KV  
+=  
+1  
+n_{\rm{KV}}=1  
+。  
+**定理 B.3**。  
+对于具有  
+n  
+KV  
+n_{\rm{KV}}  
+个 KV 头的组查询注意力（Group Query Attention），其预 softmax 注意力张量  
+𝒲  
+\mathcal{W}  
+和后 softmax 注意力张量  
+𝒲  
+~  
+\widetilde{\mathcal{W}}  
+的最大 Tucker 秩均为  
+(  
+n  
+H  
+,  
+d  
+model  
+,  
+n  
+KV  
+​  
+d  
+H  
+)  
+({n_{\rm{H}}},d_{\rm{model}},n_{\rm{KV}}d_{\rm{H}})  
+。  
+**证明**。  
+令  
+W  
+g  
+K  
+,  
+GQA  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+H  
+W^{\rm K,GQA}_{g}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{H}}}  
+，其中  
+g  
+=  
+1  
+,  
+…  
+,  
+n  
+KV  
+g=1,\ldots,n_{\rm{KV}}  
+，表示键头的数量。  
+那么，GQA 的键头满足：对于每个  
+h  
+=  
+1  
+,  
+…  
+,  
+n  
+H  
+h=1,\ldots,{n_{\rm{H}}}  
+，有  
+W  
+h  
+K  
+∈  
+{  
+W  
+g  
+K  
+,  
+GQA  
+}  
+g  
+=  
+1  
+n  
+KV  
+W^{\rm{K}}_{h}\in\{W^{\rm K,GQA}_{g}\}_{g=1}^{n_{\rm{KV}}}  
+。  
+因此，  
+span  
+⁡  
+(  
+W  
+Q  
+)  
+=  
+span  
+⁡  
+(  
+[  
+W  
+1  
+K  
+,  
+GQA  
+,  
+…  
+,  
+W  
+n  
+KV  
+K  
+,  
+GQA  
+]  
+)  
+\operatorname{span}(W^{\rm{Q}})=\operatorname{span}([W^{\rm K,GQA}_{1},\ldots,W^{\rm K,GQA}_{n_{\rm{KV}}}])  
+。  
+由于  
+[  
+W  
+1  
+K  
+,  
+GQA  
+,  
+…  
+,  
+W  
+n  
+KV  
+K  
+,  
+GQA  
+]  
+∈  
+ℝ  
+d  
+model  
+×  
+d  
+H  
+​  
+n  
+KV  
+[W^{\rm K,GQA}_{1},\ldots,W^{\rm K,GQA}_{n_{\rm{KV}}}]\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{H}}n_{\rm{KV}}}  
+，其秩以及  
+W  
+Q  
+W^{\rm{Q}}  
+的秩至多为  
+d  
+H  
+​  
+n  
+KV  
+d_{\rm{H}}n_{\rm{KV}}  
+。  
+因此，根据 **定理 B.2**，有  
+r  
+3  
+≤  
+d  
+H  
+​  
+n  
+KV  
+r_{\rm{3}}\leq d_{\rm{H}}n_{\rm{KV}}  
+。  
+同样的论证也适用于  
+𝒲  
+~  
+\widetilde{\mathcal{W}}  
+。</p>
+
+<p>$\widetilde{\mathcal{W}}$  
+其中 $W^{\rm{Q}}$ 和 $W^{\rm{K}}$ 分别被替换为 $W^{\rm{O}}$ 和 $W^{\rm{V}}$。  
+∎</p>
+
+<p>**定理 B.4**  
+对于多头潜在注意力（Multihead Latent Attention），其潜在查询维度为 $d_{\rm{c}}^{\rm Q}$，潜在键维度为 $d_{\rm{c}}^{\rm K}$，则预 softmax 注意力张量 $\mathcal{W}$ 的最大 Tucker 秩为 $(n_{\rm{H}}, d_{\rm{c}}^{\rm Q}, d_{\rm{c}}^{\rm K})$。  
+具有潜在值维度 $d_{\rm{c}}^{\rm K}$ 的后 softmax 注意力张量 $\widetilde{\mathcal{W}}$ 的最大 Tucker 秩为 $(n_{\rm{H}}, d_{\rm{model}}, d_{\rm{c}}^{\rm K})$。</p>
+
+<p>**证明。**  
+在 MLA 中，$W^{\rm{Q}} = W^{\rm{DKV}} W^{\rm{UK}}$，其中 $W^{\rm{DKV}} \in \mathbb{R}^{d_{\rm{model}} \times d_{\rm{c}}^{\rm K}}$。  
+因此 $\operatorname{rank} W^{\rm{Q}} \leq d_{\rm{c}}^{\rm K}$，根据 **定理 B.2**，有 $r_{\rm{3}} \leq d_{\rm{c}}^{\rm K}$。  
+类似地可得 $r_{\rm{2}} \leq d_{\rm{c}}^{\rm Q}$。  
+对 $\widetilde{\mathcal{W}}$ 可重复相同论证，其中 $W^{\rm{V}} = W^{\rm{DKV}} W^{\rm{UV}}$，且 $W^{\rm{O}}$ 为满秩矩阵。  
+∎</p>
+
+<p>## B.2 旋转位置编码</p>
+
+<p>**引理 B.5**  
+表达式 (12) 满足条件 (10)。</p>
+
+<p>**证明。**  
+对于标记位置 $m, n$，显然有：  
+$$
+\widehat{Q}^m \times_3 \left( K_n^\top R(n, r_3) R(m, r_3)^\top \right) \in \mathbb{R}^{n_H} = \left( \widehat{Q}^m \times_3 R(m, r_3)^\top \right) \times_3 \left( K_n^\top R(n, r_3) \right) = \sum_{\ell_3} \cdots
+$$</p>
+
+<p>$$
+\begin{aligned}
+\left(\sum_{\ell_1} \hat{Q}_{\cdot,m,\ell_1} R(m,r_3)_{\ell_1,\ell_3}\right) \left(\sum_{\ell_2} K_{n,\ell_2} R(n,r_3)_{\ell_2,\ell_3}\right) &amp;= \sum_{\ell_3} \sum_{\ell_2} \sum_{\ell_1} \left( \hat{Q}_{\cdot,m,\ell_1} R(m,r_3)_{\ell_1,\ell_3} K_{n,\ell_2} R(n,r_3)_{\ell_2,\ell_3} \right) \\
+&amp;= \sum_{\ell_2} \sum_{\ell_1} \left( \hat{Q}_{\cdot,m,\ell_1} \sum_{\ell_3} \left( R(m,r_3)_{\ell_1,\ell_3} R(n,r_3)_{\ell_3,\ell_2}^\top \right) K_{n,\ell_2} \right) \\
+&amp;= \sum_{\ell_2} \sum_{\ell_1} \left( \hat{Q}_{\cdot,m,\ell_1} R(m-n,r_3)_{\ell_1,\ell_2} K_{n,\ell_2} \right) \\
+&amp;= \left( \hat{Q}_m \times_3 R(m-n,r_3)^\top \right) \times_3 K_n
+\end{aligned}
+$$</p>
+
+<p>$$
+\hat{Q}_m \times_3 \left( K_n R(n,r_3) R(m,r_3)^\top \right) \in \mathbb{R}^{n_{\rm{H}}} = (\hat{Q}_m \times_3 R(m,r_3)^\top) \times_3 (K_n R(n,r_3))
+$$</p>
+
+<p>(15)</p>
+
+<p>∎</p>
+
+<p>附录 C  
+数值实验的细节  
+C.1 转移</p>
+
+<p>学习使用视觉Transformer  
+C.1.1  
+CIFAR-10/100 数据集  
+CIFAR-10 数据集包含 60,000 张尺寸为 32×32 像素的 RGB 图像，均匀分布在 10 个物体类别中。  
+我们对训练集应用标准的数据增强技术，包括随机水平翻转，随后使用均值 [0.4914, 0.4822, 0.4465] 和标准差 [0.2470, 0.2435, 0.2616] 进行归一化。测试集仅进行归一化处理。对 CIFAR-100 采用相同的增强策略，使用均值 [0.5071, 0.4867, 0.4408] 和标准差 [0.2673, 0.2564, 0.2762]。  
+ViT 模型通过数据管道接收被调整为 224×224 的图像。</p>
+
+<p>C.1.2  
+ImageNet-1k 数据集  
+ImageNet 数据集包含 1000 个类别和超过 120 万张 RGB 训练图像，标准分辨率为 224×224 像素。我们遵循 ImageNet 的标准数据增强流程，包括随机裁剪至 224×224，以及使用均值 [0.5, 0.5, 0.5] 和标准差 [0.5, 0.5, 0.5] 进行归一化。测试集仅进行缩放和中心裁剪至 224×224，然后进行归一化。</p>
+
+<p>C.1.3  
+ViT 模型  
+在本文中，我们使用 PyTorch 实现神经网络训练。我们从 ImageNet1k 数据集获取预训练权重作为初始化。数据加载器随机采样</p>
+
+<p>对每个批次更新采样一个批次，这是我们在训练设置中唯一的随机性来源。以下是所用网络架构的概述：</p>
+
+<p>- **ViT-B.16** 是一个视觉Transformer，其 patch 大小为 $16 \times 16$，是一种利用Transformer模型进行图像分类任务的深度学习架构。我们使用来自 Huggingface 端点 `google/vit-large-patch32-224-in21k` 的 Imagenet21k 权重作为初始化权重。</p>
+
+<p>- **ViT-L.32** 是一个视觉Transformer，其 patch 大小为 $32 \times 32$，是一种利用Transformer模型进行图像分类任务的深度学习架构。我们使用来自 Huggingface 端点 `google/vit-large-patch32-224-in21k` 的 Imagenet21k 权重作为初始化权重。</p>
+
+<p>- **ViT-G.14** 是一个视觉Transformer，其 patch 大小为 $14 \times 14$，是一种利用Transformer模型进行图像分类任务的深度学习架构。我们使用来自 Huggingface 端点 `google/vit-large-patch32-224-in21k` 的 Imagenet21k 权重作为初始化权重。</p>
+
+<p>模型和训练超参数设置见 **表 5**。</p>
+
+<p>### C.1.4 将预训练的 MHA 参数转换为近似注意力参数</p>
+
+<p>#### MHA 到 GQA</p>
+
+<p>为了将 MHA 的 $W_{Q,K,V,O}$ 转换为其 GQA 对应参数，我们观察到 $W_{Q,O}$ 不需要修改。对于 $W_{K,V}$，我们将矩阵以张量形式重塑为 $(n_{\rm{H}} \times d_{\rm{H}} \times d_{\rm{model}})$，并保留每个 $n_{\rm{KV}}$ 个 KV 头，其中 $n_{\rm{KV}}$ 是 KV 头的数量。</p>
+
+<p>f KV heads of GQA。注意，该近似可以通过选择最能近似 $W_{K,V}$ 的 $n_{\rm{KV}}$ 个 head 来进一步优化，例如使用离散经验插值方法（DEIM）（Chaturantabut &amp; Sorensen, 2010）。我们通过设置 $n_{\rm{KV}}=1$ 得到 MQA。</p>
+
+<p>MHA 到 MLA  
+我们对 $W_{Q,K,V}$ 计算秩为 $d_{\rm{c}}$ 的截断奇异值分解（SVD），以获得下投影和上投影。对于共享 KV 下投影的 MLA，我们丢弃值的下投影，并使用键的下投影作为共享投影。注意，与原始 DeepSeek 实现（DeepSeek-AI et al., 2024）和 DeepSeekV3 架构一致，我们不压缩 $W_{O}$。</p>
+
+<p>MHA 到 Tucker Attention  
+我们对每个 head $i$ 计算 $W_{i}:=W^{\rm{Q}}_{i}W_{i}^{K,\top}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}}$。类似地，值和输出矩阵构成后 softmax 权重 $\widetilde{W}_{i}:=W_{i}^{V}W_{i}^{O}\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}}$ 的秩 $d_{v}$ 分解。然后我们对得到的 $\mathcal{W}=(W_{i})_{i=1}^{n_{\rm{H}}}\in\mathbb{R}^{n_{\rm{H}}\times d_{\rm{model}}\times d_{\rm{model}}}$ 和 $\widetilde{\mathcal{W}}=(\widetilde{W}_{i})_{i=1}^{n_{\rm{H}}}\in\mathbb{R}^{n_{\rm{H}}\times d_{\rm{model}}\times d_{\rm{model}}}$ 执行高阶奇异值分解（HOSVD）。</p>
+
+<p>1}^{n_{\rm{H}}}\in\mathbb{R}^{{n_{\rm{H}}}\times d_{\rm{model}}\times d_{\rm{model}}}
+具有秩
+[
+r
+1
+,
+r
+2
+,
+r
+3
+]
+[r_{\rm{1}},r_{\rm{2}},r_{\rm{3}}]
+。
+请注意，通过在 $\widetilde{\mathcal{W}}$ 和 $\mathcal{W}$ 的 Tucker 分解中共享 $U_{3}$，可以实现共享 KV 下投影。
+表 5：模型和训练超参数
+超参数
+ViT-B.16
+ViT-L.32
+ViT-G.14
+GPT2
+LLaMA3-1b
+d
+model
+d_{\rm{model}}
+768
+1024
+1664
+768
+2048
+n
+H
+{n_{\rm{H}}}
+12
+16
+16
+12
+32
+d
+H
+d_{\rm{H}}
+64
+64
+104
+64
+64
+N
+N
+196
+49
+256
+1024 (256 for Shakespeare)
+4096
+Batch Size (Cifar10)
+128
+n.a.
+n.a.
+n.a.
+n.a.
+Batch Size (Cifar100)
+128
+n.a.
+n.a.
+n.a.
+n.a.
+Batch Size (ImageNet1k)
+n.a
+512
+512
+n.a.
+n.a.
+Batch Size (OpenWebText)
+n.a.
+n.a.
+n.a.
+480
+n.a.
+Batch Size (Shakespeare)
+n.a.
+n.a.
+n.a.
+64
+n.a.
+Batch Size (OpenWebText2)
+n.a.
+n.a.
+n.a.
+n.a.
+128
+Learning Rate
+1e-4
+1e-3
+1e-3
+1e-4
+3e-4
+Learning Rate Scheduler
+Cosine Annealing w/ Warmup
+Learning Rate Warmup
+5
+%
+5\%
+5
+%
+5\%
+5
+%
+0.5
+%
+0.5\%
+1
+%
+1\%
+Number of Epochs (Cifar10)
+20
+n.a
+n.a
+n.a
+n.a
+Number of Epochs (Cifar100)
+20
+n.a
+n.a
+n.a
+n.a
+Number of Epochs (ImageNet1k)
+n.a
+10
+10
+n.a
+n.a
+Number of Iterations (OpenWebText)
+n.a
+n.a
+n.a
+600000
+n.a
+Number of Iterations (Shakespeare)
+n.a
+n.a
+n.a
+10000
+n.a
+Number of Iterations (OpenWebText2)
+n.a
+n.a
+n.a
+n.a
+100000
+L2 Regularization
+0.15
+0.001
+0.001
+0.1
+0.1
+Optimizer
+AdamW
+AdamW
+AdamW
+(fused) AdamW
+AdamW
+Parameters (baseline model)
+86M
+304M
+1.8B
+117M
+1.23B
+C.2
+从头训练 GPT2
+C.2.1</p>
+
+<p>OpenWebText  
+我们使用 OpenWebText 数据集  
+(Gokaslan &amp; Cohen, 2019)  
+来预训练 GT2 的各种变体。  
+我们在数据预处理步骤中使用 tiktoken v0.12.0 并采用 gpt2 编码方式对语料库进行分词。  
+对于 OpenWebText2，我们使用相同的分词器。</p>
+
+<p>C.2.2  
+TinyShakespeare  
+我们使用 TinyShakespeare 数据集  
+(Karpathy, 2015)  
+进行字符级语言建模实验。  
+该语料库由威廉·莎士比亚的作品拼接而成，大小约为 1MB，包含大约 100 万个字符。  
+我们在数据预处理步骤中使用 tiktoken v0.12.0 并采用 gpt2 编码方式对语料库进行分词。</p>
+
+<p>C.2.3  
+GPT2  
+我们的 GPT2 实现  
+(Radford et al., 2019)  
+基于 Andrey Karpathy 的 NanoGPT 实现，详见  
+https://github.com/karpathy/nanoGPT  
+。模型和训练超参数设置见  
+表 5  
+。我们使用上下文长度  
+N = 1024  
+。</p>
+
+<p>C.2.4  
+RoPE 的使用  
+GPT2 的基线版本（在  
+表 2  
+中称为 w/o RoPE）在从词元维度到模型维度的嵌入层中使用标准余弦位置编码。  
+为了评估 RoPE 对 GPT2 在 MhA、GQA、MLA 和 Tucker Attention 中的影响，我们移除了标准余弦位置编码，并改为如下方式为注意力变体配备 RoPE，其中  
+R(ℓ, d)  
+表示词元位置 ℓ 和维度 d 对应的 RoPE 矩阵。</p>
+
+<p>MHA  
+我们按照  
+(Su et al., 2023)  
+中所述使用 RoPE，即：  
+XₘWᵢ^Q R(m, dₕ) (XₙWᵢ^K R(n, dₕ))ᵀ  
+其中，Xₘ 和 Xₙ 分别是第 m 和第 n 个词元的输入嵌入，Wᵢ^Q 和 Wᵢ^K 是第 i 个注意力头的查询和键权重矩阵，R(m, dₕ) 和 R(n, dₕ) 是对应位置和维度的 RoPE 矩阵，dₕ 是注意力头的维度。</p>
+
+<p>X_{n}W^{\rm{K}}_{i}R(n,d_{\rm{H}}))^{\top}
+(16)
+GQA
+我们使用与 MHA 情况类似的 RoPE，即：
+X
+m
+​
+W
+i
+Q
+​
+R
+​
+(
+m
+,
+d
+H
+)
+​
+(
+X
+n
+​
+W
+g
+K
+​
+R
+​
+(
+n
+,
+d
+H
+)
+)
+⊤
+\displaystyle X_{m}W^{\rm{Q}}_{i}R(m,d_{\rm{H}})(X_{n}W^{\rm{K}}_{g}R(n,d_{\rm{H}}))^{\top}
+(17)
+查询 RoPE 矩阵对每个查询头分别计算，而键 RoPE 矩阵每个头组计算一次，然后广播。
+Tucker
+我们使用如公式 12 所述的 RoPE，即：
+(
+Q
+^
+m
+×
+3
+R
+​
+(
+m
+,
+r
+3
+)
+⊤
+)
+×
+3
+(
+K
+n
+​
+R
+​
+(
+n
+,
+r
+3
+)
+)
+.
+\displaystyle(\hat{Q}_{m}\times_{3}R(m,r_{\rm{3}})^{\top})\times_{3}(K_{n}R(n,r_{\rm{3}})).
+(18)
+请注意，查询和键的 RoPE 矩阵分别对所有头只计算一次，这一点从等价形式中更为明显：
+Q
+^
+m
+×
+3
+(
+K
+n
+​
+R
+​
+(
+n
+,
+r
+3
+)
+​
+R
+​
+(
+m
+,
+r
+3
+)
+⊤
+)
+.
+\displaystyle\hat{Q}_{m}\times_{3}(K_{n}R(n,r_{\rm{3}})R(m,r_{\rm{3}})^{\top}).
+(19)
+MLA - 耦合 RoPE
+根据第 3.2.1 节的结论，在 MLA 的键潜在维度中计算 RoPE，即：
+X
+m
+​
+W
+D
+​
+Q
+​
+W
+i
+U
+​
+Q
+​
+W
+i
+U
+​
+V
+​
+R
+​
+(
+m
+,
+d
+c
+)
+​
+R
+⊤
+​
+(
+n
+,
+d
+c
+)
+​
+W
+D
+​
+K
+​
+V
+​
+X
+n
+,
+\displaystyle X_{m}W^{DQ}W^{UQ}_{i}W^{UV}_{i}R(m,d_{\rm{c}})R^{\top}(n,d_{\rm{c}})W^{DKV}X_{n},
+(20)
+MLA - 解耦 RoPE
+我们遵循 (DeepSeek-AI et al., 2024) 的标准实现；
+不是对所有查询/键维度应用旋转位置嵌入，而是仅对一部分通道进行旋转变换，其余通道保持纯粹语义信息。</p>
+
+<p>c.  
+对于一个包含 $N$ 个 token 的序列，查询矩阵和键矩阵被划分为  
+$W^{Q}=[\,W^{Q}_{\text{sem}}|W^{Q}_{\text{rot}}\,]\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}},\quad\text{and}\quad W^{K}=[\,W^{K}_{\text{sem}}|W^{K}_{\text{rot}}\,]\in\mathbb{R}^{d_{\rm{model}}\times d_{\rm{model}}},$  
+其中 $W^{Q}_{\text{sem}},W^{K}_{\text{sem}}\in\mathbb{R}^{d_{\rm{model}}\times d_{s}}\,,$  
+$W^{Q}_{\text{rot}},W^{K}_{\text{rot}}\in\mathbb{R}^{d_{\rm{model}}\times d_{r}}\,,$  
+且满足 $d_{s}+d_{r}=d_{\rm{model}}$，表示拼接操作。  
+其中，$W^{Q}_{\text{sem}},W^{K}_{\text{sem}}$ 通过 MLA 的低秩分解进行进一步分解，而 RoPE 则按行应用于旋转部分 $W^{Q}_{\text{rot}},W^{K}_{\text{rot}}$，类似于 MHA 的情况：  
+$$
+A_{\text{rot},i}=X_{m}W^{Q}_{\text{rot},i}R(m,d_{\rm{H}})(X_{n}W^{K}_{\text{rot},i}R(n,d_{\rm{H}}))^{\top}
+\quad\text{(21)}
+$$  
+因此，第 $i$ 个注意力头的 softmax 前注意力图由语义部分和位置部分组成：  
+$$
+A_{i}=Q_{\text{sem},i}K_{\text{sem},i}^{\top}+A_{\text{rot},i}
+$$</p>
+
+<p>C.3  
+LLaMA-1B 在 OpenWebText2 上从头开始训练  
+设置  
+我们训练一个 LLaMA</p>
+
+<p>从零开始在 OpenWebText2 上使用 GPT-NeoX 训练一个 3-style 的仅解码器 Transformer 模型。  
+该模型具有  
+L = 16  
+L=16  
+层，隐藏层大小  
+d_{\rm{model}} = 2048  
+d_{\rm{model}}=2048  
+，SwiGLU MLP 宽度为  
+8192  
+8192  
+（四舍五入为 256 的倍数），并采用 RMSNorm（ε = 10^{-5}  
+\varepsilon=10^{-5}  
+）。我们使用  
+n_{\rm{H}} = 32  
+{n_{\rm{H}}}=32  
+个查询头，每个头维度为  
+d_{\rm{H}} = 64  
+d_{\rm{H}}=64  
+，并采用分组查询注意力（GQA），其中  
+n_{\rm{KV}} = 8  
+n_{\rm{KV}}=8  
+个键/值头。位置信息通过 RoPE 注入，采用全旋转覆盖（rotary_pct = 1.0  
+=1.0  
+），最大上下文长度  
+N = 4096  
+N=4096  
+，旋转基底  
+θ = 5 \cdot 10^{5}  
+\theta=5\cdot 10^{5}  
+。Tucker Attention 实现使用了所提出的潜在 RoPE。遵循 LLaMA 的惯例，我们在注意力、MLP 和归一化层中禁用偏置项，并绑定输入/输出嵌入（no_weight_tying = false  
+）。分词使用 cl100k_base  
+。  
+所有训练运行均采用相同的优化和训练超参数。我们训练 100,000  
+100,000  
+次迭代，使用 Adam 优化器（β₁ = 0.9, β₂ = 0.95, ε = 10^{-8}  
+\beta_{1}=0.9,\beta_{2}=0.95,\epsilon=10^{-8}  
+），峰值学习率为 3 \cdot 10^{-4}  
+3\cdot 10^{-4}  
+，最小学习率为 3 \cdot 10^{-5}  
+3\cdot 10^{-5}  
+，在 10,000  
+10{,}000  
+次迭代内采用余弦衰减，并进行 1%  
+1\%  
+的预热。我们应用权重衰减 0.1  
+0.1  
+，梯度裁剪阈值为 1.0  
+1.0  
+，且在注意力和 MLP 中禁用 dropout。训练以 BF16 精度进行。我们使用 ZeRO 第 1 阶段，带有分区优化器状态和重叠通信，并</p>
+
+<p>启用逐层检查点（per-layer checkpointing）和分区激活（partitioned activations）的激活检查点机制。我们使用 FlashAttention2，并为简化起见禁用其他内核融合。数据通过内存映射（mmap）分片加载。每 500 次迭代进行一次验证，每次验证运行 10 次评估迭代。MLA 和 Tucker Attention 使用潜在 RoPE 位置编码。</p>
+
+<p>对于解码时延的测量，我们采用 KV 缓存长度 $N = 16k$，查询 token 长度为 1，以模拟在现有 KV 缓存基础上的自回归展开。所有时延均使用 GPT-NeoX 的 Megatron 计时器进行测量。</p>
+
+<p>### C.4 消融实验：GPT2 在 Shakespeare 数据集上的表现</p>
+
+<p>在表 6 中，我们提供了在 Shakespeare 数据集上从头训练 GPT2 的消融实验结果，训练超参数如表 5 所示。</p>
+
+<p>**表 6：** 在 Shakespeare 数据集上使用相同训练超参数训练的 GPT-2 [$d_{\rm{model}}=768, n_{\rm{H}}=12, d_{\rm{H}}=64$] 各变体的结果。对于每种 RoPE 设置，我们以粗体标出 GQA、MLA 和 Tucker Attention 在准确率与 KV 缓存大小、参数数量之比中的最优值。Tucker Attention 在参数效率比方面表现更优。MLA w/ Tucker-style RoPE 指的是方程 14 中描述的方法。</p>
+
+<p>| 方法 | Attn params [MB] | KV Cache [MB] | Val. loss | Val. loss × Attn params | Val. loss × KV Cache |
+|------|----------------|---------------|-----------|------------------------|---------------------|
+|      |                |               | w/o RoPE  | w/ RoPE                | w/o RoPE            | w/ RoPE             | w/o RoPE            | w/ RoPE             | w/o RoPE            | w/ RoPE             |
+| MHA  | 56.62          | 9.000         | 3.855     | 3.798                  | 218.27              | 215.04              | 34.70             | 34.18               |                     |                     |
+| GQA [$n_{\rm{KV}}=4$] | 37.74          |               |           |                        |                     |                     |                     |                     |                     |                     |</p>
+
+<p>3.000  
+3.859  
+3.798  
+145.64  
+143.34  
+11.58  
+11.39  
+GQA [$n_{\rm{KV}}=2$]  
+33.02  
+1.500  
+3.872  
+3.814  
+127.85  
+125.94  
+5.81  
+5.72  
+GQA [$n_{\rm{KV}}=1$]  
+30.66  
+0.750  
+3.875  
+3.809  
+118.81  
+116.78  
+2.91  
+2.86  
+MLA separated K,V [$d_{\rm{c}}^{\rm{K}}=128$]  
+28.36  
+28.24  
+1.500  
+1.546  
+3.865  
+3.821  
+109.61  
+107.91  
+5.80  
+5.91  
+MLA separated K,V [$d_{\rm{c}}^{\rm{K}}=64$]  
+21.28  
+21.24  
+0.750  
+0.796  
+3.884  
+3.834  
+82.65  
+81.43  
+2.91  
+3.05  
+MLA separated K,V [$d_{\rm{c}}^{\rm{K}}=32$]  
+17.74  
+17.73  
+0.375  
+0.420  
+3.927  
+3.877  
+69.66  
+68.74  
+1.47  
+1.63  
+MLA shared K,V [$d_{\rm{c}}^{\rm{K}}=128$]  
+25.96  
+25.86  
+0.750  
+0.773  
+3.875  
+3.823  
+100.59  
+98.86  
+2.91  
+2.96  
+MLA shared K,V [$d_{\rm{c}}^{\rm{K}}=64$]  
+20.06  
+20.04  
+0.375  
+0.398  
+3.913  
+3.862  
+78.49  
+77.39  
+1.47  
+1.54  
+MLA shared K,V [$d_{\rm{c}}^{\rm{K}}=32$]  
+17.10  
+17.14  
+0.187  
+0.210  
+3.974  
+3.967  
+67.96  
+67.99  
+0.74  
+0.83  
+MLA shared K,V; latent RoPE [$d_{\rm{c}}^{\rm{K}}=128$]  
+25.96  
+26.00  
+0.750  
+0.750  
+3.875  
+3.905  
+100.59  
+101.53  
+2.91  
+2.93  
+MLA shared K,V; latent RoPE [$d_{\rm{c}}^{\rm{K}}=64$]  
+20.06  
+20.10  
+0.375  
+0.375  
+3.913  
+3.952  
+78.49  
+79.44  
+1.47  
+1.48  
+MLA shared K,V; latent RoPE [$d_{\rm{c}}^{\rm{K}}=32$]  
+17.10  
+17.16  
+0.187  
+0.187  
+3.974  
+4.025  
+67.96  
+69.07  
+0.74  
+0.75  
+Tucker separated [8,128,128]  
+15.74  
+1.500  
+3.877  
+3.814  
+61.02  
+60.03  
+5.82  
+5.72  
+Tucker separated [8,64,64]  
+6.30  
+0.750  
+3.908  
+3.849  
+24.62  
+24.25  
+2.93  
+2.89  
+Tucker separated [6,64,64]  
+5.92  
+0.750  
+3.929  
+3.864</p>
+
+<p>23.26  
+22.87  
+2.95  
+2.90  
+Tucker separated [6, 32, 32]  
+2.66  
+0.375  
+3.987  
+3.919  
+10.61  
+10.42  
+1.50  
+1.47  
+Tucker separated [4, 32, 32]  
+2.56  
+0.375  
+3.989  
+3.934  
+10.21  
+10.07  
+1.50  
+1.48  
+Tucker shared K,V [8, 128, 128]  
+13.40  
+0.750  
+3.888  
+3.822  
+52.10  
+51.21  
+2.92  
+2.87  
+Tucker shared K,V [8, 64, 64]  
+5.14  
+0.375  
+3.951  
+3.881  
+20.31  
+19.95  
+1.48  
+1.46  
+Tucker shared K,V [6, 64, 64]  
+4.74  
+0.375  
+3.955  
+3.891  
+18.75  
+18.44  
+1.48  
+1.46  
+Tucker shared K,V [6, 32, 32]  
+2.08  
+0.375  
+4.058  
+3.974  
+8.44  
+8.27  
+1.52  
+1.49  
+Tucker shared K,V [4, 32, 32]  
+1.98  
+0.187  
+4.070  
+4.004  
+8.06  
+7.93  
+0.76  
+0.75</p>
+
+<p>附录 D  
+附加图表  
+(a) Head Mode: $\operatorname{\mathrm{Mat}}_{1}(\mathcal{W})$  
+(b) Head Mode: $\operatorname{\mathrm{Mat}}_{1}(\widetilde{\mathcal{W}})$  
+(c) Query Mode: $\operatorname{\mathrm{Mat}}_{2}(\mathcal{W})$  
+(d) Output Mode: $\operatorname{\mathrm{Mat}}_{2}(\widetilde{\mathcal{W}})$  
+(e) Key Mode: $\operatorname{\mathrm{Mat}}_{3}(\mathcal{W})$  
+(f) Value Mode: $\operatorname{\mathrm{Mat}}_{3}(\widetilde{\mathcal{W}})$</p>
+
+<p>图 5：训练后 GPT2 中 Transformer 层的归一化奇异谱。奇异谱通过沿单一模式对张量进行矩阵化计算得到；每个子图中给出了具体是哪个模式的信息。带状图是通过对 GPT2 中所有十二个 Transformer 层的样本分布计算得出的。  
+(a) T</p>
+
+<p>op 5 验证准确率 [%]  
+(b)  
+Top 1 验证准确率 [%]  
+图 6：  
+ViT-L 32 在 ImageNet1k 上的表现。结果为 5 次运行的平均值。ViT-L 32 的注意力层维度为  
+$d_{\rm{model}}=1024,\,n_{\rm{H}}=16,\,d_{\rm{H}}=64$。  
+(a)  
+Top 5 验证准确率 [%]  
+(b)  
+Top 1 验证准确率 [%]  
+图 7：  
+ViT-B 16 在 CIFAR100 上的表现。结果为 5 次运行的平均值。ViT-B 16 的注意力层维度为  
+$d_{\rm{model}}=768,\,n_{\rm{H}}=12,\,d_{\rm{H}}=64$。  
+(a)  
+Top 5 验证准确率 [%]  
+(b)  
+Top 1 验证准确率 [%]  
+图 8：  
+ViT-B 16 在 CIFAR10 上的表现。结果为 5 次运行的平均值。ViT-B 16 的注意力层维度为  
+$d_{\rm{model}}=768,\,n_{\rm{H}}=12,\,d_{\rm{H}}=64$。  
+图 9：  
+GPT2 在 OpenWebText 上的验证交叉熵损失（无 RoPE）。近似注意力方法包括：MLA（$d_{\rm{c}}^{\rm{Q}}=d_{\rm{c}}^{\rm{K}}=128$）、GQA（$n_{\rm{KV}}=2$）、Tucker Attention（$r=[8,64,128]$）。参数数量（单位：百万）为：MHA: 28.31，GQA: 16.51，MLA: 13.00，Tucker: 5.32。尽管可训练参数仅为其他方法的极小一部分，Tucker Attention 仍能良好收敛。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 注意力机制, 低秩分解, Tucker分解, 参数效率, 可解释性</p>
+        </div>
+    </div>
+</body>
+</html>

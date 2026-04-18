@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>目标策略优化 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">目标策略优化</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-07</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.06159" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Target Policy Optimization</h4>
+            <p><strong>中文摘要：</strong> 本文提出**目标策略优化（TPO）**，一种用于强化学习的新方法，旨在解决标准策略梯度方法中概率重分配与优化器机制耦合导致的过冲或欠冲问题。TPO将“应如何调整概率”与“如何调整参数”两个问题解耦：首先根据采样结果的评分构建目标分布 $q_i \propto p_i^{\text{old}} \exp(u_i)$，然后通过交叉熵将当前策略拟合到该目标。当策略与目标匹配时，梯度自动为零，更新过程更稳...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>目标策略优化  
+Jean Kaddour</p>
+
+<p>摘要  
+在强化学习（RL）中，给定一个提示（prompt），我们从模型中采样一组完成结果（completions），并对它们进行评分。随之而来有两个问题：哪些完成结果应获得更高的概率质量？以及参数应如何调整以实现这一变化？标准的策略梯度方法同时回答这两个问题，因此更新过程可能因学习率、梯度截断和其他优化器选择而出现过冲或欠冲。我们提出**目标策略优化**（Target Policy Optimization, TPO），它将这两个问题分离。给定评分后的完成结果，TPO 构建一个目标分布  
+$q_{i} \propto p_{i}^{\,\mathrm{old}} \exp(u_{i})$  
+并通过交叉熵将策略拟合到该目标分布。在采样完成结果的对数概率（logits）上的损失梯度为 $p^{\theta} - q$，当策略与目标分布匹配时，该梯度消失。在表格型多臂赌博机、Transformer序列任务以及数十亿参数的LLM RLVR任务中，TPO在简单任务上与PG、PPO、GRPO和DG表现相当，在稀疏奖励条件下则显著优于它们。代码可在 [https://github.com/JeanKaddour/tpo](https://github.com/JeanKaddour/tpo) 获取。</p>
+
+<p>图1：TPO在简单任务上与基线方法相当，在稀疏奖励条件下表现更优。  
+(a) 在具有密集奖励的MNIST上下文赌博机任务中，TPO收敛速度略快于GRPO和DG。  
+(b) 在稀疏奖励的token反转任务中（仅在序列末尾获得奖励），GRPO和DG接近随机表现而停滞不前，TPO则成功解决该任务。两个子图均显示20个随机种子下的均值 ± 标准误差（s.e.）。</p>
+
+<p>1 引言  
+考虑一个提示（prompt），我们从中采样一小组完成结果（completions）。</p>
+
+<p>从模型中生成候选完成项并对其进行评分。我们希望将概率质量向更好的完成项转移。标准的策略梯度方法将期望的概率重分配与实现该重分配的优化器机制耦合在一起。这种耦合会使学习变得脆弱，尤其是在奖励稀疏的情况下（图 1）。</p>
+
+<p>一个自然的解决方案是将这两个问题解耦：首先构建一个编码期望重分配的目标分布，然后将策略拟合到该分布。这种“重加权后拟合”的思想可追溯至 Dayan 和 Hinton（1997），并已在 REPS（Peters 等，2010）和 MPO（Abdolmaleki 等，2018）中实现，但这些方法需要学习 Q 函数，并在动作空间上进行约束优化。</p>
+
+<p>我们提出**目标策略优化（Target Policy Optimization, TPO）**，将这一原则应用于基于组的强化学习中所使用的有限候选集合。在此设置下，目标分布可以以闭式形式获得，无需使用评估网络（critic）或对偶优化。给定行为策略分配的概率 $ p_i^{\mathrm{old}} $ 和标准化分数 $ u_i $，TPO 构造：</p>
+
+<p>$$
+q_i \propto p_i^{\mathrm{old}} \exp(u_i),
+$$</p>
+
+<p>然后通过交叉熵将策略拟合到 $ q $。当策略与目标分布完全匹配时，梯度恰好为零。</p>
+
+<p>我们在精确的表格型多臂赌博机、MNIST 上下文赌博机、稀疏奖励的 Transformer 任务以及 LLM RLVR 上评估了 TPO。在较简单的任务中，TPO 与策略梯度基线方法表现相当；而在奖励稀疏的任务中，TPO 表现更优。</p>
+
+<p>是稀疏的。</p>
+
+<p>2  
+目标策略优化  
+令 $x$ 表示上下文（例如状态或提示）。对于每个上下文，我们从 $\pi_{\text{old}}(\cdot \mid x)$ 中采样 $K$ 个候选结果 $y_1, \dots, y_K \sim \pi_{\text{old}}(\cdot \mid x)$，并使用标量评分器 $S$ 对它们进行评分。在我们的 on-policy 实验中，$\pi_{\text{old}}$ 仅仅是当前策略在 rollout 时刻的快照。我们对每组中的原始得分 $s_i = S(x, y_i)$ 进行标准化，得到 $u_i = [\operatorname{standardize}(s)]_i$，将零方差情况映射为 $u = 0$（附录 A）。</p>
+
+<p>令 $\ell_i^\theta = \log \pi_\theta(y_i \mid x)$ 表示当前策略赋予候选 $i$ 的对数概率。该组上的策略分布为  
+$$
+p_i^\theta = \frac{\exp(\ell_i^\theta)}{\sum_{j=1}^K \exp(\ell_j^\theta)}.
+\quad (1)
+$$  
+记 $p_i^{\text{old}}$ 为在 $\pi_{\text{old}}$（在 rollout 时刻固定）下对应的相同量，我们通过将该分布向高分候选倾斜，形成目标分布  
+$$
+q_i = \frac{p_i^{\text{old}} \exp(u_i / \eta)}{\sum_{j=1}^K p_j^{\text{old}} \exp(u_j / \eta)},
+\quad (2)
+$$  
+其中 $\eta &gt; 0$ 是温度参数（我们全程使用 $\eta = 1$；附录 D 展示了该设置具有鲁棒性）。</p>
+
+<p>我们通过最小化交叉熵 $\mathcal{L}_{\text{TPO}}(\theta) = -\sum_{i=1}^K q_i \ell_i^\theta$ 来拟合策略到该目标。</p>
+
+<p>log
+⁡
+p
+i
+θ
+,
+\mathcal{L}_{\text{TPO}}(\theta)=-\sum_{i=1}^{K}q_{i}\log p_{i}^{\theta},
+(3)
+将
+q
+q
+视为固定值。损失函数的梯度满足
+∂
+ℒ
+/
+∂
+ℓ
+i
+θ
+=
+p
+i
+θ
+−
+q
+i
+\partial\mathcal{L}/\partial\ell_{i}^{\theta}=p_{i}^{\theta}-q_{i}
+，因此梯度下降的方向为
+q
+i
+−
+p
+i
+θ
+q_{i}-p_{i}^{\theta}
+，当策略与目标匹配时梯度消失。
+在 on-policy 设置下，完整的更新只需几行代码（见图
+2
+）。如果重用采样轨迹进行额外的优化轮次，
+q
+q
+保持不变，而
+log
+⁡
+p
+\log p
+项在
+θ
+\theta
+下重新计算。
+为何进行标准化。
+目标（公式
+2
+）对得分进行指数化，因此具有相同排序但数值范围不同的组会产生非常不同的目标。例如，
+(
+1
+,
+0
+,
+−
+1
+)
+(1,0,-1)
+和
+(
+100
+,
+0
+,
+−
+100
+)
+(100,0,-100)
+表达相同的排序，但对
+(
+100
+,
+0
+,
+−
+100
+)
+(100,0,-100)
+进行指数化会使目标几乎确定性，而
+(
+1
+,
+0
+,
+−
+1
+)
+(1,0,-1)
+则产生轻微的倾斜。标准化使更新依赖于组内相对表现而非任意的得分单位，并在很大程度上消除了对
+η
+\eta
+调参的需求。
+KL 正则化解释。
+目标
+q
+q
+等价于以下优化问题的唯一解：
+q
+=
+arg
+⁡
+max
+r
+∈
+Δ
+K
+−
+1
+⁡
+{
+∑
+i
+=
+1
+K
+r
+i
+​
+u
+i
+−
+η
+​
+KL
+​
+(
+r
+∥
+p
+old
+)
+}
+,
+q=\arg\max_{r\in\Delta^{K-1}}\left\{\sum_{i=1}^{K}r_{i}u_{i}-\eta\,\mathrm{KL}(r\,\|\,p^{\text{old}})\right\},
+(4)
+其中
+Δ
+K
+−
+1
+\Delta^{K-1}
+是采样候选集合上的单纯形。
+Pro</p>
+
+<p>position 1  
+.  
+假设对每个采样候选都有 $p_{i}^{\text{old}}&gt;0$。那么，式 (2) 中的目标是式 (4) 的唯一最大值点。此外，在固定 $q$ 的前提下，式 (3) 中的交叉熵损失满足 $\nabla_{\ell^{\theta}}\mathcal{L}_{\text{TPO}}=p^{\theta}-q$，因此在采样候选上的唯一平稳分布是 $p^{\theta}=q$。</p>
+
+<p>**证明。**  
+式 (4) 中的目标函数在 $r$ 上是严格凹的，因为当 $p^{\text{old}}$ 具有满支撑时，$-\mathrm{KL}(r\,\|\,p^{\text{old}})$ 在单纯形上是严格凹的。引入拉格朗日乘子以约束 $\sum_{i}r_{i}=1$，并求导可得：  
+$$
+u_{i}-\eta\Bigl(\log\frac{r_{i}}{p_{i}^{\text{old}}}+1\Bigr)+\lambda=0,
+$$  
+因此  
+$$
+r_{i}=C\,p_{i}^{\text{old}}\exp(u_{i}/\eta)
+$$  
+其中 $C$ 为归一化常数，这即导出了式 (2)。</p>
+
+<p>在固定 $q$ 的前提下，对 softmax 交叉熵关于组 logit 求导可得：  
+$$
+\partial\mathcal{L}/\partial\ell_{i}^{\theta}=p_{i}^{\theta}-q_{i}.
+$$  
+因此，$\nabla_{\ell^{\theta}}\mathcal{L}_{\text{TPO}}=0$ 当且仅当 $p^{\theta}=q$，这确定了采样候选上的唯一平稳分布。  
+∎</p>
+
+<p>**算法 1**  
+目标策略优化（TPO）  
+0: 策略 $\pi_{\theta}$，评分器 $S$，每上下文候选数 $K$，温度参数 $\eta$（默认值为 1）。  
+1: repeat  
+2: Fr</p>
+
+<p>eeze 行为策略：
+π
+old
+←
+π
+θ
+\pi_{\text{old}}\leftarrow\pi_{\theta}
+.
+3:
+采样一批上下文
+x
+x
+和候选序列
+{
+y
+i
+}
+i
+=
+1
+K
+∼
+π
+old
+(
+⋅
+∣
+x
+)
+\{y_{i}\}_{i=1}^{K}\sim\pi_{\text{old}}(\cdot\mid x)
+.
+4:
+计算得分
+s
+i
+=
+S
+​
+(
+x
+,
+y
+i
+)
+s_{i}=S(x,y_{i})
+并形成
+s
+=
+(
+s
+1
+,
+…
+,
+s
+K
+)
+s=(s_{1},\dots,s_{K})
+.
+5:
+标准化：
+u
+i
+=
+[
+standardize
+⁡
+(
+s
+)
+]
+i
+u_{i}=[\operatorname{standardize}(s)]_{i}
+.
+6:
+计算目标
+q
+i
+=
+p
+i
+old
+​
+exp
+⁡
+(
+u
+i
+/
+η
+)
+∑
+j
+=
+1
+K
+p
+j
+old
+​
+exp
+⁡
+(
+u
+j
+/
+η
+)
+.
+q_{i}=\frac{p_{i}^{\text{old}}\exp(u_{i}/\eta)}{\sum_{j=1}^{K}p_{j}^{\text{old}}\exp(u_{j}/\eta)}.
+7:
+对
+ℒ
+TPO
+​
+(
+θ
+)
+=
+−
+∑
+i
+=
+1
+K
+q
+i
+​
+log
+⁡
+p
+i
+θ
+,
+\mathcal{L}_{\text{TPO}}(\theta)=-\sum_{i=1}^{K}q_{i}\log p_{i}^{\theta},
+执行一次或多次梯度更新，将
+q
+q
+视为固定值。
+8:
+until
+收敛
+JAX
+⬇
+1
+def
+tpo_target
+(
+log_scores
+,
+u
+,
+eta
+=1.0):
+2
+return
+jax
+.
+nn
+.
+softmax
+(
+3
+jax
+.
+nn
+.
+log_softmax
+(
+log_scores
+,
+-1
+)
+4
++
+u
+/
+eta
+,
+-1
+)
+5
+6
+q
+=
+jax
+.
+lax
+.
+stop_gradient
+(
+7
+tpo_target
+(
+log_scores
+,
+u
+))
+8
+log_p
+=
+jax
+.
+nn
+.
+log_softmax
+(
+log_scores
+,
+-1
+)
+9
+loss
+=
+-(
+q
+*
+log_p
+).
+sum
+(
+-1
+)
+.
+mean
+()
+PyTorch
+⬇
+1
+def
+tpo_target
+(
+log_scores
+,
+u
+,
+eta
+=1.0):
+2
+return
+F
+.
+softmax
+(
+3
+F
+.
+log_softmax
+(
+log_scores
+,
+-1
+)
+4
++
+u
+/
+eta
+,
+-1
+)
+5
+6
+q
+=
+tpo_target
+(
+7
+log_scores
+,
+u
+).
+detach
+()
+8
+log_p
+=
+F
+.
+log_softmax
+(
+log_scores
+,
+-1
+)
+9
+loss
+=
+-(
+q
+*
+log_p
+).
+sum
+(
+-1
+)
+.
+mean
+()
+Figure 2:
+实现草图。
+log_scores
+包含策略的对数概率，对应于第</p>
+
+<p>我们采样的候选样本，通过 `log_softmax` 重新归一化以形成该组上的策略；`u` 包含标准化的任务得分；`eta` 是一个可选的温度参数，默认值为 1。示意图展示了最简单的 on-policy 实现方式，其中相同的 `log_scores` 张量既用于构建 `q`，也用于计算 `log_p`，并在更新前将 `q` 从计算图中分离。</p>
+
+<p>## 3 实验</p>
+
+<p>基线方法包括 PPO（Schulman 等，2017）、GRPO（Shao 等，2024）和 DG（Osband，2026）。在密集奖励实验中，我们比较了基于 token 级分组的变体（TPO_token、GRPO_token），它们在每个前缀状态采样 K=8 个下一个 token 候选；对于终端奖励，我们使用序列级的 TPO 和 GRPO，每个提示（prompt）进行 K=8 次完整 rollout；对于 LLM RLVR，K=16。PPO、GRPO 和 TPO 每个 rollout 批次进行多次梯度更新；DG 仅使用单次 epoch，遵循 Osband（2026）的设置，因为使用更多 epoch 会导致其发散（附录 E）。我们的 GRPO 基线方法使用带 z-score 优势（advantage）的截断替代目标（clipped surrogate）和反向 KL 惩罚（附录 F）；在全文中我们简称为 GRPO。</p>
+
+<p>当分组方法在相同提示数量下消耗 K× 更多的 rollout 时，我们报告两种比较方式：</p>
+
+<p>- **Prompt-matched**：相同数量的提示；分组方法使用更多的总 rollout。
+- **Interaction-matched**：相同的总 rollout 数量；单样本方法看到更多的提示。</p>
+
+<p>除非另有说明，所有 transformer 实验均使用 Optax（DeepMind 等，2020）</p>
+
+<p>Muon 优化器  
+（Jordan 等，2024）  
+在学习率 $10^{-3}$ 和批量大小 $B=100$ 下运行，其中 Muon 应用于二维参数张量，AdamW 应用于非二维张量。</p>
+
+<p>### 3.1 单上下文 bandit：上下文内更新质量</p>
+
+<p>遵循 Osband（2026），我们将网络替换为显式的 logit 表，以便精确计算 softmax 策略及其梯度。这些表格实验不使用神经优化器；我们直接采用大小为 $\alpha=0.1$ 的归一化 logit 步长。</p>
+
+<p>我们考虑一个 $K$ 臂 bandit 问题，在 $K=100$ 个选项中只有一个正确动作 $y^*$。奖励为 $R = \mathbf{1}\{A = y^*\}$。在每一步中，智能体采样 $B=100$ 个动作，计算梯度估计，并执行归一化步长。我们对 100 个随机种子取平均。</p>
+
+<p>**图 3：单上下文对称 bandit**（$K=100$，$B=100$，归一化步长）。  
+(a) TPO 和 DG 收敛最快；GRPO 和 PG 在较高误差处停滞。  
+(b) TPO 在整个训练过程中保持与 oracle 梯度方向的最小错位。</p>
+
+<p>图 3 显示 TPO 和 DG 收敛最快。与 PG 和 GRPO 不同，它们在误差低于 1% 后仍持续改进。错位面板解释了原因：当策略逐渐集中时，TPO 始终最接近 oracle 策略梯度方向，而 GRPO 的错位程度则不断增加。</p>
+
+<p>### 3.2 多上下文 bandit：跨上下文分配</p>
+
+<p>单上下文实验测试了更新质量；本实验则测试归一化更新如何分配有限的步长预算 $a_c$。</p>
+
+<p>ross  
+上下文。我们考虑 $N = 100$ 个独立上下文，每个上下文是一个 $K = 10$ 的多臂老虎机，其对数几率初始化为 $\mathcal{N}(0,1)$（Osband, 2026）。精确的人口更新消除了采样方差，因此任何剩余的差距反映了每种方法如何分配步长。我们包含了交叉熵（CE） oracle，它在归一化步长下是该设置中的最优方法。</p>
+
+<p>**图 4：多上下文老虎机**（$N = 100$，$K = 10$，精确梯度）。(a) 所有方法最终收敛；CE oracle 收敛最快。(b) TPO 在方向上几乎与 CE oracle 完全对齐，证实其更新方向目标是最佳分配。</p>
+
+<p>**图 4** 显示所有方法最终都会收敛，且 CE 是最快的，但在强化学习更新方法中，TPO 在误差和方向上都最接近 CE。DG 和 GRPO 在初期收敛速度稍快，但 TPO 在早期过渡阶段后反超，并以三种方法中最低的误差结束。对齐误差面板更清晰地展示了这一模式：在整个训练过程中，TPO 始终比其他方法更接近 CE 的方向。</p>
+
+<p>在 one-hot 设置下，这种模式在分析上是清晰的。令 $p_n = \pi_n(y_n)$ 表示在上下文 $n$ 中当前正确动作的概率。在对数几率空间中，以基线 $b = 0$，每个精确更新都可以写成：
+$$
+g_n = \beta(p_n) \, (e_{y_n} - \pi_n),
+$$
+因此所有方法在每个上下文内共享相同的方向 $e_{y_n} - \pi_n$。</p>
+
+<p>}}-\pi_{n}  
+并且仅在标量权重 $\beta(p_n)$ 上有所不同。由于全局步长是归一化的，$\beta$ 控制着在上下文 $n$ 上花费多少步长：一种为简单（高 $p_n$）上下文分配更大 $\beta$ 的方法，会在最不需要的地方浪费预算。  
+系数（推导见附录 B）如下：  
+$$
+\beta_{\mathrm{CE}}(p_n) = 1,\qquad\beta_{\mathrm{DG}}(p_n) = \frac{p_n}{1+p_n},\qquad\beta_{\mathrm{GRPO}}(p_n) = \sqrt{\frac{p_n}{1-p_n}},\qquad\beta_{\mathrm{TPO}}(p_n) = \frac{p_n(\lambda-1)}{1-p_n+\lambda p_n},
+$$  
+其中 $\lambda = \exp(u_{y_n} - u_{a\neq y_n}) \approx 28$（当 $K=10$ 时）。  
+CE 对所有上下文一视同仁（$\beta=1$ 处处成立）。DG 和 GRPO 在 $p_n \to 0$ 时均趋于零：当上下文较难时，它们几乎不更新。DG 线性趋于零（$\beta \approx p_n$），而 GRPO 以 $\sqrt{p_n}$ 的速度趋于零，因此两者都将大部分归一化步长用于那些已接近解决的上下文。相比之下，TPO 的系数即使在小 $p_n$ 时仍保持较大：当 $p_n = 0.1$ 时，$\beta_{\mathrm{TPO}} = 0.73$，而 DG 为 0.09，GRPO 为 0.33。因此，TPO 为困难上下文分配了更多的更新预算，这也是它能更紧密地跟踪 CE 基准，并超越标量加权基线的原因。</p>
+
+<p>在初始瞬态之后。</p>
+
+<p>3.3  
+神经策略学习：MNIST 上下文多臂赌博机  
+借鉴 Osband (2026)，我们将 MNIST 分类问题建模为一个单步上下文多臂赌博机：智能体采样动作 $A \in \{0,\dots,9\}$，并获得奖励 $R = \mathbf{1}\{A=Y\}$，但无法观察到真实标签 $Y$。我们使用一个两层 ReLU 网络训练 10,000 步（20 个随机种子）。每种方法在每个上下文下仅采样一个动作，并仅根据赌博机反馈进行更新。  
+我们使用 Adam 优化器，学习率为 $10^{-3}$，批量大小 $B = 100$。</p>
+
+<p>图 5：MNIST 上下文多臂赌博机：TPO 收敛最快，达到最低误差。  
+(a) 所有单样本赌博机更新的学习曲线，包括相同信号消融实验 Group PG。  
+(b) 在第 2,000 步时，对于每个分类错误的样本，我们测量每种方法相比通用的“一对一”基线（附录 C）在真实类别概率 $p_y$ 上的提升幅度，按错误类别集中度 $c = \max_{j\neq y} \pi_j / (1 - \pi_y)$ 分组。TPO 的额外增益随集中度增加而增长；DG 则没有这种增长。</p>
+
+<p>图 5 显示，表格模式在迁移到神经策略后依然保持：TPO 收敛最快（第 1,600 步达到 5% 误差，而 DG 为 2,200 步），并达到最低最终误差（2.9%）。在每个上下文仅采样一个动作的情况下，GRPO 退化为批归一化 REINFORCE，因此其性能与 PG 相当（5.9% vs. 5.3%）。  
+PG、单样本 GRPO 和 Group PG 均学习“增加真实类别的概率”。</p>
+
+<p>ue 类别与其余类别”时，无需指定采样到的是哪个错误类别——从期望角度看，它们会坍缩为一个缩放后的 one-vs-rest 方向  
+$c(x)(e_y - \pi)$  
+（附录 C）。DG 和 TPO 都以采样的动作作为条件，但只有 TPO 将失败的采样转化为类别特定的目标更新：正确的采样会将概率拉向真实标签，而错误的采样则直接抑制采样到的错误类别。这种额外结构在错误概率质量集中在一两个混淆类别时最为重要。移除该结构可以验证这一点：Group PG 保持相同的候选类别和标准化得分，但用标量加权的 REINFORCE 替代目标匹配，最终错误率从 2.9% 上升至 7.2%。  
+图 5(b) 直接测试了这一预测。对于每个分类错误的测试样本，令  
+$c = \max_{j \ne y} \pi_j / (1 - \pi_y)$  
+表示最可能的错误标签所承载的错误类别概率质量比例。  
+然后，我们将 $p_y$ 的精确一阶增益与附录 C 中的标量 one-vs-rest 替代目标进行比较。当错误概率质量分散时，TPO 的额外收益接近零，但在第 2000 步检查点的最高集中度分组中，该值上升至 0.073；而 DG 在整个过程中保持略微负值。因此，TPO 的优势恰好出现在 one-vs-rest 修正过于粗糙的地方：即被一个混淆错误标签主导的样本。  
+3.4 密集序列奖励：基于 token 的 Transformer 分组  
+密集的每 token 奖励使我们能够对一个</p>
+
+<p>在 token 级别上，我们使用 Osband (2026) 提出的 Token Reversal 任务：一个 2 层、4 头的因果 Transformer 模型自回归地反转一个长度为 $H = 10$ 的输入序列，该序列从大小为 $V$ 的词汇表中均匀采样。奖励是“bag-of-tokens”中正确反转的 token 所占比例。我们遍历 $V \in \{2, 4, 8, 16\}$，使输出空间从 $2^{10} \approx 10^3$ 增长到 $16^{10} \approx 10^{12}$，并报告在 20 个随机种子上平均的序列错误率（即错误 token 的比例）。</p>
+
+<p>在每个前缀状态，我们采样 $K = 8$ 个下一个 token 候选，并在这些候选上形成组（TPO_token, GRPO_token）。对于自回归模型，$\ell_i^\theta$ 是每个 token 对数概率的通常求和。所有方法对每个提示（prompt）都遵循一条行为轨迹，因此环境交互次数保持一致。</p>
+
+<p>**图 6：Token Reversal**（bag-of-tokens 奖励，$K = 8$ 个 token 候选）。所有方法使用 $B = 100$ 个提示，每个提示遵循一条行为轨迹；TPO_token 和 GRPO_token 在每个前缀状态额外采样 $K$ 个下一个 token 候选。列方向变化词汇表大小 $V \in \{2, 4, 8, 16\}$。</p>
+
+<p>方法之间的差距随着任务难度增加而扩大（表 1，图 6）：在 $V = 16$ 时，TPO_token 在第 102 步达到 1% 错误率，而 GRPO_token 为 148 步，PPO 为 259 步，DG 为 393 步。</p>
+
+<p>**表 1：达到 1% 错误率所需的步数。Token Reversal**（bag-of-tokens 奖励，$K = 8$ 个 token 候选）。**加粗**：最快的方法</p>
+
+<p>在每一步中，所有方法使用相同的环境交互。</p>
+
+<p>| V=2 | V=4 | V=8 | V=16 |
+|-----|-----|-----|------|
+| TPO&lt;sub&gt;token&lt;/sub&gt; | 58 | 74 | 103 | 102 |
+| GRPO&lt;sub&gt;token&lt;/sub&gt; | 904 | 141 | 124 | 148 |
+| DG | 199 | 273 | 314 | 393 |
+| PPO | 872 | 181 | 191 | 259 |</p>
+
+<p>由于所有方法对每个提示都遵循单一的行为轨迹，因此不存在提示匹配与交互匹配的区别，rollout 预算也相同。GRPO&lt;sub&gt;token&lt;/sub&gt; 随着更大的 V（即更多候选 token 提供更丰富的信号）而提升，但在所有情况下仍落后于 TPO&lt;sub&gt;token&lt;/sub&gt;。DG 和 PPO 由于缺乏组内结构，扩展性较差。</p>
+
+<p>## 3.5 跨任务和奖励变体的泛化能力</p>
+
+<p>该模式在 token 反转之外是否依然成立？参考 Osband (2026)，我们在两种奖励结构（bag-of-tokens 和 sequential）下评估四种目标逻辑（copy、flip、reverse copy、reverse flip），共产生八种变体。Sequential 奖励仅对第一个错误 token 之前的部分给予奖励，比 bag-of-tokens 更稀疏，但比终端奖励更密集。超参数与第 3.4 节一致（H=10，V=2，K=8 个 token 候选）；10 个种子，1000 个 episode。</p>
+
+<p>**图 7：任务变体，提示匹配与交互匹配。**  
+**前两行**：提示匹配。  
+**后两行**：交互匹配。在每对中，第一行为 bag-of-tokens 奖励，第二行为 sequential 奖励。列表示不同的目标逻辑。</p>
+
+<p>在 bag-of-tokens 奖励下（图 7 的第一行），TPO&lt;sub&gt;token&lt;/sub&gt; 在所有八种变体中率先达到 1% 错误率（表 2），比第二名快 2–6 倍。</p>
+
+<p>除了 PPO 之外，所有方法最终都能在 bag-of-tokens 任务中达到 1% 的错误率。在顺序奖励（sequential reward）下，TPO_token 的优势更加明显：它在我们的预算内于所有四个任务中均达到 1% 的错误率；DG 在所有四个任务中也能收敛，但速度较慢；GRPO_token 和 PPO 在任何任务中均未能收敛。</p>
+
+<p>表 2：达到 1% 错误率所需的步数，任务变体（K=8 个 token 候选）  
+**加粗**：每行中最快的方法。“−”：在预算内从未达到。</p>
+
+<p>| 奖励类型       | 目标任务     | TPO_token | GRPO_token | DG   | PPO  |
+|----------------|--------------|-----------|------------|------|------|
+| Bag of tokens  | Copy         | 81        | 338        | 219  | 170  |
+|                | Flip         | 56        | 104        | 201  | 146  |
+|                | Rev. copy    | 55        | 352        | 202  | −    |
+|                | Rev. flip    | 59        | 209        | 200  | 143  |
+| Sequential     | Copy         | 295       | −          | 439  | −    |
+|                | Flip         | 321       | −          | 349  | −    |
+|                | Rev. copy    | 159       | −          | 515  | −    |
+|                | Rev. flip    | 276       | −          | 309  | −    |</p>
+
+<p>在顺序奖励下，只有 TPO_token 和 DG 能够收敛。关键在于每状态目标（per-state targeting）：在顺序奖励下，第一次出错后的前缀对所有候选 token 都获得零奖励，因此该处的目标与旧策略一致，不会引入虚假信号。因此，TPO_token 将其更新集中在至少有一个候选能继续正确的信息性前缀上。DG 的 sigmoid 门控也有帮助，但速度较慢；GRPO_token 和 PPO 缺乏同等明确的局部目标。</p>
+
+<p>3.6 稀疏奖励分配：终端奖励  
+最困难的奖励分配测试完全移除了中间反馈：模型仅在完整序列生成后才获得精确匹配奖励。没有逐 token 奖励时，我们回归到序列级 TPO 和 GRPO，每条提示采样 K=8 个完整 rollout。提示匹配运行使用 B=100。</p>
+
+<p>交互匹配（interaction-matched）的运行中，单样本批量大小（batch size）和学习率分别按 $K$ 和 $\sqrt{K}$ 进行缩放。其他超参数与第 3.4 节一致（$V=2$）；我们在 2,000 个回合中对 $H \in \{7,8,9,10\}$ 进行扫描。我们报告的是精确匹配错误率（序列中存在任何错误的比例），而非词元级错误率。</p>
+
+<p>**图 8：** 终端奖励，提示匹配（prompt-matched）与交互匹配（interaction-matched）。  
+**上排：** 提示匹配（所有方法 $B=100$）。  
+**下排：** 交互匹配（每步 $B \cdot K = 800$ 次 rollout，单样本批量大小和学习率分别按 $K$ 和 $\sqrt{K}$ 缩放）。此处分组方法每提示使用 $K=8$ 个候选。Y轴：精确匹配错误率。在两种匹配条件下，TPO 在每个 $H$ 上均具有最低错误率。</p>
+
+<p>在提示匹配条件下，各方法差异最大（表 3，图 8 上排）：TPO 在每个测试的 $H$ 上均达到最低错误率。GRPO 和 PPO 在较短长度上取得进展，但随后急剧退化；DG 更早失败。移除 GRPO 的 KL 惩罚项（$\beta=0$）会使其性能显著下降（在 $H=7$ 时为 66.6%，且在 $H&gt;8$ 后无实质性学习），表明在稀疏奖励下，KL 项是 GRPO 的主要稳定器。</p>
+
+<p>**表 3：** 精确匹配错误率（%），终端奖励。  
+**加粗：** 最优方法。“-”：&gt;95%（无实质性学习）。左侧：提示匹配。右侧：交互匹配。TPO 在每个测试的 $H$ 上均达到最低错误率。</p>
+
+<p>|          | **Prompt-matched** |          | **Interaction-matched** |          |
+|----------|------------------|----------|-----------------------|----------|
+| **H=7**  |                  | **H=8**  |                       | **H=9**  |
+|          |                  |          |                       |          |</p>
+
+<p>9  
+H{=}9  
+H =  
+10  
+H{=}10  
+H =  
+7  
+H{=}7  
+H =  
+8  
+H{=}8  
+H =  
+9  
+H{=}9  
+H =  
+10  
+H{=}10  
+TPO  
+6.9  
+8.6  
+6.1  
+7.4  
+1.8  
+2.8  
+5.3  
+19.0  
+GRPO  
+14.5  
+27.6  
+30.0  
+50.4  
+9.6  
+23.2  
+36.2  
+48.7  
+GRPO (no KL)  
+66.6  
+92.5  
+−  
+-  
+−  
+-  
+78.1  
+83.8  
+−  
+-  
+−  
+-  
+PPO  
+12.0  
+26.3  
+90.6  
+−  
+-  
+38.6  
+62.1  
+66.2  
+−  
+-  
+DG  
+33.8  
+58.8  
+−  
+-  
+−  
+-  
+47.7  
+69.4  
+−  
+-  
+−  
+-</p>
+
+<p>在交互匹配（图 8 底部行，表 3 右半部分）下，TPO 在每个 H 上仍保持领先。这里的差距比在词袋实验中更大，因为在词袋实验中，交互匹配显著缩小了差距。在终端奖励设置下，瓶颈不再是梯度方差，而是从稀疏结果中提取有用信号，这正是目标匹配最重要的场景。</p>
+
+<p>### 3.7 锚点与目标匹配消融实验</p>
+
+<p>为了分离 TPO 分组更新的各个组成部分，我们在相同的终端奖励基准上（H ∈ {7,8,10}，V=2，K=8，B=100，20 个种子）将 TPO 与几种提示匹配变体进行比较。所有方法均使用相同的分组完整序列采样。“TPO-no-anchor” 移除了旧策略 p^old 的锚点（q_i ∝ exp(u_i)）。“Group PG” 保持相同的候选和标准化得分，但用标量加权策略梯度替代目标匹配。“GRPO (no KL)” 移除了反向 KL 惩罚（β=0）。</p>
+
+<p>**图 9：** 移除锚点、KL 惩罚或目标匹配均会损害学习效果。  
+终端奖励，反向复制目标，V=2，K=8，B=100，20 个种子。阴影区域表示 ± 标准差。</p>
+
+<p>1  
+\pm 1  
+s.e.  
+完整的 TPO 在每个序列长度上均优于所有消融实验（图 9），且随着 H 的增大，性能差距进一步扩大：当 H=10 时，TPO 达到 7.4%，而所有消融实验均超过 99%。旧策略锚点确实发挥了实际作用：移除它会持续带来损害。目标匹配本身也很重要：保持相同的候选集和标准化分数，但回退到标量加权（Group PG）时表现最差。移除 GRPO 的 KL 惩罚项会显著降低性能，这与第 3.6 节的结论一致。</p>
+
+<p>3.8  
+LLM RLVR：迁移到十亿参数模型  
+GRPO 是十亿参数 LLM RLVR 的事实标准（Lambert 等，2025；Guo 等，2025）。TPO 的优势是否能迁移到这一设置中？  
+我们使用 verl 栈（Sheng 等，2024）在两个模型（Qwen3-1.7B（Yang 等，2025）和 DeepSeek-R1-Distill-Qwen-1.5B（Guo 等，2025））和三个任务（GSM8K（Cobbe 等，2021）、图着色、骑士与骗子（均来自 Reasoning Gym（Stojanovski 等，2025））上对比了 TPO 和 GRPO。所有实验每提示使用 K=16 次 rollout；成对实验仅在策略损失函数上不同（TPO 与带 z 分数优势的截断替代函数）。实现细节（优化器、LoRA、硬件）见附录 G。</p>
+
+<p>图 10：LLM RLVR。  
+上行：Qwen3-1.7B。下行：DeepSeek-R1-Distill-Qwen-1.5B。所有实验每提示使用 K=16 次 rollout。列：GSM8K（保留测试准确率，每 5 步评估一次）、Reasoning Gym 图着色（训练平均得分）、Reason</p>
+
+<p>推理健身房骑士与小人（训练平均得分）。  
+在 GSM8K 上（图 10，左列），TPO 在早期学习速度更快（在 Qwen3-1.7B 上比 GRPO 提前约 10 步达到 50% 准确率），但两者最终收敛到相近的准确率（约 85–87%），这与 TPO 的优势主要体现在学习阶段一致。  
+在推理健身房任务上（中间和右列），我们绘制训练平均得分。这里的差距更为明显：在图着色任务中，GRPO 在 Qwen3-1.7B 上完全失败（300 步内得分接近零），而 TPO 达到约 0.96。在 R1-Distill-1.5B 上，两者均能学习，但 TPO 收敛到更高水平（约 0.96 对比约 0.81）。骑士与小人任务也呈现出相同模式。这些更难的任务比 GSM8K 更清晰地凸显了 TPO 的优势，因为在 GSM8K 上两种方法最终都会饱和。</p>
+
+<p>4 稀疏奖励下 TPO 的增益原因是什么？  
+我们识别出几个增强特性：一旦策略匹配目标，梯度就会自行消失；信号集中在少数有信息量的组上，而非所有失败批次；固定目标支持稳定多轮重用。我们在一个典型的稀疏奖励设置下（H=8，V=2，K=32，B=256，2000 个回合）考察这些特性。我们从原始的 10 个种子运行中计算每步诊断数据；K 扫描、轮次扫描和掩码消融实验使用 30 个种子。</p>
+
+<p>4.1 TPO 的梯度在实践中是否消失，而 GRPO 的梯度持续存在？  
+由于 TPO 的梯度在 pθ = q 时消失（命题 1），更新应停止。</p>
+
+<p>衰减，因为策略趋于收敛。策略梯度方法缺乏这种固定点。  
+**图 11：**  
+TPO 的梯度自我消亡；GRPO 的则不会  
+（$H=8$，$V=2$，$K=32$）。  
+(a) 训练过程中梯度的 L2 范数。  
+(b) 成功候选（实线）与失败候选（虚线）的每候选权重代理：TPO 的平均目标质量 $q_i$，GRPO 的平均 $|A_i|$。</p>
+
+<p>**图 11(a)** 跟踪了训练过程中第一轮梯度的 L2 范数。TPO 的梯度在学习阶段出现峰值，一旦策略收敛（约第 300 个回合），梯度便衰减至接近零（$\sim$）。GRPO 在整个训练过程中保持持续的梯度范数，即使其误差曲线在 12.7% 处趋于平稳。GRPO 的策略即使在误差平稳后仍持续移动，而非趋于某个固定点。</p>
+
+<p>**图 11(b)** 展示了成功候选（实线）与失败候选（虚线）的每候选权重代理。由于代理在不同方法中不同（TPO 为目标质量 $q_i$，GRPO 为优势幅度 $|A_i|$），该图面板是一个分配诊断工具，而非梯度分解。TPO 会迅速从失败候选中移除权重，而 GRPO 即使在训练后期仍持续为失败候选分配非零的优势幅度。更强的固定点结论来自图 (a)：TPO 的梯度范数坍缩至接近零，而 GRPO 的则没有。</p>
+
+<p>## 4.2 当信息性群体稀少时，TPO 如何分配信号？</p>
+
+<p>当有 $K=32$ 个候选，且每序列的成功率为 $(1/V)^H \approx 0.4\%$（即 $1/2^8$）时，成功候选的期望数量为 $K \cdot (1/V)^H \approx 0.128$。这意味着在大多数序列中，没有成功候选，因此 TPO 必须在缺乏明确成功信号的情况下分配信号。</p>
+
+<p>我们通过在训练过程中跟踪 TPO 的权重分配来研究其行为。图 12(a) 显示了训练过程中每个候选的平均权重（实线）和失败候选的平均权重（虚线）。在早期训练阶段，TPO 为所有候选分配相似的权重，但随着训练进行，它逐渐将权重集中在少数成功候选上。在后期训练中，失败候选的权重迅速下降至接近零，而成功候选的权重则稳定在较高水平。</p>
+
+<p>图 12(b) 显示了成功候选的平均目标质量 $q_i$（实线）和失败候选的平均目标质量（虚线）。在训练初期，成功候选的 $q_i$ 较高，而失败候选的 $q_i$ 较低。随着训练进行，成功候选的 $q_i$ 保持稳定，而失败候选的 $q_i$ 逐渐下降至接近零。这表明 TPO 能够有效识别并保留成功候选，同时逐步淘汰失败候选。</p>
+
+<p>图 12(c) 显示了 TPO 的梯度范数（实线）和 GRPO 的梯度范数（虚线）。TPO 的梯度范数在训练后期迅速衰减至接近零，而 GRPO 的梯度范数保持稳定。这进一步验证了 TPO 的固定点特性，即策略在收敛后不再更新。</p>
+
+<p>综上所述，即使在成功候选稀少的情况下，TPO 仍能有效分配信号，通过逐步淘汰失败候选并保留成功候选，最终实现策略收敛。这种机制使得 TPO 在稀疏奖励环境中具有更强的鲁棒性。</p>
+
+<p>/V)^{H}\approx 0.4\%
+在初始化时，大多数组中均无成功完成。
+图 12：
+训练初期，大多数组不携带信号；TPO 能最快消除它们（
+H
+=
+8
+H{=}8
+,
+V
+=
+2
+V{=}2
+,
+K
+=
+32
+K{=}32
+）。(a) 所有 K 个候选均失败的组所占比例。(b) 至少有一个成功候选的提示所占比例。
+图 12(a) 显示，在训练开始时，约 90% 的组全部失败。对于 TPO，这些组在 rollout 快照中是中性的：零方差意味着标准化分数
+u
+=
+0
+u=0
+（附录 A），因此
+q
+=
+p
+old
+q=p^{\text{old}}
+，且在第一个 epoch 中组损失的贡献恰好为零。因此，在训练初期，TPO 将其第一个 epoch 的组更新集中在相对较小比例的组上，这些组实际上能够区分优劣候选，即至少包含一个成功的组。（我们展示的是全部失败的组，而不是总方差为零的组，因为在训练后期，零方差也可能来自全部成功的组，而后者并非我们关注的稀疏奖励失败模式。）
+在共享参数的多 epoch 设置中，这种中性状态未必永远持续。一旦有信息量的组已使策略偏离 rollout 快照，再次访问相同的全部失败组时，锚点项会重新拉回
+p
+old
+p^{\text{old}}
+。这种后期 epoch 的拉回效应可能同时出现在 TPO 和我们的 snapshot-KL GRPO 基线方法中，因此零方差组并非被永久忽略。关键特性更窄：在</p>
+
+<p>在信息组稀缺的部署快照中，TPO 将其分组信号集中在包含实际排序信息的组上。  
+随着训练进行和策略改进，全部失败的比例下降：更多的组至少包含一个成功的候选（图 12(b)）。这意味着每批数据中贡献非平凡目标结构的比例更大。TPO 能快速将全部失败比例降至接近零，而 GRPO 留下较大的残余比例，且 GRPO（无 KL）表现明显更差。</p>
+
+<p>**组大小消融实验。**  
+改变 $K \in \{4,8,16,32,64\}$ 同时影响两个方面（图 13）。更大的组更有可能包含至少一个成功的完成，且在二值奖励下，相同的组内 $z$-评分一旦出现成功，会使分组更新变得更为锐利。  
+因此，我们将此图解释为对候选覆盖范围和分组信号锐利度的联合敏感性扫描。在 30 个种子上，TPO 的错误率从 $K=4$ 时的 8.9% 下降到 $K=8$ 时的 5.2%、$K=16$ 时的 5.1%、$K=32$ 时的 2.6%，以及 $K=64$ 时的 0.36%。GRPO 表现较弱且非单调：在相同扫描下分别为 19.4%、19.8%、9.2%、4.4% 和 5.6%。在这一综合变化下，TPO 在不同 $K$ 值下的表现更为平滑。</p>
+
+<p>**图 13：组大小敏感性扫描**（$H=8$，$V=2$，训练轮数 = 4）。  
+(a) TPO 学习曲线：随着 $K$ 增大持续改进，在 $K=64$ 时表现最强。  
+(b) GRPO 学习曲线：...</p>
+
+<p>曲线：更大的组有助于提升性能，但性能仍不够稳定且单调性较差。（c）最终误差 vs. $K$：TPO 在 $K=4$ 时误差为 8.9%，在 $K=64$ 时降至 0.36%；GRPO 在 $K=4$ 时误差为 19.4%，在 $K=32$ 时降至 4.4%，但在 $K=64$ 时略微恶化至 5.6%。30 个种子，阴影/条形图表示 $\pm$ 1 标准误差。零方差掩码。</p>
+
+<p>如果零方差组仅仅是无用负担，一个显而易见的干预措施就是显式地屏蔽它们。我们测试了“GRPO（掩码）”，即对于所有 $K$ 个候选者获得相同奖励的组，将其损失置为零（图 14）。</p>
+
+<p>在 30 个种子的聚合结果中，掩码效果显著有害：最终误差从 6.3% 上升至 29.7%。这表明这些组并非仅仅是需要删除的垃圾数据。在多轮训练设置中，一旦有信息量的组推动了共享策略的更新，重新访问零方差组可以提供一个有用的锚点，使其回归到 rollout 快照。因此移除它们会使 GRPO 明显变差，且仍然无法接近 TPO，后者在相同设置下达到了 0.05% 的误差。</p>
+
+<p>图 14：零方差掩码（$H=8$，$V=2$，$K=32$，epochs=4）。（a）学习曲线：GRPO（zv-masked）明显劣于 GRPO 和 TPO。（b）最终误差：掩码使 GRPO 的误差从 6.3% 上升至 29.7%，而 TPO 在无掩码的情况下达到了 0.05%。30 个种子，阴影/条形图表示 $\pm$ 1 标准误差。</p>
+
+<p>4.3 TPO 是否在多个 epoch 中从稀有信息批次中提取了更多信息？</p>
+
+<p>TPO 的固定目标 $q$ 在梯度 epoch 间提供了一个稳定的吸引子。</p>
+
+<p>chs: 同一批次可以安全重复使用，而不会出现导致 DG 在多个 epoch 下发散的信任域问题（附录 E）。在终端奖励场景下，由于信息丰富的批次稀少，从每个批次中提取最大学习效果至关重要。  
+Figure 15: 多 epoch 提取（$H=8$，$V=2$，$K=32$）。(a) 误差曲线：使用 4 个梯度 epoch 的 TPO 在第 400 集时达到 0.2% 的误差，而使用 1 个 epoch 的 TPO 为 1.1%，大约快了 $5\times$。两者最终均收敛至 $&lt;0.1\%$。DG 由于仅限于单个 epoch，误差在 14% 处停滞。(b) 梯度范数：TPO（4 epoch）梯度衰减最快；TPO（1 epoch）表现出延迟的峰值和较慢的衰减；DG 的梯度保持较低但持续存在。  
+Figure 15 对比了 TPO 使用 4 个梯度 epoch 与 1 个 epoch 的情况。在第 400 集时，TPO（4 epoch）误差达到 0.2%，而 TPO（1 epoch）为 1.1%，早期收敛速度大约快了 $5\times$。两者最终均达到 $&lt;0.1\%$，表明多 epoch 提取主要加速了学习过程，而非使学习成为可能。DG 由于受限于单个 epoch，误差在 14% 处停滞。  
+Epoch 数量消融实验。  
+我们对 TPO 和 GRPO 在 $\{1,2,4,8,16\}$ 个梯度 epoch 上进行遍历（Figure 16）。TPO 在整个范围内保持稳定：最终误差处处低于 2.3%，且在 1 和 4 epoch 时已接近零（分别为 0.02% 和 0.05%）。GRPO 保持强非单调性：1 epoch 达到 4.3%，2 epoch 恶化至 37.6%，4 epoch 改善至 6.3%，8 epoch 达到 3.3%，16 epoch 达到 1.1%。G</p>
+
+<p>RPO 在合适的 epoch 数量下可以达到较低的误差，但对这一选择非常敏感。  
+图 16：  
+Epoch 数量消融实验  
+（$H=8$，$V=2$，$K=32$）。(a) TPO 在不同 epoch 数量下的学习曲线：所有曲线均平稳收敛，并在整个过程中保持低误差。(b) GRPO 的学习曲线：2 个 epoch 是最差设置，而 8 和 16 个 epoch 能够显著恢复性能。(c) 最终误差对比：TPO 在所有设置下均保持低于 2.3%；GRPO 的误差则表现出强烈的非单调性（2 个 epoch 时为 37.6%，16 个 epoch 时为 1.1%）。30 个随机种子，阴影区域表示 $\pm$ 1 个标准误差。  
+没有任何单一属性可以完全解释 TPO 在稀疏奖励下的优势。当策略接近目标时，梯度范数会坍缩；当 $K$ 或 epoch 数量变化时，性能会平滑下降而非突然恶化；多 epoch 重用无需精细调参即可有效工作。这些特性相互增强，而基线方法中均不具备这些特性。</p>
+
+<p>5 相关工作  
+目标匹配与镜像下降方法。  
+TPO 的目标（公式 2）是在 $K$ 个候选策略中，对如下优化问题的闭式解：  
+$$
+\arg\min_{q}\mathrm{KL}(q\,\|\,p^{\text{old}})-\tfrac{1}{\eta}\,\mathbb{E}_{q}[u]
+$$  
+最相近的相关方法包括 REPS（Peters 等，2010）、MPO（Abdolmaleki 等，2018）和 V-MPO（Song 等，2020），它们使用相同的指数倾斜步骤，但需要一个 critic 或价值估计来提供改进信号。AWR（Peng 等，2019）也使用 KL 正则化的改进权重，但对每个样本的 $\exp(A/\beta)$ 进行处理，其中 $A$ 是优势函数。</p>
+
+<p>(A/\beta)  
+作为其对数似然的固定标量，因此其梯度在目标处不会自我消亡。  
+TPO 的显著特性在于，有限的评分候选集合能够在无需批评者（critic）或内部优化循环的情况下，以闭式形式提供目标，且一旦目标匹配，其梯度  
+p  
+θ  
+−  
+q  
+p^{\theta}{-}q  
+即消失。  
+MDPO  
+(Tomar  
+et al.  
+,  
+2022  
+)  
+从镜像下降（mirror-descent）的角度对同一类方法进行了阐述。  
+更一般地，TPO 可以被理解为在采样候选单纯形（simplex）而非完整动作空间上进行的 KL 正则化策略改进算子  
+(Kakade,  
+2001  
+; Geist  
+et al.  
+,  
+2019  
+)  
+。  
+基于组的策略梯度方法。  
+RLOO  
+(Ahmadian  
+et al.  
+,  
+2024  
+)  
+和 GRPO  
+(Shao  
+et al.  
+,  
+2024  
+)  
+也针对每个上下文评分多个候选，但将其转换为策略梯度目标中的每样本标量权重。  
+而 TPO 则在候选单纯形上构建一个目标分布，并将策略拟合到该分布上。  
+近期的 GRPO 变体针对特定失败模式进行了改进，但仍保持标量加权的策略梯度方法：Dr. GRPO  
+(Liu  
+et al.  
+,  
+2025  
+)  
+移除了组内 σ  
+\sigma  
+归一化中的困难偏差  
+(Murphy,  
+2025  
+)  
+；DAPO  
+(Yu and others,  
+2025  
+)  
+使用非对称裁剪以防止熵崩溃；GSPO  
+(Zheng  
+et al.  
+,  
+2025  
+)  
+修复了当奖励为轨迹级别时出现的每标记重要性比率不匹配问题。  
+TPO 用一个针对组的目标分布取代了标量加权更新，完全避免了重要性比率和裁剪。由于它仍然在组内进行标准化，</p>
+
+<p>- 尽管对组得分进行了处理，但原则上仍可能存在低方差的难度偏差效应，如第 6 节所述。</p>
+
+<p>单样本策略梯度方法。  
+REINFORCE（Williams, 1992）、TRPO（Schulman et al., 2015）、PPO（Schulman et al., 2017）、REINFORCE++（Hu, 2025）和 ReMax（Li et al., 2024）均对采样动作赋予标量优势权重。ReMax 移除了值模型，并采用贪心解码基线以降低方差，从而在内存和速度上相比 PPO 获得显著提升，但梯度仍为标准的得分函数估计器。DG（Osband, 2026）通过 sigmoid 门控机制修正跨上下文的梯度分配错误；TPO 则解决单个上下文候选集合内的梯度分配错误。这两种方法具有互补性，可以组合使用。</p>
+
+<p>回归与偏好方法。  
+REBEL（Gao et al., 2024）将强化学习简化为对成对完成结果的奖励差值进行迭代最小二乘回归，推广了 NPG 并具有强鲁棒性后悔界。REBEL 与 TPO 均基于奖励和行为策略构建目标，但在损失函数和结构上有所不同：REBEL 在成对样本上使用对数概率比的平方损失；TPO 则在候选组上使用分布的交叉熵损失。PMPO（Abdolmaleki et al., 2025）是最接近目标匹配的方法：它将候选样本划分为接受/拒绝集合，并正则化至固定的 $\pi_{\text{ref}}$；而 TPO 保持对整个组的单一软目标，并仅锚定至 $\pi_{\text{old}}$。</p>
+
+<p>离线成对方法（DPO (Rafailov et al., 2023)、KTO (Ethayarajh et al., 2024)、IPO (Azar et al., 2024)）与TPO相距较远，因为TPO是在线的、集合式的且与评分器无关的。  
+目标层面的修正。  
+MaxRL (Tajwar et al., 2026) 改变了优化的目标（在二元奖励下的高阶修正）。  
+GDPO (Liu et al., 2026) 和 MT-GRPO (Ramesh et al., 2026) 分别修正了 GRPO 在多奖励和多任务设置下的目标：GDPO 解耦了每项奖励的归一化以防止优势崩溃，而 MT-GRPO 引入了鲁棒性感知的任务重加权。  
+TPO 与上述方法正交，它改变的是“如何”将上下文内的信号转化为更新；这四种修正方法是互补的（见第6节）。  
+离策略与异步训练。  
+大规模强化学习流水线将采样生成与参数更新解耦，引入了滞后性和引擎不匹配问题。  
+ScaleRL (Khatri et al., 2025) 系统性地研究了这一场景，表明离策略程度调节了计算效率，但不会改变渐近性能上限，并提出了截断重要性采样以稳定训练。  
+IcePop (Team et al., 2025) 解决了另一种离策略来源：推理引擎与训练引擎之间的概率差异（尤其在MoE模型中），这种差异在迭代中会累积；它屏蔽了引擎比例超出校准窗口的词元级梯度。  
+TPO 的上下文内修正与上述两种方法均正交，且可与之兼容。</p>
+
+<p>可以与任意离策略（off-policy）策略组合使用。  
+表 4：  
+策略优化方法对比。  
+Group：更新结构在上下文中对候选方案进行组内比较。Fixed ref.：需要一个固定的参考模型，超出 $\pi_{\text{old}}$。</p>
+
+<p>| 方法         | 更新规则                         | Group | Critic | Fixed ref. |
+|--------------|----------------------------------|-------|--------|------------|
+| REINFORCE    | PG + baseline                    | ✗     | ✗      | ✗          |
+| REINFORCE++  | PG + per-token KL baseline       | ✗     | ✗      | ✓          |
+| ReMax        | PG + greedy baseline             | ✗     | ✗      | ✓          |
+| TRPO         | PG + KL trust region             | ✗     | ✗      | ✗          |
+| PPO          | Clipped PG surrogate             | ✗     | ✗      | ✗          |
+| DG           | Sigmoid-gated PG                 | ✗     | ✗      | ✗          |
+| MDPO         | PG + mirror-descent KL           | ✗     | ✗      | ✗          |
+| RLOO         | PG + leave-one-out baseline      | ✓     | ✗      | ✗          |
+| GRPO         | Clipped PG + group adv.          | ✓     | ✗      | ✗          |
+| REBEL        | Sq. loss on reward diffs         | ✓     | ✗      | ✗          |
+| PMPO         | Weighted lik. + KL to $\pi_{\text{ref}}$ | ✓ | ✗      | ✓          |
+| AWR          | Regress to $\exp(A/\beta)$ weights | ✗     | ✓      | ✗          |
+| MPO / V-MPO  | $q \propto \pi_{\text{old}} \exp(\text{signal}/\eta)$; fit $\pi \to q$ | ✓ | ✓      | ✗          |
+| MaxRL        | Higher-order obj. correction     | ✓     | ✗      | ✗          |
+| TPO          | $q \propto p_{\text{old}} \exp(u)$; CE to $q$ | ✓ | ✗      | ✗          |</p>
+
+<p>6 限制  
+候选质量与基于组的成本。  
+TPO 只能对其所给定的候选方案重新分配概率。如果采样集合多样性低或整体质量差，则目标也会相应缺乏信息量。在离散动作设置中，若所有动作能在单次前向传播中评分，则 K 个候选组不会增加额外的环境交互；在无价值函数（critic）的序列设置中，TPO 每个上下文需要 K 次 rollout，与 GRPO 相同。它可能更高效地利用这些 rollout，但仍然存在上述限制。</p>
+
+<p>不移除成本。更激进的部署重用策略会使 TPO 进入一个真正的离策略（off-policy）模式，此时可能需要 Retrace 或 V-trace 风格的修正（Munos et al., 2016; Espeholt et al., 2018）。</p>
+
+<p>评分标准化是有帮助的，但并非免费的。  
+标准化评分使 TPO 在不同任务间具有稳定的尺度，并在很大程度上消除了调节温度参数（temperature）的需要，但当组内方差极小时，它也可能放大微小的数值差异。例如，一个组中某个候选者得分为 0.001，其余候选者得分为 0，在进行 z-score 标准化后会产生非常尖锐的目标分布。这与 GRPO 中识别出的“难度偏差”机制相同（Liu et al., 2025; Murphy, 2025）。在实践中，对低方差组进行更稳健的处理将有所帮助。</p>
+
+<p>评估规模。  
+我们的大语言模型（LLM）规模实验（第 3.8 节）使用了 1.5–1.7B 参数量的模型，在三个任务上进行测试。在更大规模模型（7B+）和更难的基准（如 MATH、AIME）上进行测试仍属于未来工作；主要的开放问题是 TPO 的相对优势在更大规模下是否依然保持。</p>
+
+<p>7 结论  
+TPO 用一个设计选择取代了标量加权策略梯度：在评分后的候选集合上构建目标分布，并通过交叉熵拟合策略。在我们测试的所有场景中（表格型多臂老虎机、神经网络多臂老虎机、密集奖励和稀疏奖励的 Transformer，以及十亿参数级的 LLM RLVR），TPO 在密集奖励任务上与 PG、PPO、DG 和 GRPO 表现相当，在稀疏奖励任务上则显著优于它们。分离“什么”（what）redi</p>
+
+<p>分布的获取方式取决于优化器如何实现，这可以使更新更加稳健。我们计划在更大规模的模型上测试 TPO。</p>
+
+<p>## 致谢与资金披露</p>
+
+<p>我们感谢 Srijan Patel、Zhengyao Jiang 和 Ian Osband 的讨论与反馈。</p>
+
+<p>## 参考文献</p>
+
+<p>A. Abdolmaleki, B. Piot, B. Shahriari, J. T. Springenberg, T. Hertweck, R. Joshi, J. Oh, M. Bloesch, T. Lampe, N. Heess, J. Buchli, and M. Riedmiller (2025)  
+**Learning from negative feedback, or positive feedback or both**  
+在 *International Conference on Learning Representations* 上发表。  
+引用来源：§5</p>
+
+<p>A. Abdolmaleki, J. T. Springenberg, Y. Tassa, R. Munos, N. Heess, and M. Riedmiller (2018)  
+**Maximum a posteriori policy optimisation**  
+在 *International Conference on Learning Representations* 上发表。  
+引用来源：Appendix E, §1, §5</p>
+
+<p>A. Ahmadian, C. Cremer, M. Gallé, M. Fadaee, J. Kreutzer, O. Pietquin, A. Üstün, and S. Hooker (2024)  
+**Back to basics: revisiting REINFORCE-style optimization for learning from human feedback in LLMs**  
+arXiv 预印本 arXiv:2402.14740  
+引用来源：§5</p>
+
+<p>M. G. Azar, M. Rowland, B. Piot, D. Guo, D. Calandriello, M. Valko, and R. Munos (2024)  
+**A general theoretical paradigm to understand learning from human feedback**  
+*International Conference on Artificial Intelligence and Statistics*  
+引用来源：§5</p>
+
+<p>K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano, C. Hesse, and J. Schulman (2021)  
+**Training verifiers to solve math word problems**  
+arXiv 预印本 arXiv:2110.141</p>
+
+<p>68  
+.  
+被引用于：§3.8  
+.  
+P. Dayan 和 G. E. Hinton (1997)  
+使用期望最大化进行强化学习  
+.  
+*Neural Computation* 9(2), pp. 271–278  
+.  
+被引用于：§1  
+.  
+DeepMind, I. Babuschkin, K. Baumli, A. Bell, S. Bhupatiraju, J. Bruce, P. Buchlovsky, D. Budden, T. Cai, A. Clark, I. Danihelka, A. Dedieu, C. Fantacci, J. Godwin, C. Jones, R. Hemsley, T. Hennigan, M. Hessel, S. Hou, S. Kapturowski, T. Keck, I. Kemaev, M. King, M. Kunesch, L. Martens, H. Merzic, V. Mikulik, T. Norman, G. Papamakarios, J. Quan, R. Ring, F. Ruiz, A. Sanchez, L. Sartran, R. Schneider, E. Sezener, S. Spencer, S. Srinivasan, M. Stanojević, W. Stokowiec, L. Wang, G. Zhou, 和 F. Viola (2020)  
+DeepMind JAX 生态系统  
+.  
+外部链接：[Link](https://github.com/deepmind/dmjax)  
+被引用于：§3  
+.  
+L. Espeholt, H. Soyer, R. Munos, K. Simonyan, V. Mnih, T. Ward, Y. Doron, V. Firoiu, T. Harley, I. Dunning, S. Legg, 和 K. Kavukcuoglu (2018)  
+IMPALA：基于重要性加权的演员-学习者架构的可扩展分布式深度强化学习  
+.  
+在 *Proceedings of the 35th International Conference on Machine Learning* 中，  
+*Proceedings of Machine Learning Research*, 第 80 卷, pp. 1407–1416  
+.  
+被引用于：§6  
+.  
+K. Ethayarajh, W. Xu, N. Muennighoff, D. Jurafsky, 和 D. Kiela (2024)  
+KTO：基于前景理论优化的模型对齐  
+.  
+arXiv 预印本 arXiv:2402.01306  
+.  
+被引用于：§5  
+.  
+Z. Gao, J. D. Chang, W. Zhan, O. Oertell, G. Swamy, K. Brantley, T. Joachims, J. A. Bagnell, J. D. Lee, 和 W. Sun (2024)  
+REBEL：通过回归相对奖励进行强化学习</p>
+
+<p>.
+arXiv 预印本 arXiv:2404.16767
+.
+被引用于：
+§5
+.
+M. Geist, B. Scherrer, 和 O. Pietquin (2019)
+正则化马尔可夫决策过程的理论
+.
+在
+第36届国际机器学习会议论文集
+,
+机器学习研究论文集
+, 第
+97
+卷,
+pp. 2160–2169
+.
+被引用于：
+§5
+.
+D. Guo, D. Yang, H. Zhang, J. Song, R. Zhang, R. Xu, Q. Zhu, S. Ma, P. Wang, X. Bi,
+等.
+(2025)
+DeepSeek-R1：通过强化学习激励大语言模型的推理能力
+.
+arXiv 预印本 arXiv:2501.12948
+.
+被引用于：
+§3.8
+,
+§3.8
+.
+J. Hu (2025)
+REINFORCE++：一种简单高效的大型语言模型对齐方法
+.
+arXiv 预印本 arXiv:2501.03262
+.
+被引用于：
+§5
+.
+K. Jordan, Y. Jin, V. Boza, Y. Jiacheng, F. Cesista, L. Newhouse, 和 J. Bernstein (2024)
+Muon：神经网络隐藏层的优化器
+.
+外部链接：
+Link
+被引用于：
+§3
+.
+S. M. Kakade (2001)
+自然策略梯度
+.
+在
+神经信息处理系统进展 14
+,
+被引用于：
+§5
+.
+D. Khatri, L. Madaan, R. Tiwari, R. Bansal, S. S. Duvvuri, M. Zaheer, I. S. Dhillon, D. Brandfonbrener, 和 R. Agarwal (2025)
+为大语言模型扩展强化学习计算的艺术
+.
+外部链接：
+2510.13786
+,
+Link
+被引用于：
+§5
+.
+N. Lambert, J. Morrison, V. Pyatkin, S. Huang, H. Ivison, F. Brahman, L. J. V. Miranda, A. Liu, N. Dziri, S. Lyu, Y. Gu, S. Malik, V. Graf, J. D. Hwang, J. Yang, R. L. Bras, O. Tafjord, C. Wilhelm, L. Soldaini, N. A. Smith, Y. Wang, P. Dasigi, 和 H. Hajishirzi (202</p>
+
+<p>5)  
+Tulu 3：推动开放语言模型后训练的前沿  
+.  
+外部链接：  
+[2411.15124](https://arxiv.org/abs/2411.15124)  
+,  
+[Link](https://example.com/link)  
+被引用于：  
+§3.8  
+.  
+Z. Li, T. Xu, Y. Zhang, Z. Lin, Y. Yu, R. Sun, 和 Z. Luo (2024)  
+ReMax：一种简单、有效且高效的强化学习方法，用于对齐大型语言模型  
+.  
+在  
+*International Conference on Machine Learning*  
+,  
+被引用于：  
+§5  
+.  
+S. Liu, X. Dong, X. Lu, S. Diao, P. Belcak, M. Liu, M. Chen, H. Yin, Y. F. Wang, K. Cheng, Y. Choi, J. Kautz, 和 P. Molchanov (2026)  
+GDPO：用于多奖励强化学习优化的组奖励解耦归一化策略优化  
+.  
+外部链接：  
+[2601.05242](https://arxiv.org/abs/2601.05242)  
+,  
+[Link](https://example.com/link)  
+被引用于：  
+§5  
+.  
+Z. Liu, C. Chen, W. Li, P. Qi, T. Pang, C. Du, W. S. Lee, 和 M. Lin (2025)  
+理解 R1-Zero-Like 训练：一个关键视角  
+.  
+arXiv 预印本 arXiv:2503.20783  
+.  
+被引用于：  
+§5  
+,  
+§6  
+.  
+R. Munos, T. Stepleton, A. Harutyunyan, 和 M. G. Bellemare (2016)  
+安全且高效的离策略强化学习  
+.  
+在  
+*Advances in Neural Information Processing Systems 29*  
+,  
+被引用于：  
+§6  
+.  
+K. Murphy (2025)  
+强化学习：概述  
+.  
+外部链接：  
+[2412.05265](https://arxiv.org/abs/2412.05265)  
+,  
+[Link](https://example.com/link)  
+被引用于：  
+§5  
+,  
+§6  
+.  
+I. Osband (2026)  
+令人愉悦的策略梯度  
+.  
+arXiv 预印本 arXiv:2603.14608  
+.  
+被引用于：  
+Appendix B  
+,  
+Appendix D  
+,  
+Appendix E  
+,  
+Appendix E  
+,  
+§3.1  
+,  
+§3.2  
+,  
+§3.3  
+,  
+§3.4  
+,  
+§3.5  
+,  
+§3  
+,  
+§5  
+.  
+X. B. Peng, A. Kumar, G. Zhang, 和 S. Levine (2019)  
+优势加权回归：简单且可扩展的离策略强化学习  
+.  
+在  
+arXiv 预印本 arXiv:1910.00177  
+,</p>
+
+<p>Cited by:  
+§5  
+.  
+J. Peters, K. Mülling, 和 Y. Altün (2010)  
+相对熵策略搜索  
+.  
+在  
+《第二十四届 AAAI 人工智能会议论文集》  
+,  
+pp. 1607–1612  
+.  
+Cited by:  
+§1  
+,  
+§5  
+.  
+R. Rafailov, A. Sharma, E. Mitchell, S. Ermon, C. D. Manning, 和 C. Finn (2023)  
+直接偏好优化：你的语言模型实际上是一个奖励模型  
+.  
+《神经信息处理系统进展》  
+36  
+.  
+Cited by:  
+§5  
+.  
+S. S. Ramesh, X. Ji, M. Zimmer, S. Yoon, Z. Wang, H. B. Ammar, A. Lucchi, 和 I. Bogunovic (2026)  
+多任务 GRPO：跨任务的可靠大语言模型推理  
+.  
+External Links:  
+2602.05547  
+,  
+Link  
+Cited by:  
+§5  
+.  
+J. Schulman, S. Levine, P. Abbeel, M. Jordan, 和 P. Moritz (2015)  
+信任域策略优化  
+.  
+在  
+《国际机器学习会议》  
+,  
+pp. 1889–1897  
+.  
+Cited by:  
+§5  
+.  
+J. Schulman, F. Wolski, P. Dhariwal, A. Radford, 和 O. Klimov (2017)  
+近端策略优化算法  
+.  
+arXiv 预印本 arXiv:1707.06347  
+.  
+Cited by:  
+§3  
+,  
+§5  
+.  
+Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, M. Zhang, Y. K. Li, Y. Wu, 和 D. Guo (2024)  
+DeepSeekMath：推动开放语言模型在数学推理方面的极限  
+.  
+arXiv 预印本 arXiv:2402.03300  
+.  
+Cited by:  
+Appendix F  
+,  
+§3  
+,  
+§5  
+.  
+G. Sheng, C. Zhang, Z. Ye, X. Wu, W. Zhang, R. Zhang, Y. Peng, H. Lin, 和 C. Wu (2024)  
+HybridFlow：一个灵活且高效的 RLHF 框架  
+.  
+arXiv 预印本 arXiv:2409.19256  
+.  
+Cited by:  
+Appendix G  
+,  
+§3.8  
+.  
+H. F. Song, A. Abdolmaleki, J. T. Springenberg, A. Clark, H. Soy</p>
+
+<p>er, J. W. Rae, S. Noury, A. Ahuja, S. Liu, D. Tirumala,  
+et al.  
+(2020)  
+V-MPO: 基于策略的最大后验概率策略优化在离散与连续控制中的应用  
+.  
+国际学习表征会议  
+.  
+引用自：  
+§5  
+.  
+Z. Stojanovski, O. Stanley, J. Sharratt, R. Jones, A. Adefioye, J. Kaddour, 和 A. Köpf (2025)  
+推理健身房：具有可验证奖励的强化学习推理环境  
+.  
+在  
+第39届神经信息处理系统年度会议 数据集与基准赛道  
+,  
+外部链接：  
+Link  
+引用自：  
+§3.8  
+.  
+F. Tajwar, G. Zeng, Y. Zhou, Y. Song, D. Arora, Y. Jiang, J. Schneider, R. Salakhutdinov, H. Feng, 和 A. Zanette (2026)  
+最大似然强化学习  
+.  
+arXiv 预印本 arXiv:2602.02710  
+.  
+引用自：  
+§5  
+.  
+L. Team, A. Shen, B. Li, B. Hu, B. Jing, C. Chen, C. Huang, C. Zhang, C. Yang, C. Lin, C. Wen, C. Li, D. Zhao, D. Yuan, D. You, F. Mao, F. Meng, F. Xu, G. Li, G. Wang, H. Dai, H. Zheng, H. Liu, J. Guo, J. Liu, J. Liu, J. Fu, J. Shi, J. Wang, J. Lai, J. Yang, J. Mei, J. Zhou, J. Zhao, J. Zhao, K. Xu, L. Su, L. Chen, L. Tang, L. Jiang, L. Fu, L. Xu, L. Shi, L. Liao, L. Zheng, M. Li, M. Chen, Q. Zuo, Q. Cheng, Q. Cao, Q. Shi, Q. Guo, S. Zhu, S. Wang, S. Zheng, S. Li, S. Gu, S. Chen, T. Wu, T. Zhang, T. Zhang, T. Zhou, T. Bie, T. Yang, W. Hong, W. Ren, W. Chen, W. Yu, W. Zheng, X. Wang, X. Yan, X. Wan, X. Zhao, X. Kong, X. Tang, X. Han, X. Wang, X. Yang, X. Hu, Y. Zhang, Y. Sun, Y. Shan, Y. Wang, Y. Xu, Y. Liu</p>
+
+<p>, Y. Guo, Y. Wang, Y. Yan, Y. Wang, Y. Guo, Z. Li, Z. Xu, Z. Li, Z. Zhang, Z. Gui, Z. Pan, Z. Huang, Z. Lan, Z. Ding, Z. Zhang, Z. Li, Z. Liu, Z. Wang, and Z. Wen (2025)  
+每一步都在进化：面向万亿级思考模型的强化学习扩展  
+.  
+外部链接：  
+2510.18855  
+,  
+链接  
+被引用：  
+§5  
+.  
+M. Tomar, L. Shani, Y. Efroni, and M. Ghavamzadeh (2022)  
+镜像下降策略优化  
+.  
+在  
+国际学习表征会议  
+,  
+被引用：  
+§5  
+.  
+R. J. Williams (1992)  
+用于连接主义强化学习的简单统计梯度跟随算法  
+.  
+机器学习  
+8  
+(  
+3–4  
+),  
+pp. 229–256  
+.  
+被引用：  
+§5  
+.  
+A. Yang, B. Yang, B. Zhang, B. Hui, B. Wang, B. Zheng,  
+等  
+(2025)  
+Qwen3 技术报告  
+.  
+arXiv 预印本 arXiv:2505.09388  
+.  
+被引用：  
+§3.8  
+.  
+Q. Yu  
+等  
+(2025)  
+DAPO：一个开源的 LLM 强化学习系统  
+.  
+arXiv 预印本 arXiv:2503.14476  
+.  
+被引用：  
+§5  
+.  
+C. Zheng, S. Liu, M. Li, X. Chen, B. Yu, C. Gao, K. Dang, Y. Liu, R. Men, A. Yang, J. Zhou, and J. Lin (2025)  
+GSPO：群体序列策略优化  
+.  
+arXiv 预印本 arXiv:2507.18071  
+.  
+被引用：  
+§5  
+.  
+附录 A  
+评分标准化  
+给定原始评分  
+s  
+1  
+,  
+…  
+,  
+s  
+K  
+s_{1},\dots,s_{K}  
+，本文中使用的标准化评分为  
+u  
+i  
+=  
+{  
+s  
+i  
+−  
+s  
+¯  
+σ  
+(  
+s  
+)  
+if  
+σ  
+(  
+s  
+)  
+&gt;  
+0  
+,  
+0  
+if  
+σ  
+(  
+s  
+)  
+=  
+0  
+,  
+u_{i}=\begin{cases}\dfrac{s_{i}-\bar{s}}{\sigma(s)}&amp;\text{if }\sigma(s)&gt;0,\\
+0&amp;\text{if }\sigma(s)=0,\end{cases}  
+(5)  
+其中  
+s  
+¯  
+=  
+1  
+K  
+∑  
+j  
+s  
+j  
+\bar{s}=\frac{1}{K}\sum_{j}s_{j}</p>
+
+<p>j}
+且  
+σ(s) = √(1/K ∑_{j=1}^{K} (s_j - s̄)^2)  
+是组内总体标准差。等价地，u_i 是 s_i 的组内 z 分数，约定当 σ(s) = 0 时，所有坐标均设为零。</p>
+
+<p>## 附录 B  
+多上下文表格加权推导</p>
+
+<p>本附录推导第 3.2 节中多上下文表格 bandit 的有效每上下文系数。推导在 **logit 空间** 中进行，与实验及 Osband (2026) 一致：每个上下文中的策略是显式 logits 上的 softmax。为避免与正文中的 K 冲突，令 A 表示该 bandit 中的动作数量。在上下文 n 中，令 y_n 为正确动作，π_n 为当前在 A 个动作上的策略，p_n = π_n(y_n)，e_{y_n} 为正确动作的 one-hot 向量。定义  
+v_n = e_{y_n} - π_n。  
+由于奖励是 one-hot，多上下文实验中考虑的所有精确更新都沿着这一相同方向；方法之间的差异仅在于乘以 v_n 的标量系数。</p>
+
+<p>对于 TPO，该标量形式仅在首先构造目标 q_n，然后在该特殊 one-hot 设置下简化目标匹配更新 q_n - π_n 后才出现。</p>
+
+<p>**CE**。  
+交叉熵 oracle 使用  
+g_n^{CE} = e_{y_n} - π_n = v_n，  
+因此  
+β_{CE}(p</p>
+
+<p>$$
+\beta_{\mathrm{CE}}(p_{n})=1.
+$$</p>
+
+<p>**DG.**  
+在精确的总体极限下，当基线 $b=0$ 时，DG 的贡献为：</p>
+
+<p>$$
+g_{n}^{\mathrm{DG}}=\sum_{a}\pi_{n}(a)\,r_{n}(a)\,\sigma\!\left(\frac{r_{n}(a)(-\log\pi_{n}(a))}{\eta}\right)\,(e_{a}-\pi_{n}),
+$$</p>
+
+<p>其中 $r_{n}(a)=\mathbf{1}\{a=y_{n}\}$。由于只有正确的动作具有非零奖励，因此：</p>
+
+<p>$$
+g_{n}^{\mathrm{DG}}=p_{n}\,\sigma\!\left(\frac{-\log p_{n}}{\eta}\right)\,(e_{y_{n}}-\pi_{n}).
+$$</p>
+
+<p>因此，</p>
+
+<p>$$
+\beta_{\mathrm{DG}}(p_{n})=p_{n}\sigma\!\left(\frac{-\log p_{n}}{\eta}\right).
+$$</p>
+
+<p>在实验中使用的默认值 $\eta=1$ 下，</p>
+
+<p>$$
+\beta_{\mathrm{DG}}(p_{n})=\frac{p_{n}}{1+p_{n}}.
+$$</p>
+
+<p>**GRPO.**  
+在上下文 $n$ 中，奖励服从均值为 $p_n$、标准差为 $\sigma_n=\sqrt{p_n(1-p_n)}$ 的伯努利分布。对奖励进行标准化后，得到优势值：</p>
+
+<p>$$
+A_{n}(y_{n})=\frac{1-p_{n}}{\sigma_{n}},\qquad A_{n}(a\neq y_{n})=\frac{-p_{n}}{\sigma_{n}}.
+$$</p>
+
+<p>精确总体的 GRPO 更新为：</p>
+
+<p>$$
+g_{n}^{\mathrm{GRPO}}=\sum_{a}\pi_{n}(a)\,A_{n}(a)\,(e_{a}-\pi_{n}).
+$$</p>
+
+<p>代入上述两个优势值并化简后得到：</p>
+
+<p>$$
+g_{n}^{\mathrm{GRPO}}=\frac{p_{n}}{\sigma_{n}}\,(e_{y_{n}}-\pi_{n}).
+$$</p>
+
+<p>)
+=
+p
+n
+1
+−
+p
+n
+​
+(
+e
+y
+n
+−
+π
+n
+)
+,
+g_{n}^{\mathrm{GRPO}}=\frac{p_{n}}{\sigma_{n}}\,(e_{y_{n}}-\pi_{n})=\sqrt{\frac{p_{n}}{1-p_{n}}}\,(e_{y_{n}}-\pi_{n}),
+因此
+β
+GRPO
+​
+(
+p
+n
+)
+=
+p
+n
+1
+−
+p
+n
+.
+\beta_{\mathrm{GRPO}}(p_{n})=\sqrt{\frac{p_{n}}{1-p_{n}}}.
+TPO.
+对于独热得分向量
+s
+=
+e
+y
+n
+s=e_{y_{n}}
+，其均值为
+s
+¯
+=
+1
+/
+A
+\bar{s}=1/A
+，总体标准差为
+σ
+​
+(
+s
+)
+=
+A
+−
+1
+/
+A
+\sigma(s)=\sqrt{A-1}/A
+。使用公式 5，
+u
+y
+n
+=
+1
+−
+1
+/
+A
+A
+−
+1
+/
+A
+=
+A
+−
+1
+,
+u
+a
+≠
+y
+n
+=
+−
+1
+/
+A
+A
+−
+1
+/
+A
+=
+−
+1
+A
+−
+1
+.
+u_{y_{n}}=\frac{1-1/A}{\sqrt{A-1}/A}=\sqrt{A-1},\qquad u_{a\neq y_{n}}=\frac{-1/A}{\sqrt{A-1}/A}=-\frac{1}{\sqrt{A-1}}.
+对于
+A
+=
+10
+A{=}10
+的实验，这是向量
+(
+1
+,
+0
+,
+…
+,
+0
+)
+(1,0,\dots,0)
+的 z 分数：
+s
+¯
+=
+1
+/
+10
+\bar{s}=1/10
+，且
+σ
+​
+(
+s
+)
+2
+=
+1
+10
+​
+(
+1
+−
+1
+10
+)
+2
++
+9
+10
+​
+(
+0
+−
+1
+10
+)
+2
+=
+9
+100
+,
+σ
+​
+(
+s
+)
+=
+3
+10
+.
+\sigma(s)^{2}=\frac{1}{10}\left(1-\frac{1}{10}\right)^{2}+\frac{9}{10}\left(0-\frac{1}{10}\right)^{2}=\frac{9}{100},\qquad\sigma(s)=\frac{3}{10}.
+因此
+u
+y
+n
+=
+1
+−
+1
+/
+10
+3
+/
+10
+=
+3
+,
+u
+a
+≠
+y
+n
+=
+0
+−
+1
+/
+10
+3
+/
+10
+=
+−
+1
+3
+.
+u_{y_{n}}=\frac{1-1/10}{3/10}=3,\qquad u_{a\neq y_{n}}=\frac{0-1/10}{3/10}=-\frac{1}{3}.
+TPO 仍然首先构造目标
+q
+n
+​
+(
+a
+)
+∝
+π
+n
+​
+(
+a
+)
+​
+exp
+⁡
+(
+u
+a
+)
+,
+q_{n}(a)\propto\pi_{n}(a)\exp(u_{a}),
+这将正确与错误的赔率乘以一个固定因子
+λ
+=
+exp
+⁡
+(
+u
+y
+n
+−
+u
+a
+≠
+y
+n
+)
+=
+exp
+⁡
+(
+A
+A
+−
+1
+)
+.
+\lambda=\exp\!\left(u_{y_{n}}-u_{a\neq y_{n}}\right)=\exp\!\left(\frac{A}{\sqrt{A-1}}\right).</p>
+
+<p>ight).
+对于  
+A  
+=  
+10  
+A=10  
+，因此，  
+λ  
+=  
+exp  
+⁡  
+(  
+10  
+/  
+3  
+)  
+≈  
+28  
+\lambda=\exp(10/3)\approx 28  
+。因此，TPO 目标满足  
+q  
+n  
+​  
+(  
+y  
+n  
+)  
+=  
+λ  
+p  
+n  
+1  
+−  
+p  
+n  
++  
+λ  
+p  
+n  
+​  
+,  
+q  
+n  
+​  
+(  
+a  
+≠  
+y  
+n  
+)  
+=  
+π  
+n  
+​  
+(  
+a  
+)  
+1  
+−  
+p  
+n  
++  
+λ  
+p  
+n  
+​  
+.  
+q_{n}(y_{n})=\frac{\lambda p_{n}}{1-p_{n}+\lambda p_{n}},\qquad q_{n}(a\neq y_{n})=\frac{\pi_{n}(a)}{1-p_{n}+\lambda p_{n}}.  
+TPO 损失的梯度是  
+π  
+n  
+−  
+q  
+n  
+\pi_{n}-q_{n}  
+，因此对应的梯度下降更新方向是  
+g  
+n  
+TPO  
+=  
+q  
+n  
+−  
+π  
+n  
+g_{n}^{\mathrm{TPO}}=q_{n}-\pi_{n}  
+。这可以简化为  
+g  
+n  
+TPO  
+=  
+p  
+n  
+​  
+(  
+λ  
+−  
+1  
+)  
+1  
+−  
+p  
+n  
++  
+λ  
+p  
+n  
+​  
+(  
+e  
+y  
+n  
+−  
+π  
+n  
+)  
+.  
+g_{n}^{\mathrm{TPO}}=\frac{p_{n}(\lambda-1)}{1-p_{n}+\lambda p_{n}}\,(e_{y_{n}}-\pi_{n}).  
+因此  
+β  
+TPO  
+​  
+(  
+p  
+n  
+)  
+=  
+p  
+n  
+​  
+(  
+λ  
+−  
+1  
+)  
+1  
+−  
+p  
+n  
++  
+λ  
+p  
+n  
+.  
+\beta_{\mathrm{TPO}}(p_{n})=\frac{p_{n}(\lambda-1)}{1-p_{n}+\lambda p_{n}}.  
+换句话说，  
+β  
+TPO  
+\beta_{\mathrm{TPO}}  
+ 并不是 TPO 的另一种定义；它是在此表格 one-hot 情况下，从更新  
+q  
+n  
+−  
+π  
+n  
+q_{n}-\pi_{n}  
+ 中消去  
+q  
+n  
+q_{n}  
+ 后得到的闭式系数。  
+解释。  
+所有四种更新共享相同的上下文内方向  
+e  
+y  
+n  
+−  
+π  
+n  
+e_{y_{n}}-\pi_{n}  
+，仅在跨上下文权重  
+β  
+​  
+(  
+p  
+n  
+)  
+\beta(p_{n})  
+ 上有所不同。CE 对每个上下文赋予相同的权重。DG 和 GRPO 相对更重视  
+p  
+n  
+p_{n}  
+ 较大的上下文，因此在归一化步长下，它们会将更多的更新预算分配给已经较容易的上下文。TPO 的系数在  
+p  
+n  
+p_{n}  
+ 上变化更平缓，因此更接近 CE 的等权重。</p>
+
+<p>权重分配。例如，在 $p_n = 0.1$ 和 $A = 10$ 时，$\beta_{\mathrm{TPO}} = 0.73$，而 DG 为 0.09，GRPO 为 0.33。</p>
+
+<p>## 附录 C  
+### MNIST 单样本 logit 更新</p>
+
+<p>本附录推导第 3.3 节中 MNIST 上下文多臂老虎机问题的期望 logit 空间更新，展示每个损失函数从单个老虎机样本中保留了哪些信息。考虑一个带标签的样本 $(x, y)$，其 logit 为 $z$，在 10 个类别上的策略为 $\pi = \pi(\cdot \mid x)$，正确类别概率为 $p = \pi_y$，以及 one-hot 基向量 $e_i$。该样本上的监督交叉熵方向为：</p>
+
+<p>$$
+v = e_y - \pi.
+$$</p>
+
+<p>以下所有期望均针对采样动作 $a \sim \pi(\cdot \mid x)$。在本附录中，$g$ 表示 logit 空间中的梯度下降更新方向，即损失梯度的负值。这些方向由实现的代理损失函数诱导产生，其中标量系数（如基线、标准化奖励、门控、目标分布等）均作为 stop-gradient 常量处理，与代码中完全一致。</p>
+
+<p>### PG</p>
+
+<p>MNIST 的基线为：</p>
+
+<p>$$
+b = \sum_{i=1}^{10} \pi_i^2,
+$$</p>
+
+<p>因此每个样本的优势函数为：</p>
+
+<p>$$
+A(a) = \mathbf{1}\{a = y\} - b.
+$$</p>
+
+<p>期望的 REINFORCE 更新为：</p>
+
+<p>$$
+g^{\mathrm{PG}} = \mathbb{E}\left[A(a)\,(e_a - \pi)\right] = p(e_y - \pi) = p\,v.
+$$</p>
+
+<p>基线项消失。</p>
+
+<p>ars 因为  
+𝔼[eₐ − π] = 0  
+单样本 GRPO。  
+在实现的 MNIST 变体中，奖励在小批量内进行标准化：  
+A_B(a) = (𝟏{a=y} − μ_B) / σ_B，  
+其中 μ_B 和 σ_B 分别是小批量奖励的均值和标准差。在给定某个样本的实际小批量统计量 (μ_B, σ_B) 的条件下，期望更新为：  
+g^{GRPO|μ_B,σ_B} = 𝔼[A_B(a)·(eₐ − π)] = p/σ_B · (e_y − π) = p/σ_B · v。  
+因此，该单样本 MNIST 变体等价于使用批量标准化奖励的 REINFORCE：精确的小批量更新通过 μ_B 和 σ_B 耦合样本，但并未引入样本内部的新几何结构。</p>
+
+<p>DG。  
+DG 使用相同的优势函数 A(a) = 𝟏{a=y} − b，但通过“惊讶度”（surprisal）对其进行门控。由于  
+A(y) = 1 − b，  A(j≠y) = −b，  
+精确的期望 logit 更新为：  
+g^{DG} = p(1−b)·σ((1−b)log(1/p)/η)·(e_y − π) − b·∑_{j≠y} π_j·σ(−b·log(1/π_j)/η)·(e_j − π)。  
+通常情况下，这不一定具有共</p>
+
+<p>llinear with  
+v  
+v  
+: 更新依赖于错误类别上概率质量的分布情况。在对称的 one-vs-rest 近似下，对于所有 $ j \neq y $，有  
+$\pi_{j}=q=(1-p)/9$，  
+它简化为  
+$g^{\mathrm{DG}}=\beta_{\mathrm{DG}}^{\mathrm{sym}}(p)\,v,$  
+其中  
+$\beta_{\mathrm{DG}}^{\mathrm{sym}}(p)=p(1-b)\,\sigma\!\left(\frac{(1-b)\log(1/p)}{\eta}\right)+pb\,\sigma\!\left(-\frac{b\log(1/q)}{\eta}\right),$  
+且 $b=p^{2}+9q^{2}$。</p>
+
+<p>TPO.  
+TPO 从采样的动作构建目标。采样的得分向量为  
+$s=A(a)\,e_{a}.$  
+由于 $s$ 恰好只有一个非零坐标，在 $K=10$ 个类别上进行 z-score 映射，将正样本映射为 $u_{a}=3$ 和 $u_{i\neq a}=-1/3$，将负样本映射为符号翻转的模式。标准化后，仅 $A(a)$ 的符号重要。定义  
+$\lambda=\exp\!\left(\frac{10}{3}\right)\approx 28,$  
+这是 $K=10$ 类别下正确的与错误的重加权因子，因为 $\lambda=\exp(3-(-1/3))$。  
+如果采样的动作是正确的（$a=y$），则目标为  
+$q_{i}^{+}\propto\pi_{i}\exp(u_{i}^{+}),$  
+其中 $u_{y}^{+}=3$ 且 $u_{j\neq y}^{+}=-1/3$。这给出  
+$q_{y}^{+}=\frac{\lambda p}{1-p+\lambda p}.$</p>
+
+<p>q  
+j  
+≠  
+y  
++  
+=  
+π  
+j  
+1  
+−  
+p  
++  
+λ  
+​  
+p  
+,  
+q  
+y  
++  
+=  
+1  
+−  
+p  
++  
+λ  
+p  
+λ  
+p  
+​  
+,  
+q  
+j  
+≠  
+y  
++  
+=  
+1  
+−  
+p  
++  
+λ  
+p  
+π  
+j  
+​  
+,  
+因此诱导的 logit 更新为  
+g  
++  
+=  
+q  
++  
+−  
+π  
+=  
+β  
++  
+​  
+(  
+p  
+)  
+​  
+(  
+e  
+y  
+−  
+π  
+)  
+,  
+β  
++  
+​  
+(  
+p  
+)  
+=  
+1  
+−  
+p  
++  
+λ  
+p  
+p  
+(  
+λ  
+−  
+1  
+)  
+​  
+.  
+g  
++  
+=  
+q  
++  
+−  
+π  
+=  
+β  
++  
+(  
+p  
+)  
+(  
+e  
+y  
+−  
+π  
+)  
+,  
+β  
++  
+(  
+p  
+)  
+=  
+1  
+−  
+p  
++  
+λ  
+p  
+p  
+(  
+λ  
+−  
+1  
+)  
+​  
+.  
+如果采样的动作是错误类别 j ≠ y，标准化会翻转符号：采样的错误类别获得 u  
+j  
+−  
+=  
+−  
+3  
+u  
+j  
+−  
+=  
+−  
+3  
+，而所有其他类别获得 u  
+i  
+−  
+=  
+1  
+/  
+3  
+u  
+i  
+−  
+=  
+1  
+/  
+3  
+。目标则为  
+q  
+j  
+−  
+=  
+λ  
+(  
+1  
+−  
+π  
+j  
+)  
++  
+π  
+j  
+π  
+j  
+​  
+,  
+q  
+i  
+≠  
+j  
+−  
+=  
+λ  
+(  
+1  
+−  
+π  
+j  
+)  
++  
+π  
+j  
+λ  
+π  
+i  
+​  
+,  
+q  
+j  
+−  
+=  
+λ  
+(  
+1  
+−  
+π  
+j  
+)  
++  
+π  
+j  
+π  
+j  
+​  
+,  
+q  
+i  
+≠  
+j  
+−  
+=  
+λ  
+(  
+1  
+−  
+π  
+j  
+)  
++  
+π  
+j  
+λ  
+π  
+i  
+​  
+,  
+这导致  
+g  
+−  
+(  
+j  
+)  
+=  
+q  
+−  
+−  
+π  
+=  
+γ  
+​  
+(  
+π  
+j  
+)  
+​  
+(  
+π  
+−  
+e  
+j  
+)  
+,  
+γ  
+​  
+(  
+r  
+)  
+=  
+λ  
+(  
+1  
+−  
+r  
+)  
++  
+r  
+r  
+(  
+λ  
+−  
+1  
+)  
+​  
+.  
+g  
+−  
+(  
+j  
+)  
+=  
+q  
+−  
+−  
+π  
+=  
+γ  
+(  
+π  
+j  
+)  
+(  
+π  
+−  
+e  
+j  
+)  
+,  
+γ  
+(  
+r  
+)  
+=  
+λ  
+(  
+1  
+−  
+r  
+)  
++  
+r  
+r  
+(  
+λ  
+−  
+1  
+)  
+​  
+.  
+对采样动作取期望得到  
+g  
+TPO  
+=  
+p  
+​  
+g  
++  
++  
+∑  
+j  
+≠  
+y  
+π  
+j  
+​  
+g  
+−  
+(  
+j  
+)  
+.  
+g  
+TPO  
+=  
+p  
+g  
++  
++  
+∑  
+j  
+≠  
+y  
+π  
+j  
+g  
+−  
+(  
+j  
+)  
+.  
+与 PG、GRPO 和 DG 不同，成功会直接拉向标签，而失败会直接抑制采样的错误类别，并将该质量重新分配到剩余的 logit 上。  
+在对称的 one-vs-rest 近似下，对所有 j ≠ y 有 π  
+j  
+=  
+q  
+π  
+j  
+=  
+q  
+，TPO 也会坍缩为 v 的一个标量倍数：  
+g  
+TPO  
+=  
+β  
+TPO  
+sym  
+​  
+(  
+p  
+)  
+​  
+v  
+,  
+β  
+TPO  
+sym  
+g  
+TPO  
+=  
+β  
+TPO  
+sym  
+(  
+p  
+)  
+v  
+,  
+β  
+TPO  
+sym</p>
+
+<p>(
+p
+)
+=
+p
+​
+β
++
+​
+(
+p
+)
++
+p
+​
+γ
+​
+(
+q
+)
+.
+g^{\mathrm{TPO}}=\beta_{\mathrm{TPO}}^{\mathrm{sym}}(p)\,v,\qquad\beta_{\mathrm{TPO}}^{\mathrm{sym}}(p)=p\,\beta_{+}(p)+p\,\gamma(q).
+Group PG.
+我们的同信号标量消融方法与 TPO 保持相同的采样得分向量
+s
+=
+A
+​
+(
+a
+)
+​
+e
+a
+s=A(a)e_{a}
+，但将目标匹配替换为使用采样标准化得分
+u
+a
+u_{a}
+的标量加权 REINFORCE。对于
+K
+=
+10
+K=10
+，当
+a
+=
+y
+a=y
+时，采样坐标具有标准化值
+u
+a
+=
+3
+u_{a}=3
+；当
+a
+≠
+y
+a\neq y
+时，
+u
+a
+=
+−
+3
+u_{a}=-3
+；未采样的坐标不参与标量加权损失。因此
+g
+GroupPG
+=
+3
+​
+p
+​
+(
+e
+y
+−
+π
+)
+−
+3
+​
+∑
+j
+≠
+y
+π
+j
+​
+(
+e
+j
+−
+π
+)
+=
+6
+​
+p
+​
+(
+e
+y
+−
+π
+)
+=
+6
+​
+g
+PG
+.
+g^{\mathrm{GroupPG}}=3p(e_{y}-\pi)-3\sum_{j\neq y}\pi_{j}(e_{j}-\pi)=6p(e_{y}-\pi)=6g^{\mathrm{PG}}.
+因此，Group PG 固定了采样信号，但丢弃了 TPO 的目标结构；在期望意义上，它退化为一个缩放的一对多 PG 更新。
+解释。
+该推导隔离了单个 bandit 样本中保留的信息。PG、条件单样本 GRPO 以及同信号标量消融 Group PG 在期望下都简化为一对多方向，因此它们仅保留一个标量“正确 vs 错误”的信号。DG 和 TPO 依赖于采样动作，因此通常依赖于错误类别质量的详细分布。当错误类别近似对称时，两者都退化为
+e
+y
+−
+π
+e_{y}-\pi
+的标量倍数。远离该情况时，</p>
+
+<p>t limit，TPO 保留了一个特别有用的失败更新机制：它明确抑制采样错误的类别，并将该概率质量重新分配到其他类别。因此，当模型的错误集中在一两个混淆选项上时，TPO 的效果最好；而当错误类别的概率质量分布广泛时，TPO 的效果最差。第 3.3 节正是对这一预测进行了验证。</p>
+
+<p>附录 D  
+温度鲁棒性  
+分数标准化设定了一个有效温度 $\eta = 1$：目标分布变为  
+$q_i \propto p_i^{\text{old}} \cdot \exp(u_i / \eta)$，其中 $\eta = 1$。  
+为测试敏感性，我们在 token 反转任务（reverse copy，$V=2$，$H=10$，$B=100$，$K=8$，10 个种子）上遍历 $\eta \in \{0.25, 0.5, 1, 2, 4\}$。</p>
+
+<p>**图 17：TPO 温度消融实验。**  
+所有 $\eta \in [0.25, 2]$ 的值均在 141 个回合内收敛；仅 $\eta=4$ 明显更慢。性能在 16 倍的温度范围内保持鲁棒。</p>
+
+<p>**表 5：在 token 反转任务（reverse copy，$V=2$）上 TPO 温度消融实验。**  
+性能在宽广的温度范围内保持鲁棒；仅 $\eta=4$ 导致性能显著下降。默认值 $\eta=1$ 位于一个宽广的高性能区间中心，这与 Osband (2026) 的发现一致，他们独立报告在 MNIST 和 DM Control 上，$\eta=1$ 对 DG 和 MPO 均具有鲁棒性。</p>
+
+<p>**表 5：TPO 温度消融实验（token 反转任务，reverse copy，$V=2$）**  
+性能在宽广范围内保持鲁棒；仅 $\eta=4$ 导致性能显著下降。</p>
+
+<p>4  
+\eta{=}4  
+性能显著下降。  
+η  
+\eta  
+最终误差（%）  
+达到1%所需的步数  
+0.25  
+1.0  
+72  
+0.50  
+0.0  
+67  
+1.00（默认）  
+0.7  
+96  
+2.00  
+1.0  
+141  
+4.00  
+0.8  
+260</p>
+
+<p>附录 E  
+多轮次 DG 不稳定性</p>
+
+<p>PPO、GRPO 和 TPO 都包含限制或锚定策略相对于 rollout 时或参考策略的机制：PPO 对重要性权重比进行裁剪，GRPO 添加 KL 惩罚项，TPO 拟合一个显式的目标分布，其构造方式与 $p^{\text{old}}$ 具有 KL-锚定关系（参见 MPO 中的 EM 控制 M 步骤（Abdolmaleki 等，2018））。在我们的实验中，这些稳定机制使得多轮次重用比 DG 更加稳定，并提升了从每个 rollout 批次中提取数据的效率。</p>
+
+<p>DG 缺乏此类约束，因为它被明确设计为“标准策略梯度的即插即用替代方案，无需重要性权重比”（Osband，2026），通过 sigmoid 门控调节梯度幅度，但不限制每步策略的偏移量。当我们使用与 PPO、GRPO 和 TPO 相同的 4 梯度轮次重新运行 DG 时，其行为对轮次数量变得高度敏感。在具有终端奖励的反向复制 Transformer RLVR 基准测试中，4 轮次 DG 的最终误差为 48.3%，而标准 1 轮次更新仅为 2.0%（图 18(a)）。在第 3.5 节中八个提示匹配的 token 反转变体中，4 轮次 DG 在 8 个设置中有 7 个表现更差（图 18(b,c)），其中在顺序任务上的退化最为严重：flip 误差从 0.07% 上升至 4.56%，reverse flip 从 0.00% 上升。</p>
+
+<p>降至 0.82%。唯一的例外是带有顺序奖励的反向复制任务，其中 4 个 epoch 略有提升（从 0.35% 提升至 0.05%）。</p>
+
+<p>Figure 18:  
+DG 在稀疏奖励和密集奖励 Transformer 任务中的 epoch 敏感性。  
+(a) 带有终端奖励的反向复制 Transformer RLVR，20 个种子：每个 rollout 批次重复使用 4 个 DG 梯度 epoch 会使误差保持较高（最终为 48.3%），而标准的 1-epoch DG 更新可达到 2.0%。  
+(b,c) 来自第 3.5 节的八个提示匹配的 token 反转变体的最终误差（$H=10$，$V=2$，$K=8$ 个 token 候选，10 个种子），按奖励类型划分。在 8 个设置中有 7 个中，4 epoch 的 DG 表现更差，且在顺序任务中退化最严重。阴影和误差条表示 $\pm 1$ 标准误差（s.e.）。</p>
+
+<p>因此，在所有实验中，我们对每个 rollout 批次仅使用单个梯度 epoch 运行 DG。这是对 DG 最有利的设置，且与 Osband (2026) 一致，他们在所有实验中均将 DG 作为单步 on-policy 更新使用。</p>
+
+<p>Appendix F  
+GRPO 基线配置  
+我们的 GRPO 基线使用标准的 PPO 风格截断替代目标，结合组相对（z-score）优势（Shao et al., 2024），并添加了对 rollout 策略的反向 KL 惩罚（$\beta=0.04$）。在原始 DeepSeekMath 设置中，该 KL 是相对于参考策略（例如 SFT 检查点）计算的，而迭代 GRPO 变体也可以使用当前策略作为参考；在我们的受控实验中，从零开始训练，没有单独的重新训练阶段。</p>
+
+<p>在参考模型中，我们因此对偏离 rollout 快照的情况施加惩罚。  
+这是一种有意加强基线的方法：移除 KL 项（$\beta = 0$）会导致 GRPO 在稀疏终端奖励下崩溃，训练过程中误差反而增加而非减少（第 3.6 节，表 3）。KL 惩罚通过防止策略偏离生成优势的数据太远，从而稳定了多轮重用，这一作用在 TPO 中由其结构化的交叉熵到目标目标函数实现，无需显式添加惩罚项。</p>
+
+<p>## 附录 G：LLM RLVR 实现细节</p>
+
+<p>所有 LLM RLVR 实验均使用 **verl** 栈（Sheng 等，2024），采用 AdamW 优化器，学习率为 $10^{-5}$，批量大小为 16，并使用 $4 \times$ A100-80GB GPU。GSM8K 使用精确匹配奖励；图着色任务使用准二元原生任务得分；Knights &amp; Knaves 使用部分得分。对于 GSM8K，我们在 TPO 和 GRPO 中均添加了 LoRA（秩为 32）和 KL 惩罚（$\lambda_{\text{KL}} = 10^{-3}$）。成对运行的其他设置完全相同，唯一区别在于策略损失函数：TPO 使用公式 3；GRPO 使用带 z-score 优势的截断替代损失。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 目标策略优化, 强化学习, 策略梯度, 稀疏奖励, 交叉熵拟合</p>
+        </div>
+    </div>
+</body>
+</html>
