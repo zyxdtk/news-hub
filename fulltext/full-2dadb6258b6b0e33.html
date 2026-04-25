@@ -1,0 +1,5052 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>覆盖度而非均值：面向可信检索评估的语义分层 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">覆盖度而非均值：面向可信检索评估的语义分层</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-22</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.20763" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Coverage, Not Averages: Semantic Stratification for Trustworthy Retrieval Evaluation</h4>
+            <p><strong>中文摘要：</strong> 现有RAG检索评估依赖启发式查询集，忽略了查询的结构异质性，导致聚合指标高估检索质量并掩盖失败模式。本文将检索评估形式化为统计估计问题，提出“语义分层”框架。该框架基于语料库结构，通过实体聚类将文档组织成可解释的全局语义空间，并系统生成查询以填补缺失分层，提供语义覆盖保证。实验证明，该方法能揭示聚合指标掩盖的覆盖盲区与系统缺陷，实现更稳定、透明和可信的检索评估。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>Coverage, Not Averages: Semantic Stratification for Trustworthy Retrieval Evaluation
+Andrew Klearman
+Radu Revutchi
+Rohin Garg
+Rishav Chakravarti
+Samuel Marc Denton
+Yuan Xue
+Abstract
+Retrieval quality is the primary bottleneck for accuracy and robustness in retrieval-augmented generation (RAG). Current evaluation relies on heuristically constructed query sets, which introduce a hidden intrinsic bias. We formalize retrieval evaluation as a statistical estimation problem, showing that metric reliability is fundamentally limited by the evaluation-set construction. We further introduce
+semantic stratification
+, which grounds evaluation in corpus structure by organizing documents into an interpretable global space of entity-based clusters and systematically generating queries for missing strata. This yields (1) formal semantic coverage guarantees across retrieval regimes and (2) interpretable visibility into retrieval failure modes.
+Experiments across multiple benchmarks and retrieval methods validate our framework. The results expose systematic coverage gaps, identify structural signals that explain variance in retrieval performance, and show that stratified evaluation yields more stable and transparent assessments while supporting more trustworthy decision-making than aggregate metrics.
+Machine Learning, ICML
+1
+Introduction
+Retrieval-augmented generation (RAG) has emerged as a central paradigm for
+grounding large language models in external knowledge, enabling applications
+rangin</p>
+
+<p>g from open-domain question answering to scientific search and enterprise assistants. Retrieval quality is a primary factor influencing the
+effectiveness of RAG systems. By mediating access to external knowledge, retrieval determines which information is available for generation and thus strongly affects downstream performance. Consequently, careful and reliable evaluation of retrieval systems is essential for understanding and improving RAG behavior.
+Despite its importance, the construction of retrieval evaluation datasets
+remains comparatively under-investigated. Standard benchmarks rely on heuristically constructed query sets that attempt to approximate a “natural” query distribution. In offline and cold-start settings, however, such a distribution is ill-defined or unavailable.
+Through an empirical analysis of public benchmarks from BEIR
+(Thakur
+et al.
+,
+2021
+)
+, we show that
+evaluation queries often fail to adequately cover the semantic space of the
+underlying document corpus. Large semantic regions that appear frequently in documents are rarely or never exercised by evaluation queries. Crucially, these under-covered regions are precisely where retrieval performance is weakest. As a result, standard aggregate metrics can substantially overestimate true retrieval quality.
+To address this issue, we formalize retrieval evaluation as a statistical
+estimation problem. We show when evaluation queries are drawn from a population that is
+structurally heterogeneous
+with respect t</p>
+
+<p>对于检索机制，忽略这种结构会导致有偏估计和误导性的置信度。这些局限性呼应了NLP领域对基准可靠性的更广泛担忧，即聚合分数掩盖了系统性的失败模式。
+受此分析启发，我们引入了语义分层：一个将检索评估数据集的构建立足于文档语料库结构的框架。我们的方法通过基于实体的聚类将文档组织成可解释的全局语义结构，沿语义和结构两个维度定义检索机制，并策划评估查询以确保明确的覆盖保证。这使得能够在不同检索机制间进行无偏的性能估计，并暴露出聚合指标无法察觉的失败模式。
+我们在多个公共数据集、检索方法和评估指标上对所提出的框架进行了评估。这些实验说明了覆盖感知的分层评估如何揭示被标准聚合指标掩盖的检索行为，并推动了检索系统之间更可靠的比较。
+贡献。本文做出了三项贡献：
+问题识别。我们指出了检索评估中一个关键且未被充分探讨的问题：评估数据集隐含地假设查询具有同质性，而现实世界中的查询在不同检索机制间表现出结构异质性。我们表明，忽略这种异质性会导致有偏的指标和误导性的结论。
+方法论</p>
+
+<p>framework.
+We formulate retrieval evaluation as a stratified statistical estimation problem and formalize the conditions required for reliable regime construction. Building on this analysis, we propose a semantic stratification framework for evaluation dataset construction that is coverage-aware and grounded in corpus structure.
+Empirical validation and insights.
+We validate our framework across multiple benchmarks and
+retrieval methods. Our results expose systematic coverage gaps, identify
+structural signals explaining variance in retrieval performance, and show
+that stratified evaluation yields more stable, transparent and trustworthy decision-making than aggregate metrics.
+2
+Empirical Motivation
+Using NFCorpus from BEIR
+(Thakur
+et al.
+,
+2021
+)
+, a widely adopted retrieval benchmark, we show that aggregate metrics can mischaracterize the system performance. Figure
+1
+compares the distribution of evaluation queries against the underlying document corpus. We organize the corpus into
+326
+326
+semantic clusters (details in Sec.
+4
+) and map each query to the cluster of its ground-truth relevant document. Our analysis reveals two key observations.
+First, there is a compositional mismatch between evaluation queries and the document corpus. Many high-volume semantic clusters receive little or no query coverage, appearing in the bottom-right region of Figure
+1
+. In particular, we identify 26 clusters that together contain 17.3% of the corpus but are covered by only 1.1% of queries, in</p>
+
+<p>包括医学核心主题，如免疫细胞及其功能（122篇文档，1个查询）。结果，这些普遍存在的语义区域在基准评估中实际上是不可见的。其次，检索性能在不同的语义集群中存在系统性差异。图1中以颜色编码的平均nDCG@10显示，代表性不足的集群在评估时表现出较低的平均nDCG@10，但由于其查询频率较低，对聚合分数的贡献微乎其微。综合来看，这些影响在基准评估中引发了一种结构性偏差，使得聚合指标被代表性过高的语义区域所主导，并掩盖了那些普遍存在但评估稀疏的领域中的失败情况。</p>
+
+<p>图1：NFCorpus中的语义覆盖。每个点对应一个语义集群。x轴表示集群中的文档数量，y轴表示映射到该集群的评估查询数量。对角线表示成比例的覆盖。点的颜色编码了集群中查询的平均nDCG@10；灰色的点表示没有查询覆盖的集群。</p>
+
+<p>3 将检索评估视为统计估计问题</p>
+
+<p>我们将检索评估视为一个统计估计问题。令 𝒟 = { d 1 , … , d N } \mathcal{D}=\{d_{1},\ldots,d_{N}\} 表示文档语料库，令 𝒬 \mathcal{Q} 表示该语料库支持的信息搜寻查询空间。检索系统被建模为一个策略 π : 𝒬 → 𝒟 N \pi:\mathcal{Q}\rightarrow\mathcal{D}^{N} ，它将每个查询</p>
+
+<p>q
+∈
+𝒬
+q\in\mathcal{Q}
+to a ranked list of documents. This policy may be instantiated using different retrieval paradigms, such as dense or sparse retrieval, alternative embedding models, or document chunking strategies.
+Let
+ϕ
+​
+(
+q
+;
+π
+)
+\phi(q;\pi)
+denote an evaluation functional, such as nDCG@k, Recall@k, or MRR@k.
+Evaluation is typically performed by computing the empirical average of
+ϕ
+​
+(
+q
+;
+π
+)
+\phi(q;\pi)
+over a finite set of evaluation queries.
+This procedure implicitly assumes that queries are sampled
+from the canonical distribution
+𝒟
+\mathcal{D}
+. Under this assumption, the empirical average is treated as an unbiased estimator of the system performance.
+As shown in Sec.
+2
+, this assumption is violated in realistic
+retrieval settings.
+Evaluation queries are drawn from a population that is
+structuredly heterogeneous
+with respect to retrieval behavior:
+queries fall into distinct retrieval regimes for which retrieval metrics
+differ systematically.
+Estimation under structured heterogeneity.
+We model this structure by partitioning the query space into retrieval regimes.
+Let
+{
+𝒮
+k
+}
+k
+=
+1
+K
+\{\mathcal{S}_{k}\}_{k=1}^{K}
+denote a partition of
+𝒬
+\mathcal{Q}
+, where each
+regime corresponds to a coherent semantic or structural region of the corpus.
+These regimes may reflect differences in semantic intent, entity specificity,
+relevance dispersion, or document connectivity.
+Within each regime
+𝒮
+k
+\mathcal{S}_{k}
+, retrieval performance is characterized by
+the conditional mean
+μ</p>
+
+<p>k
+=
+𝔼
+​
+[
+ϕ
+​
+(
+q
+;
+π
+)
+∣
+q
+∈
+𝒮
+k
+]
+\mu_{k}\;=\;\mathbb{E}\!\left[\phi(q;\pi)\mid q\in\mathcal{S}_{k}\right]
+and conditional variance
+σ
+k
+2
+=
+Var
+​
+[
+ϕ
+​
+(
+q
+;
+π
+)
+∣
+q
+∈
+𝒮
+k
+]
+\sigma_{k}^{2}\;=\;\mathrm{Var}\!\left[\phi(q;\pi)\mid q\in\mathcal{S}_{k}\right]
+.
+Let
+w
+k
+=
+ℙ
+q
+∼
+Q
+​
+(
+q
+∈
+𝒮
+k
+)
+w_{k}=\mathbb{P}_{q\sim Q}(q\in\mathcal{S}_{k})
+denote the population mass of
+regime
+k
+k
+.
+The population-level performance of
+π
+\pi
+is then
+μ
+=
+∑
+k
+=
+1
+K
+w
+k
+​
+μ
+k
+.
+\mu\;=\;\sum_{k=1}^{K}w_{k}\mu_{k}.
+(1)
+Given an evaluation set
+𝒬
+eval
+\mathcal{Q}_{\text{eval}}
+of size
+n
+n
+, standard retrieval evaluation techniques compute the empirical mean
+μ
+^
+naive
+=
+1
+n
+​
+∑
+i
+=
+1
+n
+ϕ
+​
+(
+q
+i
+;
+π
+)
+.
+\hat{\mu}_{\mathrm{naive}}\;=\;\frac{1}{n}\sum_{i=1}^{n}\phi(q_{i};\pi).
+(2)
+Under the assumption that evaluation queries are i.i.d. samples from the true
+query distribution
+Q
+Q
+,
+μ
+^
+naive
+\hat{\mu}_{\mathrm{naive}}
+is an unbiased estimator of
+μ
+\mu
+with variance
+Var
+​
+(
+ϕ
+​
+(
+q
+;
+π
+)
+)
+/
+n
+\mathrm{Var}(\phi(q;\pi))/n
+.
+This assumption underlies common practices such as reporting single-number
+metrics and confidence intervals computed via bootstrapping over evaluation
+queries.
+Bias from coverage gaps.
+Let
+w
+^
+k
+=
+n
+k
+n
+\hat{w}_{k}\;=\;\frac{n_{k}}{n}
+denote the empirical fraction of evaluation queries falling into regime
+𝒮
+k
+\mathcal{S}_{k}
+.
+Conditioned on the regime composition of the evaluation set, the expected value
+of the naive estimator is
+𝔼
+​
+[
+μ
+^
+naive
+∣
+{
+w
+^
+k
+}
+k
+=
+1
+K
+]
+=
+∑
+k
+=
+1
+K
+w
+^
+k
+​</p>
+
+<p>μ
+k
+.
+\mathbb{E}\!\left[\hat{\mu}_{\mathrm{naive}}\mid\{\hat{w}_{k}\}_{k=1}^{K}\right]\;=\;\sum_{k=1}^{K}\hat{w}_{k}\mu_{k}.
+(3)
+Comparing Eq. (
+3
+) with the population mean in
+Eq. (
+1
+), the conditional bias of the naive estimator is
+Bias
+​
+(
+μ
+^
+naive
+)
+=
+∑
+k
+=
+1
+K
+(
+w
+^
+k
+−
+w
+k
+)
+​
+μ
+k
+.
+\mathrm{Bias}(\hat{\mu}_{\mathrm{naive}})\;=\;\sum_{k=1}^{K}(\hat{w}_{k}-w_{k})\mu_{k}.
+(4)
+In particular, if a retrieval regime
+𝒮
+k
+\mathcal{S}_{k}
+is entirely missing from
+the evaluation set (i.e.,
+w
+^
+k
+=
+0
+\hat{w}_{k}=0
+but
+w
+k
+&gt;
+0
+w_{k}&gt;0
+), its contribution to
+Eq. (
+1
+) is systematically excluded, yielding irreducible bias
+regardless of evaluation set size.
+Variance mis-estimation.
+Structured heterogeneity affects not only the bias of aggregate estimation, but
+also the uncertainty of reported metrics.
+Let
+S
+​
+(
+q
+)
+∈
+[
+K
+]
+S(q)\in[K]
+denote the regime index of
+q
+q
+.
+By the law of total variance,
+Var
+​
+(
+ϕ
+​
+(
+q
+;
+π
+)
+)
+\displaystyle\mathrm{Var}(\phi(q;\pi))
+=
+𝔼
+​
+[
+Var
+​
+(
+ϕ
+​
+(
+q
+;
+π
+)
+∣
+S
+​
+(
+q
+)
+)
+]
+\displaystyle=\mathbb{E}\!\left[\mathrm{Var}(\phi(q;\pi)\mid S(q))\right]
+(5)
++
+Var
+​
+(
+𝔼
+​
+[
+ϕ
+​
+(
+q
+;
+π
+)
+∣
+S
+​
+(
+q
+)
+]
+)
+,
+\displaystyle\quad+\mathrm{Var}\!\left(\mathbb{E}[\phi(q;\pi)\mid S(q)]\right),
+where the first term captures within-regime variability and the second term captures between-regime variability, i.e., differences in regime-level means
+{
+μ
+k
+}
+k
+=
+1
+K
+\{\mu_{k}\}_{k=1}^{K}
+.
+For i.i.d. queries
+q
+1
+,
+…
+,
+q
+n
+∼
+Q
+q_{1},\ldots,q_{n}\sim Q
+, the naive estimator satisf</p>
+
+<p>ies
+Var
+​
+(
+μ
+^
+naive
+)
+=
+Var
+​
+(
+ϕ
+​
+(
+q
+;
+π
+)
+)
+/
+n
+\mathrm{Var}(\hat{\mu}_{\mathrm{naive}})=\mathrm{Var}(\phi(q;\pi))/n
+.
+When regimes with extreme values of
+μ
+k
+\mu_{k}
+are underrepresented or missing from
+𝒬
+eval
+\mathcal{Q}_{\mathrm{eval}}
+, the between-regime term in
+Eq. (
+5
+) is systematically attenuated, yielding overly optimistic
+uncertainty estimates for aggregate performance.
+Regime-level performance as the primary evaluation target.
+Equations (
+1
+) and (
+4
+) show that aggregate
+performance
+μ
+\mu
+depends on the (typically unknown) regime weights
+w
+k
+w_{k}
+.
+In many retrieval settings, the deployed query distribution is ill-defined, making
+μ
+\mu
+an unstable evaluation target.
+In contrast, the conditional means
+μ
+k
+=
+𝔼
+​
+[
+ϕ
+​
+(
+q
+;
+π
+)
+∣
+q
+∈
+𝒮
+k
+]
+\mu_{k}=\mathbb{E}[\phi(q;\pi)\mid q\in\mathcal{S}_{k}]
+characterize intrinsic system behavior within coherent regions of the query space and do not depend on the global mixture weights.
+Whenever a regime
+𝒮
+k
+\mathcal{S}_{k}
+is represented in the evaluation set,
+μ
+k
+\mu_{k}
+can be estimated by the within-regime empirical mean
+μ
+^
+k
+=
+1
+n
+k
+​
+∑
+i
+=
+1
+n
+𝕀
+​
+{
+q
+i
+∈
+𝒮
+k
+}
+​
+ϕ
+​
+(
+q
+i
+;
+π
+)
+,
+\hat{\mu}_{k}\;=\;\frac{1}{n_{k}}\sum_{i=1}^{n}\mathbb{I}\{q_{i}\in\mathcal{S}_{k}\}\,\phi(q_{i};\pi),
+(6)
+This suggests that reliable evaluation should prioritize regime-level coverage, in order to accurately estimate performance profiles
+{
+μ
+^
+k
+}
+k
+=
+1
+K
+\{\hat{\mu}_{k}\}_{k=1}^{K}
+, rather than relying solely on a single
+aggregate met</p>
+
+<p>ric.
+Practical conditions for regime construction.
+Regime definitions should satisfy two practical requirements to support fair and actionable evaluation.
+•
+Method-independent regimes.
+Regime construction should be independent of the particular retrieval policy being evaluated, so that the partition does not “favor” a specific method.
+•
+Human-interpretable descriptors.
+It is desirable that each regime admits an interpretable descriptor that enables systematic diagnosis and comparison across systems.
+4
+Stratified Evaluation Dataset Construction
+This section presents a practical framework for constructing evaluation datasets that satisfy the conditions introduced in Sec.
+3
+.
+In particular, our goal is to ensure
+within-stratum homogeneity
+and
+coverage awareness
+by explicitly grounding evaluation set construction
+in the semantic and structural organization of the document corpus. We follow a three-step process:
+(1) corpus-level semantic structure construction,
+(2) query stratification, and
+(3) evaluation dataset curation.
+Figure 2
+:
+Semantic structure of a document corpus constructed via entity-based clustering. Query stratification converts query text into a set of entities. Cluster assignments,
+J
+J
+, and
+Δ
+\Delta
+form a single query coverage vector.
+4.1
+Semantic Structure Construction
+We first construct an explicit and interpretable semantic representation of the document corpus independent of any retrieval system as shown in Fig.
+2
+Semantic entity extraction.
+We extract
+semant</p>
+
+<p>语义实体，它们是原子化且可解释的语义单元，使用大语言模型（LLM）从每个文档中提取。具体而言，我们提示模型识别显著实体，并返回一个（名称，描述）对，以同时捕捉其表层形式与语义含义。为了提高一致性并减少冗余，我们对实体进行了规范化与去重处理。有关模型选择、提示词设计、实体示例及数据集整体统计信息的详情见附录 A.1 。
+语义图构建。我们构建了一个语义图，其中节点对应于规范化的语义实体。每个实体的表示方法为：将其名称与描述拼接，并将所得文本嵌入到固定维度的向量空间中。
+1
+1
+1
+嵌入模型仅用于表征细粒度的语义实体，而非完整的查询、文档或文本块（chunks），因此并不反映或依赖于所评估的检索系统。在此粒度下</p>
+
+<p>iden community detection algorithm
+(Traag
+et al.
+,
+2019
+)
+to the semantic graph to identify coherent semantic neighborhoods. The resolution parameter
+γ
+\gamma
+controls cluster granularity and is tuned on a per-dataset basis to balance interpretability and coverage.
+Each document is associated with the semantic communities containing its entities, yielding a corpus-level semantic structure. Details of the clustering procedure, resolution selection for each dataset, and sensitivity to
+γ
+\gamma
+are provided in Appendix
+A.3
+and Appendix
+B.2
+.
+4.2
+Query Stratification
+Based on the corpus semantic structure, we define retrieval regimes along two categories. Together, these strata operationalize the structured heterogeneity model introduced in Sec.
+3
+.
+Semantic strata.
+Semantic strata are defined directly by the corpus-level semantic clusters. Each stratum corresponds to a distinct region of information-seeking intent supported by the corpus. This construction ensures that evaluation queries are distributed across the full semantic scope of the dataset, rather than concentrating on a narrow subset of topics.
+Structural strata.
+Retrieval difficulty varies substantially due to structural properties of the query and document relationship. We define structural strata using two complementary signals that characterize the structural complexity of retrieval regimes:
+•
+Relevance dispersion (
+Δ
+\Delta
+).
+Let
+C
+​
+(
+d
+)
+C(d)
+denote the set of semantic clusters associated with
+document
+d
+d
+. We</p>
+
+<p>define the dispersion of a query
+q
+q
+as
+Δ
+​
+(
+q
+)
+=
+|
+⋃
+d
+∈
+D
+​
+(
+q
+)
+C
+​
+(
+d
+)
+|
+∑
+d
+∈
+D
+​
+(
+q
+)
+|
+C
+​
+(
+d
+)
+|
+.
+\Delta(q)\;=\;\frac{\left|\bigcup_{d\in D(q)}C(d)\right|}{\sum_{d\in D(q)}|C(d)|}.
+(7)
+This quantity measures how widely the relevant documents for
+q
+q
+are spread
+across semantic clusters. High dispersion indicates that relevance mass is
+distributed across multiple semantic regions, corresponding to broad or
+ambiguous information needs that are typically harder for retrieval systems
+to rank accurately.
+•
+Query-document semantic alignment (
+J
+J
+).
+Let
+C
+​
+(
+q
+)
+C(q)
+denote the set of semantic clusters associated with entities
+extracted from the query, and let
+C
+​
+(
+D
+​
+(
+q
+)
+)
+=
+⋃
+d
+∈
+D
+​
+(
+q
+)
+C
+​
+(
+d
+)
+C(D(q))=\bigcup_{d\in D(q)}C(d)
+denote the clusters touched by relevant
+documents. We measure semantic alignment using the Jaccard similarity:
+J
+​
+(
+q
+)
+=
+|
+C
+​
+(
+q
+)
+∩
+C
+​
+(
+D
+​
+(
+q
+)
+)
+|
+|
+C
+​
+(
+q
+)
+∪
+C
+​
+(
+D
+​
+(
+q
+)
+)
+|
+.
+J(q)\;=\;\frac{|C(q)\cap C(D(q))|}{|C(q)\cup C(D(q))|}.
+(8)
+High alignment indicates strong correspondence between the semantic intent
+expressed in the query and the semantic regions covered by relevant
+documents, while low alignment reflects semantic mismatch that makes
+retrieval more error-prone.
+These two signals induce a two-dimensional partitioning of queries into structural regimes with systematically different retrieval behavior. We empirically validate that the resulting
+3
+×
+3
+3\times 3
+dispersion/Jaccard grid partitions queries into d</p>
+
+<p>istinct difficulty regimes (Table
+3
+, see also Tables
+5
+and
+6
+in Appendix
+B.1
+).
+Unlike semantic strata, which are fixed by corpus structure, structural strata are defined by discretizing continuous structural signals. Given a target number of strata per signal, we compute regime boundaries from the empirical distributions of
+Δ
+​
+(
+q
+)
+\Delta(q)
+and
+J
+​
+(
+q
+)
+J(q)
+over an initial set of
+benchmark queries. These boundaries partition queries into ordered categories (e.g., low, medium, and high dispersion or alignment), yielding balanced coverage across structural regimes.
+As new evaluation queries are generated or incorporated, regime boundaries may be recomputed to reflect updated dataset statistics and the desired granularity of stratification. This adaptive construction ensures that evaluation sets maintain coverage across
+the full spectrum of structural regimes, preventing over-concentration in narrow subsets of queries as the evaluation set evolves.
+4.3
+Evaluation Dataset Curation
+The process begins by identifying coverage gaps across entity cluster Jaccard, dispersion, and cluster coverage. Based on these gaps, the algorithm selects a generation strategy-single-cluster or multi-cluster-and samples seed documents accordingly. An LLM generates a query from the sampled document, then candidate entities are retrieved via KNN and filtered by the LLM to determine the query’s semantic scope. Relevant documents are identified by pooling candidates from dense (KNN) and sparse (BM2</p>
+
+<p>5) retrieval, verified through LLM relevance judgments. The query and its qrels are added to the evaluation set, updating coverage state. This loop repeats until the target size
+|
+D
+|
+=
+N
+|D|=N
+is reached, producing an evaluation set with guarantees on semantic coverage, structural coverage, and difficulty balance.
+As the final step, we construct the evaluation dataset through an iterative query curation process that explicitly controls dataset quality. Starting from an initial query set (which may be empty), our goal is to generate additional high-quality queries to balance coverage across semantic and structural regimes. The process consists of three stages.
+First, given the existing semantic and structural strata, we assess evaluation set quality using explicit
+coverage criteria
+. Semantic coverage measures whether semantically prevalent regions of the corpus are exercised by sufficient queries, while structural coverage measures whether queries within each semantic region span the full range of structural regimes. These metrics expose missing or underrepresented strata that are obscured by aggregate statistics.
+Second, we iteratively generate candidate queries to address identified coverage gaps. At each iteration, query generation is enabled by prompting a LLM to produce multiple candidates, followed by joint LLM-based filtering and a scoring function to ensure candidate quality.
+Definitions of coverage criteria, algorithmic implementation details, document sampling proc</p>
+
+<p>edures, and query generation prompts are provided in Appendix
+C
+.
+5
+Experiments
+Our experiments address three questions: (1) Do semantic strata capture meaningful structure, exhibiting internal homogeneity while revealing performance heterogeneity across retrieval regimes? (2) Do standard benchmarks exhibit coverage gaps that stratified evaluation can expose and remedy? (3) Does stratum-level analysis yield actionable diagnostics invisible under aggregate evaluation? Across multiple datasets and retrieval systems, we answer all three questions affirmatively. Strata form coherent evaluation units with up to 3
+×
+\times
+performance variation across regimes, existing benchmarks leave 40–50% of semantic regions untested, and stratified analysis reveals both retriever failure modes and corpus-level annotation issues that aggregate metrics mask entirely.
+5.1
+Experimental Setup
+Datasets and Evaluation Protocols.
+We conduct experiments on three datasets from the BEIR benchmark
+(Thakur
+et al.
+,
+2021
+)
+: NFCorpus
+(Boteva
+et al.
+,
+2016
+)
+, FiQA
+(Maia
+et al.
+,
+2018
+)
+, and Scidocs
+(Cohan
+et al.
+,
+2020
+)
+. These datasets cover specialized domains in which semantic coverage is particularly important for reliable evaluation. Table
+1
+summarizes their key statistics.
+Dataset
+Docs
+Queries
+Relevant
+NFCorpus (Medical)
+3.6K
+323
+38.2
+FiQA (Finance)
+57K
+648
+2.6
+SciDocs (Scientific)
+25K
+1,000
+4.9
+Table 1:
+Dataset statistics for Selective BEIR corpora (Relevant indicates average relevant documents per</p>
+
+<p>query)
+We compare two evaluation protocols: (1)
+Aggregate evaluation
+, where queries are sampled directly from benchmark query sets and performance is reported as the aggregate metrics with bootstrap confidence intervals; and (2)
+Stratified evaluation
+(ours), where queries are organized into semantic strata derived from corpus structure, ensuring explicit coverage across strata. Stratum-level metrics
+{
+μ
+k
+}
+\{\mu_{k}\}
+are computed without assuming stratum prevalence, and scalar summaries are reported using
+statistics across strata (e.g., medians or quantiles).
+Retrieval Systems.
+We evaluate three representative retrieval paradigms: (1)
+Dense
+retrieval via
+text-embedding-3-large
+, an embedding model widely adopted in production systems
+(OpenAI,
+2024
+)
+; (2)
+BM25
+(Robertson and Zaragoza,
+2009
+)
+, a standard term-based sparse retrieval baseline; (3)
+Hybrid
+retrieval using Reciprocal Rank Fusion
+(Cormack
+et al.
+,
+2009
+)
+with
+k
+=
+60
+k=60
+to combine dense and sparse rankings.
+Across all retrieval paradigms, we observe consistent stratum-level behavior, demonstrating that our analysis is not specific to a particular retrieval paradigm.
+Metrics.
+Retrieval performance is evaluated using: (1)
+nDCG@10
+, for both rank position and graded relevance; (2)
+Recall@100
+, measuring retrieval coverage; (3)
+MAP@10
+, averaging precision over the top-ranked results.
+All metrics show consistent trends across our analyses. For brevity, we report results primarily on the
+NFCorpus
+dataset and use
+nD</p>
+
+<p>CG@10
+as the main metric in figures. Results for additional datasets and metrics are provided in Appendix
+E
+and exhibit the same patterns.
+5.2
+Stratum Validation
+We validate that our stratification framework captures meaningful structure at both the semantic and structural levels: semantic strata exhibit internal homogeneity while structural signals partition queries into distinct difficulty regimes.
+Dataset
+Metric
+Dense
+BM25
+Hybrid
+NFCorpus
+nDCG@10
+.31 / .29
+.29 / .27
+.30 / .28
+Recall@100
+.29 / .27
+.25 / .22
+.29 / .26
+MAP@10
+.21 / .16
+.17 / .12
+.18 / .14
+SciDocs
+nDCG@10
+.23 / .22
+.20 / .17
+.22 / .20
+Recall@100
+.30 / .28
+.27 / .25
+.29 / .27
+MAP@10
+.17 / .15
+.14 / .11
+.16 / .13
+FiQA
+nDCG@10
+.36 / .35
+.27 / .26
+.33 / .32
+Recall@100
+.28 / .25
+.39 / .38
+.31 / .28
+MAP@10
+.38 / .36
+.23 / .23
+.31 / .30
+Table 2
+:
+Standard deviation (
+σ
+overall
+\sigma_{\text{overall}}
+/
+σ
+within
+\sigma_{\text{within}}
+) of retrieval metrics.
+Semantic Stratum Homogeneity.
+Table 2
+shows that the standard deviation within strata (
+σ
+within
+\sigma_{\text{within}}
+) is consistently lower than the standard deviation across the overall dataset (
+σ
+overall
+\sigma_{\text{overall}}
+), across all retrieval metrics, systems, and datasets.
+Figure 3
+:
+Retrieval performance (nDCG@10) across semantic clusters for different retrievers. Each box shows per-query score distribution within a cluster; dashed line indicates overall nDCG@10.
+Performance Heterogeneity Across Strata.
+Figure 3
+reveals substantial performance va</p>
+
+<p>语义层级之间存在差异，不同的检索器表现出不同的优缺点。例如，“营养专家”是所有三种检索器类型中表现最差的层级，表明这是系统性的检索困难，而不是特定模型的失败。相比之下，“前列腺肥大”在稠密检索中排名靠前，但在</p>
+
+<p>e (MSC)
+: the fraction of semantic clusters “touched” by at least one evaluation query. A cluster is touched if any query contains any entity belonging to that cluster. This captures whether a semantic region is tested at all.
+Sufficient Corpus Coverage (SCC)
+: the fraction of documents in clusters with
+≥
+\geq
+5 queries, capturing if clusters have sufficient queries for reliable per-stratum estimation.
+Zero-Query Clusters (ZQC)
+: the count of semantic clusters with no evaluation queries, indicating untested semantic regions.
+Table
+4
+reveals substantial coverage gaps: NFCorpus achieves only 51% MSC and 11% SCC. Stratified queries generated with coverage-aware sampling achieve dramatically higher coverage (90% MSC, 53% SCC) with comparable query counts.
+These gaps are systematic: ZQC in NFCorpus are predominantly methodological topics (statistical methods, clinical trial designs) spanning 1,700+ documents (see Appendix
+D.4
+for details). Note that documents in these clusters may still be retrieved for other queries, but the concepts themselves are never directly tested. A retrieval system could fail completely on such queries and the benchmark would not detect it.
+We empirically confirm this by evaluating retrieval performance on queries generated within zero-query clusters, revealing both unobserved strengths and systematic failure modes that are untested in the NFCorpus benchmark (Appendix
+D.5
+).
+Aggregate
+Stratified
+MSC
+SCC
+ZQC
+MSC
+SCC
+ZQC
+NFCorpus
+50.9%
+11%
+182
+90.3%
+53%
+36</p>
+
+<p>FIQA
+60.9%
+38%
+232
+100%
+56%
+0
+SciDocs
+89.2%
+48%
+69
+99.7%
+65%
+2
+Table 4
+:
+Coverage metrics for aggregate (original BEIR) vs stratified (coverage-aware generated) evaluation queries.
+5.4
+Interpretable Diagnostics
+Stratified evaluation enables diagnosis of
+why
+retrieval fails within specific semantic regions, including corpus-level,
+retrieval-agnostic
+failure modes where success is fundamentally impossible due to limitations in corpus structure. By isolating these cases, stratified evaluation reveals failure patterns that are obscured by aggregate metrics. We present results on NFCorpus, with additional failure modes for FiQA and SciDocs reported in Appendix
+E
+Failure Mode 1: Semantic-Lexical Disconnect.
+Several clusters reveal mismatches between query semantics and document content due to how relevance was annotated. For example, queries like “Arkansas” or “Iowa Women’s Health Study” (nDCG
+≈
+\approx
+0.14) are judged relevant to documents discussing research
+conducted in
+these locations or reporting findings
+from
+these studies, but the names never appear in document. Similarly, researcher names and organizations are judged relevant to documents that never mention them. These queries are unanswerable from document content alone, a corpus construction issue, not a retriever limitation.
+Failure Mode 2: Register Mismatch.
+In NFCorpus, health misinformation queries (nDCG = 0.14) like “Raw Food Diet Myths” use colloquial language, while relevant documents use scientific terms. This li</p>
+
+<p>语言语域差距使得无论采用何种方法，检索在结构上都很困难。
+对比：</p>
+
+<p>regardless of query volume, macro-averaging better reflects their intent. Stratified evaluation makes these trade-offs explicit rather than leaving them as implicit artifacts of dataset composition.
+Figure 5
+:
+Bootstrap win rates for text-embedding-3-small vs. embed-english-v3.0 under different aggregation protocols (1,000 resamples). Overall Mean weights by query count; Macro Average weights clusters equally; Median and Worst Case capture central tendency and tail performance.
+6
+Related Work
+RAG Benchmarks
+. The evaluation of RAG systems inherits methodologies from information retrieval research, most notably the Text REtrieval Conference (TREC)
+(Chowdhury,
+2007
+)
+. These efforts led to unified question answering (QA) benchmarks such as BEIR, as well as foundational datasets including Natural Questions (NQ)
+(Kwiatkowski
+et al.
+,
+2019
+)
+, HotpotQA
+(Yang
+et al.
+,
+2018
+)
+, TriviaQA
+(Joshi
+et al.
+,
+2017
+)
+, and MS MARCO
+(Nguyen
+et al.
+,
+2016
+)
+. Building on these foundations, more recent benchmarks have been developed to target specific failure modes of RAG systems, including MultiHop-RAG
+(Tang and Yang,
+2024
+)
+, CRAG
+(Yang and others,
+2024
+)
+, GlobalQA
+(Luo
+et al.
+,
+2025
+)
+, Long
+2
+RAG
+(Qi
+et al.
+,
+2024
+)
+, MT-RAG
+(IBM Research,
+2025
+)
+, mmRAG
+(Xu
+et al.
+,
+2025
+)
+, and QE-RAG
+(Zhang
+et al.
+,
+2025
+)
+.
+However, these benchmarks largely rely on static or narrowly defined evaluation settings, leaving the limitation targeted in this paper unexamined.
+Query Taxonomies and Curation.</p>
+
+<p>Prior work has proposed principled benchmark curation via query taxonomies that classify queries by task type
+(Teixeira de Lima
+et al.
+,
+2025
+)
+or operational category
+(Lyu
+et al.
+,
+2025
+)
+. However, these approaches focus on query-level properties and do not address corpus-level semantic coverage gaps.
+Corpus Stratification.
+Methods such as GraphRAG
+(Edge
+et al.
+,
+2025
+)
+, RAPTOR
+(Sarthi
+et al.
+,
+2024
+)
+, and HippoRAG
+(Gutierrez
+et al.
+,
+2024
+)
+explore corpus stratification to improve retrieval efficiency and quality. GraphRAG is most closely related, but our approach detects relationships directly in semantic space and uses stratification for benchmark diagnosis rather than retrieval optimization.
+Synthetic Data Generation.
+To reduce manual annotation costs, RAGEval
+(Zhu
+et al.
+,
+2025
+)
+, Long
+2
+RAG
+(Qi
+et al.
+,
+2024
+)
+, and DataMorgana
+(Filice
+et al.
+,
+2025
+)
+use schema-driven pipelines to generate grounded QA data. While effective for scaling evaluation, these methods do not address systematic coverage gaps across corpus semantic regions.
+See Appendix
+F
+for further discussion on related works.
+7
+Limitations
+This work has several limitations that suggest directions for future research. First, our evaluation is conducted on a limited set of datasets and embedding models. Broader validation across more diverse domain, other languages, domains, and benchmark suites is necessary. Second, the queries used in our experiments are synthetically generated and verified by LLMs. Alth</p>
+
+<p>虽然这实现了可扩展的评估，但它可能会引入偏差或忽略细微的错误。引入人工评估将提供更好的校准并提高评估的可靠性。最后，提取性能取决于提示的设计，而这些提示并未经过充分优化。提示工程可以进一步提高提取质量。
+8 结论
+通过将检索评估形式化为结构化异质性下的统计估计问题，我们解释了为何聚合指标会产生有偏且决策不稳定的评估。我们的语义分层框架将评估建立在语料库结构之上，揭示了先前隐藏的失效模式，并实现了更透明、更可信的系统比较。我们希望这项工作能推动检索和RAG系统向覆盖感知的评估方案转变。为了支持可复现性和未来的研究，我们将公开发布本文引入的分层数据集。
+影响声明
+本文考察了检索评估基准的可靠性，并提出了一种覆盖感知的分层评估框架，以提高系统比较和选择的可信度。这项工作的目标是推动机器学习中的评估方法论，特别是针对检索和</p>
+
+<p>practitioners make better-informed decisions when selecting retrieval systems for downstream applications, including search, question answering, and knowledge-intensive AI systems. More trustworthy evaluation may reduce the risk of deploying systems that perform well on benchmarks but fail systematically in underrepresented or high-risk information domains.
+This work does not introduce new models, training procedures, or data sources, nor does it directly enable new deployment capabilities. As such, we do not anticipate immediate negative societal impacts beyond those already associated with retrieval-based machine learning systems. Ethical considerations primarily concern responsible evaluation practice, and we view improved coverage and diagnostic transparency as a positive step toward more accountable system assessment.
+References
+V. Boteva, D. Gholipour, A. Sokolov, and S. Riezler (2016)
+A full-text learning to rank dataset for medical information retrieval
+.
+In
+Proceedings of the 38th European Conference on Information Retrieval
+,
+Cited by:
+§5.1
+.
+B. Carterette, J. Allan, and R. Sitaraman (2006)
+Minimal test collections for retrieval evaluation
+.
+In
+Proceedings of the 29th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval
+,
+SIGIR ’06
+,
+pp. 268–275
+.
+External Links:
+Document
+Cited by:
+Appendix F
+.
+G. Chowdhury (2007)
+TREC: experiment and evaluation in information retrieval
+.
+Online Information Review
+31
+(
+5
+),
+pp. 717–718
+.
+Ext</p>
+
+<p>ernal Links:
+ISSN 1468-4527
+,
+Document
+,
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+A. Cohan, S. Feldman, I. Beltagy, D. Downey, and D. Weld (2020)
+SPECTER: document-level representation learning using citation-informed transformers
+.
+In
+Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics
+,
+D. Jurafsky, J. Chai, N. Schluter, and J. Tetreault (Eds.)
+,
+Online
+,
+pp. 2270–2282
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§5.1
+.
+Cohere (2023)
+Introducing embed v3
+.
+Note:
+https://cohere.com/blog/introducing-embed-v3
+Accessed: 2026
+Cited by:
+§5.5
+.
+G. V. Cormack, C. L. A. Clarke, and S. Buettcher (2009)
+Reciprocal rank fusion outperforms condorcet and individual rank learning methods
+.
+In
+Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval
+,
+SIGIR ’09
+,
+New York, NY, USA
+,
+pp. 758–759
+.
+External Links:
+ISBN 9781605584836
+,
+Link
+,
+Document
+Cited by:
+§5.1
+.
+D. Edge, H. Trinh, N. Cheng, J. Bradley, A. Chao, A. Mody, S. Truitt, D. Metropolitansky, R. O. Ness, and J. Larson (2025)
+From local to global: a graph rag approach to query-focused summarization
+.
+External Links:
+2404.16130
+,
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+S. Filice, G. Horowitz, D. Carmel, Z. Karnin, L. Lewin-Eytan, and Y. Maarek (2025)
+Generating Q&amp;A benchmarks for RAG evaluation in enterprise settings
+.
+In
+Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 6: Industry Track)
+,
+G. Rehm and Y. Li (E</p>
+
+<p>ds.)
+,
+Vienna, Austria
+,
+pp. 469–484
+.
+External Links:
+Link
+,
+Document
+,
+ISBN 979-8-89176-288-6
+Cited by:
+Appendix F
+,
+§6
+.
+B. J. Gutierrez, Y. Shu, Y. Gu, M. Yasunaga, and Y. Su (2024)
+HippoRAG: neurobiologically inspired long-term memory for large language models
+.
+In
+The Thirty-eighth Annual Conference on Neural Information Processing Systems
+,
+External Links:
+Link
+Cited by:
+§6
+.
+B. J. Gutiérrez, Y. Shu, Y. Gu, M. Yasunaga, and Y. Su (2024)
+HippoRAG: neurobiologically inspired long-term memory for large language models
+.
+In
+Advances in Neural Information Processing Systems
+,
+A. Globerson, L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang (Eds.)
+,
+Vol.
+37
+,
+pp. 59532–59569
+.
+External Links:
+Document
+,
+Link
+Cited by:
+Appendix F
+.
+IBM Research (2025)
+A benchmark for evaluating conversational RAG
+.
+Note:
+https://research.ibm.com/blog/conversational-RAG-benchmark
+Accessed: 2025-12-06
+Cited by:
+Appendix F
+,
+§6
+.
+J. Johnson, M. Douze, and H. Jégou (2019)
+Billion-scale similarity search with gpus
+.
+IEEE Transactions on Big Data
+.
+Cited by:
+§A.2
+,
+§4.1
+.
+M. Joshi, E. Choi, D. Weld, and L. Zettlemoyer (2017)
+TriviaQA: a large scale distantly supervised challenge dataset for reading comprehension
+.
+In
+Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)
+,
+R. Barzilay and M. Kan (Eds.)
+,
+Vancouver, Canada
+,
+pp. 1601–1611
+.
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix F
+,
+§6
+.
+T. Kwiatkowski, J. Palomaki</p>
+
+<p>, O. Redfield, M. Collins, A. Parikh, C. Alberti, D. Epstein, I. Polosukhin, J. Devlin, K. Lee, K. Toutanova, L. Jones, M. Kelcey, M. Chang, A. M. Dai, J. Uszkoreit, Q. Le, and S. Petrov (2019)
+Natural questions: a benchmark for question answering research
+.
+Transactions of the Association for Computational Linguistics
+7
+,
+pp. 452–466
+.
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix F
+,
+§6
+.
+Q. Luo, X. Li, T. Fan, X. Chen, and X. Qiu (2025)
+Towards global retrieval augmented generation: a benchmark for corpus-level reasoning
+.
+External Links:
+2510.26205
+,
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+Y. Lyu, Z. Li, S. Niu, F. Xiong, B. Tang, W. Wang, H. Wu, H. Liu, T. Xu, and E. Chen (2025)
+CRUD-rag: a comprehensive chinese benchmark for retrieval-augmented generation of large language models
+.
+ACM Trans. Inf. Syst.
+43
+(
+2
+).
+External Links:
+ISSN 1046-8188
+,
+Link
+,
+Document
+Cited by:
+Appendix F
+,
+§6
+.
+M. Maia, S. Handschuh, A. Freitas, B. Davis, R. McDermott, M. Zarrouk, and A. Balahur (2018)
+WWW’18 open challenge: financial opinion mining and question answering
+.
+In
+Companion Proceedings of the The Web Conference 2018
+,
+WWW ’18
+,
+Republic and Canton of Geneva, CHE
+,
+pp. 1941–1942
+.
+External Links:
+ISBN 9781450356404
+,
+Link
+,
+Document
+Cited by:
+§5.1
+.
+T. Nguyen, M. Rosenberg, X. Song, J. Gao, S. Tiwary, R. Majumder, and L. Deng (2016)
+MS MARCO: a human generated machine reading comprehension dataset
+.
+In
+Proceedings of the Workshop on Cognitive Computation: Integrating Neural and Symb</p>
+
+<p>olic Approaches (NeSy) at NIPS
+,
+Cited by:
+Appendix F
+,
+§6
+.
+OpenAI (2024)
+New embedding models and API updates
+.
+Note:
+https://openai.com/index/new-embedding-models-and-api-updates
+Accessed: 2026
+Cited by:
+§5.1
+,
+§5.5
+.
+F. M. Polo, L. Weber, L. Choshen, Y. Sun, G. Xu, and M. Yurochkin (2024)
+TinyBenchmarks: evaluating llms with fewer examples
+.
+In
+Proceedings of the 41st International Conference on Machine Learning
+,
+ICML’24
+.
+Cited by:
+Appendix F
+.
+Z. Qi, R. Xu, Z. Guo, C. Wang, H. Zhang, and W. Xu (2024)
+L
+​
+O
+​
+N
+​
+G
+2
+​
+R
+​
+A
+​
+G
+LONG^{2}RAG
+: Evaluating long-context &amp; long-form retrieval-augmented generation with key point recall
+.
+In
+Findings of the Association for Computational Linguistics: EMNLP 2024
+,
+Y. Al-Onaizan, M. Bansal, and Y. Chen (Eds.)
+,
+Miami, Florida, USA
+,
+pp. 4852–4872
+.
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix F
+,
+Appendix F
+,
+§6
+,
+§6
+.
+M. M. Rahman, M. Kutlu, T. Elsayed, and M. Lease (2020)
+Efficient test collection construction via active learning
+.
+In
+Proceedings of the 2020 ACM SIGIR on International Conference on Theory of Information Retrieval
+,
+ICTIR ’20
+,
+New York, NY, USA
+,
+pp. 177–184
+.
+External Links:
+ISBN 9781450380676
+,
+Link
+,
+Document
+Cited by:
+Appendix F
+.
+S. Robertson and H. Zaragoza (2009)
+The probabilistic relevance framework: bm25 and beyond
+.
+Foundations and Trends in Information Retrieval
+3
+,
+pp. 333–389
+.
+External Links:
+Document
+Cited by:
+§5.1
+.
+P. Sarthi, S. Abdullah, A. Tuli, S. Khanna, A. Goldie, and C. D. Manning (</p>
+
+<p>2024)
+RAPTOR: recursive abstractive processing for tree-organized retrieval
+.
+External Links:
+2401.18059
+,
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+Y. Tang and Y. Yang (2024)
+MultiHop-RAG: benchmarking retrieval-augmented generation for multi-hop queries
+.
+In
+First Conference on Language Modeling
+,
+External Links:
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+R. Teixeira de Lima, S. Gupta, C. Berrospi Ramis, L. Mishra, M. Dolfi, P. Staar, and P. Vagenas (2025)
+Know your RAG: dataset taxonomy and generation strategies for evaluating RAG systems
+.
+In
+Proceedings of the 31st International Conference on Computational Linguistics: Industry Track
+,
+O. Rambow, L. Wanner, M. Apidianaki, H. Al-Khalifa, B. D. Eugenio, S. Schockaert, K. Darwish, and A. Agarwal (Eds.)
+,
+Abu Dhabi, UAE
+,
+pp. 39–57
+.
+External Links:
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+N. Thakur, N. Reimers, A. Rücklé, A. Srivastava, and I. Gurevych (2021)
+BEIR: a heterogeneous benchmark for zero-shot evaluation of information retrieval models
+.
+In
+Proceedings of the 44th International ACM SIGIR Conference on Research and Development in Information Retrieval
+,
+Cited by:
+Appendix F
+,
+§1
+,
+§2
+,
+§5.1
+.
+V. A. Traag, L. Waltman, and N. J. Van Eck (2019)
+From Louvain to Leiden: guaranteeing well-connected communities
+.
+Scientific Reports
+9
+(
+1
+),
+pp. 1–12
+.
+Cited by:
+§A.3
+,
+Appendix F
+,
+§4.1
+.
+C. Xu, Q. Chen, Y. Feng, and G. Cheng (2025)
+MmRAG: a modular benchmark for retrieval-augmented generation over text, tables, and knowledge graphs
+.
+External Link</p>
+
+<p>s:
+2505.11180
+,
+Link
+Cited by:
+Appendix F
+,
+§6
+.
+Y. Yang
+et al.
+(2024)
+Comprehensive RAG benchmark (CRAG)
+.
+In
+Advances in Neural Information Processing Systems (NeurIPS) 37
+,
+Cited by:
+Appendix F
+,
+§6
+.
+Z. Yang, P. Qi, S. Zhang, Y. Bengio, W. Cohen, R. Salakhutdinov, and C. D. Manning (2018)
+HotpotQA: a dataset for diverse, explainable multi-hop question answering
+.
+In
+Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing
+,
+E. Riloff, D. Chiang, J. Hockenmaier, and J. Tsujii (Eds.)
+,
+Brussels, Belgium
+,
+pp. 2369–2380
+.
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix F
+,
+§6
+.
+K. Zhang, Z. Sun, W. Yu, X. Zang, K. Zheng, Y. Song, H. Li, and J. Xu (2025)
+QE-rag: a robust retrieval-augmented generation benchmark for query entry errors
+.
+In
+Proceedings of the International ACM SIGIR Conference on Research and Development in Information Retrieval
+,
+pp.
+.
+Cited by:
+Appendix F
+,
+§6
+.
+K. Zhu, Y. Luo, D. Xu, Y. Yan, Z. Liu, S. Yu, R. Wang, S. Wang, Y. Li, N. Zhang, X. Han, Z. Liu, and M. Sun (2025)
+RAGEval: scenario specific RAG evaluation dataset generation framework
+.
+In
+Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)
+,
+W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.)
+,
+Vienna, Austria
+,
+pp. 8520–8544
+.
+External Links:
+Link
+,
+Document
+,
+ISBN 979-8-89176-251-0
+Cited by:
+Appendix F
+,
+§6
+.
+Appendix A
+Semantic Structure Construction
+A.1
+Entity Extraction
+⬇
+Model
+:
+GPT
+-4
+o
+-
+mini</p>
+
+<p>EXTRACTION_PROMPT
+=
+&quot;&quot;&quot;
+Extract
+key
+entities
+from
+this
+document
+.
+For
+each
+entity
+provide
+:
+-
+name
+:
+the
+entity
+name
+(
+normalized
+,
+lowercase
+,
+no
+hyphens
+or
+special
+characters
+)
+-
+description
+:
+a
+brief
+,
+context
+-
+independent
+description
+(10-20
+words
+)
+that
+would
+help
+cluster
+this
+entity
+with
+semantically
+similar
+entities
+Include
+:
+people
+,
+organizations
+,
+places
+,
+concepts
+,
+technical
+terms
+,
+methods
+,
+algorithms
+,
+systems
+.
+Exclude
+:
+generic
+words
+,
+common
+verbs
+,
+articles
+.
+Document
+:
+{
+text
+}
+Examples of extracted entities.
+Extracted entities include technical concepts (e.g., “neural network,” “transformer architecture”), domain-specific terminology (e.g., “Cox regression,” “quantitative easing”), named entities (e.g., “GlaxoSmithKline,” “PubMed”), and methodological terms (e.g., “randomized controlled trial”).
+Entity normalization.
+Entities undergo string normalization and semantic merging (e.g., “neural-networks”
+→
+\rightarrow
+“neural network”) to reduce redundancy.
+For NFCorpus, this yields approximately 24,000 unique entities across 3,633 documents; for FiQA, over 109,000 entities from 57,000 documents.
+A.2
+Graph Construction
+Entity embedding.
+Each semantic entity is represented by concatenating its extracted name and description into a short text span, which is embedded using
+text-embedding-3-large
+text embedding model with 256 dimensions. We find that dimensionality reduction improves graph sparsity and clustering stability without materially affecting downstream a</p>
+
+<p>nalyses.
+Graph sparsification.
+We construct a semantic graph by connecting each entity node to its nearest neighbors in the embedding space, using cosine similarity as the affinity measure. Approximate nearest neighbor search is performed using FAISS
+(Johnson
+et al.
+,
+2019
+)
+for scalability. For each node, we retain a fixed number of neighbors subject to a minimum similarity threshold, yielding a sparse, undirected graph with edge weights given by cosine similarity.
+In all experiments, we set the number of neighbors to
+k
+=
+50
+k=50
+and the similarity threshold to
+0.5
+0.5
+. These values were selected to balance graph connectivity and sparsity, ensuring that semantic neighborhoods are well-formed while avoiding spurious long-range connections. We observe that moderate variations in these parameters do not qualitatively affect the resulting semantic communities, coverage statistics, or downstream evaluation conclusions.
+A.3
+Corpus-Level Semantic Clustering
+We apply the Leiden community detection algorithm
+(Traag
+et al.
+,
+2019
+)
+to the
+semantic graph to identify coherent semantic neighborhoods.
+The resolution parameter
+γ
+\gamma
+controls cluster granularity and is tuned per
+dataset to balance interpretability and coverage
+(
+γ
+=
+25
+\gamma=25
+for NFCorpus,
+γ
+=
+40
+\gamma=40
+for FIQA,
+γ
+=
+10
+\gamma=10
+for SciDocs).
+Each document is associated with all clusters containing its entities, yielding
+a corpus-level semantic taxonomy.
+Manual inspection confirms that clusters correspond to inte</p>
+
+<p>rpretable regions of
+the information space (e.g., diseases, methods, financial instruments).
+This representation directly enables semantic coverage analysis.
+For NFCorpus, 42 clusters (11.3%), containing 13.5% of documents, have zero
+evaluation queries (systematic gaps that standard evaluation would not reveal).
+Appendix B
+Query Stratification Details
+B.1
+Structural Validation
+Dispersion explanation power.
+On NFCorpus, relevance dispersion (
+Δ
+\Delta
+) explains 12.3% of variance in nDCG@10 (VRR = 0.123,
+p
+&lt;
+10
+−
+80
+p&lt;10^{-80}
+), with low-
+Δ
+\Delta
+queries achieving mean nDCG of 0.56 versus 0.30 for high-
+Δ
+\Delta
+queries.
+Alignment explanation power.
+On NFCorpus, semantic alignment (
+J
+J
+) explains 23.5% of variance in Recall@100 (VRR = 0.235,
+p
+&lt;
+10
+−
+100
+p&lt;10^{-100}
+), with high-
+J
+J
+queries achieving mean Recall of 0.60 versus 0.25 for low-
+J
+J
+queries.
+Structural stratum partition.
+We partition each signal into tertiles (Low, Medium, High), yielding a
+3
+×
+3
+3\times 3
+structural grid within each semantic stratum. A complete stratum is thus identified by three components: the semantic cluster, the dispersion tertile (
+Δ
+\Delta
+: Low, Medium, or High), and the alignment tertile (
+J
+J
+: Low, Medium, or High).
+Structural signal validation.
+Tables
+5
+and
+6
+extend the structural signal analysis from NFCorpus (main paper) to FiQA and SciDocs. The same pattern holds: dispersion (
+Δ
+\Delta
+) primarily affects ranking quality (nDCG), while alignment (
+J
+J
+) primarily affects coverage</p>
+
+<p>(Recall). The diagonal from high
+Δ
+\Delta
+/low
+J
+J
+to low
+Δ
+\Delta
+/high
+J
+J
+consistently represents the hardest-to-easiest progression across all datasets.
+Table 5:
+FiQA: Mean nDCG@10 (left) and Recall@100 (right) by relevance dispersion (
+Δ
+\Delta
+) and semantic alignment (
+J
+J
+) tertiles (n=6,148 queries).
+nDCG@10
+Recall@100
+Lo
+J
+J
+Med
+J
+J
+Hi
+J
+J
+Lo
+J
+J
+Med
+J
+J
+Hi
+J
+J
+Hi
+Δ
+\Delta
+0.32
+0.47
+0.58
+0.65
+0.79
+0.85
+Med
+Δ
+\Delta
+0.41
+0.49
+0.58
+0.70
+0.77
+0.83
+Lo
+Δ
+\Delta
+0.46
+0.54
+0.59
+0.72
+0.80
+0.84
+Table 6:
+SciDocs: Mean nDCG@10 (left) and Recall@100 (right) by relevance dispersion (
+Δ
+\Delta
+) and semantic alignment (
+J
+J
+) tertiles (n=1,000 queries).
+nDCG@10
+Recall@100
+Lo
+J
+J
+Med
+J
+J
+Hi
+J
+J
+Lo
+J
+J
+Med
+J
+J
+Hi
+J
+J
+Hi
+Δ
+\Delta
+0.15
+0.21
+0.25
+0.39
+0.48
+0.50
+Med
+Δ
+\Delta
+0.17
+0.25
+0.27
+0.41
+0.58
+0.55
+Lo
+Δ
+\Delta
+0.19
+0.28
+0.31
+0.45
+0.58
+0.62
+In FiQA, the performance range is narrower than NFCorpus (nDCG: 0.32-0.59 vs 0.25-0.62), suggesting more uniform retrieval difficulty across structural strata. SciDocs exhibits the lowest overall performance (nDCG: 0.15-0.31), consistent with its challenging scientific citation retrieval task, but the structural patterns remain consistent: low
+Δ
+\Delta
+and high
+J
+J
+consistently yield better retrieval outcomes.
+B.2
+Resolution Sensitivity Analysis
+We conduct a resolution sensitivity analysis on NFCorpus by varying the clustering granularity parameter
+γ
+∈
+{
+10
+,
+15
+,
+25
+,
+40
+,
+60
+}
+\gamma\in\{10,15,25,40,60\}
+.
+γ
+\gamma
+Clusters
+σ
+within
+\sigma_{</p>
+
+<p>\text{within}}
+Δ
+\Delta
+VRR
+J
+J
+VRR
+nDCG (min / max)
+10
+155
+0.310
+0.104
+0.219
+0.436 / 0.632
+15
+210
+0.305
+0.131
+0.228
+0.438 / 0.643
+25
+313
+0.306
+0.125
+0.237
+0.432 / 0.739
+40
+474
+0.305
+0.133
+0.286
+0.435 / 0.856
+60
+669
+0.304
+0.137
+0.326
+0.401 / 0.856
+Table 7:
+Sensitivity of clustering resolution
+γ
+\gamma
+. Core structural metrics and retrieval behavior remain stable across a
+4
+×
+4\times
+increase in cluster count.
+Across this
+4
+×
+4\times
+range in cluster count, all core findings remain stable. Within-stratum homogeneity (
+σ
+within
+\sigma_{\text{within}}
+) is consistent, and variance reduction ratios (VRR) for dispersion and Jaccard—measuring how well structural signals predict nDCG@10 and Recall@100—remain stable across resolutions.
+At finer granularities, the spread in per-cluster performance increases (e.g., nDCG ranges from 0.40 to 0.86 at
+γ
+=
+60
+\gamma=60
+), revealing increasingly differentiated retrieval behavior across semantic regions.
+Qualitatively, clusters remain coherent at all resolutions; the primary difference is granularity rather than quality. For example, at
+γ
+=
+10
+\gamma=10
+, a single cluster captures statistical modeling (285 entities), while at
+γ
+=
+25
+\gamma=25
+this separates into survival analysis, meta-analysis, and significance testing. At
+γ
+=
+60
+\gamma=60
+, further refinement isolates more specific subdomains such as Cox regression and age-adjusted models.
+Appendix C
+Dataset Curation
+Algorithm
+1
+presents the coverage-aware query generation procedure.
+Algor</p>
+
+<p>ithm 1
+Coverage-Aware Query Generation
+0:
+Entity graph
+G
+G
+with clusters
+𝒞
+\mathcal{C}
+, corpus
+D
+D
+with entity mappings
+0:
+Target query count
+N
+N
+, candidates per iteration
+B
+B
+Q
+←
+∅
+Q\leftarrow\emptyset
+{generated queries}
+𝐧
+σ
+,
+𝐧
+J
+←
+𝟎
+\mathbf{n}_{\sigma},\mathbf{n}_{J}\leftarrow\mathbf{0}
+{bucket counts for dispersion/jaccard (low, mid, high)}
+C
+covered
+←
+∅
+C_{\text{covered}}\leftarrow\emptyset
+{clusters with at least one query}
+while
+|
+Q
+|
+&lt;
+N
+|Q|&lt;N
+do
+// Step 1: Adaptive Strategy Selection
+(
+s
+,
+m
+)
+←
+ChooseStrategy
+​
+(
+𝐧
+σ
+,
+𝐧
+J
+)
+(s,m)\leftarrow\text{ChooseStrategy}(\mathbf{n}_{\sigma},\mathbf{n}_{J})
+{sampling strategy, entity mode}
+// Step 2: Generate Candidate Queries
+candidates
+←
+∅
+\text{candidates}\leftarrow\emptyset
+for
+i
+=
+1
+i=1
+TO
+B
+B
+do
+d
+q
+←
+SampleDoc
+​
+(
+s
+)
+d_{q}\leftarrow\text{SampleDoc}(s)
+q
+text
+←
+GenerateQuery
+​
+(
+d
+q
+)
+q_{\text{text}}\leftarrow\text{GenerateQuery}(d_{q})
+D
+cand
+←
+RetrieveRelevantDocs
+​
+(
+q
+text
+,
+D
+,
+s
+)
+D_{\text{cand}}\leftarrow\text{RetrieveRelevantDocs}(q_{\text{text}},D,s)
+D
+q
+←
+{
+d
+q
+}
+∪
+LLMVerifyRelevance
+​
+(
+q
+text
+,
+D
+cand
+)
+D_{q}\leftarrow\{d_{q}\}\cup\text{LLMVerifyRelevance}(q_{\text{text}},D_{\text{cand}})
+E
+q
+←
+AssignEntities
+​
+(
+q
+text
+,
+m
+,
+D
+q
+)
+E_{q}\leftarrow\text{AssignEntities}(q_{\text{text}},m,D_{q})
+σ
+q
+←
+ComputeDispersion
+​
+(
+E
+q
+)
+\sigma_{q}\leftarrow\text{ComputeDispersion}(E_{q})
+J
+q
+←
+ComputeJaccard
+​
+(
+E
+q
+,
+D
+q
+)
+J_{q}\leftarrow\text{ComputeJaccard}(E_{q},D_{q})
+candidates
+←
+candidates
+∪
+{
+(
+q
+text
+,
+D
+q</p>
+
+<p>,
+σ
+q
+,
+J
+q
+)
+}
+\text{candidates}\leftarrow\text{candidates}\cup\{(q_{\text{text}},D_{q},\sigma_{q},J_{q})\}
+end
+for
+// Step 3: Select Best Candidate
+(
+q
+∗
+,
+D
+∗
+,
+σ
+∗
+,
+J
+∗
+)
+←
+arg
+⁡
+max
+candidates
+⁡
+Score
+​
+(
+σ
+,
+J
+,
+𝐧
+σ
+,
+𝐧
+J
+,
+C
+covered
+)
+(q^{*},D^{*},\sigma^{*},J^{*})\leftarrow\arg\max_{\text{candidates}}\text{Score}(\sigma,J,\mathbf{n}_{\sigma},\mathbf{n}_{J},C_{\text{covered}})
+// Step 4: Update Coverage State
+Q
+←
+Q
+∪
+{
+(
+q
+∗
+,
+D
+∗
+)
+}
+Q\leftarrow Q\cup\{(q^{*},D^{*})\}
+𝐧
+σ
+[
+bucket
+(
+σ
+∗
+)
+]
++
+=
+1
+\mathbf{n}_{\sigma}[\text{bucket}(\sigma^{*})]\mathrel{+}=1
+𝐧
+J
+[
+bucket
+(
+J
+∗
+)
+]
++
+=
+1
+\mathbf{n}_{J}[\text{bucket}(J^{*})]\mathrel{+}=1
+C
+covered
+←
+C
+covered
+∪
+clusters
+​
+(
+D
+∗
+)
+C_{\text{covered}}\leftarrow C_{\text{covered}}\cup\text{clusters}(D^{*})
+end
+whilereturn
+Q
+Q
+C.1
+Prompt Specifications
+Query generation.
+The following prompt is used to synthesize search queries from source documents.
+⬇
+SYSTEM
+:
+You
+are
+an
+expert
+search
+query
+generator
+for
+information
+retrieval
+evaluation
+datasets
+.
+Your
+task
+is
+to
+generate
+realistic
+search
+queries
+that
+a
+user
+might
+type
+when
+looking
+for
+information
+contained
+in
+a
+given
+document
+.
+These
+queries
+will
+be
+used
+to
+evaluate
+search
+systems
+,
+so
+quality
+and
+naturalness
+are
+critical
+.
+CORE
+PRINCIPLES
+:
+1.
+AUTHENTICITY
+:
+Generate
+queries
+that
+real
+users
+would
+actually
+type
+,
+not
+artificial
+constructs
+2.
+SPECIFICITY
+CONTROL
+:
+Match
+the
+requested
+query
+type
+precisely
+(
+short
+/
+long
+,
+ambiguous
+/
+specific
+)
+3.
+ANSWERABILITY
+:
+The
+query
+MUST</p>
+
+<p>be
+answerable
+by
+the
+provided
+document
+4.
+NO
+LEAKAGE
+:
+Do
+not
+copy
+exact
+phrases
+from
+the
+document
+title
+5.
+INFORMATION
+NEED
+:
+Express
+a
+genuine
+information
+need
+,
+not
+just
+keywords
+WHAT
+TO
+AVOID
+:
+-
+Queries
+that
+are
+too
+generic
+to
+meaningfully
+match
+the
+document
+-
+Queries
+that
+require
+information
+NOT
+in
+the
+document
+-
+Forced
+or
+unnatural
+combinations
+of
+keywords
+---
+USER
+:
+Generate
+a
+search
+query
+that
+this
+document
+would
+answer
+.
+Query
+Type
+:
+{
+query_type_description
+}
+{
+query_type_instructions
+}
+[
+RANDOMLY
+SAMPLED
+STYLE
+CONSTRAINTS
+-
+see
+Query
+Diversity
+Grid
+]
+{
+style_constraints
+}
+Document
+:
+Title
+:
+{
+doc_title
+}
+Content
+:
+{
+doc_text
+}
+Generate
+ONE
+search
+query
+matching
+the
+specified
+type
+and
+style
+constraints
+(
+just
+the
+query
+text
+,
+nothing
+else
+):
+Query diversity dimensions.
+Style constraints are randomly sampled from this 3x2 grid to ensure diverse query characteristics.
+⬇
+QUERY
+DIVERSITY
+DIMENSIONS
+==========================
+For
+each
+query
+,
+we
+randomly
+sample
+from
+two
+orthogonal
+dimensions
+to
+ensure
+diverse
+query
+characteristics
+:
+DIMENSION
+1:
+LENGTH
+-------------------
+-
+SHORT
+(1-2
+words
+):
+&quot;
+BERT
+embeddings
+&quot;,
+&quot;
+cancer
+treatment
+&quot;
+-
+MEDIUM
+(3-4
+words
+):
+&quot;
+GPT
+-4
+reasoning
+capabilities
+&quot;
+-
+UNRESTRICTED
+:
+Natural
+question
+length
+DIMENSION
+2:
+SPECIFICITY
+------------------------
+-
+PROPER
+NOUNS
+:
+Use
+specific
+named
+entities
+Examples
+:
+&quot;
+BERT
+&quot;,
+&quot;
+Pfizer
+&quot;,
+&quot;
+COVID
+-19&quot;,
+&quot;
+Tesla
+&quot;
+-
+GENERIC
+TERMS
+:
+Use
+category
+-
+level
+terms
+Examples
+:
+&quot;
+language
+models
+&quot;,
+&quot;
+vaccines
+&quot;,</p>
+
+<p>&quot;
+electric
+vehicles
+&quot;
+SAMPLED
+STYLE
+CONSTRAINTS
+=========================
+The
+selected
+(
+Length
+,
+Specificity
+)
+pair
+injects
+instructions
+:
+SHORT
++
+PROPER
+NOUNS
+:
+LENGTH
+:
+Your
+query
+MUST
+be
+exactly
+1-2
+words
+only
+.
+ENTITY
+STYLE
+:
+Use
+SPECIFIC
+proper
+nouns
+and
+named
+entities
+.
+-&gt;
+&quot;
+BERT
+embeddings
+&quot;,
+&quot;
+COVID
+-19
+transmission
+&quot;
+SHORT
++
+GENERIC
+TERMS
+:
+LENGTH
+:
+Your
+query
+MUST
+be
+exactly
+1-2
+words
+only
+.
+ENTITY
+STYLE
+:
+Use
+GENERIC
+category
+terms
+,
+NOT
+specific
+names
+.
+-&gt;
+&quot;
+language
+models
+&quot;,
+&quot;
+cancer
+treatment
+&quot;
+MEDIUM
++
+PROPER
+NOUNS
+:
+LENGTH
+:
+Your
+query
+MUST
+be
+exactly
+3-4
+words
+only
+.
+ENTITY
+STYLE
+:
+Use
+SPECIFIC
+proper
+nouns
+and
+named
+entities
+.
+-&gt;
+&quot;
+GPT
+-4
+reasoning
+capabilities
+&quot;,
+&quot;
+CRISPR
+Cas9
+delivery
+&quot;
+MEDIUM
++
+GENERIC
+TERMS
+:
+LENGTH
+:
+Your
+query
+MUST
+be
+exactly
+3-4
+words
+only
+.
+ENTITY
+STYLE
+:
+Use
+GENERIC
+category
+terms
+,
+NOT
+specific
+names
+.
+-&gt;
+&quot;
+deep
+learning
+applications
+&quot;,
+&quot;
+gene
+therapy
+risks
+&quot;
+UNRESTRICTED
++
+PROPER
+NOUNS
+:
+ENTITY
+STYLE
+:
+Use
+SPECIFIC
+proper
+nouns
+and
+named
+entities
+.
+-&gt;
+&quot;
+How
+does
+BERT
+handle
+contextual
+word
+representations
+?&quot;
+UNRESTRICTED
++
+GENERIC
+TERMS
+:
+ENTITY
+STYLE
+:
+Use
+GENERIC
+category
+terms
+,
+NOT
+specific
+names
+.
+-&gt;
+&quot;
+How
+do
+transformer
+models
+improve
+understanding
+?&quot;
+This
+3
+x2
+sampling
+ensures
+diverse
+query
+formulations
+matching
+real
+-
+world
+search
+patterns
+.
+Entity assignment.
+The following prompt identifies which semantic entities are relevant to a generated query.
+⬇
+SYSTEM
+:
+You
+are
+an
+expert
+entity
+-
+to
+-
+query
+alignment
+system
+for
+i</p>
+
+<p>nformation
+retrieval
+research
+.
+Your
+task
+is
+to
+identify
+which
+entities
+from
+a
+candidate
+list
+are
+semantically
+relevant
+to
+a
+given
+search
+query
+.
+This
+mapping
+is
+used
+to
+understand
+the
+semantic
+structure
+of
+queries
+.
+WHAT
+COUNTS
+AS
+&quot;
+RELEVANT
+&quot;:
+1.
+DIRECT
+MENTION
+:
+The
+entity
+or
+a
+synonym
+appears
+in
+the
+query
+2.
+IMPLICIT
+REFERENCE
+:
+The
+query
+is
+about
+this
+entity
+even
+if
+not
+named
+explicitly
+Example
+:
+&quot;
+heart
+disease
+prevention
+&quot;
+-&gt;
+relevant
+:
+&quot;
+cardiovascular
+disease
+&quot;,
+&quot;
+heart
+health
+&quot;,
+&quot;
+coronary
+artery
+&quot;
+3.
+REQUIRED
+KNOWLEDGE
+:
+Answering
+the
+query
+requires
+knowing
+about
+this
+entity
+Example
+:
+&quot;
+CRISPR
+applications
+&quot;
+-&gt;
+relevant
+:
+&quot;
+gene
+editing
+&quot;,
+&quot;
+Cas9
+&quot;,
+&quot;
+genetic
+engineering
+&quot;
+4.
+SEMANTIC
+OVERLAP
+:
+The
+entity
+’
+s
+domain
+strongly
+overlaps
+with
+the
+query
+’
+s
+information
+need
+WHAT
+IS
+NOT
+RELEVANT
+:
+-
+Entities
+that
+are
+merely
+topically
+adjacent
+but
+not
+needed
+to
+answer
+the
+query
+-
+Entities
+from
+the
+same
+broad
+field
+but
+addressing
+different
+specific
+aspects
+-
+Entities
+that
+might
+appear
+in
+the
+same
+document
+but
+aren
+’
+t
+query
+-
+relevant
+PRECISION
+OVER
+RECALL
+:
+-
+It
+’
+s
+better
+to
+miss
+a
+marginally
+relevant
+entity
+than
+to
+include
+an
+irrelevant
+one
+-
+Only
+include
+entities
+you
+are
+confident
+help
+characterize
+the
+query
+’
+s
+information
+need
+-
+When
+uncertain
+,
+lean
+toward
+exclusion
+OUTPUT
+:
+Return
+only
+the
+indices
+of
+relevant
+entities
+.
+---
+USER
+:
+Identify
+which
+entities
+from
+the
+candidate
+list
+are
+relevant
+to
+the
+search
+query
+.
+An
+entity
+is
+RELEVANT
+if
+:
+1.
+It
+appears
+in
+or
+is
+dir</p>
+
+<p>ectly
+referenced
+by
+the
+query
+2.
+It
+represents
+a
+key
+concept
+the
+query
+is
+asking
+about
+3.
+Understanding
+this
+entity
+is
+necessary
+to
+answer
+the
+query
+4.
+It
+’
+s
+a
+person
+,
+organization
+,
+place
+,
+or
+technical
+term
+central
+to
+the
+query
+An
+entity
+is
+NOT
+RELEVANT
+if
+:
+-
+It
+’
+s
+from
+the
+same
+general
+field
+but
+addresses
+a
+different
+aspect
+-
+It
+might
+co
+-
+occur
+with
+query
+terms
+but
+isn
+’
+t
+about
+the
+query
+topic
+-
+It
+’
+s
+too
+broad
+or
+too
+specific
+relative
+to
+the
+query
+’
+s
+need
+Search
+Query
+:
+&quot;{
+query_text
+}&quot;
+Candidate
+Entities
+:
+{
+entity_list
+}
+For
+each
+candidate
+,
+ask
+:
+Would
+a
+user
+asking
+this
+query
+want
+/
+need
+information
+about
+this
+entity
+?
+Is
+it
+central
+to
+answering
+the
+query
+?
+Be
+SELECTIVE
+.
+Only
+include
+entities
+that
+genuinely
+characterize
+the
+query
+’
+s
+semantic
+content
+.
+Return
+ONLY
+the
+entity
+indices
+that
+are
+relevant
+:
+Relevance filtering.
+The following prompt identifies which retrieved documents are relevant to the query.
+⬇
+SYSTEM
+:
+You
+are
+an
+expert
+relevance
+assessor
+for
+information
+retrieval
+evaluation
+.
+Your
+task
+is
+to
+judge
+whether
+candidate
+documents
+are
+RELEVANT
+to
+a
+given
+search
+query
+.
+Your
+judgments
+will
+be
+used
+as
+ground
+truth
+for
+evaluating
+search
+systems
+,
+so
+accuracy
+is
+critical
+.
+RELEVANCE
+DEFINITION
+:
+A
+document
+is
+RELEVANT
+if
+it
+contains
+information
+that
+would
+SATISFY
+the
+user
+’
+s
+information
+need
+expressed
+in
+the
+query
+.
+The
+document
+should
+directly
+help
+answer
+or
+address
+the
+query
+.
+RELEVANCE
+LEVELS
+(
+for
+your
+internal
+reasoning
+):
+-
+HIGHLY
+RELEVANT
+:
+Docu</p>
+
+<p>ment
+directly
+and
+completely
+addresses
+query
+-
+RELEVANT
+:
+Document
+provides
+useful
+information
+that
+partially
+addresses
+the
+query
+-
+MARGINALLY
+RELEVANT
+:
+Document
+has
+some
+topical
+overlap
+but
+limited
+utility
+-
+NOT
+RELEVANT
+:
+Document
+doesn
+’
+t
+help
+answer
+the
+query
+despite
+surface
+similarity
+For
+this
+task
+,
+return
+documents
+that
+are
+RELEVANT
+or
+HIGHLY
+RELEVANT
+only
+.
+COMMON
+PITFALLS
+TO
+AVOID
+:
+1.
+TOPICAL
+SIMILARITY
+!=
+RELEVANCE
+Two
+documents
+about
+&quot;
+machine
+learning
+&quot;
+may
+address
+completely
+different
+aspects
+.
+The
+query
+might
+be
+about
+&quot;
+ML
+for
+medical
+imaging
+&quot;
+but
+doc
+is
+about
+&quot;
+ML
+for
+NLP
+&quot;
+2.
+KEYWORD
+MATCHING
+!=
+RELEVANCE
+Matching
+keywords
+doesn
+’
+t
+mean
+the
+document
+answers
+the
+query
+.
+Context
+and
+the
+specific
+information
+need
+matter
+.
+3.
+DOCUMENT
+QUALITY
+!=
+RELEVANCE
+A
+poorly
+written
+document
+can
+still
+be
+relevant
+.
+A
+high
+-
+quality
+document
+on
+a
+different
+topic
+is
+not
+relevant
+.
+WHEN
+IN
+DOUBT
+:
+-
+Re
+-
+read
+the
+query
+and
+identify
+the
+core
+information
+need
+-
+Ask
+:
+&quot;
+If
+I
+were
+the
+user
+,
+would
+this
+document
+satisfy
+my
+search
+?&quot;
+-
+Lean
+toward
+precision
+:
+it
+’
+s
+better
+to
+miss
+a
+marginally
+relevant
+doc
+than
+include
+an
+irrelevant
+one
+---
+USER
+:
+Judge
+which
+documents
+are
+RELEVANT
+to
+the
+given
+search
+query
+.
+A
+document
+is
+RELEVANT
+if
+it
+:
+-
+Contains
+information
+that
+directly
+helps
+answer
+the
+query
+-
+Would
+satisfy
+a
+user
+who
+submitted
+this
+search
+-
+Provides
+substantive
+content
+on
+the
+query
+topic
+A
+document
+is
+NOT
+RELEVANT
+if
+it
+:
+-
+Only
+shares
+keywords
+but
+addresses
+a
+different</p>
+
+<p>information
+need
+-
+Is
+about
+a
+related
+but
+distinct
+topic
+-
+Mentions
+the
+query
+concepts
+tangentially
+without
+substantive
+coverage
+Search
+Query
+:
+&quot;{
+query_text
+}&quot;
+Candidate
+Documents
+:
+{
+documents_text
+}
+For
+each
+document
+,
+determine
+if
+it
+would
+SATISFY
+a
+user
+searching
+for
+this
+query
+.
+Consider
+:
+1.
+Does
+this
+document
+contain
+information
+the
+user
+is
+looking
+for
+?
+2.
+Would
+returning
+this
+document
+be
+helpful
+for
+this
+specific
+query
+?
+3.
+Is
+the
+relevance
+substantive
+or
+merely
+superficial
+keyword
+overlap
+?
+Respond
+with
+ONLY
+the
+document
+numbers
+that
+are
+RELEVANT
+,
+comma
+-
+separated
+(
+e
+.
+g
+.,
+&quot;0,
+2,
+5&quot;).
+If
+none
+are
+relevant
+,
+respond
+with
+&quot;
+NONE
+&quot;.
+Appendix D
+Examples and Coverage Analysis
+D.1
+Example Semantic Cluster
+Entity
+Description
+apple juice
+A beverage made from the pressing and processing of apples
+cranberry juice
+A beverage made from cranberries, often studied for health benefits
+fruit juice
+Beverage made by extracting liquid from fruits
+cranberries
+A fruit known for its health benefits, particularly for urinary health
+grapefruit
+A citrus fruit known for its potential interactions with medications
+pomegranate juice
+Juice extracted from pomegranate, known for its health benefits
+red wine
+A type of wine made from dark-colored grape varieties
+white wine
+A type of wine made from green grapes
+noni juice
+Juice derived from noni fruit, marketed for health benefits
+mangosteen juice
+Juice extracted from mangosteen, associated with health claims
+hibiscus tea
+A herbal tea made from</p>
+
+<p>dried petals of hibiscus flowers
+cherry juice
+A beverage made from cherries, noted for health benefits
+smoothie
+A blended beverage typically made from fruits and vegetables
+bladder infection
+An infection of the urinary bladder (frequently studied in relation to cranberry juice)
+… and 53 more entities
+Table 8
+:
+Example Semantic Cluster: Fruit Juices &amp; Beverages (Cluster 118, NFCorpus)
+Table
+8
+shows an example cluster capturing the semantic region of “fruit juices and their health effects,” with entities spanning beverage types, specific juice varieties, and associated medical conditions.
+D.2
+Cluster Visualization
+Figure
+6
+visualizes the semantic clusters across the NFCorpus dataset.
+Figure 6
+:
+NFCorpus semantic cluster graph. Nodes represent entity clusters, node size indicates document count, and edges represent semantic similarity between clusters. Colors indicate avg in-cluster nDCG score.
+D.3
+Example Generated Queries
+Sample generated NFCorpus queries with strata values and relevant documents. Example queries show increase in Zero-Query Cluster coverage.
+⬇
+[
+Q1
+]
+&quot;
+renal
+function
+differences
+vegans
+non
+-
+vegans
+&quot;
+Docs
+(7):
+MED
+-5340,
+MED
+-3230,
+MED
+-3236,
+MED
+-5338,
+MED
+-934,
+MED
+-1458,
+MED
+-1456
+Delta
+:
+0.530
+|
+J
+:
+0.159
+|
+Clusters
+:
+7
+(6
+new
+)
+[
+Q2
+]
+&quot;
+How
+do
+different
+vegetarian
+diets
+affect
+cholesterol
+and
+triglyceride
+levels
+compared
+to
+omnivorous
+diets
+in
+adults
+?&quot;
+Docs
+(18):
+MED
+-1430,
+MED
+-4632,
+MED
+-4831,
+MED
+-5329,
+MED
+-1551,
+MED
+-2945,
+MED
+-4088,
+MED
+-4515,
+MED</p>
+
+<p>-1253,
+MED
+-1250,
+MED
+-5118,
+MED
+-4353,
+MED
+-4509,
+MED
+-5113,
+MED
+-2008,
+MED
+-1249,
+MED
+-4510,
+MED
+-1258
+Delta
+:
+0.384
+|
+J
+:
+0.227
+|
+Clusters
+:
+15
+(7
+new
+)
+[
+Q3
+]
+&quot;
+glycemic
+response
+of
+different
+date
+varieties
+in
+healthy
+versus
+type
+2
+diabetic
+adults
+&quot;
+Docs
+(2):
+MED
+-3897,
+MED
+-3907
+Delta
+:
+0.429
+|
+J
+:
+0.444
+|
+Clusters
+:
+4
+(4
+new
+)
+Sample generated FIQA queries with strata values and relevant documents. Example queries show increase in Zero-Query Cluster coverage.
+⬇
+[
+Q1
+]
+&quot;
+reverse
+stock
+split
+investor
+impact
+&quot;
+Docs
+(16):
+579056,
+507021,
+229707,
+477951,
+388065,
+304085,
+502970,
+513620,
+237390,
+581848,
+159439,
+129481,
+524940,
+512914,
+245654,
+352130
+Delta
+:
+0.587
+|
+J
+:
+0.031
+|
+Clusters
+:
+2
+(2
+new
+)
+[
+Q2
+]
+&quot;
+Chinese
+public
+opinion
+of
+Donald
+Trump
+during
+2016-2020
+presidential
+elections
+&quot;
+Docs
+(4):
+541283,
+279360,
+291836,
+106268
+Delta
+:
+0.800
+|
+J
+:
+0.333
+|
+Clusters
+:
+4
+(3
+new
+)
+[
+Q3
+]
+&quot;
+economic
+confirmation
+bias
+in
+academic
+research
+debates
+&quot;
+Docs
+(8):
+303978,
+498180,
+187090,
+457235,
+394096,
+382709,
+118092,
+394357
+Delta
+:
+0.707
+|
+J
+:
+0.069
+|
+Clusters
+:
+2
+(1
+new
+)
+Sample generated SciDocs queries with strata values and relevant documents. Example queries show increase in Zero-Query Cluster coverage.
+⬇
+[
+Q1
+]
+&quot;
+neural
+encoding
+auditory
+stimuli
+&quot;
+Docs
+(10):
+620
+b7d0d5e2ceeba58d808dc3d7b09a9fb57831c
+,
+4934
+ac57123efbfbde139ec846452acd95520b40
+,
+3
+c203e4687fab9bacc2adcff2cbcab2b6d7937dd
+,
+6
+d3f38ea64c84d5ca1569fd73497e34525baa215
+,
+8
+bfedec4b58a5339c7bd96e367a2ed3662996c84
+,
+604266</p>
+
+<p>9265
+c201041c7523a21c00a2ab3360f6d1
+,
+ca579dbe53b33424abb13b35c5b7597ef19600ad
+,
+f18821d47b2bee62a7b3047ed7b71a5895214619
+,
+bdfb20d112069c106a9535407d107a43ebe6517f
+,
+8
+fc062ac5cded5cbacb164e2b128f9914eb04727
+Delta
+:
+0.327
+|
+J
+:
+0.361
+|
+Clusters
+:
+13
+(1
+new
+)
+[
+Q2
+]
+&quot;
+information
+technology
+strategic
+impact
+&quot;
+Docs
+(16):
+14316
+b885f65d2197ce8c6d4ab3ee61fdab052b8
+,
+d1909ee7543ab92a8d8aad81af6c589278654b48
+,
+42540
+e75173dea14c343a567f9fc722db8609e7e
+,
+65
+e58981f966a6d1b62c1f7d889ae3e1c0a864a1
+,
+5
+f09cb313b6fb14877c6b5be79294faf1f4f7f02
+,
+4
+c341889abc15b296c85dd5b4e1356c664f633f4
+,
+7
+bad7050e0f447ea68c1ff5838cd5392726ca388
+,
+c13ee933b7ddccb4a1ccc7820c09fda8f32d1fb5
+,
+588
+b9fae704c1964d639a5f87c3793a1ad354e69
+,
+d60fcb9b0ff0484151975c86c70c0cb314468ffb
+,
+37
+c998ede7ec9eeef7016a206308081bce0fc414
+,
+8326
+f86876adc98c72031de6c3d3d3fac0403175
+,
+eec44862b2d58434ca7706224bc0e9437a2bc791
+,
+ac8877b0e87625e26f52ab75e84c534a576b1e77
+,
+6
+e07fcf8327a3f53f90f86ea86ca084d6733fb88
+,
+176
+d486ccd79bdced91d1d42dbd3311a95e449de
+Delta
+:
+0.386
+|
+J
+:
+0.078
+|
+Clusters
+:
+4
+(1
+new
+)
+[
+Q3
+]
+&quot;
+What
+are
+the
+TG13
+guideline
+recommendations
+for
+biliary
+drainage
+timing
+and
+antimicrobial
+use
+in
+Grade
+II
+and
+III
+acute
+cholangitis
+patients
+?&quot;
+Docs
+(1):
+e65881a89633b8d4955e9314e84b943e155da6a9
+Delta
+:
+0.250
+|
+J
+:
+1.000
+|
+Clusters
+:
+3
+(1
+new
+)
+D.4
+Zero-Query Cluster Analysis
+Table
+9
+provides detailed examples of zero-query clusters identified in NFCorpus. These clusters represent methodological topics (statistical met</p>
+
+<p>hods, clinical trial designs, and survey techniques) that collectively span over 1,700 documents but receive no evaluation queries in the original benchmark. This systematic gap means retrieval performance on methodological queries (e.g., “What is a Cox proportional hazards model?”) remains entirely untested.
+Cluster Description
+Ent.
+Docs
+Statistical methods (Cox regression, hazard ratios)
+104
+470
+Multivariate analysis methods
+135
+325
+Clinical trial methods (RCTs, double-blind)
+141
+450
+Dietary assessment (food frequency questionnaire)
+81
+192
+Survey methodologies
+70
+89
+Healthy human participants
+79
+155
+Table 9
+:
+Zero-query clusters in NFCorpus span 1,700+ documents but have no evaluation queries.
+D.5
+Retrieval Performance on Zero-Query Clusters
+To directly evaluate retrieval behavior in untested regions of the corpus, we generate queries targeting two zero-query clusters in NFCorpus and evaluate three retrieval methods using nDCG@10.
+Zero-Query Cluster
+Dense
+BM25
+Hybrid
+Cancer cell lines
+0.795
+0.854
+0.872
+Statistical methods
+0.365
+0.336
+0.483
+Table 10
+:
+Retrieval performance (nDCG@10) on queries generated for zero-query clusters.
+These results illustrate why coverage is critical for trustworthy evaluation. The
+cancer cell lines
+cluster achieves strong retrieval performance across all methods, yet this signal is entirely absent from the benchmark’s aggregate score due to the lack of evaluation queries. In contrast, the
+statistical methods
+cluster represents a genuine blind spot</p>
+
+<p>, with substantially lower performance across all retrievers.
+The two clusters further reveal distinct retriever dynamics. BM25 outperforms dense retrieval on
+cancer cell lines
+, while the hybrid approach provides the largest improvement on
+statistical methods
+, suggesting that different regions of the corpus favor different retrieval strategies.
+Appendix E
+Additional Experiment Results
+E.1
+Results on Additional Datasets
+Figures
+7
+-
+12
+present performance distributions and system comparisons for FiQA and SciDocs datasets.
+Figure 7
+:
+FiQA: Distribution of nDCG@10 scores across semantic clusters, showing per-cluster performance variance.
+Figure 8
+:
+SciDocs: Distribution of nDCG@10 scores across semantic clusters, showing per-cluster performance variance.
+Figure 9
+:
+FiQA: Per-query performance comparison between retrieval systems, colored by semantic cluster.
+Figure 10
+:
+SciDocs: Per-query performance comparison between retrieval systems, colored by semantic cluster.
+Figure 11
+:
+FiQA: Win rate comparison between retrieval systems across bootstrap samples (n=300).
+Figure 12
+:
+SciDocs: Win rate comparison between retrieval systems across bootstrap samples (n=300).
+E.2
+Additional Interpretable Diagnostics
+Beyond the corpus-level failure modes identified in the main paper (semantic-lexical disconnect, register mismatch), stratified evaluation reveals additional retriever-dependent failure patterns across datasets.
+Named Entity Mismatch (NFCorpus).
+The
+Pharmaceuticals and drug develo</p>
+
+<p>pment
+cluster (39 entities) exhibits a 75% zero-score rate across 8 queries. Sample entities include company names like “GlaxoSmithKline” and technical terms like “pharmaceuticalization.” Queries in this cluster ask about drug development processes, but the named pharmaceutical companies mentioned in corpus documents rarely appear in natural user queries. This represents a retriever failure where proper noun specificity in documents does not match the more generic query formulations.
+High-Frequency Practical Topics (FiQA).
+In FiQA, clusters representing common personal finance topics achieve disproportionately poor retrieval performance:
+•
+Retirement investment strategies
+(62 entities, nDCG = 0.23): 66.7% zero-score rate despite targeting common concepts like “target date retirement funds.”
+•
+Language and terminology in finance
+(144 entities, nDCG = 0.17): 62.5% zero-score rate for queries about contextual meaning and financial terminology.
+•
+Customization and personalization
+(nDCG = 0.11): Abstract concepts like “personalized gifts” and “features” that are too generic to embed discriminatively.
+These high-frequency, practical questions fail because common financial terminology may be too generic in the embedding space to discriminate between relevant and irrelevant documents.
+Technical Algorithm Names (SciDocs).
+In SciDocs, clusters containing highly specialized algorithm names achieve near-zero performance:
+•
+Optimization algorithms
+(424 entities, nDCG = 0.07): 75% zero-sco</p>
+
+<p>re rate with entities like “NelderMeadAlgorithm” and “alternating direction method of multipliers.”
+•
+Sentiment analysis
+(308 entities, nDCG = 0.07): 77.8% zero-score rate despite covering a well-established NLP subfield.
+•
+Digital healthcare innovations
+(268 entities, nDCG = 0.02): 80% zero-score rate for “quantified self” and “healthcare innovation” topics.
+The failure despite exact terminology matches suggests that these technical terms may be underrepresented in the embedding model’s training data, or that the citation-based relevance judgments in SciDocs create a mismatch between lexical similarity and annotated relevance.
+High-Performing Clusters.
+For contrast, we identify consistently high-performing clusters:
+•
+NFCorpus
+: Viruses linked to obesity (nDCG = 0.81), MRSA strains (nDCG = 0.77), gluten-related disorders (nDCG = 0.76)
+•
+FiQA
+: Tax incentives (nDCG = 0.97), corporate scandals (nDCG = 0.96), aviation industry (nDCG = 0.96)
+•
+SciDocs
+: Algebraic structures in programming (nDCG = 0.72), amplifier design (nDCG = 0.72), wearable health monitoring (nDCG = 0.57)
+These clusters succeed because queries and documents use consistent domain terminology with distinctive named entities, validating that retrieval works well when lexical-semantic alignment holds.
+Appendix F
+Additional Related Work
+The evaluation of Retrieval-Augmented Generation (RAG) has evolved from lexical n-gram matching to principled methodologies that isolate the performance of retrieval and generation</p>
+
+<p>components.
+IR Evaluation.
+Modern RAG evaluation inherits methodology from information retrieval research such as the Text REtrieval Conference (TREC) which established standardized test collections, relevance judgments, and evaluation metrics
+(Chowdhury,
+2007
+)
+. These efforts culminated in unified Question Answering (QA) benchmarks like BEIR
+(Thakur
+et al.
+,
+2021
+)
+, which aggregates 18 diverse and foundational sets like NQ, HotpotQA, TriviaQA, and MS MARCO
+(Kwiatkowski
+et al.
+,
+2019
+; Joshi
+et al.
+,
+2017
+; Nguyen
+et al.
+,
+2016
+; Yang
+et al.
+,
+2018
+)
+.
+RAG Benchmarks.
+Modern RAG-specific benchmarks extend these foundations to target specific RAG failure modes. MultiHop-RAG requires synthesis across multiple documents
+(Tang and Yang,
+2024
+)
+. CRAG provides question-answer pairs spanning five domains with varying entity popularity, temporal dynamics, and complexity
+(Yang and others,
+2024
+)
+. For corpus-level reasoning, GlobalQA introduces aggregation tasks such as counting, sorting, and top-k extraction over entire collections
+(Luo
+et al.
+,
+2025
+)
+. Long
+2
+RAG addresses long-context scenarios with the Key Point Recall metric for evaluating generation
+(Qi
+et al.
+,
+2024
+)
+, MT-RAG benchmarks multi-turn conversational RAG with human-generated dialogues
+(IBM Research,
+2025
+)
+, mmRAG
+(Xu
+et al.
+,
+2025
+)
+tackles heterogeneous knowledge sources, and QE-RAG
+(Zhang
+et al.
+,
+2025
+)
+evaluates robustness to query entry errors such as typos and keyboard proximity mistakes.
+Query Taxonomi</p>
+
+<p>es and Curation.
+Principled curation by defining taxonomies that reflect real-world difficulty.
+Teixeira de Lima
+et al.
+(
+2025
+)
+proposed a taxonomy classifying context-query pairs into predefined categories such as
+fact_single
+,
+summary
+,
+reasoning
+, and
+unanswerable
+categories to identify specific retrieval challenges. The CRUD-RAG benchmark further organizes tasks into Create, Read, Update, and Delete operations to evaluate RAG systems in scenarios beyond standard question-answering, such as text continuation and hallucination modification
+(Lyu
+et al.
+,
+2025
+)
+.
+Corpus Stratification.
+Works like GraphRAG
+(Edge
+et al.
+,
+2025
+)
+, RAPTOR
+(Sarthi
+et al.
+,
+2024
+)
+, and HippoRAG
+(Gutiérrez
+et al.
+,
+2024
+)
+have explored corpus stratification to improve retrieval efficiency and quality. GraphRAG’s stratification is most similar to ours as it constructs clusters using the Leiden algorithm
+(Traag
+et al.
+,
+2019
+)
+after LLM-prompt based entity and relationship extraction. Our approach differs in that relationships are detected directly in the semantic space and the stratification is used to inform benchmark diagnosis and repair rather than retrieval optimization.
+Synthetic Data Generation (SDG).
+To overcome the bottleneck of manual annotation, frameworks like RAGEval and Long
+2
+RAG employ schema-based pipelines to generate grounded documents, questions, and answers
+(Zhu
+et al.
+,
+2025
+; Qi
+et al.
+,
+2024
+)
+. Similarly, DataMorgana provides a customizable framework to control the lexical</p>
+
+<p>、生成基准测试的句法和语义多样性，确保它们反映企业应用的预期流量 (Fil</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,5605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向不完美感知智能体的区间POMDP防护 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向不完美感知智能体的区间POMDP防护</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-22</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.20728" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Interval POMDP Shielding for Imperfect-Perception Agents</h4>
+            <p><strong>中文摘要：</strong> 本文针对自主系统因感知误分类导致不安全决策的问题，提出一种基于区间POMDP（IPOMDP）的运行时屏蔽方法。该方法利用有限标注数据构建观测概率的置信区间以应对分布偏移，通过线性规划对可达信念状态进行过近似，从而将完美感知屏蔽扩展至不完美感知环境，构建出保守的运行时屏蔽器。该屏蔽器在有限视野内提供概率安全保证，且在四个基准测试中表现出优于现有基线的安全性与可用性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>Interval POMDP Shielding for
+Imperfect-Perception Agents
+William Scarbro
+Ravi Mangal
+Abstract
+Autonomous systems that rely on learned perception can make unsafe decisions when sensor readings are misclassified. We study shielding for this setting: given a proposed action, a shield blocks actions that could violate safety. We consider the common case where system dynamics are known but perception uncertainty must be estimated from finite labeled data. From these data we build confidence intervals for the probabilities of perception outcomes and use them to model the system as a finite Interval Partially Observable Markov Decision Process with discrete states and actions. We then propose an algorithm to compute a conservative set of beliefs over the underlying state that is consistent with the observations seen so far.
+This enables us to construct a runtime shield that comes with a finite-horizon guarantee: with high probability over the training data, if the true perception uncertainty rates lie within the learned intervals, then every action admitted by the shield satisfies a stated lower bound on safety. Experiments on four case studies show that our shielding approach (and variants derived from it) improves the safety of the system over state-of-the-art baselines.
+I
+Introduction
+The computational capabilities unlocked by neural networks have made it feasible to build autonomous agents that use learned components to interact with their environments while pursuing complex goa</p>
+
+<p>作为一个例子，考虑一个通过摄像头感知环境并且必须在TaxiNet风格设置下沿着跑道中心线行驶的自主飞机滑行系统 [ 33 , 18 , 11 ] 。智能体通过传感器感测环境，通过神经组件从这些传感器读数中感知系统的底层状态，使用符号或神经决策逻辑根据感知到的状态选择一个动作，并执行该动作以更新系统状态。当感知组件从传感器读数中对底层状态进行错误分类时，智能体就会基于错误的信息采取行动。我们将这种现象称为不完美感知（imperfect-perception）。</p>
+
+<p>具有不完美感知的自主智能</p>
+
+<p>of the system. When these observations are produced using a Deep Neural Network (DNN) component the perception uncertainty model acts as a probabilistic black box around the environment producing inputs for the DNN perceptor and the DNN perceptor itself. When constructing this probabilistic model, classical uncertainty models in control theory are often a poor fit because neural perception uncertainty need not follow simple parametric forms such as Gaussian noise
+[
+20
+]
+. The support-based shield of Carr
+et al.
+, which discards emission probabilities and only retains perception relationships, is sound
+[
+6
+]
+, but we show it may be too conservative to yield usable shields in problems of interest.
+One central challenge to constructing a tenable probabilistic uncertainty model is the fact that the perception environment experienced by an agent will never exactly match the data from which the uncertainty model was built.
+This change manifests as a distributional shift in model probabilities. A model’s design determines how robust it is to different kinds of distributional shift.
+One type of shift results from
+a change in the control policy from when the data was collected to when the agent is deployed.
+This changes the distribution of states the
+agent visits
+[
+29
+]
+, but it does not change the
+probability
+associated with producing an observation from a particular state, called an
+emission probability
+. There are several
+uncertainty modeling techniques which are not robust to
+cont</p>
+
+<p>rol-based shift
+. One is conformal wrappers,
+which modify the neural perceptor to be
+set estimators with a guaranteed lower bound on the
+probability
+of the true outcome being contained within the set
+[
+3
+,
+35
+]
+and have been used for shielding
+[
+30
+]
+. This guarantee relies on exchangeability, a property that can be violated by control-based shift without additional correction
+[
+34
+,
+13
+]
+.
+To guard against control-based shift one can isolate the individual per-state emission probabilities because these probabilities are independent of the true state distribution experienced by the agent. However, this method is not robust to a more pernicious type of distributional shift,
+deployment shift
+, which changes the per-state emission probabilities themselves.
+Deployment shift is inherent to our problem setting because the perception uncertainty model is learned from finite data, guaranteeing the sampled probabilities will not exactly match their deployment realizations
+[
+25
+]
+. Our goal is to build a model robust to control-based shift that guards against deployment shift to the extent that is feasible.
+We begin with a Partially Observable Markov Decision Process (
+POMDP
+) model of the agent (or system) with a discrete state and action spaces, which is an appropriate base model in this setting as it describes a control system with limited access to state data
+[
+19
+]
+. In this paper we work throughout with finite discrete models: discrete latent states, discrete actions, and a finit</p>
+
+<p>感知栈输出的离散观测集合。具体而言，POMDP将描述状态空间如何演化的动力学模型，与描述每个状态发射概率的感知不确定性模型组合在一起 [ 26 , 32 ]。我们处理一种常见的情况，即系统动力学被精确建模，但感知不确定性模型是由有限的标注数据构建的。我们的方法在</p>
+
+<p>arts from a perfect-perception shield,
+where the agent is assumed to have access to the true state of the system, and lifts it to the imperfect-perception setting. The underlying perfect-perception shield
+may come from Probabilistically Controlled Invariant Sets (
+PCIS
+)
+[
+12
+]
+, barrier-certificate methods
+[
+2
+]
+, or other state-space shield-synthesis procedures. Starting from such a shield is deliberate: computing a shield directly in belief space under interval observations scales poorly because the belief update is set-valued and normalized, producing high-dimensional nonconvex reachable sets
+[
+24
+]
+. Our method therefore propagates over-approximations of reachable beliefs and tests action admissibility to the shield through worst-case linear objectives over that envelope, solved with linear programming. The resulting design is modular by allowing various perfect-perception shield designs, conservative by construction, and separates dynamics-level safety shielding from reasoning about perception uncertainty.
+We evaluate the method on four benchmark domains: TaxiNet, Obstacle, CartPole, and Refuel. The experiments address two main empirical questions. First, across these benchmarks, how do different shields compare in safety and usability under imperfect-perception? To answer this, we compare
+our proposed shield with two under-approximate variants of our shield construction and two other baselines including the support-based shield of Carr
+et al.
+[
+6
+]
+.
+Second, how conser</p>
+
+<p>所提方法使用的包络抽象有多保守？为了回答这个问题，我们将包络对可达信念的过近似与前向采样的欠近似进行了比较。综合来看，这些实验表明，区间信念包络屏蔽在部分可观测机制中最有用，在这种机制下，假设点发射概率构建的屏蔽过于乐观，而基于支撑集的屏蔽又变得过于粗糙，同时实验也揭示了依赖于基准测试的计算限制。相关的构件已归档于 Software Heritage [ 31 ] 。</p>
+
+<p>贡献</p>
+
+<p>我们做出以下贡献：</p>
+
+<p>1. 对所研究的不完美感知系统进行了 IPOMDP 建模，包括有限数据观测不确定性以及有限离散模型的相关屏蔽问题。
+2. 一种针对 IPOMDP 的运行时屏蔽构建，将完美感知屏蔽扩展至不完美感知环境中。
+3. 一种可靠的基于线性规划/线性分式规划的方法，用于过近似 IPOMDP 中的可达信念状态，并使用这些包络进行保守的动作容许判断。
+4. 跨四个基准领域（TaxiNet、Obstacle、CartPole 和 Refuel）的经验证据，包括对 Observation、Single-Belief、Envelope、Fwd-Sampling 和基于支撑集的屏蔽的比较，以及对包络保守性的定量研究。
+5. 对该构建的概率自动机/范畴论解释，解释了凸抽象</p>
+
+<p>used for interval belief reasoning; available in supplementary material.
+II
+Preliminaries
+II-A
+System Model
+We begin with a discrete Markov Decision Process (MDP) model of the agent/system,
+ℳ
+=
+(
+S
+,
+A
+,
+T
+)
+,
+\mathcal{M}=(S,A,T),
+where
+S
+S
+is a finite state set,
+A
+A
+is a finite action set, and
+T
+:
+S
+×
+A
+×
+S
+→
+[
+0
+,
+1
+]
+T:S\times A\times S\to[0,1]
+is the transition kernel. At time
+t
+t
+, the system is in state
+s
+t
+∈
+S
+s_{t}\in S
+, the controller chooses action
+a
+t
+∈
+A
+a_{t}\in A
+, and the next state is sampled from
+T
+​
+(
+s
+t
+,
+a
+t
+,
+⋅
+)
+T(s_{t},a_{t},\cdot)
+.
+Perfect perception
+Under perfect perception, the controller observes
+s
+t
+s_{t}
+exactly before selecting
+a
+t
+a_{t}
+. In that setting the decision problem is an MDP over the true state space
+S
+S
+.
+Imperfect perception and raw sensor inputs
+In learned autonomy, the controller typically does not observe
+s
+t
+s_{t}
+directly. Instead, a perception component receives a raw sensor input
+y
+t
+∈
+𝒴
+y_{t}\in\mathcal{Y}
+, where
+𝒴
+\mathcal{Y}
+may be high-dimensional, for example an image space. Although
+y
+t
+y_{t}
+is the direct result of
+s
+t
+s_{t}
+, the relationship which produces
+y
+t
+y_{t}
+involves environmental conditions and therefore is extremely difficult to model directly. A learned perception component, such as a deep neural network, then converts
+y
+t
+y_{t}
+into a finite symbolic output. This output is what the controller
+observes
+in the system model, and forms the basis of the belief of state space occupation.
+II-B
+System Model w</p>
+
+<p>ith Probabilistic Abstraction
+Let
+O
+O
+be a finite set of discrete observations. Rather than model the raw sensor domain
+𝒴
+\mathcal{Y}
+directly, we apply previous work
+[
+26
+,
+32
+]
+to summarize the perception pipeline by a conditional distribution from the true state (
+s
+t
+s_{t}
+) of the system at time
+t
+t
+to discrete perception outputs,
+Z
+​
+(
+o
+∣
+s
+)
+=
+Pr
+⁡
+[
+perception outputs
+​
+o
+∣
+s
+t
+=
+s
+]
+,
+o
+∈
+O
+.
+Z(o\mid s)=\Pr[\text{perception outputs }o\mid s_{t}=s],\qquad o\in O.
+The type
+Z
+:
+S
+×
+O
+→
+[
+0
+,
+1
+]
+Z:S\times O\rightarrow[0,1]
+fits a POMDP-style model of the imperfect-perception system: the true state evolves according to
+T
+T
+, remains hidden from the controller, and the controller instead receives observations drawn from
+Z
+(
+⋅
+∣
+s
+)
+Z(\cdot\mid s)
+. The abstraction avoids carrying the full high-dimensional sensor domain through the system model: all sensor complexity is compressed into the finite perception uncertainty model
+Z
+Z
+, which records only the probabilities of the perception outputs relevant to decision making. Throughout the paper we stay in this finite discrete setting, so the shield reasons over discrete latent states, discrete actions, and discrete observation symbols rather than continuous sensor values directly.
+This probabilistic abstraction is close in spirit to recent approaches that also replace the raw sensor domain by a compact stochastic interface between true state and downstream reasoning. Schäfers
+et al.
+use a learned perception uncertainty model</p>
+
+<p>to produce probabilistic state summaries for POMDP belief updates
+[
+32
+]
+, while Păsăreanu
+et al.
+use confusion-matrix-derived probabilistic abstractions to enable closed-loop probabilistic analysis of vision-based autonomy
+[
+26
+]
+. Our work shares this abstraction viewpoint, but then develops an interval-valued version of
+Z
+Z
+to support conservative shielding under finite-data uncertainty.
+POMDP
+With a fixed (perception uncertainty model)
+Z
+Z
+, the imperfect-perception system is a POMDP
+𝒫
+=
+(
+S
+,
+A
+,
+O
+,
+T
+,
+Z
+)
+.
+\mathcal{P}=(S,A,O,T,Z).
+We write
+Δ
+​
+(
+S
+)
+\Delta(S)
+for the probability simplex over
+S
+S
+. For a history
+h
+t
+h_{t}
+of action, observation pairs, a belief
+b
+t
+∈
+Δ
+​
+(
+S
+)
+b_{t}\in\Delta(S)
+is the posterior distribution over the true state given that history, i.e.,
+b
+t
+​
+(
+s
+)
+=
+Pr
+⁡
+[
+s
+t
+=
+s
+|
+h
+t
+]
+.
+b_{t}(s)=\Pr[s_{t}=s|h_{t}].
+Given prior belief
+b
+t
+∈
+Δ
+​
+(
+S
+)
+b_{t}\in\Delta(S)
+, action
+a
+t
+a_{t}
+, and received observation
+o
+t
++
+1
+o_{t+1}
+, the controller updates its belief by Bayesian filtering
+[
+19
+]
+. The state still evolves according to
+T
+T
+; the uncertainty comes from not observing
+s
+t
+s_{t}
+directly and instead receiving only
+o
+t
+o_{t}
+through the perception uncertainty model
+Z
+Z
+.
+II-C
+Interval POMDP System Model
+In practice we must estimate the true
+Z
+Z
+from finite data. While one can form point estimates of the emission probabilities, finite-sample error can make those estimates arbitrarily misleading, especially for rarely observed state-observatio</p>
+
+<p>n pairs. We therefore replace the single perception uncertainty model by interval bounds
+Z
+−
+,
+Z
++
+:
+S
+×
+O
+→
+[
+0
+,
+1
+]
+Z^{-},Z^{+}:S\times O\to[0,1]
+[
+26
+,
+8
+]
+and define the admissible set of perception uncertainty models
+𝒵
+=
+{
+Z
+|
+∀
+s
+,
+o
+:
+Z
+−
+​
+(
+o
+∣
+s
+)
+≤
+Z
+​
+(
+o
+∣
+s
+)
+≤
+Z
++
+​
+(
+o
+∣
+s
+)
+,
+∀
+s
+:
+∑
+o
+Z
+​
+(
+o
+∣
+s
+)
+=
+1
+.
+}
+.
+\mathcal{Z}=\left\{Z~\middle|~\begin{aligned} &amp;\forall s,o:\;Z^{-}(o\mid s)\leq Z(o\mid s)\leq Z^{+}(o\mid s),\\
+&amp;\forall s:\;\sum_{o}Z(o\mid s)=1.\end{aligned}\right\}.
+Definition II.1
+(
+IPOMDP
+)
+.
+An
+IPOMDP
+is a tuple
+ℐ
+=
+(
+S
+,
+A
+,
+O
+,
+T
+,
+Z
+−
+,
+Z
++
+)
+,
+\mathcal{I}=(S,A,O,T,Z^{-},Z^{+}),
+where
+(
+S
+,
+A
+,
+T
+)
+(S,A,T)
+is the inital MDP system and
+𝒵
+\mathcal{Z}
+is the admissible set of perception uncertainty models defined above.
+Given history
+h
+t
+=
+(
+a
+0
+,
+o
+1
+,
+…
+,
+a
+t
+−
+1
+,
+o
+t
+)
+h_{t}=(a_{0},o_{1},\dots,a_{t-1},o_{t})
+and prior belief
+b
+0
+∈
+Δ
+​
+(
+S
+)
+b_{0}\in\Delta(S)
+, each
+Z
+∈
+𝒵
+Z\in\mathcal{Z}
+induces a posterior belief
+b
+t
+Z
+b_{t}^{Z}
+. Over all elements of
+𝒵
+\mathcal{Z}
+, this forms a set of beliefs:
+ℬ
+t
+​
+(
+b
+0
+,
+h
+t
+)
+=
+{
+b
+t
+Z
+:
+Z
+∈
+𝒵
+}
+.
+\mathcal{B}_{t}(b_{0},h_{t})=\{b_{t}^{Z}:Z\in\mathcal{Z}\}.
+This definition fixes a single unknown
+Z
+Z
+across the whole history
+h
+t
+h_{t}
+. For shielding we use a more conservative semantics that allows the perception uncertainty model to vary within
+𝒵
+\mathcal{Z}
+at each step; as a result our belief-envelope construction is a superset of the belief set produced by the fixed semantcs. We adopt this stronger p</p>
+
+<p>er-step-varying semantics because the safety guarantee should remain valid for any admissible realization of the perception error at each step, rather than depending on one fixed but unknown kernel being sampled once and then held constant for the whole trajectory. There is also a computational reason for this: the deployed method propagates a compact belief envelope at runtime, which scales much better than recomputing the exact shield from the entire action-observation history at each step.
+In an ordinary POMDP, a single posterior belief is updated by Bayesian filtering. In an
+IPOMDP
+, however, interval uncertainty in the perception uncertainty model means that a whole set of posterior beliefs can be consistent with the same history, so we will need a separate algorithm to propagate a conservative belief envelope over a history.
+PAC guarantee
+When the interval bounds are constructed from finite labeled data using confidence intervals, the resulting
+IPOMDP
+carries a dataset-level model-correctness guarantee. In particular, if the true perception uncertainty model is denoted by
+Z
+∗
+Z^{\ast}
+, then our construction ensures
+Pr
+⁡
+[
+Z
+∗
+∈
+𝒵
+]
+≥
+λ
+,
+\Pr[Z^{\ast}\in\mathcal{Z}]\geq\lambda,
+for a user-chosen confidence level
+λ
+\lambda
+. Section
+IV
+gives the concrete Clopper–Pearson construction and the corresponding union-bound argument.
+II-D
+Shielding
+Our objective is to lift a state-based (perfect-perception) safety shield to the imperfect-perception setting rather than synthesize</p>
+
+<p>an entirely new shield.
+Definition II.2
+(Perfect-Perception Shield)
+.
+A perfect-perception shield is a map
+Ω
+:
+S
+→
+2
+A
+\Omega:S\to 2^{A}
+assigning each true state the set of admissible actions.
+The shield is intended to enforce a safety specification defined by a designated safe set of states specified logically. It removes actions that would make leaving that safe set too likely under the chosen guarantee notion. In other words, we consider safety specifications that can be expressed using the safety fragment of Probabilistic Computational Tree Logic (PCTL).
+This definition provides a minimal interface – a map from true states to a set of actions – and is agnostic to how the shield is synthesized. It may come from reachability analysis, barrier-certificate methods, controlled invariant sets, or any other state-space shield construction.
+Definition II.3
+(Imperfect-Perception Shield)
+.
+An imperfect-perception shield is a map
+Ξ
+:
+⋃
+t
+≥
+0
+ℋ
+t
+→
+2
+A
+\Xi:\bigcup_{t\geq 0}\mathcal{H}_{t}\to 2^{A}
+from finite action-observation histories to sets of actions.
+Here
+ℋ
+t
+\mathcal{H}_{t}
+denotes the set of length-
+t
+t
+action-observation histories, e.g.
+h
+t
+=
+(
+a
+0
+,
+o
+1
+,
+…
+,
+a
+t
+−
+1
+,
+o
+t
+)
+∈
+(
+A
+×
+O
+)
+t
+h_{t}=(a_{0},o_{1},\dots,a_{t-1},o_{t})\in(A\times O)^{t}
+. This is the trajectory-level shielding object: given the history available at time
+t
+t
+, it returns the actions permitted at that time.
+A runtime shield, by contrast, is the runtime mechanism used to realize such a map. It main</p>
+
+<p>tains an internal summary of state uncertainty, updates that summary after each action-observation pair, and computes the next permitted-action set. In this way, the runtime shield induces an imperfect-perception shield over histories. This distinction matters because although the shield itself is fundamentally history-based, our implementation is designed to avoid storing and recomputing over the full history explicitly.
+To define the runtime shield, first define the action-safety indicator from the perfect-perception shield
+χ
+Ω
+​
+(
+s
+,
+a
+)
+=
+{
+1
+,
+a
+∈
+Ω
+​
+(
+s
+)
+,
+0
+,
+a
+∉
+Ω
+​
+(
+s
+)
+.
+\chi_{\Omega}(s,a)=\begin{cases}1,&amp;a\in\Omega(s),\\
+0,&amp;a\notin\Omega(s).\end{cases}
+For a history
+h
+t
+h_{t}
+, initial belief
+b
+0
+b_{0}
+, and threshold
+β
+∈
+[
+0
+,
+1
+]
+\beta\in[0,1]
+, the exact lifted shield induced by
+Ω
+\Omega
+is
+Ξ
+⋆
+​
+(
+h
+t
+)
+=
+{
+a
+∈
+A
+:
+inf
+b
+∈
+ℬ
+t
+​
+(
+b
+0
+,
+h
+t
+)
+∑
+s
+∈
+S
+b
+​
+(
+s
+)
+​
+χ
+Ω
+​
+(
+s
+,
+a
+)
+≥
+β
+}
+.
+\Xi^{\star}(h_{t})=\left\{a\in A:\inf_{b\in\mathcal{B}_{t}(b_{0},h_{t})}\sum_{s\in S}b(s)\chi_{\Omega}(s,a)\geq\beta\right\}.
+(1)
+That is, an action is permitted only if it remains
+Ω
+\Omega
+-admissible with probability at least
+β
+\beta
+under every belief in the interval-POMDP reachable-belief set
+ℬ
+t
+​
+(
+b
+0
+,
+h
+t
+)
+\mathcal{B}_{t}(b_{0},h_{t})
+. Our method approximates this exact object conservatively using belief envelopes that over-approximate that reachable-belief set.
+PCIS construction
+We use Probabilistically Controlled Invariant Sets (
+PCIS
+) as the main source of perf</p>
+
+<p>ect-perception shields because they provide a composable stochastic invariance certificate
+[
+12
+]
+. In that framework, an
+N
+N
+-step
+ϵ
+\epsilon
+-PCIS is a set of states
+C
+C
+such that each state in
+C
+C
+admits a policy that keeps the trajectory inside
+C
+C
+for
+N
+N
+steps with probability at least
+ϵ
+\epsilon
+; the infinite-horizon variant requires this for all future times.
+To obtain a perfect-perception shield from a certified invariant set
+C
+⊆
+S
+C\subseteq S
+, we define
+Ω
+​
+(
+s
+)
+=
+{
+a
+∈
+A
+:
+∑
+s
+′
+∈
+C
+T
+​
+(
+s
+,
+a
+,
+s
+′
+)
+≥
+γ
+}
+,
+\Omega(s)=\left\{a\in A:\sum_{s^{\prime}\in C}T(s,a,s^{\prime})\geq\gamma\right\},
+(2)
+with threshold
+γ
+∈
+(
+0
+,
+1
+]
+\gamma\in(0,1]
+. Thus, PCIS supplies the invariant core
+C
+C
+, and
+Ω
+\Omega
+is the induced state-action shield under the known dynamics kernel
+T
+T
+. The remainder of the paper only requires the interface
+Ω
+:
+S
+→
+2
+A
+\Omega:S\to 2^{A}
+, so the runtime lifting method is compatible with other perfect-perception shield constructions as well.
+III
+Method
+Because
+Ω
+\Omega
+is synthesized offline in true-state space, the runtime task is simply to ask whether an action is safe for every belief that remains consistent with the action-observation history and the perception uncertainty.
+At each time step, the runtime shield maintains a conservative set of beliefs consistent with the action-observation history and admits only those actions that are safe for every belief in that set. To do this we reduce belief envelope propagation to a linear optimization</p>
+
+<p>problem over a template domain. The introduction of a template domain results in an over-approximation of the belief domain, but is required to make the linear programming (LP) problem tractable.
+Our goal is to propagate not just one belief but an entire belief envelope through an action-observation update, so we begin with the algorithm to propagate a single belief, the ordinary POMDP forward recursion, equivalently the Bayes-filter update
+[
+28
+]
+. Given a prior belief
+b
+b
+and action-observation pair
+(
+a
+,
+o
+)
+(a,o)
+, the unnormalized posterior mass is
+u
+s
+′
+=
+Z
+​
+(
+o
+∣
+s
+′
+)
+​
+∑
+s
+∈
+S
+T
+​
+(
+s
+,
+a
+,
+s
+′
+)
+​
+b
+​
+(
+s
+)
+,
+u_{s^{\prime}}=Z(o\mid s^{\prime})\sum_{s\in S}T(s,a,s^{\prime})\,b(s),
+and the posterior belief is obtained by normalizing
+u
+u
+. Equivalently, in vector form,
+y
+=
+T
+a
+⊤
+​
+b
+,
+u
+s
+=
+y
+s
+​
+Z
+​
+(
+o
+∣
+s
+)
+,
+b
+s
+′
+=
+u
+s
+∑
+j
+u
+j
+.
+y=T_{a}^{\top}b,\qquad u_{s}=y_{s}Z(o\mid s),\qquad b^{\prime}_{s}=\frac{u_{s}}{\sum_{j}u_{j}}.
+Our envelope update follows exactly this forward recursion, but it must do so simultaneously for every prior belief in
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+and every perception uncertainty model in the admissible set
+𝒵
+\mathcal{Z}
+. The role of the LP is therefore not to change the filtering rule, but to perform the forward recursion simultaneously over a set of beliefs in the context of multiple perception uncertainty models.
+III-A
+Exact Admissibility Objective
+For each action
+a
+a
+, define the belief-level safety score
+ϕ
+a
+​
+(
+b
+)
+=
+∑
+s
+∈
+S
+b
+​
+(
+s</p>
+
+<p>)
+​
+χ
+Ω
+​
+(
+s
+,
+a
+)
+.
+\phi_{a}(b)=\sum_{s\in S}b(s)\chi_{\Omega}(s,a).
+Given history
+h
+t
+h_{t}
+, exact admissibility at threshold
+β
+\beta
+is
+a
+∈
+Ξ
+⋆
+​
+(
+h
+t
+)
+⇔
+inf
+b
+∈
+ℬ
+t
+​
+(
+b
+0
+,
+h
+t
+)
+ϕ
+a
+​
+(
+b
+)
+≥
+β
+.
+a\in\Xi^{\star}(h_{t})\iff\inf_{b\in\mathcal{B}_{t}(b_{0},h_{t})}\phi_{a}(b)\geq\beta.
+This is exactly the shield defined in Equation (
+1
+), written using
+ϕ
+a
+\phi_{a}
+for compactness. Since
+ℬ
+t
+\mathcal{B}_{t}
+is generally intractable to represent exactly, we replace it with the conservative envelope
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+in the deployed runtime shield below.
+III-B
+Why Exact Convex-Hull Propagation is Intractable
+The exact lifted shield depends on the reachable-belief set
+ℬ
+t
+\mathcal{B}_{t}
+, so the main algorithmic question is how to represent and propagate that set online. A natural first idea is to propagate the exact reachable set itself, but that approach is intractable.
+The
+dynamical state update
+step
+of the IPOMDP that applies the transition kernel
+T
+T
+is affine in the belief, so it preserves convexity by itself. The difficulty appears in the observation update: the posterior is obtained by multiplying by emission probability intervals and then normalizing by the total evidence mass, which introduces bilinear and linear-fractional terms.
+As a result, even when the current belief set is convex, the exact set of reachable posteriors can become nonconvex after one update. Intuitively, an extreme point of this reachable set corresponds to a worst-case combi</p>
+
+<p>nation of two ingredients: a corner of the current belief set and a particular choice of endpoint
+probabilities
+within the observation intervals. After one step, each such corner case can branch into many new corner cases, because a different endpoint choice can be worst-case for each state and observation. Repeating this process over time causes the number of relevant extreme points to grow exponentially with the horizon. This vertex explosion makes exact convex-hull propagation scale very poorly in both memory and runtime, which is why it is not suitable for online shielding
+[
+24
+]
+.
+III-C
+Outer Polytope Propagation
+We describe how to propagate the belief envelope through the IPOMDP for a single step, i.e., a single application of the dynamics and observation update under a fixed action
+a
+a
+.
+We represent each belief envelope by a
+template polytope
+: a polytope described by a fixed set of linear directions chosen in advance, together with the worst-case bound attained in each direction. Equivalently, the template matrix specifies which halfspaces we track, and the vector of offsets records how far the reachable set extends along those directions. At time
+t
+t
+, maintain
+ℬ
+^
+t
+=
+{
+b
+∈
+ℝ
+|
+S
+|
+:
+A
+t
+​
+b
+≤
+d
+t
+,
+b
+≥
+0
+,
+1
+⊤
+​
+b
+=
+1
+}
+,
+ℬ
+t
+⊆
+ℬ
+^
+t
+.
+\widehat{\mathcal{B}}_{t}=\{b\in\mathbb{R}^{|S|}:A_{t}b\leq d_{t},\;b\geq 0,\;\mathbf{1}^{\top}b=1\},\quad\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}.
+A key structural reason for using convex envelopes is that the
+dynamical st</p>
+
+<p>ate update step is affine in the current belief, so sets of reachable pre-normalization beliefs remain convex; the loss of convexity enters only
+due to the normalization operation of the observation update step.
+Our goal is not to propagate one posterior belief, but an entire prior belief envelope through an action-observation update. The difficulty is that the exact update does not fit directly into LP: uncertain observation
+probabilities
+create bilinear products, and Bayes normalization introduces division by the total evidence mass. The purpose of the next steps is therefore to rewrite the propagation problem into a conservative LP-solvable form.
+Steps 1–3 describe the update for one candidate prior belief
+b
+∈
+ℬ
+^
+t
+b\in\widehat{\mathcal{B}}_{t}
+and explain how to translate the per belief update into a linear program. Step 4 then combines each of these linear programs to compute the final belief envelope by optimizing template directions over all prior beliefs and all admissible observation-probability choices.
+Step 1 (Dynamical state update):
+Assuming that the agent chooses action
+a
+a
+, we can propagate a prior belief through the known dynamics as,
+y
+=
+T
+a
+⊤
+​
+b
+.
+y=T_{a}^{\top}b.
+Here
+T
+a
+T_{a}
+is the transition matrix for action
+a
+a
+. This step computes the next-state belief based on the known dynamics function. The vector
+y
+y
+is the
+belief after the action
+a
+a
+but before conditioning on the observation. This map is affine in
+b
+b
+, so convexity is preserved and the upda</p>
+
+<p>te remains LP-compatible.
+Step 2 (Observation update without normalization):
+At this point the current observation
+o
+o
+arrives. Assuming that
+w
+w
+denotes the observation probabilities, the updated unnormalized belief is given by,
+Z
+−
+​
+(
+o
+∣
+s
+)
+≤
+w
+s
+≤
+Z
++
+​
+(
+o
+∣
+s
+)
+,
+u
+s
+=
+y
+s
+​
+w
+s
+∀
+s
+.
+Z^{-}(o\mid s)\leq w_{s}\leq Z^{+}(o\mid s),\qquad u_{s}=y_{s}w_{s}\quad\forall s.
+For each state
+s
+s
+, the scalar
+w
+s
+w_{s}
+denotes the observation
+probability
+Z
+​
+(
+o
+∣
+s
+)
+Z(o\mid s)
+chosen from the admissible interval for that state-observation pair. The quantity
+u
+s
+u_{s}
+is the resulting unnormalized posterior mass contributed by state
+s
+s
+:
+post-dynamical update belief for state
+s
+s
+,
+y
+s
+y_{s}
+, weighted by the probability that state
+s
+s
+produces observation
+o
+o
+. In an ordinary POMDP
+w
+s
+w_{s}
+would be fixed; in an
+IPOMDP
+w
+s
+w_{s}
+may vary within the interval, so we must account for all admissible choices.
+The scalar
+∑
+j
+u
+j
+\sum_{j}u_{j}
+is the total evidence mass used in the normalization step below. So
+u
+s
+u_{s}
+is intentionally state-wise, while
+∑
+j
+u
+j
+\sum_{j}u_{j}
+is the quantity obtained after summing those state-wise contributions across all
+s
+s
+.
+The coupling term is bilinear, so we replace
+u
+s
+=
+y
+s
+​
+w
+s
+u_{s}=y_{s}w_{s}
+by its McCormick envelope
+[
+21
+]
+over known bounds on
+y
+s
+y_{s}
+and
+w
+s
+w_{s}
+. This gives a sound linear
+over-approximation
+of feasible
+(
+u
+,
+y
+,
+w
+)
+(u,y,w)
+tuples. Intuitively, the McCormick envelope is the standard LP relaxation of a bounded pro</p>
+
+<p>duct: it replaces the exact bilinear equality by linear inequalities that still contain every feasible product value. In this sense, the resulting optimization is an LP relaxation of the forward recursion over the whole belief envelope rather than a different update rule.
+Step 3 (Normalization):
+Posterior belief is fractional,
+b
+s
+′
+=
+u
+s
+∑
+j
+u
+j
+.
+b^{\prime}_{s}=\frac{u_{s}}{\sum_{j}u_{j}}.
+This is the usual Bayes normalization: divide each unnormalized posterior mass by the total evidence mass so the posterior sums to one. That division is exactly what breaks linearity. To recover LP solvability, we apply Charnes–Cooper
+[
+7
+]
+: introduce a scaling variable for
+(
+∑
+j
+u
+j
+)
+−
+1
+\left(\sum_{j}u_{j}\right)^{-1}
+and scale decision variables so normalization constraints become linear.
+A useful way to view this step is to work first with unnormalized posterior masses, where the update is affine, and then recover normalized beliefs through a linear-fractional normalization handled by Charnes–Cooper. Intuitively, this rewrites the posterior update so that division by the total evidence mass is absorbed into the new variables, allowing normalized posterior queries to be solved by LP without changing their optimal values.
+Step 4 (Template projection):
+Lift the single-belief update to the whole envelope. Fix template matrix
+A
+t
++
+1
+A_{t+1}
+and define
+ℬ
+^
+t
++
+1
+=
+{
+b
+′
+∈
+ℝ
+|
+S
+|
+:
+A
+t
++
+1
+​
+b
+′
+≤
+d
+t
++
+1
+,
+b
+′
+≥
+0
+,
+1
+⊤
+​
+b
+′
+=
+1
+}
+,
+\widehat{\mathcal{B}}_{t+1}=\{b^{\prime}\in\mathbb{R}</p>
+
+<p>^{|S|}:A_{t+1}b^{\prime}\leq d_{t+1},\;b^{\prime}\geq 0,\;\mathbf{1}^{\top}b^{\prime}=1\},
+where each entry is computed by one LP (with
+c
+i
+⊤
+c_{i}^{\top}
+the
+i
+i
+th row of
+A
+t
++
+1
+A_{t+1}
+):
+d
+t
++
+1
+,
+i
+=
+sup
+c
+i
+⊤
+​
+b
+′
+,
+d_{t+1,i}=\sup c_{i}^{\top}b^{\prime},
+The LP includes: prior envelope constraints (
+A
+t
+​
+b
+≤
+d
+t
+A_{t}b\leq d_{t}
+), probability constraints on the prior (
+b
+≥
+0
+b\geq 0
+,
+𝟏
+⊤
+​
+b
+=
+1
+\mathbf{1}^{\top}b=1
+), the dynamical update constraint
+y
+=
+T
+a
+⊤
+​
+b
+y=T_{a}^{\top}b
+, interval bounds on
+w
+w
+, McCormick inequalities for
+(
+u
+,
+y
+,
+w
+)
+(u,y,w)
+, and Charnes–Cooper linearized normalization constraints. From the beginning, these are just the law of total probability:
+b
+≥
+0
+b\geq 0
+and
+𝟏
+⊤
+​
+b
+=
+1
+\mathbf{1}^{\top}b=1
+say that the prior is a probability distribution, and once
+y
+=
+T
+a
+⊤
+​
+b
+y=T_{a}^{\top}b
+with row-stochastic
+T
+a
+T_{a}
+, we obtain
+𝟏
+⊤
+​
+y
+=
+1
+\mathbf{1}^{\top}y=1
+automatically. Thus the propagated pre-observation vector
+y
+y
+is itself a valid distribution before conditioning on
+o
+o
+. Step 4 is where the whole prior envelope is propagated: each LP ranges over every prior belief in
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+together with every admissible
+choice for the observation probabilities from the intervals
+and returns the worst-case extent of the reachable posterior set in one template direction.
+Facet-wise maximization gives the tightest bound along each chosen template direction while keeping runtime propagation tractable.
+Geometrically, each row</p>
+
+<p>of the template matrix asks how far the reachable posterior set extends in one chosen direction in belief space; for example, with coordinate directions, the template polytope simply records upper and lower bounds on each state’s belief mass.
+The update cost of facet-wise maximization is one LP per template facet (or direction). If
+n
+=
+|
+S
+|
+n=|S|
+and
+m
+t
+m_{t}
+is the number of constraints in
+A
+t
+​
+b
+≤
+d
+t
+A_{t}b\leq d_{t}
+, a typical lifted LP has
+O
+​
+(
+n
+)
+O(n)
+variables (roughly
+4
+​
+n
+4n
+to
+5
+​
+n
+5n
+, depending on normalization variables) and
+O
+​
+(
+m
+t
++
+n
+)
+O(m_{t}+n)
+linear constraints, with a constant-factor increase from the four McCormick inequalities per state. With
+k
+t
++
+1
+k_{t+1}
+template rows, propagation solves
+k
+t
++
+1
+k_{t+1}
+LPs per action-observation update. In practice, this means the dominant cost scales with the number of template facets together with the action-observation branching that must be evaluated at runtime; Fig.
+4
+returns to this tradeoff empirically.
+The shape of
+ℬ
+^
+t
++
+1
+\widehat{\mathcal{B}}_{t+1}
+is a template polytope in
+H
+H
+-representation: an intersection of halfspaces with the probability simplex. This choice makes worst-case linear safety queries and propagation share the same LP machinery. In this work we use hypercube templates, i.e., coordinate-wise bounds on belief mass. Other template families, such as zonotopes, ellipsoids, or vertex-based polytopes, could be used instead, with the usual tradeoff that richer templates can tighten</p>
+
+<p>the envelope at higher computational cost.
+III-D
+Conservative Shield
+Define lower bound
+p
+¯
+t
+​
+(
+a
+)
+=
+inf
+b
+∈
+ℬ
+^
+t
+ϕ
+a
+​
+(
+b
+)
+.
+\underline{p}_{t}(a)=\inf_{b\in\widehat{\mathcal{B}}_{t}}\phi_{a}(b).
+The deployed shield is
+Ξ
+^
+​
+(
+h
+t
+)
+=
+{
+a
+∈
+A
+:
+p
+¯
+t
+​
+(
+a
+)
+≥
+β
+}
+.
+\widehat{\Xi}(h_{t})=\{a\in A:\underline{p}_{t}(a)\geq\beta\}.
+The replacement of
+ℬ
+t
+\mathcal{B}_{t}
+with
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+in the infimum calculation is conservative because
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+contains every belief in
+ℬ
+t
+\mathcal{B}_{t}
+, so minimizing over the larger set can only decrease the safety score and therefore can only remove actions, not admit unsound ones.
+IV
+Interval Construction and PAC Correctness
+We now show how the interval bounds are constructed from finite labeled data and why the resulting admissible set of perception uncertainty models contains the true perception uncertainty model with high probability. This section supplies the statistical side of the method: the previous sections defined how shielding uses the admissible set of perception uncertainty models online, and here we explain how those interval bounds are learned offline with a finite-sample correctness guarantee.
+IV-A
+Clopper–Pearson Construction
+For each true state
+s
+s
+and observation
+o
+o
+, let
+n
+s
+n_{s}
+be the number of samples with true label
+s
+s
+, and
+k
+s
+,
+o
+k_{s,o}
+the count observed as
+o
+o
+. We use these counts to estimate the emission probability
+Z
+​
+(
+o
+∣
+s
+)
+Z(o\mid s)
+and to construc</p>
+
+<p>t a confidence interval for that probability. For confidence level
+1
+−
+α
+s
+,
+o
+1-\alpha_{s,o}
+, the corresponding Clopper–Pearson bounds are
+Z
+−
+​
+(
+o
+∣
+s
+)
+\displaystyle Z^{-}(o\mid s)
+=
+BetaInv
+​
+(
+α
+s
+,
+o
+2
+;
+k
+s
+,
+o
+,
+n
+s
+−
+k
+s
+,
+o
++
+1
+)
+,
+\displaystyle=\mathrm{BetaInv}\!\left(\frac{\alpha_{s,o}}{2};k_{s,o},n_{s}-k_{s,o}+1\right),
+(3)
+Z
++
+​
+(
+o
+∣
+s
+)
+\displaystyle Z^{+}(o\mid s)
+=
+BetaInv
+​
+(
+1
+−
+α
+s
+,
+o
+2
+;
+k
+s
+,
+o
++
+1
+,
+n
+s
+−
+k
+s
+,
+o
+)
+,
+\displaystyle=\mathrm{BetaInv}\!\left(1-\frac{\alpha_{s,o}}{2};k_{s,o}+1,n_{s}-k_{s,o}\right),
+(4)
+where
+BetaInv
+​
+(
+q
+;
+a
+,
+b
+)
+\mathrm{BetaInv}(q;a,b)
+denotes the
+q
+q
+-quantile (inverse CDF) of a
+Beta
+​
+(
+a
+,
+b
+)
+\mathrm{Beta}(a,b)
+distribution. These are the exact equal-tail binomial confidence bounds for the entry
+Z
+​
+(
+o
+∣
+s
+)
+Z(o\mid s)
+. For the edge cases, we use the standard Clopper–Pearson conventions: if
+k
+s
+,
+o
+=
+0
+k_{s,o}=0
+, then
+Z
+−
+​
+(
+o
+∣
+s
+)
+=
+0
+Z^{-}(o\mid s)=0
+and
+Z
++
+​
+(
+o
+∣
+s
+)
+=
+BetaInv
+​
+(
+1
+−
+α
+s
+,
+o
+2
+;
+1
+,
+n
+s
+)
+Z^{+}(o\mid s)=\mathrm{BetaInv}\!\left(1-\frac{\alpha_{s,o}}{2};1,n_{s}\right)
+; if
+k
+s
+,
+o
+=
+n
+s
+k_{s,o}=n_{s}
+, then
+Z
+−
+​
+(
+o
+∣
+s
+)
+=
+BetaInv
+​
+(
+α
+s
+,
+o
+2
+;
+n
+s
+,
+1
+)
+Z^{-}(o\mid s)=\mathrm{BetaInv}\!\left(\frac{\alpha_{s,o}}{2};n_{s},1\right)
+and
+Z
++
+​
+(
+o
+∣
+s
+)
+=
+1
+Z^{+}(o\mid s)=1
+.
+These interval endpoints define the admissible set of perception uncertainty models
+𝒵
+\mathcal{Z}
+together with the simplex constraints
+∑
+o
+Z
+​
+(
+o
+∣
+s
+)
+=
+1
+\sum_{o}Z(o\mid s)=1
+for each state
+s
+s
+. In the sequel we</p>
+
+<p>直接处理区间边界 $Z^{-}(o\mid s)$ 和 $Z^{+}(o\mid s)$，而不是显式地构造 $\mathcal{Z}$。
+我们使用 Clopper–Pearson 而不是 Wilson 区间，因为后面的定理 V.2 需要一个有限样本保证，即在随机训练数据集上以至少 $\lambda$ 的概率，感知不确定性模型的容许集包含真实的感知不确定性模型。为了获得该数据集级别的包含声明，在应用并集界之前，我们首先需要对每个 $(s,o)$ 具有有效的逐项覆盖。Clopper–Pearson 为每个样本大小和参数值提供精确的二项式覆盖，而 Wilson 区间在有限样本中可能会覆盖不足，特别是在边界附近 [9, 36, 5]。因此我们更倾向于 Clopper–Pearson，因为后续的 PAC 风格包含结果需要有保证的覆盖，即使以区间更宽为代价。实际结果是，学习到的区间边界以及由此部署的防护变得更加保守：我们用部分容许性换取了更强的有限样本正确性保证。</p>
+
+<p>IV-B 从区间到外部概率 $\lambda$
+本小节将上述逐项置信区间转换为全文使用的数据集级别正确性概率。相关量是第 II 节中的外部概率：在用于构造区间边界的随机带标签训练数据集上的概率。我们的目标</p>
+
+<p>l is to show that, with probability at least
+λ
+\lambda
+, the admissible set of perception uncertainty models contains the true perception uncertainty model
+Z
+∗
+Z^{\ast}
+entry-wise.
+Let
+ℰ
+corr
+=
+⋂
+s
+∈
+S
+,
+o
+∈
+O
+Z
+∗
+​
+(
+o
+∣
+s
+)
+∈
+[
+Z
+−
+​
+(
+o
+∣
+s
+)
+,
+Z
++
+​
+(
+o
+∣
+s
+)
+]
+\mathcal{E}_{\mathrm{corr}}=\bigcap_{s\in S,\;o\in O}Z^{\ast}(o\mid s)\in[Z^{-}(o\mid s),Z^{+}(o\mid s)]
+denote the event that every entry of the true perception uncertainty model lies inside its corresponding learned confidence interval.
+By union bound, if the entry-wise failure probabilities satisfy
+∑
+s
+∈
+S
+∑
+o
+∈
+O
+α
+s
+,
+o
+≤
+α
+,
+\sum_{s\in S}\sum_{o\in O}\alpha_{s,o}\leq\alpha,
+where
+α
+s
+,
+o
+\alpha_{s,o}
+is the probability that the confidence interval for entry
+(
+s
+,
+o
+)
+(s,o)
+fails to contain the true value
+Z
+∗
+​
+(
+o
+∣
+s
+)
+Z^{\ast}(o\mid s)
+,
+then
+Pr
+⁡
+(
+ℰ
+corr
+)
+≥
+1
+−
+α
+≜
+λ
+.
+\Pr(\mathcal{E}_{\mathrm{corr}})\geq 1-\alpha\triangleq\lambda.
+In words,
+λ
+\lambda
+is the probability, over the random training dataset used to construct the intervals, that the admissible set of perception uncertainty models
+𝒵
+\mathcal{Z}
+contains the true perception uncertainty model
+Z
+∗
+Z^{\ast}
+. This is the dataset-level correctness probability that appears in Theorem
+V.2
+.
+Why the union bound is conservative
+The union bound makes no structural assumptions about the observation process: it holds even when the entry-wise correctness events
+{
+Z
+∗
+​
+(
+o
+∣
+s
+)
+∈
+[
+Z
+−
+​
+(
+o
+∣
+s
+)
+,
+Z
++
+​
+(
+o
+∣
+s
+)
+]
+}
+\{Z^{\ast}(o\mid s)\in[Z^{-}(o\mid s</p>
+
+<p>),Z^{+}(o\mid s)]\}
+are arbitrarily dependent. In practice, these events are typically correlated. For a fixed true state
+s
+s
+, all counts
+{
+k
+s
+,
+o
+}
+o
+∈
+O
+\{k_{s,o}\}_{o\in O}
+are computed from the same pool of
+n
+s
+n_{s}
+samples, so increasing the empirical mass assigned to one observation necessarily reduces the mass available to others. Because of this coupling across observations within the same state, summing the per-entry failure probabilities can substantially under-estimate
+Pr
+⁡
+(
+ℰ
+corr
+)
+\Pr(\mathcal{E}_{\mathrm{corr}})
+.
+If additional assumptions are defensible, this outer bound can be tightened. For example, under independence of the per-entry failure events one has
+Pr
+⁡
+(
+ℰ
+corr
+)
+≥
+∏
+s
+∈
+S
+∏
+o
+∈
+O
+(
+1
+−
+α
+s
+,
+o
+)
+,
+\Pr(\mathcal{E}_{\mathrm{corr}})\geq\prod_{s\in S}\prod_{o\in O}(1-\alpha_{s,o}),
+which allows selecting larger per-entry
+α
+s
+,
+o
+\alpha_{s,o}
+for the same target
+λ
+\lambda
+than the simple constraint
+∑
+s
+,
+o
+α
+s
+,
+o
+≤
+α
+\sum_{s,o}\alpha_{s,o}\leq\alpha
+. More generally, any joint (simultaneous) confidence region construction that exploits structure—such as row-wise multinomial constraints, state-wise independence, or parametric assumptions on the perception uncertainty model—can replace the Bonferroni/union-bound.
+V
+Guarantees
+This section gives two guarantees. The first is a conditional abstraction-soundness statement: if the true perception uncertainty model lies in the admissible set of perception uncertainty models, then any action admitted by th</p>
+
+<p>e deployed shield is guaranteed to be
+Ω
+\Omega
+-admissible with probability at least
+β
+\beta
+. This follows from the construction of the belief envelope, which maintains
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+. The second adds the dataset-level correctness probability from Section
+IV
+: when
+Ω
+\Omega
+is instantiated from a
+PCIS
+-style safe subset
+C
+⊆
+S
+C\subseteq S
+, we combine abstraction soundness with the probability
+λ
+\lambda
+that the admissible set of perception uncertainty models contains the true perception uncertainty model to obtain a finite-horizon safety guarantee.
+Theorem V.1
+(Abstraction Soundness)
+.
+Assume
+Z
+∗
+∈
+𝒵
+Z^{\ast}\in\mathcal{Z}
+. Then for any
+a
+∈
+Ξ
+^
+​
+(
+h
+t
+)
+a\in\widehat{\Xi}(h_{t})
+and the true state (
+s
+t
+s_{t}
+) at time
+t
+t
+,
+inf
+Z
+∈
+𝒵
+Pr
+Z
+⁡
+[
+a
+∈
+Ω
+​
+(
+s
+t
+)
+∣
+h
+t
+]
+≥
+β
+.
+\inf_{Z\in\mathcal{Z}}\Pr_{Z}[a\in\Omega(s_{t})\mid h_{t}]\geq\beta.
+Proof sketch.
+By construction of the propagated envelope,
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+for all
+t
+t
+. Therefore, for each perception uncertainty model
+Z
+∈
+𝒵
+Z\in\mathcal{Z}
+, the history
+h
+t
+h_{t}
+induces a posterior belief
+b
+t
+Z
+∈
+ℬ
+t
+⊆
+ℬ
+^
+t
+b_{t}^{Z}\in\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+, and the probability that
+a
+a
+is
+Ω
+\Omega
+-admissible under that posterior is exactly the linear score
+ϕ
+a
+​
+(
+b
+t
+Z
+)
+\phi_{a}(b_{t}^{Z})
+. Hence the worst-case conditional admissibility probability over
+Z
+∈
+𝒵
+Z\in\mathcal{Z}
+is lower bounded by the minimu</p>
+
+<p>m of
+ϕ
+a
+\phi_{a}
+over the envelope, namely
+p
+¯
+t
+​
+(
+a
+)
+\underline{p}_{t}(a)
+, which is at least
+β
+\beta
+whenever
+a
+∈
+Ξ
+^
+​
+(
+h
+t
+)
+a\in\widehat{\Xi}(h_{t})
+. The full proof appears in the supplementary material.
+In words, any action admitted by the deployed shield is guaranteed to be
+Ω
+\Omega
+-admissible with probability at least
+β
+\beta
+for every perception uncertainty model in the admissible set.
+Conservativeness.
+If
+a
+∉
+Ξ
+^
+​
+(
+h
+t
+)
+a\notin\widehat{\Xi}(h_{t})
+, then either
+a
+∉
+Ξ
+⋆
+​
+(
+h
+t
+)
+a\notin\Xi^{\star}(h_{t})
+, or
+a
+a
+is excluded due to envelope/relaxation over-approximation.
+Thm
+V.1
+and
+Conservativeness
+hold for any perfect-perception shield
+Ω
+\Omega
+. To obtain an explicit finite-horizon safety lower bound, we instantiate
+Ω
+\Omega
+with a
+PCIS
+-style invariance condition.
+Assumption V.1
+(PCIS Instantiation: One-Step Bound)
+.
+We instantiate the perfect-perception shield
+Ω
+\Omega
+using the one-step
+PCIS
+-style admissibility constraint in Equation (
+2
+). Assume that there exists a designated safe subset
+C
+⊆
+S
+C\subseteq S
+and a constant
+γ
+∈
+(
+0
+,
+1
+]
+\gamma\in(0,1]
+such that for all
+s
+∈
+C
+s\in C
+and
+a
+∈
+Ω
+​
+(
+s
+)
+a\in\Omega(s)
+,
+∑
+s
+′
+∈
+C
+T
+​
+(
+s
+,
+a
+,
+s
+′
+)
+≥
+γ
+.
+\sum_{s^{\prime}\in C}T(s,a,s^{\prime})\geq\gamma.
+Thus, whenever the current state lies in
+C
+C
+and an action admitted by
+Ω
+\Omega
+is taken, the next state remains in
+C
+C
+with probability at least
+γ
+\gamma
+.
+Theorem V.2
+(Finite-Horizon Double Probability)
+.
+Let
+D
+D
+denote the random training dataset, an</p>
+
+<p>d let
+Ξ
+^
+D
+\widehat{\Xi}^{D}
+and
+𝒵
+D
+\mathcal{Z}^{D}
+be the resulting deployed shield and admissible set of perception uncertainty models. Assume that the support of the initial belief
+b
+0
+b_{0}
+is contained in
+C
+C
+, actions are chosen from
+Ξ
+^
+D
+\widehat{\Xi}^{D}
+, and Assumption
+V.1
+holds. Then for horizon
+H
+H
+,
+Pr
+D
+⁡
+[
+Pr
+⁡
+[
+Safe
+0
+:
+H
+]
+≥
+(
+β
+​
+γ
+)
+H
+]
+≥
+λ
+.
+\Pr_{D}\!\left[\Pr\!\left[\mathrm{Safe}_{0:H}\right]\geq(\beta\gamma)^{H}\right]\geq\lambda.
+In words, the outer probability is over the randomness in the training dataset used to construct the interval bounds. With probability at least
+λ
+\lambda
+over that dataset randomness, the resulting deployed shield guarantees closed-loop safety over horizon
+H
+H
+with probability at least
+(
+β
+​
+γ
+)
+H
+(\beta\gamma)^{H}
+. Here
+Safe
+0
+:
+H
+\mathrm{Safe}_{0:H}
+denotes the event that the trajectory starts in the safe subset
+C
+C
+and remains in
+C
+C
+through time
+H
+H
+. (This is a finite-horizon guarantee, and the lower bound can decay quickly as
+H
+H
+grows.)
+Proof sketch.
+Condition on the model-correctness event that the true perception uncertainty model lies in the admissible set of perception uncertainty models. Along any safe prefix, Abstraction Soundness guarantees that the deployed shield selects an
+Ω
+\Omega
+-admissible action with probability at least
+β
+\beta
+, while Assumption
+V.1
+gives probability at least
+γ
+\gamma
+of remaining in the safe subset
+C
+C
+once such an action is taken. Therefore each step preserves safety with probabil</p>
+
+<p>ity at least
+β
+​
+γ
+\beta\gamma
+, and a chain-rule argument over
+H
+H
+steps yields the conditional lower bound
+(
+β
+​
+γ
+)
+H
+(\beta\gamma)^{H}
+on
+Pr
+⁡
+[
+Safe
+0
+:
+H
+]
+\Pr[\mathrm{Safe}_{0:H}]
+. Finally, Section
+IV
+gives the outer probability bound
+λ
+\lambda
+for the model-correctness event, producing the stated double-probability guarantee. The full proof appears in the supplementary material.
+VI
+Experimental Evaluation
+The associated artifact for these experiments is archived in Software Heritage
+[
+31
+]
+.
+VI-A
+Setup
+We evaluate five shielding methods on four benchmark autonomous systems, usually modeled as
+MDP
+or
+POMDP
+, but here represented as
+IPOMDP
+s. These benchmarks are chosen to vary the ratio of states (
+S
+S
+) to observations (
+O
+O
+) and the scale of the underlying decision problem: TaxiNet (16 states, 16 observations), Obstacle (50 states, 3 observations), CartPole (82 states, 82 observations), and Refuel (344 states, 29 observations). TaxiNet is a runway-alignment benchmark in which safety means staying within the cross-track and heading-error bounds. Obstacle is a grid-navigation benchmark in which safety means avoiding obstacle cells. CartPole is a balance-control benchmark in which safety means remaining within the standard CartPole position and pole-angle limits. Refuel is a gridworld with fuel constraints in which safety means avoiding both obstacle collision and fuel exhaustion away from a refuel station.
+Obstacle and Refuel are adapted from prior support-shielding</p>
+
+<p>case studies
+[
+6
+]
+, but their observation kernels are modified here to fit the interval-perception setting and allow us to study the effect of shielding. In particular, the original Refuel benchmark could be solved nearly perfectly by an RL-trained controller, leaving little room for shielding to improve safety. We therefore modify Refuel to remove direct observation of the crash predicate and of whether fuel is nonzero, so the safety-critical variables are latent and must be inferred from history rather than read directly from the current observation. TaxiNet uses observation uncertainty derived from real autonomous-taxiing perception-confusion data
+[
+33
+]
+. CartPole likewise uses a learned perception model, but in this case we train the perception model ourselves for the benchmark. Obstacle and Refuel instead use synthetic observation uncertainty, meaning that we begin from a hand-specified observation function and perturb it with an observation-noise budget to obtain interval-valued observation probabilities. These domains stress different partial-observability regimes, from near-bijective observation kernels (CartPole) to severe compression of many states into a few observations (Obstacle) and latent safety-critical variables that must be inferred from history (Refuel). In each case, the dynamics are fixed and the observation kernel uses confidence intervals, yielding the
+IPOMDP
+used in evaluation.
+We compare five shielding methods
+by measuring their failure, stuck, and</p>
+
+<p>safe rates under the same RL-trained controller and perception regime. For more detail and analysis of the data collected in this evaluation refer to supplementary material.
+VI-B
+Baselines
+The comparison includes two prior reference points and three methods introduced in this paper. The prior baselines are the
+Observation
+shield and the support-based shield of Carr
+et al.
+[
+6
+]
+. By contrast,
+Single-Belief
+,
+Fwd-Sampling
+, and
+Envelope
+are all novel methods in this work: Single-Belief is our point-estimate history-based shield, Fwd-Sampling is our sampled under-approximation to reachable interval beliefs, and Envelope is our LP-based over-approximation shield.
+The
+Observation
+shield is memoryless: at each step it computes a posterior distribution over states using only the current observation, a uniform prior, and the point-estimate perception model, and it allows exactly those actions whose probability of being safe under that posterior exceeds the threshold. The point-estimate perception model is built by using the expected values of the emission probabilities. The
+Single-Belief
+shield maintains a single, standard Bayesian belief under and point-estimate observations, and again allows exactly those actions whose probability of being safe under the current belief exceeds the threshold. The proposed
+Envelope
+shield maintains a template polytope over reachable beliefs under interval uncertainty and admits an action only when its worst-case safety score exceeds the threshold. T</p>
+
+<p>he
+Fwd-Sampling
+shield instead tracks an under-approximation of the reachable belief set using forward-sampled concrete belief points and applies the same threshold test on that sampled set; it maintains a budget of
+N
+=
+500
+N=500
+belief points at each step and uses
+K
+=
+100
+K=100
+sampled observation-probability vectors per propagation step. After generating up to
+N
+×
+K
+N\times K
+posterior candidates, the implementation prunes back to 500 by keeping the
+candidates that attain the minimum and maximum value of each state-coordinate and then filling any
+remaining slots with a random subset of the leftover posterior points. Finally, we include the support-based shield of Carr
+et al.
+[
+6
+]
+, computed on the point-estimate POMDP whenever the support-MDP construction is feasible. That construction builds an MDP whose states are reachable belief supports and whose winning region is computed offline by breadth-first exploration followed by fixed-point safety analysis.
+Envelope propagation is practical for TaxiNet and Obstacle, but not for CartPole and Refuel. Fwd-Sampling is feasible on all four benchmarks. Carr is feasible for TaxiNet, Obstacle, and CartPole but infeasible on Refuel because the number of reachable supports in the support-MDP becomes too large during the offline breadth-first exploration, and on TaxiNet it degenerates because the point-estimate POMDP has no winning support.
+This feasibility split is important for interpreting the experiments. The Envelope shield is the</p>
+
+<p>strictest and most computationally expensive method because it certifies actions against an over-approximation of all reachable beliefs under interval uncertainty. We therefore do not position it as the default shielding solution on the largest benchmarks. Instead, our claim is that Envelope defines the strongest robust reference point when it is tractable, while Fwd-Sampling provides the scalable approximation of that same design goal at much lower online cost. Evaluating both lets us separate the question of what the stricter interval-belief reasoning buys from the question of how closely a cheaper sampling-based method can recover it in practice.
+VI-C
+Evaluation Protocol
+To evaluate each shield, we run Monte Carlo rollouts of the closed-loop system consisting of the
+IPOMDP
+, an RL-trained controller, and the shield. In each rollout, the current history is passed to the controller, the shield filters the controller’s proposed action, the next latent state is sampled from the dynamics, and the next observation is sampled from the perception mechanism. Because the observation probabilities are interval-valued, we consider two ways of instantiating perception during evaluation. In the
+uniform
+regime, each step samples a probability distribution within the interval constraints and then samples an observation from that distribution. In the
+adversarial
+regime, we first solve an offline optimization problem over fixed interval realizations and then hold the resulting realization f</p>
+
+<p>ixed for the entire rollout. Concretely, we optimize over observation kernels within the interval bounds using a cross-entropy method to reduce safe completions, equivalently to increase the combined fail-plus-stuck rate, against the deployed shield-compliant RL controller.
+All reported numbers use an RL-trained controller from our experimental implementation. The controller is a Deep Q-Network trained directly on the
+IPOMDP
+dynamics with observation-action history as input, using a safety-oriented reward that penalizes reaching
+FAIL
+, rewards completing the finite horizon safely, and gives a small per-step reward for survival. The controller proposes an action and the shield either admits it or replaces it by a random admissible action. We sweep
+β
+∈
+{
+0.50
+,
+0.60
+,
+0.65
+,
+0.70
+,
+0.75
+,
+0.80
+,
+0.85
+,
+0.90
+,
+0.95
+}
+\beta\in\{0.50,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95\}
+for all threshold-based shields, run 200 Monte Carlo rollouts per condition, and report three mutually exclusive outcomes:
+fail
+(the trajectory reaches a
+FAIL
+state),
+stuck
+(the trajectory reaches a state where the shield blocks every action),
+and
+safe
+(neither event occurs within the benchmark horizon). The benchmark horizons are 20 steps for TaxiNet, 25 for Obstacle, 15 for CartPole, and 30 for Refuel.
+For threshold-based shields we report the operating point that minimizes fail rate, with stuck rate as a tiebreaker, and we use the per-threshold sweeps to discuss the corresponding stuck-avoidance tradeoffs.</p>
+
+<p>We also evaluate a second experiment, available in the supplementary material, that measures the conservativeness of the Envelope shield by comparing its over-approximation against a forward-sampled under-approximation of reachable beliefs.
+Figure 1:
+Best low-failure operating point of each shield on the four benchmarks, under uniform and adversarial perception. The selected threshold minimizes fail rate and then stuck rate. Observation informativeness still determines which shield family is useful, and the relative harshness of the adversarial regime varies across case studies. To keep the small CartPole rates visible while still showing the full stacks, only the CartPole panels use a disjoint piecewise vertical scale, with
+0
+–
+5
+%
+5\%
+expanded in the lower half and
+5
+5
+–
+100
+%
+100\%
+compressed into the upper half. The other case studies use the standard scale.
+Figure 2:
+Highest-safe operating point of each shield on the four benchmarks. Here the selected threshold maximizes safe completions, with lower fail and then lower stuck used as tiebreakers. The threshold label is placed at the top exactly as in Fig.
+1
+. Solid color denotes fail, hatched color denotes stuck, and the outlined top segment denotes safe. This keeps the stacked ordering explicit without changing where the threshold annotation appears. As in Fig.
+1
+, only the CartPole panels use a disjoint piecewise vertical scale, with
+0
+–
+5
+%
+5\%
+expanded in the lower half and
+5
+5
+–
+100
+%
+100\%
+compressed into the upper</p>
+
+<p>half. The other case studies use the standard scale.
+VI-D
+Cross-Case Picture
+Figure
+1
+summarizes the lowest-failure setting across the four benchmarks. The key driver of the observed differences is observation informativeness: how strongly the current observation narrows down the latent state. When observations almost identify the latent state, as in CartPole, all feasible shields are nearly equivalent and incur essentially no stuck-rate penalty: under uniform perception, Single-Belief reaches about
+2
+%
+2\%
+fail and
+0
+%
+0\%
+stuck, Observation about
+3
+%
+/
+0
+%
+3\%/0\%
+, Carr about
+3
+%
+/
+0
+%
+3\%/0\%
+, and Fwd-Sampling about
+2
+%
+/
+0
+%
+2\%/0\%
+. At the opposite extreme, Obstacle compresses 50 states into only 3 observations; memoryless methods then lose any useful middle ground between allowing risky actions and blocking almost everything, while belief history becomes necessary to recover useful non-stuck behavior. TaxiNet sits between these extremes: it has as many observation labels as states, but the learned perception model is noisy enough that one-step posteriors remain ambiguous. Refuel is different again: the observation kernel hides the variables that determine whether collision or fuel exhaustion is imminent, so history is essential but even accurate belief tracking can lead to paralysis.
+The proposed envelope construction improves the safety side of the tradeoff whenever it is feasible to run. Here each shield is evaluated at its own threshold selected by the low-failure</p>
+
+<p>rule of Fig.
+1
+, so the comparison is between each method’s preferred safety-first operating point rather than at a common shared threshold. On TaxiNet, Envelope remains the strongest robust option, reaching
+40
+%
+40\%
+fail and
+32
+%
+32\%
+stuck under uniform perception, compared with
+44
+%
+44\%
+fail and
+12
+%
+12\%
+stuck for Single-Belief and
+43
+%
+43\%
+fail and
+24
+%
+24\%
+stuck for Fwd-Sampling; under adversarial perception the same ordering remains, at
+37
+%
+/
+40
+%
+37\%/40\%
+for Envelope versus
+48
+%
+/
+8
+%
+48\%/8\%
+for Single-Belief and
+42
+%
+/
+28
+%
+42\%/28\%
+for Fwd-Sampling. On Obstacle, the gain is larger: Envelope reaches
+3
+%
+3\%
+fail and
+85
+%
+85\%
+stuck under uniform perception, while Single-Belief remains at
+14
+%
+14\%
+fail and
+50
+%
+50\%
+stuck and Fwd-Sampling improves to
+7
+%
+7\%
+fail and
+84
+%
+84\%
+stuck. Under adversarial perception, Envelope reaches
+8
+%
+8\%
+fail and
+79
+%
+79\%
+stuck, still clearly improving on Single-Belief’s
+12
+%
+/
+56
+%
+12\%/56\%
+. This extra stuck behavior is the empirical counterpart of the over-approximation soundness result: because the envelope certifies actions against all beliefs in an over-approximation of the reachable set, it can block actions that look safe under favorable point-estimate beliefs but are not safe in the worst case.
+The adversarial columns show that worst-case observation realizations do not affect all benchmarks equally. In TaxiNet and, to a lesser extent, Obstacle, adversarial perception is somewhat harsher on the history-based shi</p>
+
+<p>elds. In CartPole and Refuel, the adversarial numbers stay much closer to the uniform ones. This variation reflects how much room each benchmark leaves for an optimized observation kernel to interfere with the closed-loop policy.
+Figure
+2
+provides the complementary stuck-avoidance view. Once the threshold is selected to maximize safe completions rather than minimize failures, the ranking changes in exactly the way the low-failure figure suggests. On TaxiNet and Obstacle, Single-Belief or Fwd-Sampling usually become preferable to Envelope because the extra conservatism of Envelope converts many potentially safe runs into stuck runs. On Refuel, the strongest stuck-avoidance picture is dominated by Observation, which reaches about
+97
+%
+97\%
+safe under uniform perception and
+98
+%
+98\%
+under adversarial perception at low thresholds, whereas the zero-failure operating points of Single-Belief and Fwd-Sampling remain much more likely to become stuck. CartPole remains near-degenerate across all shields, with every method achieving roughly
+97
+97
+–
+99
+%
+99\%
+safe completions and no stuck episodes at its best threshold.
+The remaining baselines illustrate complementary failure modes. The Observation shield can be competitive when a single observation already localizes the state, but it degrades sharply under aliasing, meaning that multiple latent states produce the same or very similar observations. In TaxiNet, its low-failure point (
+14
+%
+14\%
+fail under uniform perception) is only obtai</p>
+
+<p>ned at
+86
+%
+86\%
+stuck, which is still a much less attractive tradeoff than what the envelope achieves by using history quantitatively. In Obstacle, Observation becomes almost indistinguishable from support-only shielding, both ending at approximately
+2
+%
+2\%
+fail and
+98
+%
+98\%
+stuck. In Refuel, however, Observation has a different role: at lower thresholds it is still the only shield that attains a
+0
+%
+0\%
+-stuck operating point, albeit at
+3
+3
+–
+4.5
+%
+4.5\%
+failure. Fwd-Sampling sits between Single-Belief and Envelope on TaxiNet and Obstacle, but on Refuel it behaves much more conservatively, with
+0
+%
+0\%
+fail at the cost of about
+98
+%
+98\%
+stuck under uniform perception and
+93
+%
+93\%
+stuck under adversarial perception. Carr’s shield is strongest when support information is already nearly enough to identify the state, but it can collapse entirely once every reachable support contains conflicting safety requirements. TaxiNet is the clearest example: under Carr’s offline support-MDP analysis on the point-estimate POMDP, the winning region is empty, so Carr effectively blocks almost all runs from the initial step.
+Figure 3:
+TaxiNet Pareto scatter over threshold
+β
+\beta
+under adversarial perception. History-based shields provide substantially better fail-versus-stuck tradeoffs than memoryless Observation, and the envelope improves on Single-Belief by removing actions that are only safe for the point-estimate model.
+VI-E
+Comparison with Support-Based Shielding
+The comparison with</p>
+
+<p>Carr-style support shielding clarifies when probability mass is essential. Support reasoning can be highly effective when observations are informative enough that reachable supports stay small; this is exactly what we see in CartPole, where Carr remains competitive. But support-only reasoning discards the distinction between a state with posterior weight
+0.49
+0.49
+and one with posterior weight
+10
+−
+4
+10^{-4}
+, and in aliased problems that distinction determines whether a useful action should still be allowed. TaxiNet makes this failure mode stark: support shielding has no winning support at all, even though the envelope, Fwd-Sampling, and Single-Belief filters all retain nontrivial safe behavior. Obstacle shows the softer version of the same phenomenon, where support reasoning remains feasible but collapses to near-total stuck.
+Taken together, these experiments support a narrow but important claim. Interval belief envelopes are not a universal replacement for simpler shields. Instead, they occupy the regime where point-estimate belief filters are too optimistic and support abstractions are too coarse. CartPole shows that they are unnecessary when observations already localize the state well. TaxiNet and Obstacle show where they are useful. Refuel shows the computational boundary where heavier robust shielding becomes impractical. Fwd-Sampling is a useful intermediate point in that design space: it is far cheaper than the LP envelope and available on all four benchmarks, but</p>
+
+<p>because it under-approximates the reachable belief set it generally trades extra blocked actions for only limited safety improvement. In the difficult aliased regimes, the envelope still provides the strongest safety performance among the feasible shields, and its extra conservatism can be quantified rather than treated as a black box.
+VI-F
+Inference-Time Tradeoffs
+Figure 4:
+Mean shield inference time per step on a log scale. Observation, Single-Belief, and Carr remain in the microsecond regime; Fwd-Sampling moves into the low-millisecond regime; and the LP-based Envelope is substantially slower, with Cartpole and Refuel beyond the feasible range.
+The outcome tradeoffs above are mirrored by a clear runtime hierarchy, shown in Fig.
+4
+. These timings measure a single call to the shield’s per-step inference routine, including belief propagation and action filtering but excluding controller inference, environment stepping, and observation sampling. The experiments were run on a machine with an AMD EPYC 9454P 48-Core Processor with 1.5 MiB L1d, 1.5 MiB L1i, 48 MiB L2, and 256 MiB L3 cache. Per-step shield inference places Observation, Single-Belief, and Carr in the microsecond regime, Fwd-Sampling in the millisecond-to-subsecond regime, and the LP-based Envelope two to five orders of magnitude slower where it is feasible. On TaxiNet, mean latency is approximately
+1.6
+​
+μ
+1.6\,\mu
+s for Observation,
+9.4
+​
+μ
+9.4\,\mu
+s for Single-Belief,
+0.9
+​
+μ
+0.9\,\mu
+s for Carr,
+21.2
+21.2
+ms for</p>
+
+<p>Fwd-Sampling, and
+83.1
+83.1
+ms for Envelope. On Obstacle the same ordering persists, with Envelope rising to
+643.1
+643.1
+ms per step versus
+31.6
+​
+μ
+31.6\,\mu
+s for Single-Belief and
+67.0
+67.0
+ms for Fwd-Sampling. CartPole remains inexpensive for the lightweight methods (
+2.0
+​
+μ
+2.0\,\mu
+s Observation,
+32.0
+​
+μ
+32.0\,\mu
+s Single-Belief,
+3.2
+​
+μ
+3.2\,\mu
+s Carr) and reaches
+7.1
+7.1
+ms for Fwd-Sampling, while Envelope was not practical for the full sweep. Refuel is the clearest scalability boundary: Observation remains around
+0.1
+0.1
+ms, Single-Belief around
+0.2
+0.2
+ms, and Fwd-Sampling rises to
+383.9
+383.9
+ms per step, but Envelope and Carr are infeasible there.
+These timings sharpen the engineering interpretation of the accuracy results. Single-Belief is still the strongest lightweight default: it is nearly as cheap as Observation while retaining history and generally outperforming memoryless shielding. Fwd-Sampling occupies a meaningful middle ground only on the smaller models. It is substantially faster than the LP envelope on TaxiNet and Obstacle while recovering much of the envelope’s safety benefit, but its cost grows steeply with state dimension and interval-coverage guarantee. The Envelope Shield is therefore best viewed as a low-frequency or smaller-model safety mechanism for the hardest aliased regimes, while Fwd-Sampling is the scalable approximation when exact envelope propagation is unavailable but added conservatism beyond Single-Belief is still desired.
+VII
+R</p>
+
+<p>elated Work
+The closest related line of work is shielding under partial observability. Carr
+et al.
+[
+6
+]
+compute the support-based shield over belief supports, retaining only which latent states remain possible after an observation history and discarding emission probabilities. That support-based shield yields strong soundness guarantees for avoid and reach-avoid objectives and is an important baseline for our setting. Our contribution differs in the semantic object being propagated: instead of reachable supports, we propagate quantitative belief envelopes induced by interval-valued emission probabilities. This retains information that the support-based shield intentionally throws away, which is useful when support winning regions collapse or become too coarse to admit a usable shield.
+Related work also abstracts learned perception by a compact probabilistic interface between latent state and downstream symbolic reasoning. Păsăreanu
+et al.
+[
+26
+]
+replace a vision stack by a confusion-matrix-derived stochastic abstraction to enable closed-loop probabilistic analysis, while Cleaveland
+et al.
+[
+8
+]
+construct conservative IMDP perception abstractions from finite data using confidence intervals and intra-bin probability enlargement for probabilistic model checking. Schäfers
+et al.
+[
+32
+]
+use learned perception uncertainty models to drive POMDP belief updates from visual observations. Our work adopts the same modeling move of summarizing perception by state-conditional emission pro</p>
+
+<p>babilities, but differs in both objective and semantics: rather than verifying an offline closed-loop stochastic model, we propagate interval-valued belief envelopes online and use them to enforce conservative shielding under partial observability.
+Adjacent work on predictive uncertainty under shift further clarifies why we use interval bounds on a perception uncertainty model rather than conformal wrappers. In short, conformal methods usually certify prediction sets or related output-level objects, whereas our shield needs entry-wise uncertainty bounds on the latent-state perception uncertainty model itself. Standard conformal prediction constructs sets for labels or outputs with finite-sample marginal coverage under exchangeability
+[
+35
+,
+3
+]
+. More recent extensions show that conformal methods can go beyond this basic setting in several directions: weighted conformal methods and weighted conformal predictive systems address covariate shift when the train-to-test likelihood ratio is known or can be estimated
+[
+34
+,
+16
+]
+; adaptive conformal methods maintain long-run coverage under online drift
+[
+13
+]
+; conformal methods have also been extended to hidden Markov models and to off-policy evaluation in MDPs, showing that dependence and policy-induced occupancy shift can sometimes be handled directly
+[
+22
+,
+10
+]
+. This is important for our setting because it means conformal methods are not ruled out merely by control-based shift. However, the certified object in these works rema</p>
+
+<p>ins a prediction set, predictive distribution, or policy-value interval. They do not directly produce entry-wise uncertainty bounds for the latent-state perception uncertainty model
+Z
+​
+(
+o
+∣
+s
+)
+Z(o\mid s)
+, which is the object needed here to propagate beliefs and preserve guarantees when deployment shift changes the per-state emission probabilities themselves. In particular, control-based shift changes the occupancy of latent states visited by the agent
+[
+29
+]
+and can sometimes be addressed by reweighting or online recalibration, but deployment shift that changes the conditional distribution
+Z
+​
+(
+o
+∣
+s
+)
+Z(o\mid s)
+is a different problem. Adjacent work which uses these conformal wrappers to represent the emission probability function in the context of action shielding
+[
+30
+]
+, could be improved to account for control based shift but would have difficulty handling deployment shift. On the other hand, our method isolates uncertainty at that conditional level, so the guarantee is tied to probable realizations of per-state emission probabilities rather than to the aggregate state distribution seen during deployment. Empirical work such as Ovadia
+et al.
+[
+25
+]
+further motivates this caution by showing that point-valued uncertainty estimates can degrade substantially under shift.
+More broadly, our work sits inside the established shielding literature
+[
+1
+,
+15
+,
+17
+]
+and uses standard POMDP belief semantics
+[
+19
+,
+27
+]
+. Key technical ingredients include robust/imprecise probabil</p>
+
+<p>istic modeling
+[
+14
+,
+23
+,
+37
+]
+, exact finite-sample interval construction via Clopper–Pearson
+[
+9
+]
+, and state-based shields such as
+PCIS
+[
+12
+]
+or barrier-style invariance methods
+[
+2
+]
+. Our main contribution is to combine these ingredients into a runtime shield for imperfect-perception by lifting a perfect-perception shield through interval-valued belief envelopes.
+VIII
+Conclusion
+We presented a shielding method for imperfect-perception agents modeled as IPOMDPs
+where the perception uncertainty model is learned from finite data and represented by confidence intervals rather than point estimates. The method lifts a perfect-perception shield into belief space by propagating conservative belief envelopes and admitting only actions whose worst-case shield score remains above threshold. For the finite discrete models considered here, this gives a runtime realization of a fundamentally history-based shield that scales much better than explicit history reasoning. It yields a finite-sample outer guarantee on model correctness together with a conditional lower bound on runtime safety, while preserving a modular interface to upstream state-based shield constructions such as
+PCIS
+.
+Detailed proofs, expanded benchmark and protocol descriptions, the complementary stuck-avoidance summary, and additional diagnostic evaluation appear in the supplementary material.
+The empirical picture is that interval belief envelopes occupy a useful middle ground between point-estimate methods and th</p>
+
+<p>e support-based shield. Relative to single-belief baselines, they provide more reliable action correction under perception uncertainty; relative to the support-based shield, they remain usable in regimes where support abstractions collapse or become too coarse. At the same time, the experiments make the price of this additional fidelity visible: envelope propagation is more computationally demanding, and the quality of the deployed shield depends on the coarseness of the template abstraction used to represent reachable beliefs. Forward sampling provides a alternative to LP envelope propagation, although it lacks soundness guarantees, it mimics some of the conservatism of LP envelope shielding when LP envelope propagation is not feasible. The benchmark comparison sharpens where this extra machinery matters: CartPole shows that it is unnecessary when observations already localize the latent state well, TaxiNet and Obstacle show the partially observable regimes where it improves the safety-usability tradeoff, and Refuel illustrates the scalability limit of sound, belief-envelope shielding.
+References
+[1]
+M. Alshiekh, R. Bloem, R. Ehlers, B. K&quot;onighofer, S. Niekum, and U. Topcu
+(2018)
+Safe reinforcement learning via shielding
+.
+In
+AAAI Conference on Artificial Intelligence
+,
+Cited by:
+§I
+,
+§VII
+.
+[2]
+A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath, and P. Tabuada
+(2019)
+Control barrier functions: theory and applications
+.
+In
+2019 18th European Control Conference (E</p>
+
+<p>CC)
+,
+pp. 3420–3431
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§VII
+.
+[3]
+A. Angelopoulos and S. Bates
+(2023)
+Conformal prediction: a gentle introduction
+.
+Foundations and Trends in Machine Learning
+16
+(
+4
+),
+pp. 494–591
+.
+Cited by:
+§I
+,
+§VII
+.
+[4]
+F. Bonchi, A. Silva, and A. Sokolova
+(2021)
+Distribution bisimilarity via the power of convex algebras
+.
+Logical Methods in Computer Science
+17
+(
+3
+),
+pp. 10:1–10:28
+.
+Cited by:
+§
+C-A
+,
+§
+C-B
+,
+§
+C-C
+,
+Appendix C
+.
+[5]
+L. D. Brown, T. T. Cai, and A. DasGupta
+(2001)
+Interval estimation for a binomial proportion
+.
+Statistical Science
+16
+(
+2
+),
+pp. 101–133
+.
+Cited by:
+§
+IV-A
+.
+[6]
+e. al. Carr
+(2023)
+Shielding for partially observable markov decision processes
+.
+Note:
+Referenced by repository implementation docs
+Cited by:
+§I
+,
+§I
+,
+§
+VI-A
+,
+§
+VI-B
+,
+§
+VI-B
+,
+§VII
+.
+[7]
+A. Charnes and W. W. Cooper
+(1962)
+Programming with linear fractional functionals
+.
+Naval Research Logistics Quarterly
+9
+(
+3-4
+),
+pp. 181–186
+.
+Cited by:
+§
+III-C
+.
+[8]
+M. Cleaveland, P. Lu, O. Sokolsky, I. Lee, and I. Ruchkin
+(2025)
+Conservative perception models for probabilistic model checking
+.
+In
+2025 61st Allerton Conference on Communication, Control, and Computing Proceedings
+,
+Cited by:
+§
+II-C
+,
+§VII
+.
+[9]
+C. J. Clopper and E. S. Pearson
+(1934)
+The use of confidence or fiducial limits illustrated in the case of the binomial
+.
+Biometrika
+26
+(
+4
+),
+pp. 404–413
+.
+Cited by:
+§I
+,
+§
+IV-A
+,
+§VII
+.
+[10]
+D. Foffano, A. Russo, and A. Proutière
+(2023)
+Conformal off-policy eva</p>
+
+<p>luation in markov decision processes
+.
+In
+2023 62nd IEEE Conference on Decision and Control (CDC)
+,
+pp. 3087–3094
+.
+Note:
+Also available as arXiv:2304.02574
+External Links:
+Link
+Cited by:
+§VII
+.
+[11]
+D. J. Fremont, J. Chiu, D. D. Margineantu, D. Osipychev, and S. A. Seshia
+(2020)
+Formal analysis and redesign of a neural network-based aircraft taxiing system with verifai
+.
+In
+International Conference on Computer Aided Verification
+,
+pp. 122–134
+.
+Cited by:
+§I
+.
+[12]
+Y. Gao, K. H. Johansson, and L. Xie
+(2021)
+Computing probabilistic controlled invariant sets
+.
+IEEE Control Systems Letters
+5
+(
+6
+),
+pp. 2007–2012
+.
+Note:
+arXiv:1905.04117
+Cited by:
+§I
+,
+§
+II-D
+,
+§VII
+.
+[13]
+I. Gibbs and E. Candès
+(2021)
+Adaptive conformal inference under distribution shift
+.
+In
+Advances in Neural Information Processing Systems
+,
+Vol.
+34
+,
+pp. 1660–1672
+.
+External Links:
+Link
+Cited by:
+§I
+,
+§VII
+.
+[14]
+R. Givan, S. Leach, and T. Dean
+(2000)
+Bounded-parameter markov decision processes
+.
+In
+International Conference on Uncertainty in Artificial Intelligence Workshop on Planning under Uncertainty and Incomplete Information
+,
+Cited by:
+§I
+,
+§VII
+.
+[15]
+N. Jansen, S. Junges, U. Topcu,
+et al.
+(2020)
+Safe reinforcement learning using probabilistic shields
+.
+Theoretical Computer Science
+.
+Note:
+Probabilistic shielding line
+Cited by:
+§I
+,
+§VII
+.
+[16]
+J. Jonkers, G. Van Wallendael, L. Duchateau, and S. Van Hoecke
+(2024)
+Conformal predictive systems under covariate shift
+.
+In
+Proceedings of the Thirteenth Symp</p>
+
+<p>osium on Conformal and Probabilistic Prediction with Applications
+,
+Proceedings of Machine Learning Research
+, Vol.
+230
+,
+pp. 406–423
+.
+External Links:
+Link
+Cited by:
+§VII
+.
+[17]
+B. K&quot;onighofer
+et al.
+(2020)
+Shielding for safe reinforcement learning
+.
+In
+Formal Methods in Computer-Aided Design
+,
+Cited by:
+§I
+,
+§VII
+.
+[18]
+I. B. Kadron, D. Gopinath, C. S. Păsăreanu, and H. Yu
+(2021)
+Case study: analysis of autonomous center line tracking neural networks
+.
+In
+International Workshop on Numerical Software Verification
+,
+pp. 104–121
+.
+Cited by:
+§I
+.
+[19]
+L. P. Kaelbling, M. L. Littman, and A. R. Cassandra
+(1998)
+Planning and acting in partially observable stochastic domains
+.
+Artificial Intelligence
+101
+(
+1-2
+),
+pp. 99–134
+.
+Cited by:
+§I
+,
+§
+II-B
+,
+§VII
+.
+[20]
+R. E. Kalman
+(1960)
+A new approach to linear filtering and prediction problems
+.
+Journal of Basic Engineering
+82
+(
+1
+),
+pp. 35–45
+.
+External Links:
+Document
+Cited by:
+§I
+.
+[21]
+G. P. McCormick
+(1976)
+Computability of global solutions to factorable nonconvex programs: part i. convex underestimating problems
+.
+Mathematical Programming
+10
+(
+1
+),
+pp. 147–175
+.
+Cited by:
+§
+III-C
+.
+[22]
+B. Nettasinghe, S. Chatterjee, R. Tipireddy, and M. M. Halappanavar
+(2023)
+Extending conformal prediction to hidden markov models with exact validity via de finetti’s theorem for markov chains
+.
+In
+Proceedings of the 40th International Conference on Machine Learning
+,
+Proceedings of Machine Learning Research
+, Vol.
+202
+,
+pp. 25890–25903
+.
+External</p>
+
+<p>Links:
+Link
+Cited by:
+§VII
+.
+[23]
+A. Nilim and L. El Ghaoui
+(2005)
+Robust control of markov decision processes with uncertain transition matrices
+.
+Operations Research
+53
+(
+5
+),
+pp. 780–798
+.
+Cited by:
+§I
+,
+§VII
+.
+[24]
+B. Noack, V. Klumpp, D. Brunn, and U. D. Hanebeck
+(2008)
+Nonlinear bayesian estimation with convex sets of probability densities
+.
+In
+Proceedings of the 11th International Conference on Information Fusion
+,
+Cited by:
+§I
+,
+§
+III-B
+.
+[25]
+Y. Ovadia, E. Fertig, J. Ren, Z. Nado, D. Sculley, S. Nowozin, J. Dillon, B. Lakshminarayanan, and J. Snoek
+(2019)
+Can you trust your model’s uncertainty? evaluating predictive uncertainty under dataset shift
+.
+In
+Advances in Neural Information Processing Systems
+,
+Vol.
+32
+.
+External Links:
+Link
+Cited by:
+§I
+,
+§VII
+.
+[26]
+C. Păsăreanu, R. Mangal, D. Gopinath, S. Getir Yaman, C. Imrie, R. Călinescu, and H. Yu
+(2023)
+Closed-loop analysis of vision-based autonomous systems: a case study
+.
+arXiv preprint arXiv:2302.04634
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§
+II-B
+,
+§
+II-B
+,
+§
+II-C
+,
+§VII
+.
+[27]
+J. Pineau, G. Gordon, and S. Thrun
+(2003)
+Point-based value iteration: an anytime algorithm for pomdps
+.
+In
+International Joint Conference on Artificial Intelligence
+,
+pp. 1025–1032
+.
+Cited by:
+§VII
+.
+[28]
+L. R. Rabiner
+(1989)
+A tutorial on hidden markov models and selected applications in speech recognition
+.
+Proceedings of the IEEE
+77
+(
+2
+),
+pp. 257–286
+.
+External Links:
+Document
+Cited by:
+§III
+.
+[29]
+S. Ross, G. Gordon, and D. Bagnel</p>
+
+<p>l
+(2011)
+A reduction of imitation learning and structured prediction to no-regret online learning
+.
+In
+Proceedings of the Fourteenth International Conference on Artificial Intelligence and Statistics
+,
+Proceedings of Machine Learning Research
+, Vol.
+15
+,
+pp. 627–635
+.
+External Links:
+Link
+Cited by:
+§I
+,
+§VII
+.
+[30]
+W. Scarbro, C. Imrie, S. G. Yaman, K. Fatehi, C. Păsăreanu, R. Calinescu, and R. Mangal
+(2025)
+Conformal safety shielding for imperfect-perception agents
+.
+In
+Runtime Verification: 25th International Conference, RV 2025, Graz, Austria, September 15–19, 2025, Proceedings
+,
+Berlin, Heidelberg
+,
+pp. 213–232
+.
+External Links:
+ISBN 978-3-032-05434-0
+,
+Link
+,
+Document
+Cited by:
+§I
+,
+§VII
+.
+[31]
+W. Scarbro
+(2026)
+IPOMDP shielding artifact
+.
+Note:
+Software Heritage archiveDirectory snapshot permalink:
+https://archive.softwareheritage.org/swh:1:dir:841e006611e599002ec860573b35fe5770065484
+Cited by:
+§I
+,
+§VI
+.
+[32]
+M. Schäfers, M. Krale, T. D. Simão, N. Jansen, and M. Weininger
+(2026)
+Perception-based beliefs for pomdps with visual observations
+.
+arXiv preprint arXiv:2602.05679
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§
+II-B
+,
+§
+II-B
+,
+§VII
+.
+[33]
+T. C. Staudinger, Z. D. Jorgensen, and D. D. Margineantu
+(2018)
+X-taxinet - an environment for learning and decision systems for airplane operations
+.
+Note:
+OpenReview preprint, Work in progress
+External Links:
+Link
+Cited by:
+§I
+,
+§
+VI-A
+.
+[34]
+R. J. Tibshirani, R. Foygel Barber, E. Candès, and A. Ramdas
+(2019)
+Conformal predictio</p>
+
+<p>n under covariate shift
+.
+In
+Advances in Neural Information Processing Systems
+,
+Vol.
+32
+.
+External Links:
+Link
+Cited by:
+§I
+,
+§VII
+.
+[35]
+V. Vovk, A. Gammerman, and G. Shafer
+(2005)
+Algorithmic learning in a random world
+.
+Springer
+.
+Cited by:
+§I
+,
+§VII
+.
+[36]
+E. B. Wilson
+(1927)
+Probable inference, the law of succession, and statistical inference
+.
+Journal of the American Statistical Association
+22
+(
+158
+),
+pp. 209–212
+.
+Cited by:
+§
+IV-A
+.
+[37]
+M. Zaffalon and E. Miranda
+(2009)
+Conservative inference rule for uncertain reasoning under incompleteness
+.
+Journal of Artificial Intelligence Research
+34
+,
+pp. 757–821
+.
+Cited by:
+§I
+,
+§VII
+.
+Appendix A
+Additional Empirical Results
+Figure 5:
+TaxiNet Pareto scatter over threshold
+β
+\beta
+under adversarial perception. History-based shields provide substantially better fail-versus-stuck tradeoffs than memoryless Observation, and the envelope improves on Single-Belief by removing actions that are only safe for the point-estimate model.
+A-A
+Why History Matters: TaxiNet and Obstacle
+TaxiNet demonstrates why the observation count alone is a poor proxy for difficulty. The benchmark has 16 observation labels for 16 states, but the learned perception model still leaves substantial overlap between the posteriors induced by different runway positions. A single noisy observation is therefore consistent with several states that require different steering corrections. Figure
+5
+shows the resulting threshold sweep: Observation can reduce failures o</p>
+
+<p>nly by blocking almost all actions, whereas all three history-based methods achieve interior tradeoff points. The Envelope Shield dominates Single-Belief in safety because the point-estimate filter is systematically optimistic in the presence of broad observation intervals. Fwd-Sampling still comes much closer to the envelope than Single-Belief does: at its best point it reaches
+43
+%
+43\%
+fail and
+24
+%
+24\%
+stuck under uniform perception, versus
+40
+%
+40\%
+fail and
+32
+%
+32\%
+stuck for Envelope and
+44
+%
+44\%
+fail and
+12
+%
+12\%
+stuck for Single-Belief. By maintaining many belief points and many probability samples, Fwd-Sampling exposes substantially more uncertainty than a single posterior, but as an inner approximation it can still miss the exact worst-case belief corners that the LP envelope captures.
+The remaining TaxiNet failure rate is also informative. Even at
+β
+=
+0.95
+\beta=0.95
+, the Envelope Shield still fails in roughly
+40
+%
+40\%
+of runs. This is not obviously an artifact of the LP relaxation alone; rather, the results suggest that it reflects the intrinsic difficulty of a runway-alignment task in which observation noise still leaves several plausible latent states after one sensor reading. The shield can prevent overconfident corrections, but it cannot recover information that the sensor channel never supplied.
+Figure 6:
+Obstacle Pareto scatter over threshold
+β
+\beta
+under adversarial perception. With only three observations for fifty states, memoryless posterior reas</p>
+
+<p>oning collapses toward the same extreme point as support-only shielding. Belief-history remains essential, and interval reasoning improves safety at every threshold.
+Obstacle pushes the aliasing effect further. With only 3 observations for 50 states, each observation aggregates many states with incompatible safe actions. Figure
+6
+shows that memoryless Observation and Carr are then driven to the same corner of the tradeoff curve: around
+2
+%
+2\%
+fail, but at roughly
+98
+%
+98\%
+stuck. Belief history breaks this deadlock because the action-observation sequence rules out large parts of the support even when the current observation does not. Single-Belief exploits that history, Fwd-Sampling adds a substantial extra layer of conservatism, and the envelope improves on both at every threshold by treating interval uncertainty adversarially rather than as a point estimate. At the best threshold, Fwd-Sampling reaches
+7
+%
+7\%
+fail and
+84
+%
+84\%
+stuck, much closer to Envelope’s
+3
+%
+/
+85
+%
+3\%/85\%
+than to Single-Belief’s
+14
+%
+/
+50
+%
+14\%/50\%
+. This case suggests that in heavily aliased perception problems, quantitative belief-mass reasoning is not just more fine grained than support reasoning; it changes which shields are usable at all.
+A-B
+Near-Bijective and Large-Scale Regimes
+CartPole and Refuel delimit the other two operating regimes. CartPole uses deliberately degraded perception, but it still has 82 observation labels for 82 states and only two actions. As a result, there are few opp</p>
+
+<p>ortunities for the shield to become stuck: at the best threshold, Single-Belief achieves about
+2
+%
+2\%
+fail and
+0
+%
+0\%
+stuck, Observation about
+3
+%
+3\%
+fail and
+0
+%
+0\%
+stuck, Carr about
+3
+%
+3\%
+fail and
+0
+%
+0\%
+stuck, and Fwd-Sampling about
+2
+%
+2\%
+fail and
+0
+%
+0\%
+stuck in the uniform regime. In this regime, the first observation already localizes the state well enough that history adds little. The experiment therefore acts as a sanity check: when interval uncertainty does not create substantial ambiguity, the heavier envelope machinery is unnecessary.
+Refuel is the opposite kind of stress test. The observation model intentionally hides the safety-critical variables, so danger must be inferred indirectly from history rather than read from a single observation. The Envelope Shield is excluded there because LP-based online propagation is infeasible at this scale, and Carr is excluded because our modified Refuel observation model hides the safety-critical variables, which greatly increases support aliasing and makes the offline support-MDP breadth-first exploration intractable. Still, the comparison among the three feasible baselines is revealing. Single-Belief is the strongest lightweight zero-failure shield, reaching
+0
+%
+0\%
+fail at about
+79
+%
+79\%
+stuck under uniform perception and
+58
+%
+58\%
+stuck under the adversarial regime. Observation is more permissive and uniquely attains a
+0
+%
+0\%
+-stuck operating point at lower thresholds, but does so by accepting a nontrivial fail</p>
+
+<p>ure rate (
+3
+3
+–
+4.5
+%
+4.5\%
+). Fwd-Sampling does not match Single-Belief on Refuel: at its best low-failure point it reaches
+0
+%
+0\%
+fail but about
+98
+%
+98\%
+stuck under uniform perception and
+93
+%
+93\%
+stuck under adversarial perception. The lesson is not that memoryless or sampled shielding is preferable on Refuel; rather, it shows that large hidden-state problems force a three-way tradeoff between safety, stuck avoidance, and online computational budget.
+A-C
+Measured Conservatism of the Envelope
+The runtime envelope is intentionally an over-approximation, so an important question is whether its conservatism is measurable rather than merely asserted. We study this on TaxiNet by comparing the LFP envelope against a forward-sampled under-approximation of reachable beliefs. For each action under evaluation
+a
+a
+and belief
+b
+b
+, let
+P
+​
+(
+b
+,
+allowed
+​
+(
+a
+)
+)
+P(b,\mathrm{allowed}(a))
+denote the belief-weighted mass on true states for which that action is permitted by the perfect-perception shield. Label
+ℬ
+F
+​
+w
+​
+d
+\mathcal{B}^{Fwd}
+the belief set constructed through forward sampling and recall
+ℬ
+^
+\hat{\mathcal{B}}
+is constructed through LFP. For each trajectory we compute
+gap
+=
+min
+b
+∈
+ℬ
+F
+​
+w
+​
+d
+⁡
+P
+​
+(
+b
+,
+allowed
+​
+(
+a
+)
+)
+−
+min
+b
+∈
+ℬ
+^
+⁡
+P
+​
+(
+b
+,
+allowed
+​
+(
+a
+)
+)
+≥
+0
+,
+\mathrm{gap}=\min_{b\in\mathcal{B}^{Fwd}}P(b,\mathrm{allowed(a)})-\min_{b\in\hat{\mathcal{B}}}P(b,\mathrm{allowed(a)})\geq 0,
+where the sampled set under-approximates the true reachable beliefs and the</p>
+
+<p>LFP polytope over-approximates them. Consequently, this measured gap should be read as a sampling-based diagnostic rather than an exact coarseness measure: because the sampled set may miss additional low-score beliefs, it need not coincide with the gap to the exact reachable set.
+Figure 7:
+TaxiNet abstraction coarseness for the LFP envelope. The mean max-gap stays moderate over time, but the percentile band shows that some histories generate substantially looser over-approximations than others.
+Figure
+7
+shows that the average gap is moderate but not negligible. Over time, the per-step mean max-gap remains roughly in the
+0.04
+0.04
+–
+0.14
+0.14
+range. Aggregated by trajectory, the overall max-gap has mean
+0.287
+0.287
+, median
+0.189
+0.189
+, and
+90
+90
+th percentile
+0.746
+0.746
+, while the overall mean-gap is
+0.040
+0.040
+with median
+0.025
+0.025
+. The main takeaway is simply that the envelope’s conservatism is measurable rather than hidden: some histories remain tight, while others incur a noticeably looser over-approximation.
+This gives a concrete diagnostic for judging when the envelope is likely to be responsible for blocked actions and when the underlying perception ambiguity is the real bottleneck. For this diagnostic we use the same forward-sampling configuration as in the shield comparison, namely a budget of
+N
+=
+500
+N=500
+sampled belief points with
+K
+=
+100
+K=100
+sampled emission-probability vectors per propagation step.
+Appendix B
+Proofs
+Proof of Theorem V.1.
+We first prove</p>
+
+<p>by induction on
+t
+t
+that
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+for all
+t
+t
+.
+Base case: by construction,
+ℬ
+0
+⊆
+ℬ
+^
+0
+\mathcal{B}_{0}\subseteq\widehat{\mathcal{B}}_{0}
+.
+Inductive step: assume
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+. Consider any exact posterior belief
+b
+′
+∈
+ℬ
+t
++
+1
+b^{\prime}\in\mathcal{B}_{t+1}
+. By definition of the concrete reachable-belief set,
+b
+′
+b^{\prime}
+is obtained by applying one exact action-observation update from some prior belief in
+ℬ
+t
+\mathcal{B}_{t}
+using a perception uncertainty model in
+𝒵
+\mathcal{Z}
+. Since the induction hypothesis gives
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+, and since the propagated envelope is constructed to contain every such exact one-step posterior, we obtain
+b
+′
+∈
+ℬ
+^
+t
++
+1
+b^{\prime}\in\widehat{\mathcal{B}}_{t+1}
+. Hence
+ℬ
+t
++
+1
+⊆
+ℬ
+^
+t
++
+1
+\mathcal{B}_{t+1}\subseteq\widehat{\mathcal{B}}_{t+1}
+.
+Therefore
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+holds for every
+t
+t
+.
+Now fix any
+Z
+∈
+𝒵
+Z\in\mathcal{Z}
+. The posterior belief induced by history
+h
+t
+h_{t}
+is some
+b
+t
+Z
+∈
+ℬ
+t
+b_{t}^{Z}\in\mathcal{B}_{t}
+. Under that belief,
+Pr
+Z
+⁡
+[
+a
+∈
+Ω
+​
+(
+s
+t
+)
+∣
+h
+t
+]
+=
+∑
+s
+∈
+S
+b
+t
+Z
+​
+(
+s
+)
+​
+𝟏
+​
+[
+a
+∈
+Ω
+​
+(
+s
+)
+]
+=
+ϕ
+a
+​
+(
+b
+t
+Z
+)
+.
+\Pr_{Z}[a\in\Omega(s_{t})\mid h_{t}]=\sum_{s\in S}b_{t}^{Z}(s)\mathbf{1}[a\in\Omega(s)]=\phi_{a}(b_{t}^{Z}).
+Therefore,
+inf
+Z
+∈
+𝒵
+Pr
+Z
+⁡
+[
+a
+∈
+Ω
+​
+(
+s
+t
+)
+∣
+h
+t
+]
+=
+inf
+b
+∈
+ℬ
+t
+ϕ
+a
+​
+(
+b
+)
+.
+\inf_{Z\in\mathcal</p>
+
+<p>{Z}}\Pr_{Z}[a\in\Omega(s_{t})\mid h_{t}]=\inf_{b\in\mathcal{B}_{t}}\phi_{a}(b).
+Since
+ℬ
+t
+⊆
+ℬ
+^
+t
+\mathcal{B}_{t}\subseteq\widehat{\mathcal{B}}_{t}
+, minimizing over the larger set
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+can only decrease the value, so
+inf
+b
+∈
+ℬ
+t
+ϕ
+a
+​
+(
+b
+)
+≥
+inf
+b
+∈
+ℬ
+^
+t
+ϕ
+a
+​
+(
+b
+)
+=
+p
+¯
+t
+​
+(
+a
+)
+.
+\inf_{b\in\mathcal{B}_{t}}\phi_{a}(b)\geq\inf_{b\in\widehat{\mathcal{B}}_{t}}\phi_{a}(b)=\underline{p}_{t}(a).
+If
+a
+∈
+Ξ
+^
+​
+(
+h
+t
+)
+a\in\widehat{\Xi}(h_{t})
+, then by definition
+p
+¯
+t
+​
+(
+a
+)
+≥
+β
+\underline{p}_{t}(a)\geq\beta
+, which yields the claim.
+∎
+Proof of Theorem V.2.
+Condition on the event
+ℰ
+corr
+\mathcal{E}_{\mathrm{corr}}
+, so that the true perception uncertainty model satisfies
+Z
+∗
+∈
+𝒵
+Z^{\ast}\in\mathcal{Z}
+. For
+t
+=
+0
+,
+…
+,
+H
+t=0,\dots,H
+, let
+E
+t
+=
+{
+s
+0
+,
+…
+,
+s
+t
+∈
+C
+}
+,
+E_{t}=\{s_{0},\dots,s_{t}\in C\},
+so
+Safe
+0
+:
+H
+=
+E
+H
+\mathrm{Safe}_{0:H}=E_{H}
+. By assumption, the initial support lies in
+C
+C
+, hence
+Pr
+⁡
+(
+E
+0
+∣
+ℰ
+corr
+)
+=
+1
+\Pr(E_{0}\mid\mathcal{E}_{\mathrm{corr}})=1
+.
+Fix any
+t
+∈
+{
+0
+,
+…
+,
+H
+−
+1
+}
+t\in\{0,\dots,H-1\}
+. On the event
+E
+t
+E_{t}
+, we have
+s
+t
+∈
+C
+s_{t}\in C
+. Since actions are chosen from
+Ξ
+^
+\widehat{\Xi}
+, the executed action
+a
+t
+a_{t}
+satisfies
+a
+t
+∈
+Ξ
+^
+​
+(
+h
+t
+)
+a_{t}\in\widehat{\Xi}(h_{t})
+. The Abstraction Soundness theorem then implies
+Pr
+⁡
+[
+a
+t
+∈
+Ω
+​
+(
+s
+t
+)
+∣
+h
+t
+,
+ℰ
+corr
+]
+≥
+β
+.
+\Pr[a_{t}\in\Omega(s_{t})\mid h_{t},\mathcal{E}_{\mathrm{corr}}]\geq\beta.
+Whenever
+s
+t
+∈
+C
+s_{t}\in C
+and
+a
+t
+∈
+Ω
+​
+(
+s
+t
+)
+a_{t}\in\Omega(s_{</p>
+
+<p>t})
+, Assumption V.1 gives
+Pr
+⁡
+[
+s
+t
++
+1
+∈
+C
+∣
+s
+t
+,
+a
+t
+]
+≥
+γ
+.
+\Pr[s_{t+1}\in C\mid s_{t},a_{t}]\geq\gamma.
+Combining these two bounds,
+Pr
+⁡
+[
+s
+t
++
+1
+∈
+C
+∣
+h
+t
+,
+E
+t
+,
+ℰ
+corr
+]
+≥
+Pr
+⁡
+[
+a
+t
+∈
+Ω
+​
+(
+s
+t
+)
+∣
+h
+t
+,
+ℰ
+corr
+]
+⋅
+γ
+≥
+β
+​
+γ
+.
+\Pr[s_{t+1}\in C\mid h_{t},E_{t},\mathcal{E}_{\mathrm{corr}}]\geq\Pr[a_{t}\in\Omega(s_{t})\mid h_{t},\mathcal{E}_{\mathrm{corr}}]\cdot\gamma\geq\beta\gamma.
+Therefore,
+Pr
+⁡
+(
+E
+t
++
+1
+∣
+E
+t
+,
+ℰ
+corr
+)
+≥
+β
+​
+γ
+.
+\Pr(E_{t+1}\mid E_{t},\mathcal{E}_{\mathrm{corr}})\geq\beta\gamma.
+Applying the chain rule over
+t
+=
+0
+,
+…
+,
+H
+−
+1
+t=0,\dots,H-1
+yields
+Pr
+⁡
+(
+E
+H
+∣
+ℰ
+corr
+)
+=
+∏
+t
+=
+0
+H
+−
+1
+Pr
+⁡
+(
+E
+t
++
+1
+∣
+E
+t
+,
+ℰ
+corr
+)
+≥
+(
+β
+​
+γ
+)
+H
+.
+\Pr(E_{H}\mid\mathcal{E}_{\mathrm{corr}})=\prod_{t=0}^{H-1}\Pr(E_{t+1}\mid E_{t},\mathcal{E}_{\mathrm{corr}})\geq(\beta\gamma)^{H}.
+Since
+Safe
+0
+:
+H
+=
+E
+H
+\mathrm{Safe}_{0:H}=E_{H}
+, this is exactly the desired inner bound.
+Finally, by construction of the confidence set,
+Pr
+⁡
+(
+ℰ
+corr
+)
+≥
+λ
+\Pr(\mathcal{E}_{\mathrm{corr}})\geq\lambda
+. Equivalently, with outer probability at least
+λ
+\lambda
+over the random training dataset, the conditional closed-loop safety probability is at least
+(
+β
+​
+γ
+)
+H
+(\beta\gamma)^{H}
+. This is exactly
+Pr
+⁡
+[
+Pr
+⁡
+[
+Safe
+0
+:
+H
+]
+≥
+(
+β
+​
+γ
+)
+H
+]
+≥
+λ
+.
+\Pr\!\left[\Pr\left[\mathrm{Safe}_{0:H}\right]\geq(\beta\gamma)^{H}\right]\geq\lambda.
+∎
+Appendix C
+Categorical Foundations: Credal Coalgebraic Typing and Belief Semantics
+This section gives a
+categorical typing story
+for interval perception unce</p>
+
+<p>rtainty and explains how it directly motivates our choice of a convex (LP-friendly) abstract domain. The key observation is that interval constraints induce
+convex
+sets of admissible distributions (credal sets), and belief-state semantics is governed by convex-algebra structure
+[
+4
+]
+. Our abstract interpretation instantiates this structure computationally: it approximates credal belief sets by finitely presented convex sets and evaluates admissibility by extremizing linear functionals, which are the natural observables in a convex-algebraic setting.
+C-A
+Distributions, Convex Powersets, and Credal Sets
+Let
+𝐂𝐨𝐧𝐯
+\mathbf{Conv}
+denote the category of convex algebras and affine maps, and let
+U
+:
+𝐂𝐨𝐧𝐯
+→
+𝐒𝐞𝐭𝐬
+U:\mathbf{Conv}\to\mathbf{Sets}
+be the forgetful functor. For a finite set
+X
+X
+,
+𝒟
+​
+(
+X
+)
+\mathcal{D}(X)
+denotes the simplex of probability distributions on
+X
+X
+, viewed as the free convex algebra on
+X
+X
+[
+4
+]
+. Let
+𝒫
+c
+\mathcal{P}_{c}
+denote the convex-powerset construction on convex algebras. On underlying sets,
+U
+​
+𝒫
+c
+​
+(
+𝒟
+​
+(
+X
+)
+)
+U\mathcal{P}_{c}(\mathcal{D}(X))
+is represented by the nonempty convex subsets of
+𝒟
+​
+(
+X
+)
+\mathcal{D}(X)
+; we write this carrier as
+𝒦
+​
+(
+X
+)
+\mathcal{K}(X)
+. Thus, in the discussion below, a “credal set” is precisely an element of
+𝒦
+​
+(
+X
+)
+\mathcal{K}(X)
+.
+C-B
+A Coalgebraic Type for an
+IPOMDP
+For a POMDP it is convenient to bundle transition and emission into a one-step
+joint
+distribution over
+(
+s
+′
+,
+o
+)
+∈
+S
+×
+O
+(s^{\prime},o)\in S\times</p>
+
+<p>O
+. Under interval uncertainty, the perception uncertainty model is no longer a single kernel but a set
+𝒵
+\mathcal{Z}
+; in the present section it is most natural to view this as a
+nondeterministic perception uncertainty model
+. Consequently, from a given
+(
+s
+,
+a
+)
+(s,a)
+we obtain a
+credal set
+of admissible joint distributions. The point of this typing is not to replace the LP construction, but to isolate the structural reason the LP construction works: before normalization, the one-step semantics is a convex set of distributions, and shield queries depend only on linear functionals of beliefs. That is exactly the regime in which convex envelope abstractions and LP extremization are natural.
+Concretely, for each
+Z
+∈
+𝒵
+Z\in\mathcal{Z}
+define the joint kernel
+P
+Z
+​
+(
+s
+′
+,
+o
+∣
+s
+,
+a
+)
+≜
+T
+​
+(
+s
+,
+a
+,
+s
+′
+)
+​
+Z
+​
+(
+o
+∣
+s
+′
+)
+.
+P_{Z}(s^{\prime},o\mid s,a)\triangleq T(s,a,s^{\prime})\,Z(o\mid s^{\prime}).
+The family
+{
+P
+Z
+(
+⋅
+∣
+s
+,
+a
+)
+:
+Z
+∈
+𝒵
+}
+⊆
+𝒟
+(
+S
+×
+O
+)
+\{P_{Z}(\cdot\mid s,a):Z\in\mathcal{Z}\}\subseteq\mathcal{D}(S\times O)
+is convex because
+𝒵
+\mathcal{Z}
+is a convex polytope (interval constraints intersected with simplex constraints) and
+Z
+↦
+P
+Z
+(
+⋅
+∣
+s
+,
+a
+)
+Z\mapsto P_{Z}(\cdot\mid s,a)
+is affine. Following the pattern of
+[
+4
+]
+, it is useful to separate the abstract typed definition from its set-level concretization.
+At the typed level, an
+IPOMDP
+is presented by a coalgebra
+c
+:
+S
+→
+(
+𝒫
+c
+​
+(
+𝒟
+​
+(
+S
+×
+O
+)
+)
+)
+A
+,
+c:\;S\to\big(\mathcal{P}_{c}(\mathcal{D}(S\times O))\big)^</p>
+
+<p>{A},
+whose codomain says that each state and action yields a convex choice of one-step joint distributions over next-state/observation pairs.
+On underlying sets, the codomain of
+c
+c
+is represented by
+𝒦
+​
+(
+S
+×
+O
+)
+\mathcal{K}(S\times O)
+. But the concrete propagated object of interest is not this state-level map itself; it is the induced belief-state transformer obtained by lifting
+c
+c
+along the convex-algebra structure on
+𝒟
+​
+(
+S
+)
+\mathcal{D}(S)
+.
+C-C
+Belief-Space Semantics and Convex Closure
+Beliefs live in
+𝒟
+​
+(
+S
+)
+\mathcal{D}(S)
+, which carries the free convex-algebra structure used in distribution-first presentations of probabilistic systems
+[
+4
+]
+. In the same spirit as the belief-state transformer
+c
+♯
+:
+𝒟
+​
+(
+S
+)
+→
+(
+𝒫
+​
+𝒟
+​
+(
+S
+)
+)
+L
+c^{\sharp}:\mathcal{D}(S)\to(\mathcal{P}\mathcal{D}(S))^{L}
+for probabilistic automata, the state-level
+IPOMDP
+coalgebra induces an exact concrete transformer on single beliefs,
+c
+^
+:
+𝒟
+​
+(
+S
+)
+→
+(
+𝒦
+​
+(
+S
+)
+)
+A
+×
+O
+,
+\hat{c}:\mathcal{D}(S)\to\big(\mathcal{K}(S)\big)^{A\times O},
+defined by
+c
+^
+​
+(
+b
+)
+​
+(
+a
+,
+o
+)
+\displaystyle\hat{c}(b)(a,o)
+=
+{
+Bayes
+o
+(
+∑
+s
+∈
+S
+b
+(
+s
+)
+P
+Z
+(
+⋅
+∣
+s
+,
+a
+)
+)
+∣
+Z
+∈
+𝒵
+,
+Pr
+Z
+⁡
+(
+o
+∣
+b
+,
+a
+)
+&gt;
+​
+0
+}
+.
+\displaystyle=\left\{\begin{aligned} &amp;\operatorname{Bayes}_{o}\!\left(\sum_{s\in S}b(s)\,P_{Z}(\cdot\mid s,a)\right)\\
+&amp;\qquad\mid\;Z\in\mathcal{Z},\ \Pr_{Z}(o\mid b,a)&gt;0\end{aligned}\right\}.
+Thus the left-hand side changes from states to beliefs, exactly because propagation takes convex combinations of the</p>
+
+<p>state-indexed one-step semantics. This is the direct analogue of Bonchi’s determinized belief-state transformer: a single current belief is mapped to a set of possible successor beliefs for each action-observation pair.
+Equivalently, one may factor this through the intermediate joint-distribution credal set
+𝖩𝗈𝗂𝗇𝗍
+(
+b
+,
+a
+)
+=
+{
+∑
+s
+∈
+S
+b
+(
+s
+)
+P
+Z
+(
+⋅
+∣
+s
+,
+a
+)
+:
+Z
+∈
+𝒵
+}
+⊆
+𝒟
+(
+S
+×
+O
+)
+,
+\mathsf{Joint}(b,a)=\left\{\sum_{s\in S}b(s)\,P_{Z}(\cdot\mid s,a):Z\in\mathcal{Z}\right\}\subseteq\mathcal{D}(S\times O),
+and then write
+c
+^
+​
+(
+b
+)
+​
+(
+a
+,
+o
+)
+=
+𝖯𝗈𝗌𝗍
+​
+(
+b
+,
+a
+,
+o
+)
+\hat{c}(b)(a,o)=\mathsf{Post}(b,a,o)
+for the posterior set obtained by conditioning
+𝖩𝗈𝗂𝗇𝗍
+​
+(
+b
+,
+a
+)
+\mathsf{Joint}(b,a)
+on
+o
+o
+, where
+Pr
+Z
+⁡
+(
+o
+∣
+b
+,
+a
+)
+\Pr_{Z}(o\mid b,a)
+denotes the corresponding marginal observation probability. Affine prediction preserves convexity; the essential difficulty is that the normalization in
+Bayes
+o
+\operatorname{Bayes}_{o}
+can destroy convexity of
+c
+^
+​
+(
+b
+)
+​
+(
+a
+,
+o
+)
+\hat{c}(b)(a,o)
+.
+For shielding, however, we propagate not one belief but a reachable set of beliefs. This gives the concrete set transformer
+ℱ
+:
+𝒦
+​
+(
+S
+)
+→
+(
+𝒦
+​
+(
+S
+)
+)
+A
+×
+O
+,
+\displaystyle\mathcal{F}:\mathcal{K}(S)\to\big(\mathcal{K}(S)\big)^{A\times O},
+ℱ
+​
+(
+B
+)
+​
+(
+a
+,
+o
+)
+=
+conv
+⁡
+(
+⋃
+b
+∈
+B
+c
+^
+​
+(
+b
+)
+​
+(
+a
+,
+o
+)
+)
+,
+\displaystyle\mathcal{F}(B)(a,o)=\operatorname{conv}\!\left(\bigcup_{b\in B}\hat{c}(b)(a,o)\right),
+where by
+𝒦
+​
+(
+S
+)
+\mathcal{K}(S)
+we mean nonempty convex subsets of
+𝒟
+​
+(
+S
+)
+\mathc</p>
+
+<p>al{D}(S)
+. Conditioning on an observation
+o
+o
+can destroy convexity even when
+B
+B
+is convex, so the explicit convex closure in
+ℱ
+\mathcal{F}
+is exactly the “up to convex hull” step used by our envelope semantics. Our method therefore propagates the envelope
+ℬ
+^
+t
+\widehat{\mathcal{B}}_{t}
+rather than the exact generally nonconvex posterior set, so that linear functionals of beliefs (such as
+ϕ
+a
+\phi_{a}
+) can be optimized soundly by LP.
+C-D
+Normalization as a Cone Projection and the Role of Charnes–Cooper
+The Bayesian posterior update includes division by a normalizing constant. A useful perspective is to perform the update first in the positive cone of
+unnormalized
+measures (or subdistributions), where the mapping is affine, and then project back to the simplex by normalization. This is exactly the computational role of our LFP lifting and Charnes–Cooper step: it is a controlled way to express normalization as linear-fractional constraints and reduce extremal posterior queries to LP without changing their optimal values.
+C-E
+Abstract Interpretation Guided by Convex Algebra
+Abstract interpretation studies sound finite representations of typically infinite-state semantics by relating a concrete domain to an abstract domain through abstraction and concretization maps. In our setting, the concrete domain consists of reachable convex belief sets, while the abstract domain consists of finitely represented envelopes such as template polytopes. The abstraction map
+𝖺𝖻𝗌
+\mathsf{abs}
+t</p>
+
+<p>akes a concrete reachable belief set and returns a sound over-approximation in the chosen template domain; the concretization map
+𝖼𝗈𝗇𝖼
+\mathsf{conc}
+interprets that abstract element back as the set of beliefs satisfying the template constraints. The abstract transformer
+ℱ
+♯
+\mathcal{F}^{\sharp}
+is exactly our LFP/LP propagation pipeline.
+From this perspective, the soundness condition
+ℱ
+​
+(
+B
+)
+⊆
+𝖼𝗈𝗇𝖼
+​
+(
+ℱ
+♯
+​
+(
+𝖺𝖻𝗌
+​
+(
+B
+)
+)
+)
+\mathcal{F}(B)\subseteq\mathsf{conc}(\mathcal{F}^{\sharp}(\mathsf{abs}(B)))
+says that if
+B
+B
+is a concrete set of beliefs reachable before an action-observation update, then the beliefs actually reachable after the update are contained in the concretization of the abstract envelope produced by our propagation step. Template polytopes are one concrete realization of this recipe: they preserve affine prediction, admit conservative relaxations for the bilinear coupling introduced by uncertain observation likelihoods, and reduce extremal query evaluation to LP.
+This viewpoint also clarifies portability. The method does not rely on the interval perception uncertainty model being rectangular. More generally, it applies to any perception uncertainty model represented by a convex polytope of admissible observation probabilities: the prediction step remains affine, the uncertain observation update can still be lifted into a convex belief-envelope computation, and runtime admissibility is still obtained by optimizing linear objectives over that envelope.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
