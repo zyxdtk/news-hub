@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控大模型行为：漂移、重试与拒绝模式 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">监控大模型行为：漂移、重试与拒绝模式</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-28</span>
+                <span>📄 VentureBeat AI</span>
+                <a href="https://venturebeat.com/infrastructure/monitoring-llm-behavior-drift-retries-and-refusal-patterns" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Monitoring LLM behavior: Drift, retries, and refusal patterns</h4>
+            <p><strong>中文摘要：</strong> 生成式AI的随机性打破了传统软件的确定性测试。本文提出“AI评估栈”，分为两层：第一层是确定性断言，用于快速验证JSON模式等结构完整性；第二层是基于模型的断言（LLM-as-a-Judge），评估语义质量。评估架构包含离线与在线管道：离线管道通过黄金数据集和加权评分进行回归测试；在线管道监控部署后的显式/隐式用户信号及生产断言。最后，作者强调需建立闭环反馈飞轮，持续更新数据集，以应对模型漂移，重新定义AI产品的“完成标准”。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>## 随机性挑战
+传统软件是可预测的：输入A加上函数B总是等于输出C。这种确定性使得工程师能够开发健壮的测试。另一方面，生成式AI是随机的且不可预测的。完全相同的提示词在周一和周二往往会产生不同的结果，打破了工程师们熟知且喜爱的传统单元测试。</p>
+
+<p>要发布企业级AI，工程师不能仅仅依赖今天通过但客户使用产品时却失败的“感觉检查”。产品构建者需要采用一个新的基础设施层：_AI评估栈_。</p>
+
+<p>这个框架是基于我为财富500强高风险行业企业客户交付[AI产品](https://venturebeat.com/infrastructure/claude-openclaw-and-the-new-reality-ai-agents-are-here-and-so-is-the-chaos?_gl=1*p1fni9*_up*MQ..*_ga*NzQyMjc1NDIyLjE3NzcwNjQ1MjA.*_ga_SCH1J7LNKY*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw*_ga_B8TDS1LEXQ*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw)的丰富经验得出的，在这些行业中，“幻觉”并不好笑——它是一个巨大的合规风险。</p>
+
+<p>## 定义AI评估范式
+传统软件测试是二元断言（通过/失败）。虽然一些AI评估使用二元断言，但许多评估是在梯度上进行的。评估不是单个脚本；它是一个结构化的断言管道——从严格的代码语法到细微的语义检查——用于验证AI系统的预期功能。</p>
+
+<p>### 评估检查的分类
+为了构建一个健壮、经济高效的管道，必须将断言分为两个不同的架构层：</p>
+
+<p>#### 第一层：确定性断言
+令人惊讶的是，很大一部分生产环境中的AI故障并不是语义上的“幻觉”——而是基本的语法和路由故障。确定性断言作为管道的第一道关卡，使用传统代码和正则表达式来验证结构完整性。</p>
+
+<p>这些断言不问回答是否“有帮助”，而是问严格的二元问题：
+* 模型是否生成了正确的JSON键/值模式？
+* 它是否使用所需参数调用了正确的工具？
+* 它是否成功填充了有效的GUID或电子邮件地址？</p>
+
+<p>// 示例：第一层确定性工具调用断言
+{
+&quot;test_scenario&quot;: &quot;用户要求查找账户&quot;,
+&quot;assertion_type&quot;: &quot;模式验证&quot;,
+&quot;expected_action&quot;: &quot;调用API: get_customer_record&quot;,
+&quot;actual_ai_output&quot;: &quot;我找到了客户。&quot;,
+&quot;eval_result&quot;: &quot;失败 - AI产生了对话文本的幻觉，而不是生成所需的API有效载荷。&quot;
+}</p>
+
+<p>在上面的示例中，测试立即失败，因为模型生成了对话文本而不是所需的工具调用有效载荷。</p>
+
+<p>在架构上，确定性断言必须是栈的第一层，运行在计算成本低的“快速失败”原则上。如果下游API需要特定的模式，格式错误的JSON字符串就是一个致命错误。通过在这一层立即判定评估失败，工程团队可以防止管道触发昂贵的语义检查（第二层）或浪费宝贵的人工审查时间（第三层）。</p>
+
+<p>#### 第二层：基于模型的断言
+当确定性断言通过时，管道必须评估语义质量。因为自然语言是流动的，传统代码无法轻易断言回答是否“有帮助”或“有同理心”。这引入了基于模型的评估，通常被称为“_LLM作为裁判_”或“_LLM-Judge_”。</p>
+
+<p>虽然使用一个非确定性系统来评估另一个非确定性系统似乎有悖常理，但对于需要细微差别的用例来说，这是一种异常强大的架构模式。几乎不可能编写一个可靠的正则表达式来验证回答是否“可操作”或“礼貌”。虽然人工审查员擅长捕捉这种细微差别，但他们无法扩展到评估数以万计的CI/CD测试用例。因此，LLM裁判成为了人类判断力的可扩展代理。</p>
+
+<p>## 基于模型的断言的3个关键输入
+然而，只有当LLM裁判配备了三个关键输入时，基于模型的断言才能产生可靠的数据：</p>
+
+<p>1. **最先进的推理模型：** 与生产模型相比，裁判必须具备卓越的推理能力。如果你的应用为了延迟而运行在更小、更快的模型上，那么裁判必须是一个前沿的推理模型，以接近人类水平的判断力。
+2. **严格的评估标准：** 模糊的评估提示（“评估这个答案有多好”）会产生嘈杂、随机的评估结果。一个健壮的标准明确界定了失败和成功的梯度。（例如，“帮助性”标准应将1分定义为不相关的拒绝，2分定义为回应了提示但缺乏可操作步骤，3分定义为严格在上下文中提供可操作的后续步骤。）
+3. **真实依据（黄金输出）：** 虽然标准提供了规则，但经过人工审查的“预期答案”充当了答案键。当LLM裁判可以将生产模型的输出与经过验证的黄金输出进行比较时，其评分可靠性会显著提高。</p>
+
+<p>## 架构：离线与在线管道
+一个健壮的评估架构需要两个互补的管道。在线管道监控部署后的遥测数据，而离线管道则提供安全评估随机模型所需的基础基线和确定性约束。</p>
+
+<p>### 离线评估管道
+离线管道的主要目标是回归测试——在生产前识别故障、漂移和延迟。在没有门控离线评估套件的情况下部署[企业LLM](https://venturebeat.com/technology/when-product-managers-ship-code-ai-just-broke-the-software-org-chart?_gl=1*p1fni9*_up*MQ..*_ga*NzQyMjc1NDIyLjE3NzcwNjQ1MjA.*_ga_SCH1J7LNKY*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw*_ga_B8TDS1LEXQ*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw)功能是一种架构反模式；这等同于将未编译的代码合并到主分支中。</p>
+
+<p>### 流程
+#### 1. 策划黄金数据集
+离线生命周期始于策划一个“**黄金数据集**”——一个包含200到500个测试用例的静态、版本控制的存储库，代表AI的完整操作范围。每个用例将精确的输入有效载荷与预期的“**黄金输出**”（真实依据）配对。</p>
+
+<p>关键是，该数据集必须反映预期的现实世界流量分布。虽然大多数用例涵盖了标准的“快乐路径”交互，但工程师必须系统地纳入边缘情况、越狱和对抗性输入。评估压力下的“拒绝能力”仍然是一项严格的合规要求。</p>
+
+<p>**示例测试用例有效载荷（标准工具使用）：**
+* **输入：** “安排下周二上午10点与客户进行30分钟的跟进会议。”
+* **预期输出（黄金）：** 系统使用正确的JSON有效载荷成功调用schedule_meeting工具：{&quot;duration_minutes&quot;: 30, &quot;day&quot;: &quot;Tuesday&quot;, &quot;time&quot;: &quot;10 AM&quot;, &quot;attendee&quot;: &quot;client_email&quot;}。</p>
+
+<p>虽然手动策划数百个边缘情况很繁琐，但可以使用合成数据生成管道来加速该过程，该管道使用[专门的LLM](https://venturebeat.com/orchestration/when-ai-turns-software-development-inside-out-170-throughput-at-80-headcount?_gl=1*mgusdo*_up*MQ..*_ga*NzQyMjc1NDIyLjE3NzcwNjQ1MjA.*_ga_SCH1J7LNKY*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw*_ga_B8TDS1LEXQ*czE3NzcwNjQ1MTkkbzEkZzAkdDE3NzcwNjQ1MTkkajYwJGwwJGgw)来生成多样化的TSV/CSV测试有效载荷。然而，完全依赖AI生成的测试用例会带来数据污染和偏见的风险。在此阶段，人机协同（HITL）架构是强制性的；领域专家必须手动审查、编辑和验证合成数据集，以确保其准确反映现实世界的用户意图和企业政策，然后才能将其提交到存储库中。</p>
+
+<p>#### 2. 定义评估标准
+一旦策划好数据集，工程师必须设计评估标准，以计算每个模型输出的综合得分。健壮的架构通过在第一层（确定性）和第二层（基于模型）断言的混合中分配加权分数来实现这一点。</p>
+
+<p>考虑一个执行“发送电子邮件”工具的AI代理。评估框架可能采用10分制的评分系统：
+* **第一层：确定性断言（6分）：** 代理是否调用了正确的工具？（2分）。它是否生成了有效的JSON对象？（2分）。JSON是否严格遵守预期的模式？（2分）。
+* **第二层：基于模型的断言（4分）：** （注意：语义标准必须高度针对特定用例）。主题行是否反映了用户意图？（1分）。电子邮件正文是否与预期输出匹配且没有幻觉？（1分）。抄送/密送字段是否被准确利用？（1分）。是否推断出了适当的优先级标志？（1分）。</p>
+
+<p>为了理解LLM裁判为何授予这些分数，工程师必须提示裁判提供每个分数的推理过程。这对于调试故障至关重要。</p>
+
+<p>**通过阈值和短路逻辑**
+在此示例中，8/10的通过阈值需要8分才能成功。关键是，评估管道必须执行严格的短路评估（快速失败逻辑）。如果模型未能通过任何确定性断言——例如生成了格式错误的JSON模式——系统必须立即判定整个测试用例失败（0/10）。如果底层的API调用在结构上已经损坏，那么调用昂贵的LLM裁判来评估电子邮件的语义“礼貌性”没有任何架构价值。</p>
+
+<p>#### 3. 执行管道和聚合信号
+使用选定的评估基础设施，系统执行离线管道——通常集成为拉取请求期间的阻塞CI/CD步骤。基础设施遍历黄金数据集，将每个测试有效载荷注入生产模型，捕获输出，并对其执行定义的断言。</p>
+
+<p>每个输出都根据通过阈值进行评分。批量执行完成后，结果将汇总为总体通过率。对于企业级应用，基线通过率通常必须超过**95%**，在严格合规或高风险领域则需达到**99%以上**。</p>
+
+<p>#### 4. 评估、迭代和对齐
+基于汇总的故障数据，工程团队对失败的测试用例进行根本原因分析。此评估推动了对核心组件的迭代更新：完善系统提示、修改工具描述、扩充知识源或调整超参数（如温度或top-p）。即使在达到95%的通过率之后，持续优化仍然是最佳实践。</p>
+
+<p>关键是，任何系统修改都需要进行完整的回归测试。因为LLM本质上是不确定的，旨在修复某个特定边缘情况的更新很容易在其他区域导致不可预见的退化。必须重新运行整个离线管道，以验证更新提高了质量而没有引入回归。</p>
+
+<p>### 在线评估管道
+虽然离线管道充当严格的部署前守门人，但在线管道是部署后的遥测系统。其目标是监控现实世界的行为，捕获新兴的边缘情况，并量化模型漂移。架构师必须为应用程序配备仪器，以捕获五个不同类别的遥测数据：</p>
+
+<p>#### 1. 显式用户信号
+指示模型性能的直接、确定性反馈：
+* **点赞/踩：** 不成比例的负面反馈是系统退化最直接的先导指标，可引导立即进行工程调查。
+* **应用内逐字反馈：** 系统地解析书面评论可识别新的故障模式，以便整合回离线“黄金数据集”。</p>
+
+<p>#### 2. 隐性行为信号
+行为遥测揭示了用户在没有明确反馈的情况下放弃的隐性故障：
+* **重新生成和重试率：** 高频率的重试表明初始输出未能解决用户意图。
+* **道歉率：** 以编程方式扫描启发式触发词（“对不起”）可检测能力退化或工具路由损坏。
+* **拒绝率：** 人为偏高的拒绝率（“我不能那样做”）表明过度校准的安全过滤器拒绝了良性的用户查询。</p>
+
+<p>#### 3. 生产环境确定性断言（同步）
+由于确定性代码检查在毫秒内执行，团队可以无缝地重用第一层离线断言（模式一致性、工具有效性），以同步评估100%的生产流量。记录这些通过/失败率可以立即检测到格式错误输出中的异常峰值——这是无声模型漂移或提供商端API更改的最早警告信号。</p>
+
+<p>#### 4. 生产环境LLM裁判（异步）
+如果严格的数据隐私协议（DPA）允许记录用户输入，团队可以部署基于模型的断言。在架构上，生产环境的LLM裁判绝不能在关键路径上同步执行，这会使延迟和计算成本翻倍。相反，后台的LLM裁判异步地对每日会话的一小部分（5%）进行采样，根据离线标准对输出进行评分，以生成连续的质量仪表板。</p>
+
+<p>## 构建反馈循环（“飞轮”）
+评估管道不是“一劳永逸”的基础设施。如果没有持续更新，随着用户行为的演变和客户发现新的用例，静态数据集会遭受“腐烂”（概念漂移）。</p>
+
+<p>例如，一个HR聊天机器人可能会吹嘘在标准薪资问题上拥有原始的99%离线通过率。然而，如果公司突然宣布了一项新的股权计划，用户将立即开始向AI询问归属时间表——这是一个在离线评估中完全缺失的领域。</p>
+
+<p>为了使系统随着时间的推移变得更聪明，工程师必须构建一个闭环反馈循环，挖掘生产遥测数据以实现持续改进。</p>
+
+<p>**持续改进工作流：**
+1. **捕获：** 用户在生产环境中触发了明确的负面信号（“踩”）或隐性行为标志。
+2. **分诊：** 特定的会话日志被自动标记并路由以供人工审查。
+3. **根本原因分析：** 领域专家调查故障，识别差距，并更新AI系统以成功处理类似的请求。
+4. **数据集扩充：** 将新的用户输入与新纠正的预期输出配对，连同几个合成变体一起附加到离线黄金数据集中。
+5. **回归测试：** 在未来的所有运行中，针对这个新发现的边缘情况对模型进行持续重新评估。</p>
+
+<p>构建评估管道而不监控生产日志和更新数据集是根本不够的。用户是不可预测的。在陈旧数据上进行评估会产生一种危险的错觉：高离线通过率掩盖了迅速退化的现实世界体验。</p>
+
+<p>## 结论：新的“完成定义”
+在生成式AI时代，一个功能或产品不再仅仅因为代码编译通过和提示返回连贯的响应而“完成”。只有当部署了严格、自动化的评估管道并且稳定时——并且当模型在策划的黄金数据集和新发现的生产边缘情况下都能持续通过时，它才算完成。</p>
+
+<p>本指南为您提供了构建这一现实的全面蓝图。从构建离线回归管道和在线遥测，到连续反馈飞轮和驾驭企业反模式，您现在拥有了更自信地部署AI系统所需的结构基础。</p>
+
+<p>现在，轮到你了。与您的工程、产品和法律团队分享此框架，为您的组织建立统一的、跨职能的AI质量标准。停止猜测您的模型是否在生产中退化，开始测量吧。</p>
+
+<p>_Derah Onuorah是微软高级产品经理。_</p>
+
+<p>欢迎来到VentureBeat社区！
+我们的客座发文计划是技术专家分享见解的地方，并对塑造企业未来的AI、数据基础设施、网络安全和其他前沿技术提供中立的、无既得利益的深度剖析。从我们的客座发文计划中[阅读更多](https://venturebeat.com/category/DataDecisionMakers)——如果您有兴趣贡献自己的文章，请查看我们的[指南](https://venturebeat.com/guest-posts)！</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> LLM评估, AI评估栈, LLM裁判, 模型漂移, 离线与在线管道</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

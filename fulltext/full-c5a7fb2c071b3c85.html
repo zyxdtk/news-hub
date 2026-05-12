@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DepthKV：面向长上下文LLM推理的层依... - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">DepthKV：面向长上下文LLM推理的层依...</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-27</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.24647" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：DepthKV: Layer-Dependent KV Cache Pruning for Long-Context LLM Inference</h4>
+            <p><strong>中文摘要：</strong> 本文针对长上下文LLM推理中的KV缓存内存瓶颈，指出均匀剪枝假设各层同等重要的次优性。研究发现Transformer层对剪枝的敏感度存在显著差异，并识别出对维持内容生成至关重要的“内容放大层”。基于此，提出DepthKV框架，根据层重要性（如InfoNCE指标）非均匀地分配全局KV预算。实验表明，在相同内存预算下，DepthKV在摘要、QA和推理任务上均优于均匀剪枝。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>DepthKV：面向长上下文LLM推理的层依赖KV缓存剪枝
+Zahra Dehghanighobadi¹˒² Asja Fischer¹
+¹ 波鸿鲁尔大学 ² UAR可信数据科学与安全研究中心
+联系方式: zdehghanighobani1998@gmail.com, asja.fischer@rub.de</p>
+
+<p>摘要
+长上下文推理是大语言模型的关键能力，支持长文档理解、摘要和代码生成等应用。然而，高效的自回归推理依赖于键值（KV）缓存，其内存占用随序列长度线性增长，导致主要的内存瓶颈。为了缓解这一开销，KV缓存剪枝方法在推理期间丢弃注意力分数较低的缓存Token。现有大多数方法在各层应用统一的剪枝率，隐含地假设所有层对整体模型性能的贡献相同。我们表明这种假设是次优的，因为各层对剪枝的敏感度存在显著差异。我们提出了DepthKV，一个层依赖的剪枝框架，它根据各层的敏感度在层间分配固定的全局KV预算，而不是使用均匀分配。在多个模型和任务中，DepthKV在相同全局剪枝率下始终优于均匀剪枝，展示了通过层依赖分配更有效地利用KV缓存预算。
+github.com/zahra-dehghani/depthkv</p>
+
+<p>1 引言
+图1：均匀与层依赖KV分配对比。均匀分配（左）在Transformer各层分配相等的KV预算。DepthKV（右）根据对剪枝的敏感度重新分配预算，在关键层（高亮）保留更多Token，更激进地剪枝不重要的层。Token排名表示相对重要性。</p>
+
+<p>大语言模型的最新进展极大地增加了上下文窗口大小，从128K到数百万个Token不等。更大的上下文窗口支持长篇推理、基于Agent的工作流和大规模文档检索等应用，其中相关信息通常稀疏地分布在冗长的输入中。</p>
+
+<p>然而，在自回归LLM中，每个生成的Token通过自注意力关注所有先前的Token。解码随上下文长度线性扩展，并在每个生成步骤重复，而预填充阶段以二次复杂度处理整个输入。因此，随着上下文窗口的增长，长上下文推理变得极其昂贵。</p>
+
+<p>为了避免冗余计算，现代LLM缓存先前Token的键值（KV）表示。虽然这消除了解码期间的重计算，但引入了新的瓶颈：KV缓存随序列长度增长，在长上下文设置中迅速超出GPU内存容量。结果，主要瓶颈从计算转向了内存。</p>
+
+<p>先前的工作在模型生命周期的不同阶段应对这一挑战。训练阶段的方法改变注意力架构，但通常需要重新训练。部署阶段的方法侧重于在系统级别优化KV缓存的存储和访问方式，例如内存布局和硬件放置，而不改变其值或模型的计算。相比之下，训练后方法直接修改KV缓存表示，例如通过驱逐、合并或量化，并通常引入近似以提高效率。</p>
+
+<p>训练阶段的方法难以应用于现有的预训练模型，而部署阶段的方法主要优化内存访问而不是减少KV缓存大小。相比之下，训练后方法直接减少推理期间的内存使用，使其在长上下文设置中特别实用。因此，我们专注于训练后KV缓存剪枝。</p>
+
+<p>现有大多数训练后方法在Transformer各层均匀地剪枝KV缓存，隐含地假设所有层同等重要。然而，先前的工作表明，中间Transformer层可能比早期或晚期层发挥更关键的作用。为了检验这种非均匀性在KV缓存剪枝下是否持续存在，我们进行了逐层消融研究，其中一次仅对一层应用剪枝而保持其他层不变，并测量由此产生的性能下降。置换检验一致拒绝了跨模型和数据集的层重要性均匀假设，证明Transformer层对长上下文性能的贡献是不均匀的。</p>
+
+<p>我们进一步分析了层移除如何影响生成行为。如第4.1节所示，在消融研究中最敏感的层在剪枝时也会导致更短且信息量更少的输出，表明它们对性能的影响与其在维持内容生成中的作用密切相关。</p>
+
+<p>受这些发现的启发，我们提出了DepthKV，一个层依赖的KV缓存剪枝框架，根据各层对长上下文性能的重要性在Transformer层间非均匀地分配内存预算。如图1所示，均匀分配在所有层保留相同数量的Token，而DepthKV为更重要的层分配更大的预算，同时更激进地剪枝不太关键的层，从而在固定内存约束下保留关键信息。该框架支持多种分配策略，包括位置依赖保护（保留特定区域如中间层）、指标引导分配（根据评分指标排名为层分配更多预算），以及在统一预算内结合这些规则的混合策略。</p>
+
+<p>我们在长上下文任务上评估DepthKV，包括文档摘要、问答和数学推理，其中输入远长于输出，使得预填充阶段成为计算和内存使用的主要来源。在这种设置下，预填充期间的剪枝直接针对主要瓶颈，同时保持稳定的解码。在所有任务和模型中，层依赖分配在相同KV预算下始终优于均匀剪枝。</p>
+
+<p>总之，我们的主要贡献如下：
+• 我们表明Transformer层在长上下文推理的重要性上表现出统计上显著的变异，挑战了均匀KV缓存剪枝的隐含假设。
+• 我们识别了内容放大层，其剪枝会抑制内容生成，并与下游性能下降强烈相关。
+• 我们提出了DepthKV，一个层依赖的KV缓存分配框架，根据重要性在Transformer层间重新分配固定的内存预算。
+• 我们证明在相同内存预算下，DepthKV在各种长上下文任务中始终优于均匀KV缓存剪枝。</p>
+
+<p>2 相关工作
+基于引言中的讨论，我们专注于训练后KV缓存剪枝方法。在此设置中，现有方法可沿两个互补维度分类： Token重要性如何估计，以及 这种重要性是否依赖于当前解码查询。前者区分了启发式和学习型方法，而后者区分了查询感知和非查询感知策略。</p>
+
+<p>启发式方法。启发式方法使用预定义规则估计Token重要性，通常基于位置偏差、聚合注意力统计或跨头/Token的注意力分析。代表性方法包括H₂O (Zhang et al., 2023)、StreamingLLM (Xiao et al., 2023)、SnapKV (Li et al., 2024) 和 FastGen (Ge et al., 2023)。H₂O保留注意力主导的Token以及最近的上下文。StreamingLLM保留初始注意力汇聚Token（即持续吸引高注意力的Token，如第一个Token &amp;lt;bos&amp;gt;），以及最近Token的滑动窗口。SnapKV根据在提示词末尾附近观察窗口计算的注意力模式选择前缀Token，而FastGen从注意力分析中导出特定于头的保留策略以确定保留哪些Token。虽然这些方法计算效率高，但它们对启发式规则的依赖可能限制了在输入分布变化下的泛化能力。</p>
+
+<p>学习型方法。相比之下，学习型方法直接从数据而非预定义规则估计Token重要性，使它们能更好地捕获语义和特定任务的相关性。代表性例子包括DuoAttention (Xiao et al., 2024) 和 SeerAttention (Gao et al., 2024)。DuoAttention学习逐头门控，将具有完全注意力的检索头与具有受限注意力的流式头分离。SeerAttention则通过自蒸馏训练的轻量级门控模块学习输入自适应的块级稀疏注意力模式。虽然通常更灵活，但它们需要额外的训练阶段并引入计算开销。</p>
+
+<p>查询感知方法。除了上述区别，另一个关键维度是Token重要性是否依赖于当前解码查询。现有大多数KV缓存剪枝方法是非查询感知的，在Token插入KV缓存时分配一次重要性，并在整个解码过程中重用。虽然计算效率高，但这种策略依赖历史信息或当前状态来决定丢弃哪些Token，使得这些决定实际上是不可逆的。结果，在早期阶段显得不重要的Token可能在后续解码步骤中变得关键，导致相关信息丢失。</p>
+
+<p>相比之下，另一系列工作侧重于查询感知策略。查询感知方法在每个解码步骤动态估计重要性，实现自适应检索，但代价是额外的计算。代表性方法包括Quest (Tang et al., 2024)、RetrievalAttention (Liu et al., 2024) 和 MorphKV (Ghadia et al., 2025)。Quest将KV缓存划分为固定大小的页面（即Token组），并使用当前查询和页面级键摘要估计最相关的页面。RetrievalAttention使用索引键上的向量搜索为当前查询选择最相关的KV条目。MorphKV基于最近的注意力模式迭代更新固定大小的KV缓存。</p>
+
+<p>DepthKV的定位。在上述分类中，DepthKV可被视为非查询感知的启发式训练后方法，但与先前工作的不同之处在于关注层敏感度而非Token级重要性。DepthKV根据这种敏感度在层间分配KV缓存预算，实现了更优的内存-性能权衡，并在相同全局剪枝率下始终优于均匀剪枝。</p>
+
+<p>3 KV缓存剪枝
+在本节中，我们在全局内存预算下形式化KV缓存剪枝问题，并简要讨论先前提出的均匀KV剪枝策略。</p>
+
+<p>3.1 问题形式化
+我们考虑一个在长上下文推理设置中具有L层和隐藏维度d的仅解码器Transformer。给定长度为N的输入序列，每层产生键值张量 $K^{(l)},V^{(l)}\in\mathbb{R}^{N\times d}$。存储所有KV对需要 $\mathcal{O}(LNd)$ 内存，这对于长上下文来说变得极其昂贵。</p>
+
+<p>设 $S^{(l)}\subseteq\{1,\dots,N\}$ 且 $|S^{(l)}|=B^{(l)}$ 表示在第l层保留的Token索引集，其中 $B^{(l)}\leq N$ 是分配给第l层的KV预算。由此产生的KV内存占用与 $\sum_{l=1}^{L}B^{(l)}d$ 成正比。为了确保剪枝策略之间的公平比较，我们施加固定的全局KV预算 $\sum_{l=1}^{L}B^{(l)}=B_{\text{total}}$。KV缓存剪枝问题是在此约束下选择Token子集 $S^{(l)}$ 和分配层预算 $B^{(l)}$，同时保持任务性能。</p>
+
+<p>3.2 基于注意力的Token重要性估计
+剪枝在预填充阶段进行，其中Token重要性是根据完整输入序列上的注意力权重估计的。</p>
+
+<p>设 $Q_{i}^{(l)}\in\mathbb{R}^{d_{k}}$ 为Token i的查询向量，$K_{j}^{(l)},V_{j}^{(l)}\in\mathbb{R}^{d_{k}}$ 为第l层Token j的键和值向量，其中 $j\leq i$。缩放点积注意力分数由下式给出：
+$a_{i,j}^{(l)}=\frac{\langle Q_{i}^{(l)},K_{j}^{(l)}\rangle}{\sqrt{d_{k}}}$, (1)
+归一化注意力权重为：
+$\alpha_{i,j}^{(l)}=\frac{\exp(a_{i,j}^{(l)})}{\sum_{t\leq i}\exp(a_{i,t}^{(l)})}$. (2)</p>
+
+<p>H₂O w/o V（仅注意力）。遵循H₂O (Zhang et al., 2023)，Token重要性定义为后续Token分配给该Token的累积注意力。第l层Token j的重要性计算为：
+$s_{j}^{(l)}=\sum_{i=j+1}^{N}\alpha_{i,j}^{(l)}$. (3)
+在多头设置中，注意力权重在计算重要性分数之前先跨头聚合。具有最高重要性分数的Token根据特定层的预算 $B^{(l)}$ 保留在KV缓存中。</p>
+
+<p>H₂O w/ V（值感知）。遵循Guo et al. (2024)，Token重要性通过用相应值向量的大小加权累积注意力来计算：
+$s_{j}^{(l)}=\|V_{j}^{(l)}\|_{p}\sum_{i=j+1}^{N}\alpha_{i,j}^{(l)}$, (4)
+其中 $\|\cdot\|_{p}$ 表示向量范数。我们考虑 $p=1$ 和 $p=2$，除非另有说明，默认使用前者（即 $\ell_{1}$ 范数）。这种表述为既受到高度关注又与较大值幅度相关联的Token分配更高的重要性。</p>
+
+<p>4 预研究：KV缓存剪枝的层敏感度
+先前的工作 表明，中间Transformer层可能比早期或晚期层发挥更关键的作用。受此观察启发，我们研究了在各种模型和数据集中，这种非均匀重要性在KV缓存剪枝下是否持续存在（实验设置详情见第6节）。</p>
+
+<p>为了研究这一点，我们进行了实验，在预填充阶段，一次仅对一层应用剪枝，而所有其他层保持不变。特别是，对于每层l，我们应用H₂O w/o V并记录由此产生的性能。在所有层重复此过程产生逐层敏感度概况。</p>
+
+<p>如图2所示，剪枝的影响高度依赖于层，急剧的性能下降集中在特定层。这些敏感度峰值因数据集和模型而异，表明关键层在不同设置中并不总是一致的。一些层也表现出接近零或正的偏差，表明部分冗余。这种变异强调了层敏感度的非均匀、依赖于数据集的性质。</p>
+
+<p>图2：单层KV缓存剪枝。在单个层的KV缓存剪枝下的逐层ROUGE-1，在每个模型-数据集对内标准化（z-score；均值 = 0，标准差 = 1）。标记表示每个数据集性能下降最大的层。</p>
+
+<p>为了量化这种变异，我们对逐层性能差异进行了置换检验。均匀层重要性的零假设被拒绝（置换检验，p-value &amp;lt; 0.05；见附录F），证实层间观察到的差异具有统计显著性。然而，这些差异的大小（即效应量）取决于数据集和模型。</p>
+
+<p>总体而言，这些结果表明Transformer层对KV缓存剪枝的敏感度存在显著差异，激发了层依赖的KV分配策略。</p>
+
+<p>4.1 层剪枝的内容放大效应
+在本节中，我们分析了层剪枝如何影响生成行为，揭示了非均匀层重要性的另一个维度。特别是，我们发现剪枝某些层会抑制内容生成，导致更短或不完整的输出，从而降低摘要质量。</p>
+
+<p>图3说明了在多个模型中，当在预填充阶段独立剪枝每层时的逐层YapScore。</p>
+
+<p>图3：逐层标准化YapScore。单层剪枝下的YapScore在每个数据集内进行z-score标准化。每条曲线代表一个数据集。</p>
+
+<p>尽管模型和数据集之间存在差异，但出现了一致的趋势：导致YapScore大幅下降的层与预研究（第4节）中识别为最敏感的层一致。这表明某些层在维持信息性生成中起着关键作用，而不仅仅是影响输出长度。我们将这些称为内容放大层。</p>
+
+<p>为了量化这种关系，表1报告了YapScore和ROUGE-1之间的逐层相关性。在所有模型中，我们观察到强且统计显著的正相关，表明受抑制的内容生成与性能下降密切相关。我们在附录E中提供了支持这些发现的定性示例。</p>
+
+<p>表1：ROUGE-1–YapScore相关性。KV缓存剪枝下跨层的ROUGE-1和YapScore之间的Pearson相关系数 和相应的 p 值。</p>
+
+<p>4.2 层重要性的表征指标
+为了更好地理解观察到的逐层变异，我们使用受Skean et al. (2025)启发的指标分析表征属性，这些指标从信息、几何和不变性方面表征隐藏层表征。我们考虑了他们建议的所有六个指标，捕获谱、几何和鲁棒性属性：谱熵、有效秩、曲率、DiME、LiDAR和InfoNCE。其中，我们在下面详细描述InfoNCE，因为它在我们后续的相关性分析中起着核心作用；其余指标在附录G中描述。</p>
+
+<p>InfoNCE。InfoNCE目标计算如下。对于每个输入序列，我们从每层的注意力后阶段提取表征矩阵 $Z\in\mathbb{R}^{T\times d}$，其中T表示序列长度，d表示隐藏维度，$z_{i}$ 表示第i个Token的表征。InfoNCE目标衡量每个表征（$i=1,\dots,T$）在保持与批次中其他样本不同的同时，对输入扰动保持不变性的程度。为此，首先对所有表征进行 $\ell_{2}$ 归一化。然后我们构建正对 $(\bar{z}^{(o)}_{i},\bar{z}^{(a)}_{i})$，对应于原始和扰动输入的归一化表征，其中每个输入通过均匀随机丢弃10%的单词进行扰动。批次中同一层和阶段的其他输入的表征 $\{\bar{z}^{(o)}_{j}:j\neq i\}$ 作为负例。样本i的InfoNCE损失定义为：
+$\mathcal{L}_{\mathrm{InfoNCE}}^{(i)}=-\log\frac{\exp\!\left(\mathrm{sim}(\bar{z}^{(o)}_{i},\bar{z}^{(a)}_{i})/\tau\right)}{\sum_{j}\exp\!\left(\mathrm{sim}(\bar{z}^{(o)}_{i},\bar{z}^{(o)}_{j})/\tau\right)}$, (5)
+其中 $\mathrm{sim}(u,v)=u^{\top}v$ 表示余弦相似度，$\tau$ 是控制softmax的温度参数。</p>
+
+<p>相关性分析。我们通过测量Skean et al. (2025) 提出的InfoNCE和其他指标与KV缓存剪枝下性能下降的相关性，评估它们作为层重要性代理的有效性。具体而言，对于每层，我们在Transformer块的四个阶段——注意力前、注意力后、注意力后残差和MLP后——计算这些指标，并评估它们与预研究中观察到的逐层性能下降的相关性，包括统计显著性。</p>
+
+<p>完整的相关性结果集报告在附录H中。总体而言，表征指标经常表现出与性能下降的统计显著相关性，表明表征属性与KV缓存剪枝下的层重要性之间存在强关联。在这些指标中，InfoNCE在各种设置中获得了最多统计显著相关性，在注意力后阶段观察到最强相关性，并成为层重要性最一致的预测因子。</p>
+
+<p>图4显示了InfoNCE与模型间性能下降的这种一致负相关：InfoNCE值较低的层在剪枝时表现出较大的性能下降。这表明表征对扰动更鲁棒（即InfoNCE更低）的层对生成更关键。InfoNCE与退化曲线在层间的这种反向关系表明，InfoNCE有效地捕获了层重要性的深度方向变异。</p>
+
+<p>图4：层重要性与InfoNCE。arXiv数据集上KV缓存剪枝下跨层的标准化InfoNCE（注意力后）和ROUGE-1性能下降。</p>
+
+<p>5 DepthKV：层依赖的KV分配
+我们的预研究揭示了对KV缓存剪枝的敏感度在各层之间存在显著差异，进一步分析表明这种变异可以从表征级属性预测。基于这些见解，我们提出了DepthKV，一个在固定全局内存约束下根据各层相对重要性在层间分配KV预算的框架。</p>
+
+<p>设 $\rho^{(l)}$ 表示第l层的剪枝率。我们施加约束 $\frac{1}{L}\sum_{l=1}^{L}\rho^{(l)}=\rho$，这确保了整体KV预算保持固定，同时允许跨层的非均匀分配。我们不剪枝第一层，以保持初始Token表征的完整性。</p>
+
+<p>在此框架下，我们考虑三种互补的分配策略：</p>
+
+<p>中间层保护 (MLP)。受先前发现中间层起关键作用的启发，并得到我们初步分析的支持，我们保留一部分中间层，同时均匀剪枝其余层。具体而言，我们将中间层定义为网络中点周围的层，即层 $\lfloor L/2\rfloor$ 和 $\lfloor L/2\rfloor+1$。</p>
+
+<p>指标引导分配 (MGA)。我们根据从InfoNCE指标导出的层重要性分数分配KV预算。由于该指标与性能下降负相关，我们将其转换为分数 $s^{(l)}$，使得较高的值表示更鲁棒的层。然后我们在剪枝层上将分数归一化为 $\alpha^{(l)}=\frac{s^{(l)}}{\sum_{j\in\mathcal{P}}s^{(j)}}$，其中 $\mathcal{P}=\{1,\dots,L-1\}$ 表示剪枝层集合。剪枝率按 $\alpha^{(l)}$ 的比例分配，同时将每层上限设为 $\rho_{\max}=0.7$ 以避免过于激进的剪枝。然后任何剩余量被迭代地重新分配给未饱和层，以便整体分配满足 $\sum_{l}\rho^{(l)}=L\rho$。这产生了一种异构分配，其中更鲁棒的层可以容忍更高的剪枝，允许更敏感的层保留更大的KV预算。</p>
+
+<p>中间层指标分配 (MLMA)。我们结合了基于结构和基于指标的分配，保留一部分中间层，同时使用基于InfoNCE的重要性分数将剩余KV预算分配给其他层。我们考虑了三种变体，MLMA-2L、MLMA-4L和MLMA-6L，分别保留2、4和6个中间层。</p>
+
+<p>6 实验
+我们在长文档摘要、基于文档的问答 (QA) 和数学推理任务上评估DepthKV，涵盖了多样化的领域和长上下文推理设置。</p>
+
+<p>6.1 数据集
+我们考虑了四个跨越科学、生物医学、法律和政府领域的长文档摘要基准（arXiv、PubMed、GovReport和LegalCase），以及两个基于文档的QA基准（Qasper和HotpotQA），和一个合成数学推理基准（GSM-$\infty$）。表2总结了所有数据集的关键统计信息，包括输入长度（均值 $\pm$ 标准差）、任务类型和输入长度范围。</p>
+
+<p>表2：跨数据集的输入长度统计。所有长度以单词为单位。显示均值 $\pm$ 标准差、最小值和最大值。任务：Sum.（摘要）、QA（问答）、Reason.（数学推理）。</p>
+
+<p>对于摘要，我们在输入长度从5K到10K Token的1,000个随机抽样文档上进行评估。对于QA和推理任务，我们通过仅选择低于此长度阈值的示例将输入限制为最多4K Token。由于过滤后数据集大小有限，我们分别对HotpotQA使用1,000个样本，对Qasper和GSM-$\infty$ 使用100和500个样本。
+1. arXiv (Cohan et al., 2018)：科学论文摘要基准，以摘要作为参考摘要。
+2. PubMed (Cohan et al., 2018)：生物医学摘要数据集，由研究文章和配对摘要组成。
+3. GovReport (Huang et al., 2021)：政府报告集合，配有专家撰写的抽象摘要。
+4. LegalCase (Shukla et al., 2022)：法律摘要基准，由法院判决和专家撰写或官方摘要配对组成。
+5. Qasper (Dasigi et al., 2021)：基于文档的QA基准，需要对单个文档进行推理，带有标注的答案和支持证据。
+6. HotpotQA (Yang et al., 2018)：多跳QA基准，需要跨多个文档推理，带有标注的答案和支持事实。
+7. GSM-$\infty$ (Zhou et al., 2025)：长上下文数学推理的合成基准，具有源自计算图的已知解。</p>
+
+<p>6.2 模型
+我们在三个广泛使用的开源权重LLM家族：Gemma、LLaMA和Qwen上评估我们的方法，它们代表了多样化的架构和训练范式。虽然我们将DepthKV设计为适用于Transformer架构，但由于架构和KV缓存结构的差异，我们针对每个模型家族调整了实现。剪枝策略本身在模型间保持一致。</p>
+
+<p>由于计算限制，我们评估每个家族的一个代表性模型：google/gemma-7b-it (Team et al., 2024b)、meta-llama/Llama-3.1-8B-Instruct (Meta AI, 2024) 和 Qwen/Qwen2.5-7B-Instruct (Hui et al., 2024)，我们分别称之为GEM7、LAM8和QWEN7。所有模型都使用带有KV缓存的仅解码器Transformer架构，确保了一致的评估设置。我们的目标不是比较模型家族，而是评估DepthKV跨架构的鲁棒性。</p>
+
+<p>6.3 评估指标
+我们使用摘要、问答 (QA) 和推理的特定任务指标评估性能。</p>
+
+<p>摘要质量指标。我们使用标准的词汇重叠、语义相似度和基于冗长度的度量来评估摘要质量。具体而言，我们报告了ROUGE-1、ROUGE-2和ROUGE-L (Lin, 2004)；基于SBERT的语义相似度 (Reimers and Gurevych, 2019)；以及YapScore (Borisov et al., 2026)。ROUGE测量生成摘要和参考摘要之间的词汇重叠，而SBERT通过句子嵌入间的余弦相似度捕获语义相似度。此外，YapScore测量相对于固定基线的输出长度，允许我们表征剪枝引起的生成内容抑制，并检查其与下游性能下降的关联。完整详情见附录D。</p>
+
+<p>QA和推理指标。对于QA和推理数据集，我们报告了精确匹配 (EM) 准确率。在HotpotQA上，我们额外计算Token重叠的精确率、召回率和F1以捕获部分正确性，而在Qasper上，我们将任务视为二元分类（“yes”为正类）并相应计算相同指标。先前的工作表明，Token重叠指标对于生成式QA仍然有用，其中召回率与人类判断特别一致 (Adlakha et al., 2024)。</p>
+
+<p>6.4 实现细节
+剪枝率。所有基于剪枝的方法在60%的固定全局KV缓存减少率下评估，确保跨方法的一致内存预算。</p>
+
+<p>生成设置。我们使用确定性贪婪解码（do_sample=False），在每个步骤选择概率最高的Token以确保可复现性。最大生成长度设置为500个Token，在生成序列结束Token时提前终止。所有输入使用块大小为1024 Token的分块预填充进行处理，用于长上下文评估。在每个块之后，Token重要性分数被更新并用于剪枝KV缓存。KV缓存在解码期间保持固定。</p>
+
+<p>硬件。所有实验在配备8 × NVIDIA H200 GPU的单个计算节点上进行。</p>
+
+<p>7 结果
+我们首先在摘要任务上评估DepthKV，然后在QA和推理任务上，最后使用LLM-as-a-judge框架评估其输出质量。</p>
+
+<p>7.1 DepthKV在摘要上的性能
+我们在固定全局KV预算下评估DepthKV在长文档摘要上的表现，与均匀剪枝基线进行比较。</p>
+
+<p>表3：Gemma上的摘要结果。FullKV表示未剪枝的KV缓存；所有其他方法遵循第3节。R-1、R-2和R-L是ROUGE分数，SB表示Sentence-BERT相似度。所有值以%报告；最佳结果以绿色突出显示。</p>
+
+<p>表3显示MGA在两个数据集上始终表现良好，取得了最佳整体性能，并证明基于表征的信号提供了层重要性的可靠估计。例如，在arXiv上，MGA将ROUGE-1从26.75提高到29.75，SBERT相似度从55.09提高到61.98，在GovReport上观察到类似增益。</p>
+
+<p>相比之下，基于结构的分配策略表现出不太一致的行为。虽然所有方法在arXiv上都比均匀剪枝提高了性能，但它们对GovReport的影响不太一致，某些策略甚至降低了性能。这表明关于固定层重要性的假设（例如保留中间层）可能无法跨数据集泛化。</p>
+
+<p>我们还观察到值感知变体 仅产生边际增益，而主要改进源于KV预算如何跨层分配。这表明逐层分配比特定的Token重要性估计器起着更大的作用。</p>
+
+<p>总体而言，这些结果表明DepthKV有效地提高了摘要质量，验证了使用基于表征的信号来指导逐层KV分配。</p>
+
+<p>7.2 泛化到QA和推理
+为了评估摘要之外的鲁棒性，我们在基于文档的问答和数学推理上评估DepthKV。</p>
+
+<p>如表4和表5所示，相对于均匀剪枝的性能改进取决于分配策略和数据集。特别是，在Qasper上，MLMA-6L变体在两个模型上都达到了最高准确率，优于所有基线，而在HotpotQA上，MLP对Gemma表现最佳，MGA对LLaMA达到最高准确率，表明最佳策略取决于模型。</p>
+
+<p>这种趋势在精确率、召回率和F1分数中进一步体现，相同方法在数据集上取得了最强结果。具体而言，MLP在HotpotQA上对Gemma获得了最高F1，而MGA对LLaMA表现最佳，MLMA-6L在Qasper上对两个模型始终达到最高F1。总之，这些结果表明改进了对多步推理和基于文档QA的相关信息保留，如附录E中的定性示例所示。</p>
+
+<p>除了QA，DepthKV还提高了数学推理任务的性能，所有变体在GSM-$\infty$ 上都优于均匀剪枝（图5）。</p>
+
+<p>表4：QA任务上的DepthKV与均匀剪枝对比。HotpotQA和Qasper上的精确匹配 (EM, %)。</p>
+
+<p>表5：HotpotQA和Qasper上的方法比较。每个单元格报告精确率、召回率和F1（以%为单位）。</p>
+
+<p>图5：GSM-$\infty$ 准确率。不同KV缓存剪枝设置下GSM-$\infty$ 基准的性能。</p>
+
+<p>总体而言，这些结果表明DepthKV的好处超越了摘要，延伸到QA和推理任务，展示了在各种设置中的鲁棒性。</p>
+
+<p>7.3 LLM-as-a-Judge评估
+为了补充自动指标，我们进一步使用LLM-as-a-judge框架评估答案质量。</p>
+
+<p>如表6所示，MGA在所有维度上始终获得最高分，MLP也优于均匀剪枝基线。这些趋势与HotpotQA上的自动指标一致，其中MGA和MLP是表现最强的变体。</p>
+
+<p>表6：HotpotQA上的LLM-as-a-Judge评估。正确性 (CR)、完整性 (CP) 和简洁性 (CN) 得分（1-5分制）；评估标准遵循附录C。</p>
+
+<p>总体而言，这些结果表明最强的DepthKV变体同时提高了定量性能和输出质量。</p>
+
+<p>8 结论
+我们研究了长上下文LLM推理的KV缓存剪枝，并表明假设层重要性均匀是次优的。通过逐层消融，我们证明Transformer层对KV剪枝的敏感度存在显著差异，并识别了对保留信息至关重要的内容放大层。我们进一步发现表征级指标提供了层重要性的有效信号。受这些见解启发，我们引入了DepthKV，一个层依赖的KV剪枝框架，通过多种分配策略在层间重新分配固定的全局KV预算。在摘要、QA和推理任务中，DepthKV在相同内存预算下始终优于均匀剪枝，改进了自动指标和LLM-as-a-judge评估。总体而言，我们的结果表明，考虑Transformer层的异构作用可以带来更高效的KV缓存使用，并提供了一种简单、通用的方法来实现这一点。</p>
+
+<p>9 局限性
+虽然所提方法展示了有前景的性能，但应考虑几个局限性。</p>
+
+<p>首先，DepthKV在非查询感知设置中运行，其中Token重要性在预填充阶段估计，而不以解码查询为条件。然而，Token相关性可能在自回归解码期间发生变化。结果，DepthKV可能忽略仅对特定查询变得重要的Token，限制了在检索密集型或细粒度推理任务中的性能。将查询感知的Token选择纳入逐层KV缓存分配可以解决这一局限性。</p>
+
+<p>其次，DepthKV依赖于基于重击者的Token重要性估计，通过聚合跨头的注意力分数，这可能掩盖了特定头的行为。先前的工作表明注意力头通常服务于专门的角色且贡献不均。虽然DepthKV跨层分配缓存预算，但它没有捕获跨头的层内变异性。扩展框架以联合建模逐层和逐头重要性是一个自然的改进方向。</p>
+
+<p>参考文献
+(保留原文格式)</p>
+
+<p>附录A 可复现性与许可证
+A.1 数据集许可证与使用
+本研究中使用的数据集从公开可访问的存储库获取，并根据其各自的许可条款使用，总结如下。
+1. arXiv, PubMed, GovReport：通过Hugging Face上的ccdv访问，这些数据集在Apache-2.0许可证下发布。
+2. LegalCase：由作者在Law-AI (GitHub)上提供，该数据集由公开可用的印度和英国最高法院判决构建，并遵守原始来源的条款。
+3. Qasper：可通过AllenAI on Hugging Face获取，数据集在CC-BY-4.0许可证下分发。
+4. HotpotQA：从HotpotQA on Hugging Face获取，数据集在CC-BY-SA-4.0许可证下发布。
+5. GSM-$\infty$：由作者在Infini-AI-Lab (GitHub)发布，此合成数据集以编程方式生成，并根据存储库中指定的条款使用。</p>
+
+<p>A.2 模型许可证
+我们使用通过Hugging Face Transformers库访问的开源权重语言模型。具体而言，使用的模型为：
+• google/gemma-7b-it，在Gemma使用条款下发布；
+• meta-llama/Llama-3.1-8B-Instruct，在LLaMA 3.1社区许可证下提供；
+• Qwen/Qwen2.5-7B-Instruct，在Apache许可证2.0下分发。
+所有模型均根据其各自的许可条款使用。
+我们的实现基于Hugging Face Transformers框架，以整合所提出的剪枝方法。为了便于复现，所有源代码、模型配置和实验脚本均在摘要中引用的GitHub存储库中公开提供。</p>
+
+<p>附录B 提示词模板
+为了确保可复现性，我们指定了实验中使用的确切提示词。这些提示词在推理和评估期间一致应用，未作修改，除非明确说明，否则没有额外的系统提示词。占位符（例如DOCUMENT、CONTEXT、QUESTION）被每个数据集的相应输入实例化。以下小节展示了跨摘要、QA和推理任务的数据集特定提示词模板。</p>
+
+<p>B.1 生成提示词
+以下提示词用于在推理期间生成模型输出。</p>
+
+<p>B.1.1 摘要提示词模板
+对于长文档摘要数据集，我们采用通用摘要指令，因为它们跨越多个领域并表现出不同的文档结构。
+相反，PubMed数据集由具有标准化结构的生物医学研究文章专门组成；因此，提示词明确指代科学文章。
+类似地，对于LegalCase数据集，提示词指定输入是法律判决以反映其领域。</p>
+
+<p>arXiv和GovReport
+Summarize the following document:
+{DOCUMENT}</p>
+
+<p>Summary:</p>
+
+<p>PubMed
+Summarize the following scientific article:
+{DOCUMENT}</p>
+
+<p>Summary:</p>
+
+<p>LegalCase
+Summarize the following legal judgment:
+{DOCUMENT}</p>
+
+<p>Summary:</p>
+
+<p>B.1.2 QA与推理提示词
+对于QA和推理任务，提示词模板施加了严格的答案格式约束，旨在鼓励一致且可自动评估的输出。在HotpotQA中，模型被指示仅提供简短答案，不包含解释或附加文本，而在Qasper中被指示用单个词（yes或no）回答。类似地，对于GSM-$\infty$，提示词指导模型仅返回最终数字答案，不包含中间推理或重复文本。这些约束有助于减少输出变异性并提高评估可靠性。</p>
+
+<p>HotpotQA
+Read the following context and answer the question using ONLY the short answer. Do not include explanations. Your answer MUST start with ‘answer:’ and must not include additional words.
+Context: {CONTEXT}
+Question: {QUESTION}
+Answer:</p>
+
+<p>Qasper
+You are answering a strict binary scientific question. You must respond with exactly ONE WORD. Allowed answers: yes or no. Do NOT write explanations. Do NOT write sentences. Do NOT write ‘sometimes’, ‘partially’, or any other word. If uncertain, choose the most likely between yes or no.
+Title: {TITLE}
+Abstract: {ABSTRACT}
+Full Text: {FULL TEXT}
+Question: {QUESTION}
+Answer:</p>
+
+<p>GSM-$\infty$
+Solve the following math problem carefully. Return only the final numeric answer. Do not include explanation, reasoning, or repeated text.
+Problem: {PROBLEM}
+Question: {QUESTION}
+Final answer:</p>
+
+<p>B.2 评估提示词
+以下提示词模板用于附录C中描述的框架内的LLM-as-a-judge评估。它强制执行标准化的输出格式，要求简短的理由随后是离散的分数。</p>
+
+<p>You are an expert evaluator of question answering systems.
+Your task is to evaluate the {METRIC NAME} of the model answer by comparing it to the reference answer.
+You must:
+- Compare the model answer with the reference answer.
+- Consider semantic equivalence, not exact wording.
+- Follow the rubric strictly.
+- Provide concise reasoning (max 3 sentences).</p>
+
+<p>### Question
+{QUESTION}</p>
+
+<p>### Reference Answer
+{REFERENCE}</p>
+
+<p>### Model Answer
+{PREDICTION}</p>
+
+<p>### Evaluation Metric
+{METRIC NAME}</p>
+
+<p>### Scoring Rubric
+{RUBRIC}</p>
+
+<p>You MUST output EXACTLY in this format:
+Reasoning: &amp;lt;max 3 sentences&amp;gt;
+Final Score: &amp;lt;one digit 1-5&amp;gt;
+Nothing else.</p>
+
+<p>附录C 使用Prometheus进行评估
+我们使用LLM-as-a-judge框架评估模型输出，其中单独的语言模型评估生成答案的质量。为此，我们使用Prometheus (Kim et al., 2024)，一个经过训练可根据预定义规则评估其他模型输出的开源模型。具体而言，我们使用prometheus-eval/prometheus-8x7b-v2.0模型，在初步实验中，它比较小的非MoE变体（例如prometheus-eval/prometheus-7b-v2.0）表现出更稳定和一致的性能。所有评估均使用确定性解码执行以确保可复现性。</p>
+
+<p>此框架应用于HotpotQA数据集，其中答案较短且有参考答案可供直接比较。对于每个实例，评估器接收问题、参考答案和模型预测，然后根据规则分配分数。相应的提示词模板见附录B.2，规则使用三个维度——正确性、完整性和简洁性——每个维度在1-5分制上独立评分，定义如下。</p>
+
+<p>正确性 (CR) – 答案相对于参考答案的准确性。评估模型答案是否与参考答案匹配。
+分数1：完全错误或不相关的答案。
+分数2：大部分错误，重叠很少。
+分数3：部分正确但缺少关键元素。
+分数4：大部分正确，有轻微偏差。
+分数5：完全正确，与参考答案等价。</p>
+
+<p>完整性 (CP) – 所需信息的覆盖范围。评估答案是否完全覆盖参考答案中包含的信息。
+分数1：缺少所有基本信息。
+分数2：缺少大多数关键信息。
+分数3：包含一些关键信息但不完整。
+分数4：覆盖大多数所需信息。
+分数5：完全覆盖参考答案中的所有信息。</p>
+
+<p>简洁性 (CN) – 直接性和简明性。评估答案是否简短并直接解决问题，没有不必要的文本。
+分数1：极其冗长或不相关。
+分数2：有一些不必要的解释。
+分数3：长度可接受但略冗长。
+分数4：简洁，极少额外内容。
+分数5：非常简洁，直接回答问题。</p>
+
+<p>附录D 使用YapScore进行冗长度分析
+我们使用YapScore (Borisov et al., 2026) 量化输出冗长度，它测量超过预定义基线长度的生成Token数量。这在评估设置中特别相关，因为LLM评委已被证明偏好更长的响应，即使较短的答案同样具有信息量 (Saito et al., 2023)。形式上，对于长度为L的输出和基线B，YapScore定义为：
+YapScore = max(0, L - B)。</p>
+
+<p>附录E 定性示例
+我们提供定性示例以补充定量结果，并对不同KV缓存剪枝策略下的模型行为提供额外见解。具体而言，我们提出两种比较： 方法级别的比较，比较H₂O (w/o v) 和MGA，突出输出准确性和信息量的差异； 逐层比较，说明剪枝不同Transformer层如何影响生成行为，特别是在内容保留和冗长度方面。</p>
+
+<p>方法比较。我们提供了H₂O (w/o v) 和MGA之间的定性比较，证明MGA在QA和摘要任务中更有效地保留关键信息并产生更准确的输出。</p>
+
+<p>示例1
+任务：QA   模型：GEM7   数据集：arXiv
+提示词
+参考答案
+MGA输出
+H₂O (w/o v) 输出</p>
+
+<p>示例2
+任务：摘要   模型：GEM7   数据集：arXiv
+输入文档
+MGA输出
+H₂O (w/o v) 输出</p>
+
+<p>层剪枝与内容放大。为了更好地理解剪枝如何影响生成行为，我们提供了比较剪枝不同层时输出的定性示例。这些示例说明剪枝某些层会导致输出长度大幅减少，更重要的是，导致关键信息丢失。特别是，我们比较了剪枝应用于不同层时生成的输出：一个性能下降最小的参考层，和一个移除后导致性能下降最大的关键层。如下例所示，剪枝关键层会导致信息内容的急剧丢失，通常将输出减少为省略文档主要发现的短片段。</p>
+
+<p>示例3
+任务：摘要   模型：GEM7   数据集：arXiv
+参考摘要
+参考层输出
+关键层输出</p>
+
+<p>示例4
+任务：摘要   模型：LAM8   数据集：LegalSumm
+参考摘要
+参考层输出
+关键层输出</p>
+
+<p>附录F 置换检验结果
+为了评估性能是否在Transformer层间显著变化，我们采用了蒙特卡洛置换检验。检验统计量定义为逐层平均性能的方差，量化了跨层性能的变异。在所有层贡献相等的零假设下，层标签是可交换的，检验统计量独立于层身份。</p>
+
+<p>我们通过跨样本随机置换层分配并重新计算N_perm = 10,000次置换的检验统计量来近似零分布。蒙特卡洛p值计算为：
+p = (b + 1) / (N_perm + 1), (6)
+其中b表示大于或等于观察统计量的置换统计量数量。这种表述对应于蒙特卡洛检验的精确置换p值，避免了零估计，同时确保了I型错误率的适当控制 (Phipson and Smyth, 2016)。</p>
+
+<p>在所有实验中，没有置换检验统计量超过观察统计量（b = 0），产生了大约10^{-4}的最小可达p值。因此，在常规显著性水平下，所有数据集的均匀层重要性零假设均被拒绝。为了量化这种偏差的大小，我们报告了相对于置换零分布标准化观察到的层间方差获得的效应量。表7总结了每个模型和数据集的这些效应量，其中较大的值表示逐层性能的较大变异。</p>
+
+<p>表7：跨数据集的标准化效应量。单元格阴影表示大小（越深 = 效应量越大）。</p>
+
+<p>附录G 表征指标
+我们形式化了第6.3节中引入的表征指标，并描述了它们从逐层隐藏状态中的计算。</p>
+
+<p>G.1 指标概述
+我们考虑三个类别：谱、几何和鲁棒性-不变性。</p>
+
+<p>谱指标。谱熵和有效秩从居中的Token-by-feature隐藏状态矩阵的奇异值分解计算。这两个指标都通过捕获方差在奇异方向上分布的均匀程度来量化表征的有效维度。较高的值表示更各向同性和信息丰富的表征，而较低的值反映集中在少数主导方向上，表明冗余或表征崩溃 (Garrido et al., 2023)。</p>
+
+<p>几何指标。曲率通过测量每个Token表征与其在表征空间中k个最近邻之间的平均余弦相似度来量化局部几何结构。具体而言，我们计算一减去该平均相似度，因此较高的曲率对应于相邻表征之间较低的对齐度。因此，较高的值表示表征流形中更大的局部变异和各向异性，而较低的值反映更连贯和平滑变化的局部结构 (Hosseini and Fedorenko, 2023)。</p>
+
+<p>鲁棒性和不变性指标。我们在输入扰动下评估鲁棒性和不变性。对于每个样本，我们使用随机Token丢弃构建增强版本，并在每层和每个阶段提取平均池化表征。给定配对的原始和增强表征，DiME定义为一减去它们的余弦相似度，捕获方向偏差，而LiDAR是它们的欧几里得距离，测量绝对位移。InfoNCE通过将每个原始-增强对视为正对，并使用同一层和阶段其他样本的表征作为负例来计算。</p>
+
+<p>这些指标提供了表征稳定性的互补表征：DiME捕获对方向变化的敏感性，LiDAR测量扰动引起位移的大小，InfoNCE评估在扰动下同一输入的表征是否保持彼此比不同输入的表征更接近 (van den Oord et al., 2018; Thilak et al., 2023)。</p>
+
+<p>连同谱和几何测量，这些指标能够全面表征逐层表征。在DepthKV框架内，仅InfoNCE指标用于指导逐层KV分配（例如MGA），而其余指标起描述作用。</p>
+
+<p>G.2 计算细节
+我们使用前向钩子在Transformer块内的四个阶段提取逐层隐藏状态： 注意力前，对应于注意力层归一化的输入； 注意力后，定义为残差添加前注意力投影的输出； 注意力后残差，对应于残差添加后和后续层归一化前的隐藏状态； MLP后，定义为最终残差添加前前馈块的输出。</p>
+
+<p>对于每个输入序列，我们形成表征矩阵 $Z\in\mathbb{R}^{T\times d}$，其中T是序列长度，d是隐藏维度。所有指标均从此表征矩阵计算。</p>
+
+<p>谱指标。我们首先通过减去均值向量跨Token居中Z，即 $Z\leftarrow Z-\mathbf{1}\mu^{\top}$，其中 $\mu=\frac{1}{T}\sum_{t=1}^{T}Z_{t}$。设 $\{s_{i}\}$ 表示居中矩阵的奇异值。我们定义归一化奇异值为 $p_{i}=s_{i}/\sum_{j}s_{j}$。谱熵由 $H=-\sum_{i}p_{i}\log p_{i}$ 给出，有效秩为 $\exp(H)$。</p>
+
+<p>曲率。在Token表征的 $\ell_{2}$ 归一化后，我们计算成对余弦相似度 $S_{ij}=\hat{z}_{i}^{\top}\hat{z}_{j}$。对于每个Token i，设 $\mathcal{N}_{k}(i)$ 表示其top-k最近邻（不包括自身）。曲率为 $\mathrm{curv}(Z)=1-\frac{1}{T}\sum_{i=1}^{T}\frac{1}{k}\sum_{j\in\mathcal{N}_{k}(i)}S_{ij}, k=5$。</p>
+
+<p>鲁棒性指标。我们通过以0.1的概率独立丢弃空格分隔的单词来构建扰动输入。对于每层和每个阶段，我们分别从原始和增强输入计算平均池化表征 $\bar{z}^{(o)}$ 和 $\bar{z}^{(a)}$。</p>
+
+<p>DiME定义为余弦距离：$\mathrm{DiME}=1-\frac{\langle\bar{z}^{(o)},\bar{z}^{(a)}\rangle}{\|\bar{z}^{(o)}\|_{2}\,\|\bar{z}^{(a)}\|_{2}}$. (7)
+LiDAR是欧几里得距离：$\mathrm{LiDAR}=\|\bar{z}^{(o)}-\bar{z}^{(a)}\|_{2}$. (8)
+InfoNCE如第4.2节所述计算。</p>
+
+<p>所有指标针对每个样本、层和阶段独立计算，然后通过在数据集级别跨样本平均进行聚合。不确定性通过百分位自举法估计（1,000次重采样，$\alpha=0.05$）。表8-10展示了所有模型和数据集的统计摘要。</p>
+
+<p>表8：Gemma跨Transformer阶段的表征指标。每个条目报告带有自举置信区间的指标值。ERank以 $10^{3}$ 为单位报告。指标包括InfoNCE (Info)、曲率、谱熵 和有效秩，在注意力前、注意力后、注意力后残差 和MLP后 阶段评估。</p>
+
+<p>表9：LLaMA跨Transformer阶段的表征指标。详情见表8。</p>
+
+<p>表10：Qwen跨Transformer阶段的表征指标。详情见表8。</p>
+
+<p>附录H 层重要性相关性
+本节展示了表征指标与逐层消融研究引起的性能下降之间的完整相关性表集。对于每个指标和模型阶段，我们报告了Spearman相关系数 ($\rho$) 及其相应的p值。正相关以蓝色显示，负相关以红色显示，统计显著结果 (p &amp;lt; 0.05) 以绿色突出显示。</p>
+
+<p>表11-22总结了在所有模型和数据集中，观察到的逐层KV缓存消融研究中表征指标与性能下降之间的相关性。</p>
+
+<p>表11：Gemma – PubMed（指标-性能下降相关性）。
+表12：Gemma – GovReport（指标-性能下降相关性）。
+表13：Gemma – arXiv（指标-性能下降相关性）。
+表14：Gemma – LegalCase（指标-性能下降相关性）。
+表15：LLaMA – PubMed（指标-性能下降相关性）。
+表16：LLaMA – GovReport（指标-性能下降相关性）。
+表17：LLaMA – arXiv（指标-性能下降相关性）。
+表18：LLaMA – LegalCase（指标-性能下降相关性）。
+表19：Qwen – PubMed（指标-性能下降相关性）。
+表20：Qwen – GovReport（指标-性能下降相关性）。
+表21：Qwen – arXiv（指标-性能下降相关性）。
+表22：Qwen – LegalCase（指标-性能下降相关性）。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> KV缓存, 剪枝, 长上下文, 层依赖, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,6937 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoRFI：单调稀疏自编码器特征识别 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">MoRFI：单调稀疏自编码器特征识别</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.26866" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：MoRFI: Monotonic Sparse Autoencoder Feature Identification</h4>
+            <p><strong>中文摘要：</strong> 大模型后训练引入新知识易引发幻觉，其机制尚不明确。本文通过控制微调实验证实，新知识比例增加和训练延长会加剧幻觉。为此，作者提出MoRFI（单调关系特征识别）算法，利用稀疏自编码器分析残差流激活，筛选出对微调条件呈单调响应的因果特征。研究发现，接触未知事实会破坏模型沿特定方向检索已有知识的能力。基于MoRFI的单特征干预可有效恢复知识，且抑制特征效果优于放大，揭示了微调影响参数知识的不对称性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>MoRFI: Monotonic Sparse Autoencoder Feature Identification
+Abstract
+Large language models (LLMs) acquire most of their factual knowledge during the pre-training stage, through next token prediction. Subsequent stages of post-training often introduce new facts outwith the parametric knowledge, giving rise to hallucinations. While it has been demonstrated that supervised fine-tuning (SFT) on new knowledge may exacerbate the problem, the underlying mechanisms are still poorly understood. We conduct a controlled fine-tuning experiment, focusing on closed-book QA, and find latent directions that causally contribute to hallucinations. Specifically, we fine-tune Llama 3.1 8B, Gemma 2 9B and Mistral 7B v03 on seven distinct single QA datasets, controlling for the percentage of new knowledge and number of training epochs. By measuring performance on the test set, we validate that incrementally introducing new knowledge increases hallucinations, with the effect being more pronounced with prolonged training. We leverage pre-trained sparse autoencoders (SAEs) to analyze residual stream activations across various checkpoints for each model and propose Monotonic Relationship Feature Identification (MoRFI) for capturing causally relevant latents. MoRFI filters SAE features that respond monotonically to controlled fine-tuning data mixtures of a target property. Our findings show that exposure to unknown facts disrupts the model’s ability to retrieve stored knowledge along a set of directions</p>
+
+<p>in the residual stream. Our pipeline reliably discovers them across distinct
+models, recovering knowledge through single-latent interventions.
+Dimitris Dimakopoulos
+1,2
+Shay B. Cohen
+1
+Ioannis Konstas
+2
+1
+University of Edinburgh, UK
+2
+Heriot-Watt University, UK
+dimitris.dimakopoulos@ed.ac.uk
+scohen@inf.ed.ac.uk
+ioannis.konstas@hw.ac.uk
+1
+Introduction
+A common conjecture
+(Schulman,
+2023
+; Goldberg,
+2023
+; Gao,
+2021
+; Huang
+et al.
+,
+2023
+; Gudibande
+et al.
+,
+2023
+)
+posits that factual hallucinations may arise from exposing a model to facts not grounded in its parametric knowledge during post-training. The bulk of a model’s knowledge is acquired during pre-training via next-token prediction on large corpora, while subsequent stages like Instruction-Tuning
+(Ouyang
+et al.
+,
+2022
+)
+, RLHF
+(Ouyang
+et al.
+,
+2022
+)
+or GRPO
+(Shao
+et al.
+,
+2024
+)
+, shape behavior and output distribution but depend on effectively leveraging pre-existing knowledge. Knowledge inconsistencies can be introduced during SFT through synthetic data generated by models with different parametric knowledge, or through human annotations that assume world knowledge the model does not possess.
+Gekhman
+et al.
+(
+2024
+)
+directly validates this conjecture by fine-tuning PaLM 2-M
+(Anil
+et al.
+,
+2023
+)
+on datasets with varying proportions of novel knowledge, demonstrating a clear increase in hallucination as unknown samples increase, while
+Kang
+et al.
+(
+2024
+)
+shows that models learn to mimic the response distribution asso</p>
+
+<p>ciated with unfamiliar training examples. These results establish that novel knowledge during fine-tuning has measurable effects on model outputs but offer little insight into the internal mechanisms involved.
+We investigate whether integrating new knowledge through fine-tuning leaves a detectable signature in the activation space. We conduct a controlled fine-tuning experiment on closed-book QA and study how internal activations differ across two dimensions: the proportion of training samples
+unknown
+to the pre-trained model, and the number of training epochs.
+Concurrent work has investigated the internal mechanisms underlying fine-tuning-induced behavioral changes using sparse autoencoders.
+Wang
+et al.
+(
+2025
+)
+apply a model-diffing approach to emergent misalignment in GPT-4o, ranking SAE latents by their activation increase after fine-tuning and identifying ”misaligned persona” features whose steering causally controls misalignment.
+Minder
+et al.
+(
+2025
+)
+demonstrate that narrow fine-tuning leaves readable traces in activation differences even on unrelated inputs, warning that such artifacts may compromise mechanistic findings from narrowly fine-tuned model organisms.
+Ferrando
+et al.
+(
+2025
+)
+discover SAE latents that distinguish known from unknown entities and causally steer knowledge refusal, showing that chat fine-tuning repurposes base-model representations.
+Marks and Tegmark (
+2024
+)
+establish that LLMs linearly represent the truth of factual statements and that diffe</p>
+
+<p>rence-in-mean directions can causally flip model outputs.
+Our approach differs from these works in several respects: we select latents not by activation differences between two model states or within a single model but through bootstrapped monotonic trend detection across a controlled gradient of fine-tuning conditions, tracing how the model’s internal knowledge representations shift
+across
+fine-tuning conditions rather than contrasting two fixed states. Our fine-tuning conditions vary epistemically rather than thematically, with topical content remaining diverse across relations and entities, making our setup less susceptible to the narrow fine-tuning artifacts identified by
+Minder
+et al.
+(
+2025
+)
+. Finally, we consider both increasing and decreasing latents, the latter of which prove disproportionately impactful for knowledge recovery.
+While studying the mechanisms of knowledge integration is central to our paper, our contribution is dual.
+To enable our analysis, we develop MoRFI:
+Mo
+notonic
+R
+elationship
+F
+eature
+I
+dentification for Sparse Autoencoders, a general-purpose algorithm for identifying SAE latents whose activations exhibit robust increasing or decreasing monotonic trends
+along a specified dimension of variation. Concretely, we set these dimensions as the
+proportion of unknown facts
+in the fine-tuning mixture (
+↑
+\uparrow
+Unknown) and the
+number of training epochs
+(
+↑
+\uparrow
+Epochs). The method is applicable to any controlled variable that induces a sequence of</p>
+
+<p>model checkpoints or data conditions. The algorithm combines bootstrapped resampling with statistical testing
+to ensure that identified latents exhibit consistent directional trends rather than transient or spurious fluctuations, providing a principled feature selection procedure that is validated through activation steering.
+Our findings show that across three model architectures, Llama 3.1 8B
+(Grattafiori
+et al.
+,
+2024
+)
+, Gemma 2 9B
+(Team
+et al.
+,
+2024
+)
+, and Mistral 7B v03
+(Jiang
+et al.
+,
+2023
+)
+, single-latent interventions sourced with MoRFI yield substantial accuracy gains when applied to checkpoints fine-tuned exclusively on unknown facts.
+69–85% of recovered facts align with those accessible to a baseline fine-tuned on known facts, suggesting that these latents encode access pathways to stored knowledge.
+Steering with the composite direction —computed as the difference-in-means SAE activations between checkpoints fine-tuned on known versus unknown facts— confirms that the representational shift is consistent and generalizable across models, while the large performance gap between composite and single-latent interventions indicates that the knowledge-relevant signal is sparse. Furthermore, we find significant overlap between latents surfaced across the two dimensions we analyze, and that suppressing latents mostly outperforms amplifying them, suggesting an asymmetry in how fine-tuning-induced changes affect parametric knowledge.
+Time
+T
+T
+(Epochs)
+…
+\dots
+𝒂
+𝟏
+,
+𝟏
+e
+¯</p>
+
+<p>{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,1}^{\texttt{e}}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+𝟏
+,
+𝑭
+e
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,F}^{\texttt{e}}}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+𝑵
+,
+𝟏
+e
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{N,1}^{\texttt{e}}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+𝑵
+,
+𝑭
+e
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\defi</p>
+
+<p>necolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{N,F}^{\texttt{e}}}}}
+𝒂
+¯
+𝟏
+,
+𝟏
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{1,1}^{\texttt{e}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+¯
+𝟏
+,
+𝑭
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{1,F}^{\texttt{e}}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+¯
+𝑵
+,
+𝟏
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,1}^{\texttt{e}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokeco</p>
+
+<p>lor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+¯
+𝑵
+,
+𝑭
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,F}^{\texttt{e}}}}
+a
+¯
+1
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{\texttt{e}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{</p>
+
+<p>a}_{N,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{\texttt{e}}}
+a
+¯
+1
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{\texttt{e}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecol</p>
+
+<p>或[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{\texttt{e}}}
+a
+¯
+1
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{\texttt{e}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\define</p>
+
+<p>@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{\texttt{e}}}
+a
+¯
+1
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{\texttt{e}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb</p>
+
+<p>]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{\texttt{e}}}
+a
+¯
+1
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{\texttt{e}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color</p>
+
+<p>@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{\texttt{e}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+e
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{\texttt{e}}}
+T
+=
+early_stop
+T=\text{{early\_stop}}
+𝒂
+𝟏
+,
+𝟏
+𝟏𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,1}^{10}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+𝟏
+,
+𝑭
+𝟏𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,F}^{10}}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pg</p>
+
+<p>fsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+𝑵
+,
+𝟏
+𝟏𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0</p>
+
+<p>or[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+¯
+𝑵
+,
+𝟏𝟏𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,1}^{10}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+¯
+𝑵
+,
+𝑭
+𝟏𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,F}^{10}}}
+a
+¯
+1
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}</p>
+
+<p>{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{10}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{10}}
+a
+¯
+1
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+10
+{\definecolor[named]{.}{r</p>
+
+<p>gb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{10}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys</p>
+
+<p>sys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{10}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0</p>
+
+<p>r[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{10}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{10}}
+a
+¯
+1
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{10}</p>
+
+<p>}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{10}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{10}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+10
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{10}}
+T
+=
+10
+T=10
+𝒂
+𝟏
+,
+𝟏
+𝟓𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb</p>
+
+<p>}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,1}^{50}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+𝟏
+,
+𝑭
+𝟓𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{1,F}^{50}}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+𝑵
+,
+𝟏
+𝟓𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a_{N,1}^{50}}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+𝑵
+,
+𝑭
+𝟓𝟎
+¯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a</p>
+
+<p>_{N,F}^{50}}}}
+𝒂
+¯
+𝟏
+,
+𝟏
+𝟓𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{1,1}^{50}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+¯
+𝟏
+,
+𝑭
+𝟓𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{1,F}^{50}}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+𝒂
+¯
+𝑵
+,
+𝟏
+𝟓𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,1}^{50}}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+𝒂
+¯
+𝑵
+,
+𝑭
+𝟓𝟎
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb</p>
+
+<p>}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\boldsymbol{\bar{a}_{N,F}^{50}}}
+a
+¯
+1
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{50}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray</p>
+
+<p>@fill{0}\cdots}
+a
+¯
+N
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{50}}
+a
+¯
+1
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{50}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{50}}
+⋯
+{\definecolor[named]{.</p>
+
+<p>rokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{50}}
+a
+¯
+1
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{50}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{50}}
+⋯
+{\defineco</p>
+
+<p>lor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{50}}
+a
+¯
+1
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{50}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfs</p>
+
+<p>@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{50}}
+a
+¯
+1
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+1
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{1,F}^{50}}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+⋱
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\ddots}
+⋮
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\vdots}
+a
+¯
+N
+,
+1
+50
+{\definecolor[named]{.}{rgb}{0,0</p>
+
+<p>,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,1}^{50}}
+⋯
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\cdots}
+a
+¯
+N
+,
+F
+50
+{\definecolor[named]{.}{rgb}{0,0,0}\color[rgb]{0,0,0}\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@gray@stroke{0}\pgfsys@color@gray@fill{0}\bar{a}_{N,F}^{50}}
+T
+=
+50
+T=50
+…
+\dots
+F
+F
+(Latent)
+N
+N
+(Samples)
+P
+P
+(Property)
+Figure 1:
+Unfolded 4D tensor over epochs, where
+e
+denotes
+early_stop
+.
+2
+Background and Notation
+Residual Stream View
+The residual vectors of the transformer architecture
+produced from every transformer block (or layer) constitute a communication channel between these blocks
+(Elhage
+et al.
+,
+2021
+)
+. In particular, we denote
+h
+ℓ
+h^{\ell}
+as the vector in the residual stream after block
+ℓ
+\ell
+, LayerNorm as the layer normalization function and Attention and MLP as the functions for the self-attention and MLP sub-layers. The update first creates an intermediate state by adding the attention output to the input stream,
+b
+ℓ
+=
+h
+ℓ
+−
+1
++
+Attention
+​
+(
+LayerNorm
+​
+(
+h
+ℓ
+−
+1
+)
+)
+b^{\ell}=h^{\ell-1}+\text{Attention}(\text{LayerNorm}(h^{\ell-1}))
+, which is then processed by the MLP to produce the final block output,
+h
+ℓ
+=
+b
+ℓ
++
+MLP
+​
+(
+LayerNorm
+​
+(
+b
+ℓ
+)
+)
+h^{\ell}=b^{\ell}+\text{MLP}(\text{LayerNorm}(b^{\ell}))
+.
+Dictionary Learning
+Sparse autoencoders (S</p>
+
+<p>AEs;
+Bricken
+et al.
+2023
+; Cunningham
+et al.
+2023
+) were proposed as a means to disentangle representations of the residual stream and attribute interpretable features by projecting input representations to a higher dimensionality space. SAEs are trained on a subset of the pre-training corpus and learn a set of latent vectors (values, or
+latents
+for short) and their corresponding activations (keys):
+𝒛
+​
+(
+𝒉
+)
+\displaystyle\boldsymbol{z}(\boldsymbol{h})
+=
+α
+​
+(
+𝑾
+enc
+⋅
+𝒉
++
+𝒃
+enc
+)
+,
+\displaystyle=\alpha(\boldsymbol{W}_{\textit{enc}}\cdot\boldsymbol{h}+\boldsymbol{b}_{\textit{enc}}),
+𝒉
+^
+\displaystyle\boldsymbol{\hat{h}}
+=
+𝑾
+dec
+⋅
+𝒛
+​
+(
+𝒉
+)
++
+𝒃
+dec
+,
+\displaystyle=\boldsymbol{W}_{\textit{dec}}\cdot\boldsymbol{z}(\boldsymbol{h})+\boldsymbol{b}_{\textit{dec}},
+where
+𝑾
+dec
+\boldsymbol{W}_{\textit{dec}}
+contains the learned latents,
+𝒛
+∈
+ℝ
+d
+sae
+\boldsymbol{z}\in\mathbb{R}^{d_{\textit{sae}}}
+their activations,
+𝒉
+∈
+ℝ
+d
+model
+\boldsymbol{h}\in\mathbb{R}^{d_{\textit{model}}}
+stands for the input residual vector and
+𝒉
+^
+\boldsymbol{\hat{h}}
+is its reconstruction,
+α
+\alpha
+is a nonlinearity depending on the particular SAE model and
+d
+sae
+≫
+d
+model
+d_{\textit{sae}}\gg d_{\textit{model}}
+.
+Model Diffing
+refers to the study of how fine-tuned models change with respect to different fine-tuning regimes. It has become increasingly important in the search for universal features and circuits but also for safety as a means to understand internal mechanisms that give rise to unintended and potenti</p>
+
+<p>ally dangerous behaviors
+(Wang
+et al.
+,
+2025
+; Betley
+et al.
+,
+2025
+)
+.
+Algorithm 1
+Robust Bootstrap Analysis
+1:
+2:
+𝒜
+∈
+ℝ
+T
+×
+P
+×
+F
+×
+N
+\mathcal{A}\in\mathbb{R}^{T\times P\times F\times N}
+: Full activation tensor
+3:
+X
+∈
+{
+T
+,
+P
+}
+X\in\{T,P\}
+: Aggregation dimension; let
+Y
+∈
+{
+T
+,
+P
+}
+∖
+{
+X
+}
+Y\in\{T,P\}\setminus\{X\}
+be the trend dimension
+4:
+𝐯
+T
+∈
+ℝ
+T
+,
+𝐯
+P
+∈
+ℝ
+P
+\mathbf{v}_{T}\in\mathbb{R}^{T},\mathbf{v}_{P}\in\mathbb{R}^{P}
+: Reference vectors for epochs and mixture proportions
+5:
+R
+,
+K
+∈
+ℕ
+R,K\in\mathbb{N}
+: Replicates (
+1000
+1000
+) and Top-
+K
+K
+features (
+1000
+1000
+)
+6:
+α
+sig
+∈
+(
+0
+,
+1
+)
+\alpha_{\textit{sig}}\in(0,1)
+: Significance threshold (
+0.05
+0.05
+)
+7:
+8:
+S
+↑
+,
+S
+↓
+S^{\uparrow},S^{\downarrow}
+: Ranked lists of robust Increasing/Decreasing features
+9:
+1. Resampling and aggregation
+10:
+ℐ
+∗
+∈
+{
+0
+,
+…
+,
+N
+−
+1
+}
+R
+×
+N
+←
+SampleUniform
+​
+(
+0
+,
+N
+−
+1
+,
+(
+R
+,
+N
+)
+)
+\mathcal{I}^{*}\in\{0,\dots,N-1\}^{R\times N}\leftarrow\text{SampleUniform}(0,N-1,(R,N))
+11:
+𝐌
+boot
+∈
+ℝ
+T
+×
+P
+×
+F
+×
+R
+←
+BootstrapFold
+(
+𝒜
+,
+dim
+=
+N
+,
+ℐ
+∗
+,
+𝟏
+R
+×
+N
+/
+N
+)
+\mathbf{M}_{\textit{boot}}\in\mathbb{R}^{T\times P\times F\times R}\leftarrow\text{BootstrapFold}(\mathcal{A},\text{dim}=N,\mathcal{I}^{*},\mathbf{1}_{R\times N}/N)
+12:
+𝐌
+¯
+∗
+∈
+ℝ
+Y
+×
+F
+×
+R
+←
+MeanFold
+​
+(
+𝐌
+boot
+,
+dim
+=
+X
+)
+\bar{\mathbf{M}}^{*}\in\mathbb{R}^{Y\times F\times R}\leftarrow\text{MeanFold}(\mathbf{M}_{\textit{boot}},\text{dim}=X)
+13:
+2. Trend validation
+14:
+𝝆
+∗
+,
+𝑷
+ρ
+∗
+∈
+ℝ
+F
+×
+R
+←
+SpearmanFold
+(
+𝐌
+¯
+∗
+,
+dim
+=
+Y
+,
+𝐯
+Y
+)
+\boldsymbol{\rh</p>
+
+<p>o}^{*},\boldsymbol{P}_{\rho}^{*}\in\mathbb{R}^{F\times R}\leftarrow\text{SpearmanFold}(\bar{\mathbf{M}}^{*},\text{dim}=Y,\mathbf{v}_{Y})
+15:
+𝝉
+∗
+,
+𝑷
+τ
+∗
+∈
+ℝ
+F
+×
+R
+←
+MKFold
+​
+(
+𝐌
+¯
+∗
+,
+dim
+=
+Y
+)
+\boldsymbol{\tau}^{*},\boldsymbol{P}_{\tau}^{*}\in\mathbb{R}^{F\times R}\leftarrow\text{MKFold}(\bar{\mathbf{M}}^{*},\text{dim}=Y)
+16:
+Compute joint significance mask
+𝐒𝐢𝐠
+∗
+∈
+{
+0
+,
+1
+}
+F
+×
+R
+\mathbf{Sig}^{*}\in\{0,1\}^{F\times R}
+:
+17:
+𝐒𝐢𝐠
+∗
+←
+(
+𝑷
+ρ
+∗
+&lt;
+α
+sig
+)
+∧
+(
+𝑷
+τ
+∗
+&lt;
+α
+sig
+)
+\mathbf{Sig}^{*}\leftarrow(\boldsymbol{P}_{\rho}^{*}&lt;\alpha_{\textit{sig}})\land(\boldsymbol{P}_{\tau}^{*}&lt;\alpha_{\textit{sig}})
+18:
+3. Directional sorting and selection
+19:
+Compute total change tensor:
+𝚫
+∗
+←
+𝐌
+¯
+∗
+​
+[
+Y
+−
+1
+,
+:
+,
+:
+]
+−
+𝐌
+¯
+∗
+​
+[
+0
+,
+:
+,
+:
+]
+∈
+ℝ
+F
+×
+R
+\mathbf{\Delta}^{*}\leftarrow\bar{\mathbf{M}}^{*}[Y-1,:,:]-\bar{\mathbf{M}}^{*}[0,:,:]\in\mathbb{R}^{F\times R}
+20:
+Create direction-specific validity masks
+∈
+{
+0
+,
+1
+}
+F
+×
+R
+\in\{0,1\}^{F\times R}
+:
+21:
+𝐕
+↑
+←
+𝐒𝐢𝐠
+∗
+∧
+(
+𝝆
+∗
+&gt;
+0
+)
+∧
+(
+𝝉
+∗
+&gt;
+0
+)
+,
+𝐕
+↓
+←
+𝐒𝐢𝐠
+∗
+∧
+(
+𝝆
+∗
+&lt;
+0
+)
+∧
+(
+𝝉
+∗
+&lt;
+0
+)
+\mathbf{V}^{\uparrow}\leftarrow\mathbf{Sig}^{*}\land(\boldsymbol{\rho}^{*}&gt;0)\land(\boldsymbol{\tau}^{*}&gt;0),\quad\mathbf{V}^{\downarrow}\leftarrow\mathbf{Sig}^{*}\land(\boldsymbol{\rho}^{*}&lt;0)\land(\boldsymbol{\tau}^{*}&lt;0)
+22:
+Mask insignificant features out of
+𝚫
+∗
+\mathbf{\Delta}^{*}
+:
+23:
+𝚫
+~
+d
+,
+r
+↑
+=
+{
+𝚫
+d
+,
+r
+∗
+if
+​
+𝐕
+d
+,
+r
+↑
+=
+1
+−
+∞
+otherwise
+,
+𝚫
+~
+d
+,
+r
+↓
+=
+{
+𝚫
+d
+,
+r
+∗
+if
+​
+𝐕
+d
+,
+r
+↓
+=
+1
++
+∞
+otherwise
+\tilde{\mathbf{\Delta}}^{\uparrow}_{d,r}=\begin{cases}\m</p>
+
+<p>athbf{\Delta}^{*}_{d,r}&amp;\text{if }\mathbf{V}^{\uparrow}_{d,r}=1\\
+-\infty&amp;\text{otherwise}\end{cases},\quad\tilde{\mathbf{\Delta}}^{\downarrow}_{d,r}=\begin{cases}\mathbf{\Delta}^{*}_{d,r}&amp;\text{if }\mathbf{V}^{\downarrow}_{d,r}=1\\
++\infty&amp;\text{otherwise}\end{cases}
+24:
+Extract matrices of Top-K feature indices per replicate
+∈
+{
+0
+,
+…
+,
+F
+−
+1
+}
+K
+×
+R
+\in\{0,\dots,F-1\}^{K\times R}
+:
+25:
+L
+↑
+←
+TopKIndices
+(
+𝚫
+~
+↑
+,
+dim
+=
+F
+,
+largest
+=
+True
+,
+k
+=
+K
+)
+L^{\uparrow}\leftarrow\text{TopKIndices}(\tilde{\mathbf{\Delta}}^{\uparrow},\text{dim}=F,\text{largest}=\text{True},k=K)
+26:
+L
+↓
+←
+TopKIndices
+(
+𝚫
+~
+↓
+,
+dim
+=
+F
+,
+largest
+=
+False
+,
+k
+=
+K
+)
+L^{\downarrow}\leftarrow\text{TopKIndices}(\tilde{\mathbf{\Delta}}^{\downarrow},\text{dim}=F,\text{largest}=\text{False},k=K)
+27:
+4. Final ranking
+28:
+Count frequencies of each feature index
+d
+∈
+{
+0
+​
+…
+​
+F
+−
+1
+}
+d\in\{0\dots F-1\}
+across all replicates:
+29:
+C
+↑
+∈
+ℕ
+F
+←
+IndexCount
+​
+(
+L
+↑
+,
+F
+)
+,
+C
+↓
+∈
+ℕ
+F
+←
+IndexCount
+​
+(
+L
+↓
+,
+F
+)
+C^{\uparrow}\in\mathbb{N}^{F}\leftarrow\text{IndexCount}(L^{\uparrow},F),\quad C^{\downarrow}\in\mathbb{N}^{F}\leftarrow\text{IndexCount}(L^{\downarrow},F)
+30:
+Final sets:
+S
+↑
+←
+SortIndices
+​
+(
+C
+↑
+/
+R
+)
+,
+S
+↓
+←
+SortIndices
+​
+(
+C
+↓
+/
+R
+)
+S^{\uparrow}\leftarrow\text{SortIndices}(C^{\uparrow}/R),\quad S^{\downarrow}\leftarrow\text{SortIndices}(C^{\downarrow}/R)
+31:
+return
+S
+↑
+,
+S
+↓
+S^{\uparrow},S^{\downarrow}
+Validating feature trend consistency
+across
+Y
+Y
+.
+Overall change
+across
+Y
+Y
+.
+3
+Methodology
+At the core of our</p>
+
+<p>approach is a 4D tensor
+𝒜
+\mathcal{A}
+that captures SAE activations across four dimensions: (i)
+N
+N
+input samples; (ii)
+P
+P
+distinct dataset property configurations; (iii)
+F
+F
+latent feature dimensions, and (iv)
+T
+T
+timesteps corresponding to fine-tuning epochs. This data structure is depicted in Figure
+1
+.
+Note that the property dimension
+P
+P
+is designed to systematically source latent features whose activation magnitudes exhibit a strong, monotonic relationship with the target property. Each slice of a property (
+N
+×
+F
+N\times F
+overlayed matrices in Figure
+1
+) corresponds to activations extracted from the same base model, fine-tuned on a dataset explicitly controlled for an increasing proportion of the target property.
+Formally, for a particular fine-tuning dataset
+𝓓
+\boldsymbol{\mathcal{D}}
+and a pre-trained LLM
+𝑴
+\boldsymbol{M}
+,
+𝑴
+𝓓
+\boldsymbol{M_{\mathcal{D}}}
+denotes a model obtained by fine-tuning
+𝑴
+\boldsymbol{M}
+on
+𝓓
+\boldsymbol{\mathcal{D}}
+. We define
+𝑴
+𝓓
+p
+\boldsymbol{M_{\mathcal{D}_{\textit{p}}}}
+as the model obtained by fine-tuning
+𝑴
+\boldsymbol{M}
+on a strictly controlled version of
+𝓓
+\boldsymbol{\mathcal{D}}
+curated to contain exactly
+p
+p
+% of a target property. The boundary for defining the presence or absence of this property can be established either via an empirical scoring function evaluated on the base model, or through the exact generative parameters of a synthetic dataset, allowing for the controlled study of feature drift in target model organisms</p>
+
+<p>(evhub
+et al.
+,
+2023
+; Turner
+et al.
+,
+2025
+)
+.
+To construct
+𝒜
+\mathcal{A}
+, we vary the property concentration across a defined range
+p
+∈
+𝒫
+p\in\mathcal{P}
+and extract SAE representations from the resulting models
+𝑴
+𝓓
+p
+\boldsymbol{M_{\mathcal{D}_{\textit{p}}}}
+, for a particular evaluation dataset
+𝓓
+\boldsymbol{\mathcal{D}}
+.
+The core of our algorithm,
+Mo
+notonic
+R
+elationship
+F
+eature
+I
+dentification for Sparse Autoencoders (MoRFI), is provided in Algorithm
+1
+.
+1
+1
+1
+Table
+12
+in Appendix
+I
+provides the definitions of tensor operations used in Algorithm
+1
+.
+Its primary objective is to process tensor
+𝒜
+\mathcal{A}
+along a target dimension of aggregation (e.g. across property or timesteps) and output a robust subset of features from
+L
+L
+whose activation magnitudes change monotonically in response to the controlled property. The main components of the algorithm are:
+1. Resampling and aggregation:
+Generates thousands of simulated test environments (replicates) by randomly sampling the original activation tensor
+𝒜
+\mathcal{A}
+with replacement. It then calculates the mean across these bootstrapped samples to establish a highly robust, noise-reduced baseline tensor
+(
+𝐌
+¯
+∗
+)
+(\bar{\mathbf{M}}^{*})
+.
+2. Trend validation:
+Evaluates whether a feature’s activation changes consistently across the property of interest dimension using Spearman rank and Mann-Kendall
+(Mann,
+1945
+; Kendall and Gibbons,
+1990
+)
+tests.
+A feature is kept
+if both independent tests verify that its trajectory is s</p>
+
+<p>ignificant below the
+α
+sig
+\alpha_{\textit{sig}}
+threshold. While the Spearman test evaluates the overall monotonic strength of the activation shift from the first state to the last, it can occasionally be skewed by isolated, high-magnitude spikes at the extremes of the sequence; we complement
+with the Mann-Kendal test, which detects a monotonic trend in a timeseries.
+3. Direction sorting and selection:
+Calculates the overall magnitude of change (
+𝚫
+∗
+\mathbf{\Delta}^{*}
+) for the features identified in the previous step, classifying them into sets of increasing (
+𝐕
+↑
+\mathbf{V}^{\uparrow}
+) or decreasing (
+𝐕
+↓
+\mathbf{V}^{\downarrow}
+) features. It then extracts the top-k most altered features for each individual bootstrap replicate.
+4. Final ranking
+We define our final selection metric as the bootstrap frequency
+C
+/
+R
+C/R
+. For each feature, this fraction provides the probability that it ranks among the top-k most directionally altered latents
+C
+C
+across all replicates
+R
+R
+. By sorting the final ranked lists (
+S
+↑
+S^{\uparrow}
+,
+S
+↓
+S^{\downarrow}
+) based on this metric we ensure that the selected features represent a global, data-set wide shift caused by fine-tuning, rather than a localized artifact of a specific prompt batch.
+Identifying Impactful Latents via Steering
+To identify the set of most impactful latents we perform activation steering with respect to a downstream task, e.g., fine-tuning on a QA dataset (Algorithm
+2
+in Appendix
+I
+). To efficiently filter the candi</p>
+
+<p>date sets
+S
+S
+, we first apply a uniform steering intervention using a fixed initialization magnitude (
+α
+i
+​
+n
+​
+i
+​
+t
+=
+0.4
+\alpha_{init}=0.4
+) to each latent. We evaluate the model’s modified forward pass on the reference dataset
+𝓓
+\boldsymbol{\mathcal{D}}
+, isolating only the latents that successfully exceed the unsteered baseline accuracy, and retain the top 40 for more granular tuning. Then we run grid search on these top-40 performing latents and find the optimal strength
+α
+∗
+\alpha^{*}
+for each. Finally, we sort and return the top-10 latents.
+4
+Experimental Setup
+We begin answering our research question, i.e., whether integrating new knowledge to a model via fine-tuning leaves a detectable mark in the activation space by fine-tuning on unknown samples from a closed-book QA task. Figure
+2
+clearly demonstrates an increased rate of hallucinations on the test set regardless of model architecture; a similar result was found by
+Gekhman
+et al.
+(
+2024
+)
+. We turn to use MoRFI to causally interpret this behavior.
+(a)
+Llama 3.1 8B
+(b)
+Gemma 2 9B
+(c)
+Mistral v03 7B
+Figure 2:
+Comparison of test performance across models. Increasing % of
+Unknown
+facts in the fine-tuning data mixture consistently leads to performance degradation. The effect is intensified when training for longer.
+Models and SAEs (
+M
+\boldsymbol{M}
+and
+𝒜
+\mathcal{A}
+)
+To instantiate our methodology, we apply MoRFI to
+three major open-weight models
+𝑴
+\boldsymbol{M}
+s: Llama 3.1 8B, Gemma 2 9B, and Mistral v03 7B. To</p>
+
+<p>construct the activation tensor
+𝒜
+\mathcal{A}
+, we extract sparse representations of the residual stream from the fine-tuned models using pre-trained SAEs from Llama Scope
+(He
+et al.
+,
+2024
+)
+, Gemma Scope
+(Lieberum
+et al.
+,
+2024
+)
+and
+Engels
+et al.
+(
+2025
+)
+for Mistral. Across all experiments, we collect activations only from the middle layer of each respective model. We normalize the decoder vectors to unit length and push their original magnitudes to the encoder, to ensure fair comparison between features.
+Dataset and Property Annotation (
+𝒫
+\mathcal{P}
+and
+P
+Correct
+P_{\texttt{Correct}}
+)
+Our dataset is based on
+EntityQuestions
+(Sciavolino
+et al.
+,
+2022
+)
+, where triplets from a diverse set of relations from Wikidata
+(Vrandečić and Krötzsch,
+2014
+)
+are converted to QA pairs. Starting from
+EntityQuestions
+we follow the pre-processing steps detailed by
+Gekhman
+et al.
+(
+2024
+)
+to reproduce the filtered train, dev and test splits. Here,
+𝓓
+=
+{
+(
+q
+i
+,
+a
+i
+)
+}
+i
+=
+1
+N
+\boldsymbol{\mathcal{D}}=\{(q_{i},a_{i})\}_{i=1}^{N}
+where
+q
+q
+is a
+knowledge
+-
+seeking
+question corresponding to a specific factoid structured as
+(subject, relation, object)
+, and
+a
+a
+is the ground-truth answer. To investigate how the new knowledge alters
+𝑴
+\boldsymbol{M}
+’s activation space, we annotate our train samples as
+Known
+or
+Unknown
+based on
+P
+Correct
+​
+(
+q
+,
+a
+;
+M
+,
+T
+)
+P_{\texttt{Correct}}(q,a;M,T)
+(see Appendix
+B
+) and the SliCK categorization of knowledge as defined by
+Gekhman
+et al.
+(
+2024
+)
+(see A</p>
+
+<p>ppendix
+5
+for further details on datasets). Since
+𝑴
+\boldsymbol{M}
+is a base model, we use a prompt consisting of 4 demonstrations sampled from the same category as the question, before appending the question to be evaluated, to elicit the correct answer format.
+An example of the prompt we use to compute
+P
+Correct
+P_{\texttt{Correct}}
+is in Appendix
+D
+. We instantiate our target property, as the proportion of
+Unknown
+samples contained in the fine-tuning dataset. To this end, we subsample the train set to create seven (
+P
+=
+|
+𝒫
+|
+=
+7
+P=|\mathcal{P}|=7
+) distinct fine-tuning datasets
+𝓓
+p
+\boldsymbol{\mathcal{D}_{\textit{p}}}
+for
+p
+∈
+𝒫
+=
+{
+0
+,
+10
+,
+25
+,
+50
+,
+75
+,
+90
+,
+100
+}
+p\in\mathcal{P}=\{0,10,25,50,75,90,100\}
+. Each
+𝓓
+p
+\boldsymbol{\mathcal{D}_{\textit{p}}}
+is equal in size, comprising
+p
+%
+p\%
+Unknown
+to
+𝑴
+\boldsymbol{M}
+instances (the rest is
+Known
+).
+Post-training (
+T
+T
+)
+We use SFT to train each of our
+𝑴
+\boldsymbol{M}
+s on their corresponding set of
+𝑫
+𝒑
+\boldsymbol{D_{p}}
+s derived from their individual prior knowledge as described above, for a fixed number of epochs across 5 different runs for 10, 20, 30, 40 and 50 epochs, totalling 35 distinct fine-tuning runs for each
+𝑴
+\boldsymbol{M}
+and evaluate the final epoch of each run on the test set. For the additional Early Stop run, we use the dev set accuracy to determine the optimal stopping point (&lt; 10 epochs for all models).
+Figure
+2
+plots each
+𝑴
+\boldsymbol{M}
+’s accuracy on the test set across the datasets while varyi</p>
+
+<p>ng training time (
+𝒯
+=
+{
+early_stop
+,
+10
+,
+20
+,
+30
+,
+40
+,
+50
+}
+\mathcal{T}=\{\texttt{early\_stop},10,20,30,40,50\}
+,
+T
+=
+|
+𝒯
+|
+=
+6
+T=|\mathcal{T}|=6
+). Further details on fine-tuning are in Appendix
+A
+.
+Latent Identification
+To identify the most important latents during the fine-tuning process, we apply MoRFI (Algorithms
+1
+and
+2
+) on dev (
+𝓓
+dev
+\boldsymbol{\mathcal{D_{\textit{dev}}}}
+) where we also fit steering strength
+α
+\alpha
+, individually for each latent. All steering interventions are applied post-middle layer on the worst performing checkpoint (last data-point of the dark blue line in Figure
+2
+).
+The steering vector
+(
+c
+⋅
+α
+⋅
+s
+ℓ
+​
+𝚽
+k
+)
+(c\cdot\alpha\cdot s_{\ell}\mathbf{\Phi}_{k})
+is applied directly to the residual stream and consists of the SAE decoder vector
+𝚽
+k
+\mathbf{\Phi}_{k}
+corresponding to latent
+k
+k
+multiplied by the steering direction
+c
+∈
+{
+−
+1
+,
+1
+}
+c\in\{-1,1\}
+, the steering strength
+α
+\alpha
+and the layer-wise activation scaling factor
+s
+ℓ
+=
+1
+N
+tokens
+​
+∑
+i
+=
+1
+N
+tokens
+‖
+𝐡
+i
+,
+ℓ
+‖
+2
+s_{\ell}=\frac{1}{N_{\textit{tokens}}}\sum_{i=1}^{N_{\textit{tokens}}}\|\mathbf{h}_{i,\ell}\|_{2}
+. We calculate
+s
+⌊
+L
+/
+2
+⌋
+s_{\lfloor L/2\rfloor}
+over the Alpaca dataset
+(Hashimoto
+et al.
+,
+2025
+)
+to provide a common frame of reference. For each
+𝑴
+\boldsymbol{M}
+, we first run Algorithm
+1
+to get the increasing (
+S
+↑
+S^{\uparrow}
+) and decreasing (
+S
+↓
+S^{\downarrow}
+) latents across each direction (
+↑
+\uparrow
+Unknown/
+↑
+\uparrow
+Epochs). For each
+S
+S
+we run Algorith</p>
+
+<p>m
+2
+for
+c
+=
+1
+c=1
+and
+c
+=
+−
+1
+c=-1
+separately, which yields
+S
+final
+S_{\textit{final}}
+for positive and negative steering respectively corresponding to four
+S
+final
+S_{\textit{final}}
+lists of most impactful latents.
+5
+Experiments and Results
+We aim to identify latent directions of the residual stream, that capture the representational changes induced by fine-tuning on unknown facts,
+adversely affecting the model’s ability to access pre-trained knowledge. We seek to demonstrate that MoRFI can discover such latents, and moreover that the identified latents directly mitigate hallucinations in this setting. To this end, the bootstrap analysis (Algorithm
+1
+) first identifies SAE latents whose activations exhibit robust monotonic trends along two axes: the proportion of unknown facts in the fine-tuning mixture and the number of training epochs. These trending latents are candidates whose activation increases or decreases across controlled fine-tuning configurations of the same base model as it transitions from its pre-trained knowledge state towards incorporating new knowledge. Activation Steering (Algorithm
+2
+) then tests whether steering these candidates can recover the fine-tuned model’s accuracy on previously known facts. Their combination ensures the pipeline isolates latents that are not just correlated with fine-tuning dynamics but mechanistically implicated in the model’s capacity to use pre-trained knowledge.
+Figure 3:
+Dev accuracy change from single-latent steering on Ll</p>
+
+<p>ama 3.1 8B along the unknown dimension. Top row: negative steering; bottom row: positive steering. Left and centre columns show the top-10 increasing and decreasing latents identified by algorithm
+1
+. Right column shows control group latents selected by algorithm
+3
+, which exhibit no significant monotonic trend and minimal activation change across fine-tuning conditions. Control latents produce negligible accuracy changes under both steering directions, confirming that the gains for trending latents are not an artifact of arbitrary residual stream perturbation.
+Ruling out artifacts with control latents
+Figure
+3
+shows that the top candidates discovered by our algorithm have a relatively significant effect on the performance when used for steering. To confirm that this is
+not
+an artifact due to arbitrarily selected latents, we steer using a control group of latents that appear unaffected by fine-tuning
+as described in Algorithm
+3
+(Appendix
+I
+):
+their activations present no trend or change across the fine-tuned models.
+The last column of Figure
+3
+shows the control group performance for Llama 3.1 8B (see Appendix
+H
+for the rest models).
+We find that the control group behaves very differently from the latents selected by our algorithm: steering with them mostly has a highly negative effect, whereas the positive effects are significantly less pronounced than the top-ranked latents, indicating the effectiveness of MoRFI.
+Table
+1
+presents the top-10 latents for Llama 3.1 8B on the
+↑</p>
+
+<p>\uparrow
+Unknown direction (see Appendix
+F
+for the rest models and the
+↑
+\uparrow
+Epochs direction).
+Note that we focus
+on the
+↑
+\uparrow
+Unknown direction, as it isolates the effect of data composition from confounds introduced by extended training, such as distributional shift or overfitting, that may alter representations independently of exposure to unknown facts. The substantial overlap in surfaced latents between the two directions (e.g., latents 27191, 30382, 2378, 31426 in Tables
+1
+and
+11
+) suggests that they capture a shared signal, but the
+↑
+\uparrow
+Unknown direction provides a more targeted attribution of representational change to the specific variable of interest.
+Asymmetries in latent steering dynamics
+We detail several such asymmetries.
+✓
+\checkmark
+Negatively steered latents consistently yield larger gains than positively steered ones.
+The negatively steered columns in Table
+1
+show higher top accuracy improvements than the positively steered columns. For the
+↑
+\uparrow
+Unknown
+direction the best positively steered latent gives +21.7 while the best negatively steered one gives +33.4. For Mistral 7B (Table
+10
+) the difference is more pronounced: +24.91 vs +39.77 and for Gemma 2 9B (Table
+9
+): +9.03 vs +18.46. This suggests that features that grow with %
+Unknown
+may become over-expressed and suppressing them recovers performance more effectively than promoting other features.
+Model: Llama 3.1 8B
+Direction:
+↑
+\uparrow
+Unknown
+Increasing Latents
+Decreasing Latents</p>
+
+<p>Top-10 Positively Steered
+Top-10 Negatively Steered
+Top-10 Positively Steered
+Top-10 Negatively Steered
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+27191
+↑
+\uparrow
+7.12
+19.1
+0.50
+20649
+↑
+\uparrow
+20.6
+21.5
+0.35
+10007
+↑
+\uparrow
+21.7
+21.7
+0.50
+21682
+↑
+\uparrow
+33.4
+23.8
+0.70
+18225
+↑
+\uparrow
+5.89
+18.9
+0.45
+25633
+↑
+\uparrow
+8.41
+19.3
+0.65
+27142
+↑
+\uparrow
+20.5
+21.5
+0.45
+10405
+↑
+\uparrow
+11.6
+19.9
+0.15
+27120
+↑
+\uparrow
+4.50
+18.7
+0.40
+22791
+↑
+\uparrow
+6.11
+18.9
+0.25
+23867
+↑
+\uparrow
+17.7
+21.0
+0.50
+5370
+↑
+\uparrow
+3.75
+18.5
+0.20
+326
+↑
+\uparrow
+4.34
+18.6
+0.40
+28062
+↑
+\uparrow
+5.03
+18.7
+0.30
+10356
+↑
+\uparrow
+12.2
+20.0
+0.35
+28502
+↑
+\uparrow
+3.43
+18.5
+0.35
+30382
+↑
+\uparrow
+3.21
+18.4
+0.35
+4445
+↑
+\uparrow
+2.04
+18.2
+0.20
+20870
+↑
+\uparrow
+12.2
+20.0
+0.45
+31426
+↑
+\uparrow
+2.41
+18.3
+0.25
+15198
+↑
+\uparrow
+3.21
+18.4
+0.30
+10363
+↑
+\uparrow
+1.87
+18.2
+0.35
+30221
+↑
+\uparrow
+11.7
+19.9
+0.45
+12473
+↑
+\uparrow
+2.36
+18.3
+0.25
+28349
+↑
+\uparrow
+3.16
+18.4
+0.50
+31015
+↑
+\uparrow
+1.87
+18.2
+0.45
+20435
+↑
+\uparrow
+11.1
+19.8
+0.40
+25500
+↑
+\uparrow
+2.20
+18.2
+0.35
+373
+↑
+\uparrow
+2.46
+18.3
+0.40
+21447
+↑
+\uparrow
+1.66
+18.1
+0.35
+30970
+↑
+\uparrow
+10.8
+19.8
+0.40
+27202
+↑
+\uparrow
+2.04
+18.2
+0.35
+29674
+↑
+\uparrow
+2.41
+18.3
+0.20
+13441
+↑
+\uparrow
+1.55
+18.1
+0.30
+12049
+↑
+\uparrow
+10.6
+19.7
+0.55
+7886
+↑
+\uparrow
+1.50
+18.1
+0.15
+2378
+↑
+\uparrow
+2.09
+18.2
+0.30
+15009
+↑
+\uparrow
+1.07
+18.0
+0.10
+1547
+↑
+\uparrow
+10.2
+19.7
+0.50
+16727
+↑
+\uparrow
+1.23
+18.1
+0.25
+Table 1:
+Top-10 impactful latents for Llama 3.1 8B selected</p>
+
+<p>from the unknown direction (increasing proportion of unknown facts in the fine-tuning mixture),
+identified by algorithm
+1
+and validated by algorithm
+2
+.
+Columns are grouped by feature trend (increasing or decreasing, as identified
+by algorithm
+1
+) and by steering polarity (positive or negative,
+as applied in algorithm
+2
+). # denotes the corresponding sae latent index,
+acc. reports the steered model’s accuracy on the dev set with the relative
+gain over the
+𝑴
+𝑫
+𝟏𝟎𝟎
+\boldsymbol{M_{D_{100}}}
+baseline shown in green,
+and
+α
+\alpha
+is the optimal steering coefficient selected via grid search.
+✓
+\checkmark
+Decreasing latents are significantly more impactful relative to increasing ones.
+Features that decrease for models fine-tuned with more
+Unknown
+samples, when steered in either direction, tend to produce accuracy gains that match or exceed those from increasing latents. In Llama, the top decreasing latent (+21.7) when positively steered, triples the best increasing (+7.12). In Gemma the top decreasing, positively steered latent (+19.02) outperforms every increasing positively steered one. In Mistral, the top decreasing latent reaches +39.77 relative gains. This implies that suppressed features still encode pre-trained knowledge that can be recovered through steering.
+Latent structure of Known vs Unknown knowledge
+In Table
+2
+, we decompose the performance gains achieved through steering by attributing them to specific Wikidata relations, illustrating the functional role of the top la</p>
+
+<p>tents. To quantify the restorative nature of these interventions, we define the Knowledge Recovery rate (
+R
+K
+R_{K}
+, Appendix
+E
+). Treating
+𝑴
+𝑫
+0
+\boldsymbol{M_{D_{\textit{0}}}}
+’s performance as an
+upper bound for recoverable facts,
+R
+K
+R_{K}
+measures what fraction of the steering-induced gains correspond to
+𝑴
+𝑫
+𝟎
+\boldsymbol{M_{D_{0}}}
+’s knowledge.
+✓
+\checkmark
+69-85% of the facts recovered by steering top-latents on
+𝑴
+𝑫
+100s
+\boldsymbol{M_{D_{\textit{100s}}}}
+are
+Known
+to
+𝑴
+𝑫
+0
+\boldsymbol{M_{D_{\textit{0}}}}
+We find that most of steering gains correspond to facts known to the better performing
+𝑴
+𝑫
+0
+\boldsymbol{M_{D_{\textit{0}}}}
+. The top benefitting relations:
+P17
+(country),
+P36
+(capital) and
+P495
+(country of origin) are semantically related geographic predicates, and their consistent co-recovery under single-latent steering across all three models is consistent with the expectation that semantically relevant relations share representational structure in the residual stream. Two of the corresponding features for Llama 3.1 8B are closely related to these relations according to Neuronpedia.
+2
+2
+2
+https://www.neuronpedia.org/
+Feature
+10007
+refers to geographic locations and regions, while
+20649
+is aligned with features activating on locations, cities and countries.
+Direction
+Feature Trend
+Intervention
+Top Latent
+Steered Acc.
+Knowledge Recovered (
+R
+K
+R_{K}
+)
+Top Benefiting Relations (
+R
+K
+​
+(
+c
+)
+R_{K}(c)
+)
+↑
+\uparrow
+Unknown
+Llama 3.1 8B
+(Baselines:
+M
+D
+​
+100
+=
+0.178
+M</p>
+
+<p>_{D100}=0.178
+,
+M
+D
+​
+0
+=
+0.355
+M_{D0}=0.355
+)
+Increasing
+Positive (+)
+27191
+0.191
+69.0%
+P17
+(18.4%),
+P36
+(17.6%),
+P495
+(11.5%)
+Negative (-)
+20649
+0.215
+76.9%
+P495
+(35.1%),
+P17
+(15.2%),
+P36
+(12.8%)
+Decreasing
+Positive (+)
+10007
+0.217
+72.5%
+P495
+(22.9%),
+P17
+(19.4%),
+P36
+(10.2%)
+Negative (-)
+21682
+0.238
+70.1%
+P495
+(20.8%),
+P17
+(15.4%),
+P36
+(13.2%)
+Gemma 2 9B
+(Baselines:
+M
+D
+​
+100
+=
+0.191
+M_{D100}=\text{0.191}
+,
+M
+D
+​
+0
+=
+0.360
+M_{D0}=\text{0.360}
+)
+Increasing
+Positive (+)
+18360
+0.208
+76.1%
+P17
+(22.8%),
+P36
+(21.6%),
+P740
+(7.3%)
+Negative (-)
+5152
+0.226
+85.1%
+P495
+(37.8%),
+P17
+(23.7%),
+P36
+(13.5%)
+Decreasing
+Positive (+)
+5105
+0.227
+80.7%
+P17
+(25.0%),
+P36
+(18.6%),
+P495
+(16.6%)
+Negative (-)
+8277
+0.213
+72.3%
+P17
+(19.9%),
+P36
+(15.1%),
+P495
+(12.4%)
+Mistral v03 7B
+(Baselines:
+M
+D
+​
+100
+=
+0.157
+M_{D100}=\text{0.157}
+,
+M
+D
+​
+0
+=
+0.319
+M_{D0}=\text{0.319}
+)
+Increasing
+Positive (+)
+41844
+0.196
+83.0%
+P495
+(38.3%),
+P17
+(14.0%),
+P36
+(8.7%)
+Negative (-)
+61325
+0.218
+83.8%
+P495
+(38.4%),
+P17
+(19.9%),
+P36
+(6.5%)
+Decreasing
+Positive (+)
+18848
+0.206
+82.2%
+P495
+(38.4%),
+P17
+(20.5%),
+P136
+(7.3%)
+Negative (-)
+7859
+0.219
+77.1%
+P495
+(38.6%),
+P17
+(14.3%),
+P36
+(7.0%)
+Table 2:
+Cross-Model Knowledge Recovery and Relational Attribution via Single-Latent Steering.
+Knowledge Recovered
+R
+K
+R_{K}
+, represents the fraction of pre-trained accuracy (
+𝑴
+𝑫
+​
+𝟎
+\boldsymbol{M_{D0}}
+) lost during fine-tuning (
+𝑴
+𝑫
+​
+𝟏𝟎𝟎
+\boldsymbol{M_{D100}}
+) that was successfully restored by the intervention.
+Figure 4:
+Comparison of st</p>
+
+<p>eering with the composite direction
+𝜹
+𝒖
+\boldsymbol{\delta_{u}}
+versus individual top-performing latents across three models.
+𝜹
+𝒖
+−
+\boldsymbol{\delta_{u}^{-}}
+and
+𝜹
+𝒖
++
+\boldsymbol{\delta_{u}^{+}}
+denote subtracting and adding the
+𝜹
+𝒖
+\boldsymbol{\delta_{u}}
+direction projected onto the residual stream via the SAE decoder.
+δ
+u
+−
+\delta_{u}^{-}
+behaves consistently, while individual latents sourced with MoRFI yield substantially larger improvements.
+✓
+\checkmark
+𝜹
+𝒖
+\boldsymbol{\delta_{u}}
+captures the direction (
+↑
+\uparrow
+Unknown) in SAE latent space along which model activations shift as train data transitions from fully
+Known
+to fully
+Unknown
+To validate the direction identified by Algorithm
+1
+, we steer directly with
+𝜹
+𝒖
+\boldsymbol{\delta_{u}}
+(line
+19
+), i.e.,
+the composite vector capturing the aggregate activation shift from
+𝑴
+𝑫
+𝟎
+\boldsymbol{M_{D_{0}}}
+to
+𝑴
+𝑫
+𝟏𝟎𝟎
+\boldsymbol{M_{D_{100}}}
+in SAE space. This is projected onto the residual stream by multiplying with the SAE decoder matrix, yielding a single direction in the model’s hidden space that is then scaled and either added or subtracted from the residual stream at the middle layer. Across all three models, subtracting this direction produces accuracy gains in hallucinating models, while adding it deteriorates performance (Figure
+4
+). However, single-latent interventions sourced with MoRFI mostly outperform
+𝜹
+𝒖
+−
+\boldsymbol{\delta_{u}^{-}}
+, indicating that the knowledge-relevant signal within the composite dir</p>
+
+<p>ection is concentrated in a sparse subset of its components, with the remainder diluting the effect or reversing it.
+In Appendix
+G
+we plot the cosine similarity of the top-performing latents.
+Within-group similarity is generally low (
+≈
+\approx
+0.3), indicating that the top-performing latents span a distributed subspace at the middle layer rather than clustering along a shared low-rank structure.
+While the intent of steering is to reverse the representational
+shift from
+𝑴
+𝓓
+0
+\boldsymbol{M_{\mathcal{D}_{\textit{0}}}}
+to
+𝑴
+𝓓
+100
+\boldsymbol{M_{\mathcal{D}_{\textit{100}}}}
+, the optimal
+interventions substantially overshoot
+𝑴
+𝓓
+0
+\boldsymbol{M_{\mathcal{D}_{\textit{0}}}}
+activation levels
+at the middle layer:
+negative
+steering suppresses increasing latents well below their
+𝑴
+𝓓
+0
+\boldsymbol{M_{\mathcal{D}_{\textit{0}}}}
+levels, while
+positive steering amplifies decreasing latents well above.
+The steered model achieves
+substantial gains from an activation configuration distinct from
+both
+𝑴
+𝓓
+0
+\boldsymbol{M_{\mathcal{D}_{\textit{0}}}}
+and
+𝑴
+𝓓
+100
+\boldsymbol{M_{\mathcal{D}_{\textit{100}}}}
+, suggesting that
+the model is tolerant to a range of perturbations at the middle
+layer: downstream layers may correct for imprecise interventions,
+funnelling different perturbed states towards similar output
+configurations from which parametric knowledge can be read out. The variation in optimal
+α
+\alpha
+across latents is consistent
+with this view, as different directions may align differentl</p>
+
+<p>y
+with the tolerant region, with better-aligned components
+admitting larger corrections before performance degrades.
+More speculatively, this tolerance may reflect a curved manifold
+of knowledge-accessible states in the
+residual stream, while individual latents approximate local
+tangent directions that track the manifold surface more faithfully.
+We leave geometric validation of these hypotheses to future work.
+6
+Conclusion
+We introduce a two-stage pipeline that identifies residual-stream directions causally linked to model behavior. Using activation snapshots, it isolates feature-level changes and their relevance. Applied to fine-tuning-induced knowledge degradation across three architectures, MoRFI shows a large gap between composite and single-latent interventions, indicating sparse knowledge signals. High alignment (69–85%) with
+𝑴
+𝓓
+𝟎
+\boldsymbol{M_{\mathcal{D}_{0}}}
+suggests these latents control access to stored knowledge rather than performance itself. This implies forgetting reflects disrupted access, not erasure, with implications for reducing hallucinations via targeted inference-time interventions.
+Ethics Statement
+Given the nature of our paper, and that we did not elicit any human evaluation studies we do not perceive any direct ethics considerations for this paper. We still acknowledge the risk of dual-use of the three models we used, especially since we are using their base variant which does not involve any post-training techniques for harnessing and refusing un</p>
+
+<p>如果被恶意触发，可能会产生预期或有害的行为。同时，我们使用的数据集（EntityQuestions；Sciavolino 等人，2022）包含一组源自维基数据实体的经过精心筛选的问答，因此风险应该很低。最后，本文旨在解释大语言模型（LLM）的行为，这些模型在很大程度上仍被视为黑盒。从这个意义上说，本文努力提供一些启示，并将机制可解释性推向提高使用 LLM 安全性的方向。</p>
+
+<p>参考文献
+R. Anil, A. M. Dai, O. Firat, M. Johnson, D. Lepikhin, A. Passos, S. Shakeri, E. Taropa, P. Bailey, Z. Chen, E. Chu, J. H. Clark, L. E. Shafey, Y. Huang, K. Meier-Hellstern, G. Mishra, E. Moreira, M. Omernick, K. Robinson, S. Ruder, Y. Tay, K. Xiao, Y. Xu, Y. Zhang, G. H. Abrego, J. Ahn, J. Austin, P. Barham, J. Botha, J. Bradbury, S. Brahma, K. Brooks, M. Catasta, Y. Cheng, C. Cherry, C. A. Choquette-Choo, A. Chowdhery, C. Crepy, S. Dave, M. Dehghani, S. Dev, J. Devlin, M. Díaz, N. Du, E. Dyer,</p>
+
+<p>lozov, R. Pope, S. Qiao, E. Reif, B. Richter, P. Riley, A. C. Ros, A. Roy, B. Saeta, R. Samuel, R. Shelby, A. Slone, D. Smilkov, D. R. So, D. Sohn, S. Tokumine, D. Valter, V. Vasudevan, K. Vodrahalli, X. Wang, P. Wang, Z. Wang, T. Wang, J. Wieting, Y. Wu, K. Xu, Y. Xu, L. Xue, P. Yin, J. Yu, Q. Zhang, S. Zheng, C. Zheng, W. Zhou, D. Zhou, S. Petrov, and Y. Wu (2023)
+PaLM 2 Technical Report
+.
+arXiv
+.
+Note:
+arXiv:2305.10403 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+J. Betley, D. Tan, N. Warncke, A. Sztyber-Betley, X. Bao, M. Soto, N. Labenz, and O. Evans (2025)
+Emergent Misalignment: Narrow finetuning can produce broadly misaligned LLMs
+.
+arXiv
+.
+Note:
+arXiv:2502.17424 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§2
+.
+T. Bricken, A. Templeton, J. Batson, B. Chen, A. Jermyn, T. Conerly, N. Turner, C. Anil, C. Denison, A. Askell, R. Lasenby, Y. Wu, S. Kravec, N. Schiefer, T. Maxwell, N. Joseph, Z. Hatfield-Dodds, A. Tamkin, K. Nguyen, B. McLean, J. E. Burke, T. Hume, S. Carter, T. Henighan, and C. Olah (2023)
+Towards monosemanticity: Decomposing language models with dictionary learning
+.
+External Links:
+Link
+Cited by:
+§2
+.
+H. Cunningham, A. Ewart, L. Riggs, R. Huben, and L. Sharkey (2023)
+Sparse Autoencoders Find Highly Interpretable Features in Language Models
+.
+arXiv
+.
+Note:
+arXiv:2309.08600 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§2
+.
+N. Elhage, N. Nanda, C. Olsson, T. Henighan, N. Joseph, B. Mann, A. Askell, Y. Bai, A. Chen, T. Conerly,
+et al.
+(2021)
+A math</p>
+
+<p>ematical framework for transformer circuits
+.
+Cited by:
+§2
+.
+J. Engels, E. J. Michaud, I. Liao, W. Gurnee, and M. Tegmark (2025)
+Not All Language Model Features Are One-Dimensionally Linear
+.
+arXiv
+.
+Note:
+arXiv:2405.14860 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§4
+.
+evhub, N. Schiefer, C. Denison, and E. Perez (2023)
+Model Organisms of Misalignment: The Case for a New Pillar of Alignment Research — AI Alignment Forum
+.
+External Links:
+Link
+Cited by:
+§3
+.
+J. Ferrando, O. Obeso, S. Rajamanoharan, and N. Nanda (2025)
+Do I Know This Entity? Knowledge Awareness and Hallucinations in Language Models
+.
+arXiv
+.
+Note:
+arXiv:2411.14257 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+L. Gao (2021)
+Behavior Cloning is Miscalibrated
+.
+(
+en
+).
+External Links:
+Link
+Cited by:
+§1
+.
+Z. Gekhman, G. Yona, R. Aharoni, M. Eyal, A. Feder, R. Reichart, and J. Herzig (2024)
+Does Fine-Tuning LLMs on New Knowledge Encourage Hallucinations?
+.
+arXiv
+.
+Note:
+arXiv:2405.05904 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix B
+,
+§1
+,
+§4
+,
+§4
+.
+Goldberg (2023)
+Rl-for-llms.md
+.
+(
+en
+).
+Note:
+Publication Title: Gist
+External Links:
+Link
+Cited by:
+§1
+.
+A. Grattafiori, A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Letman, A. Mathur, A. Schelten, A. Vaughan, A. Yang, A. Fan, A. Goyal, A. Hartshorn, A. Yang, A. Mitra, A. Sravankumar, A. Korenev, A. Hinsvark, A. Rao, A. Zhang, A. Rodriguez, A. Gregerson, A. Spataru, B. Roziere, B. Biron, B. Tang, B. Chern, C. Caucheteux, C. Nayak, C.</p>
+
+<p>Bi, C. Marra, C. McConnell, C. Keller, C. Touret, C. Wu, C. Wong, C. C. Ferrer, C. Nikolaidis, D. Allonsius, D. Song, D. Pintz, D. Livshits, D. Wyatt, D. Esiobu, D. Choudhary, D. Mahajan, D. Garcia-Olano, D. Perino, D. Hupkes, E. Lakomkin, E. AlBadawy, E. Lobanova, E. Dinan, E. M. Smith, F. Radenovic, F. Guzmán, F. Zhang, G. Synnaeve, G. Lee, G. L. Anderson, G. Thattai, G. Nail, G. Mialon, G. Pang, G. Cucurell, H. Nguyen, H. Korevaar, H. Xu, H. Touvron, I. Zarov, I. A. Ibarra, I. Kloumann, I. Misra, I. Evtimov, J. Zhang, J. Copet, J. Lee, J. Geffert, J. Vranes, J. Park, J. Mahadeokar, J. Shah, J. v. d. Linde, J. Billock, J. Hong, J. Lee, J. Fu, J. Chi, J. Huang, J. Liu, J. Wang, J. Yu, J. Bitton, J. Spisak, J. Park, J. Rocca, J. Johnstun, J. Saxe, J. Jia, K. V. Alwala, K. Prasad, K. Upasani, K. Plawiak, K. Li, K. Heafield, K. Stone, K. El-Arini, K. Iyer, K. Malik, K. Chiu, K. Bhalla, K. Lakhotia, L. Rantala-Yeary, L. v. d. Maaten, L. Chen, L. Tan, L. Jenkins, L. Martin, L. Madaan, L. Malo, L. Blecher, L. Landzaat, L. d. Oliveira, M. Muzzi, M. Pasupuleti, M. Singh, M. Paluri, M. Kardas, M. Tsimpoukelli, M. Oldham, M. Rita, M. Pavlova, M. Kambadur, M. Lewis, M. Si, M. K. Singh, M. Hassan, N. Goyal, N. Torabi, N. Bashlykov, N. Bogoychev, N. Chatterji, N. Zhang, O. Duchenne, O. Çelebi, P. Alrassy, P. Zhang, P. Li, P. Vasic, P. Weng, P. Bhargava, P. Dubal, P. Krishnan, P. S. Koura, P. Xu, Q. He, Q. Dong, R. Srinivasan, R. Ganapathy, R. Calderer, R. S. Cabral, R. Stojnic, R. Raile</p>
+
+<p>anu, R. Maheswari, R. Girdhar, R. Patel, R. Sauvestre, R. Polidoro, R. Sumbaly, R. Taylor, R. Silva, R. Hou, R. Wang, S. Hosseini, S. Chennabasappa, S. Singh, S. Bell, S. S. Kim, S. Edunov, S. Nie, S. Narang, S. Raparthy, S. Shen, S. Wan, S. Bhosale, S. Zhang, S. Vandenhende, S. Batra, S. Whitman, S. Sootla, S. Collot, S. Gururangan, S. Borodinsky, T. Herman, T. Fowler, T. Sheasha, T. Georgiou, T. Scialom, T. Speckbacher, T. Mihaylov, T. Xiao, U. Karn, V. Goswami, V. Gupta, V. Ramanathan, V. Kerkez, V. Gonguet, V. Do, V. Vogeti, V. Albiero, V. Petrovic, W. Chu, W. Xiong, W. Fu, W. Meers, X. Martinet, X. Wang, X. Wang, X. E. Tan, X. Xia, X. Xie, X. Jia, X. Wang, Y. Goldschlag, Y. Gaur, Y. Babaei, Y. Wen, Y. Song, Y. Zhang, Y. Li, Y. Mao, Z. D. Coudert, Z. Yan, Z. Chen, Z. Papakipos, A. Singh, A. Srivastava, A. Jain, A. Kelsey, A. Shajnfeld, A. Gangidi, A. Victoria, A. Goldstand, A. Menon, A. Sharma, A. Boesenberg, A. Baevski, A. Feinstein, A. Kallet, A. Sangani, A. Teo, A. Yunus, A. Lupu, A. Alvarado, A. Caples, A. Gu, A. Ho, A. Poulton, A. Ryan, A. Ramchandani, A. Dong, A. Franco, A. Goyal, A. Saraf, A. Chowdhury, A. Gabriel, A. Bharambe, A. Eisenman, A. Yazdan, B. James, B. Maurer, B. Leonhardi, B. Huang, B. Loyd, B. D. Paola, B. Paranjape, B. Liu, B. Wu, B. Ni, B. Hancock, B. Wasti, B. Spence, B. Stojkovic, B. Gamido, B. Montalvo, C. Parker, C. Burton, C. Mejia, C. Liu, C. Wang, C. Kim, C. Zhou, C. Hu, C. Chu, C. Cai, C. Tindal, C. Feichtenhofer, C. Gao, D. Civin, D. Beaty,</p>
+
+<p>D. Kreymer, D. Li, D. Adkins, D. Xu, D. Testuggine, D. David, D. Parikh, D. Liskovich, D. Foss, D. Wang, D. Le, D. Holland, E. Dowling, E. Jamil, E. Montgomery, E. Presani, E. Hahn, E. Wood, E. Le, E. Brinkman, E. Arcaute, E. Dunbar, E. Smothers, F. Sun, F. Kreuk, F. Tian, F. Kokkinos, F. Ozgenel, F. Caggioni, F. Kanayet, F. Seide, G. M. Florez, G. Schwarz, G. Badeer, G. Swee, G. Halpern, G. Herman, G. Sizov, Guangyi, Zhang, G. Lakshminarayanan, H. Inan, H. Shojanazeri, H. Zou, H. Wang, H. Zha, H. Habeeb, H. Rudolph, H. Suk, H. Aspegren, H. Goldman, H. Zhan, I. Damlaj, I. Molybog, I. Tufanov, I. Leontiadis, I. Veliche, I. Gat, J. Weissman, J. Geboski, J. Kohli, J. Lam, J. Asher, J. Gaya, J. Marcus, J. Tang, J. Chan, J. Zhen, J. Reizenstein, J. Teboul, J. Zhong, J. Jin, J. Yang, J. Cummings, J. Carvill, J. Shepard, J. McPhie, J. Torres, J. Ginsburg, J. Wang, K. Wu, K. H. U, K. Saxena, K. Khandelwal, K. Zand, K. Matosich, K. Veeraraghavan, K. Michelena, K. Li, K. Jagadeesh, K. Huang, K. Chawla, K. Huang, L. Chen, L. Garg, L. A, L. Silva, L. Bell, L. Zhang, L. Guo, L. Yu, L. Moshkovich, L. Wehrstedt, M. Khabsa, M. Avalani, M. Bhatt, M. Mankus, M. Hasson, M. Lennie, M. Reso, M. Groshev, M. Naumov, M. Lathi, M. Keneally, M. Liu, M. L. Seltzer, M. Valko, M. Restrepo, M. Patel, M. Vyatskov, M. Samvelyan, M. Clark, M. Macey, M. Wang, M. J. Hermoso, M. Metanat, M. Rastegari, M. Bansal, N. Santhanam, N. Parks, N. White, N. Bawa, N. Singhal, N. Egebo, N. Usunier, N. Mehta, N. P. Laptev</p>
+
+<p>, N. Dong, N. Cheng, O.</p>
+
+<p>Song (2023)
+The False Promise of Imitating Proprietary LLMs
+.
+arXiv
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+Hashimoto, Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy Liang, and Tatsunori B. (2025)
+Stanford alpaca: An instruction-following llama model.
+.
+Tatsu’s shared repositories
+.
+Note:
+original-date: 2023-03-10T23:33:09Z
+External Links:
+Link
+Cited by:
+§4
+.
+Z. He, W. Shu, X. Ge, L. Chen, J. Wang, Y. Zhou, F. Liu, Q. Guo, X. Huang, Z. Wu, Y. Jiang, and X. Qiu (2024)
+Llama Scope: Extracting Millions of Features from Llama-3.1-8B with Sparse Autoencoders
+.
+arXiv
+.
+Note:
+arXiv:2410.20526 [cs]
+version: 1
+External Links:
+Link
+,
+Document
+Cited by:
+§4
+.
+L. Huang, W. Yu, W. Ma, W. Zhong, Z. Feng, H. Wang, Q. Chen, W. Peng, X. Feng, B. Qin, and T. Liu (2023)
+A Survey on Hallucination in Large Language Models: Principles, Taxonomy, Challenges, and Open Questions
+.
+arXiv
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+A. Q. Jiang, A. Sablayrolles, A. Mensch, C. Bamford, D. S. Chaplot, D. d. l. Casas, F. Bressand, G. Lengyel, G. Lample, L. Saulnier, L. R. Lavaud, M. Lachaux, P. Stock, T. L. Scao, T. Lavril, T. Wang, T. Lacroix, and W. E. Sayed (2023)
+Mistral 7B
+.
+arXiv
+.
+Note:
+arXiv:2310.06825 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+S. Kadavath, T. Conerly, A. Askell, T. Henighan, D. Drain, E. Perez, N. Schiefer, Z. Hatfield-Dodds, N. DasSarma, E. Tran-Johnson, S. Johnston, S. El-Showk, A. Jones, N. Elhage, T. Hume, A.</p>
+
+<p>Chen, Y. Bai, S. Bowman, S. Fort, D. Ganguli, D. Hernandez, J. Jacobson, J. Kernion, S. Kravec, L. Lovitt, K. Ndousse, C. Olsson, S. Ringer, D. Amodei, T. Brown, J. Clark, N. Joseph, B. Mann, S. McCandlish, C. Olah, and J. Kaplan (2022)
+Language Models (Mostly) Know What They Know
+.
+arXiv
+.
+Note:
+arXiv:2207.05221 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix B
+.
+K. Kang, E. Wallace, C. Tomlin, A. Kumar, and S. Levine (2024)
+Unfamiliar Finetuning Examples Control How Language Models Hallucinate
+.
+arXiv
+.
+Note:
+arXiv:2403.05612 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+M. Kendall and J. D. Gibbons (1990)
+Rank Correlation Methods
+.
+5 edition
+,
+A Charles Griffin Title
+.
+Cited by:
+§3
+.
+T. Lieberum, S. Rajamanoharan, A. Conmy, L. Smith, N. Sonnerat, V. Varma, J. Kramar, A. Dragan, R. Shah, and N. Nanda (2024)
+Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+.
+In
+Proceedings of the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP
+,
+Miami, Florida, US
+,
+pp. 278–300
+(
+en
+).
+External Links:
+Link
+,
+Document
+Cited by:
+§4
+.
+H. B. Mann (1945)
+Nonparametric Tests Against Trend
+.
+Econometrica
+13
+(
+3
+),
+pp. 245–259
+.
+External Links:
+ISSN 129682
+,
+Link
+Cited by:
+§3
+.
+S. Marks and M. Tegmark (2024)
+The Geometry of Truth: Emergent Linear Structure in Large Language Model Representations of True/False Datasets
+.
+arXiv
+.
+Note:
+arXiv:2310.06824 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+J. Minder, C. Dumas, S. Slocum, H</p>
+
+<p>. Casademunt, C. Holmes, R. West, and N. Nanda (2025)
+Narrow Finetuning Leaves Clearly Readable Traces in Activation Differences
+.
+arXiv
+.
+Note:
+arXiv:2510.13900 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+,
+§1
+.
+L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray, J. Schulman, J. Hilton, F. Kelton, L. Miller, M. Simens, A. Askell, P. Welinder, P. F. Christiano, J. Leike, and R. Lowe (2022)
+Training language models to follow instructions with human feedback
+.
+Advances in Neural Information Processing Systems
+35
+,
+pp. 27730–27744
+(
+en
+).
+External Links:
+Link
+Cited by:
+§1
+.
+F. Petroni, T. Rocktäschel, P. Lewis, A. Bakhtin, Y. Wu, A. H. Miller, and S. Riedel (2019)
+Language Models as Knowledge Bases?
+.
+arXiv
+.
+Note:
+arXiv:1909.01066 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+Appendix B
+.
+Schulman (2023)
+John Schulman - Reinforcement Learning from Human Feedback: Progress and Challenges
+.
+External Links:
+Link
+Cited by:
+§1
+.
+C. Sciavolino, Z. Zhong, J. Lee, and D. Chen (2022)
+Simple Entity-Centric Questions Challenge Dense Retrievers
+.
+arXiv
+.
+Note:
+arXiv:2109.08535 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+Table 5
+,
+Appendix C
+,
+§4
+,
+Ethics Statement
+.
+Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. K. Li, Y. Wu, and D. Guo (2024)
+DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models
+.
+arXiv
+.
+Note:
+arXiv:2402.03300 [cs]
+External Links:
+Link
+,
+Document
+Cited b</p>
+
+<p>y:
+§1
+.
+G. Team, M. Riviere, S. Pathak, P. G. Sessa, C. Hardin, S. Bhupatiraju, L. Hussenot, T. Mesnard, B. Shahriari, A. Ramé, J. Ferret, P. Liu, P. Tafti, A. Friesen, M. Casbon, S. Ramos, R. Kumar, C. L. Lan, S. Jerome, A. Tsitsulin, N. Vieillard, P. Stanczyk, S. Girgin, N. Momchev, M. Hoffman, S. Thakoor, J. Grill, B. Neyshabur, O. Bachem, A. Walton, A. Severyn, A. Parrish, A. Ahmad, A. Hutchison, A. Abdagic, A. Carl, A. Shen, A. Brock, A. Coenen, A. Laforge, A. Paterson, B. Bastian, B. Piot, B. Wu, B. Royal, C. Chen, C. Kumar, C. Perry, C. Welty, C. A. Choquette-Choo, D. Sinopalnikov, D. Weinberger, D. Vijaykumar, D. Rogozińska, D. Herbison, E. Bandy, E. Wang, E. Noland, E. Moreira, E. Senter, E. Eltyshev, F. Visin, G. Rasskin, G. Wei, G. Cameron, G. Martins, H. Hashemi, H. Klimczak-Plucińska, H. Batra, H. Dhand, I. Nardini, J. Mein, J. Zhou, J. Svensson, J. Stanway, J. Chan, J. P. Zhou, J. Carrasqueira, J. Iljazi, J. Becker, J. Fernandez, J. v. Amersfoort, J. Gordon, J. Lipschultz, J. Newlan, J. Ji, K. Mohamed, K. Badola, K. Black, K. Millican, K. McDonell, K. Nguyen, K. Sodhia, K. Greene, L. L. Sjoesund, L. Usui, L. Sifre, L. Heuermann, L. Lago, L. McNealus, L. B. Soares, L. Kilpatrick, L. Dixon, L. Martins, M. Reid, M. Singh, M. Iverson, M. Görner, M. Velloso, M. Wirth, M. Davidow, M. Miller, M. Rahtz, M. Watson, M. Risdal, M. Kazemi, M. Moynihan, M. Zhang, M. Kahng, M. Park, M. Rahman, M. Khatwani, N. Dao, N. Bardoliwalla, N. Devanathan, N. Dumai, N. Chauhan, O. Wahlt</p>
+
+<p>inez, P. Botarda, P. Barnes, P. Barham, P. Michel, P. Jin, P. Georgiev, P. Culliton, P. Kuppala, R. Comanescu, R. Merhej, R. Jana, R. A. Rokni, R. Agarwal, R. Mullins, S. Saadat, S. M. Carthy, S. Cogan, S. Perrin, S. M. R. Arnold, S. Krause, S. Dai, S. Garg, S. Sheth, S. Ronstrom, S. Chan, T. Jordan, T. Yu, T. Eccles, T. Hennigan, T. Kocisky, T. Doshi, V. Jain, V. Yadav, V. Meshram, V. Dharmadhikari, W. Barkley, W. Wei, W. Ye, W. Han, W. Kwon, X. Xu, Z. Shen, Z. Gong, Z. Wei, V. Cotruta, P. Kirk, A. Rao, M. Giang, L. Peran, T. Warkentin, E. Collins, J. Barral, Z. Ghahramani, R. Hadsell, D. Sculley, J. Banks, A. Dragan, S. Petrov, O. Vinyals, J. Dean, D. Hassabis, K. Kavukcuoglu, C. Farabet, E. Buchatskaya, S. Borgeaud, N. Fiedel, A. Joulin, K. Kenealy, R. Dadashi, and A. Andreev (2024)
+Gemma 2: Improving Open Language Models at a Practical Size
+.
+arXiv
+.
+Note:
+arXiv:2408.00118 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+.
+E. Turner, A. Soligo, M. Taylor, S. Rajamanoharan, and N. Nanda (2025)
+Model Organisms for Emergent Misalignment
+.
+arXiv
+.
+Note:
+arXiv:2506.11613 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§3
+.
+D. Vrandečić and M. Krötzsch (2014)
+Wikidata: a free collaborative knowledgebase
+.
+Commun. ACM
+57
+(
+10
+),
+pp. 78–85
+.
+External Links:
+ISSN 0001-0782
+,
+Link
+,
+Document
+Cited by:
+§4
+.
+M. Wang, T. D. l. Tour, O. Watkins, A. Makelov, R. A. Chi, S. Miserendino, J. Heidecke, T. Patwardhan, and D. Mossing (2025)
+Persona Features Control Emergent Misalignment
+.
+arXi</p>
+
+<p>v
+.
+Note:
+arXiv:2506.19823 [cs]
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+,
+§2
+.
+Appendix A
+Fine-tuning and SAE Details
+For each group of models
+M
+D
+p
+M_{D_{p}}
+for
+p
+∈
+𝒫
+=
+{
+0
+,
+10
+,
+25
+,
+50
+,
+75
+,
+90
+,
+100
+}
+p\in\mathcal{P}=\{0,10,25,50,75,90,100\}
+we ran full fine-tuning using the same learning rate per group which was picked such that all 7 models converge within 50 epochs. Full hyper-parameter details are shown in Table
+3
+. The pre-trained SAEs we used are shown in Table
+4
+.
+Hyperparameter
+Mistral 7B v0.3
+Llama 3.1 8B
+Gemma 2 9B
+Training Dynamics
+Learning Rate
+5.5
+×
+10
+−
+6
+5.5\times 10^{-6}
+2.0
+×
+10
+−
+5
+2.0\times 10^{-5}
+4.5
+×
+10
+−
+6
+4.5\times 10^{-6}
+LR Scheduler
+Constant
+Constant
+Constant
+Attention Dropout
+0.2
+0.3
+0
+Total Training Epochs
+10-50
+10-50
+10-50
+Batch Configuration
+Per Device Batch Size
+32
+32
+32
+Gradient Accumulation
+4
+4
+4
+Effective Batch Size
+128
+128
+128
+Max Seq Length
+1024
+1024
+1024
+Packing Strategy
+BFD
+BFD
+BFD
+Architecture Details
+Hidden Size (
+d
+model
+d_{\textit{model}}
+)
+4096
+4096
+3584
+Num Hidden Layers
+32
+32
+42
+Attention Heads (Q/KV)
+32 / 8
+32 / 8
+16 / 8
+Vocab Size
+32768
+128256
+256000
+Max Pos Embeddings
+32768
+131072
+8192
+Hardware &amp; Precision
+GPU
+GH200 120GB
+GH200 120GB
+GH200 120GB
+Mixed Precision
+Bfloat16
+Bfloat16
+Bfloat16
+Optimizer
+AdamW (Fused)
+AdamW (Fused)
+AdamW (Fused)
+Optimization Kernels
+Liger
+Liger
+Liger
+Table 3:
+Hyperparameter Comparison across Model Architectures
+Model
+SAE Release
+SAE Identifier (ID)
+𝐝
+sae
+\mathbf{d_{\textit{sae}}}
+Mistral</p>
+
+<p>7B v0.3
+mistral-7b-res-wg
+blocks.16.hook_resid_pre
+65536
+Llama 3.1 8B
+llama_scope_lxr_8x
+l15r_8x
+32768
+Gemma 2 9B
+gemma-scope-9b-pt-res-canonical
+layer_20/width_32k/canonical
+32768
+Table 4:
+SAE configuration and latent dimensionality.
+Appendix B
+Definition of
+P
+Correct
+P_{\texttt{Correct}}
+We follow
+Gekhman
+et al.
+(
+2024
+)
+and others
+(Kadavath
+et al.
+,
+2022
+; Petroni
+et al.
+,
+2019
+)
+in assessing the acquired knowledge of a model after pre-training using greedy decoding and sampling to categorize input questions as
+Known
+or
+Unknown
+.
+P
+Correct
+P_{\texttt{Correct}}
+is an estimate of how likely is
+𝑴
+\boldsymbol{M}
+to accurately generate the correct answer
+a
+to
+q
+, when prompted with random few-shot exemplars and using decoding temperature
+T
+.
+P
+Correct
+​
+(
+q
+,
+a
+;
+M
+,
+T
+=
+0
+)
+\displaystyle P_{\texttt{Correct}}(q,a;M,T=0)
+=
+#correct_greedy_responses
+N
+ex
+,
+\displaystyle=\frac{\text{\#correct\_greedy\_responses}}{N_{\textit{ex}}},
+(1)
+P
+Correct
+​
+(
+q
+,
+a
+;
+M
+,
+T
+&gt;
+0
+)
+\displaystyle P_{\texttt{Correct}}(q,a;M,T&gt;0)
+=
+#correct_sampled_responses
+N
+ex
+⋅
+N
+sampled
+.
+\displaystyle=\frac{\text{\#correct\_sampled\_responses}}{N_{\textit{ex}}\cdot N_{\textit{sampled}}}.
+(2)
+We use
+N
+ex
+=
+10
+N_{\textit{ex}}=10
+exemplars with
+k
+=
+4
+k=4
+demonstrations each. We take
+N
+sampled
+=
+16
+N_{\textit{sampled}}=16
+samples with temperature
+T
+=
+0.5
+T=0.5
+from top-40.
+Appendix C
+Data Statistics
+In this work we use the
+EntityQuestions
+dataset
+(Sciavolino
+et al.
+,
+2022
+)
+, comprising
+N
+train
+=
+81700
+N_{\texti</p>
+
+<p>t{train}}=81700
+,
+N
+dev
+=
+10725
+N_{\textit{dev}}=10725
+, and
+N
+test
+=
+10481
+N_{\textit{test}}=10481
+examples. Figure
+5
+shows the distribution of examples based on
+P
+Correct
+P_{\texttt{Correct}}
+on the full train set across all models. Tables
+6
+-
+8
+show the distribution of examples per Wikidata relation as outlined in Table
+5
+.
+(a)
+Llama 3.1 8B
+(b)
+Gemma 2 9B
+(c)
+Mistral v03 7B
+Figure 5:
+Knowledge distribution across models on full train set split.
+relation
+question template
+P131
+Where is [E] located?
+P136
+What type of music does [E] play?
+P17
+Which country is [E] located in?
+P19
+Where was [E] born?
+P26
+Who is [E] married to?
+P264
+What music label is [E] represented by?
+P36
+What is the capital of [E]?
+P40
+Who is [E]’s child?
+P495
+Which country was [E] created in?
+P69
+Where was [E] educated?
+P740
+Where was [E] founded?
+P800
+What is [E] famous for?
+Table 5:
+Question templates used in
+EntityQuestions
+dataset
+(Sciavolino
+et al.
+,
+2022
+)
+.
+relation
+HighlyKnown
+MaybeKnown
+WeaklyKnown
+Unknown
+Total
+Min
+P131
+465
+2762
+3166
+1253
+7646
+465
+P136
+178
+3434
+1949
+1955
+7516
+178
+P17
+4423
+2547
+444
+476
+7890
+444
+P19
+700
+1500
+4100
+1621
+7921
+700
+P26
+1469
+1439
+3389
+1159
+7456
+1159
+P264
+217
+1487
+3772
+1848
+7324
+217
+P36
+4696
+1162
+514
+443
+6815
+443
+P40
+540
+1383
+2840
+1347
+6110
+540
+P495
+4680
+1971
+612
+411
+7674
+411
+P69
+383
+1106
+3293
+1939
+6721
+383
+P740
+1303
+2239
+2484
+1245
+7271
+1245
+P800
+281
+364
+494
+217
+1356
+217
+TOTAL
+19335
+21394
+13914
+27057
+81700
+6402
+Table 6:
+Knowledge distribution across Wikidata relations for</p>
+
+<p>Llama 3.1 8B
+.
+relation
+HighlyKnown
+MaybeKnown
+WeaklyKnown
+Unknown
+Total
+Min
+P131
+496
+2279
+1278
+3593
+7646
+496
+P136
+107
+2697
+2095
+2617
+7516
+107
+P17
+4147
+2690
+547
+506
+7890
+506
+P19
+614
+1359
+1430
+4518
+7921
+614
+P26
+1476
+1103
+1004
+3873
+7456
+1004
+P264
+209
+1316
+1666
+4133
+7324
+209
+P36
+4547
+1112
+511
+645
+6815
+511
+P40
+532
+1148
+1130
+3300
+6110
+532
+P495
+4818
+1675
+533
+648
+7674
+533
+P69
+252
+865
+1853
+3751
+6721
+252
+P740
+954
+1871
+1553
+2893
+7271
+954
+P800
+275
+303
+199
+579
+1356
+199
+TOTAL
+18427
+18418
+13799
+31056
+81700
+5917
+Table 7:
+Knowledge distribution across Wikidata relations for
+Gemma 2 9B
+.
+relation
+HighlyKnown
+MaybeKnown
+WeaklyKnown
+Unknown
+Total
+Min
+P131
+463
+2188
+1312
+3683
+7646
+463
+P136
+134
+2860
+1861
+2661
+7516
+134
+P17
+3702
+3102
+553
+533
+7890
+533
+P19
+560
+1367
+1562
+4432
+7921
+560
+P26
+1070
+1114
+1017
+4255
+7456
+1017
+P264
+156
+1391
+1672
+4105
+7324
+156
+P36
+4062
+1429
+515
+809
+6815
+515
+P40
+378
+1003
+1175
+3554
+6110
+378
+P495
+4976
+1506
+444
+748
+7674
+444
+P69
+221
+904
+1838
+3758
+6721
+221
+P740
+1159
+1910
+1306
+2896
+7271
+1159
+P800
+274
+279
+197
+606
+1356
+197
+TOTAL
+17155
+19053
+13452
+32040
+81700
+5777
+Table 8:
+Knowledge distribution across Wikidata relations for
+Mistral v03 7B
+.
+Appendix D
+Prompts
+We use a four-shot prompt to assess base models knowledge with
+P
+Correct
+P_{\texttt{Correct}}
+(see definition in Appendix
+B
+). We fine-tune and evaluate all base models using the “Fine-tuning prompt” below. Finally, we collect activations from all positions except the BOS token for all models. The following example corresponds to L</p>
+
+<p>lama 3.1 8B with highlighted tokens being collected.
+Prompt for computing
+P
+Correct
+P_{\texttt{Correct}}
+Q: Which country was Moxie created in?
+A: United States of America
+Q: Which country was Jook-sing noodles created in?
+A: People’s Republic of China
+Q: Which country was You’re My Pet created in?
+A: South Korea
+Q: Which country was Outta Control created in?
+A: United States of America
+Q: Which country was Embrace of the Vampire created in?
+A:
+Fine-tuning Prompt
+Answer the following question.
+What kind of work does Ron Konopka do?
+Activation Extraction Tokens
+&lt;|begin_of_text|&gt;
+&lt;|start_header_id|&gt;user&lt;|end_header_id|&gt;
+Answer the following question.
+Where is Warialda Rail located?
+&lt;|eot_id|&gt;&lt;|start_header_id|&gt;assistant&lt;|end_header_id|&gt;
+New South Wales&lt;|eot_id|&gt;
+Appendix E
+Definition of
+R
+K
+R_{K}
+Empirically,
+R
+K
+R_{K}
+is calculated as the conditional probability that a fact was originally known by the initial baseline (
+𝑴
+𝑫
+0
+\boldsymbol{M_{D_{\textit{0}}}}
+), given that it was successfully learned by the steered model (
+M
+D
+​
+100
+​
+s
+M_{D100s}
+) after being forgotten by the fine-tuned baseline (
+M
+D
+​
+100
+M_{D100}
+):
+R
+K
+=
+P
+(
+M
+D
+​
+0
+=
+1
+∣
+M
+D
+​
+100
+​
+s
+=
+1
+,
+M
+D
+​
+100
+=
+0
+)
+.
+R_{K}=P(M_{D0}=1\mid M_{D100s}=1,M_{D100}=0).
+(3)
+To dissect these gains functionally, we attribute this recovery to specific relations. The global contribution of a single relation
+c
+c
+to the total recovery rate is defined as the joint probability of the recovery occurring specifically within relation</p>
+
+<p>c
+c
+, conditional on a gross gain occurring anywhere in the dataset:
+R
+K
+(
+c
+)
+=
+P
+(
+M
+D
+​
+0
+=
+1
+,
+relation
+=
+c
+∣
+M
+D
+​
+100
+​
+s
+=
+1
+,
+M
+D
+​
+100
+=
+0
+)
+.
+R_{K}(c)=P(M_{D0}=1,\text{relation}=c\mid M_{D100s}=1,M_{D100}=0).
+(4)
+To ensure statistical relevance, we report relational contributions exclusively for categories containing at least 50 initial samples (
+|
+c
+|
+≥
+50
+|c|\geq 50
+) and exhibiting a minimum of 10 gross steering gains.
+Appendix F
+Additional Single-latent Steering Results
+In Tables
+9
+,
+10
+,
+11
+and
+1
+. We present single-latent steering results for latents sourced by MoRFI, across three model architectures, along the
+↑
+\uparrow
+Unknown and
+↑
+\uparrow
+Epochs directions.
+Model: Gemma 2 9B
+Direction:
+↑
+\uparrow
+Unknown
+Increasing Latents
+Decreasing Latents
+Top-10 Positively Steered
+Top-10 Negatively Steered
+Top-10 Positively Steered
+Top-10 Negatively Steered
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+18360
+↑
+\uparrow
+9.03
+20.8
+0.75
+5152
+↑
+\uparrow
+18.46
+22.6
+0.60
+5105
+↑
+\uparrow
+19.02
+22.7
+0.50
+8277
+↑
+\uparrow
+11.54
+21.3
+0.45
+4781
+↑
+\uparrow
+8.83
+20.7
+0.55
+29477
+↑
+\uparrow
+12.95
+21.5
+0.70
+22788
+↑
+\uparrow
+11.99
+21.3
+0.55
+26862
+↑
+\uparrow
+9.28
+20.8
+0.70
+17451
+↑
+\uparrow
+8.58
+20.7
+0.55
+19753
+↑
+\uparrow
+12.74
+21.5
+0.75
+17606
+↑
+\uparrow
+11.94
+21.3
+0.45
+25130
+↑
+\uparrow
+8.73
+20.7
+0.50
+11676
+↑
+\uparrow
+6.82
+20.4
+0.45
+19424
+↑
+\uparrow
+9.68
+20.9
+0.35
+29990
+↑
+\uparrow
+10.64
+21.1
+0.65
+21907
+↑
+\uparrow
+6.57
+20.3
+0.60
+5378
+↑
+\uparrow
+6.82
+20.4
+0.75
+2050
+↑
+\up</p>
+
+<p>箭头
+9.23
+20.8
+0.35
+32248
+↑
+\uparrow
+10.24
+21.0
+0.60
+16333
+↑
+\uparrow
+6.42
+20.3
+0.60
+18071
+↑
+\uparrow
+6.62
+20.3
+0.50
+16328
+↑
+\uparrow
+8.73
+20.7
+0.40
+13604
+↑
+\uparrow
+10.24
+21.0
+0.70
+21602
+↑
+\uparrow
+5.92
+20.2
+0.55
+20711
+↑
+\uparrow
+6.22
+20.2
+0.50
+2546
+↑
+\uparrow
+8.73
+20.7
+0.75
+14523
+↑
+\uparrow
+9.68
+20.9
+0.55
+16312
+↑
+\uparrow
+5.42
+20.1
+0.40
+6267
+↑
+\uparrow
+5.67
+20.1
+0.65
+6012
+↑
+\uparrow
+8.38
+20.6
+0.60
+793
+↑
+\uparrow
+9.58
+20.9
+0.75
+7406
+↑
+\uparrow
+5.12
+20.0
+0.35
+15778
+↑
+\uparrow
+5.27
+20.1
+0.45
+13092
+↑
+\uparrow
+8.03</p>
+
+<p>.65
+26670
+↑
+\uparrow
+10.04
+21.0
+0.75
+1663
+↑
+\uparrow
+3.91
+19.8
+0.40
+12742
+↑
+\uparrow
+4.26
+19.9
+0.35
+22963
+↑
+\uparrow
+7.83
+20.5
+0.50
+18953
+↑
+\uparrow
+9.53
+20.9
+0.40
+12708
+↑
+\uparrow
+3.81
+19.8
+0.30
+12770
+↑
+\uparrow
+4.21
+19.9
+0.65
+20637
+↑
+\uparrow
+7.23
+20.4
+0.50
+1027
+↑
+\uparrow
+9.13
+20.8
+0.50
+14077
+↑
+\uparrow
+2.96
+19.6
+0.35
+4196
+↑
+\uparrow
+3.16
+19.7
+0.70
+5012
+↑
+\uparrow
+7.18
+20.4
+0.60
+543
+↑
+\uparrow
+9.03
+20.8
+0.45
+27077
+↑
+\uparrow
+2.51
+19.5
+0.50
+21681
+↑
+\uparrow
+2.76
+19.6
+0.20
+24898
+↑
+\uparrow
+7.07
+20.4
+0.45
+27644
+↑
+\uparrow
+8.23
+20.6
+0.45
+28389
+↑
+\uparrow
+2.26
+19.5
+0.50
+27612
+↑
+\uparrow
+2.21
+19.5
+0.30
+6704
+↑
+\uparrow
+6.42
+20.3
+0.65
+13092
+↑
+\uparrow
+8.03
+20.6
+0.40
+20573
+↑
+\uparrow
+2.26
+19.5
+0.20
+22617
+↑
+\uparrow
+2.16
+19.5
+0.60
+Table 9:
+Impactful latents for Gemma 2 9B in both directions (unknown and epochs). Gains relative to baseline: 19.1. All relative gains in green are in percentages.
+Model: Mistral 7B v0.3
+Direction:
+↑
+\uparrow
+Unknown
+Increasing Latents
+Decreasing Latents
+Top-10 Positively Steered
+Top-10 Negatively Steered
+Top-10 Positively Steered
+Top-10 Negatively Steered
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+41844
+↑
+\uparrow
+24.91
+19.6
+0.75
+61325
+↑
+\uparrow
+39.16
+21.8
+0.55
+18848
+↑
+\uparrow
+31.24
+20.6
+0.55
+7859
+↑
+\uparrow
+39.77
+21.9
+0.75
+31953
+↑
+\uparrow
+13.15
+17.8
+0.50
+37181
+↑
+\uparrow
+31.61
+20.7
+0.35
+59897
+↑
+\uparrow
+26.13
+19.8
+0.70
+18948
+↑
+\uparrow
+24.60
+19.6
+0.75
+17552
+↑
+\uparrow
+12.00
+17.6
+0.45
+42562
+↑
+\uparrow
+29.54
+20.3
+0.50
+49882
+↑
+\upar</p>
+
+<p>row
+25.88
+19.8
+0.65
+38455
+↑
+\uparrow
+21.32
+19.0
+0.75
+14493
+↑
+\uparrow
+11.14
+17.4
+0.45
+48212
+↑
+\uparrow
+29.05
+20.3
+0.75
+21258
+↑
+\uparrow
+22.35
+19.2
+0.50
+32593
+↑
+\uparrow
+19.31
+18.7
+0.50
+8648
+↑
+\uparrow
+11.02
+17.4
+0.40
+46283
+↑
+\uparrow
+28.93
+20.2
+0.60
+31715
+↑
+\uparrow
+20.40
+18.9
+0.40
+63016
+↑
+\uparrow
+18.64
+18.6
+0.70
+16786
+↑
+\uparrow
+10.54
+17.4
+0.65
+24790
+↑
+\uparrow
+27.77
+20.1
+0.60
+47277
+↑
+\uparrow
+19.61
+18.8
+0.50
+49380
+↑
+\uparrow
+18.39
+18.6
+0.70
+3671
+↑
+\uparrow
+9.68
+17.2
+0.40
+5203
+↑
+\uparrow
+26.92
+19.9
+0.55
+53776
+↑
+\uparrow
+19.55
+18.8
+0.50
+2883
+↑
+\uparrow
+15.35
+18.1
+0.45
+34318
+↑
+\uparrow
+9.14
+17.1
+0.55
+55675
+↑
+\uparrow
+26.61
+19.9
+0.50
+26746
+↑
+\uparrow
+19.55
+18.8
+0.65
+4989
+↑
+\uparrow
+13.89
+17.9
+0.70
+57732
+↑
+\uparrow
+8.89
+17.1
+0.25
+57875
+↑
+\uparrow
+25.94
+19.8
+0.40
+5674
+↑
+\uparrow
+19.24
+18.7
+0.50
+50124
+↑
+\uparrow
+13.09
+17.8
+0.45
+43093
+↑
+\uparrow
+8.28
+17.0
+0.45
+65491
+↑
+\uparrow
+24.36
+19.5
+0.45
+24894
+↑
+\uparrow
+19.24
+18.7
+0.70
+50727
+↑
+\uparrow
+13.09
+17.8
+0.75
+Direction:
+↑
+\uparrow
+Epochs
+Increasing Latents
+Decreasing Latents
+Top-10 Positively Steered
+Top-10 Negatively Steered
+Top-10 Positively Steered
+Top-10 Negatively Steered
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+#
+Acc.
+α
+\alpha
+46105
+↑
+\uparrow
+22.41
+19.2
+0.65
+25922
+↑
+\uparrow
+34.41
+21.1
+0.60
+9646
+↑
+\uparrow
+28.50
+20.2
+0.50
+61325
+↑
+\uparrow
+39.16
+21.8
+0.55
+43123
+↑
+\uparrow
+21.38
+19.1
+0.45
+48212
+↑
+\uparrow
+29.05
+20.3
+0.75
+5387
+↑
+\uparrow
+27.47
+20.0
+0.70
+13089
+↑
+\uparrow
+35.93
+21.3
+0.65
+7990
+↑
+\uparrow
+19.91
+18.8
+0.75
+4817</p>
+
+<p>2
+↑
+\uparrow
+21.99
+19.1
+0.50
+41844
+↑
+\uparrow
+24.91
+19.6
+0.75
+42562
+↑
+\uparrow
+29.54
+20.3
+0.50
+43991
+↑
+\uparrow
+16.08
+18.2
+0.30
+13512
+↑
+\uparrow
+21.25
+19.0
+0.75
+22642
+↑
+\uparrow
+24.18
+19.5
+0.60
+6634
+↑
+\uparrow
+23.51
+19.4
+0.75
+33778
+↑
+\uparrow
+15.04
+18.1
+0.45
+51982
+↑
+\uparrow
+14.92
+18.0
+0.50
+25600
+↑
+\uparrow
+23.39
+19.4
+0.50
+62464
+↑
+\uparrow
+19.31
+18.7
+0.55
+53702
+↑
+\uparrow
+14.98
+18.0
+0.55
+2567
+↑
+\uparrow
+14.25
+17.9
+0.45
+44213
+↑
+\uparrow
+22.84
+19.3
+0.55
+49380
+↑
+\uparrow
+18.39
+18.6
+0.70
+12362
+↑
+\uparrow
+14.74
+18.0
+0.50
+51906
+↑
+\uparrow
+13.95
+17.9
+0.50
+45825
+↑
+\uparrow
+20.83
+19.0
+0.55
+34854
+↑
+\uparrow
+18.09
+18.5
+0.65
+8644
+↑
+\uparrow
+14.56
+18.0
+0.45
+27411
+↑
+\uparrow
+13.76
+17.9
+0.50
+2989
+↑
+\uparrow
+19.12
+18.7
+0.60
+43955
+↑
+\uparrow
+17.90
+18.5
+0.55
+25464
+↑
+\uparrow
+12.85
+17.7
+0.30
+6232
+↑
+\uparrow
+13.15
+17.8
+0.75
+64057
+↑
+\uparrow
+17.84
+18.5
+0.60
+47101
+↑
+\uparrow
+16.26
+18.2
+0.75
+14493
+↑
+\uparrow
+11.14
+17.4
+0.45
+34121
+↑
+\uparrow
+12.91
+17.7
+0.50
+54468
+↑
+\uparrow
+17.78
+18.5
+0.70
+36392
+↑
+\uparrow
+15.71
+18.2
+0.75
+表 10：Mistral 7B v0.3 在两个方向（未知与轮次）上的关键潜变量。相对于基线的增益：15.7。所有绿色的相对增益均以百分比表示。
+方向：
+↑
+\uparrow
+轮次
+递增潜变量
+递减潜变量
+Top-10 正向引导
+Top-10 负向引导
+Top-</p>
+
+<p>ow
+8.84
+19.4
+0.45
+32589
+↑
+\uparrow
+4.61
+18.7
+0.35
+8842
+↑
+\uparrow
+8.14
+19.3
+0.40
+25557
+↑
+\uparrow
+7.66
+19.2
+0.40
+27191
+↑
+\uparrow
+7.12
+19.1
+0.50
+15177
+↑
+\uparrow
+3.59
+18.5
+0.65
+6032
+↑
+\uparrow
+3.64
+18.5
+0.30
+9628
+↑
+\uparrow
+5.78
+18.9
+0.45
+17666
+↑
+\uparrow
+5.14
+18.8
+0.70
+332
+↑
+\uparrow
+2.25
+18.2
+0.25
+11033
+↑
+\uparrow
+3.00
+18.4
+0.30
+340
+↑
+\uparrow
+3.70
+18.5
+0.35
+20884
+↑
+\uparrow
+3.59
+18.5
+0.20
+15105
+↑
+\uparrow
+1.12
+18.0
+0.20
+27676
+↑
+\uparrow
+2.79
+18.3
+0.55
+29538
+↑
+\uparrow
+3.05
+18.4
+0.25
+26381
+↑
+\uparrow
+3.32
+18.4
+0.35
+14571
+↑
+\uparrow
+2.04
+18.2
+0.15
+23472
+↑
+\uparrow
+2.79
+18.3
+0.35
+30382
+↑
+\uparrow
+3.21
+18.4
+0.35
+17177
+↑
+\uparrow
+1.87
+18.2
+0.15
+17281
+↑
+\uparrow
+2.68
+18.3
+0.35
+32309
+↑
+\uparrow
+2.79
+18.3
+0.20
+11205
+↑
+\uparrow
+1.77
+18.2
+0.50
+15229
+↑
+\uparrow
+2.52
+18.3
+0.20
+11134
+↑
+\uparrow
+2.41
+18.3
+0.35
+9834
+↑
+\uparrow
+1.50
+18.1
+0.30
+19538
+↑
+\uparrow
+2.46
+18.3
+0.20
+5094
+↑
+\uparrow
+2.36
+18.3
+0.30
+30670
+↑
+\uparrow
+1.45
+18.1
+0.60
+31426
+↑
+\uparrow
+2.41
+18.3
+0.25
+2378
+↑
+\uparrow
+2.09
+18.2
+0.30
+Table 11:
+Impactful latents for Llama 3.1 8B in the epochs direction. Gains relative to baseline: 17.8. All relative gains in green are in percentages.
+Appendix G
+Latent Similarity
+In Figures
+6
+-
+8
+we plot the cosine similarity of the top-performing latents, across all three models.
+Figure 6:
+Cosine similarity of the top-10 performing latents for both directions (unknown and epochs) sourced by MoRFI on
+Llama 3.1 8B
+.
+Figure 7:
+Cosine similarity of the top-10 performing latents for both direction</p>
+
+<p>的 unknown 和 epochs 方向）由 MoRFI 在
+Gemma 2 9B
+上提取。
+图 8：
+由 MoRFI 在
+Mistral v03 7B
+上提取的、两个方向（unknown 和 epochs）表现排名前 10 的隐变量的余弦相似</p>
+
+<p>1
+↦
+Z
+¯
+∈
+ℝ
+N
+×
+d
+sae
+(Z,B)\in\mathbb{R}^{N\times S\times d_{\textit{sae}}}\times\{0,1\}^{N\times S\times 1}\mapsto\bar{Z}\in\mathbb{R}^{N\times d_{\textit{sae}}}
+(
+∑
+k
+=
+1
+S
+Z
+:
+,
+k
+,
+:
+⊙
+(
+B
+:
+,
+k
+,
+:
+​
+𝟏
+d
+sae
+⊤
+)
+)
+/
+(
+∑
+k
+=
+1
+S
+B
+:
+,
+k
+,
+:
+​
+𝟏
+d
+sae
+⊤
+)
+\Big(\sum_{k=1}^{S}Z_{:,k,:}\odot(B_{:,k,:}\mathbf{1}_{d_{\textit{sae}}}^{\top})\Big)\,/\,\Big(\sum_{k=1}^{S}B_{:,k,:}\mathbf{1}_{d_{\textit{sae}}}^{\top}\Big)
+Computes the mean of sparse representations
+Z
+Z
+over the tokens where the boolean mask
+B
+B
+is active.
+MeanFold
+A
+↦
+A
+¯
+∈
+ℝ
+d
+1
+×
+⋯
+×
+d
+X
+−
+1
+×
+d
+X
++
+1
+×
+⋯
+×
+d
+m
+A\mapsto\bar{A}\in\mathbb{R}^{d_{1}\times\dots\times d_{X-1}\times d_{X+1}\times\dots\times d_{m}}
+A
+¯
+i
+1
+,
+…
+,
+i
+m
+=
+1
+d
+X
+​
+∑
+x
+=
+1
+d
+X
+A
+…
+,
+x
+,
+…
+\bar{A}_{i_{1},\dots,i_{m}}=\frac{1}{d_{X}}\sum_{x=1}^{d_{X}}A_{\dots,x,\dots}
+Collapses dimension
+d
+X
+d_{X}
+by computing the mean of its elements.
+SampleUniform
+∅
+↦
+ℐ
+∈
+{
+a
+,
+…
+,
+b
+}
+d
+1
+×
+⋯
+×
+d
+m
+\emptyset\mapsto\mathcal{I}\in\{a,\dots,b\}^{d_{1}\times\dots\times d_{m}}
+ℐ
+i
+1
+,
+…
+,
+i
+m
+∼
+𝒰
+​
+{
+a
+,
+b
+}
+i.i.d.
+\mathcal{I}_{i_{1},\dots,i_{m}}\sim\mathcal{U}\{a,b\}\quad\text{i.i.d.}
+Generates uniformly distributed resampling indices.
+BootstrapFold
+A
+↦
+𝐌
+∗
+∈
+ℝ
+d
+1
+×
+⋯
+×
+R
+×
+⋯
+×
+d
+m
+A\mapsto\mathbf{M}^{*}\in\mathbb{R}^{d_{1}\times\dots\times R\times\dots\times d_{m}}
+𝐌
+…
+,
+r
+,
+…
+∗
+=
+∑
+x
+=
+1
+d
+X
+𝒲
+r
+,
+x
+​
+A
+…
+,
+ℐ
+r
+,
+x
+∗
+,
+…
+\mathbf{M}^{*}_{\dots,r,\dots}=\sum_{x=1}^{d_{X}}\mathcal{W}_{r,x}A_{\dots,\mathcal{I}^{*}_{r,x},\dots}
+Generates a bootstrapped replicate te</p>
+
+<p>nsor
+𝐌
+∗
+\mathbf{M}^{*}
+folding
+A
+A
+over
+d
+X
+d_{X}
+.
+SpearmanFold
+A
+↦
+𝝆
+∗
+∈
+ℝ
+d
+1
+×
+⋯
+×
+d
+X
+−
+1
+×
+d
+X
++
+1
+×
+⋯
+×
+d
+m
+A\mapsto\boldsymbol{\rho}^{*}\in\mathbb{R}^{d_{1}\times\dots\times d_{X-1}\times d_{X+1}\times\dots\times d_{m}}
+𝝆
+i
+1
+,
+…
+,
+i
+m
+∗
+=
+SpearmanR
+​
+(
+A
+…
+,
+:
+,
+…
+,
+𝐯
+)
+\boldsymbol{\rho}^{*}_{i_{1},\dots,i_{m}}=\text{SpearmanR}(A_{\dots,\mathbf{:},\dots},\,\mathbf{v})
+Computes Spearman rank correlation coefficient between tensor slices and a reference vector
+𝐯
+\mathbf{v}
+.
+MKFold
+A
+↦
+𝝉
+∗
+∈
+ℝ
+d
+1
+×
+⋯
+×
+d
+X
+−
+1
+×
+d
+X
++
+1
+×
+⋯
+×
+d
+m
+A\mapsto\boldsymbol{\tau}^{*}\in\mathbb{R}^{d_{1}\times\dots\times d_{X-1}\times d_{X+1}\times\dots\times d_{m}}
+𝝉
+i
+1
+,
+…
+,
+i
+m
+∗
+=
+MKTest
+​
+(
+A
+…
+,
+:
+,
+…
+)
+\boldsymbol{\tau}^{*}_{i_{1},\dots,i_{m}}=\text{MKTest}(A_{\dots,\mathbf{:},\dots})
+Folds the specified dimension to Kendall’s tau (
+τ
+\tau
+).
+TopKIndices
+A
+↦
+L
+∈
+{
+0
+,
+…
+,
+d
+X
+−
+1
+}
+d
+1
+×
+⋯
+×
+k
+×
+⋯
+×
+d
+m
+A\mapsto L\in\{0,\dots,d_{X}-1\}^{d_{1}\times\dots\times k\times\dots\times d_{m}}
+L
+…
+,
+x
+,
+…
+=
+argsort
+​
+(
+A
+…
+,
+:
+,
+…
+)
+x
+​
+for
+​
+x
+&lt;
+k
+L_{\dots,x,\dots}=\text{argsort}(A_{\dots,\mathbf{:},\dots})_{x}\text{ for }x&lt;k
+Extracts the specific indices that correspond to the
+k
+k
+largest values.
+IndexCount
+L
+∈
+{
+0
+,
+…
+,
+D
+−
+1
+}
+d
+1
+×
+⋯
+×
+d
+m
+↦
+C
+∈
+ℕ
+D
+L\in\{0,\dots,D-1\}^{d_{1}\times\dots\times d_{m}}\mapsto C\in\mathbb{N}^{D}
+C
+d
+=
+∑
+i
+1
+=
+1
+d
+1
+…
+​
+∑
+i
+m
+=
+1
+d
+m
+𝕀
+​
+(
+L
+i
+1
+,
+…
+,
+i
+m
+=
+d
+)
+C_{d}=\sum_{i_{1}=1}^{d_{1}}\dots\sum_{i_{m}=1}^{d_{m}}\mathbb{I}(L_{i_{1},\dots,i_{m}}=d)
+Computes</p>
+
+<p>frequencies for each component of
+L
+L
+.
+Table 12:
+Definitions of the tensor operations used in MoRFI.
+For operations applied along a named dimension
+X
+X
+of size
+d
+X
+d_{X}
+, the tuple
+(
+i
+1
+,
+…
+,
+i
+m
+)
+(i_{1},\dots,i_{m})
+denotes the arbitrary indices of the remaining dimensions. The notation
+A
+…
+,
+x
+,
+…
+A_{\dots,x,\dots}
+indicates indexing at position
+x
+x
+along dimension
+X
+X
+.
+B
+n
+,
+k
+,
+1
+=
+𝕀
+​
+(
+b
+n
+&lt;
+k
+&lt;
+b
+n
++
+c
+n
+)
+∀
+n
+∈
+{
+1
+​
+…
+​
+N
+}
+,
+k
+∈
+{
+1
+​
+…
+​
+S
+}
+B_{n,k,1}=\mathbb{I}(b_{n}&lt;k&lt;b_{n}+c_{n})\quad\forall n\in\{1\dots N\},\;k\in\{1\dots S\}
+corresponds to a boolean mask filtering out BOS tokens.
+Algorithm 2
+Identification of High-Impact Latents via Activation Steering
+1:
+2:
+S
+S
+: Sequence of candidate latent indices (e.g., from
+S
+↑
+S^{\uparrow}
+or
+S
+↓
+S^{\downarrow}
+)
+3:
+c
+∈
+{
+−
+1
+,
+1
+}
+c\in\{-1,1\}
+: Steering direction (
+−
+1
+-1
+for suppression,
++
+1
++1
+for amplification)
+4:
+𝚽
+∈
+ℝ
+F
+×
+d
+model
+\mathbf{\Phi}\in\mathbb{R}^{F\times d_{\textit{model}}}
+: SAE dictionary of feature directions
+5:
+𝒟
+dev
+\mathcal{D}_{\textit{dev}}
+: Reference dataset for evaluation
+6:
+ℓ
+=
+⌊
+L
+/
+2
+⌋
+\ell=\lfloor L/2\rfloor
+: Target injection layer for the
+L
+L
+-layer model, though applicable to any layer
+7:
+M
+M
+: Base model;
+M
+(
+⋅
+⊕
+ℓ
+𝐯
+)
+M(\cdot\oplus_{\ell}\mathbf{v})
+denotes
+M
+M
+with hidden states shifted by
+𝐯
+\mathbf{v}
+at layer
+ℓ
+\ell
+8:
+A
+base
+∈
+[
+0
+,
+1
+]
+A_{\textit{base}}\in[0,1]
+: Baseline accuracy of unsteered model
+M
+M
+on
+𝒟
+dev
+\mathcal{D}_{\textit{dev}}
+9:
+s
+ℓ
+∈
+ℝ
++
+s_{\ell}\in\mathbb{R}^{</p>
+
+<p>+}
+: Layer-wise activation scaling factor
+10:
+α
+init
+∈
+ℝ
++
+\alpha_{\textit{init}}\in\mathbb{R}^{+}
+: Initial steering magnitude (
+0.4
+0.4
+)
+11:
+Λ
+\Lambda
+: Search space for steering magnitudes (
+{
+0.05
+,
+0.10
+,
+…
+,
+0.75
+}
+\{0.05,0.10,\dots,0.75\}
+)
+12:
+13:
+S
+final
+S_{\textit{final}}
+: Ranked list of top-10 impactful latents with optimal steering parameters
+14:
+1. Initial Screening (Fixed Magnitude)
+15:
+for
+each
+k
+∈
+S
+k\in S
+do
+16:
+A
+k
+←
+Evaluate
+(
+M
+(
+⋅
+⊕
+ℓ
+(
+c
+⋅
+α
+init
+⋅
+s
+ℓ
+𝚽
+k
+)
+)
+,
+𝒟
+dev
+)
+A_{k}\leftarrow\text{Evaluate}(M(\cdot\oplus_{\ell}(c\cdot\alpha_{\textit{init}}\cdot s_{\ell}\mathbf{\Phi}_{k})),\mathcal{D}_{\textit{dev}})
+17:
+end
+for
+18:
+𝒞
+←
+{
+k
+∈
+S
+∣
+A
+k
+&gt;
+A
+base
+}
+\mathcal{C}\leftarrow\{k\in S\mid A_{k}&gt;A_{\textit{base}}\}
+19:
+Let
+L
+screen
+L_{\textit{screen}}
+be the sequence of indices in
+𝒞
+\mathcal{C}
+sorted by
+A
+k
+A_{k}
+descending
+20:
+S
+top40
+←
+L
+screen
+[
+0
+:
+39
+]
+S_{\textit{top40}}\leftarrow L_{\textit{screen}}[0:39]
+21:
+2. Hyperparameter Optimization (Grid Search)
+22:
+for
+each
+k
+∈
+S
+top40
+k\in S_{\textit{top40}}
+do
+23:
+α
+k
+∗
+←
+arg
+max
+α
+∈
+Λ
+Evaluate
+(
+M
+(
+⋅
+⊕
+ℓ
+(
+c
+⋅
+α
+⋅
+s
+ℓ
+𝚽
+k
+)
+)
+,
+𝒟
+dev
+)
+\alpha^{*}_{k}\leftarrow\arg\max_{\alpha\in\Lambda}\text{Evaluate}(M(\cdot\oplus_{\ell}(c\cdot\alpha\cdot s_{\ell}\mathbf{\Phi}_{k})),\mathcal{D}_{\textit{dev}})
+24:
+A
+k
+∗
+←
+Evaluate
+(
+M
+(
+⋅
+⊕
+ℓ
+(
+c
+⋅
+α
+k
+∗
+⋅
+s
+ℓ
+𝚽
+k
+)
+)
+,
+𝒟
+dev
+)
+A^{*}_{k}\leftarrow\text{Evaluate}(M(\cdot\oplus_{\ell}(c\cdot\alpha^{*}_{k}\cdot s_{\ell}\mathbf{\Phi}_{k})),\mathcal{D}_{\textit{dev}})
+25:</p>
+
+<p>end
+for
+26:
+3. Final Ranking
+27:
+Let
+L
+final
+L_{\textit{final}}
+be the sequence of indices in
+S
+top40
+S_{\textit{top40}}
+sorted by
+A
+k
+∗
+A^{*}_{k}
+descending
+28:
+S
+final
+←
+[
+(
+k
+,
+c
+⋅
+α
+k
+∗
+,
+A
+k
+∗
+)
+for
+k
+∈
+L
+final
+[
+0
+:
+9
+]
+]
+S_{\textit{final}}\leftarrow[(k,c\cdot\alpha^{*}_{k},A^{*}_{k})\text{ for }k\in L_{\textit{final}}[0:9]]
+29:
+return
+S
+final
+S_{\textit{final}}
+Algorithm 3
+Selection of Control Group (Non-Trending)
+1:
+2:
+𝒜
+∈
+ℝ
+T
+×
+P
+×
+F
+×
+N
+\mathcal{A}\in\mathbb{R}^{T\times P\times F\times N}
+: Full activation tensor
+3:
+X
+∈
+{
+T
+,
+P
+}
+X\in\{T,P\}
+: Aggregation dimension; let
+Y
+∈
+{
+T
+,
+P
+}
+∖
+{
+X
+}
+Y\in\{T,P\}\setminus\{X\}
+be the trend dimension
+4:
+𝐯
+Y
+∈
+ℝ
+Y
+\mathbf{v}_{Y}\in\mathbb{R}^{Y}
+: Reference vector for trend dimension
+5:
+N
+control
+∈
+ℕ
+N_{\textit{control}}\in\mathbb{N}
+: Number of control features to select (
+10
+10
+)
+6:
+α
+sig
+∈
+(
+0
+,
+1
+)
+\alpha_{\textit{sig}}\in(0,1)
+: Significance threshold (
+0.05
+0.05
+)
+7:
+8:
+S
+control
+S_{\textit{control}}
+: List of stable, non-trending control feature indices
+9:
+Define set of all feature indices
+Ω
+=
+{
+0
+,
+…
+,
+F
+−
+1
+}
+\Omega=\{0,\dots,F-1\}
+10:
+1. Global Aggregation
+11:
+Fold prompt dimension:
+𝐌
+mean
+∈
+ℝ
+T
+×
+P
+×
+F
+←
+MeanFold
+​
+(
+𝒜
+,
+dim
+=
+N
+)
+\mathbf{M}_{\textit{mean}}\in\mathbb{R}^{T\times P\times F}\leftarrow\text{MeanFold}(\mathcal{A},\text{dim}=N)
+12:
+Fold aggregation dimension:
+𝐌
+¯
+∈
+ℝ
+Y
+×
+F
+←
+MeanFold
+​
+(
+𝐌
+mean
+,
+dim
+=
+X
+)
+\bar{\mathbf{M}}\in\mathbb{R}^{Y\times F}\leftarrow\text{MeanFold}(\mathbf{M}_{\textit{mean}},\text{</p>
+
+<p>dim}=X)
+13:
+2. Trend Identification
+14:
+𝝆
+,
+𝑷
+ρ
+∈
+ℝ
+F
+←
+SpearmanFold
+(
+𝐌
+¯
+,
+dim
+=
+Y
+,
+𝐯
+Y
+)
+\boldsymbol{\rho},\boldsymbol{P}_{\rho}\in\mathbb{R}^{F}\leftarrow\text{SpearmanFold}(\bar{\mathbf{M}},\text{dim}=Y,\mathbf{v}_{Y})
+15:
+𝝉
+,
+𝑷
+τ
+∈
+ℝ
+F
+←
+MKFold
+​
+(
+𝐌
+¯
+,
+dim
+=
+Y
+)
+\boldsymbol{\tau},\boldsymbol{P}_{\tau}\in\mathbb{R}^{F}\leftarrow\text{MKFold}(\bar{\mathbf{M}},\text{dim}=Y)
+16:
+Compute joint significance mask
+𝐒𝐢𝐠
+∈
+{
+0
+,
+1
+}
+F
+\mathbf{Sig}\in\{0,1\}^{F}
+:
+17:
+𝐒𝐢𝐠
+←
+(
+𝑷
+ρ
+&lt;
+α
+sig
+)
+∧
+(
+𝑷
+τ
+&lt;
+α
+sig
+)
+\mathbf{Sig}\leftarrow(\boldsymbol{P}_{\rho}&lt;\alpha_{\textit{sig}})\land(\boldsymbol{P}_{\tau}&lt;\alpha_{\textit{sig}})
+18:
+Compute directional validity masks
+∈
+{
+0
+,
+1
+}
+F
+\in\{0,1\}^{F}
+:
+19:
+𝐕
+↑
+←
+𝐒𝐢𝐠
+∧
+(
+𝝆
+&gt;
+0
+)
+∧
+(
+𝝉
+&gt;
+0
+)
+\mathbf{V}^{\uparrow}\leftarrow\mathbf{Sig}\land(\boldsymbol{\rho}&gt;0)\land(\boldsymbol{\tau}&gt;0)
+20:
+𝐕
+↓
+←
+𝐒𝐢𝐠
+∧
+(
+𝝆
+&lt;
+0
+)
+∧
+(
+𝝉
+&lt;
+0
+)
+\mathbf{V}^{\downarrow}\leftarrow\mathbf{Sig}\land(\boldsymbol{\rho}&lt;0)\land(\boldsymbol{\tau}&lt;0)
+21:
+Define global trending set:
+𝒯
+←
+{
+f
+∈
+Ω
+∣
+𝐕
+d
+↑
+=
+1
+∨
+𝐕
+d
+↓
+=
+1
+}
+\mathcal{T}\leftarrow\{f\in\Omega\mid\mathbf{V}^{\uparrow}_{d}=1\lor\mathbf{V}^{\downarrow}_{d}=1\}
+22:
+3. Stable Latents Selection
+23:
+Compute global magnitude vector
+𝜹
+∈
+ℝ
+F
+\boldsymbol{\delta}\in\mathbb{R}^{F}
+:
+24:
+𝜹
+←
+|
+𝐌
+¯
+​
+[
+Y
+−
+1
+,
+:
+]
+−
+𝐌
+¯
+​
+[
+0
+,
+:
+]
+|
+\boldsymbol{\delta}\leftarrow|\bar{\mathbf{M}}[Y-1,:]-\bar{\mathbf{M}}[0,:]|
+25:
+Mask trending features out of
+𝜹
+\boldsymbol{\delta}
+to force them out of the stable selection:
+26:
+𝜹
+~
+d
+=
+{
+𝜹
+d
+if</p>
+
+<p>​
+d
+∉
+𝒯
++
+∞
+otherwise
+\tilde{\boldsymbol{\delta}}_{d}=\begin{cases}\boldsymbol{\delta}_{d}&amp;\text{if }d\notin\mathcal{T}\\
++\infty&amp;\text{otherwise}\end{cases}
+27:
+Extract stable indices
+∈
+{
+0
+,
+…
+,
+F
+−
+1
+}
+N
+control
+\in\{0,\dots,F-1\}^{N_{\textit{control}}}
+:
+28:
+S
+control
+←
+TopKIndices
+(
+𝜹
+~
+,
+dim
+=
+F
+,
+largest
+=
+False
+,
+k
+=
+N
+control
+)
+S_{\textit{control}}\leftarrow\text{TopKIndices}(\tilde{\boldsymbol{\delta}},\text{dim}=F,\text{largest}=\text{False},k=N_{\textit{control}})
+29:
+return
+S
+control
+S_{\textit{control}}
+Exclude features with significant trends
+Select features with
+minimal activation change</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

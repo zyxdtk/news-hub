@@ -1,0 +1,11994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>条件扩散采样 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">条件扩散采样</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-05-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2605.04013" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Conditional Diffusion Sampling</h4>
+            <p><strong>中文摘要：</strong> 本文提出条件扩散采样（CDS）框架，结合了并行回火（PT）与扩散方法的优势。作者推导了条件插值器，其传输动力学由精确闭式SDE控制，无需神经网络训练。针对其需非平凡初始化的特点，理论证明短扩散时间下初始化代价极小。CDS分两阶段：先用PT高效采样初始分布实现全局探索，再通过闭式SDE将样本传输至目标分布实现高效局部传输。实验表明CDS在样本质量与评估成本间取得了更优权衡。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p># 条件扩散采样
+Francisco M. Castro-Macías
+Pablo Morales-Álvarez
+Saifuddin Syed
+Daniel Hernández-Lobato
+Rafael Molina
+José Miguel Hernández-Lobato</p>
+
+<p>## 摘要
+在有限的密度评估下从未归一化的多模态分布中采样，仍然是机器学习和自然科学领域的一个根本挑战。
+成功的方法在易于处理的参考分布和目标分布之间构建了一座桥梁。
+并行回火（PT）作为黄金标准，而近期基于扩散的方法提供了一种连续的替代方案，但代价是需要进行神经网络训练。
+在这项工作中，我们引入了条件扩散采样（CDS），这是一个结合了这两种范式的框架。
+为此，我们推导了条件插值器（Conditional Interpolants），这是一类随机过程，其传输动力学由精确的闭式随机微分方程（SDE）控制，无需神经近似。
+尽管这些动力学需要从非平凡的初始化分布中采样，但我们从理论和实验上证明，对于足够短的扩散时间，这种初始化的代价会逐渐减小。
+CDS通过一个两阶段过程利用了这一点：（1）使用PT高效地采样初始分布，然后（2）通过传输SDE对样本进行传输。
+这种结合将PT鲁棒的全局探索与高效的局部传输结合在一起。
+实验表明，CDS有潜力在样本质量</p>
+
+<p>and density evaluation cost compared to state-of-the-art samplers.
+Markov Chain Monte Carlo, Parallel Tempering, Diffusion-based sampling
+1
+Introduction
+Figure 1
+:
+Overview of CDS.
+In the first stage, Parallel Tempering (PT) transforms initial samples
+z
+z
+from the reference
+π
+ref
+{\pi_{\text{ref}}}
+(
+orange
+) into samples from the initialization distribution
+π
+t
+0
+∣
+z
+\pi_{t_{0}\mid z}
+(
+blue
+). In the second stage, these samples are transported to the target distribution
+π
+\pi
+(
+blue
+) by integrating the closed-form SDE in
+Eq. 15
+.
+We consider the problem of drawing independent samples from a target probability distribution
+ν
+\nu
+on a state space
+𝒳
+⊂
+ℝ
+D
+\mathcal{X}\subset{\mathbb{R}}^{D}
+.
+We assume that
+ν
+\nu
+admits a positive density
+π
+:
+𝒳
+→
+(
+0
+,
++
+∞
+)
+\pi\colon\mathcal{X}\to(0,+\infty)
+known only up to a normalization constant,
+π
+​
+(
+x
+)
+=
+Z
+−
+1
+​
+π
+~
+​
+(
+x
+)
+,
+Z
+=
+∫
+𝒳
+π
+~
+​
+(
+x
+)
+,
+d
+​
+x
+,
+\pi(x)=Z^{-1}\tilde{\pi}(x),\quad Z=\int_{\mathcal{X}}\tilde{\pi}(x),\mathrm{d}x,
+(1)
+and that we have access only to the unnormalized density
+π
+~
+\tilde{\pi}
+.
+This classical problem arises across machine learning
+(Izmailov
+et al.
+,
+2021
+)
+and the natural sciences
+(Kroese
+et al.
+,
+2014
+)
+.
+In these applications, evaluating
+π
+~
+\tilde{\pi}
+is often computationally expensive, e.g., due to molecular force-field calculations
+(Noé
+et al.
+,
+2019
+)
+or large neural networks
+(Izmailov
+et al.
+,
+2021
+)
+.
+Consequently, it is crucial to design samplers that achieve high sample quality with as fe</p>
+
+<p>尽可能少的密度评估。
+一种常见的策略是在易于处理的参考分布和目标分布之间构建一座桥梁。
+一个突出的例子是平行回火（Parallel Tempering, PT，Geyer (1991)；Hukushima 和 Nemoto (1996</p>
+
+<p>ps through iterative optimization, both of which are costly in terms of target density evaluations
+(He
+et al.
+,
+2025b
+)
+.
+As such, they operate in a complementary, amortized regime to MCMC methods.
+In this work, we introduce Conditional Interpolants, a special class of interpolants that follow a conditional, rather than marginal, probability path.
+Their associated transport dynamics admit a closed-form, learning-free expression, with drift depending only on the target score and the interpolant map, both of which are tractable.
+This exactness imposes a constraint: the dynamics cannot be initialized at
+t
+=
+0
+t=0
+and instead require samples from the probability path at some
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+We show that this requirement is, in fact, advantageous.
+As
+t
+0
+→
+0
+t_{0}\to 0
+, the probability path concentrates toward a Dirac measure centered at a reference sample, making the sampling process of the initialization distribution highly efficient.
+Building on this insight, we propose Conditional Diffusion Sampling (CDS), a two-stage method that (i) efficiently samples from the intermediate distribution using PT for near-zero
+t
+0
+t_{0}
+, and (ii) transports these samples to the target via the closed-form conditional diffusion.
+An overview of CDS is shown in
+Fig. 1
+.
+Our contributions are:
+(i) the derivation of Conditional Interpolants, a general class of stochastic interpolants with exact, closed-form dynamics;
+(ii) a theoretical analysis of the initialization distribution, showing vanishi</p>
+
+<p>随扩散时间减少的传输成本，以及高效PT采样的经验证据；
+(iii) 引入了CDS，将通过PT进行的全局探索与高效的条件扩散相结合；以及
+(iv) 在8个目标分布和4个任务上进行了广泛评估，证明了样本质量与密度评估成本之间更优的权衡，如图2所示。</p>
+
+<p>2 背景
+2.1 马尔可夫链蒙特卡洛
+马尔可夫链蒙特卡洛（MCMC，</p>
+
+<p>, with densities
+π
+β
+\pi_{\beta}
+given by
+π
+β
+​
+(
+x
+)
+∝
+π
+ref
+​
+(
+x
+)
+1
+−
+β
+​
+π
+​
+(
+x
+)
+β
+,
+\pi_{\beta}(x)\propto{\pi_{\text{ref}}}(x)^{1-\beta}\,\pi(x)^{\beta},
+(2)
+where
+π
+ref
+{\pi_{\text{ref}}}
+is the density of the reference distribution.
+Given a schedule
+0
+=
+β
+0
+&lt;
+⋯
+&lt;
+β
+N
+=
+1
+0=\beta_{0}&lt;\cdots&lt;\beta_{N}=1
+, samples are progressively transported from
+ν
+ref
+{\nu_{\text{ref}}}
+to
+ν
+\nu
+through these intermediate distributions.
+Importantly, performance is highly sensitive to the schedule and degrades when the overlap between the reference and the target is poor
+(Syed
+et al.
+,
+2021
+,
+2024
+)
+.
+Parallel Tempering (PT).
+PT is an annealing-based method that runs several chains in parallel, one per distribution in the annealing schedule.
+It alternates between local MCMC updates and swap moves between adjacent chains.
+Low-
+β
+\beta
+chains explore smoother landscapes, and swap moves propagate this exploration toward the target, improving global mixing.
+We provide more details in
+App. A
+.
+2.2
+Diffusions and Interpolants
+Diffusions.
+A stochastic process
+{
+x
+t
+}
+=
+{
+x
+t
+:
+0
+≤
+t
+≤
+1
+}
+\left\{x_{t}\right\}=\left\{x_{t}\colon 0\leq t\leq 1\right\}
+is an (Itô) diffusion process if it is the solution to an stochastic differential equation (SDE) of the form
+d
+​
+x
+t
+=
+a
+t
+​
+(
+x
+t
+)
+​
+d
+​
+t
++
+σ
+t
+​
+d
+​
+W
+t
+,
+\displaystyle{\mathrm{d}}x_{t}=a_{t}(x_{t}){\mathrm{d}}t+\sigma_{t}{\mathrm{d}}W_{t},
+(3)
+where
+x
+t
+∈
+ℝ
+D
+x_{t}\in{\mathbb{R}}^{D}
+,
+(
+t
+,
+x
+)
+↦
+a
+t
+​
+(
+x
+)
+∈
+ℝ
+D
+(t,x)\mapsto a_{t}(x)\in{</p>
+
+<p>\mathbb{R}}^{D}
+is the drift vector field,
+t
+↦
+σ
+t
+∈
+(
+0
+,
++
+∞
+)
+t\mapsto\sigma_{t}\in\left(0,+\infty\right)
+is the diffusion coefficient, and
+W
+t
+W_{t}
+is a
+D
+D
+-dimensional Wiener process.
+In the limit where the diffusion coefficient vanishes (
+σ
+t
+→
+0
+\sigma_{t}\to 0
+), the dynamics reduce to a deterministic flow governed by an Ordinary Differential Equation (ODE), with marginals satisfying the continuity equation. We discuss this connection in
+App. B
+.
+If the marginal
+x
+t
+x_{t}
+at time
+t
+t
+admits a time-dependent density
+x
+↦
+p
+t
+​
+(
+x
+)
+x\mapsto p_{t}(x)
+, then
+p
+t
+p_{t}
+satisfies the Fokker-Planck-Kolmogorov (FPK) equation
+(Särkkä and Solin,
+2019
+)
+:
+∂
+∂
+t
+​
+p
+t
+=
+−
+div
+⁡
+(
+p
+t
+​
+a
+t
+)
++
+σ
+t
+2
+2
+​
+Δ
+​
+p
+t
+.
+\frac{\partial}{\partial t}p_{t}=-\operatorname{div}\left(p_{t}a_{t}\right)+\frac{\sigma_{t}^{2}}{2}\Delta p_{t}.
+(4)
+Conversely, if
+p
+t
+p_{t}
+solves the FPK equation
+and the coefficients
+a
+t
+a_{t}
+,
+σ
+t
+\sigma_{t}
+satisfy standard regularity and growth
+conditions, then there exists a stochastic process solving the SDE in
+Eq. 3
+in the weak sense whose time marginals are given by
+p
+t
+p_{t}
+(Särkkä and Solin,
+2019
+)
+.
+Under appropriate choice of drift term
+a
+t
+a_{t}
+, one may enforce
+p
+0
+=
+π
+ref
+p_{0}={\pi_{\text{ref}}}
+(a fixed tractable reference distribution), and
+p
+1
+=
+π
+p_{1}=\pi
+(the target distribution)
+(Song
+et al.
+,
+2021
+)
+.
+In this case, the SDE in
+Eq. 3
+defines a continuous probabilistic bridge between
+π
+ref
+{\pi_{\text{ref}}}
+and
+π
+\pi
+.
+Stochastic Interpola</p>
+
+<p>nts.
+Albergo
+et al.
+(
+2025
+)
+provides a unifying framework for flows and diffusions, known as Stochastic Interpolants.
+Instead of defining the process via an SDE or ODE directly, one specifies the process explicitly as an interpolation between samples:
+x
+t
+=
+F
+t
+​
+(
+z
+,
+x
+)
+,
+z
+∼
+ν
+ref
+,
+x
+∼
+ν
+,
+x_{t}=F_{t}(z,x),\quad z\sim{\nu_{\text{ref}}},\quad x\sim\nu,
+(5)
+where
+ν
+\nu
+is the target distribution and
+ν
+ref
+{\nu_{\text{ref}}}
+is a tractable reference distribution, and
+F
+t
+F_{t}
+is a differentiable map satisfying the boundary conditions
+F
+0
+​
+(
+z
+,
+x
+)
+=
+z
+F_{0}(z,x)=z
+and
+F
+1
+​
+(
+z
+,
+x
+)
+=
+x
+F_{1}(z,x)=x
+.
+Example 2.1
+(Linear Interpolant)
+.
+We consider the linear interpolant as a running example throughout this work. For
+𝒳
+=
+ℝ
+D
+\mathcal{X}={\mathbb{R}}^{D}
+, it is defined as:
+x
+t
+=
+F
+t
+​
+(
+z
+,
+x
+)
+=
+(
+1
+−
+t
+)
+​
+z
++
+t
+​
+x
+,
+x_{t}=F_{t}(z,x)=(1-t)z+tx,
+(6)
+with
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+, and
+x
+∼
+ν
+x\sim\nu
+. This is the canonical choice in flow matching frameworks
+(Lipman
+et al.
+,
+2023
+)
+.
+The resulting marginals define a probability path from
+ν
+ref
+{\nu_{\text{ref}}}
+to
+ν
+\nu
+.
+Crucially, the framework guarantees the existence of a drift field
+a
+t
+a_{t}
+such that the marginals of
+x
+t
+x_{t}
+satisfy the FPK equation (or a velocity field
+u
+t
+u_{t}
+satisfying the continuity equation in the deterministic limit).
+This duality allows one to characterize the interpolant
+x
+t
+x_{t}
+equivalently as the solution to a diffusion SDE or a flow ODE.
+In practice, the vector fields</p>
+
+<p>governing these dynamics are intractable and are approximated using neural networks trained on samples from
+ν
+\nu
+.
+Since we assume no prior access to such samples, this approach is unsuitable.
+Yet, the interpolant perspective motivates our construction.
+In the next section, we introduce Conditional Interpolants, a class of interpolants admitting closed-form dynamics, and leverage them to design Conditional Diffusion Sampling (CDS).
+3
+Conditional Diffusion Sampling (CDS)
+Overview.
+First, we provide a high-level overview of Conditional Diffusion Sampling (CDS), our framework for sampling from unnormalized multimodal distributions.
+The central idea of CDS is to reduce a difficult global sampling problem into two manageable stages.
+We condition on a reference point
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+and construct a
+conditional path of distributions
+{
+ν
+t
+∣
+z
+}
+t
+∈
+(
+0
+,
+1
+]
+\{\nu_{t\mid z}\}_{t\in(0,1]}
+that gradually evolves from a point mass at
+z
+z
+to the full target distribution
+ν
+\nu
+.
+The path is defined via a
+Conditional Interpolant
+map
+F
+t
+∣
+z
+F_{t\mid z}
+(defined in
+Subsec. 3.1
+), which allows us to derive closed-form transport dynamics that need a careful initialization.
+As illustrated in
+Fig. 1
+, our sampling procedure leverages this in two stages:
+Stage 1: Conditional Sampling (
+Subsec. 3.3
+).
+We initialize the process at a small time
+t
+0
+&gt;
+0
+t_{0}&gt;0
+by sampling
+x
+t
+0
+∼
+ν
+t
+0
+∣
+z
+x_{t_{0}}\sim\nu_{t_{0}\mid z}
+.
+As illustrated in
+Fig. 3
+,
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+hi</p>
+
+<p>ghly concentrates around
+z
+z
+, ensuring substantial overlap with the reference distribution
+ν
+ref
+{\nu_{\text{ref}}}
+, and making global exploration highly efficient.
+In practice, using Parallel Tempering (PT) to sample
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+yields improved swap efficiency and mode exploration, see
+Subsec. 5.1
+.
+Stage 2: SDE Integration (
+Subsec. 3.2
+).
+We transport the approximate samples from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+to the target
+ν
+\nu
+at
+t
+=
+1
+t=1
+.
+Because the interpolant dynamics admit a closed-form SDE, we can transport and refine these samples without any approximation.
+Crucially, the SDE provides continuous refinement, correcting samples along the trajectory, see
+Subsec. 5.2
+.
+The remainder of this section details each component:
+Subsec. 3.1
+introduces Conditional Interpolants,
+Subsec. 3.2
+derives their transport dynamics (Stage 2),
+Subsec. 3.3
+analyzes the initialization (Stage 1), and
+Subsec. 3.4
+presents the full algorithm.
+Notably, Stage 2 is presented before Stage 1, as the derivation of the transport dynamics clarify the need for careful initialization.
+3.1
+Conditional Interpolants
+(a)
+t
+=
+0.0
+t=0.0
+(b)
+t
+=
+0.1
+t=0.1
+(c)
+t
+=
+0.2
+t=0.2
+(d)
+t
+=
+0.5
+t=0.5
+(e)
+t
+=
+1.0
+t=1.0
+Figure 3
+:
+Density evolution and exact samples from
+π
+t
+∣
+z
+\pi_{t\mid z}
+.
+This plot illustrates the linear interpolant for a fixed
+z
+z
+sampled from
+𝒩
+​
+(
+0
+,
+I
+)
+\mathcal{N}(0,I)
+. As
+t
+→
+0
+t\to 0
+, the target distribution (
+blue
+) increasingly concentrates inside the reference (
+oran</p>
+
+<p>ge
+).
+Let
+ν
+ref
+{\nu_{\text{ref}}}
+denote a tractable reference distribution (with density
+π
+ref
+{\pi_{\text{ref}}}
+) from which sampling is straightforward.
+Following
+Albergo
+et al.
+(
+2025
+)
+, we consider stochastic interpolants as given by
+Eq. 5
+.
+Rather than focusing on the marginal distribution of
+x
+t
+x_{t}
+, we consider the conditional distribution of
+x
+t
+x_{t}
+given a reference variable
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+.
+Fix
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+and define the conditional interpolation map
+F
+t
+∣
+z
+​
+(
+⋅
+)
+=
+F
+t
+​
+(
+z
+,
+⋅
+)
+F_{t\mid z}(\cdot)=F_{t}(z,\cdot)
+, so that
+x
+t
+=
+F
+t
+∣
+z
+​
+(
+x
+)
+,
+x
+∼
+ν
+.
+x_{t}=F_{t\mid z}(x),\quad x\sim\nu.
+(7)
+Definition.
+A
+Conditional Interpolant
+is the family of random variables defined by
+Eq. 7
+, where for each
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+and
+t
+∈
+(
+0
+,
+1
+]
+t\in(0,1]
+, the map
+F
+t
+∣
+z
+:
+𝒳
+→
+𝒳
+F_{t\mid z}:\mathcal{X}\to\mathcal{X}
+is a diffeomorphism. This induces a conditional distribution
+ν
+t
+∣
+z
+\nu_{t\mid z}
+as the pushforward of
+ν
+\nu
+through
+F
+t
+∣
+z
+F_{t\mid z}
+.
+Conditional Density.
+Let
+ν
+t
+∣
+z
+\nu_{t\mid z}
+denote the distribution of the random variable
+x
+t
+x_{t}
+conditioned on
+z
+z
+.
+Its density, denoted
+π
+t
+∣
+z
+\pi_{t\mid z}
+, is determined by the change of variables formula:
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+​
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+,
+\pi_{t\mid z}(x)=\left|\det\mathrm{J}F_{t\mid z}\big(F_{t\mid z}^{-1}(x)\big)\right|^{-1}\pi\big(F_{t\mid z}^{-1}(x)\big),
+(8)
+where
+J
+​
+F
+t</p>
+
+<p>∣
+z
+\mathrm{J}F_{t\mid z}
+denotes the Jacobian matrix of the map
+F
+t
+∣
+z
+F_{t\mid z}
+.
+Example 3.1
+.
+For the linear interpolant defined in
+Eq. 6
+, the conditional density takes the closed form:
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+t
+−
+D
+​
+π
+​
+(
+x
+−
+(
+1
+−
+t
+)
+​
+z
+t
+)
+.
+\pi_{t\mid z}(x)=t^{-D}\,\pi\left(\frac{x-(1-t)z}{t}\right).
+(9)
+Under standard regularity assumptions, as
+t
+→
+0
+t\to 0
+, the measure
+ν
+t
+∣
+z
+\nu_{t\mid z}
+concentrates mass around
+z
+z
+. Formally,
+lim
+t
+→
+0
+W
+1
+​
+(
+δ
+z
+,
+ν
+t
+∣
+z
+)
+=
+0
+,
+\lim_{t\to 0}W_{1}(\delta_{z},\nu_{t\mid z})=0,
+(10)
+where
+δ
+z
+\delta_{z}
+is a Dirac delta centered at
+z
+z
+, and
+W
+1
+​
+(
+⋅
+,
+⋅
+)
+W_{1}(\cdot,\cdot)
+denotes the Wasserstein-1 distance; see
+Subsec. D.1
+for a proof.
+Intuitively,
+ν
+t
+∣
+z
+\nu_{t\mid z}
+interpolates between a Dirac delta
+δ
+z
+\delta_{z}
+at
+t
+=
+0
+t=0
+and the target distribution
+ν
+\nu
+at
+t
+=
+1
+t=1
+, see
+Fig. 3
+.
+Indeed,
+ν
+t
+∣
+z
+\nu_{t\mid z}
+corresponds to the displacement interpolant between
+ν
+\nu
+and
+δ
+z
+\delta_{z}
+(McCann,
+1997
+)
+.
+Remark 3.2
+.
+We can recover the marginal of
+x
+t
+x_{t}
+from this conditional distribution as
+π
+t
+​
+(
+x
+)
+=
+∫
+𝒳
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+π
+ref
+​
+(
+z
+)
+​
+d
+z
+.
+\pi_{t}\left(x\right)=\int_{\mathcal{X}}\pi_{t\mid z}\left(x\right){\pi_{\text{ref}}}\left(z\right){\mathrm{d}}z.
+(11)
+3.2
+Transport Dynamics
+We characterize the dynamics associated with the proposed family of interpolants.
+First, we define the conditional velocity field
+u
+t
+∣
+z
+u_{t\mid z}
+as the instantaneous time-evolution of the interpolant map:
+u
+t
+∣
+z
+​
+(
+x</p>
+
+<p>)
+=
+∂
+F
+t
+∣
+z
+∂
+t
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+.
+u_{t\mid z}(x)=\frac{\partial F_{t\mid z}}{\partial t}\left(F_{t\mid z}^{-1}(x)\right).
+(12)
+This vector field describes the deterministic trajectory of the interpolant defined in
+Eq. 7
+.
+Example 3.3
+.
+For the linear interpolant introduced in
+Eq. 6
+, the velocity field takes the simple form:
+u
+t
+∣
+z
+​
+(
+x
+)
+=
+x
+−
+z
+t
+.
+u_{t\mid z}(x)=\frac{x-z}{t}.
+(13)
+The velocity field
+u
+t
+∣
+z
+u_{t\mid z}
+governs the deterministic transport of probability mass, but does not use any information about the target distribution; we elaborate about this in
+App. B
+.
+To account for this, we can introduce stochasticity while preserving the marginal distributions.
+The following proposition establishes the link between the interpolant’s density and a specific FPK equation.
+Proposition 3.4
+.
+For any
+t
+↦
+σ
+t
+∈
+(
+0
+,
+∞
+)
+t\mapsto\sigma_{t}\in(0,\infty)
+, the conditional density satisfies the following FPK equation:
+∂
+∂
+t
+​
+π
+t
+∣
+z
+=
+−
+div
+⁡
+(
+π
+t
+∣
+z
+​
+a
+t
+∣
+z
+)
++
+σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
+,
+\frac{\partial}{\partial t}\pi_{t\mid z}=-\operatorname{div}\left(\pi_{t\mid z}a_{t\mid z}\right)+\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z},
+(14)
+where
+a
+t
+∣
+z
+=
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+a_{t\mid z}=u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\log\pi_{t\mid z}
+.
+Proof.
+See
+Subsec. D.1
+.
+∎
+Motivated by this, we define the corresponding Conditional Diffusion via the following SDE:
+d
+​
+x
+t
+=
+(
+u
+t
+∣
+z
+​
+(
+x
+t
+)
++
+σ
+t
+2
+2
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+t
+)
+)
+​
+d
+​
+t
++
+σ
+t
+​</p>
+
+<p>d
+​
+W
+t
+.
+{\mathrm{d}}x_{t}=\left(u_{t\mid z}(x_{t})+\frac{\sigma_{t}^{2}}{2}\nabla\log\pi_{t\mid z}(x_{t})\right){\mathrm{d}}t+\sigma_{t}\,{\mathrm{d}}W_{t}.
+(15)
+Here, the noise schedule
+σ
+t
+\sigma_{t}
+controls the path stochasticity without altering the time-dependent density
+π
+t
+∣
+z
+\pi_{t\mid z}
+(Song
+et al.
+,
+2021
+)
+.
+Its impact is analyzed in
+App. H
+.
+A key advantage over standard score-based generative modeling is that the score function,
+∇
+log
+⁡
+π
+t
+∣
+z
+\nabla\log\pi_{t\mid z}
+, does not need to be learned.
+Instead, it is calculated directly from the target density
+π
+\pi
+via the change of variables formula and can be evaluated efficiently (see
+Subsec. D.1
+).
+Example 3.5
+.
+For the linear interpolant, the score term in the SDE simplifies to:
+∇
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+t
+−
+1
+​
+∇
+log
+⁡
+π
+​
+(
+x
+−
+(
+1
+−
+t
+)
+​
+z
+t
+)
+.
+\nabla\log\pi_{t\mid z}(x)=t^{-1}\nabla\log\pi\left(\frac{x-(1-t)z}{t}\right).
+(16)
+The dynamics in
+Eq. 15
+balance the deterministic transport
+u
+t
+∣
+z
+u_{t\mid z}
+with a stochastic correction guided by the score.
+The noise term allows the trajectory to explore the state space, while the score term continuously corrects the path towards high-density regions of the target
+π
+\pi
+.
+Singularities and Initialization.
+Numerical integration of
+Eq. 15
+requires careful handling of the boundary at
+t
+=
+0
+t=0
+.
+Since the interpolant
+F
+t
+∣
+z
+F_{t\mid z}
+is non-invertible at
+t
+=
+0
+t=0
+, the velocity field
+u
+t
+∣
+z
+u_{t\mid z}
+exhibits a singularity at
+t
+=
+0
+t=0
+, causing traj</p>
+
+<p>ectories to diverge if integrated directly from
+t
+=
+0
+t=0
+.
+This behavior mirrors the singularities observed in diffusion models and flow matching, where vanishing noise variance leads to unbounded scores or vector fields
+(Song
+et al.
+,
+2021
+; Lipman
+et al.
+,
+2023
+)
+.
+To circumvent this, we initialize the process at a near-zero time
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+Crucially, as shown in
+App. H
+, a deterministic initialization
+x
+t
+0
+=
+z
+x_{t_{0}}=z
+yields poor performance because the diffusion cannot sufficiently expand from a point mass to cover the support of
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+.
+Therefore, we initialize by sampling
+x
+t
+0
+∼
+ν
+t
+0
+∣
+z
+x_{t_{0}}\sim\nu_{t_{0}\mid z}
+. We discuss efficient sampling strategies for this distribution in the following subsection.
+3.3
+Sampling the Initial State
+We aim to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+for near-zero
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+As
+t
+→
+0
+t\to 0
+, the measure
+ν
+t
+∣
+z
+\nu_{t\mid z}
+concentrates around the anchor point
+z
+z
+, converging to the Dirac measure
+δ
+z
+\delta_{z}
+. Accordingly, samples from this regime are expected to lie close to
+z
+z
+.
+To formalize this behavior, we analyze how a Markov kernel transforms when its invariant distribution is modified from
+ν
+\nu
+to
+ν
+t
+∣
+z
+\nu_{t\mid z}
+.
+The following result relates convergence under the transformed kernel to the Lipschitz properties of the interpolant.
+See
+Subsec. D.2
+for background on Markov kernels.
+Proposition 3.6
+.
+Let
+K
+K
+be any Markov kernel invariant with respect to
+ν
+\nu
+. We def</p>
+
+<p>ine the rescaled Markov kernel
+K
+t
+∣
+z
+K_{t\mid z}
+for any
+x
+∈
+𝒳
+x\in\mathcal{X}
+and measurable set
+A
+⊂
+𝒳
+A\subset\mathcal{X}
+as:
+K
+t
+∣
+z
+​
+(
+x
+,
+A
+)
+=
+K
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+,
+F
+t
+∣
+z
+−
+1
+​
+(
+A
+)
+)
+.
+K_{t\mid z}(x,A)=K\left(F_{t\mid z}^{-1}(x),F_{t\mid z}^{-1}(A)\right).
+(17)
+Then, the kernel
+K
+t
+∣
+z
+K_{t\mid z}
+is invariant with respect to
+ν
+t
+∣
+z
+\nu_{t\mid z}
+.
+Furthermore, let
+L
+t
+L_{t}
+be the Lipschitz constant of the interpolant
+F
+t
+∣
+z
+F_{t\mid z}
+. If we initialize the chain at the reference point
+z
+z
+, the Wasserstein-1 distance to the target satisfies:
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+≤
+L
+t
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+x
+0
+)
+,
+ν
+)
+,
+W_{1}\left(K_{t\mid z}^{n}\left(\delta_{z}\right),\nu_{t\mid z}\right)\leq L_{t}\,W_{1}\left(K^{n}\left(\delta_{x_{0}}\right),\nu\right),
+(18)
+where
+x
+0
+=
+F
+t
+∣
+z
+−
+1
+​
+(
+z
+)
+x_{0}=F_{t\mid z}^{-1}(z)
+.
+Proof.
+See
+Subsec. D.2
+.
+∎
+Equation
+18
+implies that whenever
+L
+t
+≤
+1
+L_{t}\leq 1
+, the sampling error – measured by the Wasserstein-1 distance – is strictly lower when targeting
+ν
+t
+∣
+z
+\nu_{t\mid z}
+than when targeting the original distribution
+ν
+\nu
+.
+Moreover, if
+lim
+t
+→
+0
+L
+t
+=
+0
+\lim_{t\to 0}L_{t}=0
+, the error vanishes as
+t
+t
+decreases.
+While this property does not hold for arbitrary bijections, it is satisfied by standard interpolants used in generative modeling, such as linear and trigonometric paths
+(Albergo
+et al.
+,
+2025
+)
+.
+Geometrically, contracting the space reduces the transport cost between the initialization and the targ</p>
+
+<p>et
+ν
+t
+∣
+z
+\nu_{t\mid z}
+proportionally.
+Example 3.7
+.
+In the linear interpolant case, the bound in
+Eq. 18
+becomes an equality, implying that the error decays exactly linearly with
+t
+t
+:
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+=
+t
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+z
+)
+,
+ν
+)
+.
+W_{1}\left(K_{t\mid z}^{n}\left(\delta_{z}\right),\nu_{t\mid z}\right)=t\,W_{1}\left(K^{n}\left(\delta_{z}\right),\nu\right).
+(19)
+See
+Subsec. D.2
+for a proof.
+Thus, for any fixed number of MCMC steps
+n
+n
+, samples become arbitrarily close to
+ν
+t
+∣
+z
+\nu_{t\mid z}
+in the optimal transport sense as
+t
+→
+0
+t\to 0
+.
+However, a small transport cost to
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+does not necessarily imply faster mixing.
+For non-linear interpolants, geometric distortions induced by the condition number of
+F
+t
+∣
+z
+F_{t\mid z}
+may hinder exploration.
+Even in the linear case,
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+retains the multimodal structure of
+ν
+\nu
+, differing only by a global contraction. Consequently, standard MCMC methods may still mix poorly.
+To mitigate this issue, we employ PT to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+, as described in the next section.
+3.4
+Algorithmic Details
+The procedure of CDS is summarized in
+Alg. 1
+.
+It samples from the target distribution
+ν
+\nu
+in two stages: (i) sampling from the conditional distribution
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+, and (ii) integrating the conditional SDE in
+Eq. 15
+.
+Computational Budget Allocation.
+Given a fixed computational budget, performance depends on how computation is spli</p>
+
+<p>t across the two stages.
+We control this trade-off via two hyperparameters: the number of steps in Stage 1 (
+K
+K
+) and in Stage 2 (
+N
+N
+).
+We find that sufficient effort must be devoted to Stage 1 to ensure enough global exploration, while retaining enough integration steps to accurately transport the samples, see
+Subsec. H.5
+.
+Choice of Sampler in Stage 1.
+Stage 1 aims to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+for
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+While any sampler could be used,
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+remains multimodal, making local MCMC methods prone to poor mixing.
+Annealing-based methods are better suited, as they progressively bridge the reference and target distributions, and benefit from the fact that
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+approaches the reference as
+t
+0
+→
+0
+t_{0}\to 0
+.
+In practice, we find that PT outperforms other choices, see
+Subsec. H.2
+.
+Numerical Integration.
+We use the Euler–Maruyama scheme to integrate the SDE, though any suitable solver could be employed.
+The diffusion variance
+σ
+t
+\sigma_{t}
+controls the stochasticity of the process, and can be specified as a noise schedule.
+Following diffusion models
+(Song
+et al.
+,
+2021
+)
+, integration can be enhanced with an
+M
+M
+steps of an MCMC corrector targeting
+ν
+t
+∣
+z
+\nu_{t\mid z}
+to reduce discretization error.
+In our setting, this is particularly effective since the log-density is available, enabling Metropolis–Hastings corrections.
+See
+Subsec. H.5
+for the corresponding analysis of these hyperparameters.
+Algorithm 1</p>
+
+<p>Conditional Diffusion Sampling (CDS)
+0:
+Number of PT steps
+K
+K
+, time schedule
+{
+0
+&lt;
+t
+0
+&lt;
+⋯
+&lt;
+t
+N
+=
+1
+}
+\left\{0&lt;t_{0}&lt;\cdots&lt;t_{N}=1\right\}
+, noise schedule
+{
+σ
+0
+,
+…
+,
+σ
+N
+−
+1
+}
+\left\{\sigma_{0},\ldots,\sigma_{N-1}\right\}
+, number of corrector steps
+M
+M
+.
+STAGE 1: Conditional Sampling
+1:
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+2:
+// Run PT to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+.
+3:
+// Starting from
+z
+z
+,
+K
+K
+steps.
+4:
+x
+0
+←
+PTSampler
+⁡
+(
+z
+,
+ν
+t
+0
+∣
+z
+,
+K
+)
+x_{0}\leftarrow\operatorname{PTSampler}\left(z,\nu_{t_{0}\mid z},K\right)
+STAGE 2: SDE Integration
+5:
+for
+n
+=
+0
+n=0
+to
+N
+−
+1
+N-1
+do
+6:
+ξ
+∼
+𝒩
+​
+(
+0
+,
+I
+)
+\xi\sim\mathcal{N}\left(0,I\right)
+7:
+Δ
+​
+t
+n
+←
+t
+n
++
+1
+−
+t
+n
+\Delta t_{n}\leftarrow t_{n+1}-t_{n}
+8:
+a
+n
+←
+u
+t
+n
+∣
+z
+​
+(
+x
+n
+)
++
+σ
+n
+2
+2
+​
+∇
+log
+⁡
+π
+t
+n
+∣
+z
+​
+(
+x
+n
+)
+a_{n}\leftarrow u_{t_{n}\mid z}\left(x_{n}\right)+\frac{\sigma_{n}^{2}}{2}\nabla\log\pi_{t_{n}\mid z}\left(x_{n}\right)
+9:
+y
+←
+x
+n
++
+Δ
+​
+t
+n
+​
+a
+n
++
+σ
+n
+​
+Δ
+​
+t
+n
+​
+ξ
+y\leftarrow x_{n}+\Delta t_{n}a_{n}+\sigma_{n}\sqrt{\Delta t_{n}}\xi
+10:
+// Run a corrector to sample from
+ν
+t
+n
++
+1
+∣
+z
+\nu_{t_{n+1}\mid z}
+.
+11:
+// Starting from
+y
+y
+,
+M
+M
+steps.
+12:
+x
+n
++
+1
+←
+Corrector
+⁡
+(
+y
+,
+ν
+t
+n
++
+1
+∣
+z
+,
+M
+)
+x_{n+1}\leftarrow\operatorname{Corrector}\left(y,\nu_{t_{n+1}\mid z},M\right)
+13:
+end
+for
+14:
+return
+x
+N
+x_{N}
+4
+Related Work
+We review related methods for sampling from unnormalized multimodal distributions.
+Since most effective approaches rely on constructing a bridge between a tractable reference distributio</p>
+
+<p>n and the target, we organize prior work according to the mechanism used to define this bridge.
+4.1
+Annealing-based Methods
+Annealing defines a sequence of intermediate densities that gradually transport samples from a reference to a target, see
+Eq. 2
+.
+Annealing-based methods differ in how they navigate this sequence.
+PT runs multiple Markov chains in parallel, periodically proposing swaps between adjacent chains to facilitate information exchange.
+In contrast, Annealed Importance Sampling (AIS,
+(Neal,
+2001
+)
+) and Sequential Monte Carlo (SMC,
+(Del Moral
+et al.
+,
+2006
+)
+) propagate a population of weighted particles sequentially, with SMC additionally employing resampling to prevent mode collapse.
+The performance of annealing methods is highly sensitive to the schedule and number of distributions, and can suffer from mass teleportation, where probability mass abruptly shifts between disjoint modes
+(Woodard
+et al.
+,
+2009
+)
+. Optimizing the schedule and increasing its density can mitigate these issues, but performance still sharply deteriorates when adjacent distributions share little overlap
+(Syed
+et al.
+,
+2024
+)
+. For challenging problems with high discrepancy between
+ν
+ref
+{\nu_{\text{ref}}}
+and
+ν
+\nu
+, the number of interpolating distributions required for stable sampling can be prohibitively expensive.
+While CDS also leverages PT for initialization, it targets a conditional distribution
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+that concentrates near the reference for near-zero
+t
+0
+t_{</p>
+
+<p>0}
+, ensuring substantial overlap between successive distributions. This makes it easier to propagate samples from
+ν
+ref
+{\nu_{\text{ref}}}
+to
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+than directly to
+ν
+\nu
+.
+4.2
+Diffusion-based Methods
+Neural samplers amortize sampling by training a neural network using both samples (from the model or previous iterations) and the target density. As we argue in Sec. 4.2, this training is computationally expensive.
+Diffusion-based Neural Samplers.
+Neural Samplers amortize sampling by training neural networks to generate samples from a target distribution
+(Arbel
+et al.
+,
+2021
+; Midgley
+et al.
+,
+2023
+)
+.
+Motivated by diffusion models, several works adapt these formulations to design new Neural Samplers
+(Nusken
+et al.
+,
+2024
+; He
+et al.
+,
+2025a
+; Havens
+et al.
+,
+2025
+; Akhound-Sadegh
+et al.
+,
+2025
+; Albergo and Vanden-Eijnden,
+2025
+; Rissanen
+et al.
+,
+2025
+)
+.
+These methods are trained using both target density evaluations and samples, either produced by earlier model iterations or generated via MCMC.
+While training is computationally expensive, inference requires only a single forward pass with no additional density evaluations.
+Therefore, Neural Samplers operate in a different but complementary regime from MCMC methods.
+Non-amortized Methods.
+This line of work aims to exploit diffusion-based ideas without resorting to neural network training.
+Diffusive Gibbs Sampling (DiGS,
+(Chen
+et al.
+,
+2024
+)
+) introduces Gaussian convolutions to define a noisy auxiliary</p>
+
+<p>distribution that bridges isolated modes.
+However, it relies on a Metropolis-within-Gibbs procedure that scales poorly to high dimensions.
+Reverse Diffusion Monte Carlo (RDMC,
+(Huang
+et al.
+,
+2024
+)
+) expresses the score of the marginal distribution in terms of expectations under the denoising posterior.
+To approximate this, it employs a nested MCMC procedure in which multiple samples from the denoising posterior are drawn at each iteration.
+Consequently, several density evaluations are required per iteration.
+Both DiGS and RDMC rely on marginal probability paths with intractable scores.
+In contrast, the proposed CDS follows a conditional probability path whose score admits a closed-form expression, enabling efficient sampling without approximations.
+5
+Experiments
+In this section, we evaluate CDS with a linear interpolant on eight target distributions across four diverse tasks.
+We study the impact of the initial time
+t
+0
+t_{0}
+on PT communication efficiency in
+Subsec. 5.1
+and compare CDS with state-of-the-art samplers in
+Subsec. 5.3
+.
+Experimental details are provided in
+App. G
+, with additional experiments in
+App. H
+1
+1
+1
+The code is available at
+github.com/Franblueee/conditional_diffusion_sampling
+.
+Table 1
+:
+Sampling tasks considered in this work. See
+App. E
+for more details.
+Task name
+Target dist.
+Dim. (
+D
+D
+)
+Gaussian Mixture (GM)
+GM-2
+2
+GMNU-2
+2
+GM-16
+16
+GMNU-16
+16
+Lennard-Jones (LJ)
+LJ-13
+3
+×
+13
+=
+39
+3\times 13=39
+LJ-55
+3
+×
+55
+=
+165
+3\times 55=165
+Alanine Dipeptide (A</p>
+
+<p>LDP)
+ALDP
+3
+×
+22
+=
+66
+3\times 22=66
+Bayesian Neural Network (BNN)
+BNN
+550
+550
+Sampling Tasks.
+The tasks considered for evaluation are summarized in
+Tab. 1
+.
+In total, we consider eight target distributions across four tasks spanning synthetic benchmarks, physical systems, molecular dynamics, and high-dimensional Bayesian inference problems.
+These tasks cover multimodality, complex energy landscapes, and structured posteriors in a wide range of dimensions.
+Notably, for the ALDP and BNN targets, density and score evaluations are computationally expensive, making them particularly interesting for assessing sampling efficiency.
+Full details are provided in
+App. E
+.
+Sample Quality Metrics.
+We evaluate sample quality using standard task-specific metrics (lower is better for all): the Wasserstein-2 (
+W
+2
+W_{2}
+) distance for the GM and LJ tasks; the Kullback-Leibler (KL) divergence between Ramachandran plots for ALDP; and the test negative log-likelihood (NLL) for the BNN task.
+Additional metrics and implementation details are provided in
+App. F
+and
+H
+.
+5.1
+Impact of Initial Time
+t
+0
+t_{0}
+in Communication and Sample Quality
+We analyze the communication efficiency of PT when targeting the conditional distribution
+ν
+t
+∣
+z
+\nu_{t\mid z}
+, and how it impacts sample quality.
+Recall that CDS begins by sampling
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+for a chosen
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+As
+t
+→
+0
+t\to 0
+,
+ν
+t
+∣
+z
+\nu_{t\mid z}
+concentrates toward a Dirac delta at
+z
+z
+(drawn from the reference distribution),</p>
+
+<p>increasing overlap with the reference and potentially improving communication.
+We measure efficiency using Round Trips (RTs), which is the number of traversals between reference and target distributions. Higher RTs indicate better mixing
+(Syed
+et al.
+,
+2022
+)
+. We report the Global Communication Barrier and provide further details in
+App. H
+.
+As shown in
+Fig. 4
+, decreasing
+t
+0
+t_{0}
+from
+1.0
+1.0
+consistently increases RTs across tasks, confirming that sampling from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+is more efficient than sampling
+ν
+\nu
+directly, and leading to improved sample quality.
+However, as
+t
+0
+→
+0
+t_{0}\to 0
+, both efficiency and quality deteriorate as the distribution becomes excessively concentrated, which reduces overlap between replicas.
+As illustrated in
+Fig. 3
+, this suggests an optimal range for
+t
+0
+t_{0}
+: small enough to enhance overlap with the reference, yet large enough to avoid degeneracy.
+A strategy for selecting
+t
+0
+t_{0}
+is discussed in
+App. C
+.
+Figure 4
+:
+Round Trips
+(RTs, higher is better) and
+sampling error
+(lower is better) as a function of
+t
+0
+t_{0}
+.
+Decreasing
+t
+0
+t_{0}
+from
+1.0
+1.0
+generally increases RT counts and reduces sampling error, indicating improved mixing and sample quality.
+5.2
+Analysis of the Transport Mechanism
+Figure 5
+:
+Comparison between SDE-based transport and the inverse interpolation map.
+We evaluate the effect of two strategies for transporting samples from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+back to the target distribution
+ν
+\nu
+. The S</p>
+
+<p>DE-based approach consistently achieves better performance across tasks.
+We study the impact of the SDE integration in CDS’s Stage 2.
+After sampling from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+, samples must be transported to the target
+ν
+\nu
+.
+In our method, this is done by integrating the interpolation SDE
+Equation
+15
+from
+t
+0
+t_{0}
+to
+1
+1
+.
+Alternatively, one can apply the inverse interpolation map
+F
+t
+0
+∣
+z
+−
+1
+F_{t_{0}\mid z}^{-1}
+to directly map samples to
+ν
+\nu
+.
+If
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+were sampled perfectly, this transformation would recover perfect samples from
+ν
+\nu
+.
+In practice, however, approximation errors are amplified by the inverse map.
+In contrast, the SDE dynamics provide an advantage: they continuously refine the samples during transport, improving mixing and progressively correcting deviations from the target distribution.
+We empirically compare CDS with this baseline, where PT is used to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+followed by
+F
+t
+0
+∣
+z
+−
+1
+F_{t_{0}\mid z}^{-1}
+. Results in
+Fig. 5
+show that SDE-based transport consistently outperforms the inverse mapping.
+The latter performs slightly better on GM-2 under small budgets, due to a trade-off: fewer SDE steps leave room for more exploration during the PT phase.
+This advantage disappears in more complex target distributions, where the corrective effect of the SDE becomes important.
+5.3
+Comparison with Other Sampling Methods
+Table 2
+:
+Aggregated Mean Hypervolume Ratio (HVR) across sampling tasks.
+Highe</p>
+
+<p>r HVR values
+(
+↑
+)
+(\uparrow)
+denote superior performance in terms of both convergence and coverage of the optimal Pareto front
+(Zitzler
+et al.
+,
+2003
+)
+. See
+App. F
+for details.
+Method
+CDS (ours)
+NRPT
+OASMC
+DiGS
+HMC
+MALA
+HVR
+(
+↑
+)
+(\uparrow)
+0.9976
+±
+0.0015
+\mathbf{0.9976\pm 0.0015}
+0.9827
+±
+0.0083
+0.9827\pm 0.0083
+0.9287
+±
+0.0277
+0.9287\pm 0.0277
+0.5464
+±
+0.1550
+0.5464\pm 0.1550
+0.6263
+±
+0.1261
+0.6263\pm 0.1261
+0.5241
+±
+0.1494
+0.5241\pm 0.1494
+Figure 6
+:
+Pareto fronts for sampling performance across eight target distributions.
+The proposed CDS method achieves competitive or superior performance compared to state-of-the-art samplers, demonstrating higher efficiency by requiring fewer density evaluations for the same level of accuracy.
+We benchmark CDS against five state-of-the-art MCMC methods, analyzing the trade-off between sample quality and total density evaluations.
+Full experimental details are provided in
+App. G
+.
+Baselines.
+We select three recent state-of-the-art methods: Non-Reversible PT (NRPT)
+(Syed
+et al.
+,
+2022
+)
+, Optimized Annealed SMC (OASMC)
+(Syed
+et al.
+,
+2024
+)
+, and Diffusive Gibbs Sampling (DiGS)
+(Chen
+et al.
+,
+2024
+)
+.
+We also include two MCMC baselines: Hamiltonian Monte Carlo (HMC) and Metropolis–Adjusted Langevin Algorithm (MALA).
+We exclude RDMC from this comparison as it proved computationally intractable for the tasks considered, consistent with findings in
+Chen
+et al.
+(
+2024
+)
+.
+In
+Subsec. H.3
+, we include a comparison against No-U-Turn Sampler (</p>
+
+<p>NUTS,
+Hoffman
+et al.
+(
+2014
+)
+), Stein Variational Gradient Descent (SVGD,
+Liu and Wang (
+2016
+)
+), and the Metropolis Adjusted Microcanonical Sampler (MAMS,
+Robnik
+et al.
+(
+2025
+)
+).
+As discussed in
+Section
+4.2
+, we exclude Neural Samplers as they operate in a different regime.
+Evaluation Protocol.
+Sampling performance is assessed via average Pareto fronts, capturing the trade-off between sample quality and computational cost.
+In addition to task-specific quality metrics, we report the Mean Hypervolume Ratio (HVR)
+(Zitzler
+et al.
+,
+2003
+)
+, computed on normalized Pareto fronts to enable comparability across objectives with different scales.
+Further details are provided in
+App. F
+.
+Results Overview.
+Overall results are summarized in Table
+2
+.
+CDS, with a mean HVR of
+0.9863
+0.9863
+, significantly outperforms the standard MCMC baselines (HMC, MALA) and the strongest competitor, NRPT.
+Thus, it achieves the best trade-offs between cost and sampling accuracy.
+Per-task Analysis.
+Representative trade-off curves are shown in
+Fig. 6
+, with additional results reported in
+App. H
+.
+On the GM task, the proposed method exhibits stable performance across dimensions.
+While CDS and DiGS outperform all samplers in low-dimensional settings (GM-2 and GMNU-2), DiGS performance deteriorates in the 16-dimensional cases (GM-16 and GMNU-16), likely due to the limited efficiency of its Metropolis-within-Gibbs mechanism.
+In contrast, CDS maintains its efficiency and achieves the best trade-offs in thes</p>
+
+<p>e medium-dimensional regimes.
+CDS remains highly competitive on physical system benchmarks.
+On LJ, MALA and HMC achieve the best Pareto fronts (as expected, since local samplers suffice to capture the target distribution in this task).
+CDS performs on par with NRPT and even surpasses it in the high-density evaluation budget regime.
+In contrast, performance on ALDP reveals a clear separation: MALA and HMC degrade severely, while CDS rivals NRPT for the best results, followed by OASMC and DiGS.
+Notably, CDS remains robust despite the unfavorable interaction between the LJ potential (also present in ALDP) and the linear interpolant, which drives interparticle distances toward zero as
+t
+→
+0
+t\to 0
+.
+Even under these adverse conditions, which are induced by the interpolant choice, CDS avoids catastrophic failure and performs remarkably well.
+In the highest-dimensional BNN task (
+D
+=
+550
+D=550
+), CDS significantly outperforms all samplers, demonstrating superior capability in exploring complex, multimodal posteriors.
+Qualitative Analysis.
+We analyze how quantitative performance differences translate into qualitative sample fidelity.
+Fig. 12
+visualizes samples from the GM task using
+2
+⋅
+10
+3
+2\cdot 10^{3}
+density evaluations. Both CDS and DiGS recover all modes with correct proportions, whereas competing methods fail to discover all of them. Energy histograms for the LJ systems (
+Fig. 7
+) indicate that CDS matches the target energy distribution most accurately, closely followed by N</p>
+
+<p>RPT. For the ALDP task, the Ramachandran histograms (
+Fig. 2
+) show that only CDS and NRPT successfully recover the two modes with accurate density allocations, though NRPT captures the central isolated mode more effectively.
+Figure 7
+:
+Comparison of Lennard-Jones (LJ) potential energy histograms.
+For clarity, results for the remaining methods are provided in
+Fig. 13
+. All samplers use a fixed budget of
+2
+⋅
+10
+4
+2\cdot 10^{4}
+and
+2
+⋅
+10
+5
+2\cdot 10^{5}
+density evaluations for the LJ-13 and LJ-55 targets, respectively.
+CDS provides the most accurate match to the ground truth histograms, closely followed by NRPT.
+6
+Conclusions
+In this work, we introduced Conditional Diffusion Sampling (CDS), a training-free framework that combines the robust global exploration of Parallel Tempering (PT) with the efficient local transport of diffusion processes.
+By deriving Conditional Interpolants, we obtained exact, closed-form SDEs that transport samples from an accessible initialization distribution to the target.
+Both theoretical and empirical results show that the initialization cost vanishes at short diffusion times.
+Our extensive evaluation on high-dimensional benchmarks demonstrates that CDS achieves a superior trade-off between sample quality and computational cost.
+Limitations and Future Work.
+While CDS demonstrates robust performance across varying dimensionalities, our experimental analysis highlights the following two limitations.
+First, our results in the LJ and ALDP tasks suggest</p>
+
+<p>插值器的选择对于具有奇异性的密度至关重要，因为它可能会迫使轨迹穿过高能区域的数值不稳定点。
+其次，我们观察到初始化时间 $t_0$ 的选择涉及一个微妙的权衡：过小的值会导致初始化分布 $\nu_{t_0|z}$ 变得极度尖锐，从而阻碍 PT 阶段的通信效率。
+关键是，这些局限性主要源于对线性插值器的特定使用，而不是 CDS 框架本身。
+这开辟了一个极具前景的研究方向</p>
+
+<p>of Machine Learning. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here.
+References
+T. Akhound-Sadegh, J. Lee, J. Bose, V. De Bortoli, A. Doucet, M. M. Bronstein, D. Beaini, S. Ravanbakhsh, K. Neklyudov, and A. Tong (2025)
+Progressive inference-time annealing of diffusion models for sampling from boltzmann densities
+.
+In
+The Thirty-ninth Annual Conference on Neural Information Processing Systems
+,
+Cited by:
+§1
+,
+§4.2
+.
+T. Akhound-Sadegh, J. Rector-Brooks, J. Bose, S. Mittal, P. Lemos, C. Liu, M. Sendera, S. Ravanbakhsh, G. Gidel, Y. Bengio,
+et al.
+(2024)
+Iterated denoising energy matching for sampling from boltzmann densities
+.
+In
+International Conference on Machine Learning
+,
+pp. 760–786
+.
+Cited by:
+§1
+.
+M. Albergo, N. M. Boffi, and E. Vanden-Eijnden (2025)
+Stochastic interpolants: a unifying framework for flows and diffusions
+.
+Journal of Machine Learning Research
+26
+(
+209
+),
+pp. 1–80
+.
+Cited by:
+§1
+,
+§2.2
+,
+§3.1
+,
+§3.3
+.
+M. S. Albergo and E. Vanden-Eijnden (2025)
+NETS: a non-equilibrium transport sampler
+.
+In
+International Conference on Machine Learning
+,
+pp. 1026–1055
+.
+Cited by:
+§1
+,
+§4.2
+.
+M. Arbel, A. Matthews, and A. Doucet (2021)
+Annealed flow transport monte carlo
+.
+In
+International Conference on Machine Learning
+,
+pp. 318–330
+.
+Cited by:
+§4.2
+.
+A. Beskos, N. Pillai, G. Roberts, J. Sanz-Serna, and A. Stuart (2013)
+Optimal tuning of the hybrid monte carlo algorithm
+.
+Cited by:
+Appendix G
+.
+W. Chen,</p>
+
+<p>M. Zhang, B. Paige, J. M. Hernández-Lobato, and D. Barber (2024)
+Diffusive gibbs sampling
+.
+In
+International Conference on Machine Learning
+,
+pp. 7731–7747
+.
+Cited by:
+Appendix F
+,
+4th item
+,
+Appendix G
+,
+§4.2
+,
+§5.3
+.
+P. Del Moral, A. Doucet, and A. Jasra (2006)
+Sequential monte carlo samplers
+.
+Journal of the Royal Statistical Society Series B: Statistical Methodology
+68
+(
+3
+),
+pp. 411–436
+.
+Cited by:
+§4.1
+.
+S. Duane, A. D. Kennedy, B. J. Pendleton, and D. Roweth (1987)
+Hybrid monte carlo
+.
+Physics letters B
+195
+(
+2
+),
+pp. 216–222
+.
+Cited by:
+§2.1
+.
+R. Flamary, N. Courty, A. Gramfort, M. Z. Alaya, A. Boisbunon, S. Chambon, L. Chapel, A. Corenflos, K. Fatras, N. Fournier,
+et al.
+(2021)
+Pot: python optimal transport
+.
+Journal of Machine Learning Research
+22
+(
+78
+),
+pp. 1–8
+.
+Cited by:
+Appendix F
+.
+C. J. Geyer (1991)
+Markov chain Monte Carlo maximum likelihood
+.
+Cited by:
+§1
+.
+A. Gretton, K. M. Borgwardt, M. J. Rasch, B. Schölkopf, and A. Smola (2012)
+A kernel two-sample test
+.
+The journal of machine learning research
+13
+(
+1
+),
+pp. 723–773
+.
+Cited by:
+Appendix F
+.
+V. Grunert da Fonseca, C. M. Fonseca, and A. O. Hall (2001)
+Inferential performance assessment of stochastic optimisers and the attainment function
+.
+In
+International Conference on Evolutionary Multi-Criterion Optimization
+,
+pp. 213–225
+.
+Cited by:
+Appendix G
+.
+W. K. Hastings (1970)
+Monte carlo sampling methods using markov chains and their applications
+.
+Biometrika
+57
+(
+1
+),
+pp. 97–109
+.
+Cited by:
+§2.1
+.
+A. J. Have</p>
+
+<p>ns, B. K. Miller, B. Yan, C. Domingo-Enrich, A. Sriram, D. S. Levine, B. M. Wood, B. Hu, B. Amos, B. Karrer,
+et al.
+(2025)
+Adjoint sampling: highly scalable diffusion samplers via adjoint matching
+.
+In
+International Conference on Machine Learning
+,
+pp. 22204–22237
+.
+Cited by:
+§4.2
+.
+J. He, W. Chen, M. Zhang, D. Barber, and J. M. Hernández-Lobato (2025a)
+Training neural samplers with reverse diffusive kl divergence
+.
+In
+International Conference on Artificial Intelligence and Statistics
+,
+pp. 5167–5175
+.
+Cited by:
+§4.2
+.
+J. He, Y. Du, F. Vargas, D. Zhang, S. Padhy, R. OuYang, C. P. Gomes, and J. M. Hernández-Lobato (2025b)
+No trick, no treat: pursuits and challenges towards simulation-free training of neural samplers
+.
+In
+Frontiers in Probabilistic Inference: Learning meets Sampling
+,
+Cited by:
+§1
+.
+M. D. Hoffman, A. Gelman,
+et al.
+(2014)
+The no-u-turn sampler: adaptively setting path lengths in hamiltonian monte carlo.
+.
+J. Mach. Learn. Res.
+15
+(
+1
+),
+pp. 1593–1623
+.
+Cited by:
+Appendix G
+,
+§H.3
+,
+§5.3
+.
+X. Huang, H. Dong, Y. Hao, Y. A. Ma, and T. Zhang (2024)
+REVERSE diffusion monte carlo
+.
+In
+12th International Conference on Learning Representations, ICLR 2024
+,
+Cited by:
+§4.2
+.
+K. Hukushima and K. Nemoto (1996)
+Exchange Monte Carlo method and application to spin glass simulations
+.
+Journal of the Physical Society of Japan
+65
+(
+6
+),
+pp. 1604–1608
+.
+Cited by:
+§1
+.
+P. Izmailov, S. Vikram, M. D. Hoffman, and A. G. G. Wilson (2021)
+What are bayesian neural network posteriors real</p>
+
+<p>ly like?
+.
+In
+International conference on machine learning
+,
+pp. 4629–4640
+.
+Cited by:
+§E.4
+,
+§1
+.
+J. E. Jones (1924)
+On the determination of molecular fields. from the variation of the viscosity of a gas with temperature
+.
+Proceedings of the Royal Society of London, Series A
+106
+(
+738
+),
+pp. 441–462
+.
+Cited by:
+§E.2
+.
+L. Klein, A. Krämer, and F. Noé (2023)
+Equivariant flow matching
+.
+Advances in Neural Information Processing Systems
+36
+,
+pp. 59886–59910
+.
+Cited by:
+§E.2
+.
+D. P. Kroese, T. Brereton, T. Taimre, and Z. I. Botev (2014)
+Why the monte carlo method is so important today
+.
+Wiley Interdisciplinary Reviews: Computational Statistics
+6
+(
+6
+),
+pp. 386–392
+.
+Cited by:
+§1
+.
+Y. Lipman, R. T. Chen, H. Ben-Hamu, M. Nickel, and M. Le (2023)
+Flow matching for generative modeling
+.
+In
+11th International Conference on Learning Representations, ICLR 2023
+,
+Cited by:
+Appendix B
+,
+Appendix B
+,
+Example 2.1
+,
+§3.2
+.
+Q. Liu and D. Wang (2016)
+Stein variational gradient descent: a general purpose bayesian inference algorithm
+.
+Advances in neural information processing systems
+29
+.
+Cited by:
+Appendix G
+,
+§H.3
+,
+§5.3
+.
+R. J. McCann (1997)
+A convexity principle for interacting gases
+.
+Advances in mathematics
+128
+(
+1
+),
+pp. 153–179
+.
+Cited by:
+§3.1
+.
+R. T. McGibbon, K. A. Beauchamp, M. P. Harrigan, C. Klein, J. M. Swails, C. X. Hernández, C. R. Schwantes, L. Wang, T. J. Lane, and V. S. Pande (2015)
+MDTraj: a modern open library for the analysis of molecular dynamics trajectories
+.
+Biophysic</p>
+
+<p>al journal
+109
+(
+8
+),
+pp. 1528–1532
+.
+Cited by:
+§E.3
+.
+N. Metropolis, A. W. Rosenbluth, M. N. Rosenbluth, A. H. Teller, and E. Teller (1953)
+Equation of state calculations by fast computing machines
+.
+The journal of chemical physics
+21
+(
+6
+),
+pp. 1087–1092
+.
+Cited by:
+§2.1
+.
+S. P. Meyn and R. L. Tweedie (2012)
+Markov chains and stochastic stability
+.
+Springer Science &amp; Business Media
+.
+Cited by:
+§2.1
+,
+§2.1
+.
+L. I. Midgley, V. Stimper, G. N. C. Simm, B. Schölkopf, and J. M. Hernández-Lobato (2023)
+Flow annealed importance sampling bootstrap
+.
+In
+The Eleventh International Conference on Learning Representations
+,
+Cited by:
+§E.1
+,
+§E.3
+,
+§E.3
+,
+§E.3
+,
+Appendix F
+,
+§4.2
+.
+R. M. Neal (2001)
+Annealed importance sampling
+.
+Statistics and computing
+11
+(
+2
+),
+pp. 125–139
+.
+Cited by:
+§4.1
+.
+R. M. Neal (2012)
+Bayesian learning for neural networks
+.
+Vol.
+118
+,
+Springer Science &amp; Business Media
+.
+Cited by:
+§E.4
+.
+F. Noé, S. Olsson, J. Köhler, and H. Wu (2019)
+Boltzmann generators: sampling equilibrium states of many-body systems with deep learning
+.
+Science
+365
+(
+6457
+),
+pp. 1147
+.
+Cited by:
+§E.3
+,
+§1
+.
+N. Nusken, F. Vargas, S. Padhy, and D. Blessing (2024)
+Transport meets variational inference: controlled monte carlo diffusions
+.
+In
+The Twelfth International Conference on Learning Representations
+,
+Cited by:
+§1
+,
+§4.2
+.
+Y. Ollivier (2009)
+Ricci curvature of markov chains on metric spaces
+.
+Journal of Functional Analysis
+256
+(
+3
+),
+pp. 810–864
+.
+Cited by:
+§D.2
+.
+K. B. Petersen, M. S. Ped</p>
+
+<p>ersen,
+et al.
+(2008)
+The matrix cookbook
+.
+Technical University of Denmark
+7
+(
+15
+),
+pp. 510
+.
+Cited by:
+item 1
+.
+S. Rissanen, R. Ouyang, J. He, W. Chen, M. Heinonen, A. Solin, and J. M. Hernández-Lobato (2025)
+Progressive tempering sampler with diffusion
+.
+In
+International Conference on Machine Learning
+,
+pp. 51724–51746
+.
+Cited by:
+§E.3
+,
+Appendix F
+,
+Appendix G
+,
+§4.2
+.
+G. O. Roberts and J. S. Rosenthal (1998)
+Optimal scaling of discrete approximations to langevin diffusions
+.
+Journal of the Royal Statistical Society: Series B (Statistical Methodology)
+60
+(
+1
+),
+pp. 255–268
+.
+Cited by:
+Appendix G
+.
+G. O. Roberts and R. L. Tweedie (1996)
+Exponential convergence of langevin distributions and their discrete approximations
+.
+Bernoulli
+,
+pp. 341–363
+.
+Cited by:
+§2.1
+.
+J. Robnik, R. Cohn-Gordon, and U. Seljak (2025)
+Metropolis adjusted microcanonical hamiltonian monte carlo
+.
+In
+The Thirty-ninth Annual Conference on Neural Information Processing Systems
+,
+Cited by:
+Appendix G
+,
+§H.3
+,
+§5.3
+.
+S. Särkkä and A. Solin (2019)
+Applied stochastic differential equations
+.
+Vol.
+10
+,
+Cambridge University Press
+.
+Cited by:
+§2.2
+,
+§2.2
+.
+A. Smith (2013)
+Sequential monte carlo methods in practice
+.
+Springer Science &amp; Business Media
+.
+Cited by:
+3rd item
+.
+P. E. Smith (1999)
+The alanine dipeptide free energy surface in solution
+.
+The Journal of chemical physics
+111
+(
+12
+),
+pp. 5568–5579
+.
+Cited by:
+§E.3
+,
+§E.3
+.
+Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole (2021)</p>
+
+<p>Score-based generative modeling through stochastic differential equations
+.
+In
+International Conference on Learning Representations
+,
+Cited by:
+Appendix B
+,
+§1
+,
+§2.2
+,
+§3.2
+,
+§3.2
+,
+§3.4
+.
+N. Surjanovic, S. Syed, A. Bouchard-Côté, and T. Campbell (2022)
+Parallel tempering with a variational reference
+.
+Advances in Neural Information Processing Systems
+35
+,
+pp. 565–577
+.
+Cited by:
+Appendix A
+,
+Appendix C
+,
+Appendix C
+.
+N. Surjanovic, S. Syed, A. Bouchard-Côté, and T. Campbell (2024)
+Uniform ergodicity of parallel tempering with efficient local exploration
+.
+arXiv preprint arXiv:2405.11384
+.
+Cited by:
+§1
+.
+S. Syed, A. Bouchard-Côté, K. Chern, and A. Doucet (2024)
+Optimised annealed sequential monte carlo samplers
+.
+arXiv preprint arXiv:2408.12057
+.
+Cited by:
+Appendix C
+,
+3rd item
+,
+Appendix G
+,
+Appendix G
+,
+§2.1
+,
+§4.1
+,
+§5.3
+.
+S. Syed, A. Bouchard-Côté, G. Deligiannidis, and A. Doucet (2022)
+Non-reversible parallel tempering: a scalable highly parallel mcmc scheme
+.
+Journal of the Royal Statistical Society Series B: Statistical Methodology
+84
+(
+2
+),
+pp. 321–350
+.
+Cited by:
+Appendix A
+,
+Appendix A
+,
+2nd item
+,
+Appendix G
+,
+§H.1
+,
+§H.1
+,
+§H.1
+,
+§1
+,
+§5.1
+,
+§5.3
+.
+S. Syed, V. Romaniello, T. Campbell, and A. Bouchard-Côté (2021)
+Parallel tempering on optimized paths
+.
+In
+International Conference on Machine Learning
+,
+pp. 10033–10042
+.
+Cited by:
+Appendix C
+,
+§2.1
+.
+D. Woodard, S. Schmidler, and M. Huber (2009)
+Sufficient Conditions for Torpid Mixing of Parallel and Simulated Tempe</p>
+
+<p>ring
+.
+Electronic Journal of Probability
+14
+,
+pp. 780 – 804
+.
+Cited by:
+§4.1
+.
+L. Zhang, P. Potaptchik, J. He, Y. Du, A. Doucet, F. Vargas, H. Dau, and S. Syed (2025)
+Accelerated parallel tempering via neural transports
+.
+arXiv preprint arXiv:2502.10328
+.
+Cited by:
+§1
+.
+E. Zitzler, L. Thiele, M. Laumanns, C. M. Fonseca, and V. G. Da Fonseca (2003)
+Performance assessment of multiobjective optimizers: an analysis and review
+.
+IEEE Transactions on evolutionary computation
+7
+(
+2
+),
+pp. 117–132
+.
+Cited by:
+Appendix F
+,
+Appendix F
+,
+Appendix F
+,
+§5.3
+,
+Table 2
+,
+Table 2
+.
+Appendix A
+Extended Background: Parallel Tempering
+In this section, we describe Parallel Tempering (PT), a Markov chain Monte Carlo (MCMC) method designed to sample from a complex target distribution
+ν
+\nu
+.
+We follow the exposition by
+Syed
+et al.
+(
+2022
+)
+. Let
+ν
+ref
+{\nu_{\text{ref}}}
+be a reference distribution from which independent and identically distributed (i.i.d.) sampling is tractable.
+In the following, we assume
+ν
+\nu
+and
+ν
+ref
+{\nu_{\text{ref}}}
+have densities
+π
+\pi
+and
+π
+ref
+{\pi_{\text{ref}}}
+, respectively.
+PT constructs a sequence of
+N
++
+1
+N+1
+distributions interpolating between the reference
+π
+ref
+{\pi_{\text{ref}}}
+and the target
+π
+\pi
+. This is governed by an annealing schedule
+ℬ
+N
+=
+{
+0
+=
+β
+0
+&lt;
+β
+1
+&lt;
+⋯
+&lt;
+β
+N
+=
+1
+}
+\mathcal{B}_{N}=\left\{0=\beta_{0}&lt;\beta_{1}&lt;\dots&lt;\beta_{N}=1\right\}
+. The distribution for the
+n
+n
+-th chain,
+π
+β
+n
+\pi_{\beta_{n}}
+, is typically defined as:
+π
+β
+​
+(
+x
+)
+∝
+π
+ref
+​</p>
+
+<p>(
+x
+)
+1
+−
+β
+​
+π
+​
+(
+x
+)
+β
+.
+\pi_{\beta}(x)\propto{\pi_{\text{ref}}}(x)^{1-\beta}\pi(x)^{\beta}.
+(20)
+The algorithm simulates a Markov chain on the expanded state space
+𝒳
+N
++
+1
+\mathcal{X}^{N+1}
+targeting the product distribution:
+Π
+​
+(
+𝐱
+)
+=
+π
+β
+0
+​
+(
+x
+0
+)
+​
+π
+β
+1
+​
+(
+x
+1
+)
+​
+⋯
+​
+π
+β
+N
+​
+(
+x
+N
+)
+,
+\Pi({\mathbf{x}})=\pi_{\beta_{0}}(x^{0})\pi_{\beta_{1}}(x^{1})\cdots\pi_{\beta_{N}}(x^{N}),
+(21)
+where
+𝐱
+=
+(
+x
+0
+,
+…
+,
+x
+N
+)
+{\mathbf{x}}=\left(x^{0},\ldots,x^{N}\right)
+. Each iteration of the PT algorithm consists of two distinct steps: local exploration and communication.
+Local exploration.
+A
+π
+β
+n
+\pi_{\beta_{n}}
+-invariant Markov kernel
+K
+β
+n
+K_{\beta_{n}}
+(e.g., MALA or HMC) is applied to update the state of each chain independently.
+See
+Subsec. D.2
+for an introduction to Markov kernels.
+Communication.
+Swaps between the states of adjacent chains are proposed.
+They are accepted or rejected according to a Metropolis-Hastings criterion.
+The acceptance probability
+α
+n
+​
+(
+𝐱
+)
+\alpha_{n}\left({\mathbf{x}}\right)
+is given by:
+α
+n
+​
+(
+𝐱
+)
+=
+max
+⁡
+{
+1
+,
+π
+β
+n
+​
+(
+x
+n
++
+1
+)
+​
+π
+β
+n
++
+1
+​
+(
+x
+n
+)
+π
+β
+n
+​
+(
+x
+n
+)
+​
+π
+β
+n
++
+1
+​
+(
+x
+n
++
+1
+)
+}
+.
+\alpha_{n}\left({\mathbf{x}}\right)=\max\left\{1,\frac{\pi_{\beta_{n}}(x^{n+1})\pi_{\beta_{n+1}}(x^{n})}{\pi_{\beta_{n}}(x^{n})\pi_{\beta_{n+1}}(x^{n+1})}\right\}.
+(22)
+Efficient communication implies that these swaps are frequently accepted, allowing samples from the tractable
+ν
+ref
+{\nu_{\text{ref}}}
+to traverse the path to
+ν
+\nu
+.
+Non-reversibl</p>
+
+<p>e PT variants alternate between swaps of odd chains and swaps of even chains. They have proven to outperform their reversible counterparts
+(Syed
+et al.
+,
+2022
+)
+. The pseudocode for Non-Reversible PT (NRPT) is shown in
+Alg. 2
+.
+Algorithm 2
+Non-Reversible Parallel Tempering (NRPT)
+0:
+Number of iterations
+K
+K
+, annealing schedule
+ℬ
+N
+\mathcal{B}_{N}
+.
+1:
+Initialize
+𝐱
+0
+=
+(
+x
+0
+0
+,
+x
+0
+1
+,
+…
+,
+x
+0
+N
+)
+{\mathbf{x}}_{0}=(x_{0}^{0},x_{0}^{1},\dots,x_{0}^{N})
+with
+x
+0
+n
+∼
+π
+ref
+x_{0}^{n}\sim{\pi_{\text{ref}}}
+.
+2:
+for
+k
+=
+1
+k=1
+to
+K
+K
+do
+3:
+// Local Exploration
+4:
+for
+n
+=
+0
+n=0
+to
+N
+N
+do
+5:
+x
+k
+n
+←
+Sample from
+​
+K
+β
+n
+​
+(
+x
+k
+−
+1
+n
+,
+⋅
+)
+x_{k}^{n}\leftarrow\text{Sample from }K_{\beta_{n}}(x_{k-1}^{n},\cdot)
+.
+6:
+end
+for
+7:
+// Communication (Swaps)
+8:
+for
+n
+≡
+k
+mod
+2
+n\equiv k\mod 2
+do
+9:
+α
+n
+←
+α
+n
+​
+(
+𝐱
+k
+)
+\alpha_{n}\leftarrow\alpha_{n}\left({\mathbf{x}}_{k}\right)
+// See
+Eq. 22
+10:
+Draw
+u
+∼
+𝒰
+​
+(
+0
+,
+1
+)
+u\sim\mathcal{U}(0,1)
+11:
+if
+u
+&lt;
+α
+n
+u&lt;\alpha_{n}
+then
+12:
+x
+k
+n
++
+1
+,
+x
+k
+n
+←
+x
+k
+n
+,
+x
+k
+n
++
+1
+x_{k}^{n+1},x_{k}^{n}\leftarrow x_{k}^{n},x_{k}^{n+1}
+13:
+end
+if
+14:
+end
+for
+15:
+end
+for
+16:
+return
+(
+𝐱
+1
+,
+…
+,
+𝐱
+K
+)
+\left({\mathbf{x}}_{1},\ldots,{\mathbf{x}}_{K}\right)
+Round Trips.
+A round trip is defined as the event where a specific particle, initialized at the reference distribution (index
+0
+), traverses up to the target distribution (index
+N
+N
+) and returns to the reference.
+The round trip rate
+τ
+N
+\tau_{N}
+is the frequency of round trips over
+K
+K
+iterations. A higher round tri</p>
+
+<p>p rate indicates that the chains are exchanging information efficiently and that the target distribution is being effectively explored by samples originating from the reference.
+Global Communication Barrier (GCB).
+The performance of PT can be analyzed in the asymptotic limit where the number of chains
+N
+→
+∞
+N\to\infty
+.
+In this regime, the efficiency is characterized by the Global Communication Barrier (GCB), denoted
+Λ
+​
+(
+ν
+ref
+,
+ν
+)
+\Lambda({\nu_{\text{ref}}},\nu)
+.
+It is defined as the accumulated local communication barriers across the path:
+Λ
+​
+(
+ν
+ref
+,
+ν
+)
+=
+1
+2
+​
+∫
+0
+1
+λ
+​
+(
+β
+)
+​
+d
+β
+,
+λ
+​
+(
+β
+)
+=
+∫
+|
+l
+​
+(
+x
+)
+−
+l
+​
+(
+y
+)
+|
+​
+π
+β
+​
+(
+x
+)
+​
+π
+β
+​
+(
+y
+)
+​
+d
+x
+​
+d
+y
+,
+\Lambda({\nu_{\text{ref}}},\nu)=\frac{1}{2}\int_{0}^{1}\lambda\left(\beta\right)\,{\mathrm{d}}\beta,\quad\lambda\left(\beta\right)=\int\left|l(x)-l(y)\right|\pi_{\beta}(x)\pi_{\beta}(y)\,{\mathrm{d}}x\,{\mathrm{d}}y,
+(23)
+where
+l
+​
+(
+⋅
+)
+l(\cdot)
+is the log-likelihood ratio
+l
+​
+(
+⋅
+)
+=
+log
+⁡
+π
+​
+(
+⋅
+)
+−
+log
+⁡
+π
+ref
+​
+(
+⋅
+)
+l(\cdot)=\log\pi(\cdot)-\log{\pi_{\text{ref}}}(\cdot)
+.
+The asymptotic round trip rate converges to a value determined by the GCB:
+lim
+N
+→
+∞
+τ
+N
+=
+1
+2
++
+2
+​
+Λ
+​
+(
+ν
+ref
+,
+ν
+)
+.
+\lim_{N\to\infty}\tau_{N}=\frac{1}{2+2\Lambda({\nu_{\text{ref}}},\nu)}.
+(24)
+Consequently, a lower GCB indicates higher communication efficiency and a faster restart rate.
+From
+(Surjanovic
+et al.
+,
+2022
+)
+, the GCB is upper bounded by the square root of the symmetric KL divergence:
+Λ
+​
+(
+ν
+ref
+,
+ν
+)
+≤
+1
+2
+​
+SKL
+⁡</p>
+
+<p>(
+ν
+ref
+,
+ν
+)
+,
+\Lambda({\nu_{\text{ref}}},\nu)\leq\sqrt{\frac{1}{2}{\operatorname{SKL}}\left({\nu_{\text{ref}}},\nu\right)},
+(25)
+where
+SKL
+⁡
+(
+ν
+ref
+,
+ν
+)
+=
+KL
+⁡
+(
+ν
+ref
+,
+ν
+)
++
+KL
+⁡
+(
+ν
+,
+ν
+ref
+)
+{\operatorname{SKL}}\left({\nu_{\text{ref}}},\nu\right)={\operatorname{KL}}\left({\nu_{\text{ref}}},\nu\right)+{\operatorname{KL}}\left(\nu,{\nu_{\text{ref}}}\right)
+.
+Appendix B
+Conditional Flows
+Flows.
+When the diffusion coefficient in
+Eq. 3
+vanishes,
+σ
+t
+=
+0
+\sigma_{t}=0
+, the SDE in
+Eq. 3
+reduces to the ordinary differential equation (ODE):
+d
+​
+x
+t
+=
+u
+t
+​
+(
+x
+t
+)
+​
+d
+​
+t
+,
+{\mathrm{d}}x_{t}=u_{t}(x_{t})\,{\mathrm{d}}t,
+(26)
+where
+(
+t
+,
+x
+)
+↦
+a
+t
+​
+(
+x
+)
+∈
+ℝ
+D
+(t,x)\mapsto a_{t}(x)\in{\mathbb{R}}^{D}
+is the velocity vector field.
+In this case, the FPK equation
+Eq. 4
+degenerates into the continuity equation
+∂
+∂
+t
+​
+p
+t
+=
+−
+div
+⁡
+(
+p
+t
+​
+u
+t
+)
+,
+\frac{\partial}{\partial t}p_{t}=-\operatorname{div}\left(p_{t}u_{t}\right),
+(27)
+which characterizes the evolution of densities transported by the deterministic flow induced by
+u
+t
+u_{t}
+.
+As in diffusions, one can choose the velocity field
+u
+t
+u_{t}
+such that
+p
+0
+=
+π
+ref
+p_{0}={\pi_{\text{ref}}}
+, and
+p
+1
+=
+π
+p_{1}=\pi
+(Lipman
+et al.
+,
+2023
+)
+. Thus, the ODE
+Eq. 26
+defines a continuous probabilistic bridge between
+π
+ref
+{\pi_{\text{ref}}}
+and
+π
+\pi
+.
+The Conditional ODE.
+For a reference variable
+z
+∼
+ν
+ref
+z\sim{\nu_{\text{ref}}}
+, the interpolant defined in
+Eq. 7
+describes a time-dependent probability path.
+This path can be characteri</p>
+
+<p>zed by an ODE associated with the following velocity field:
+d
+​
+x
+t
+=
+u
+t
+∣
+z
+​
+(
+x
+t
+)
+​
+d
+​
+t
+,
+\displaystyle{\mathrm{d}}x_{t}=u_{t\mid z}(x_{t})\,{\mathrm{d}}t,
+(28)
+u
+t
+∣
+z
+​
+(
+x
+)
+=
+∂
+F
+t
+∣
+z
+∂
+t
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+.
+\displaystyle u_{t\mid z}(x)=\frac{\partial F_{t\mid z}}{\partial t}\left(F_{t\mid z}^{-1}(x)\right).
+(29)
+This vector field is well-defined for
+t
+∈
+(
+0
+,
+1
+]
+t\in(0,1]
+.
+By construction, if
+{
+x
+t
+}
+\{x_{t}\}
+solves this ODE, its marginal density at time
+t
+t
+is exactly
+π
+t
+∣
+z
+\pi_{t\mid z}
+, as the density path satisfies the associated continuity equation, see
+Subsec. D.1
+.
+Example B.1
+.
+For the linear interpolant introduced in
+Eq. 6
+, the vector field takes the simple form:
+u
+t
+∣
+z
+​
+(
+x
+)
+=
+x
+−
+z
+t
+.
+u_{t\mid z}(x)=\frac{x-z}{t}.
+(30)
+The boundary conditions defining the interpolant make it impossible for
+F
+t
+∣
+z
+F_{t\mid z}
+to be invertible at
+t
+=
+0
+t=0
+.
+As a consequence, the vector field
+u
+t
+∣
+z
+u_{t\mid z}
+generally exhibits a singularity at
+t
+=
+0
+t=0
+, causing solutions to diverge as
+t
+→
+0
+t\to 0
+.
+This mirrors the boundary singularities observed in diffusion models and flow matching, where vanishing noise variance leads to unbounded vector fields or scores
+(Song
+et al.
+,
+2021
+; Lipman
+et al.
+,
+2023
+)
+.
+Consequently, numerical integration cannot proceed from
+t
+=
+0
+t=0
+. Instead, one must initialize the process at a initial time
+t
+0
+&gt;
+0
+t_{0}&gt;0
+with a sample
+x
+t
+0
+∼
+ν
+t
+0
+∣
+z
+x_{t_{0}}\sim\nu_{t_{0}\mid z}
+.
+Crucially, for the linear interpolan</p>
+
+<p>t, the trajectory for
+t
+&gt;
+t
+0
+t&gt;t_{0}
+is entirely deterministic given
+x
+t
+0
+x_{t_{0}}
+and
+z
+z
+, as it is given by the integration of the velocity field in
+Eq. 26
+.
+This reveals a limitation of the ODE formulation: the target distribution
+ν
+\nu
+influences the process
+only
+through the initial sample
+x
+t
+0
+x_{t_{0}}
+. Once initialized, the dynamics do not utilize the target information to refine the trajectory.
+Appendix C
+Optimizing the Initial Time
+t
+0
+t_{0}
+A critical design choice within the proposed CDS framework is the selection of the initial time instant,
+t
+0
+t_{0}
+, used to sample from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+and initialize the integration. In this section, we propose an optimization-based approach to determine this value.
+We propose to minimize the Symmetric Kullback-Leibler (SKL) divergence between the reference distribution
+ν
+ref
+{\nu_{\text{ref}}}
+and the target
+ν
+t
+∣
+z
+\nu_{t\mid z}
+with respect to
+t
+t
+. The SKL is defined as:
+SKL
+⁡
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
+=
+KL
+⁡
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
++
+KL
+⁡
+(
+ν
+t
+∣
+z
+,
+ν
+ref
+)
+,
+\operatorname{SKL}\left({\nu_{\text{ref}}},\nu_{t\mid z}\right)=\operatorname{KL}\left({\nu_{\text{ref}}},\nu_{t\mid z}\right)+\operatorname{KL}\left(\nu_{t\mid z},{\nu_{\text{ref}}}\right),
+(31)
+where
+KL
+⁡
+(
+⋅
+,
+⋅
+)
+\operatorname{KL}(\cdot,\cdot)
+denotes the standard Kullback-Leibler divergence. Consequently, we define the optimal start time
+t
+0
+t_{0}
+as:
+t
+0
+=
+arg
+⁡
+min
+t
+⁡
+SKL
+⁡
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
+.
+t_{0}=\arg\min_{t}\operatorname{SKL}\left({\nu_{\text{re</p>
+
+<p>f}}},\nu_{t\mid z}\right).
+(32)
+This criterion is motivated by the relationship between the SKL and the Global Communication Barrier (GCB), denoted as
+Λ
+​
+(
+⋅
+,
+⋅
+)
+\Lambda(\cdot,\cdot)
+. As shown in
+(Surjanovic
+et al.
+,
+2022
+)
+, the SKL provides an upper bound on the GCB:
+Λ
+​
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
+≤
+1
+2
+​
+SKL
+⁡
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
+.
+\Lambda\left({\nu_{\text{ref}}},\nu_{t\mid z}\right)\leq\sqrt{\frac{1}{2}\operatorname{SKL}\left({\nu_{\text{ref}}},\nu_{t\mid z}\right)}.
+(33)
+In annealing-based methods such as Parallel Tempering (PT) and Optimized Sequential Monte Carlo (OSMC)
+(Syed
+et al.
+,
+2021
+,
+2024
+)
+, the GCB serves as a global measure of transport difficulty along the annealing path. Lower values imply easier communication and higher sampling efficiency.
+Since direct minimization of the GCB is often intractable, the SKL serves as an effective and differentiable proxy
+(Surjanovic
+et al.
+,
+2022
+)
+.
+In CDS, when PT or OSMC is used in the first stage, minimizing this objective amounts to maximizing the communication efficiency of PT or OSMC.
+Next, we obtain closed-form expressions for the derivative of SKL with respect to
+t
+t
+and propose an online optimization strategy.
+C.1
+Online optimization
+Since the SKL divergence is differentiable with respect to
+t
+t
+, we can employ stochastic optimization to find the optimal value
+t
+0
+t_{0}
+. The gradient with respect to
+t
+t
+is given below.
+Lemma C.1
+.
+The derivative of the SKL with respect to
+t
+t
+is given by:
+∂
+∂
+t
+​
+SKL
+⁡
+(
+ν
+ref
+,
+ν</p>
+
+<p>t
+∣
+z
+)
+=
+𝔼
+x
+∼
+ν
+t
+∣
+z
+​
+[
+(
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+)
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+π
+ref
+​
+(
+x
+)
+]
+−
+𝔼
+x
+∼
+ν
+ref
+​
+[
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+]
+.
+\frac{\partial}{\partial t}\operatorname{SKL}({\nu_{\text{ref}}},\nu_{t\mid z})=\mathbb{E}_{x\sim\nu_{t\mid z}}\left[\left(\frac{\partial}{\partial t}\log\pi_{t\mid z}(x)\right)\log\frac{\pi_{t\mid z}(x)}{{\pi_{\text{ref}}}(x)}\right]-\mathbb{E}_{x\sim{\nu_{\text{ref}}}}\left[\frac{\partial}{\partial t}\log\pi_{t\mid z}(x)\right].
+(34)
+Proof.
+Let
+J
+​
+(
+t
+)
+=
+SKL
+⁡
+(
+ν
+ref
+,
+ν
+t
+∣
+z
+)
+J(t)=\operatorname{SKL}({\nu_{\text{ref}}},\nu_{t\mid z})
+. We decompose this into the forward and reverse KL divergences:
+J
+​
+(
+t
+)
+=
+∫
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+π
+ref
+​
+(
+x
+)
+​
+d
+​
+x
+⏟
+A
+t
++
+∫
+π
+ref
+​
+(
+x
+)
+​
+log
+⁡
+π
+ref
+​
+(
+x
+)
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+d
+​
+x
+⏟
+B
+t
+.
+J(t)=\underbrace{\int\pi_{t\mid z}(x)\log\frac{\pi_{t\mid z}(x)}{{\pi_{\text{ref}}}(x)}\,dx}_{A_{t}}+\underbrace{\int{\pi_{\text{ref}}}(x)\log\frac{{\pi_{\text{ref}}}(x)}{\pi_{t\mid z}(x)}\,dx}_{B_{t}}.
+(35)
+For
+A
+t
+A_{t}
+, we differentiate under the integral sign and use the identity
+∂
+∂
+t
+​
+π
+t
+∣
+z
+=
+π
+t
+∣
+z
+​
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+\frac{\partial}{\partial t}\pi_{t\mid z}=\pi_{t\mid z}\frac{\partial}{\partial t}\log\pi_{t\mid z}
+:
+∂
+∂
+t
+​
+A
+t
+=
+∫
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+(
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+)
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+π
+ref
+​
+(
+x
+)
+​
+d
+​
+x
++
+∫
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+𝑑
+x
+⏟
+=
+∂
+∂
+t
+​
+∫
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+𝑑
+x
+⁣
+=
+0
+.
+\frac{\partial}{\partial t}A_</p>
+
+<p>{t}=\int\pi_{t\mid z}(x)\left(\frac{\partial}{\partial t}\log\pi_{t\mid z}(x)\right)\log\frac{\pi_{t\mid z}(x)}{{\pi_{\text{ref}}}(x)}\,dx+\underbrace{\int\pi_{t\mid z}(x)\frac{\partial}{\partial t}\log\pi_{t\mid z}(x)\,dx}_{=\frac{\partial}{\partial t}\int\pi_{t\mid z}(x)dx=0}.
+(36)
+因此，
+∂
+∂
+t
+​
+A
+t
+=
+𝔼
+x
+∼
+ν
+t
+∣
+z
+​
+[
+(
+∂
+∂
+t
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+)
+​
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+π
+ref
+​
+(
+x
+)
+]
+\frac{\partial}{\partial t}A_{t}=\mathbb{E}_{x\sim\nu_{t\mid z}}\left[\left(\frac{\partial}{\partial t}\log\pi_{t\mid z}(x)\right)\log\frac{\pi_{t\mid z}(x)}{{\pi_{\text{ref}}}(x)}\right]
+。
+对于
+B
+t
+B_{t}
+，由于
+π
+ref
+{\pi_{\text{ref}}}
+与
+t
+t
+无关：
+∂
+∂
+t
+​
+B
+t
+=
+∫
+π
+ref
+​
+(
+x
+)
+​
+∂
+∂
+t</p>
+
+<p>og
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+π
+ref
+​
+(
+x
+)
+]
+−
+𝔼
+x
+∼
+ν
+ref
+​
+[
+s
+t
+∣
+z
+​
+(
+x
+)
+]
+.
+\frac{\partial}{\partial t}\operatorname{SKL}({\nu_{\text{ref}}},\nu_{t\mid z})=\mathbb{E}_{x\sim\nu_{t\mid z}}\left[s_{t\mid z}(x)\log\frac{\pi_{t\mid z}(x)}{{\pi_{\text{ref}}}(x)}\right]-\mathbb{E}_{x\sim{\nu_{\text{ref}}}}\left[s_{t\mid z}(x)\right].
+(38)
+where
+s
+t
+∣
+z
+​
+(
+x
+)
+=
+−
+1
+t
+2
+​
+(
+x
+−
+z
+)
+⊤
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+−
+d
+t
+s_{t\mid z}(x)=-\frac{1}{t^{2}}(x-z)^{\top}\nabla\log\pi_{t\mid z}\left(x\right)-\frac{d}{t}
+.
+In practice, this gradient can be used within an online stochastic gradient descent scheme.
+Starting from an initial guess
+t
+0
+t_{0}
+, we run the first-stage sampler (e.g., PT or OASMC) and use the generated particles from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+to estimate the expectations and update
+t
+t
+iteratively.
+This optimization can be performed during the burn-in phase of the initial sampler and continued until the first stage of CDS is completed.
+Importantly, this procedure incurs no additional target density evaluations, as all required gradients and density values can be cached for each particle.
+Appendix D
+Theoretical Results
+D.1
+Conditional Interpolants
+Setting.
+Let
+F
+:
+[
+0
+,
+1
+]
+×
+𝒳
+×
+𝒳
+→
+𝒳
+F\colon[0,1]\times\mathcal{X}\times\mathcal{X}\to\mathcal{X}
+be a differentiable map denoted as
+F
+t
+​
+(
+z
+,
+x
+)
+=
+F
+​
+(
+t
+,
+z
+,
+x
+)
+F_{t}(z,x)=F(t,z,x)
+, satisfying the boundary conditions
+F
+0
+​
+(
+z
+,
+x
+)
+=
+z
+F_{0}(z,x)=z
+and
+F
+1
+​
+(
+z
+,
+x
+)
+=
+x
+F_{1}(z,x)=x
+.
+For a fixed
+z
+∈
+𝒳
+z\in\mathcal</p>
+
+<p>{X}
+, we define the map
+F
+t
+∣
+z
+:
+𝒳
+→
+𝒳
+F_{t\mid z}\colon\mathcal{X}\to\mathcal{X}
+as
+F
+t
+∣
+z
+​
+(
+x
+)
+=
+F
+t
+​
+(
+z
+,
+x
+)
+.
+F_{t\mid z}(x)=F_{t}(z,x).
+(39)
+We assume that
+F
+t
+∣
+z
+F_{t\mid z}
+is a diffeomorphism (i.e., invertible with a differentiable inverse).
+Let
+ν
+\nu
+be a probability measure defined on
+𝒳
+\mathcal{X}
+. For a fixed
+z
+∈
+𝒳
+z\in\mathcal{X}
+, define the interpolated process:
+x
+t
+=
+F
+t
+∣
+z
+​
+(
+x
+)
+,
+x
+∼
+ν
+.
+x_{t}=F_{t\mid z}(x),\quad x\sim\nu.
+(40)
+Let
+ν
+t
+∣
+z
+\nu_{t\mid z}
+denote the distribution of the random variable
+x
+t
+x_{t}
+conditioned on
+z
+z
+. Formally, this is the pushforward measure:
+ν
+t
+∣
+z
+=
+F
+t
+∣
+z
+​
+#
+​
+ν
+.
+\nu_{t\mid z}=F_{t\mid z}\#\nu.
+(41)
+Lemma D.1
+(Convergence to Dirac mass)
+.
+Assume that
+𝒳
+\mathcal{X}
+is a separable normed vector space.
+Assume the following regularity conditions:
+1.
+ν
+\nu
+has a finite first-order moment.
+2.
+For
+ν
+\nu
+-almost all
+x
+x
+,
+lim
+t
+→
+0
+‖
+F
+t
+∣
+z
+​
+(
+x
+)
+−
+z
+‖
+=
+0
+\lim_{t\to 0}\|F_{t\mid z}(x)-z\|=0
+.
+3.
+There exists an integrable function
+g
+:
+𝒳
+→
+[
+0
+,
++
+∞
+)
+g:\mathcal{X}\to\left[0,+\infty\right)
+such that for all sufficiently small
+t
+t
+,
+‖
+F
+t
+∣
+z
+​
+(
+x
+)
+−
+z
+‖
+≤
+g
+​
+(
+x
+)
+\|F_{t\mid z}(x)-z\|\leq g(x)
+.
+Then, the conditional distribution
+ν
+t
+∣
+z
+\nu_{t\mid z}
+converges to the Dirac mass
+δ
+z
+\delta_{z}
+in the Wasserstein-1 distance:
+lim
+t
+→
+0
+W
+1
+​
+(
+δ
+z
+,
+ν
+t
+∣
+z
+)
+=
+0
+,
+\lim_{t\to 0}W_{1}(\delta_{z},\nu_{t\mid z})=0,
+(42)
+Proof.
+In any normed space, the Wasserstein-1 distance between a Dirac mass
+δ
+z
+\delta_{z}
+and a</p>
+
+<p>n arbitrary probability measure
+μ
+\mu
+is given exactly by the expected distance to
+z
+z
+:
+W
+1
+​
+(
+δ
+z
+,
+μ
+)
+=
+∫
+𝒳
+‖
+z
+−
+y
+‖
+​
+μ
+​
+(
+d
+​
+y
+)
+.
+W_{1}(\delta_{z},\mu)=\int_{\mathcal{X}}\|z-y\|\,\mu({\mathrm{d}}y).
+(43)
+Substituting
+μ
+=
+ν
+t
+∣
+z
+\mu=\nu_{t\mid z}
+and applying the change of variables formula:
+W
+1
+​
+(
+δ
+z
+,
+ν
+t
+∣
+z
+)
+=
+∫
+𝒳
+‖
+z
+−
+F
+t
+∣
+z
+​
+(
+x
+)
+‖
+​
+ν
+​
+(
+d
+​
+x
+)
+.
+W_{1}(\delta_{z},\nu_{t\mid z})=\int_{\mathcal{X}}\|z-F_{t\mid z}(x)\|\,\nu({\mathrm{d}}x).
+(44)
+We analyze the limit of this integral as
+t
+→
+0
+t\to 0
+.
+By the first regularity condition, the integrand converges to 0 for almost all
+x
+x
+.
+By the second regularity condition, the integrand is bounded by the integrable function
+g
+​
+(
+x
+)
+g(x)
+.
+Therefore, by the Dominated Convergence Theorem:
+lim
+t
+→
+0
+∫
+𝒳
+‖
+z
+−
+F
+t
+∣
+z
+​
+(
+x
+)
+‖
+​
+μ
+​
+(
+d
+​
+x
+)
+=
+0
+.
+\lim_{t\to 0}\int_{\mathcal{X}}\|z-F_{t\mid z}(x)\|\,\mu({\mathrm{d}}x)=0.
+(45)
+∎
+Lemma D.2
+(Conditional Density)
+.
+Let
+π
+\pi
+be the density of
+ν
+\nu
+. Then, the density of
+ν
+t
+∣
+z
+\nu_{t\mid z}
+is given by:
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+​
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+,
+\pi_{t\mid z}(x)=\left|\det\mathrm{J}F_{t\mid z}\big(F_{t\mid z}^{-1}(x)\big)\right|^{-1}\pi\big(F_{t\mid z}^{-1}(x)\big),
+(46)
+where
+J
+​
+F
+t
+∣
+z
+\mathrm{J}F_{t\mid z}
+denotes the Jacobian matrix of the map
+F
+t
+∣
+z
+F_{t\mid z}
+.
+Proof.
+Let
+A
+⊆
+𝒳
+A\subseteq\mathcal{X}
+be an arbitrary measurable set. Let
+π
+t
+∣
+z
+\pi_{t\mid z}
+be the density of
+ν
+t
+∣
+z
+\nu_{t\mid z</p>
+
+<p>}
+. By the definition of the pushforward measure, we relate the integrals over the densities as follows:
+∫
+A
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+d
+x
+=
+ν
+t
+∣
+z
+​
+(
+A
+)
+=
+ν
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+A
+)
+)
+=
+∫
+F
+t
+∣
+z
+−
+1
+​
+(
+A
+)
+π
+​
+(
+y
+)
+​
+d
+y
+.
+\int_{A}\pi_{t\mid z}(x)\,\mathrm{d}x=\nu_{t\mid z}(A)=\nu\left(F_{t\mid z}^{-1}(A)\right)=\int_{F_{t\mid z}^{-1}(A)}\pi(y)\,\mathrm{d}y.
+(47)
+We apply the change of variables formula to the integral on the right-hand side. Let
+x
+=
+F
+t
+∣
+z
+​
+(
+y
+)
+x=F_{t\mid z}(y)
+.
+By the Inverse Function Theorem, it holds:
+|
+det
+J
+​
+(
+F
+t
+∣
+z
+−
+1
+)
+​
+(
+x
+)
+|
+=
+|
+det
+(
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+)
+−
+1
+|
+=
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+.
+\left|\det\mathrm{J}(F_{t\mid z}^{-1})(x)\right|=\left|\det\left(\mathrm{J}F_{t\mid z}(F_{t\mid z}^{-1}(x))\right)^{-1}\right|=\left|\det\mathrm{J}F_{t\mid z}(F_{t\mid z}^{-1}(x))\right|^{-1}.
+(48)
+Substituting this back into the integral and applying the change of variables formula, we obtain:
+∫
+A
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+d
+x
+=
+∫
+F
+t
+∣
+z
+−
+1
+​
+(
+A
+)
+π
+​
+(
+y
+)
+​
+d
+y
+=
+∫
+A
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+​
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+​
+d
+x
+.
+\int_{A}\pi_{t\mid z}(x)\,\mathrm{d}x=\int_{F_{t\mid z}^{-1}(A)}\pi(y)\,\mathrm{d}y=\int_{A}\pi\left(F_{t\mid z}^{-1}(x)\right)\left|\det\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right|^{-1}\,\mathrm{d}x.
+(49)
+Since this equality holds for any measurable set
+A
+A
+, the integrands must be equal almost everywhere. Therefore:
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+π
+​
+(
+F
+t
+∣
+z</p>
+
+<p>−
+1
+​
+(
+x
+)
+)
+​
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+.
+\pi_{t\mid z}(x)=\pi\left(F_{t\mid z}^{-1}(x)\right)\left|\det\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right|^{-1}.
+(50)
+∎
+Lemma D.3
+(Conditional Score)
+.
+Let
+π
+\pi
+be the density of
+ν
+\nu
+, and assume it to be differentiable and strictly positive. Then,
+π
+t
+∣
+z
+\pi_{t\mid z}
+is differentiable and its score is given by:
+∇
+x
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+[
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+−
+⊤
+​
+∇
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+−
+∇
+x
+log
+⁡
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+x
+)
+|
+.
+\nabla_{x}\log\pi_{t\mid z}(x)=\left[\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right]^{-\top}\nabla\log\pi\left(F_{t\mid z}^{-1}(x)\right)-\nabla_{x}\log\left|\det\mathrm{J}F_{t\mid z}(x)\right|.
+(51)
+Proof.
+From the result of the previous Lemma, the density
+π
+t
+∣
+z
+\pi_{t\mid z}
+is given by:
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+​
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+−
+1
+.
+\pi_{t\mid z}(x)=\pi\left(F_{t\mid z}^{-1}(x)\right)\left|\det\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right|^{-1}.
+(52)
+Taking the logarithm of both sides, we obtain:
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+−
+log
+⁡
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+.
+\log\pi_{t\mid z}(x)=\log\pi\left(F_{t\mid z}^{-1}(x)\right)-\log\left|\det\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right|.
+(53)
+We now compute the gradient with respect to
+x
+x
+, denoted by
+∇
+x
+\nabla_{x}
+. Applying the gradient</p>
+
+<p>operator to the equation gives:
+∇
+x
+log
+⁡
+π
+t
+∣
+z
+​
+(
+x
+)
+=
+∇
+x
+[
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+−
+∇
+x
+[
+log
+⁡
+|
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+|
+]
+.
+\nabla_{x}\log\pi_{t\mid z}(x)=\nabla_{x}\left[\log\pi\left(F_{t\mid z}^{-1}(x)\right)\right]-\nabla_{x}\left[\log\left|\det\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right|\right].
+(54)
+All we need to do is to develop the right-hand side. Let
+y
+=
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+y=F_{t\mid z}^{-1}(x)
+. By the chain rule:
+∇
+x
+[
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+=
+(
+J
+​
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+⊤
+​
+∇
+y
+log
+⁡
+π
+​
+(
+y
+)
+|
+y
+=
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+.
+\nabla_{x}\left[\log\pi\left(F_{t\mid z}^{-1}(x)\right)\right]=\left(\mathrm{J}F_{t\mid z}^{-1}(x)\right)^{\top}\nabla_{y}\log\pi(y)\Big|_{y=F_{t\mid z}^{-1}(x)}.
+(55)
+The Inverse Function Theorem yields:
+J
+​
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+=
+[
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+−
+1
+.
+\mathrm{J}F_{t\mid z}^{-1}(x)=\left[\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right]^{-1}.
+(56)
+Substituting this back into the gradient expression and using the property
+(
+A
+−
+1
+)
+⊤
+=
+A
+−
+⊤
+(A^{-1})^{\top}=A^{-\top}
+:
+∇
+x
+[
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+=
+[
+J
+​
+F
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+]
+−
+⊤
+​
+∇
+log
+⁡
+π
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+.
+\nabla_{x}\left[\log\pi\left(F_{t\mid z}^{-1}(x)\right)\right]=\left[\mathrm{J}F_{t\mid z}\left(F_{t\mid z}^{-1}(x)\right)\right]^{-\top}\nabla\log\pi\left(F_{t\mid z}^{-1}(x)\right).
+(57)
+∎
+Proposition D.4
+(Continuity and FPK Equations)
+.
+Assume</p>
+
+<p>that
+F
+F
+is
+C
+1
+C^{1}
+in
+t
+t
+and
+C
+2
+C^{2}
+in
+x
+x
+.
+Let
+u
+t
+∣
+z
+:
+𝒳
+→
+𝒳
+u_{t\mid z}\colon\mathcal{X}\to\mathcal{X}
+be defined by:
+u
+t
+∣
+z
+​
+(
+x
+)
+=
+(
+∂
+F
+t
+∣
+z
+∂
+t
+)
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+)
+.
+u_{t\mid z}(x)=\left(\frac{\partial F_{t\mid z}}{\partial t}\right)\left(F_{t\mid z}^{-1}(x)\right).
+(58)
+1.
+The density
+π
+t
+∣
+z
+\pi_{t\mid z}
+satisfies the following continuity equation:
+∂
+∂
+t
+​
+π
+t
+∣
+z
+=
+−
+div
+⁡
+(
+π
+t
+∣
+z
+​
+u
+t
+∣
+z
+)
+,
+\frac{\partial}{\partial t}\pi_{t\mid z}=-\operatorname{div}\left(\pi_{t\mid z}u_{t\mid z}\right),
+(59)
+2.
+Furthermore,
+π
+t
+∣
+z
+\pi_{t\mid z}
+satisfies the following FPK equation:
+∂
+∂
+t
+​
+π
+t
+∣
+z
+=
+−
+div
+⁡
+(
+π
+t
+∣
+z
+​
+a
+t
+∣
+z
+)
++
+σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
+,
+\frac{\partial}{\partial t}\pi_{t\mid z}=-\operatorname{div}\left(\pi_{t\mid z}a_{t\mid z}\right)+\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z},
+(60)
+where
+a
+t
+∣
+z
+=
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+a_{t\mid z}=u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\log\pi_{t\mid z}
+.
+Proof.
+1.
+First, we observe that, as a consequence of change of variables formula, the following identity holds for any
+y
+∈
+𝒳
+y\in\mathcal{X}
+:
+π
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+​
+J
+t
+​
+(
+y
+)
+=
+π
+​
+(
+y
+)
+,
+\pi_{t\mid z}\left(F_{t\mid z}(y)\right)J_{t}(y)=\pi(y),
+(61)
+where
+J
+t
+​
+(
+y
+)
+=
+det
+J
+​
+F
+t
+∣
+z
+​
+(
+y
+)
+J_{t}(y)=\det\mathrm{J}F_{t\mid z}(y)
+.
+We differentiate with respect to
+t
+t
+:
+[
+∂
+∂
+t
+​
+(
+π
+t
+∣
+z
+∘
+F
+t
+∣
+z
+)
+​
+(
+y
+)
+]
+​
+J
+t
+​
+(
+y
+)
++
+π
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+​
+[
+∂
+∂
+t
+​
+J
+t
+​
+(
+y
+)
+]
+=
+0
+.
+\left[\frac{\partial}{\partial t}</p>
+
+<p>\left(\pi_{t\mid z}\circ F_{t\mid z}\right)\left(y\right)\right]J_{t}(y)+\pi_{t\mid z}\left(F_{t\mid z}(y)\right)\left[\frac{\partial}{\partial t}J_{t}(y)\right]=0.
+(62)
+We analyze the first term. Applying the chain rule:
+∂
+∂
+t
+​
+(
+π
+t
+∣
+z
+∘
+F
+t
+∣
+z
+)
+​
+(
+y
+)
+=
+∂
+π
+t
+∣
+z
+∂
+t
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
++
+∇
+π
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+⋅
+u
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+,
+\frac{\partial}{\partial t}\left(\pi_{t\mid z}\circ F_{t\mid z}\right)\left(y\right)=\frac{\partial\pi_{t\mid z}}{\partial t}\left(F_{t\mid z}\left(y\right)\right)+\nabla\pi_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\cdot u_{t\mid z}\left(F_{t\mid z}\left(y\right)\right),
+(63)
+where we have used
+∂
+F
+t
+∣
+z
+∂
+t
+​
+(
+y
+)
+=
+u
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+\frac{\partial F_{t\mid z}}{\partial t}(y)=u_{t\mid z}(F_{t\mid z}(y))
+.
+For the second term, we use Jacobi’s formula for the derivative of a determinant
+(Petersen
+et al.
+,
+2008
+)
+:
+∂
+∂
+t
+​
+det
+(
+A
+t
+)
+=
+det
+(
+A
+t
+)
+​
+tr
+⁡
+(
+A
+t
+−
+1
+​
+∂
+∂
+t
+​
+A
+t
+)
+\frac{\partial}{\partial t}\det(A_{t})=\det(A_{t})\operatorname{tr}\left(A_{t}^{-1}\frac{\partial}{\partial t}A_{t}\right)
+(64)
+Taking
+A
+t
+=
+J
+​
+F
+t
+∣
+z
+A_{t}=\mathrm{J}F_{t\mid z}
+, we obtain:
+∂
+∂
+t
+​
+J
+t
+​
+(
+y
+)
+=
+J
+t
+​
+(
+y
+)
+​
+div
+⁡
+(
+u
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+)
+.
+\frac{\partial}{\partial t}J_{t}(y)=J_{t}(y)\operatorname{div}\left(u_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\right).
+(65)
+Substituting these into
+Eq. 62
+, and observing that
+J
+t
+​
+(
+y
+)
+≠
+0
+J_{t}(y)\neq 0
+, we obtain:
+(
+∂
+π
+t
+∣
+z
+∂
+t
+​
+(
+F
+t
+∣
+z
+​</p>
+
+<p>(
+y
+)
+)
++
+∇
+π
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+⋅
+u
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+)
++
+π
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+​
+div
+⁡
+(
+u
+t
+∣
+z
+​
+(
+F
+t
+∣
+z
+​
+(
+y
+)
+)
+)
+=
+0
+.
+\left(\frac{\partial\pi_{t\mid z}}{\partial t}\left(F_{t\mid z}\left(y\right)\right)+\nabla\pi_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\cdot u_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\right)+\pi_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\operatorname{div}\left(u_{t\mid z}\left(F_{t\mid z}\left(y\right)\right)\right)=0.
+(66)
+Now, let
+x
+∈
+𝒳
+x\in\mathcal{X}
+, and
+y
+=
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+y=F_{t\mid z}^{-1}(x)
+. The above equation becomes:
+(
+∂
+π
+t
+∣
+z
+∂
+t
+​
+(
+x
+)
++
+∇
+π
+t
+∣
+z
+​
+(
+x
+)
+⋅
+u
+t
+∣
+z
+​
+(
+x
+)
+)
++
+π
+t
+∣
+z
+​
+(
+x
+)
+​
+div
+⁡
+(
+u
+t
+∣
+z
+​
+(
+x
+)
+)
+=
+0
+.
+\left(\frac{\partial\pi_{t\mid z}}{\partial t}\left(x\right)+\nabla\pi_{t\mid z}\left(x\right)\cdot u_{t\mid z}\left(x\right)\right)+\pi_{t\mid z}\left(x\right)\operatorname{div}\left(u_{t\mid z}\left(x\right)\right)=0.
+(67)
+Using the identity
+div
+⁡
+(
+π
+​
+u
+)
+=
+∇
+π
+⋅
+u
++
+π
+​
+div
+⁡
+(
+u
+)
+\operatorname{div}(\pi u)=\nabla\pi\cdot u+\pi\operatorname{div}(u)
+, we conclude:
+∂
+π
+t
+∣
+z
+∂
+t
+​
+(
+x
+)
++
+div
+⁡
+(
+π
+t
+∣
+z
+​
+u
+t
+∣
+z
+)
+​
+(
+x
+)
+=
+0
+.
+\frac{\partial\pi_{t\mid z}}{\partial t}(x)+\operatorname{div}\left(\pi_{t\mid z}u_{t\mid z}\right)(x)=0.
+(68)
+2.
+We start from the continuity equation derived above and add and subtract the term
+σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
+\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z}
+to the right-hand side:
+∂
+π
+t
+∣
+z
+∂
+t
+=
+−
+div
+⁡
+(
+π
+t
+∣
+z
+​
+u
+t
+∣
+z
+)
+−</p>
+
+<p>σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
+.
+\frac{\partial\pi_{t\mid z}}{\partial t}=-\operatorname{div}\left(\pi_{t\mid z}u_{t\mid z}\right)-\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z}.
+(69)
+Using
+Δ
+​
+π
+=
+div
+⁡
+(
+∇
+π
+)
+\Delta\pi=\operatorname{div}(\nabla\pi)
+, we obtain:
+∂
+π
+t
+∣
+z
+∂
+t
+=
+−
+div
+⁡
+(
+π
+t
+∣
+z
+​
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+π
+t
+∣
+z
+)
++
+σ
+t
+2
+2
+​
+Δ
+​
+π
+t
+∣
+z
+.
+\frac{\partial\pi_{t\mid z}}{\partial t}=-\operatorname{div}\left(\pi_{t\mid z}u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\pi_{t\mid z}\right)+\frac{\sigma_{t}^{2}}{2}\Delta\pi_{t\mid z}.
+(70)
+Next, we use
+∇
+π
+t
+∣
+z
+=
+π
+t
+∣
+z
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+\nabla\pi_{t\mid z}=\pi_{t\mid z}\nabla\log\pi_{t\mid z}
+to rewrite the term inside the divergence:
+π
+t
+∣
+z
+​
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+π
+t
+∣
+z
+=
+π
+t
+∣
+z
+​
+(
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+)
+,
+\pi_{t\mid z}u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\pi_{t\mid z}=\pi_{t\mid z}\left(u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\log\pi_{t\mid z}\right),
+(71)
+which yields the desired equality by substituting the definition of the drift
+a
+t
+∣
+z
+=
+u
+t
+∣
+z
++
+σ
+t
+2
+2
+​
+∇
+log
+⁡
+π
+t
+∣
+z
+a_{t\mid z}=u_{t\mid z}+\frac{\sigma_{t}^{2}}{2}\nabla\log\pi_{t\mid z}
+.
+∎
+D.2
+Markov Kernels and Bijections
+Markov Kernels.
+We follow the exposition by
+Ollivier (
+2009
+)
+.
+Let
+(
+𝒳
+,
+d
+)
+(\mathcal{X},d)
+be a complete separable metric space equipped with its Borel
+σ
+\sigma
+-algebra
+ℬ
+​
+(
+𝒳
+)
+\mathcal{B}(\mathcal{X})
+. We denote by
+𝒫
+​
+(
+𝒳
+)
+\mathcal{P}(\mathca</p>
+
+<p>l{X})
+the set of probability measures on
+𝒳
+\mathcal{X}
+.
+A Markov transition kernel is a map
+K
+:
+𝒳
+×
+ℬ
+​
+(
+𝒳
+)
+→
+[
+0
+,
+1
+]
+K:\mathcal{X}\times\mathcal{B}(\mathcal{X})\to[0,1]
+satisfying:
+1.
+For every
+x
+∈
+𝒳
+x\in\mathcal{X}
+, the map
+A
+↦
+K
+​
+(
+x
+,
+A
+)
+A\mapsto K(x,A)
+is a probability measure on
+𝒳
+\mathcal{X}
+.
+2.
+For every
+A
+∈
+ℬ
+​
+(
+𝒳
+)
+A\in\mathcal{B}(\mathcal{X})
+, the map
+x
+↦
+K
+​
+(
+x
+,
+A
+)
+x\mapsto K(x,A)
+is measurable.
+We define the action of the kernel
+K
+K
+on a measure
+μ
+∈
+𝒫
+​
+(
+𝒳
+)
+\mu\in\mathcal{P}(\mathcal{X})
+(from the left) as the measure
+K
+​
+(
+μ
+)
+K(\mu)
+given by:
+[
+K
+​
+(
+μ
+)
+]
+​
+(
+A
+)
+=
+∫
+𝒳
+K
+​
+(
+x
+,
+A
+)
+​
+d
+μ
+​
+(
+x
+)
+,
+for all
+​
+A
+∈
+ℬ
+​
+(
+𝒳
+)
+.
+[K(\mu)](A)=\int_{\mathcal{X}}K(x,A)\,\mathrm{d}\mu(x),\quad\text{for all }A\in\mathcal{B}(\mathcal{X}).
+(72)
+We define the
+n
+n
+-step transition kernel
+K
+n
+K^{n}
+recursively by
+K
+1
+=
+K
+K^{1}=K
+and
+K
+n
+​
+(
+x
+,
+A
+)
+=
+∫
+𝒳
+K
+​
+(
+y
+,
+A
+)
+​
+K
+n
+−
+1
+​
+(
+x
+,
+d
+​
+y
+)
+K^{n}(x,A)=\int_{\mathcal{X}}K(y,A)K^{n-1}(x,\mathrm{d}y)
+. Consistent with the operator notation,
+K
+n
+​
+(
+μ
+)
+K^{n}(\mu)
+denotes the measure obtained by applying the kernel
+n
+n
+times.
+A probability measure
+ν
+\nu
+is said to be invariant with respect to
+K
+K
+if
+K
+​
+(
+ν
+)
+=
+ν
+K(\nu)=\nu
+.
+Wasserstein Distance.
+For any two probability measures
+μ
+,
+ν
+∈
+𝒫
+​
+(
+𝒳
+)
+\mu,\nu\in\mathcal{P}(\mathcal{X})
+, the
+L
+1
+L^{1}
+-Wasserstein distance
+W
+1
+​
+(
+μ
+,
+ν
+)
+W_{1}(\mu,\nu)
+is defined by
+W
+1
+​
+(
+μ
+,
+ν
+)
+=
+inf
+π
+∈
+Π
+​
+(
+μ
+,
+ν
+)
+∫
+𝒳
+×
+𝒳
+d
+​
+(
+x
+,
+y
+)
+​
+d
+π
+​
+(
+x
+,
+y
+)
+,
+W_{1}(\mu,\nu)=\i</p>
+
+<p>nf_{\pi\in\Pi(\mu,\nu)}\int_{\mathcal{X}\times\mathcal{X}}d(x,y)\,\mathrm{d}\pi(x,y),
+(73)
+where
+Π
+​
+(
+μ
+,
+ν
+)
+\Pi(\mu,\nu)
+is the set of all couplings of
+μ
+\mu
+and
+ν
+\nu
+(i.e., measures on
+𝒳
+×
+𝒳
+\mathcal{X}\times\mathcal{X}
+with marginals
+μ
+\mu
+and
+ν
+\nu
+).
+Proposition D.5
+(Markov Kernels and Bi-Lipschitz Bijections)
+.
+Let
+K
+K
+be a Markov transition kernel invariant with respect to a probability measure
+ν
+\nu
+. Let
+F
+:
+𝒳
+→
+𝒳
+F:\mathcal{X}\to\mathcal{X}
+be a bijection such that both
+F
+F
+and
+F
+−
+1
+F^{-1}
+are Lipschitz continuous. We denote the Lipschitz constants of
+F
+F
+and
+F
+−
+1
+F^{-1}
+by
+L
+F
+L_{F}
+and
+L
+F
+−
+1
+L_{F^{-1}}
+, respectively
+Define the pushforward kernel
+K
+F
+K_{F}
+by:
+K
+F
+​
+(
+x
+^
+,
+A
+^
+)
+=
+K
+​
+(
+F
+−
+1
+​
+(
+x
+^
+)
+,
+F
+−
+1
+​
+(
+A
+^
+)
+)
+.
+K_{F}(\hat{x},\hat{A})=K\left(F^{-1}(\hat{x}),F^{-1}(\hat{A})\right).
+(74)
+Let
+ν
+F
+=
+F
+​
+#
+​
+ν
+\nu_{F}=F\#\nu
+be the pushforward of the invariant measure. Let
+z
+∈
+𝒳
+z\in\mathcal{X}
+be an arbitrary starting point, and let
+x
+0
+=
+F
+−
+1
+​
+(
+z
+)
+x_{0}=F^{-1}(z)
+be its preimage in the original space.
+The following properties hold:
+1.
+(Invariant measure) The pushforward kernel
+K
+F
+K_{F}
+is invariant with respect to
+ν
+F
+\nu_{F}
+.
+2.
+(Algebraic Iteration) For any measure
+μ
+\mu
+and
+n
+≥
+1
+n\geq 1
+:
+K
+F
+n
+​
+(
+μ
+)
+=
+F
+​
+#
+​
+(
+K
+n
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+)
+.
+K^{n}_{F}\left(\mu\right)=F\#\left(K^{n}\left(F^{-1}\#\mu\right)\right).
+(75)
+3.
+(Wasserstein Lipschitz Bound) For any two measures
+μ
+1
+,
+μ
+2
+\mu_{1},\mu_{2}
+:
+W
+1
+​
+(
+F
+​
+#
+​
+μ
+1
+,
+F
+​
+#
+​
+μ
+2
+)
+≤
+L</p>
+
+<p>F
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+.
+W_{1}\left(F\#\mu_{1},F\#\mu_{2}\right)\leq L_{F}\,W_{1}\left(\mu_{1},\mu_{2}\right).
+(76)
+4.
+(Kernel Wasserstein Relation)
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+≤
+L
+F
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+x
+0
+)
+,
+ν
+)
+.
+W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)\leq L_{F}\,W_{1}\left(K^{n}\left(\delta_{x_{0}}\right),\nu\right).
+(77)
+5.
+(Convergence Bounds) If there exists
+ρ
+∈
+(
+0
+,
+1
+)
+\rho\in(0,1)
+such that
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+x
+)
+,
+ν
+)
+≤
+ρ
+n
+​
+W
+1
+​
+(
+δ
+x
+,
+ν
+)
+W_{1}(K^{n}(\delta_{x}),\nu)\leq\rho^{n}W_{1}(\delta_{x},\nu)
+for all
+x
+x
+, then:
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+≤
+L
+F
+​
+ρ
+n
+​
+W
+1
+​
+(
+δ
+x
+0
+,
+ν
+)
+,
+\displaystyle W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)\leq L_{F}\,\rho^{n}\,W_{1}\left(\delta_{x_{0}},\nu\right),
+(78)
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+≤
+L
+F
+​
+L
+F
+−
+1
+​
+ρ
+n
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+F
+)
+.
+\displaystyle W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)\leq L_{F}L_{F^{-1}}\rho^{n}\,W_{1}\left(\delta_{z},\nu_{F}\right).
+(79)
+Proof.
+We prove each item separately:
+1.
+(Invariant measure) We first verify that
+K
+F
+K_{F}
+is invariant with respect to
+ν
+F
+\nu_{F}
+.
+K
+F
+​
+(
+ν
+F
+)
+​
+(
+A
+^
+)
+\displaystyle K_{F}\left(\nu_{F}\right)(\hat{A})
+=
+∫
+K
+F
+​
+(
+x
+^
+,
+A
+^
+)
+​
+ν
+F
+​
+(
+d
+​
+x
+^
+)
+=
+∫
+K
+​
+(
+F
+−
+1
+​
+(
+x
+^
+)
+,
+F
+−
+1
+​
+(
+A
+^
+)
+)
+​
+(
+F
+​
+#
+​
+ν
+)
+​
+(
+d
+​
+x
+^
+)
+=
+(i)
+\displaystyle=\int K_{F}\left(\hat{x},\hat{A}\right)\nu_{F}({\mathrm{d}}\hat{x})=\int K\left(F^{-1}\left(\hat{x}\right),F^{-1}\left(\hat{A}\right)\right)\left(F\#\nu\right</p>
+
+<p>)({\mathrm{d}}\hat{x})\stackrel{{\scriptstyle\text{(i)}}}{{=}}
+(80)
+=
+(i)
+∫
+K
+​
+(
+x
+,
+F
+−
+1
+​
+(
+A
+^
+)
+)
+​
+ν
+​
+(
+d
+​
+x
+)
+=
+(ii)
+ν
+​
+(
+F
+−
+1
+​
+(
+A
+^
+)
+)
+=
+(
+F
+​
+#
+​
+ν
+)
+​
+(
+A
+^
+)
+=
+ν
+F
+​
+(
+A
+^
+)
+,
+\displaystyle\stackrel{{\scriptstyle\text{(i)}}}{{=}}\int K\left(x,F^{-1}\left(\hat{A}\right)\right)\nu({\mathrm{d}}x)\stackrel{{\scriptstyle\text{(ii)}}}{{=}}\nu\left(F^{-1}\left(\hat{A}\right)\right)=\left(F\#\nu\right)\left(\hat{A}\right)=\nu_{F}\left(\hat{A}\right),
+(81)
+where (i) is due to the change of variables theorem (
+x
+^
+=
+F
+​
+(
+x
+)
+\hat{x}=F(x)
+), and (ii) is due to
+K
+K
+being invariant with respect to
+ν
+\nu
+.
+2.
+(Algebraic Iteration)
+We prove this by induction. For
+n
+=
+1
+n=1
+, observe that:
+(
+K
+F
+​
+(
+μ
+)
+)
+​
+(
+A
+^
+)
+\displaystyle\left(K_{F}\left(\mu\right)\right)\left(\hat{A}\right)
+=
+∫
+K
+F
+​
+(
+x
+^
+,
+A
+^
+)
+​
+μ
+​
+(
+d
+​
+x
+^
+)
+=
+∫
+K
+​
+(
+F
+−
+1
+​
+(
+x
+^
+)
+,
+F
+−
+1
+​
+(
+A
+^
+)
+)
+​
+μ
+​
+(
+d
+​
+x
+^
+)
+=
+(i)
+\displaystyle=\int K_{F}\left(\hat{x},\hat{A}\right)\mu\left({\mathrm{d}}\hat{x}\right)=\int K\left(F^{-1}\left(\hat{x}\right),F^{-1}\left(\hat{A}\right)\right)\mu\left({\mathrm{d}}\hat{x}\right)\stackrel{{\scriptstyle\text{(i)}}}{{=}}
+=
+(i)
+∫
+K
+​
+(
+x
+,
+F
+−
+1
+​
+(
+A
+^
+)
+)
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+​
+(
+d
+​
+x
+)
+=
+K
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+​
+(
+F
+−
+1
+​
+(
+A
+^
+)
+)
+=
+\displaystyle\stackrel{{\scriptstyle\text{(i)}}}{{=}}\int K\left(x,F^{-1}\left(\hat{A}\right)\right)\left(F^{-1}\#\mu\right)\left({\mathrm{d}}x\right)=K\left(F^{-1}\#\mu\right)\left(F^{-1}\left(\hat{A}\right)\right)=
+=
+(
+F
+​
+#
+​
+(
+K
+​
+(
+F</p>
+
+<p>−
+1
+​
+#
+​
+μ
+)
+)
+)
+​
+(
+A
+^
+)
+,
+\displaystyle=\left(F\#\left(K\left(F^{-1}\#\mu\right)\right)\right)\left(\hat{A}\right),
+where (i) follows from the change of variables.
+Suppose it is true for
+n
+≥
+1
+n\geq 1
+. Then:
+K
+F
+(
+n
++
+1
+)
+​
+(
+μ
+)
+\displaystyle K_{F}^{\left(n+1\right)}\left(\mu\right)
+=
+K
+F
+​
+(
+K
+F
+(
+n
+)
+​
+(
+μ
+)
+)
+=
+K
+F
+​
+(
+F
+​
+#
+​
+K
+(
+n
+)
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+)
+=
+\displaystyle=K_{F}\left(K_{F}^{\left(n\right)}\left(\mu\right)\right)=K_{F}\left(F\#K^{\left(n\right)}\left(F^{-1}\#\mu\right)\right)=
+=
+F
+​
+#
+​
+(
+K
+​
+(
+F
+−
+1
+​
+#
+​
+F
+​
+#
+​
+K
+(
+n
+)
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+)
+)
+=
+\displaystyle=F\#\left(K\left(F^{-1}\#F\#K^{\left(n\right)}\left(F^{-1}\#\mu\right)\right)\right)=
+=
+F
+​
+#
+​
+(
+K
+(
+n
++
+1
+)
+​
+(
+F
+−
+1
+​
+#
+​
+μ
+)
+)
+.
+\displaystyle=F\#\left(K^{\left(n+1\right)}\left(F^{-1}\#\mu\right)\right).
+3.
+(Wasserstein Lipschitz Bound)
+Let
+γ
+∈
+Γ
+​
+(
+μ
+1
+,
+μ
+2
+)
+\gamma\in\Gamma\left(\mu_{1},\mu_{2}\right)
+be an optimal coupling for
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+W_{1}(\mu_{1},\mu_{2})
+. Define the pushforward coupling
+γ
+^
+=
+(
+F
+,
+F
+)
+​
+#
+​
+γ
+\hat{\gamma}=\left(F,F\right)\#\gamma
+.
+We first confirm that
+γ
+^
+∈
+Γ
+​
+(
+F
+​
+#
+​
+μ
+1
+,
+F
+​
+#
+​
+μ
+2
+)
+\hat{\gamma}\in\Gamma\left(F\#\mu_{1},F\#\mu_{2}\right)
+:
+γ
+^
+​
+(
+ℝ
+d
+×
+A
+^
+)
+\displaystyle\hat{\gamma}\left(\mathbb{R}^{d}\times\hat{A}\right)
+=
+γ
+​
+(
+ℝ
+d
+×
+F
+−
+1
+​
+(
+A
+^
+)
+)
+=
+μ
+2
+​
+(
+F
+−
+1
+​
+(
+A
+^
+)
+)
+=
+(
+F
+​
+#
+​
+μ
+2
+)
+​
+(
+A
+^
+)
+,
+\displaystyle=\gamma\left(\mathbb{R}^{d}\times F^{-1}\left(\hat{A}\right)\right)=\mu_{2}\left(F^{-1}\left(\hat{A}\right)\right)=\lef</p>
+
+<p>t(F\#\mu_{2}\right)\left(\hat{A}\right),
+γ
+^
+​
+(
+A
+^
+×
+ℝ
+d
+)
+\displaystyle\hat{\gamma}\left(\hat{A}\times\mathbb{R}^{d}\right)
+=
+γ
+​
+(
+F
+−
+1
+​
+(
+A
+^
+)
+×
+ℝ
+d
+)
+=
+μ
+1
+​
+(
+F
+−
+1
+​
+(
+A
+^
+)
+)
+=
+(
+F
+​
+#
+​
+μ
+1
+)
+​
+(
+A
+^
+)
+.
+\displaystyle=\gamma\left(F^{-1}\left(\hat{A}\right)\times\mathbb{R}^{d}\right)=\mu_{1}\left(F^{-1}\left(\hat{A}\right)\right)=\left(F\#\mu_{1}\right)\left(\hat{A}\right).
+Next, we bound the transport cost using the Lipschitz property of
+F
+F
+:
+W
+1
+​
+(
+F
+​
+#
+​
+μ
+1
+,
+F
+​
+#
+​
+μ
+2
+)
+\displaystyle W_{1}(F\#\mu_{1},F\#\mu_{2})
+≤
+∫
+‖
+x
+^
+−
+y
+^
+‖
+​
+γ
+^
+​
+(
+d
+​
+x
+^
+,
+d
+​
+y
+^
+)
+=
+∫
+‖
+F
+​
+(
+x
+)
+−
+F
+​
+(
+y
+)
+‖
+​
+γ
+​
+(
+d
+​
+x
+,
+d
+​
+y
+)
+\displaystyle\leq\int\left\|\hat{x}-\hat{y}\right\|\,\hat{\gamma}\left({\mathrm{d}}\hat{x},{\mathrm{d}}\hat{y}\right)=\int\left\|F\left(x\right)-F\left(y\right)\right\|\,\gamma\left({\mathrm{d}}x,{\mathrm{d}}y\right)
+≤
+∫
+L
+F
+​
+‖
+x
+−
+y
+‖
+​
+γ
+​
+(
+d
+​
+x
+,
+d
+​
+y
+)
+=
+L
+F
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+.
+\displaystyle\leq\int L_{F}\left\|x-y\right\|\,\gamma\left({\mathrm{d}}x,{\mathrm{d}}y\right)=L_{F}W_{1}\left(\mu_{1},\mu_{2}\right).
+4.
+(Kernel Wasserstein Relation)
+We apply the previous two results. Using Property 1 with
+μ
+=
+δ
+z
+\mu=\delta_{z}
+:
+K
+F
+n
+​
+(
+δ
+z
+)
+=
+F
+​
+#
+​
+(
+K
+n
+​
+(
+F
+−
+1
+​
+#
+​
+δ
+z
+)
+)
+=
+F
+​
+#
+​
+(
+K
+n
+​
+(
+δ
+x
+0
+)
+)
+,
+K_{F}^{n}(\delta_{z})=F\#\left(K^{n}(F^{-1}\#\delta_{z})\right)=F\#\left(K^{n}(\delta_{x_{0}})\right),
+(82)
+where
+x
+0
+=
+F
+−
+1
+​
+(
+z
+)
+x_{0}=F^{-1}(z)
+.
+Also recall
+ν
+F
+=
+F
+​
+#
+​
+ν
+\nu_{F}=F\#\nu
+.
+Now apply Property 2 with
+μ
+1
+=
+K</p>
+
+<p>n
+​
+(
+δ
+x
+0
+)
+\mu_{1}=K^{n}(\delta_{x_{0}})
+and
+μ
+2
+=
+ν
+\mu_{2}=\nu
+:
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+\displaystyle W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)
+=
+W
+1
+​
+(
+F
+​
+#
+​
+K
+n
+​
+(
+δ
+x
+0
+)
+,
+F
+​
+#
+​
+ν
+)
+\displaystyle=W_{1}\left(F\#K^{n}(\delta_{x_{0}}),F\#\nu\right)
+≤
+L
+F
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+x
+0
+)
+,
+ν
+)
+.
+\displaystyle\leq L_{F}W_{1}\left(K^{n}(\delta_{x_{0}}),\nu\right).
+5.
+(Convergence Bounds)
+Assume the base kernel satisfies
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+x
+)
+,
+ν
+)
+≤
+ρ
+n
+​
+W
+1
+​
+(
+δ
+x
+,
+ν
+)
+W_{1}(K^{n}(\delta_{x}),\nu)\leq\rho^{n}W_{1}(\delta_{x},\nu)
+.
+Substituting this into the result from Property 3:
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+≤
+L
+F
+​
+ρ
+n
+​
+W
+1
+​
+(
+δ
+x
+0
+,
+ν
+)
+.
+W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)\leq L_{F}\rho^{n}W_{1}\left(\delta_{x_{0}},\nu\right).
+(83)
+To obtain the second bound, we need to relate
+W
+1
+​
+(
+δ
+x
+0
+,
+ν
+)
+W_{1}(\delta_{x_{0}},\nu)
+back to
+ν
+F
+\nu_{F}
+.
+Note that
+x
+0
+=
+F
+−
+1
+​
+(
+z
+)
+x_{0}=F^{-1}(z)
+and
+ν
+=
+F
+−
+1
+​
+#
+​
+ν
+F
+\nu=F^{-1}\#\nu_{F}
+.
+Applying the Lipschitz bound for the inverse map
+F
+−
+1
+F^{-1}
+(analogous to Property 2):
+W
+1
+​
+(
+δ
+x
+0
+,
+ν
+)
+=
+W
+1
+​
+(
+F
+−
+1
+​
+#
+​
+δ
+z
+,
+F
+−
+1
+​
+#
+​
+ν
+F
+)
+≤
+L
+F
+−
+1
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+F
+)
+.
+W_{1}(\delta_{x_{0}},\nu)=W_{1}(F^{-1}\#\delta_{z},F^{-1}\#\nu_{F})\leq L_{F^{-1}}W_{1}(\delta_{z},\nu_{F}).
+(84)
+Combining these inequalities yields:
+W
+1
+​
+(
+K
+F
+n
+​
+(
+δ
+z
+)
+,
+ν
+F
+)
+≤
+L
+F
+​
+L
+F
+−
+1
+​
+ρ
+n
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+F
+)
+.
+W_{1}\left(K_{F}^{n}\left(\delta_{z}\right),\nu_{F}\right)\leq L_{F</p>
+
+<p>}L_{F^{-1}}\rho^{n}W_{1}(\delta_{z},\nu_{F}).
+(85)
+∎
+Corollary D.6
+(Markov Kernels and Linear Interpolants)
+.
+Let
+𝒳
+=
+ℝ
+D
+\mathcal{X}={\mathbb{R}}^{D}
+.
+Let
+K
+K
+be a Markov transition kernel invariant with respect to a probability measure
+ν
+\nu
+. Let
+F
+t
+∣
+z
+​
+(
+x
+)
+=
+(
+1
+−
+t
+)
+​
+z
++
+t
+​
+x
+F_{t\mid z}(x)=(1-t)z+tx
+for
+t
+∈
+(
+0
+,
+1
+]
+t\in(0,1]
+and
+z
+∈
+𝒳
+z\in\mathcal{X}
+.
+Define the pushforward kernel
+K
+t
+∣
+z
+K_{t\mid z}
+by:
+K
+t
+∣
+z
+​
+(
+x
+^
+,
+A
+^
+)
+=
+K
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+^
+)
+,
+F
+t
+∣
+z
+−
+1
+​
+(
+A
+^
+)
+)
+.
+K_{t\mid z}(\hat{x},\hat{A})=K\left(F_{t\mid z}^{-1}(\hat{x}),F_{t\mid z}^{-1}(\hat{A})\right).
+(86)
+The following properties hold:
+1.
+(Invariant measure) The pushforward kernel
+K
+t
+∣
+z
+K_{t\mid z}
+is invariant with respect to
+ν
+t
+∣
+z
+\nu_{t\mid z}
+.
+2.
+(Algebraic Iteration) For any measure
+μ
+\mu
+and
+n
+≥
+1
+n\geq 1
+:
+K
+t
+∣
+z
+n
+​
+(
+μ
+)
+=
+F
+t
+∣
+z
+​
+#
+​
+(
+K
+n
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+#
+​
+μ
+)
+)
+.
+K^{n}_{t\mid z}\left(\mu\right)=F_{t\mid z}\#\left(K^{n}\left(F^{-1}_{t\mid z}\#\mu\right)\right).
+(87)
+3.
+(Wasserstein Equality) For any two measures
+μ
+1
+,
+μ
+2
+\mu_{1},\mu_{2}
+:
+W
+1
+​
+(
+F
+t
+∣
+z
+​
+#
+​
+μ
+1
+,
+F
+t
+∣
+z
+​
+#
+​
+μ
+2
+)
+=
+t
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+.
+W_{1}\left(F_{t\mid z}\#\mu_{1},F_{t\mid z}\#\mu_{2}\right)=t\,W_{1}\left(\mu_{1},\mu_{2}\right).
+(88)
+4.
+(Kernel Wasserstein Equality)
+Since
+F
+t
+∣
+z
+−
+1
+​
+(
+z
+)
+=
+z
+F_{t\mid z}^{-1}(z)=z
+, the bound becomes an equality:
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+=
+t
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+z
+)
+,
+ν
+)
+.
+W_{1}\left(K_{t\mid z}^{n}\left(\delta_{z}\right),\n</p>
+
+<p>u_{t\mid z}\right)=t\,W_{1}\left(K^{n}\left(\delta_{z}\right),\nu\right).
+(89)
+5.
+(Convergence Bounds) If
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+z
+)
+,
+ν
+)
+≤
+ρ
+n
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+)
+W_{1}(K^{n}(\delta_{z}),\nu)\leq\rho^{n}W_{1}(\delta_{z},\nu)
+, then:
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+≤
+t
+​
+ρ
+n
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+)
+,
+\displaystyle W_{1}\left(K_{t\mid z}^{n}\left(\delta_{z}\right),\nu_{t\mid z}\right)\leq t\,\rho^{n}\,W_{1}\left(\delta_{z},\nu\right),
+(90)
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+≤
+ρ
+n
+​
+W
+1
+​
+(
+δ
+z
+,
+ν
+t
+∣
+z
+)
+.
+\displaystyle W_{1}\left(K_{t\mid z}^{n}\left(\delta_{z}\right),\nu_{t\mid z}\right)\leq\rho^{n}\,W_{1}\left(\delta_{z},\nu_{t\mid z}\right).
+(91)
+Proof.
+Results are followed by applying Proposition 1 to the specific linear bijection
+F
+t
+∣
+z
+​
+(
+x
+)
+=
+(
+1
+−
+t
+)
+​
+z
++
+t
+​
+x
+F_{t\mid z}(x)=(1-t)z+tx
+. Note that:
+•
+(Lipschitz Constants) Since
+F
+t
+∣
+z
+F_{t\mid z}
+is a homothety with scaling factor
+t
+t
+, we have
+‖
+F
+t
+∣
+z
+​
+(
+x
+)
+−
+F
+t
+∣
+z
+​
+(
+y
+)
+‖
+=
+t
+​
+‖
+x
+−
+y
+‖
+\|F_{t\mid z}(x)-F_{t\mid z}(y)\|=t\|x-y\|
+and
+‖
+F
+t
+∣
+z
+−
+1
+​
+(
+x
+)
+−
+F
+t
+∣
+z
+−
+1
+​
+(
+y
+)
+‖
+=
+t
+−
+1
+​
+‖
+x
+−
+y
+‖
+\|F^{-1}_{t\mid z}(x)-F^{-1}_{t\mid z}(y)\|=t^{-1}\|x-y\|
+. Thus,
+L
+F
+=
+t
+L_{F}=t
+and
+L
+F
+−
+1
+=
+t
+−
+1
+L_{F^{-1}}=t^{-1}
+.
+•
+(Fixed Point) Direct evaluation shows
+F
+t
+∣
+z
+​
+(
+z
+)
+=
+z
+F_{t\mid z}(z)=z
+. Thus, the preimage of the starting point is
+x
+0
+=
+F
+t
+∣
+z
+−
+1
+​
+(
+z
+)
+=
+z
+x_{0}=F_{t\mid z}^{-1}(z)=z
+.
+Properties 1 and 2 are independent of the specific properties of the map. Property 5 follows by plug</p>
+
+<p>ging in the values of
+L
+F
+L_{F}
+and
+L
+F
+−
+1
+L_{F^{-1}}
+.
+3.
+(Wasserstein Scaling)
+Proposition 1 (Property 3) provides the upper bound:
+W
+1
+​
+(
+F
+t
+∣
+z
+​
+#
+​
+μ
+1
+,
+F
+t
+∣
+z
+​
+#
+​
+μ
+2
+)
+≤
+t
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+.
+W_{1}\left(F_{t\mid z}\#\mu_{1},F_{t\mid z}\#\mu_{2}\right)\leq tW_{1}\left(\mu_{1},\mu_{2}\right).
+(92)
+To prove equality, we apply the same general bound to the
+inverse
+map
+F
+t
+∣
+z
+−
+1
+F^{-1}_{t\mid z}
+acting on the measures
+ν
+1
+=
+F
+t
+∣
+z
+​
+#
+​
+μ
+1
+\nu_{1}=F_{t\mid z}\#\mu_{1}
+and
+ν
+2
+=
+F
+t
+∣
+z
+​
+#
+​
+μ
+2
+\nu_{2}=F_{t\mid z}\#\mu_{2}
+:
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+=
+W
+1
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+#
+​
+ν
+1
+,
+F
+t
+∣
+z
+−
+1
+​
+#
+​
+ν
+2
+)
+≤
+t
+−
+1
+​
+W
+1
+​
+(
+ν
+1
+,
+ν
+2
+)
+.
+W_{1}\left(\mu_{1},\mu_{2}\right)=W_{1}\left(F^{-1}_{t\mid z}\#\nu_{1},F^{-1}_{t\mid z}\#\nu_{2}\right)\leq t^{-1}W_{1}\left(\nu_{1},\nu_{2}\right).
+(93)
+Multiplying by
+t
+t
+yields
+t
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+≤
+W
+1
+​
+(
+F
+t
+∣
+z
+​
+#
+​
+μ
+1
+,
+F
+t
+∣
+z
+​
+#
+​
+μ
+2
+)
+tW_{1}\left(\mu_{1},\mu_{2}\right)\leq W_{1}\left(F_{t\mid z}\#\mu_{1},F_{t\mid z}\#\mu_{2}\right)
+. Combining the upper and lower bounds confirms the equality:
+W
+1
+​
+(
+F
+t
+∣
+z
+​
+#
+​
+μ
+1
+,
+F
+t
+∣
+z
+​
+#
+​
+μ
+2
+)
+=
+t
+​
+W
+1
+​
+(
+μ
+1
+,
+μ
+2
+)
+.
+W_{1}\left(F_{t\mid z}\#\mu_{1},F_{t\mid z}\#\mu_{2}\right)=tW_{1}\left(\mu_{1},\mu_{2}\right).
+(94)
+4.
+(Kernel Wasserstein Relation)
+We start with the result from the previous property using
+μ
+=
+δ
+z
+\mu=\delta_{z}
+:
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+=
+F
+t
+∣
+z
+​
+#
+​
+(
+K
+n
+​
+(
+F
+t
+∣
+z
+−
+1
+​
+#
+​
+δ
+z
+)
+)
+.
+K_{t\mid z}^{n}(\delta_{z})=F_{t\mid z}\#\left(K^{n}(F_{t\</p>
+
+<p>mid z}^{-1}\#\delta_{z})\right).
+(95)
+Since
+z
+z
+is a fixed point (
+F
+t
+∣
+z
+−
+1
+​
+(
+z
+)
+=
+z
+F_{t\mid z}^{-1}(z)=z
+), this simplifies to
+F
+t
+∣
+z
+​
+#
+​
+(
+K
+n
+​
+(
+δ
+z
+)
+)
+F_{t\mid z}\#(K^{n}(\delta_{z}))
+. Additionally,
+ν
+t
+∣
+z
+=
+F
+t
+∣
+z
+​
+#
+​
+ν
+\nu_{t\mid z}=F_{t\mid z}\#\nu
+.
+Applying the exact scaling law derived in Item 2 with
+μ
+1
+=
+K
+n
+​
+(
+δ
+z
+)
+\mu_{1}=K^{n}(\delta_{z})
+and
+μ
+2
+=
+ν
+\mu_{2}=\nu
+:
+W
+1
+​
+(
+K
+t
+∣
+z
+n
+​
+(
+δ
+z
+)
+,
+ν
+t
+∣
+z
+)
+=
+W
+1
+​
+(
+F
+t
+∣
+z
+​
+#
+​
+K
+n
+​
+(
+δ
+z
+)
+,
+F
+t
+∣
+z
+​
+#
+​
+ν
+)
+=
+t
+​
+W
+1
+​
+(
+K
+n
+​
+(
+δ
+z
+)
+,
+ν
+)
+.
+W_{1}\left(K_{t\mid z}^{n}(\delta_{z}),\nu_{t\mid z}\right)=W_{1}\left(F_{t\mid z}\#K^{n}(\delta_{z}),F_{t\mid z}\#\nu\right)=tW_{1}\left(K^{n}(\delta_{z}),\nu\right).
+(96)
+∎
+Appendix E
+Sampling Tasks
+In this section, we provide more details about the tasks used in our experimental section. A summary of these tasks can be found in
+Tab. 1
+.
+E.1
+Gaussian mixture (GM)
+This task is inspired by the 2-dimensional Gaussian mixture target first used by
+Midgley
+et al.
+(
+2023
+)
+.
+We consider four target distributions of increasing complexity and dimensionality: GM-2, GMNU-2, GM-16, and GMNU-16. All targets are Gaussian mixture models; the first two are illustrated in
+Fig. 8
+. The notation GMNU denotes non-uniform mixture weights, meaning that different components carry unequal probability mass, while the suffix indicates the dimensionality (
+D
+=
+2
+D=2
+or
+D
+=
+16
+D=16
+). As dimensionality increases, generating high-quality samples becomes more challenging. Simila</p>
+
+<p>rly, the non-uniform setting is expected to be harder, since a successful sampler must accurately capture the relative mass of each mode.
+E.2
+Lennard-Jones (LJ)
+We consider the Lennard-Jones (LJ) potential
+(Jones,
+1924
+)
+, a standard model for solid-state systems and rare-gas clusters. The potential energy for a system of
+N
+N
+particles is defined as:
+E
+​
+(
+x
+1
+,
+…
+,
+x
+N
+)
+=
+∑
+1
+≤
+i
+&lt;
+j
+≤
+N
+4
+​
+ϵ
+​
+[
+(
+σ
+r
+i
+​
+j
+)
+12
+−
+(
+σ
+r
+i
+​
+j
+)
+6
+]
+,
+E(x_{1},\ldots,x_{N})=\sum_{1\leq i&lt;j\leq N}4\epsilon\left[\left(\frac{\sigma}{r_{ij}}\right)^{12}-\left(\frac{\sigma}{r_{ij}}\right)^{6}\right],
+(97)
+where
+x
+n
+∈
+ℝ
+3
+x_{n}\in{\mathbb{R}}^{3}
+,
+r
+i
+​
+j
+=
+‖
+x
+i
+−
+x
+j
+‖
+2
+r_{ij}=\|x_{i}-x_{j}\|_{2}
+is the Euclidean distance between particles
+i
+i
+and
+j
+j
+, and
+ϵ
+&gt;
+0
+\epsilon&gt;0
+and
+σ
+&gt;
+0
+\sigma&gt;0
+are physical constants.
+Following prior work
+(Klein
+et al.
+,
+2023
+)
+, we consider two Boltzmann distributions induced by this potential: LJ-13 and LJ-55, corresponding to systems with 13 and 55 particles, and dimensionalities
+D
+=
+39
+D=39
+and
+D
+=
+155
+D=155
+, respectively.
+To assess the quality of the generated samples, we use the test set provided by
+(Klein
+et al.
+,
+2023
+)
+as ground-truth samples.
+E.3
+Alanine Dipeptide (ALDP)
+We consider the alanine dipeptide molecule in vacuum at
+T
+=
+300
+​
+K
+T=300\,\mathrm{K}
+, a standard benchmark for evaluating sampling methods
+(Smith,
+1999
+)
+.
+The system comprises 22 atoms, corresponding to a
+D
+=
+66
+D=66
+-dimensional configuration space, and the target is the Boltzman</p>
+
+<p>n distribution induced by the molecular force field.
+Since potential evaluations are computationally expensive, this setting highlights the need for samplers that achieve high sample quality with few density evaluations.
+Ground truth samples are generated using OpenMM molecular dynamics simulations following the setup of
+Midgley
+et al.
+(
+2023
+)
+.
+Ramachandran Histograms.
+To evaluate the quality of the generated samples, we project the 66-dimensional configuration space onto the two principal dihedral angles,
+ϕ
+\phi
+and
+ψ
+\psi
+(Midgley
+et al.
+,
+2023
+)
+.
+These projection is done using the
+mdtraj
+package
+(McGibbon
+et al.
+,
+2015
+)
+.
+This results in a 2D histogram, known as a Ramachandran plot, which provides a visually intuitive and physically meaningful representation of the molecule’s conformational states.
+Following previous work
+(Noé
+et al.
+,
+2019
+; Midgley
+et al.
+,
+2023
+; Rissanen
+et al.
+,
+2025
+)
+, we use these plots to identify whether each sampler effectively navigates these barriers to achieve a global exploration of the conformational space compared to the MD ground truth.
+Chirality.
+Alanine dipeptide is a chiral molecule, meaning it can exist in two forms: the L-form and the D-form
+(Midgley
+et al.
+,
+2023
+)
+.
+While the D-form is found in synthetically created compounds, the L-form appears almost exclusively in nature.
+Consequently, the literature focuses predominantly on the L-form
+(Smith,
+1999
+)
+.
+To restrict our experiments to this biologically relevant state, we filte</p>
+
+<p>r out D-forms by adding a penalization term to the potential energy surface.
+This term assigns a high energy penalty to D-configurations while remaining zero for L-configurations.
+Formally, this term is defined as the signed volume,
+Ω
+\Omega
+, of the parallelepiped spanned by the vectors connecting the central alpha-carbon (C
+α
+) to its neighbors.
+This is defined by the scalar triple product:
+Ω
+=
+(
+𝐫
+N
+−
+𝐫
+C
+α
+)
+⋅
+[
+(
+𝐫
+C
+−
+𝐫
+C
+α
+)
+×
+(
+𝐫
+C
+β
+−
+𝐫
+C
+α
+)
+]
+,
+\Omega=(\mathbf{r}_{\mathrm{N}}-\mathbf{r}_{\mathrm{C}_{\alpha}})\cdot\left[(\mathbf{r}_{\mathrm{C}}-\mathbf{r}_{\mathrm{C}_{\alpha}})\times(\mathbf{r}_{\mathrm{C}_{\beta}}-\mathbf{r}_{\mathrm{C}_{\alpha}})\right],
+(98)
+where
+𝐫
+X
+\mathbf{r}_{\mathrm{X}}
+represents the position vector of atom
+X
+∈
+{
+N
+,
+C
+,
+C
+β
+,
+C
+α
+}
+\mathrm{X}\in\left\{\mathrm{N},\mathrm{C},\mathrm{C}_{\beta},\mathrm{C}_{\alpha}\right\}
+.
+The sign of
+Ω
+\Omega
+determines the chirality, allowing us to penalize the system when it transitions into the D-region.
+E.4
+Bayesian Neural Network (BNN)
+We consider the problem of sampling from the posterior distribution over the parameters of a Bayesian neural network, which is known to be complex and highly multimodal
+(Neal,
+2012
+; Izmailov
+et al.
+,
+2021
+)
+.
+Such samples are required to accurately compute posterior expectations and to quantify predictive uncertainty.
+Evaluating the target density involves a forward pass through the network, while computing the score of the log density requires a backward pass, both of</p>
+
+<p>which scale with the number of parameters.
+This makes it crucial to minimize the number of density evaluations needed to obtain high-quality samples.
+(a)
+GM-2
+(b)
+GMNU-2
+Figure 8
+:
+GM task in two dimensions.
+Appendix F
+Evaluation Metrics
+To evaluate performance, we consider a diverse set of metrics: Maximum Mean Discrepancy (MMD), Total Variation distance, the Wasserstein-2 distance (
+W
+2
+W_{2}
+), and the relative Mean Absolute Error (MAE).
+In addition, we report two task-specific metrics: the Ramachandran KL divergence for the ALDP task, and the Test Negative Log Likelihood (Test NLL) for the BNN task.
+Aggregate performance is quantified by the Mean Hypervolume Ratio (HVR)
+(Zitzler
+et al.
+,
+2003
+)
+, computed on normalized Pareto fronts to ensure comparability across objectives of varying scales.
+Next, we describe these metrics.
+Maximum Mean Discrepancy (MMD).
+We use the definition of MMD given by
+Gretton
+et al.
+(
+2012
+)
+.
+We compute MMD on the histograms of negative log-densities of the samples.
+Given two sets of samples
+X
+=
+{
+x
+1
+,
+…
+,
+x
+n
+}
+X=\{x_{1},\dots,x_{n}\}
+and
+Y
+=
+{
+y
+1
+,
+…
+,
+y
+m
+}
+Y=\{y_{1},\dots,y_{m}\}
+, the squared MMD estimate is defined as:
+MMD
+^
+2
+​
+(
+X
+,
+Y
+)
+=
+1
+n
+​
+(
+n
+−
+1
+)
+​
+∑
+i
+≠
+j
+k
+​
+(
+x
+i
+,
+x
+j
+)
+−
+2
+n
+​
+m
+​
+∑
+i
+,
+j
+k
+​
+(
+x
+i
+,
+y
+j
+)
++
+1
+m
+​
+(
+m
+−
+1
+)
+​
+∑
+i
+≠
+j
+k
+​
+(
+y
+i
+,
+y
+j
+)
+\widehat{\text{MMD}}^{2}(X,Y)=\frac{1}{n(n-1)}\sum_{i\neq j}k(x_{i},x_{j})-\frac{2}{nm}\sum_{i,j}k(x_{i},y_{j})+\frac{1}{m(m-1)}\sum_{i\neq j}k(y_{i},y_{j})
+(99)
+where
+k
+​
+(</p>
+
+<p>⋅
+,
+⋅
+)
+k(\cdot,\cdot)
+is a positive definite kernel.
+In this work, we use the Gaussian kernel
+k
+​
+(
+x
+,
+y
+)
+=
+exp
+⁡
+(
+−
+‖
+x
+−
+y
+‖
+2
+2
+​
+σ
+2
+)
+k(x,y)=\exp\left(-\frac{\|x-y\|^{2}}{2\sigma^{2}}\right)
+.
+Total Variation (TV).
+We approximate the Total Variation distance using the discretized histograms of the negative log-densities. Let
+H
+P
+H_{P}
+and
+H
+Q
+H_{Q}
+be the normalized histogram vectors (probability mass functions) for the true and generated data respectively, where
+H
+​
+(
+i
+)
+H(i)
+represents the probability mass in the
+i
+i
+-th bin. The TV distance is computed as:
+TV
+​
+(
+H
+P
+,
+H
+Q
+)
+=
+1
+2
+​
+∑
+i
+|
+H
+P
+​
+(
+i
+)
+−
+H
+Q
+​
+(
+i
+)
+|
+\text{TV}(H_{P},H_{Q})=\frac{1}{2}\sum_{i}|H_{P}(i)-H_{Q}(i)|
+(100)
+Wasserstein-2 Distance (
+W
+2
+W_{2}
+).
+The Wasserstein-2 distance measures the cost of transporting the generated distribution to the target distribution. In practice, we compute
+W
+2
+W_{2}
+using the Python Optimal Transport package
+(Flamary
+et al.
+,
+2021
+)
+.
+For the Lennard-Jones (LJ) task, the metric
+d
+​
+(
+x
+,
+y
+)
+d(x,y)
+must account for rotational and translational symmetries. Following previous work
+(Rissanen
+et al.
+,
+2025
+)
+, we incorporate the Kabsch algorithm to ensure equivariance. The distance between two configurations
+x
+x
+and
+y
+y
+is defined as the root-mean-square deviation (RMSD) after optimal superposition:
+d
+Kabsch
+​
+(
+x
+,
+y
+)
+=
+min
+R
+∈
+S
+​
+O
+​
+(
+3
+)
+,
+t
+∈
+ℝ
+3
+⁡
+‖
+R
+​
+x
++
+t
+−
+y
+‖
+2
+d_{\text{Kabsch}}(x,y)=\min_{R\in SO(3),t\in\mathbb{R}^{3}}\|Rx+t-y\|_{2}
+(101)
+Relative Mea</p>
+
+<p>n Absolute Error (MAE).
+The relative MAE evaluates the accuracy of the estimated expectation of a scalar observable
+f
+​
+(
+x
+)
+f(x)
+.
+We use the same quadratic observable as in
+Midgley
+et al.
+(
+2023
+); Chen
+et al.
+(
+2024
+)
+.
+The relative error is given by:
+RelMAE
+=
+|
+𝔼
+x
+∼
+ν
+^
+​
+[
+f
+​
+(
+x
+)
+]
+−
+𝔼
+x
+∼
+ν
+​
+[
+f
+​
+(
+x
+)
+]
+|
+|
+𝔼
+x
+∼
+ν
+​
+[
+f
+​
+(
+x
+)
+]
+|
+\text{RelMAE}=\frac{\left|\mathbb{E}_{x\sim\hat{\nu}}[f(x)]-\mathbb{E}_{x\sim\nu}[f(x)]\right|}{\left|\mathbb{E}_{x\sim\nu}[f(x)]\right|}
+(102)
+Ramachandran Kullback–Leibler Divergence (Ramachandran KL).
+For the ALDP task, we assess the structural fidelity by comparing the marginal distributions of the dihedral angles
+ϕ
+\phi
+and
+ψ
+\psi
+.
+We compute the Kullback–Leibler (KL) divergence between discretized Ramachandran histograms of the ground-truth and generated samples.
+See
+App. E
+for more details about the Ramachandran histograms.
+Ramachandran Root Mean Squared Error (Ramachandran RMSE).
+To complement the KL divergence, we evaluate the thermodynamic landscapes through the Free Energy Surface (FES) obtained from the Ramachandran histograms. We quantify the discrepancy between the ground-truth and generated FES using the Root Mean Square Error (RMSE). See
+App. E
+for details about the Ramachandran histograms.
+Test Negative Log Likelihood (Test NLL).
+For the BNN task, ground-truth samples from the posterior are unavailable, making the previous metrics inapplicable.
+Instead, we evaluate models using the average Negative Log Likelihood (N</p>
+
+<p>LL) on a held-out test set.
+For each posterior sample (corresponding to a set of network weights), we compute the test NLL and then report the average across samples.
+Hypervolume Ratio (HVR).
+To quantitatively assess the quality of the Pareto fronts across tasks with varying objective scales, we employ the Hypervolume (HV) indicator
+(Zitzler
+et al.
+,
+2003
+)
+. The HV indicator measures the volume of the objective space that is dominated by a set of non-dominated solutions, bounded by a reference point. It is widely regarded as the gold standard in multi-objective optimization because it is strictly monotonic with respect to Pareto dominance.
+This means that a set of solutions that improves upon another in terms of convergence or diversity will strictly yield a higher hypervolume.
+Since the metrics in our set of tasks operate on different scales, raw hypervolume scores cannot be aggregated directly. To enable a fair cross-task comparison, we compute the Mean Hypervolume Ratio (HVR) following standard benchmarking protocols
+(Zitzler
+et al.
+,
+2003
+)
+. For each target distribution and evaluation metric, we employ the following procedure to compute the HVR:
+1.
+Normalization: We identify the global minimum and maximum objective values across all methods and all evaluations. The objective vectors for all methods are then normalized to the unit square
+[
+0
+,
+1
+]
+2
+[0,1]^{2}
+via linear rescaling.
+2.
+Reference Front Construction: We construct a
+best known
+Pareto front for each task by po</p>
+
+<p>oling the solutions from all methods and filtering for the non-dominated set. The reference hypervolume,
+H
+​
+V
+ref
+HV_{\text{ref}}
+, is computed based on this combined front using a reference point of
+(
+1.1
+,
+1.1
+)
+(1.1,1.1)
+in the normalized space to ensure all boundary solutions are captured.
+3.
+Ratio Calculation: The HVR for a specific method is defined as the ratio of its hypervolume to the reference hypervolume:
+HVR
+​
+(
+method
+)
+=
+H
+​
+V
+​
+(
+method
+)
+H
+​
+V
+ref
+.
+\text{HVR}(\texttt{method})=\frac{HV(\texttt{method})}{HV_{\text{ref}}}.
+(103)
+An HVR of
+1.0
+1.0
+indicates that a method has successfully recovered the entire best-known Pareto front, while lower values indicate a failure to converge or a lack of diversity in the solution set.
+To obtain the Mean HVR of a method, we average the HVR corresponding to that method over the selected metrics and targets.
+Appendix G
+Experimental Setup
+In this section, we describe the implementation details and hyperparameter configuration of the methods used in our experiments.
+We also explain how to obtain the Pareto fronts depicted in
+Fig. 6
+and
+App. H
+.
+Implementation.
+All methods and target distributions are implemented in PyTorch, closely following their original formulations.
+The code used in our experiments has been uploaded as supplementary material.
+For NRPT, we extend the implementation by
+Rissanen
+et al.
+(
+2025
+)
+, which is available at
+https://github.com/cambridge-mlg/Progressive-Tempering-Sampler-with-Diffusion
+.
+For OASMC, w</p>
+
+<p>e adapt to PyTorch the pseudo-code provided by
+Syed
+et al.
+(
+2024
+)
+.
+For DiGS, we rely on the implementation available at the official repository:
+https://github.com/Wenlin-Chen/DiGS
+.
+The implementations of MALA and HMC are standard, and we therefore use conventional versions of these algorithms.
+In all cases, these implementations have been refined to maximize performance while minimizing density evaluations.
+The implementation of CDS closely follows
+Alg. 1
+.
+Finally, all samplers are implemented to prioritize computational efficiency by minimizing target density evaluations.
+To achieve this, each sampler caches its current state, comprising the sample coordinates
+x
+x
+, the log unnormalized density
+log
+⁡
+π
+​
+(
+x
+)
+\log\pi(x)
+, and the score
+∇
+log
+⁡
+π
+​
+(
+x
+)
+\nabla\log\pi(x)
+.
+This caching mechanism prevents redundant gradient and density computations during internal steps.
+Methods, Hyperparameters and Configuration.
+In this work, we consider the following methods: Non-Reversible PT (NRPT)
+(Syed
+et al.
+,
+2022
+)
+, Optimized Annealed SMC (OASMC)
+(Syed
+et al.
+,
+2024
+)
+, Diffusive Gibbs Sampling (DiGS)
+(Chen
+et al.
+,
+2024
+)
+, Metropolis–Adjusted Langevin Algorithm (MALA), Hamiltonian Monte Carlo (HMC), No-U-Turn Sampler (NUTS,
+Hoffman
+et al.
+(
+2014
+)
+), Stein Variational Gradient Descent (SVGD,
+Liu and Wang (
+2016
+)
+), and the Metropolis Adjusted Microcanonical Sampler (MAMS,
+Robnik
+et al.
+(
+2025
+)
+).
+To ensure a fair evaluation, we explore multiple hyperparameter values for e</p>
+
+<p>ach method and select the optimal configurations via grid search.
+Several settings are shared across the evaluated methods. For the exploration (or denoising) kernels, all methods utilize the Metropolis-Adjusted Langevin Algorithm (MALA) across all tasks, with the exception of the ALDP task, which utilizes Hamiltonian Monte Carlo (HMC).
+To ensure numerical stability, we initialize a task-specific base step size that is consistent across all samplers:
+0.1
+0.1
+for the GM task,
+0.0001
+0.0001
+for the LJ task,
+0.000001
+0.000001
+for the ALDP task, and
+0.00001
+0.00001
+for the BNN task.
+From this base initialization, all methods employ an adaptive step size: following each step, the size is updated to target theoretically optimal acceptance rates of
+0.574
+0.574
+for MALA and
+0.651
+0.651
+for HMC
+(Roberts and Rosenthal,
+1998
+; Beskos
+et al.
+,
+2013
+)
+. Furthermore, for methods requiring a reference distribution (NRPT and OASMC), we use a flat distribution (i.e., a uniform distribution with infinite support) in the GM, LJ, and ALDP tasks, and the prior distribution in the BNN task.
+The method-specific hyperparameters are detailed below:
+•
+CDS:
+The hyperparameters include the first-stage sampler configurations, the number of integration steps, the corrector kernel and steps, the initial time
+t
+0
+t_{0}
+, and the noise schedule
+σ
+t
+\sigma_{t}
+. We employ NRPT for the first stage, fixing its hyperparameters to near-optimal values obtained for the NRPT baseline. We note that these values were</p>
+
+<p>not explicitly jointly optimized for CDS, where the first stage targets a distribution closer to the reference than the standalone NRPT baseline (and thus we expect them to differ). For the integration phase, we consider
+{
+10
+,
+100
+,
+1000
+}
+\{10,100,1000\}
+for the integration steps and tune
+t
+0
+t_{0}
+independently for each task (
+t
+0
+=
+0.01
+t_{0}=0.01
+for GM,
+t
+0
+∈
+{
+0.2
+,
+0.3
+}
+t_{0}\in\left\{0.2,0.3\right\}
+for LJ,
+t
+0
+∈
+{
+0.1
+,
+0.2
+}
+t_{0}\in\left\{0.1,0.2\right\}
+for ALDP,
+t
+0
+=
+0.1
+t_{0}=0.1
+for BNN). We utilize MALA as the corrector kernel, applying either 0 (no correction) or 1 corrector step. Finally, we employ a constant noise schedule, fixing
+σ
+t
+\sigma_{t}
+to the same task-specific base step size shared across the other evaluated methods.
+•
+NRPT:
+The hyperparameters include the number of replicas and the annealing schedule. We select the number of replicas from the set
+{
+3
+,
+5
+,
+10
+}
+\{3,5,10\}
+. For the annealing schedule, we adopt a geometric schedule and tune the initial value,
+β
+min
+\beta_{\min}
+, per task (
+β
+min
+∈
+{
+0.001
+,
+0.01
+}
+\beta_{\min}\in\left\{0.001,0.01\right\}
+for GM,
+β
+min
+∈
+{
+0.7
+,
+0.8
+}
+\beta_{\min}\in\left\{0.7,0.8\right\}
+for LJ,
+β
+min
+∈
+{
+0.3
+,
+0.5
+}
+\beta_{\min}\in\left\{0.3,0.5\right\}
+for ALDP,
+β
+min
+∈
+{
+0.7
+,
+0.8
+}
+\beta_{\min}\in\left\{0.7,0.8\right\}
+for BNN). Additionally, we consider the schedule optimization procedure proposed by
+(
+Syed
+et al.
+,
+2022
+)
+.
+•
+OASMC:
+Hyperparameters include the number of particles, the resampling thresho</p>
+
+<p>ld, the resampling mechanism, and the annealing schedule. We consider
+{
+10
+,
+100
+,
+1000
+}
+\{10,100,1000\}
+particles for all tasks. For the resampling mechanism, we used both multinomial and systematic resampling, and observed that the latter provides a stronger empirical performance
+(
+Smith
+,
+2013
+)
+. Resampling events are triggered whenever the effective sample size (ESS) proportion falls below a specified threshold, evaluating values in
+{
+0.5
+,
+1.0
+}
+\{0.5,1.0\}
+. Similar to NRPT, we utilize a geometric annealing schedule, tune
+β
+min
+\beta_{\min}
+per task, and apply the schedule optimization procedure introduced by
+(
+Syed
+et al.
+,
+2024
+)
+.
+•
+DiGS:
+The key hyperparameters are the noise schedule, the number of denoising steps, and the number of noise levels. The noise schedule follows the one used in the original paper
+(
+Chen
+et al.
+,
+2024
+)
+. It is determined by the parameters
+α
+min
+\alpha_{\min}
+and
+α
+max
+\alpha_{\max}
+, for which we consider
+{
+0.1
+,
+0.4
+}
+\{0.1,0.4\}
+and
+{
+0.6
+,
+0.9
+}
+\{0.6,0.9\}
+, respectively. We consider
+{
+1
+,
+4
+}
+\{1,4\}
+for the number of denoising steps and
+{
+1
+,
+5
+}
+\{1,5\}
+for the number of noise levels.
+•
+HMC:
+In addition to the shared adaptive step size, we tune the number of leapfrog steps, considering the set
+{
+3
+,
+5
+}
+\{3,5\}
+across all tasks.
+•
+MALA:
+The sole hyperparameter is the step size, which relies entirely on the shared adaptive procedure described above.
+•
+NUTS:
+In addition to the shared adaptive step size, we tune the maximum tree dep</p>
+
+<p>th（限制轨迹长度）；我们在所有任务中考虑集合 {3,5,8} $\left\{3,5,8\right\}$。
+•
+MAMS：与 HMC 类似，我们调整积分步数，在所有任务中考虑集合 {3,5} $\{3,5\}$。
+•
+SVGD：关键超参数包括粒子更新的步长（学习率）和核配置。我们采用其他评估方法中共享的特定任务基础步长，并使用径向基函数（RBF）核，其带宽通过中值启发式方法确定。
+初始化与样本生成。为了确保公平比较，所有采样器共享一个通用的初始化方案。首先，我们使用 $1,000$ 次标准梯度下降迭代来确保收敛，以识别每个目标密度的一个众数 $x_{\pi}^{*}=\arg\max_{x}\log\pi(x)$。然后，所有采样器都在 $x_{\pi}^{*}$ 处进行初始化。对于需要从参考分布 $z\sim{\nu_{\text{ref}}}$ 进行初始化的 CDS，我们定义 ${\nu_{\text{ref}}}=\mathcal{N}(x_{\pi}^{*},\tau^{2}I)$，并将起始点设为均值，即 $</p>
+
+<p>运行的链数与所需样本数相同。
+这在 PyTorch 中使用向量化操作高效实现，生成形状为
+(
+num_samples
+,
+D
+)
+(\texttt{num\_samples},D)
+的张量。
+帕累托前沿。
+为了构建本文提出的帕累托前沿，对于每个数据集，我们固定一组计算预算，以</p>
+
+<p>t
+∣
+z
+\nu_{t\mid z}
+. Recall that the first stage of CDS samples from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+for a fixed
+t
+0
+&gt;
+0
+t_{0}&gt;0
+. As
+t
+→
+0
+t\to 0
+,
+ν
+t
+∣
+z
+\nu_{t\mid z}
+concentrates to a Dirac mass at
+z
+z
+(a sample from the reference distribution), suggesting that communication should improve for small
+t
+t
+. To test this hypothesis, we run NRPT targeting
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+across different values of
+t
+0
+t_{0}
+, keeping all hyperparameters fixed except for
+t
+0
+t_{0}
+.
+Two factors influence PT communication efficiency: the annealing schedule and the number of replicas. We optimize the annealing schedule for each run, and set the number of replicas to the ceiling of the GCB estimated from a pilot run, following
+(Syed
+et al.
+,
+2022
+)
+. These choices effectively control for their impact, isolating the effect of
+t
+0
+t_{0}
+on communication efficiency.
+Round Trips (RTs).
+RTs is the number of times a replica traverses between the reference and target distributions.
+It is usually used as the main measure to assess PT efficiency, as higher RTs indicate better mixing
+(Syed
+et al.
+,
+2022
+)
+.
+As shown in
+Fig. 4
+, decreasing
+t
+0
+t_{0}
+from
+1.0
+1.0
+generally increases RTs across all tasks, confirming that sampling
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+is more efficient than sampling
+ν
+\nu
+directly.
+However, efficiency starts to drop as
+t
+0
+→
+0
+t_{0}\to 0
+, where the distribution becomes excessively peaked, reducing replica overlap.
+As depicted in
+Fig. 3
+, this suggests an optimal range for
+t
+0</p>
+
+<p>t_{0}
+：足够小以使目标分布与参考分布重叠，但又足够高以避免奇异性。</p>
+
+<p>ixed. NRPT consistently outperforms OASMC, whereas HMC struggles to explore the multimodal distribution and exhibits significantly degraded performance.
+We study the impact of the sampler used in Stage 1 of CDS.
+The objective of this stage is to draw samples from
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+for a fixed
+t
+0
+&gt;
+0
+t_{0}&gt;0
+.
+In principle, any sampling procedure could be employed for this purpose. However, since
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+remains multimodal, we expect
+local
+MCMC methods (e.g., MALA or HMC) to exhibit poor mixing.
+In contrast, annealing-based methods (such as PT and SMC), which progressively bridge the reference and target distributions, are better suited to this setting, particularly because
+ν
+t
+0
+∣
+z
+\nu_{t_{0}\mid z}
+approaches the reference distribution as
+t
+0
+→
+0
+t_{0}\to 0
+.
+We compare CDS performance under different choices of sampler in Stage 1.
+Specifically, we consider NRPT, OASMC, and HMC, all tuned as described in
+App. G
+, while keeping the parameters of Stage 2 (SDE integration) fixed.
+The results, shown in
+Fig. 10
+, indicate that although OASMC is a competitive alternative, it is consistently outperformed by NRPT.
+In contrast, HMC performs poorly: it becomes trapped in local modes and fails to adequately explore the target distribution.
+H.3
+Additional Baselines
+Figure 11
+:
+Comparison of CDS against additional baselines (NUTS, SVGD, MAMS).
+CDS consistently outperforms all methods in GM and BNN, while in LJ, MAMS and NUTS perform best in the low-budget</p>
+
+<p>regime but are surpassed by CDS as the number of density evaluations increases.
+We compare the proposed CDS against additional baselines consisting of variants of the local samplers (MALA and HMC) considered in the main text. Specifically, we include the No-U-Turn Sampler (NUTS,
+Hoffman
+et al.
+(
+2014
+)
+), Stein Variational Gradient Descent (SVGD,
+Liu and Wang (
+2016
+)
+), and the Metropolis Adjusted Microcanonical Sampler (MAMS,
+Robnik
+et al.
+(
+2025
+)
+).
+Results are reported in
+Fig. 11
+. As NUTS and MAMS are extensions of HMC, we also include HMC for reference.
+In the GM task, CDS consistently outperforms all baselines. The competing methods exhibit behavior similar to HMC and MALA, becoming trapped in local modes and failing to mix effectively.
+In the LJ task, MAMS and NUTS achieve near-optimal performance with fewer than
+10
+4
+10^{4}
+density evaluations, outperforming both HMC and CDS in this low-budget regime. This is expected, as local samplers such as MALA and HMC are sufficient to accurately capture the target distribution in this setting. However, as the computational budget increases, CDS surpasses all methods and achieves the best overall performance.
+Finally, in the BNN task, CDS again delivers the strongest results. While the additional baselines improve upon HMC, they remain unable to match the performance of CDS.
+H.4
+Qualitative Analysis
+(a)
+GM-2 target.
+(b)
+GMNU-2 target.
+Figure 12
+:
+Comparison of ground truth and generated samples for the Gaussian Mixture (GM) ta</p>
+
+<p>sk.
+Each method uses a fixed budget of
+2
+⋅
+10
+3
+2\cdot 10^{3}
+density evaluations.
+Figure 13
+:
+Comparison of Lennard-Jones (LJ) potential energy histograms.
+All samplers use a fixed budget of
+2
+⋅
+10
+4
+2\cdot 10^{4}
+and
+2
+⋅
+10
+5
+2\cdot 10^{5}
+density evaluations for the LJ-13 and LJ-55 targets, respectively.
+DiGS is omitted from the LJ55 plot as it produces a degenerate histogram.
+In this section, we analyze the samples generated by each method across the different tasks. Our goal is to determine how quantitative performance differences translate into qualitative sample fidelity.
+GM Task.
+For the GM task, we focus on the GM-2 and GMNU-2 targets, as their two-dimensional nature allows for direct visualization. As shown in
+Fig. 12
+, when methods are restricted to a limited budget of density evaluations, only the proposed CDS and DiGS successfully recover all modes. This aligns with the Pareto front results in
+Fig. 17
+, where CDS and DiGS demonstrated superior performance.
+LJ Task.
+Energy histograms for the LJ systems are displayed in
+Fig. 13
+. We observe that CDS most accurately reproduces the target energy distribution, followed by NRPT and OASMC. Notably, for the LJ-55 target, only CDS and NRPT are able to accurately approximate the target distribution.
+ALDP Task.
+Ramachandran histograms for the ALDP task are presented in
+Fig. 2
+. The ground truth samples reveal two distinct metastable states separated by a high-energy barrier. Both CDS (ours) and NRPT successfully recover the</p>
+
+<p>se modes with accurate density allocations; however, NRPT slightly outperforms CDS in this specific instance. Conversely, OASMC and DiGS exhibit artifacts in high-energy transition regions, while local samplers (MALA and HMC) suffer from mode collapse, failing to traverse the energy barrier.
+H.5
+Ablation study
+We analyze the impact of key hyperparameters on CDS performance: the computational budget allocation between phases, the number of integration steps, the use of corrector steps, and the choice of noise schedule.
+Figure 14
+:
+Impact of steps allocation on CDS performance
+. We evaluate the trade-off between Parallel Tempering (PT) and SDE integration by varying the proportion of total steps dedicated to the PT phase.
+Computational Budget Allocation Between Phases.
+We study the balance between the two stages of CDS to understand how to allocate computational resources effectively. To this end, we introduce a hyperparameter
+ρ
+\rho
+, which controls the fraction of steps assigned to Stage 1. Given a total computational budget of
+N
+N
+steps, we define:
+N
+Stage1
+=
+ρ
+​
+N
+,
+N
+Stage2
+=
+(
+1
+−
+ρ
+)
+​
+N
+.
+N_{\textnormal{Stage1}}=\rho N,\qquad N_{\textnormal{Stage2}}=(1-\rho)N.
+(104)
+Thus,
+ρ
+\rho
+determines the relative emphasis between the two stages of CDS, enabling a controlled analysis of their trade-off.
+We fix all other configurations and evaluate performance as a function of
+ρ
+\rho
+across tasks, see
+Fig. 14
+.
+As expected,
+ρ
+=
+0
+\rho=0
+(pure SDE integration) performs poorly, confir</p>
+
+<p>ming that starting the integration at
+t
+=
+0
+t=0
+leads to insufficient exploration of the target distribution.
+Increasing
+ρ
+\rho
+consistently improves performance by incorporating more PT steps, which enhance global exploration.
+For the GM, LJ, and ALDP tasks, performance continues to improve as
+ρ
+\rho
+increases, indicating that only a small number of integration steps are sufficient to transport samples effectively to the target distribution. In contrast, for the BNN task, overly large values of
+ρ
+\rho
+degrade performance, as too few SDE integration steps hinder accurate transport to the target.
+Figure 15
+:
+Impact of integration steps on CDS performance.
+Under a limited evaluation budget, fewer integration steps are preferable as they allow more resources for exploration in the first stage. In contrast, with a larger budget, increasing the number of integration steps improves the accuracy of the transport to the target distribution.
+Integration Steps.
+From the previous analysis, we observe that allocating more steps to the first stage of CDS is beneficial.
+Next, we investigate deeper on how to choose the number of integration steps.
+As before, we fix all other configurations and evaluate performance as a function of the number of integration steps. Results are shown in
+Fig. 15
+, where we report Pareto fronts for different choices of this parameter. We observe that, under a limited density evaluation budget, it is more effective to use fewer integration steps, as this allows m</p>
+
+<p>更多的步骤用于第一阶段的探索。相反，当预算足够大时，分配更多的积分步骤会变得有利，从而提高向目标分布传输的准确性。
+总体而言，我们的结果强调了对计算资源进行平衡分配的必要性：必须投入足够的精力到PT阶段以确保有效的全局探索，同时保留足够的积分步骤以准确地将样本映射到目标分布。
+图16
+：
+校正器步骤和噪声方差对CDS性能的影响。
+校正器步骤仅在低噪声水平下改善结果，而随着扩散方差的增加，其影响变得微不足道。
+扩散噪声与校正器步骤。
+我们研究了两个密切相关的超参数：扩散噪声方差（
+σ
+t
+2
+\sigma_{t}^{2}
+）和校正器步骤的使用。两者都影响该方法的第二阶段，在此阶段对插值SDE进行积分。引入校正器步骤最初是为了减轻由SDE数值离散化产生的误差。反过来，扩散方差控制着SDE中分数项的权重，从而调节朝向目标分布的引导强度。
+重要的是，校正器步骤的有效性取决于扩散方差的选择。特别是，较小的方差会降低分数项的影响，这可能导致样本偏离中间分</p>
+
+<p>ribution at each integration step.
+We empirically verify this interaction by evaluating CDS across different configurations of these hyperparameters on the GM task. The results are shown in
+Fig. 16
+. We observe that corrector steps improve performance only when the diffusion variance is low. In contrast, for higher noise levels, introducing corrector steps does not yield any noticeable benefit.
+H.6
+Additional pareto fronts
+Figure 17
+:
+Pareto fronts for the Gaussian Mixture (GM) task across different evaluation metrics
+. Evolution of performance across different evaluation criteria (defined in
+App. F
+). Each curve represents the optimal trade-off between computational budget and sample quality.
+Figure 18
+:
+Pareto fronts for the Lennard-Jones (LJ) task across different evaluation metrics
+. Evolution of performance across different evaluation criteria (defined in
+App. F
+). Each curve represents the optimal trade-off between computational budget and sample quality.
+Figure 19
+:
+Pareto fronts for the Alanine Dipeptide (ALDP) task across different evaluation metrics
+. Evolution of performance across different evaluation criteria (defined in
+App. F
+). Each curve represents the optimal trade-off between computational budget and sample quality.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

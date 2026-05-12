@@ -1,0 +1,2725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>少即是多：移动应用端侧小语言模型集成工程挑战 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">少即是多：移动应用端侧小语言模型集成工程挑战</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-04-27</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2604.24636" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Less Is More: Engineering Challenges of On-Device Small Language Model Integration in a Mobile Application</h4>
+            <p><strong>中文摘要：</strong> 暂无摘要</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>少即是多：移动应用中端侧小语言模型集成的工程挑战
+William Oliveira
+独立研究员
+contact@woliveiras.com
+（2026年4月）
+摘要
+端侧小语言模型（SLM）承诺为移动用户提供完全离线、私密的AI体验（不依赖云端，数据不离开设备）。但这一承诺在实践中能否实现？本文提出了一项纵向实践者案例研究，记录了将SLM（Gemma 4 E2B，26亿参数；Qwen3 0.6B，6亿参数）集成到已投入生产的Android猜词游戏Palabrita中的工程挑战。在为期5天、包含204次提交（约90次直接与AI相关）的开发冲刺中，系统经历了一次根本性的转变：从LLM生成完整结构化谜题（单词、类别</p>
+
+<p>e feedback, session rotation, progressive prompt hardening, and systematic responsibility reduction. Our findings demonstrate that on-device SLMs are viable for production mobile applications, but only when the developer accepts a fundamental constraint: the most reliable on-device LLM feature is one where the LLM does the least. We distill our experience into eight actionable design heuristics for practitioners integrating SLMs into mobile apps.
+1
+Introduction
+The deployment of Large Language Models on mobile devices has emerged as a compelling alternative to cloud-based inference. On-device execution offers zero-latency privacy guarantees (user data never leaves the device), eliminates network dependency, and removes per-query cost. Frameworks such as Google’s LiteRT-LM
+[
+1
+]
+, MLC LLM
+[
+2
+]
+, and Android’s AICore
+[
+3
+]
+have made it technically possible to run models with hundreds of millions to billions of parameters directly on smartphones. Google’s AI Edge Gallery showcase app
+[
+1
+]
+and the growing catalog of
+.litertlm
+models on Hugging Face demonstrate that the infrastructure is maturing rapidly.
+But a significant gap exists between infrastructure readiness and engineering guidance. While abundant research benchmarks SLM performance on standardized tasks (measuring tokens per second, perplexity, and task accuracy), almost nothing documents the
+engineering reality
+of shipping an SLM-powered feature in a production mobile application. What happens when a 600MB model consi</p>
+
+<p>stently wraps its JSON output in markdown code fences? When it generates words with the wrong number of letters despite explicit instructions? When inference sessions degrade in quality after three generations due to KV cache saturation? These are not hypothetical scenarios; they are the daily challenges a practitioner faces, and the solutions require a combination of prompt engineering, defensive parsing, and architectural pragmatism that existing literature does not address.
+This paper presents a practitioner case study of integrating on-device SLMs into Palabrita, a Wordle-style word-guessing game for Android. The study is based on the complete Git history of the project: 204 commits over 5 days, with
+∼
+\sim
+90 commits directly related to AI/LLM integration. The commit log serves as a contemporaneous, tamper-evident record of every decision, failure, and course correction, providing an unusually rigorous evidence trail for a case study.
+The story of this integration is one of progressive disillusionment followed by pragmatic adaptation. The initial design was ambitious: the LLM would generate complete puzzles (a word, its category, a difficulty rating, a rarity indicator, and five progressive hints) as structured JSON. By the end of five days, the LLM’s sole responsibility was writing three short hints about a word selected from a curated list, with a deterministic fallback if it failed. This trajectory was not planned; it was
+discovered
+through repeated contact with the c</p>
+
+<p>设备端推理的约束。
+我们研究了三个研究问题：
+•
+RQ1：
+如今在 Android 应用中使用设备端大语言模型（LLM）来提供完全离线、私密的用户体验是否可行？
+•
+RQ2：
+在 Android 上本地运行 LLM 推理而不将数据发送到云端时，会出现哪些类型的失败？
+•
+RQ3：
+哪些提示工程和架构策略能有效缓解这些失败？
+我们的贡献如下：(1) 针对设备端小语言模型（SLM）集成的五种失败类别分类法，并附有提交级别的证据和代码示例作为记录；(2) 观察到一个“渐进式简化弧”，其中 LLM 的职责被系统性地从七个输出字段减少到零（针对单词生成），最终收敛于仅生成提示作为可靠的均衡状态；(3) 对提示工程迭代过程的详细说明，展示了提示系统的四次完全重写及其前后对比；(4) 一个架构反模式（使用 Android 的 WorkManager 进行前台 LLM 操作）及其解决方案的案例研究；(5) 从这些观察中得出的八条可操作的设计启发式规则。
+本文的其余部分组织如下。
+第 ˜ 2 节回顾了关于 SLM、推理框架和提示工程的相关背景。
+第 ˜ 3 节描述了研究方法、研究对象系统和数据收集方法。
+第 ˜ 4 节展示了逐日的开发时间线，提供了叙事背景</p>
+
+<p>for the technical findings.
+Section
+˜
+5
+presents the failure taxonomy and progressive simplification arc.
+Section
+˜
+7
+details the mitigation strategies with code examples.
+Section
+˜
+8
+presents the WorkManager case study.
+Section
+˜
+9
+discusses design heuristics and implications.
+Section
+˜
+10
+addresses threats to validity, and
+section
+˜
+11
+concludes.
+2
+Background and Related Work
+2.1
+Small Language Models
+Small Language Models (SLMs), typically models with fewer than 3 billion parameters, have become the practical choice for on-device deployment. The Gemma family (Google DeepMind) offers models from 1B to 4B parameters in quantized formats optimized for edge devices
+[
+4
+]
+. Qwen3 (Alibaba) provides models starting at 0.6B parameters
+[
+5
+]
+. Phi-4 Mini (Microsoft) targets the 3.8B parameter range
+[
+6
+]
+. These models sacrifice capability compared to cloud models (GPT-4, Claude) but gain the ability to run entirely on consumer hardware.
+The capability gap between cloud and on-device models is not merely quantitative (fewer tokens per second, slightly worse accuracy). It is
+qualitative
+: SLMs exhibit different failure modes that require different engineering approaches. A cloud model prompted to output JSON will almost always produce valid JSON. An SLM prompted identically may wrap its JSON in markdown code fences, translate JSON keys into the output language, truncate the response mid-token, or produce valid JSON with semantically wrong values. These qualitative differences are p</p>
+
+<p>oorly documented in the literature, which tends to evaluate SLMs on standardized benchmarks rather than on the constrained, application-specific tasks that practitioners need.
+For our use case (generating short game hints about known words), the key question is not whether SLMs match cloud models on benchmarks, but whether they can reliably produce simple structured output under tight constraints. Our findings show this reliability is significantly lower than cloud models suggest, requiring extensive engineering compensations.
+2.2
+On-Device Inference Framework Evaluation
+Before implementation, we evaluated three inference frameworks for Android. This evaluation is itself a contribution, as no published comparison exists for this specific decision space.
+Table
+˜
+1
+summarizes the key dimensions.
+Table 1:
+Comparison of on-device inference frameworks for Android.
+Dimension
+LiteRT-LM
+MLC LLM
+AICore
+Provider
+Google DeepMind
+CMU (community)
+Google Android
+Prompt control
+Full (system + user)
+Full
+Predefined tasks only
+Model choice
+Gemma, Qwen, Phi, Llama
+Broad (via TVM)
+Gemini Nano only
+Sampler config
+temperature, topK, topP
+Yes
+No
+Integration effort
+1 Gradle dependency
+Rust + NDK + TVM
+1 Gradle dependency
+Model format
+.litertlm
+(pre-converted)
+TVM-compiled
+OS-managed
+Backend selection
+GPU / NPU / CPU
+GPU / CPU
+System-managed
+Emulator support
+Yes (CPU)
+No (documented)
+No
+Device support
+Any (with CPU fallback)
+Any (GPU preferred)
+Pixel + select Samsung
+Model swapping
+Config change onl</p>
+
+<p>y
+Re-compile per model
+Not possible
+LiteRT-LM
+(Google DeepMind)
+[
+1
+]
+is a production-ready, cross-platform inference framework. It provides a native Kotlin SDK with coroutine support, GPU/NPU/CPU backend selection, Play Asset Delivery integration for model distribution, and full control over prompts and sampler configuration (
+temperature
+,
+topK
+,
+topP
+). It supports Gemma, Qwen, Phi, and Llama model families via pre-converted
+.litertlm
+format. Integration requires a single Gradle dependency. The SDK exposes both single-turn inference (
+generateSingleTurn(systemPrompt, userPrompt)
+) and multi-turn chat sessions (
+createChatSession(systemPrompt)
+) with streaming support.
+MLC LLM
+[
+2
+]
+is a community-maintained compiler-based framework originating from CMU research. It offers broad model support via TVM compilation but requires a heavy build toolchain: Rust (for tokenizer cross-compilation), Android NDK, TVM compiler, and per-model compilation steps. Its Android documentation states that emulator testing is unsupported and that known GPU freeze issues exist on Adreno hardware
+[
+2
+]
+. The model preparation pipeline (clone, compile, package) adds significant friction compared to downloading a pre-converted weight file. For a solo developer on a rapid iteration cycle, this toolchain complexity was a dealbreaker.
+AICore / ML Kit GenAI
+[
+3
+]
+is Android’s system-level foundation model service, providing Gemini Nano through a high-level API. While it offers seamless deployment (model</p>
+
+<p>由操作系统管理），它仅限于 Gemini Nano，一个没有自定义替代方案的单模型。更关键的是，它仅提供预定义的任务 API（摘要、校对、重写），无法访问原始提示词，这使得迭代提示词工程变得不可能。设备支持仅限于近期的 Pixel 和部分三星旗舰手机。对于需要自定义提示词且必须在广泛设备范围内运行的游戏来说，AICore 并不合适。
+决策：
+我们选择 LiteRT-LM 有三个原因：(1) 完全的提示词控制，这对于第˜7节中记录的迭代提示词工程至关重要；(2) 模型灵活性，这使我们能够在不到8小时的时间内从 Gemma 3 1B 切换到 Qwen3 0.6B，而无需更改框架；(3) 最小的集成摩擦（一个 Gradle 依赖项对比多工具编译流水线）。这一决策在实践中得到了回报：快速迭代提示词和切换模型的能力对项目的成功至关重要。在一个为期五天的冲刺中，发生了四次完整的提示词重写，从模型到推理流水线中的任何额外摩擦都会消耗数天时间。
+2.3</p>
+
+<p>kdown code fences, mix natural language with JSON, or translate JSON keys.
+•
+Numerical reasoning is weak.
+Counting characters in a word (e.g., “does ‘estufa’ have 5 or 6 letters?”) is unreliable at the sub-3B parameter scale.
+•
+Language drift is systematic.
+English-dominant training data causes SLMs to default to English output even when explicitly instructed otherwise, especially for structured data like JSON keys.
+•
+Emphasis tokens have measurable impact.
+Words like “CRITICAL” and “NEVER” before constraints improved compliance in our experiments, suggesting SLMs are more sensitive to token-level emphasis than large models.
+•
+ISO codes are ambiguous.
+SLMs interpret “pt” unreliably (Portuguese? Part? Point?). Full language names (“Brazilian Portuguese”) are unambiguous.
+Existing work on structured output from LLMs focuses on function calling and tool use in large models
+[
+9
+]
+; we found these approaches ineffective at the SLM scale. Function calling requires the model to understand a schema contract; SLMs at 0.6B parameters lack this capability. Our initial prompt referenced “the provided function” (a vestige from a function-calling design that was never implemented), and the model had no idea what function to call.
+2.4
+Related Experience Reports
+Experience reports documenting on-device ML deployment exist for classical ML tasks (image classification, speech recognition) via TensorFlow Lite and Core ML
+[
+10
+,
+11
+]
+. However, on-device
+generative
+AI, where the model produces v</p>
+
+<p>ariable-length, unpredictable natural language output, presents fundamentally different challenges. Classical ML tasks produce fixed-size outputs (a class label, a bounding box, a waveform); generative tasks produce unbounded text that must be parsed, validated, and integrated into application state.
+The closest related work is Google’s AI Edge Gallery
+[
+1
+]
+, an experimental showcase app that demonstrates on-device inference with multiple models. Yet no published engineering analysis of its development process exists, and showcase apps are designed for demonstration rather than production use. They do not face the parsing, validation, and fallback challenges documented here.
+Industry blog posts from mobile AI practitioners describe similar challenges anecdotally, but without the systematic evidence (commit-level traceability, failure taxonomy, quantified frequencies) that enables reproducibility and generalization.
+3
+Study Design
+3.1
+Author Profile and Methodology
+This is a practitioner case study conducted by a senior software engineer with expertise in AI Engineering and multi-platform development. The author was the sole developer of the system, providing complete visibility into every design decision and its rationale. The methodology follows Runeson and Höst’s guidelines for case study research in software engineering
+[
+12
+]
+, adapted for a single-developer context where the commit log serves as the primary data source.
+The development followed a
+Spec Driven Development</p>
+
+<p>工作流：在编写代码之前先编写规范，验收标准转化为测试，然后进行实现直到测试通过。这种规范意味着每个设计决策（包括推翻重来的决定）在实现之前都会被记录在规范中。
+3.2
+目标系统
+Palabrita 是一款 Android 平台上的 Wordle 风格猜词游戏。玩家在六次尝试内猜测一个隐藏的单词，在此过程中会获得颜色编码的反馈（字母正确且位置正确、字母正确但位置错误、字母不在单词中）以及由设备端 LLM 生成的自然语言提示的引导。该游戏支持三种语言（葡萄牙语、英语、西班牙语），并具有可扩展的架构以便添加更多语言。
+该应用使用 Kotlin、Jetpack Compose 构建，使用 Hilt 进行依赖注入，使用 Room 进行数据持久化，并采用了具有单向数据流的多模块 MVVM 架构。该项目包含 9 个 Gradle 模块：
+•
+app/
+— 应用模块（依赖注入、导航、主题）
+•
+core/ai/
+— LLM 引擎、谜题生成、提示词管理、响应解析
+•
+core/common/
+— 状态机、设备功能、共享工具
+•
+core/model/
+— 领域模型和仓库接口
+•
+core/data/
+— Room 数据库、DAO、仓库实现
+•
+feature/game/
+— 游戏界面、键盘、游戏逻辑
+•
+feature/home/
+— 带有谜题队列的主界面
+•
+feature/onboarding/
+— 引导流程（语言、模型选择）
+•
+feature/settings/
+— 设置、统计、模型管理
+最低 SDK 为 Android 12（API 31）。AI 子系统</p>
+
+<p>stem is isolated in the
+core/ai
+module, decoupled from the rest of the application through three interfaces:
+LlmEngineManager
+(engine lifecycle),
+PuzzleGenerator
+(puzzle/hint generation), and
+PromptProvider
+(prompt templates). This isolation enabled rapid iteration on the AI subsystem without affecting other modules.
+3.3
+Models Under Study
+Over the development period, we evaluated nine models.
+Table
+˜
+2
+lists all models that appeared in the codebase at any point.
+Table 2:
+Complete inventory of models evaluated during development.
+Model
+Params
+Size
+RAM
+Shipped
+Outcome
+Gemma 4 E2B
+∼
+\sim
+2.6B
+2,583 MB
+≥
+\geq
+8 GB
+Yes
+Premium tier
+Gemma 4 E4B
+∼
+\sim
+4B
+3,650 MB
+≥
+\geq
+12 GB
+No
+Too large for most devices
+Gemma 3 1B
+∼
+\sim
+1B
+1,005 MB
+≥
+\geq
+4 GB
+No
+Discarded
+Qwen3 0.6B
+∼
+\sim
+600M
+614 MB
+≥
+\geq
+2 GB
+Yes
+Compact tier
+Qwen2.5 1.5B
+∼
+\sim
+1.5B
+1,600 MB
+≥
+\geq
+4 GB
+No
+Discarded
+Phi-4 Mini
+∼
+\sim
+3.8B
+3,910 MB
+≥
+\geq
+8 GB
+No
+Discarded
+DeepSeek R1 1.5B
+∼
+\sim
+1.5B
+1,830 MB
+≥
+\geq
+4 GB
+No
+Discarded
+The final production configuration exposes only two models to users:
+•
+Gemma 4 E2B
+(
+∼
+\sim
+2.6B parameters, 2.6 GB): Premium tier for devices with
+≥
+\geq
+8 GB RAM. Better instruction following, more coherent hints, but slower initialization (
+∼
+\sim
+10 s) and larger download.
+•
+Qwen3 0.6B
+(
+∼
+\sim
+600M parameters, 614 MB): Compact tier for devices with
+≥
+\geq
+2 GB RAM. Faster initialization (
+∼
+\sim
+5 s), smaller download, adequate hint quality, but weaker instruction following and more form</p>
+
+<p>at violations.
+Testing was performed on two physical devices:
+Google Pixel 7 Pro
+(12 GB RAM, Tensor G2) and
+Google Pixel 10 Pro
+(12 GB RAM, Tensor G5).
+Table 3:
+Benchmark data from physical device testing.
+Device
+Model
+Backend
+Prefill
+Decode
+Init
+Pixel 7 Pro
+Gemma 4 E2B
+CPU
+∼
+\sim
+400 tok/s
+∼
+\sim
+30 tok/s
+∼
+\sim
+10 s
+Pixel 7 Pro
+Qwen3 0.6B
+CPU
+∼
+\sim
+200 tok/s
+∼
+\sim
+35 tok/s
+∼
+\sim
+5 s
+These decode speeds mean generating a
+∼
+\sim
+50-token hint takes approximately 1–2 seconds on a Pixel 7 Pro, acceptable for single-turn hint generation. But the initial design required generating complete puzzles (word + category + difficulty + 5 hints as JSON), which produced
+∼
+\sim
+150–200 tokens per puzzle. At 30–35 tokens per second, a single puzzle took 5–7 seconds. Multiplied by 7 puzzles with retries (average 2.5 attempts per successful puzzle), the total generation time exceeded 2 minutes, which is prohibitively slow for a foreground operation.
+3.4
+Data Collection and Analysis
+The primary data source is the project’s complete Git history:
+204 commits
+over 5 days (April 21–26, 2026). Of these, approximately
+90 commits
+are directly related to LLM/AI integration (modifying prompts, parsers, model configuration, generation logic, or the engine lifecycle). The full repository is publicly available.
+1
+1
+1
+https://github.com/woliveiras/palabrita
+Each AI-related commit was analyzed and coded for: (a) what failure or limitation triggered the change, (b) what strategy was applied, and (c) wheth</p>
+
+<p>该策略是解决了问题还是导致了进一步的迭代。随后，提交（commits）被分组为14个主题阶段，并进行交叉引用以识别反复出现的模式。提交信息遵循约定式提交（Conventional Commits）规范（ `feat:` 、 `fix:` 、 `refactor:` 、 `chore:` ），提供了有助于分类的结构化元数据。</p>
+
+<p>除了提交日志外，项目的规范文档（ `specs/` 目录）提供了同期设计依据。当编写规范以解决某个问题时（例如，“静态拼图和背景生成规范”，在首次 LLM 实现后不到 12 小时编写），该规范本身就证明了问题的严重性以及所选解决方案背后的推理依据。</p>
+
+<p>4 开发时间线</p>
+
+<p>在展示技术发现之前，我们将按天叙述开发过程。该时间线通过展示每一次发现如何促成下一次迭代，为失败分类和缓解策略提供了背景。</p>
+
+<p>4.1 第 1 天（4 月 21 日）：雄心遭遇现实</p>
+
+<p>第一天的工作始于编写任何 Kotlin 代码之前的详尽规范。该规范为 LLM 引擎定义了一个正式的状态机（ `Uninitialized` → `\rightarrow` `Initializing` → `\rightarrow` `Ready/Error` ），两个模型层级（高端设备使用 Gemma 4 E2B，紧凑型设备使用 Gemma 3 1B），以及要求 LLM 将完整拼图生成为 JSON 的提示词：</p>
+
+<p>列表 1：第 1 天规范中的原始提示词（Gemma 4 系统提示词）。</p>
+
+<p>⬇
+You are</p>
+
+<p>a
+word
+generator
+for
+a
+guessing
+game
+.
+Always
+respond
+using
+the
+provided
+function
+.
+Never
+add
+text
+outside
+the
+function
+call
+.
+Listing 2:
+Original prompt from Day 1 specification (Gemma 3 compact prompt).
+⬇
+You
+are
+a
+word
+generator
+for
+a
+game
+.
+Return
+ONLY
+valid
+JSON
+,
+no
+extra
+text
+.
+Schema
+:
+{&quot;
+word
+&quot;:
+&quot;
+string
+&quot;,
+&quot;
+category
+&quot;:
+&quot;
+string
+&quot;,
+&quot;
+difficulty
+&quot;:
+number
+,
+&quot;
+hints
+&quot;:
+[...]}
+Rules
+:
+-
+The
+word
+MUST
+be
+a
+common
+noun
+in
+$language
+,
+$minLength
+-
+$maxLength
+letters
+-
+No
+proper
+nouns
+,
+no
+accents
+,
+lowercase
+only
+-
+5
+progressive
+hints
+:
+from
+vaguest
+to
+most
+specific
+-
+Hints
+MUST
+NOT
+contain
+the
+word
+Note the Gemma 4 prompt’s reference to “the provided function,” a vestige from a function-calling approach that was never implemented. The model had no function to call. This instruction persisted in the spec because it was copied from a cloud LLM integration pattern, and nobody questioned it. It is an early example of how cloud model assumptions polluted the on-device design.
+The scaffolding commit created 9 Gradle modules with stub implementations. The core AI integration followed, producing 724 lines of code:
+LlmResponseParser
+(2-strategy parser),
+PromptTemplates
+(4 prompt functions), and
+PuzzleValidator
+(6 validation rules). The LiteRT-LM engine was initialized with CPU-only backend:
+Listing 3:
+Initial LiteRT-LM engine initialization (Day 1).
+⬇
+val
+config
+=
+EngineConfig
+(
+modelPath
+=
+modelPath
+,
+backend
+=
+Backend
+.
+CPU
+(),
+cacheDir
+=
+context
+.
+cacheDir
+.
+absolutePath
+)
+val</p>
+
+<p>engine
+=
+Engine
+(
+config
+)
+engine
+.
+initialize
+()
+The puzzle generator used 3 retries with escalating strategies: standard prompt, “your previous response was invalid,” and a simplified prompt with relaxed constraints. Validation checked 6 rules: only lowercase letters, word length within range, no duplicates, exactly 5 hints, hints do not contain the target word, and non-empty category.
+Within 12 hours
+, the first implementation was running and the first spec for static puzzles was written (commit
+69e43d3
+), identifying five critical problems with the synchronous generation approach. Less than a day in, and the original design was already cracking. The spec stated:
+“The current approach blocks the onboarding screen for 1–3 minutes, shows misleading progress (stuck at 0%, then jumping), and generates only 7 puzzles that are consumed quickly.”
+The response was immediate: 50 static puzzles per language were shipped as JSON assets, and a WorkManager-based background generation system was implemented. The LLM was already being demoted from the critical path, less than a day after its first integration.
+Also on Day 1, Qwen3 0.6B was added as a third model option (commit
+ccb7010
+): 614 MB, requiring only 2 GB RAM, versus Gemma 3 1B’s 1 GB file and 4 GB RAM requirement.
+4.2
+Day 2 (April 22): Parsing, Prompts, and Sessions
+Day 2 was the most intensive for AI engineering: the parser was rewritten with three fallback strategies, the prompt system underwent its first complete rewrite,</p>
+
+<p>and chat sessions replaced isolated inference calls.
+The parser evolution was triggered by observing LLM outputs in the wild. A single commit (
+c547d4b
+) introduced three stacked parsing strategies:
+1.
+Code fence stripping:
+The LLM wrapped valid JSON in
+‘‘‘json ... ‘‘‘
+markdown blocks. This was the most common format violation.
+2.
+Regex extraction:
+The LLM embedded JSON within natural language (“Here is your word: {…}”). A regex
+\{[ˆ{}]*(?:\{[ˆ{}]*\}[ˆ{}]*)*\}
+extracted the first JSON object.
+3.
+Structural parsing:
+The LLM returned valid JSON but with keys in the wrong language (
+&quot;palabra&quot;
+instead of
+&quot;word&quot;
+,
+&quot;dicas&quot;
+instead of
+&quot;hints&quot;
+). This parser deserialized to a generic
+JsonObject
+and inferred fields by value type rather than key name.
+On the same day, the prompt was rewritten to remove the function-calling reference and add explicit format instructions:
+Listing 4:
+Prompt rewrite 1 (Day 2): explicit JSON instructions.
+⬇
+Always
+respond
+with
+ONLY
+a
+JSON
+object
+.
+No
+markdown
+,
+no
+code
+fences
+,
+no
+explanation
+.
+The
+JSON
+keys
+MUST
+be
+in
+English
+:
+&quot;
+word
+&quot;,
+&quot;
+category
+&quot;,
+&quot;
+difficulty
+&quot;,
+&quot;
+hints
+&quot;.
+The
+values
+for
+word
+,
+category
+,
+and
+hints
+must
+be
+in
+the
+requested
+language
+.
+The “CRITICAL” instruction was added for word length compliance:
+Listing 5:
+Prompt rewrite 2 (Day 2): priority markers for constraints.
+⬇
+CRITICAL
+:
+The
+word
+MUST
+have
+exactly
+$minLength
+to
+$maxLength
+letters
+.
+Count
+the
+letters
+carefully
+.
+Words
+with
+fewer
+or
+more
+letters
+will
+be
+rejected
+.
+Also on Day 2</p>
+
+<p>, the generation system moved from isolated single-turn calls to chat sessions with accumulated context:
+Listing 6:
+Chat session with contextual retry (Day 2).
+⬇
+engineManager
+.
+createChatSession
+(
+systemPrompt
+).
+use
+{
+session
+-&gt;
+for
+(
+i
+in
+0
+until
+count
+)
+{
+val
+puzzle
+=
+generateSinglePuzzle
+(
+session
+=
+session
+,
+lastFailureReason
+=
+lastFailureReason
+,
+//
+...
+)
+}
+}
+When a puzzle failed validation, the specific rejection reason was included in the next prompt:
+Listing 7:
+Contextual retry prompt (Day 2).
+⬇
+Your
+previous
+response
+was
+rejected
+:
+word
+has
+7
+letters
+but
+we
+asked
+for
+5.
+The
+word
+MUST
+have
+5-5
+letters
+.
+Try
+again
+with
+a
+DIFFERENT
+word
+.
+Finally, Gemma 3 1B was removed (commit
+766508e
+), having lasted less than 8 hours. The evaluation showed Qwen3 0.6B (half the size, half the RAM) produced comparable quality for the constrained hint-generation task.
+4.3
+Day 3 (April 23): The Great Simplification
+Day 3 brought the most transformative single commit (
+79f1013
+): the removal of
+category
+and
+difficulty
+from the puzzle schema, and the reduction from 5 to 3 hints. This reduced the JSON output schema from 5 fields to 2:
+Listing 8:
+Schema evolution: Day 1 vs Day 3.
+⬇
+//
+Day
+1
+(7
+fields
+):
+{&quot;
+word
+&quot;:
+&quot;...&quot;,
+&quot;
+category
+&quot;:
+&quot;...&quot;,
+&quot;
+difficulty
+&quot;:
+N
+,
+&quot;
+hints
+&quot;:
+[&quot;
+h1
+&quot;,&quot;
+h2
+&quot;,&quot;
+h3
+&quot;,&quot;
+h4
+&quot;,&quot;
+h5
+&quot;]}
+//
+Day
+3
+(2
+fields
+):
+{&quot;
+word
+&quot;:
+&quot;...&quot;,
+&quot;
+hints
+&quot;:
+[&quot;
+h1
+&quot;,&quot;
+h2
+&quot;,&quot;
+h3
+&quot;]}
+The rationale for each removal:
+•
+category
+was defined in the schema but never used in gameplay. It existed</p>
+
+<p>because the spec included it “for future use,” but it added a field the LLM could get wrong without any benefit.
+•
+difficulty
+as a 1–5 numeric scale was too abstract for SLMs. The model often returned arbitrary values, and the game had already moved to difficulty-by-word-length (4-letter words are easier than 6-letter words), making the field redundant.
+•
+rarity
+(an early prompt parameter) was removed because SLMs cannot reliably distinguish between common and rare words.
+•
+Hints 4 and 5 were reliably poor quality. The first three hints were usually good; additional hints were often repetitive, overly specific (effectively giving away the word), or grammatically broken.
+The validator was also relaxed: from “exactly 5 hints” to “at least 3 hints,” and the category check was removed entirely.
+On the same day, generation was restructured to be level-based with fixed word lengths per cycle:
+Listing 9:
+Level-based generation (Day 3).
+⬇
+val
+LEVELS
+=
+listOf
+(
+4
+to
+5,
+//
+Cycle
+0:
+4-letter
+words,
+batch
+of
+5
+5
+to
+10,
+//
+Cycle
+1:
+5-letter
+words,
+batch
+of
+10
+6
+to
+10
+//
+Cycle
+2+:
+6-letter
+words,
+batch
+of
+10
+)
+Mixed word lengths within a single batch had been unstable, as the model needed to context-switch between different constraints. A single word length per cycle was simpler and more reliable.
+4.4
+Day 4 (April 24): The WorkManager Nightmare
+Day 4 was almost entirely consumed by debugging WorkManager integration. Seven consecutive fixes in a single day, each addressing a different manif</p>
+
+<p>estation of the same fundamental problem: WorkManager’s persistent state model was incompatible with foreground LLM operations. In hindsight, we should have recognized the mismatch sooner. This is detailed in
+section
+˜
+8
+.
+Two prompt improvements also landed on Day 4:
+Listing 10:
+Prompt rewrite 3 (Day 4): concrete rejection examples.
+⬇
+CRITICAL
+RULE
+1:
+Word
+length
+.
+The
+word
+MUST
+have
+$minLength
+to
+$maxLength
+letters
+.
+Count
+every
+letter
+before
+answering
+.
+A
+word
+like
+&quot;
+estufa
+&quot;
+has
+6
+letters
+and
+would
+be
+REJECTED
+.
+CRITICAL
+RULE
+2:
+Hints
+.
+NEVER
+include
+the
+word
+itself
+inside
+any
+hint
+.
+Listing 11:
+Prompt rewrite 4 (Day 4): full language names.
+⬇
+//
+Before
+:
+&quot;
+Output
+language
+for
+values
+:
+pt
+&quot;
+//
+After
+:
+&quot;
+Output
+language
+for
+values
+:
+Brazilian
+Portuguese
+&quot;
+&quot;
+The
+word
+MUST
+be
+a
+common
+noun
+in
+Brazilian
+Portuguese
+&quot;
+The language name mapping was extracted into a reusable function:
+Listing 12:
+Language name resolution (Day 4).
+⬇
+private
+val
+LANGUAGE_NAMES
+=
+mapOf
+(
+&quot;pt&quot;
+to
+&quot;Brazilian
+␣
+Portuguese&quot;
+,
+&quot;en&quot;
+to
+&quot;English&quot;
+,
+&quot;es&quot;
+to
+&quot;Spanish&quot;
+)
+UTF-8 sanitization was also added (commit
+e2809da
+), removing U+FFFD replacement characters that the LiteRT-LM tokenizer occasionally produced and that broke the JSON parser.
+4.5
+Day 5 (April 25–26): Architecture Cleanup and the Final Pivot
+The last two days brought three major architectural changes:
+First, WorkManager was removed entirely
+(commit
+6ce6435
+,
+−
+-
+767/
++
++
+576 lines). The replacement was a clean
+GeneratePuzzlesUseCase
+using Kotl</p>
+
+<p>in coroutines. All seven WorkManager bug fixes became irrelevant overnight.
+Second, the final pivot
+(commit
+a9b9f2d
+): word selection was moved entirely to curated word lists shipped as JSON assets. The LLM’s sole remaining job was writing three short hints about a word it was given. This eliminated word length violations, word repetition, nonexistent word generation, and wrong-language word generation, all in a single architectural change.
+The prompt system was completely replaced:
+Listing 13:
+Final prompt system (Day 5): hint-only generation.
+⬇
+//
+System
+prompt
+:
+You
+write
+short
+,
+clear
+word
+-
+game
+hints
+in
+$lang
+.
+Rules
+:
+-
+ALL
+hints
+MUST
+be
+written
+in
+$lang
+.
+Never
+write
+hints
+in
+English
+or
+any
+other
+language
+.
+-
+Do
+NOT
+include
+the
+word
+in
+any
+hint
+.
+-
+Each
+hint
+should
+be
+one
+short
+sentence
+.
+-
+Return
+ONLY
+a
+JSON
+object
+:
+{&quot;
+hints
+&quot;:
+[&quot;
+hint1
+&quot;,
+&quot;
+hint2
+&quot;,
+&quot;
+hint3
+&quot;]}
+//
+User
+prompt
+:
+Write
+3
+hints
+for
+this
+word
+IN
+$lang
+.
+Do
+NOT
+write
+hints
+in
+English
+unless
+the
+language
+is
+English
+.
+Word
+:
+&quot;
+$word
+&quot;
+The parser was also specialized for hint-only responses, searching for hint-like keys in multiple languages (
+hints
+,
+dicas
+,
+pistas
+,
+clues
+,
+indices
+,
+consejos
+) and supporting pipe-delimited and numbered-list formats as additional fallbacks.
+Third, the chat feature was removed
+(commit
+7876704
+). Post-game conversation with the LLM had been implemented with real streaming, but with the pivot to hint-only generation, single-turn inference was sufficient. The chat added comp</p>
+
+<p>lexity (streaming, context management, session lifecycle) without clear user value in a word-guessing game.
+A
+HintFallbackProvider
+was added as the final safety net:
+Listing 14:
+Deterministic fallback hints (Day 5).
+⬇
+override
+fun
+fallbackHints
+(
+word
+:
+String
+,
+language
+:
+String
+):
+List
+&lt;
+String
+&gt;
+=
+when
+(
+language
+)
+{
+&quot;pt&quot;
+-&gt;
+listOf
+(
+&quot;E
+␣
+algo
+␣
+que
+␣
+as
+␣
+pessoas
+␣
+conhecem&quot;
+,
+&quot;Pode
+␣
+ser
+␣
+encontrado
+␣
+no
+␣
+dia
+␣
+a
+␣
+dia&quot;
+,
+&quot;Tem
+␣
+${word.length}
+␣
+letras&quot;
+)
+&quot;es&quot;
+-&gt;
+listOf
+(...)
+else
+-&gt;
+listOf
+(
+&quot;It
+␣
+is
+␣
+something
+␣
+people
+␣
+know&quot;
+,
+&quot;It
+␣
+can
+␣
+be
+␣
+found
+␣
+in
+␣
+everyday
+␣
+life&quot;
+,
+&quot;It
+␣
+has
+␣
+${word.length}
+␣
+letters&quot;
+)
+}
+With this fallback, the game is fully playable even if the LLM never produces a single successful response. The LLM enhances the experience; it does not gate it.
+5
+Findings: Failure Taxonomy
+We identified five categories of failures that emerged during the integration of on-device SLMs. Each category is documented with symptoms, root cause, observed frequency, code examples, and commit evidence.
+Table
+˜
+4
+provides an overview.
+Table 4:
+Summary of the five failure categories.
+ID
+Category
+Core Symptom
+Frequency
+Severity
+F1
+Output Format Violations
+JSON wrapped in code fences, translated keys
+High
+Medium
+F2
+Constraint Violations
+Wrong word length, wrong language, repetition
+Very High
+Critical
+F3
+Context Quality Degradation
+Output quality drops after 3–5 generations
+Medium
+Medium
+F4
+Latency Incompatibility
+1–3 minute UI blocks during generation
+Systematic</p>
+
+<p>严重
+F5
+模型选择不稳定性
+不同系列间的模型质量差异极大
+周期性
+高
+5.1
+F1：输出格式违规
+症状：
+LLM 将有效的 JSON 包装在 markdown 代码块中（‘‘‘json ... ‘‘‘）；在提示词的输出语言中使用非英语的 JSON 键（用 &quot;palabra&quot; 代替 &quot;word&quot;，用 &quot;dicas&quot; 代替 &quot;hints&quot;）；偶尔会产生格式错误的 UTF-8 序列（U+FFFD 替换字符），导致 JSON 解析器拒绝原本有效的响应。
+根本原因：
+指令遵循能力有限的 SLM 会复现其训练数据中的模式。Markdown 代码块在包含代码的训练语料库中无处不在。键名翻译的发生是因为模型将输出语言指令理解为适用于所有输出，包括 JSON 键。UTF-8 问题似乎是 LiteRT-LM 分词器/解码器的一个边缘情况，即 token 边界落在字符中间。
+典型示例：
+清单 15：
+F1 示例 1：包装在 markdown 代码块中的 JSON。
+⬇
+‘‘‘
+json
+{&quot;
+word
+&quot;:
+&quot;
+gato
+&quot;,
+&quot;
+hints
+&quot;:
+[&quot;
+It
+has
+four
+legs
+&quot;,
+&quot;
+It
+purrs
+&quot;,
+&quot;
+It
+is
+a
+pet
+&quot;]}
+‘‘‘</p>
+
+<p>, frequency dropped to
+∼
+\sim
+20–30%. The structural parser (Strategy 3 in
+section
+˜
+7
+) was needed for approximately 15–20% of successful parses with Qwen3 0.6B. UTF-8 corruption was rare (
+&lt;
+&lt;
+5%) but fatal without sanitization.
+Evidence:
+Commit
+c547d4b
+(three parsing strategies stacked), commit
+e2809da
+(UTF-8 sanitization).
+5.2
+F2: Constraint Violations
+Symptoms:
+The LLM generates words with the wrong number of letters (e.g., 7 letters when 5 were requested); generates words in the wrong language; repeats previously generated words within a batch; includes the target word inside its own hints; generates nonexistent words.
+Root Cause:
+SLMs have weak numerical reasoning. They cannot reliably count characters. The word “estufa” has 6 letters, but a 600M parameter model may “count” it as 5 or 7. Language drift is an emergent property of English-dominant training data. Repetition increases as the generation context grows and earlier outputs saturate the model’s attention.
+Representative Examples:
+Listing 18:
+F2 Example: prompt asks for 5-letter word, model returns 7.
+⬇
+//
+Prompt
+:
+&quot;
+word
+MUST
+have
+exactly
+5
+letters
+&quot;
+//
+Response
+:
+{&quot;
+word
+&quot;:
+&quot;
+ventana
+&quot;,
+&quot;
+hints
+&quot;:
+[...]}
+//
+&quot;
+ventana
+&quot;
+has
+7
+letters
+,
+not
+5
+Listing 19:
+F2 Example: hint contains the target word.
+⬇
+//
+Word
+:
+&quot;
+gato
+&quot;
+//
+Hint
+:
+&quot;
+A
+gato
+is
+a
+common
+pet
+&quot;
+//
+VIOLATION
+:
+hint
+contains
+the
+word
+&quot;
+gato
+&quot;
+Frequency:
+Word length violations occurred in 30–50% of early generations. The model could not count. After prompt</p>
+
+<p>hardening (concrete examples, “CRITICAL” markers), violations dropped to
+∼
+\sim
+10–15%, which was still too high for production reliability. This persistent
+∼
+\sim
+10–15% failure rate was the primary motivation for the final pivot to curated word lists, which reduced word-related violations to 0%.
+Evidence:
+Commits
+7dfb417
+(“CRITICAL” instruction added),
+f846666
+(concrete rejection examples),
+0a9bbeb
+(full language names),
+79f1013
+(category/difficulty removed to reduce violation surface).
+5.3
+F3: Context Quality Degradation
+Symptoms:
+After 3–5 generations within the same conversation session, outputs become repetitive, hints lose relevance, and the model increasingly echoes previous outputs rather than generating novel content. In extreme cases, the model begins producing near-identical responses regardless of the input word.
+Root Cause:
+On-device models operate with limited KV cache (typically 4096 tokens for quantized models on mobile). As the conversation history grows, older context is compressed or truncated, and the model’s attention distribution degrades. The effective “memory” of the model shrinks as new tokens push out older context. This effect is more pronounced in smaller models (Qwen3 0.6B, with fewer attention heads and less representational capacity) than in larger ones (Gemma 4 E2B).
+Frequency:
+Consistently observed after
+∼
+\sim
+3 generations in Qwen3 0.6B sessions. Gemma 4 E2B showed degradation after
+∼
+\sim
+5–7 generations. The degradation was gradual, not</p>
+
+<p>sudden: hint quality decreased incrementally before becoming obviously repetitive.
+Evidence:
+Commit
+1215899
+(session rotation every 3 puzzles), commit
+aa7f2dd
+(adjusted to 5).
+5.4
+F4: Latency Incompatibility
+The initial approach (generating 7 puzzles synchronously during onboarding) blocked the UI for 1–3 minutes. Progress indicators lied: stuck at 0%, then jumping to completion. On lower-tier devices, waits were even longer. An onboarding flow that should take 10–15 seconds became a multi-minute dead screen.
+The arithmetic was unforgiving. A single puzzle generation (word + 5 hints as JSON) took 15–30 seconds on a Pixel 7 Pro with Qwen3 0.6B on CPU. Multiply by 7 puzzles with an average of 2.5 retries per success, and total time exceeded 2 minutes. No user waits 2 minutes for a word game to start.
+Unlike the other failure categories, which affected a percentage of generations, latency affected everyone. Every single user. The fix came in two waves: static puzzles plus WorkManager as an immediate band-aid (commit
+69e43d3
+, spec written
+&lt;
+&lt;
+12 hours after first implementation), then the final pivot to curated word lists plus hint-only generation, which reduced per-puzzle time from 15–30 seconds to 1–2 seconds.
+5.5
+F5: Model Selection Instability
+Not all SLMs are equal, even at similar parameter counts. We listed six models in the registry but only two survived testing. The compact model (Gemma 3 1B) lasted less than 8 hours before being replaced by Qwen3 0.6B (half the size, c</p>
+
+<p>omparable quality for our constrained task). A prompt optimized for Qwen3 might produce worse results with Gemma, and vice versa, because each model’s instruction-following behavior is an emergent property of its training data.
+The practical consequence: each model in the registry meant a different prompt tuning profile, a different set of format violations, and a different reliability characteristic. Maintaining 6 models was equivalent to maintaining 6 separate AI integrations. We cut to 2 (commits
+766508e
+,
+0e56401
+).
+6
+Findings: The Progressive Simplification Arc
+A clear pattern emerged across the 5-day development period:
+progressive responsibility reduction
+applied to the LLM. This pattern directly answers RQ1: on-device SLMs
+are
+viable, but only after the developer discovers, through iteration, the minimal scope of work the model can handle reliably.
+Table 5:
+Progressive reduction of LLM responsibility over the development period.
+Day
+LLM Responsibility
+Fields
+Validation Rules
+1
+Generate everything
+7
+6
+(word, category, difficulty, rarity, hints[5])
+2
+Generate core puzzle
+5
+Relaxed
+(word, category, difficulty, hints[3])
+3
+Generate word + hints
+2
+Minimal
+(word, hints[3])
+5
+Generate hints only
+0 (word gen)
+Hint quality
+(word from curated list)
+only
+Each reduction was triggered by observed failures:
+Day 1
+→
+\rightarrow
+Day 2:
+category
+was never used in gameplay;
+difficulty
+as a 1–5 scale was too abstract for SLMs to interpret consistently; reducing from 5 to 3 hints elimina</p>
+
+<p>ted the low-quality tail (hints 4 and 5 were reliably poor). The validator was relaxed from “exactly 5 hints” to “2–5 hints” to avoid rejecting responses with acceptable hint counts.
+Day 2
+→
+\rightarrow
+Day 3:
+Removing
+category
+and
+difficulty
+cut the JSON schema from 5 to 2 fields, dramatically reducing format violations (F1) and validation failures. The probability of at least one field being malformed drops with each field removed: for
+n
+n
+fields with independent format violation probability
+p
+p
+, the expected correct-response probability is
+(
+1
+−
+p
+)
+n
+(1-p)^{n}
+. Reducing from 5 to 2 fields approximately doubled the success rate.
+Day 3
+→
+\rightarrow
+Day 5:
+The final pivot. Word selection was moved entirely to curated word lists shipped as JSON assets. The LLM’s sole remaining job: write 3 short hints about a word it is
+given
+. This eliminated word length violations (F2), word repetition, nonexistent word generation, and wrong-language word generation, all in a single architectural change.
+This arc also included feature
+removal
+:
+Table 6:
+Features added and subsequently removed during development.
+Feature
+Added
+Removed
+Reason
+Post-game LLM chat
+Day 1
+Day 5
+Complexity without clear user value
+LLM word generation
+Day 1
+Day 5
+Unreliable at SLM scale
+Gemma 3 1B support
+Day 1
+Day 1
+Qwen3 0.6B: smaller, comparable quality
+6-model registry
+Gradual
+Day 4
+Only 2 models reliably tested
+WorkManager
+Day 1
+Day 5
+7+ bugs from persistent state model
+Answer to RQ1:
+Yes, it is viable to us</p>
+
+<p>e on-device LLMs for a fully offline, private user experience, but viability requires
+scoping the LLM’s task to what it does reliably
+. In our case, the equilibrium point was: “write three short creative hints about a known word in a specified language.” This is a bounded creative task with soft quality requirements and a deterministic fallback. The initial ambition (structured multi-field generation with hard constraints) was not viable at the SLM scale.
+7
+Mitigation Strategies (RQ3)
+For each failure category, we developed and iteratively refined specific strategies. All strategies are documented with their corresponding commit evidence and code examples.
+7.1
+S1: Multi-Layer Defensive Parsing (F1)
+The final parsing pipeline applies five sequential strategies, each catching cases the previous one missed:
+1.
+UTF-8 sanitization:
+Remove U+FFFD replacement characters that break JSON parsers.
+2.
+Code fence stripping:
+Detect and remove
+‘‘‘json ... ‘‘‘
+wrappers, including single-backtick variants.
+3.
+Direct JSON decode:
+Standard
+kotlinx.serialization
+deserialization to the expected data class.
+4.
+Regex extraction:
+Extract the first JSON-like substring from surrounding text using
+\{[ˆ{}]*(?:\{[ˆ{}]*\}[ˆ{}]*)*\}
+.
+5.
+Structural parsing:
+Deserialize as a generic
+JsonObject
+and infer field roles by
+value types
+rather than key names.
+The structural parser (strategy 5) was the critical breakthrough. It was designed after observing that Qwen3 0.6B frequently returned keys in the prompt’s o</p>
+
+<p>输出语言（&quot;palabra&quot;、&quot;dicas&quot;、&quot;pistas&quot;）而不是英语。通过完全忽略键名并根据结构属性推断字段，解析器变得与语言无关：</p>
+
+<p>代码清单 20：
+结构化解析器：根据值类型推断字段。
+⬇
+private
+fun
+tryStructuralParse
+(
+text
+:
+String
+):
+PuzzleResponse
+?
+{
+val
+obj
+=
+json
+.
+decodeFromString
+&lt;
+JsonObject
+&gt;(
+text
+.
+trim
+())
+var
+word
+:
+String
+?
+=
+null
+var
+category
+:
+String
+?
+=
+null
+var
+difficulty
+:
+Int
+?
+=
+null
+var
+hints
+:
+List
+&lt;
+String
+&gt;?
+=
+null
+for
+((
+_
+,
+value
+)
+in
+obj
+)
+{
+when
+(
+value
+)
+{
+is
+JsonArray
+-&gt;
+hints
+=
+value
+.
+jsonArray
+.
+mapNotNull
+{
+it
+.
+jsonPrimitive
+.
+contentOrNull
+}
+is
+JsonPrimitive
+-&gt;
+{
+val
+intVal
+=
+value
+.
+intOrNull
+val
+strVal
+=
+value
+.
+contentOrNull
+when
+{
+intVal
+!=
+null
+&amp;&amp;
+difficulty
+==
+null
+-&gt;
+difficulty
+=
+intVal
+strVal
+!=
+null
+&amp;&amp;
+word
+==
+null
+&amp;&amp;
+strVal
+.
+length
+in
+2..9
+&amp;&amp;
+!
+strVal
+.
+contains
+(
+’
+␣
+’
+)
+-&gt;
+word
+=
+strVal
+strVal
+!=
+null
+&amp;&amp;
+category
+==
+null
+-&gt;
+category
+=
+strVal
+}
+}
+}
+}
+if
+(
+word
+!=
+null
+&amp;&amp;
+hints
+!=
+null
+&amp;&amp;
+hints
+.
+size
+&gt;=
+2)
+return
+PuzzleResponse
+(
+word
+,
+hints
+)
+return
+null
+}
+推断规则是：</p>
+
+<p>ple languages and also parses non-JSON formats:
+Listing 21:
+Hint parser: multi-language key search and alternative formats.
+⬇
+val
+hintsKeys
+=
+setOf
+(
+&quot;hints&quot;
+,
+&quot;dicas&quot;
+,
+&quot;pistas&quot;
+,
+&quot;clues&quot;
+,
+&quot;indices&quot;
+,
+&quot;consejos&quot;
+)
+//
+Also
+parses
+pipe-delimited
+format:
+//
+&quot;hint1
+|
+hint2
+|
+hint3&quot;
+//
+And
+numbered-list
+format:
+//
+&quot;1.
+hint1\n2.
+hint2\n3.
+hint3&quot;
+The evolution of the parsing pipeline illustrates a broader principle:
+parsing for SLMs must be designed as a defensive pipeline, not a schema validator.
+Each layer catches a specific failure mode that the previous layers miss.
+7.2
+S2: Contextual Retry with Failure Feedback (F2)
+Instead of retrying with the same prompt on validation failure, the system includes the specific rejection reason in the retry prompt. Within a chat session, the model retains context from previous turns, so the rejection feedback is additive:
+Listing 22:
+Contextual retry with failure reason.
+⬇
+Your
+previous
+response
+was
+rejected
+:
+word
+has
+7
+letters
+but
+we
+asked
+for
+5.
+The
+word
+MUST
+have
+exactly
+5
+letters
+.
+Try
+again
+with
+a
+DIFFERENT
+word
+.
+We observed significantly higher compliance on retry compared to blind repetition, particularly for word length constraints. The model “understood” (within the limits of next-token prediction) that it needed to produce a shorter word.
+The system also maintains a
+localRejectedWords
+set within each generation batch:
+Listing 23:
+Local rejected words tracking.
+⬇
+val
+localRejectedWords
+=
+mutableSetOf
+&lt;
+String
+&gt;()
+//
+On
+validation
+f</p>
+
+<p>ailure:
+localRejectedWords
+.
+add
+(
+normalizedWord
+)
+//
+Passed
+to
+prompt
+builder:
+val
+exclusionList
+=
+usedWords
++
+localRejectedWords
+This prevents the model from regenerating the same rejected word, which was a common behavior: when told “your word was rejected,” the model would often produce the
+same
+word again if not explicitly told to avoid it.
+7.3
+S3: Progressive Prompt Hardening (F2)
+The prompt system evolved through four complete rewrites over 5 days, each responding to a specific observed failure.
+Table
+˜
+7
+traces this evolution.
+Table 7:
+The four prompt rewrites and their triggers.
+Day
+Failure Observed
+Prompt Change
+1
+Model doesn’t know what function to call
+Remove function-calling reference; add explicit JSON schema
+2
+Code fences, wrong key names
+“No markdown, no code fences”; “Keys MUST be in English”
+2
+Wrong word length
+“CRITICAL: Count the letters carefully”
+3
+Still wrong length
+Concrete example: “estufa has 6 letters and would be REJECTED”
+4
+Output in English when Portuguese requested
+Change “pt” to “Brazilian Portuguese” in all positions
+4
+Language drift in hints
+Repeat language requirement in both system and user prompt
+5
+N/A (pivot)
+Entire prompt replaced for hint-only generation
+Key findings about prompt engineering for SLMs:
+•
+Priority markers matter.
+The word “CRITICAL” before a constraint measurably improved compliance, suggesting SLMs are sensitive to emphasis tokens. This is consistent with the hypothesis that these tokens receive high attention weights d</p>
+
+<p>ue to their rarity and association with important instructions in training data.
+•
+Concrete examples beat abstract rules.
+“Count the letters carefully” was less effective than “A word like ‘estufa’ has 6 letters and would be REJECTED.” The concrete example provides a worked example that the model can pattern-match against, rather than requiring the model to operationalize an abstract instruction.
+•
+Full language names beat ISO codes.
+SLMs interpret
+&quot;pt&quot;
+ambiguously (Portuguese? Part? Point?).
+&quot;Brazilian Portuguese&quot;
+is unambiguous and maps to a clear language cluster in the model’s training data.
+•
+Repetition across prompt sections reinforces.
+Specifying the target language in
+both
+the system prompt and the user prompt reduced language drift significantly compared to specifying it only once. For the final hint-only prompt, the language appears three times: in the system prompt rules, in the user prompt instruction, and in a negative instruction (“Do NOT write hints in English unless the language is English”).
+7.4
+S4: Session Rotation (F3)
+To combat context degradation, the system creates fresh conversation sessions at fixed intervals:
+Listing 24:
+Session rotation implementation.
+⬇
+while
+(
+puzzleIndex
+&lt;
+count
+)
+{
+val
+chunkSize
+=
+remaining
+.
+coerceAtMost
+(
+SESSION_ROTATION
+)
+engineManager
+.
+createChatSession
+(
+systemPrompt
+)
+.
+use
+{
+session
+-&gt;
+repeat
+(
+chunkSize
+)
+{
+generateSinglePuzzle
+(
+session
+,
+...)
+puzzleIndex
+++
+}
+}
+}
+companion
+object
+{
+private
+const
+val
+SESSION_ROTATION
+=</p>
+
+<p>5
+}
+The rotation interval was tuned empirically: initially 3 (commit
+1215899
+), later adjusted to 5 (commit
+aa7f2dd
+). The adjustment was motivated by practical batch sizes: with batches of 5 and 10, a rotation of 3 created sessions with only 1–2 puzzles (the remainder of 5/3 and 10/3), wasting the session setup overhead. A rotation of 5 aligned cleanly with both batch sizes.
+The tradeoff is that fresh sessions lose the contextual retry benefit (the model no longer “remembers” previous rejections). In practice, this tradeoff favored freshness: the quality improvement from a clean KV cache outweighed the loss of retry context for batches larger than 5.
+7.5
+S5: Responsibility Reduction (F2, F4)
+The most impactful strategy was
+reducing what we asked the LLM to do
+. This manifested in two forms:
+Schema simplification:
+Reducing the JSON output schema from 7 fields to 2 (then to hint-only) eliminated entire categories of validation failures. Fewer fields mean fewer opportunities for format violations, constraint violations, and cross-field inconsistencies. The probability argument is straightforward: if each field has an independent
+∼
+\sim
+85% chance of being correct, a 7-field schema has a
+0.85
+7
+≈
+32
+%
+0.85^{7}\approx 32\%
+chance of being entirely correct, while a 2-field schema has
+0.85
+2
+≈
+72
+%
+0.85^{2}\approx 72\%
+.
+Task boundary shift:
+Moving word selection from the LLM to curated word lists was the single most effective reliability improvement. The LLM’s job changed from “g</p>
+
+<p>enerate a valid word AND write hints” (creative + constrained) to “write hints about THIS word” (creative only). This separated the deterministic task (selecting a valid word of the right length in the right language) from the creative task (writing natural language hints), assigning each to the appropriate system.
+The curated word lists are shipped as JSON assets per language (
+words_pt.json
+,
+words_en.json
+,
+words_es.json
+), validated by a CI script that checks for duplicates, minimum word counts per length, and proper encoding. Adding a new language requires only a JSON file and a manifest entry, with zero Kotlin code changes. The Italian dataset was added as proof of this extensibility (commit
+5907193
+: 446 words, zero lines of Kotlin).
+7.6
+S6: Guaranteed Deterministic Fallback (All)
+The final architecture includes a
+HintFallbackProvider
+that supplies generic template hints when the LLM fails entirely. These hints are generated per language and require zero LLM inference. The game is fully playable even if the LLM never produces a single successful response.
+We consider this the core design principle for on-device AI: never make the experience dependent on LLM success. The LLM is a
+quality enhancer
+, not a
+gating dependency
+. If it works, hints are creative and contextual. If it fails, hints are generic but functional. In a fast-paced word game, the user may not even notice.
+8
+Case Study: The WorkManager Anti-Pattern
+An instructive side story of this integration is the ad</p>
+
+<p>option and subsequent removal of Android’s WorkManager for LLM-based puzzle generation. This section documents the pattern because it represents a common architectural mistake when integrating generative AI into mobile applications.
+8.1
+Why WorkManager Was Chosen
+When the synchronous generation approach failed (F4), the natural Android solution was WorkManager: Google’s recommended API for deferrable, guaranteed background work that survives process death. The reasoning was sound: puzzle generation should happen in the background so the user can play with static puzzles while the LLM generates more.
+The implementation used a
+CoroutineWorker
+with foreground service support, notifications, progress tracking, and retry logic. It worked correctly for the first few test runs.
+8.2
+Seven Bugs in One Day
+Day 4 (April 24) produced seven consecutive bug fixes, each addressing a different manifestation of the fundamental incompatibility between WorkManager’s persistent state model and foreground LLM operations:
+1.
+Progress bar hardcoded to 50:
+The progress calculation used a hardcoded denominator of 50 (from the static puzzle count), but actual batches produced 5–10 puzzles. The progress bar never passed 20%.
+2.
+Stale SUCCEEDED state:
+When re-triggering generation, WorkManager returned the
+SUCCEEDED
+state from the
+previous
+execution. The UI showed a false success screen immediately, before any new generation had started.
+3.
+Terminal state in
+init
+:
+The ViewModel’s
+init
+block observed th</p>
+
+<p>e WorkManager 状态流并在 `SUCCEEDED` 时无条件设置 `isComplete = true`，从而捕获了上一次运行的过期终止状态。修复：添加了 `hasTriggered` 标志。
+4. 应用重启后引擎未初始化：在进程死亡并重启后，LLM 引擎处于 `Uninitialized` 状态（它仅存在于内存中）。WorkManager worker 期望一个就绪的引擎，从而导致无限重试循环。修复：在调度 worker 之前初始化引擎。
+5. 取消与重新生成：取消流程未正确清理工作请求，留下了干扰新生成请求的孤立 worker。
+6. 重复调度：在没有适当保护措施的情况下，UI 可能会同时调度两个 worker。这些 worker 竞争 LLM 引擎（该引擎仅支持一个活动会话），导致其中一个失败并触发误导性的错误状态。此外，由于代码从已完成 worker 的 `progress` 而不是 `outputData` 中读取数据，导致 worker 的输出数据丢失。
+7. 过期终止状态（再次出现）：即使有了 `hasTriggered`，ViewModel 仍处理了在当前 `RUNNING` 状态之前的 `SUCCEEDED` 状态。修复：添加了 `hasSeenRunning` 标志，仅在至少发出一次 `RUNNING` 状态后才处理终止状态。
+8.3 根本原因分析
+根本原因在于 WorkManager 的设计假设与 LLM 生成用例之间存在不匹配：
+WorkManager 假设：工作是可延迟的，能在进程死亡后幸存，终止状态（`SUCCEEDED`、`FAILED`）是最终答案，并且系统查询</p>
+
+<p>异步工作状态。
+LLM 生成要求：
+用户看着进度屏幕，期望实时反馈，想要重新触发生成，并且引擎状态（内存中）无法在进程终止后保留。
+每次错误修复都增加了一层防护（标志、状态过滤器、初始化检查），但这些防护却在与抽象机制相冲突。到了第 5 天，worker 已经积累了足够多的防御性代码，以至于比它所包装的原始协程更难理解。
+8.4
+解决方案：结合协程的用例
+替代方案（</p>
+
+<p>s
+-&gt;
+extract
+progress
+//
+-&gt;
+handle
+terminal
+states
+with
+flags
+//
+After
+(coroutine):
+useCase
+.
+execute
+(
+language
+,
+modelId
+)
+{
+progress
+,
+total
+-&gt;
+_state
+.
+update
+{
+it
+.
+copy
+(
+progress
+=
+progress
+,
+total
+=
+total
+)
+}
+}
+All seven WorkManager bug fixes became irrelevant. Gone. No persistent terminal states, no stale state observation, no initialization race conditions. The change removed 767 lines and added 576, with a net reduction of 191 lines and a dramatic reduction in complexity.
+8.5
+Lesson
+WorkManager is not for foreground operations.
+If the user is watching a progress screen, the operation is foreground, full stop, even if it involves an LLM running “in the background.” The persistence guarantees that make WorkManager valuable for truly deferrable tasks (uploading analytics, syncing data) become liabilities for interactive operations. Standard Kotlin coroutines with structured concurrency are the correct tool for this use case.
+9
+Discussion
+9.1
+Design Heuristics for On-Device SLM Integration
+From our findings, we distill eight actionable design heuristics:
+H1: Minimize LLM output schema complexity.
+Each additional field in a structured output schema multiplies the probability of at least one field being malformed. For SLMs, aim for the smallest schema that serves the feature. In our case, the optimal schema was a single array of three strings:
+{&quot;hints&quot;: [&quot;h1&quot;, &quot;h2&quot;, &quot;h3&quot;]}
+.
+H2: Stack multiple parsing fallbacks.
+Never assume format compliance from an SLM. Design a parsin</p>
+
+<p>g pipeline where each layer catches failures the previous one missed. Our pipeline evolved from 1 strategy to 5 over the development period. The structural parsing approach (inferring fields by value type rather than key name) is particularly effective for multilingual scenarios where the model may translate JSON keys.
+H3: Use contextual feedback in retries.
+When a generation fails validation, include the specific failure reason in the next prompt. With conversation sessions, the model retains this context and adjusts. This is dramatically more effective than blind retry, where the model has no information about what went wrong and may repeat the same error.
+H4: Rotate inference sessions to prevent degradation.
+On-device models with limited KV cache degrade after several turns. Creating fresh sessions at fixed intervals (3–5 generations in our experience) maintains output quality. The optimal interval depends on the model’s context window and the average response length.
+H5: Use full language names, concrete examples, and priority markers.
+SLMs respond better to “Brazilian Portuguese” than “pt”, to “the word ‘estufa’ has 6 letters and would be REJECTED” than “count letters carefully”, and to “CRITICAL:” before important constraints. These techniques exploit the model’s sensitivity to specific tokens and its ability to pattern-match from concrete examples.
+H6: Always provide a deterministic fallback.
+The core user experience should never depend on LLM success. Design a fallbac</p>
+
+<p>k that requires zero inference and keeps the feature functional. In our case, generic template hints keep the game playable even with 100% LLM failure.
+H7: Let the LLM do creative work; use deterministic sources for factual work.
+SLMs are unreliable for constrained factual tasks (selecting a valid 5-letter word in Portuguese) but adequate for bounded creative tasks (writing three hints about a given word). Identify the creative vs. deterministic boundary in your feature and assign each to the appropriate system.
+H8: Fewer supported models means a smaller bug surface.
+Each model has unique instruction-following behavior and requires independent prompt tuning. We evaluated 9 models and shipped 2. Each additional model multiplied the testing and prompt engineering burden. Support the minimum viable set of models that covers your device range.
+9.2
+Answering RQ1: Viability Assessment
+On-device SLMs are viable for production mobile applications today, with significant caveats:
+Viable for:
+Bounded creative text generation with soft quality requirements and deterministic fallback. Our hint generation feature (write three short hints about a known word in a specified language) represents this sweet spot. The quality bar is “helpful but not perfect” rather than “must be exactly correct.”
+Not viable for (at current SLM scale):
+Multi-field structured generation with hard constraints (exact word length, precise language compliance, no repetition). Our initial design required the LLM to si</p>
+
+<p>同时满足词汇、数值、语言和结构约束，这超出了0.6B–2.6B参数范围内模型的可靠能力。
+可行性条件：
+(a) 开发者必须为广泛的提示词迭代做好准备（在我们的案例中是四次完全重写）；(b) 解析必须被设计为防御性管道，而不是单一的反序列化器；(c) 当LLM失败时，该功能必须优雅降级；(d) LLM的职责范围必须通过迭代经验性地发现，而不是从云端模型的经验中假设。
+9.3
+框架选择作为促成因素
+使用 LiteRT-LM（第 ˜ 2.2 节）的决定被证明至关重要，原因有二：
+首先，完全的提示词控制能力使得第 ˜ 7 节中记录的四次提示词重写成为可能。AICore 预定义的任务 API（摘要、校对）将使这种迭代变得不可能。独立调整系统提示词、用户提示词、temperature、topK 和 topP 的能力是必不可少的。</p>
+
+<p>根本不。
+在测试过程中出现了第三个好处：模拟器支持。LiteRT-LM 的 CPU 后端可在模拟器上运行，从而在进行基础提示词测试时无需物理设备即可实现快速迭代。MLC LLM 明确说明不支持模拟器，而 AICore 则需要特定的 Pixel 硬件。对于独立开发者而言，在早期迭代阶段能够在模拟器上进行测试是一个显著的生产力优势。
+9.4
+对框架开发者的启示
+我们的经验表明，推理框架开发者可以做出以下几项改进：
+•
+内置输出格式约束。框架可以提供 JSON 模式或模式约束解码（在每一步将模型的输出词汇表限制为有效的 JSON 词元）。这将在框架层面完全消除 F1。
+•
+会话质量指标。暴露 KV 缓存利用率或“会话新鲜度”指标将有助于开发者实现会话轮换，而无需进行经验性调优。
+•
+后端故障诊断。我们的 GPU 后端在初始化时正常工作，但在模拟器上推理期间失败（缺少 OpenCL 库）。更好的预检查或诊断错误代码将减少调试时间。
+•
+模型兼容性元数据。一种描述每个模型已知局限性的机器可读格式（例如，“不擅长字符计数”、“倾向于翻译 JSON 键”）将有助于开发者选择模型和设计提示词。
+9.5
+对模型开发者的启示
+对于针对设备端部署的 SLM 开发者：
+•
+字符</p>
+
+<p>counting is a training gap.
+The inability to count letters in a word is a consistent failure across all models we tested. Fine-tuning on character-counting tasks or including such examples in instruction-tuning data would improve constrained generation.
+•
+Instruction language should not bleed into output structure.
+When told to “output in Brazilian Portuguese,” models should apply this to
+values
+but not to JSON
+keys
+. This distinction is not well-captured in current instruction-tuning approaches.
+•
+Format compliance training should include mobile-specific patterns.
+Models are trained on web corpora where JSON is almost always wrapped in markdown code fences. Explicit training to
+not
+produce code fences when instructed would help mobile use cases.
+9.6
+The Gap Between Vision and Reality
+We started this project with genuine excitement. On-device LLMs promised a game where every puzzle was unique, every hint was contextual, and the AI could even chat with the player after a round. No cloud dependency, no API costs, full privacy. We gave ourselves five days, a realistic one-week sprint, because we wanted this study to reflect the conditions a working software engineer actually faces: finite time, competing priorities, and the pressure to ship.
+Table
+˜
+8
+shows the gap between what we envisioned on Day 0 and what we actually shipped on Day 5.
+Table 8:
+Desired features vs. shipped features after the 5-day sprint.
+Feature
+Desired
+Shipped
+Why / What Would Be Needed
+LLM generates words</p>
+
+<p>Yes
+No
+30–50% word-length violation rate (F2). Would need a model with reliable character counting, or constrained decoding at the framework level.
+LLM assigns category
+Yes
+No
+Field added validation surface without gameplay value. Could work if category were a soft label (no validation), but we had no UI for it.
+LLM assigns difficulty (1–5)
+Yes
+No
+SLMs returned arbitrary values. Would need fine-tuning on difficulty calibration data or a post-hoc heuristic (word frequency as proxy).
+5 progressive hints
+Yes
+3
+Hints 4 and 5 were consistently low quality (repetitive, too specific, or grammatically broken). A larger model (
+≥
+\geq
+7B) or retrieval-augmented hints might sustain 5.
+Post-game LLM chat
+Yes
+No
+Worked technically (streaming, multi-turn), but added complexity (session lifecycle, context management) without clear user value in a word game. Would need a compelling game mechanic to justify the cost.
+6 model options
+Yes
+2
+Each model required independent prompt tuning and testing. With more time (2–3 sprints), we could have qualified 4–5 models with per-model prompt profiles.
+Background generation via WorkManager
+Yes
+No
+7 bugs in one day from persistent state mismatch (Section
+8
+). Would need a custom foreground service or a redesigned WorkManager contract with explicit session semantics.
+Fully LLM-driven game
+Yes
+Hybrid
+The LLM enhances (hints) but does not drive (word selection). A viable fully-driven game would need models at
+≥
+\geq
+7B parameters with constrained decoding</p>
+
+<p>support, or a server-side validation layer (which defeats the offline goal).
+Of the eight features we envisioned, we shipped three in reduced form (3 hints instead of 5, 2 models instead of 6, hybrid instead of fully LLM-driven) and cut five entirely. That is a 62% feature cut rate. This is not a failure of planning; it is the natural outcome of honest contact with a technology whose production characteristics are poorly documented. We planned ambitiously because the demos and benchmarks suggested it was possible. We shipped pragmatically because the code told us otherwise.
+The five-day constraint was deliberate. We did not want an open-ended research timeline; we wanted to experience what a developer faces when a product manager says “ship it by Friday.” Every cut in
+table
+˜
+8
+was made under that pressure. A longer timeline would not have eliminated the failures, only delayed the reckoning. The core lesson, that SLMs require radical scope reduction, would have emerged regardless.
+9.7
+Limitations of the Progressive Simplification Pattern
+The progressive simplification arc (
+table
+˜
+5
+) raises a question: could we have started at the minimal scope and avoided the 4-day iteration? In retrospect, partially. A developer applying heuristics H1, H6, and H7 from the start would begin with curated word lists and hint-only generation, potentially compressing the iteration cycle from 5 days to 1–2 days.
+Still, the
+process
+of discovering that scope was informative, and we would not tra</p>
+
+<p>de it. The initial ambitious design revealed the specific failure modes and their severity, which informed the heuristics. Without attempting full puzzle generation, we would not have quantified the 30–50% word-length violation rate, would not have discovered the KV cache degradation pattern, and would not have developed the structural parsing technique. The heuristics are, in a sense, the compressed experience of the full iteration.
+9.8
+Prompt Engineering as Empirical Science
+Our prompt evolution (
+table
+˜
+7
+) confirms that prompt engineering for SLMs is an empirical process, not a design-time activity. Each rewrite was a hypothesis (“if I add CRITICAL, the model will comply with length constraints”) tested against real model outputs. Some hypotheses held up (priority markers improved compliance), others only partially (concrete examples helped but did not eliminate violations), and the overall direction was always toward simplification: fewer instructions, simpler tasks.
+This means prompt engineering time should be budgeted into any SLM integration project. In our case, prompt-related work consumed roughly 30–40% of the AI-related development effort. For cloud models, prompts are often write-once; for SLMs, they are an iterative, ongoing concern.
+10
+Threats to Validity
+Construct validity.
+The study analyzes a single project by a single developer, which limits the diversity of perspectives and approaches. However, the commit log provides a contemporaneous, objective record o</p>
+
+<p>的决策和变更，从而减少了回顾性偏差。常规提交（Conventional Commits）格式和规范驱动开发工作流提供了有助于分析的额外结构。
+外部效度。
+研究结果源自通过特定框架（LiteRT-LM）在特定硬件（Pixel 7 Pro、Pixel 10 Pro）上运行的特定模型（Gemma 4 E2B、Qwen3 0.6B）。尽管我们预计故障类别（F1–F5）可以推广到其他小语言模型（SLM）和框架（格式违规和约束违规是小模型固有的，并非 LiteRT-LM 特有），但特定的缓解策略可能需要针对其他环境进行调整。报告的故障频率是基于开发观察的估计值，而非具有统计显著性样本量的对照实验。
+内部效度。
+作为一个单人开发者项目，我们无法将开发者技能与策略有效性剥离开来。经验较少的开发者可能会发现不同的故障模式，或者需要不同的缓解策略。相反，团队环境可能通过多样化的测试更快地暴露故障。5天的开发窗口期意味着策略是基于快速迭代而非长期监控来评估的。
+信度。
+5天的开发窗口期虽然紧凑但很短。长期维护可能会暴露额外的故障类别（例如，模型版本回归、特定硬件的推理错误）。我们已经观察到了一个此类案例：GPU后端初始化在e上成功</p>
+
+<p>拟器通过 WebGPU/llvmpipe 但推理因缺少 OpenCL 库而失败，需要特定于模拟器的纯 CPU 回退方案。模型生态系统也在快速演进；较新的 SLM 可能不会表现出本文档中所记录的相同失败模式。
+11
+结论
+我们展示了一个将设备端小型语言模型集成到生产级 Android 应用中的实证案例研究。在 5 天内的 204 次提交中（∼ \sim 90 次直接与 AI 相关），我们识别出了本地 SLM 推理特有的五类故障：输出格式违规、约束违规、上下文质量退化、延迟不兼容以及模型选择不稳定。我们记录了用于缓解这些问题的提示工程和架构策略。
+我们的核心发现是一条“渐进式简化弧”：随着开发者通过迭代摸索出 SLM 可靠性能的边界，LLM 的职责被系统性地从结构化多字段生成（7 个字段，6 条验证规则）缩减至仅生成提示（词汇生成 0 个字段，提示质量作为唯一衡量标准）。这条弧线最终收敛于一项设计原则：最可靠的设备端 LLM 功能，是让 LLM 做得最少的功能。
+在此过程中，我们记录了一个完整的提示工程迭代周期（五天内四次重写）、一个从单一</p>
+
+<p>最初有九个候选者，最终收敛为两个。
+如今，设备端 SLM 在生产级移动应用中已经具备可行性。隐私保障是切实的（数据不会离开设备）。离线能力是切实的（游戏在无任何网络连接下依然可用）。然而，要实现这种可行性，就必须接受一个事实：SLM 并非云模型的缩小版；它们是截然不同的工具，需要采用不同的工程方法：防御性解析而非模式验证，上下文重试而非盲目重复，责任缩减而非提示词堆砌，以及确定性兜底机制而非盲目乐观的信任。
+我们希望我们总结的八项启发式规则、详细的失败分类，以及对开发过程的坦诚记述，能够帮助从业者跳过我们所记录的为期</p>
+
+<p>odels (Gemini 2.5 Flash-Lite at $0.10/$0.40 per million tokens) accumulate meaningful costs at scale. For a game like Palabrita, generating three hints per puzzle for 100,000 daily active users would cost hundreds of dollars per day in API fees alone. On-device inference costs exactly zero per query after the initial model download. The marginal cost of serving one more user is zero. This difference is not incremental; it is structural.
+But the cost argument, while compelling, is secondary to a more fundamental concern:
+user data privacy and the opacity of cloud AI platforms.
+When a user’s input is sent to a cloud API, the user loses control over that data. Google’s own Gemini API pricing page states plainly: on the free tier, “Content used to improve our products”
+[
+14
+]
+. Only paying customers receive the assurance that their data is not used for model training. Most users never read these terms. Most developers never surface them. The default is silent data extraction, and the burden of opting out falls on the user (if an opt-out exists at all).
+This is not a hypothetical concern. The EU’s General Data Protection Regulation (GDPR) establishes data minimization and purpose limitation as legal requirements
+[
+15
+]
+. Brazil’s Lei Geral de Proteção de Dados (LGPD) grants users the right to know how their data is processed and to request its deletion
+[
+16
+]
+. California’s Consumer Privacy Act (CCPA) provides similar protections
+[
+17
+]
+. These regulations exist because the defaul</p>
+
+<p>t behavior of platforms, collecting data broadly and using it permissively, has repeatedly failed to protect users. Cloud AI APIs, where every prompt and response transits through a third party’s infrastructure, are a new vector for the same pattern.
+On-device inference eliminates this vector entirely. In Palabrita, the user’s gameplay data (words guessed, hints requested, languages chosen) never leaves the device. There is no API call to intercept, no server log to subpoena, no training pipeline to inadvertently include user data. The privacy guarantee is not a policy promise; it is an architectural fact.
+We believe the industry must move a significant portion of its inference infrastructure from centralized cloud to the edge: smartphones, personal computers, IoT devices, local servers, self-hosted instances. The hardware is increasingly capable (our Pixel 7 Pro runs a 2.6B parameter model at 30 tokens per second on CPU alone). The frameworks are maturing (LiteRT-LM, MLC LLM, llama.cpp). The models are shrinking (Qwen3 0.6B fits in 614 MB). What is missing is the engineering culture: a default assumption that user data should stay on the user’s device unless there is a clear, consented, and justified reason to send it elsewhere.
+This paper documented the engineering cost of that choice. On-device inference is harder than a cloud API call. Parsing is messier, prompts require more iteration, models are less capable, and fallbacks are essential. But these are engineering proble</p>
+
+<p>ms with engineering solutions. The privacy of millions of users is not an engineering problem. It is a design choice, and we argue it should be the default one.
+References
+[1]
+Google AI Edge.
+LiteRT-LM Overview.
+https://ai.google.dev/edge/litert-lm/overview
+, 2026.
+[2]
+MLC LLM.
+Machine Learning Compilation for Large Language Models.
+https://llm.mlc.ai/
+, 2025.
+[3]
+Android Developers.
+Gemini Nano — On-device AI with AICore.
+https://developer.android.com/ai/gemini-nano
+, 2026.
+[4]
+Google DeepMind.
+Gemma: Open Models Based on Gemini Research and Technology.
+arXiv preprint
+, 2024.
+[5]
+Alibaba Group.
+Qwen Technical Report.
+arXiv preprint
+, 2024.
+[6]
+Microsoft Research.
+Phi-4 Technical Report.
+arXiv preprint
+, 2025.
+[7]
+J. Wei et al.
+Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.
+In
+NeurIPS
+, 2022.
+[8]
+J. White et al.
+A Prompt Pattern Catalog to Enhance Prompt Engineering with ChatGPT.
+arXiv preprint
+, 2023.
+[9]
+T. Schick et al.
+Toolformer: Language Models Can Teach Themselves to Use Tools.
+In
+NeurIPS
+, 2023.
+[10]
+R. David et al.
+TensorFlow Lite Micro: Embedded Machine Learning for TinyML Systems.
+In
+MLSys
+, 2021.
+[11]
+Apple.
+Core ML Documentation.
+https://developer.apple.com/documentation/coreml
+, 2026.
+[12]
+P. Runeson and M. Höst.
+Guidelines for conducting and reporting case study research in software engineering.
+Empirical Software Engineering
+, 14(2), 2009.
+[13]
+OpenAI.
+API Pricing.
+https://openai.com/api/pricing/
+, 2026.
+[14]
+Google.
+Gemini Developer AP</p>
+
+<p>I Pricing.
+https://ai.google.dev/gemini-api/docs/pricing
+, 2026.
+[15]
+European Parliament and Council.
+Regulation (EU) 2016/679 — General Data Protection Regulation (GDPR).
+Official Journal of the European Union
+, 2016.
+[16]
+República Federativa do Brasil.
+Lei n
+o
+13.709 — Lei Geral de Proteção de Dados Pessoais (LGPD).
+Diário Oficial da União
+, 2018.
+[17]
+State of California.
+California Consumer Privacy Act (CCPA), Cal. Civ. Code §§ 1798.100–1798.199.100.
+2018.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
