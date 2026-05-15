@@ -1,0 +1,3473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KV-Fold：面向长上下文推理的单步KV缓存循环 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">KV-Fold：面向长上下文推理的单步KV缓存循环</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-05-12</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2605.12471" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：KV-Fold: One-Step KV-Cache Recurrence for Long-Context Inference</h4>
+            <p><strong>中文摘要：</strong> 本文提出KV-Fold，一种无需训练的长上下文推理协议。它将KV缓存作为左折叠累加器，按块处理序列并传递缓存，无需修改模型或微调。研究发现，该循环机制极其稳定，误差不随链深度累积而是迅速饱和平稳，且对数值精度变化不敏感。在“大海捞针”测试中，KV-Fold在128K上下文及511深度下实现100%精确检索，单张40GB GPU即可运行。相比流式方法，它以线性内存增长为代价换取了完美的长程信息保真度...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>KV-Fold: One-Step KV-Cache Recurrence for Long-Context Inference
+Alireza Nadali
+Department of Computer Science
+University of Colorado Boulder
+Boulder, Colorado, 80301
+a_nadali@colorado.edu
+&amp;Patrick Cooper
+1
+1
+footnotemark:
+1
+Department of Computer Science
+University of Colorado Boulder
+Boulder, Colorado, 80301
+patrick.cooper@colorado.edu
+Ashutosh Trivedi
+Department of Computer Science
+University of Colorado Boulder
+Boulder, Colorado, 80301
+ashutosh.trivedi@colorado.edu
+&amp;Alvaro Velasquez
+Department of Computer Science
+University of Colorado Boulder
+Boulder, Colorado, 80301
+alvaro.velasquez@colorado.edu
+Equal Contribution
+Abstract
+We introduce
+KV-Fold
+, a simple, training-free long-context
+inference protocol that treats the key–value (KV) cache as the
+accumulator in a left fold over sequence chunks. At each step, the
+model processes the next chunk conditioned on the accumulated cache,
+appends the newly produced keys and values, and passes the enlarged
+cache forward; the same one-step update is applied repeatedly,
+analogous to
+foldl
+in functional programming. Building on
+the KV cache concatenation primitive introduced for latent
+multi-agent communication, we repurpose it as a chunk-to-chunk
+recurrence for long-context inference. When processing chunk
+t
+t
+,
+the model attends to the KV cache carried from earlier chunks as a
+prefix, reusing its internal state across segments without modifying
+or retraining the model.
+Despite its simplicity, the induced recurrence is stable: per-ste</p>
+
+<p>p
+drift rises briefly and then saturates into a flat plateau that
+persists across deep chains. This plateau is insensitive to a
+10
+,
+000
+×
+10{,}000\times
+change in numerical precision, robust across chunk
+sizes, and consistent across model families. At the task level,
+KV-Fold preserves exact information over long distances.
+On a needle-in-a-haystack benchmark, it achieves
+100
+%
+100\%
+exact-match
+retrieval across
+152
+152
+trials spanning contexts from
+16
+16
+K to
+128
+128
+K
+tokens and chain depths up to
+511
+511
+on Llama-3.1-8B, while remaining
+within the memory limits of a single 40GB GPU.
+Compared to streaming methods, which trade fidelity for bounded
+memory, KV-Fold maintains long-range retrieval while
+operating as a sequence of tractable forward passes. Overall, our
+results show that frozen pretrained transformers already support a
+stable form of KV-cache recurrence, providing a practical route to
+long-context inference without architectural changes or training.
+1
+Introduction
+Large pretrained transformers
+[
+1
+]
+have become the default architecture for language modeling, code generation, and long-form reasoning.
+However, their ability to use context remains constrained by the
+attention budget
+of a single forward pass.
+A token can attend only to the tokens represented within the current attention computation, while the memory cost of full attention grows quadratically with sequence length. As a result, applications that naturally generate long streams of information, such as re</p>
+
+<p>仓库级代码辅助、纵向医疗记录、长交互历史下的客户偏好建模，以及敏感国防行动的监控，很快就会超出常规推理的实际极限。
+这引出了一个自然的问题：
+预训练的 Transformer 能否在连续的块之间传递其内部状态，从而将长上下文推理转化为一种循环机制，而不是单一的整体前向传递？
+尽管近期的模型已将上下文窗口扩展至数十万甚至数百万个词元，但在实际应用中，这种限制依然具有约束力。即使在这样的规模下，实际工作负载仍可能超出可用的上下文：诸如 E3SM</p>
+
+<p>rns, or replace attention
+with state-space dynamics
+[
+34
+,
+35
+]
+. These methods
+have produced impressive progress, but they also expose a persistent
+trade-off: they either modify the model, require training or
+fine-tuning, compress the past into a lossy state, approximate the
+attention computation, or discard old tokens entirely. In settings
+where exact recall matters, such as recovering an identifier from a
+long log or preserving a factual detail introduced much earlier in a
+document, these trade-offs can be unacceptable.
+This paper explores a simpler possibility: the key–value (KV) cache
+of a pretrained transformer can itself serve as a recurrent state.
+In a decoder-only transformer, the KV cache stores layer-wise
+representations of previous tokens, which later tokens access through
+attention. Although this cache is usually treated as a serving
+optimization, it is also a structured record of the model’s past
+computation.
+Recent work on latent multi-agent communication
+[
+8
+]
+showed that one transformer pass can attend to another pass’s KV cache
+as a prefix, allowing information transfer directly through latent
+state. We repurpose this primitive for long-context inference within a
+single pretrained model.
+We introduce
+KV-Fold
+. A long sequence is divided into
+chunks. When processing chunk
+t
+t
+, the model attends to the accumulated
+KV cache from earlier chunks as a prefix, produces new keys and values
+for the current chunk, and passes the enlarged cache to chunk
+t
++
+1
+t{+}1
+.</p>
+
+<p>This turns standard transformer inference into a simple
+chunk-to-chunk recurrence in which the KV cache plays the role of the
+accumulator in a left fold: a single one-step update is applied
+repeatedly over the chunk sequence, analogous to
+foldl
+in
+functional programming. The model parameters remain unchanged, no
+special memory tokens are introduced, and no fine-tuning is required.
+The shift is purely operational: instead of a single monolithic
+full-context forward pass, the model processes the sequence as a chain
+of manageable forward passes, carrying its state forward through the
+KV cache. This comes with a tradeoff: the cache grows linearly with
+sequence length, increasing memory use and per-step latency relative
+to streaming approaches.
+The main empirical finding is that this recurrence is stable. If each
+chunk boundary introduced independent error, one would expect the
+difference from full attention to grow with chain depth. Instead, we
+observe a short transient followed by a flat plateau: per-step drift
+rises in the first few transitions and then stabilizes, remaining
+essentially unchanged even across deep chains. This plateau is
+insensitive to a
+10
+,
+000
+×
+10{,}000\times
+change in numerical precision,
+robust across chunk sizes, and consistent across transformer
+families. In other words, KV-Fold does not behave like
+accumulated numerical error; it moves the model into a slightly
+shifted but stable attention regime.
+Figure 1:
+Headline result.
+Left:
+on Llama-3.1-8B at
+T
+=</p>
+
+<p>128
+T=128
+K, KV-Fold holds
+100
+%
+100\%
+exact-match retrieval at every tested distance through chain depth
+511
+511
+, while StreamingLLM falls to
+0
+%
+0\%
+once the needle exits its
+1024
+1024
+-token cache.
+Right:
+peak GPU memory grows linearly at
+0.13
+0.13
+KB per token; the chain at
+T
+=
+128
+T=128
+K, depth
+511
+511
+completes in
+171
+171
+s.
+1
+1
+31
+31
+255
+255
+511
+511
+0
+%
+25
+25
+%
+50
+50
+%
+75
+75
+%
+100
+100
+%
+Needle-to-question distance (chain transitions)
+Exact-match retrieval
+Retrieval at
+T
+=
+128
+T=128
+K
+KV-Fold
+StreamingLLM
+32
+32
+K
+64
+64
+K
+96
+96
+K
+128
+128
+K
+10
+10
+20
+20
+30
+30
+40
+40
+A100
+40
+40
+GB
+100
+%
+100\%
+retrieval at
+all
+T
+T
+(
+152
+/
+152
+152/152
+trials)
+Total context
+T
+T
+(tokens)
+Peak GPU memory (GB)
+Scaling on a
+40
+40
+GB A100
+Notably, this stable regime preserves useful long-range
+information. Because the KV state is not compressed, earlier
+tokens remain available for content-based addressing. On a
+needle-in-a-haystack benchmark spanning
+T
+∈
+{
+16
+​
+K
+,
+32
+​
+K
+,
+64
+​
+K
+,
+96
+​
+K
+,
+128
+​
+K
+}
+T{\in}\{16\text{K},32\text{K},64\text{K},96\text{K},128\text{K}\}
+tokens, KV-Fold
+recovers
+100
+%
+100\%
+of inserted facts at every tested
+distance, including chain depth
+511
+511
+on Llama-3.1-8B at the full
+128
+128
+K native context window.
+The method occupies a distinct point on the memory-versus-retrieval
+trade-off. Compared to full attention, peak working memory is
+dramatically lower: at
+T
+=
+128
+T=128
+K on a
+40
+40
+GB A100, a single
+full-attention forward is infeasible (its attention-scores matrix
+alo</p>
+
+<p>ne is
+∼
+1
+{\sim}1
+TB), while KV-Fold fits within the
+hardware budget at
+35.6
+35.6
+GB peak and completes in
+171
+171
+s.
+Compared to streaming methods, peak memory is substantially higher:
+StreamingLLM
+[
+9
+]
+holds a constant
+1024
+1024
+-token
+cache (
+16.6
+16.6
+GB peak at
+T
+=
+128
+T{=}128
+K) while KV-Fold’s
+cache grows linearly to
+17.18
+17.18
+GB for similar setting. The
+extra memory pays for retrieval: KV-Fold maintains
+100
+%
+100\%
+at every tested distance, while StreamingLLM loses access
+once the needle exits its
+1024
+1024
+-token window
+(Figure
+1
+).
+This paper introduces
+KV-Fold
+, a training-free
+protocol for long-context inference with pretrained transformers, and
+provides a systematic empirical characterization of its behavior.
+Our contributions are as follows:
+•
+We propose KV-Fold, a simple inference-time protocol
+that turns a frozen pretrained transformer into a recurrent
+long-context model by carrying the accumulated KV cache across
+chunks as the accumulator in a left fold, without architectural
+changes, special memory tokens, or fine-tuning.
+•
+We show that the induced recurrence is stable: its drift
+relative to full attention rises briefly and then saturates into a
+flat plateau, rather than accumulating with chain depth.
+•
+We show that this plateau is structural rather than numerical:
+it is largely unchanged under a
+10
+,
+000
+×
+10{,}000\times
+increase in numerical
+precision, consistent across model families, and robust across a wide
+range of chunk sizes.
+•
+We demonstrate that</p>
+
+<p>KV-Fold preserves exact
+long-range information, matching full-attention retrieval on
+needle-in-a-haystack benchmarks through contexts up to
+128
+128
+K tokens
+and chain depths up to
+511
+511
+.
+•
+We characterize its practical trade-offs relative to streaming
+methods such as StreamingLLM: streaming achieves bounded-memory and
+faster runtime, but loses retrieval once content exits the window,
+whereas KV-Fold preserves retrieval by retaining the full
+KV history with linear memory.
+Overview of questions.
+Taken together, these results raise a set of concrete questions about
+the behavior of the recurrence. Does error accumulate with chain
+depth, or does it settle into a bounded regime? If drift appears, is it
+driven by numerical precision or by a structural shift in the attention
+computation? How robust is this behavior across architectures and
+operational choices such as chunk size? Does the recurrence preserve
+task-level information, in particular the ability to retrieve exact
+facts introduced far back in the sequence? Finally, how does the method
+scale in practice, in terms of memory, compute, and achievable context
+length on real hardware? We answer each of these questions empirically
+in the sections that follow.
+Organization.
+Section
+2
+introduces KV-Fold.
+Section
+3
+studies the stability of the recurrence and
+characterizes drift as a function of chain depth.
+Section
+3.1
+examines whether this drift is numerical or
+structural, and robustness across architectures and chunk sizes.
+Sec</p>
+
+<p>tion
+4
+measures task-level retrieval, and
+Section
+5
+analyzes scaling behavior in memory, compute,
+and context length.
+2
+KV-Fold
+Chunk
+t
+−
+1
+t{-}1
+forward
+tokens at pos
+[
+(
+t
+−
+1
+)
+​
+C
+,
+t
+​
+C
+)
+[(t{-}1)C,\,tC)
+attention layer
+ℓ
+\ell
+K
+t
+−
+1
+(
+ℓ
+)
+K^{(\ell)}_{t-1}
+,
+V
+t
+−
+1
+(
+ℓ
+)
+V^{(\ell)}_{t-1}
+Chunk
+t
+t
+forward
+tokens at pos
+[
+t
+​
+C
+,
+(
+t
++
+1
+)
+​
+C
+)
+[tC,\,(t{+}1)C)
+attention layer
+ℓ
+\ell
+K
+t
+(
+ℓ
+)
+K^{(\ell)}_{t}
+,
+V
+t
+(
+ℓ
+)
+V^{(\ell)}_{t}
+(appended to cache)
+chunk boundary
+prefix:
+K
+t
+−
+1
+(
+ℓ
+)
+K^{(\ell)}_{t-1}
+,
+V
+t
+−
+1
+(
+ℓ
+)
+V^{(\ell)}_{t-1}
+(no copy, no transformation)
+to
+t
++
+1
+t{+}1
+Applied at every layer
+ℓ
+=
+0
+,
+…
+,
+L
+−
+1
+\ell=0,\ldots,L{-}1
+with continuous
+position IDs across the boundary.
+Figure 2:
+KV-Fold.
+Queries in chunk
+t
+t
+attend to the KV
+cache from earlier chunks (amber) as a prefix; chunk
+t
+t
+’s KV states
+are then appended and carried forward. No compression or additional
+parameters are introduced.
+We adopt the chunked-attention setup standard in the long-context
+literature.
+A long sequence of length
+T
+T
+is divided into chunks of length
+C
+C
+,
+yielding
+N
+=
+T
+/
+C
+N=T/C
+chunks indexed
+0
+,
+1
+,
+…
+,
+N
+−
+1
+0,1,\ldots,N{-}1
+.
+Each chunk is processed as a single forward pass through the model.
+At chunk
+t
+t
+, we run a forward pass on the input chunk
+𝐱
+t
+=
+[
+x
+t
+​
+C
+,
+x
+t
+​
+C
++
+1
+,
+…
+,
+x
+(
+t
++
+1
+)
+​
+C
+−
+1
+]
+\mathbf{x}_{t}=[x_{tC},x_{tC+1},\ldots,x_{(t+1)C-1}]
+(boldface
+𝐱
+t
+\mathbf{x}_{t}
+denotes the length-
+C
+C
+chunk vector;
+plain
+x
+i
+x_{i}
+denotes the individual token</p>
+
+<p>at absolute position
+i
+i
+),
+and use the previous chunk’s KV cache as the prefix.
+Concretely, for each transformer layer
+ℓ
+\ell
+, the attention
+computation at chunk
+t
+t
+produces queries
+Q
+t
+(
+ℓ
+)
+Q^{(\ell)}_{t}
+from the new
+tokens and uses keys
+K
+0
+:
+t
+(
+ℓ
+)
+=
+[
+K
+0
+(
+ℓ
+)
+;
+K
+1
+(
+ℓ
+)
+;
+…
+;
+K
+t
+−
+1
+(
+ℓ
+)
+;
+K
+t
+(
+ℓ
+)
+]
+K^{(\ell)}_{0:t}=[K^{(\ell)}_{0};K^{(\ell)}_{1};\ldots;K^{(\ell)}_{t-1};K^{(\ell)}_{t}]
+and analogously concatenated values
+V
+0
+:
+t
+(
+ℓ
+)
+V^{(\ell)}_{0:t}
+, where
+K
+s
+(
+ℓ
+)
+K^{(\ell)}_{s}
+and
+V
+s
+(
+ℓ
+)
+V^{(\ell)}_{s}
+are the
+keys and values produced when chunk
+s
+s
+was processed.
+Position identifiers for the new tokens are continued from the
+absolute sequence position
+t
+​
+C
+tC
+, so the positional embedding RoPE
+[
+2
+]
+rotations are aligned with the original sequence.
+This is the LatentMAS Equation 4 primitive applied across consecutive
+chunks instead of across distinct agents.
+Figure
+2
+illustrates one chunk-to-chunk transition:
+chunk
+t
+−
+1
+t{-}1
+’s K and V are passed unchanged into chunk
+t
+t
+’s attention
+as prefix, with continuous position IDs across the boundary.
+A recurrent view.
+This procedure can be interpreted as recurrence over chunks. Let
+(
+𝒦
+(
+t
+)
+,
+𝒱
+(
+t
+)
+)
+(\mathcal{K}^{(t)},\mathcal{V}^{(t)})
+denote the accumulated KV
+cache after chunk
+t
+t
+. Then
+(
+𝒦
+(
+t
+)
+,
+𝒱
+(
+t
+)
+)
+=
+ℱ
+θ
+​
+(
+(
+𝒦
+(
+t
+−
+1
+)
+,
+𝒱
+(
+t
+−
+1
+)
+)
+,
+𝐱
+t
+)
+,
+(\mathcal{K}^{(t)},\mathcal{V}^{(t)})=\mathcal{F}_{\theta}\big((\mathcal{K}^{(t-1)},\mathcal{V}^{(t-1)}),\mathbf{x}_{t}\big),
+where
+ℱ
+θ
+\m</p>
+
+<p>athcal{F}_{\theta}
+is the standard transformer forward pass.
+Equivalently, the full inference can be written as a left fold over
+the chunk sequence,
+(
+𝒦
+(
+N
+−
+1
+)
+,
+𝒱
+(
+N
+−
+1
+)
+)
+=
+foldl
+​
+(
+ℱ
+θ
+,
+(
+∅
+,
+∅
+)
+,
+[
+𝐱
+0
+,
+𝐱
+1
+,
+…
+,
+𝐱
+N
+−
+1
+]
+)
+,
+(\mathcal{K}^{(N-1)},\mathcal{V}^{(N-1)})=\texttt{foldl}\big(\mathcal{F}_{\theta},\;(\emptyset,\emptyset),\;[\mathbf{x}_{0},\mathbf{x}_{1},\ldots,\mathbf{x}_{N-1}]\big),
+with the KV cache playing the role of the accumulator and the same
+one-step update applied at every step.
+Unlike classical recurrent models, this state is not compressed into
+a fixed-dimensional vector; it grows with the sequence and retains
+structured representations of past tokens, allowing continued
+content-based addressing through attention.
+Three reference conditions.
+For every experiment we measure three quantities per chunk:
+•
+full
+: the next-token negative log-likelihood under
+a single full-attention forward pass over the entire
+T
+T
+-token
+sequence. This is the ceiling.
+•
+isolated
+: Negative Log Likelihood (NLL) when each chunk is processed in
+isolation, with no prefix. This is the floor: each chunk sees
+no context from earlier chunks.
+•
+kv-fold
+: NLL when each chunk is processed with the
+accumulated KV-cache prefix described above.
+We define the per-depth drift as
+drift
+​
+(
+d
+)
+=
+NLL
+kv-fold
+​
+(
+d
+)
+−
+NLL
+full
+​
+(
+d
+)
+\textrm{drift}(d)=\textsc{NLL}_{\textsc{kv-fold}}(d)-\textsc{NLL}_{\textsc{full}}(d)
+and the per-depth recurrence advantage as
+advantage
+​
+(
+d
+)
+=
+N</p>
+
+<p>LL
+isolated
+​
+(
+d
+)
+−
+NLL
+kv-fold
+​
+(
+d
+)
+\textrm{advantage}(d)=\textsc{NLL}_{\textsc{isolated}}(d)-\textsc{NLL}_{\textsc{kv-fold}}(d)
+,
+where
+d
+d
+is the chain depth (chunk index minus 1).
+We use the validation split of PG-19
+[
+23
+]
+, a
+benchmark of long-form prose, sampled at random with a fixed seed.
+Each window starts with 200 tokens into a document and spans the next
+T
+T
+tokens.
+All NLL values are computed in bfloat16 unless stated otherwise.
+3
+Stability of the recurrence
+If KV-Fold simply accumulated error at each step, drift
+would grow steadily with depth. Instead, we observe a short transient
+followed by a stable plateau. On Qwen2.5-7B-Instruct
+[
+39
+]
+with
+T
+=
+16
+,
+384
+T=16{,}384
+and
+C
+=
+256
+C=256
+(depths
+0
+–
+63
+63
+), drift rises
+during the first few transitions, saturates by depth seven, and
+remains essentially unchanged thereafter. Between depths
+15
+15
+and
+60
+60
+, the total change is just
+−
+0.0003
+-0.0003
+nats, well within
+window-to-window noise (
+N
+=
+42
+N=42
+). The central empirical result is
+therefore not growing error, but bounded drift: after a small initial
+shift at early chunk boundaries, further chaining does not move the
+system farther from the full-attention regime.
+0
+10
+10
+20
+20
+30
+30
+40
+40
+50
+50
+60
+60
+0
+0.2
+0.2
+0.4
+0.4
+plateau region (depth
+≥
+7
+\geq 7
+)
+Chain depth
+d
+d
+Per-step value (nats)
+Drift:
+kv-fold
+−
+-
+full
+Advantage:
+isolated
+−
+-
+kv-fold
+Figure 3:
+Drift saturates; advantage persists.
+Per-step drift (blue)
+and recurrence advantage (green) versus cha</p>
+
+<p>in depth on
+Qwen2.5-7B-Instruct (
+T
+=
+16
+,
+384
+T=16{,}384
+,
+C
+=
+256
+C=256
+). Drift saturates at
+∼
+0.04
+{\sim}0.04
+nats by depth
+7
+7
+and remains flat through depth
+63
+63
+,
+while recurrence advantage stays positive throughout.
+The recurrence also remains useful across the entire chain. The
+advantage of
+kv-fold
+over isolated chunks ranges from
++
+0.33
++0.33
+nats at
+d
+=
+1
+d=1
+to
++
+0.45
++0.45
+nats at
+d
+=
+63
+d=63
+and stays positive
+throughout (Figure
+3
+), closing
+89
+89
+to
+94
+%
+94\%
+of the
+gap between isolated processing and full attention.
+Interpretation as a stable attention regime.
+The saturation behavior in Figure
+3
+suggests a simple
+way to think about KV-Fold.
+Each step in the chain applies the same computation: the model reads a
+new chunk while attending to the accumulated KV cache from all
+previous chunks.
+This naturally defines a deterministic recurrence over the model’s
+internal state.
+Writing
+(
+𝒦
+(
+t
+)
+,
+𝒱
+(
+t
+)
+)
+(\mathcal{K}^{(t)},\mathcal{V}^{(t)})
+for the cache after
+chunk
+t
+t
+, we can express this as (introduced in Section
+2
+):
+(
+𝒦
+(
+t
+)
+,
+𝒱
+(
+t
+)
+)
+=
+ℱ
+θ
+​
+(
+(
+𝒦
+(
+t
+−
+1
+)
+,
+𝒱
+(
+t
+−
+1
+)
+)
+,
+x
+(
+t
+)
+)
+.
+(\mathcal{K}^{(t)},\mathcal{V}^{(t)})=\mathcal{F}_{\theta}\big((\mathcal{K}^{(t-1)},\mathcal{V}^{(t-1)}),x^{(t)}\big).
+What the experiments show is that this recurrence does not lead to
+unbounded drift.
+Instead, after a few steps, the system settles into a regime where
+applying the same update again has essentially no further effect on
+the model’s predictions.
+The platea</p>
+
+<p>u in drift reflects this: once the model has adjusted to
+the KV-Fold regime, additional chunk transitions leave it operating in
+the same regime.
+A useful way to interpret this is as a fixed point of the induced
+dynamics.
+KV-Fold appears to move the model from its
+full-attention operating point into a nearby, self-consistent one.
+The initial rise in drift corresponds to this transition; the flat
+region that follows indicates that the model remains there under
+repeated application of the same computation.
+Importantly, this regime is not degenerate. Two features of the
+construction help preserve useful behavior. First, the KV state is
+neither compressed nor bounded: the cache
+accumulates
+rather than overwrites — at chunk
+t
+t
+it holds the keys and values
+from every earlier chunk
+0
+,
+1
+,
+…
+,
+t
+−
+1
+0,1,\ldots,t{-}1
+together with the
+current chunk’s, and grows linearly with chain depth. Second,
+attention continues to provide content-based access to this state.
+Thus, even though the overall distribution shifts slightly,
+the model can still retrieve specific information from far back in
+the sequence. The needle-in-a-haystack results make this concrete:
+values inserted in the first chunk remain exactly recoverable
+after hundreds of subsequent transitions. As opposed to bounded-cache streaming methods such as
+StreamingLLM
+[
+9
+]
+, whose sliding window evicts old
+tokens after a few hundred steps: perplexity is preserved but
+retrievability is lost past the window boundary — a contrast we
+q</p>
+
+<p>uantify directly in Section
+6
+.
+We stress that this interpretation is descriptive rather than formal.
+We do not prove convergence or characterize the fixed point
+analytically.
+However, the consistency of the plateau (across depth, numerical
+precision, fragment size, and model family) suggests that it reflects a
+genuine property of the induced attention dynamics, rather than an
+artifact of a particular implementation.
+3.1
+Source of the drift: structural vs. numerical
+A natural first hypothesis for the saturation behavior is that drift
+is dominated by accumulated rounding error. We test this directly by
+repeating the same protocol on
+Qwen2.5-1.5B-Instruct
+[
+39
+]
+(same model family, fits in fp32
+on a single 40GB GPU) at both bf16 and fp32 precision.
+Increasing precision by roughly
+10
+,
+000
+×
+10{,}000\times
+(from
+∼
+3
+{\sim}3
+decimal digits to
+∼
+7
+{\sim}7
+) reduces plateau drift by only
+2.8
+%
+2.8\%
+(Table
+1
+, left). At depth one, drift is essentially zero
+in both precisions, confirming that a single chaining step is exactly
+information-preserving within numerical limits.
+Table 1:
+Robustness ablations.
+Left:
+increasing numerical precision by
+10
+,
+000
+×
+10{,}000\times
+reduces plateau drift by only
+2.8
+%
+2.8\%
+.
+Right:
+plateau drift varies by less than
+9
+%
+9\%
+across an
+8
+×
+8\times
+range of chunk sizes, with no monotonic dependence on
+C
+C
+.
+The plateau remains structurally unchanged in both settings.
+Precision
+Plateau
+d
+=
+1
+d=1
+bf16
++
+0.0647
++0.0647
+−
+0.0001
+-0.0001
+fp32
++
+0.0629
++0.</p>
+
+<p>0629
++
+0.0006
++0.0006
+Reduction
+2.8
+%
+2.8\%
+—
+C
+C
+chunks
+max
+d
+d
+Plateau
+128
+128
+32
+32
+31
+31
+0.108
+0.108
+256
+256
+16
+16
+15
+15
+0.121
+0.121
+512
+512
+8
+8
+7
+7
+0.129
+0.129
+1024
+1024
+4
+4
+3
+3
+0.118
+0.118
+The drift plateau itself remains essentially unchanged. This points to
+a structural effect: chaining moves the model into a slightly different
+attention regime, after which additional transitions no longer introduce
+further shift. In other words, the discrepancy from full attention is
+set early and then stabilizes, rather than growing with depth.
+Robustness across architectures.
+We replicate
+the depth experiment on three pretrained models from three
+families. Table
+2
+reports plateau drift and
+recurrence advantage
+at chain depth
+63
+63
+, where recurrence
+advantage is the per-depth NLL improvement of
+kv-fold
+over
+isolated
+chunks
+(
+NLL
+isolated
+−
+NLL
+kv-fold
+\textsc{NLL}_{\textsc{isolated}}-\textsc{NLL}_{\textsc{kv-fold}}
+):
+how much information the recurrence transfers across chunk
+boundaries that isolated processing cannot. The qualitative
+pattern (sharp initial drift saturating into a flat plateau, with
+positive recurrence advantage throughout) is identical in all
+three architectures. The mechanism is a property of pretrained
+transformer attention itself, not of any specific training recipe
+or family.
+Table 2:
+Cross-architecture replication. Plateau drift averaged over depths
+7–63 (7–15 for OLMoE, limited by its 4K context window).
+∗
+OLMoE gap closed measured at
+d
+=
+15
+d=15
+. Despite d</p>
+
+<p>ifferences in
+plateau magnitude (
+0.040
+0.040
+–
+0.122
+0.122
+nats), all three models show the
+same qualitative pattern: brief initial drift followed by saturation
+into a stable plateau with positive recurrence advantage throughout.
+Model
+Family
+Plateau drift
+Advantage @
+d
+=
+63
+d=63
+Gap closed
+OLMoE-1B-7B
+Sparse MoE
+0.122
+0.122
++
+0.381
++0.381
+76
+%
+∗
+76\%^{*}
+Qwen2.5-7B-Instruct
+Dense (Qwen2)
+0.040
+0.040
++
+0.454
++0.454
+92
+%
+92\%
+Llama-3.1-8B-Instruct
+[
+41
+]
+Dense (Llama-3)
+0.117
+0.117
++
+0.391
++0.391
+77
+%
+77\%
+Robustness to chunk size.
+We sweep chunk size
+C
+∈
+{
+128
+,
+256
+,
+512
+,
+1024
+}
+C\in\{128,256,512,1024\}
+on
+OLMoE-1B-7B
+[
+40
+]
+at fixed total context
+T
+=
+4096
+T=4096
+. Plateau drift varies by less than
+9
+%
+9\%
+across this
+8
+×
+8\times
+range, with no monotonic dependence on
+C
+C
+(Table
+1
+, right). This suggests that the plateau
+is driven primarily by the chunk-boundary transition itself rather
+than by the amount of within-chunk context. In practice, chunk size
+therefore becomes a flexible trade-off between chain depth and
+per-step compute: smaller chunks increase depth, while larger chunks
+amortize overhead, with little effect on drift.
+4
+Long-range retrieval
+NLL is a marginal-distribution measure averaging over many kinds of
+predictions.
+We additionally evaluate at the task level using a
+needle-in-a-haystack retrieval benchmark
+[
+36
+]
+,
+the standard probe of long-context retrieval employed by
+long-context evaluation
+suites
+[
+37
+,
+38
+]
+.
+For each trial:
+1.
+Sample a 16,384-token P</p>
+
+<p>G-19 window.
+2.
+Sample a key from a fixed list of uncommon English words
+(
+e.g.
+, “amaranth”, “obsidian”, “halcyon”) and a
+uniformly random 5-digit value.
+3.
+Insert the sentence “
+The magic number for [key] is
+[value].
+” at a controlled chunk position.
+4.
+After all 64 data chunks, ask the model:
+“
+Earlier in the document, what was the magic number
+associated with [key]? Reply with only the number.
+”
+5.
+Greedy-decode 30 tokens; extract the first 5-digit number from
+the output and compare to the gold value.
+We test four needle placements, parameterized by the number of chain
+transitions
+d
+d
+between the needle and the question:
+d
+=
+1
+d=1
+(needle
+in the chunk immediately before the question),
+d
+=
+15
+d=15
+,
+d
+=
+31
+d=31
+, and
+d
+=
+62
+d=62
+(needle in the first chunk,
+62
+62
+transitions back, the
+deepest position in the
+64
+64
+-chunk haystack). Each placement is
+tested across twenty independent trials. The model is
+Qwen2.5-7B-Instruct.
+Table
+3
+reports retrieval accuracy.
+KV-Fold achieves
+100
+%
+100\%
+exact-match retrieval at every
+tested distance, matching full attention exactly, while isolated
+chunks remain at
+0
+%
+0\%
+. The recurrence preserves specific factual
+content across deep chains: retrieving a previously unseen 5-digit
+value from chunk 1 across 62 chain transitions succeeds
+20
+/
+20
+20/20
+times.
+Table 3:
+Needle-in-a-haystack retrieval on Qwen2.5-7B-Instruct.
+full
+: full-attention upper bound;
+isolated
+: question
+chunk without haystack context;
+kv-fold
+: KV-Fold.
+Twenty trials per</p>
+
+<p>distance.
+kv-fold
+matches full attention
+exactly across all tested distances.
+Distance
+d
+d
+full
+isolated
+kv-fold
+ratio
+1
+1
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+0
+%
+0\%
+(
+0
+/
+20
+0/20
+)
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+1.00
+1.00
+15
+15
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+0
+%
+0\%
+(
+0
+/
+20
+0/20
+)
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+1.00
+1.00
+31
+31
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+0
+%
+0\%
+(
+0
+/
+20
+0/20
+)
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+1.00
+1.00
+62
+62
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+0
+%
+0\%
+(
+0
+/
+20
+0/20
+)
+100
+%
+100\%
+(
+20
+/
+20
+20/20
+)
+1.00
+1.00
+overall
+100
+%
+100\%
+(
+80
+/
+80
+80/80
+)
+0
+%
+0\%
+(
+0
+/
+80
+0/80
+)
+100
+%
+100\%
+(
+80
+/
+80
+80/80
+)
+1.00
+1.00
+5
+Scaling to long contexts
+The needle-in-a-haystack experiment of Section
+4
+established
+100
+%
+100\%
+retrieval at
+16
+16
+K total context and chain depth
+62
+62
+.
+A natural question is whether this property extends to larger contexts
+where chunked recurrence is operationally required, i.e. where a
+single full-attention forward over the equivalent total context would
+be infeasible on the same hardware.
+We use Llama-3.1-8B-Instruct
+[
+41
+]
+for this experiment because
+it has a
+128
+128
+K native context window: all our tested
+T
+T
+values stay
+within the model’s trained position range, isolating chain-depth
+effects from any out-of-distribution RoPE behavior.
+We run the same needle-in-a-haystack protocol of
+Section
+4
+at four operating points:
+T
+=
+32
+T=32
+K (chain
+depth
+127
+127
+,
+10
+10
+trials per distance),
+T
+=
+64
+T=64
+K (chain depth
+255
+255
+,
+5
+5
+trials per distance),
+T
+=
+96
+T=96</p>
+
+<p>K (chain depth
+383
+383
+,
+3
+3
+trials
+per distance), and
+T
+=
+128
+T=128
+K (chain depth
+511
+511
+,
+3
+3
+trials per
+distance).
+At each operating point we test four needle-to-question distances:
+1
+1
+,
+31
+31
+, approximately the chain midpoint, and the maximum chain
+depth.
+Retrieval, memory, and compute.
+Table
+4
+reports retrieval accuracy, KV cache size,
+peak GPU memory, and wall-clock at every operating point. Across
+24
+24
+distance-cells spanning chain depths
+1
+1
+to
+511
+511
+, every trial
+recovered the gold needle exactly. Combined with the
+80
+/
+80
+80/80
+result
+of Section
+4
+, the KV-Fold recurrence preserves
+precise factual content through chain depth
+511
+511
+, an order of
+magnitude deeper than the original needle benchmark. Memory and
+timing are reported for the first trial at each
+T
+T
+. Peak memory
+at
+128
+128
+K leaves
+4.4
+4.4
+GB of headroom on a
+40
+40
+GB A100; this is
+the operational ceiling under the naive protocol, and coincides
+with Llama-3.1-8B’s full native context window.
+Table 4:
+Single-needle retrieval, memory, and compute at scale on
+Llama-3.1-8B-Instruct (A100 40GB). Retrieval is
+100
+%
+100\%
+at every
+tested distance (
+4
+4
+distances per row,
+24
+24
+distance-cells in
+total; combined with Section
+4
+,
+152
+/
+152
+152/152
+trials).
+Memory and timing are from the first trial at each
+T
+T
+. KV cache
+scales linearly at
+0.13422
+0.13422
+KB/token, matching the analytical
+prediction of
+32
+×
+8
+×
+128
+×
+2
+×
+2
+=
+131
+,
+072
+32{\times}8{\times}128{\times}2{\times}2=131{,}072
+bytes/token in bf16.
+T</p>
+
+<p>T
+depth
+trials/
+d
+d
+retrieval
+KV cache
+peak GPU
+per-chunk
+total chain
+32
+32
+K
+127
+127
+10
+10
+100
+%
+100\%
+4.29
+4.29
+GB
+21.00
+21.00
+GB
+0.103
+0.103
+s
+13.2
+13.2
+s
+64
+64
+K
+255
+255
+5
+5
+100
+%
+100\%
+8.59
+8.59
+GB
+25.86
+25.86
+GB
+0.176
+0.176
+s
+44.9
+44.9
+s
+96
+96
+K
+383
+383
+3
+3
+100
+%
+100\%
+12.88
+12.88
+GB
+30.72
+30.72
+GB
+0.252
+0.252
+s
+96.9
+96.9
+s
+128
+128
+K
+511
+511
+3
+3
+100
+%
+100\%
+17.18
+17.18
+GB
+35.57
+35.57
+GB
+0.335
+0.335
+s
+171.3
+171.3
+s
+The single-needle protocol of Section
+4
+can be
+strengthened by inserting
+K
+K
+independent (key, value) pairs at
+K
+K
+evenly-spaced chunk positions across the haystack and querying
+each key separately. This is the canonical multi-needle stress
+test used by RULER
+[
+37
+]
+and
+LongBench
+[
+38
+]
+, and probes whether multiple
+distinct facts coexist in the cache without interference. We test
+K
+∈
+{
+4
+,
+8
+}
+K\in\{4,8\}
+on Llama-3.1-8B at
+T
+=
+128
+T=128
+K with three trials
+per
+K
+K
+(Table
+5
+). KV-Fold achieves
+100
+%
+100\%
+per-needle retrieval (
+36
+/
+36
+36/36
+needles across
+6
+6
+trials),
+with all
+K
+K
+needles simultaneously recovered in every trial; the
+isolated
+floor is
+0
+/
+36
+0/36
+. Eight distinct facts coexist
+through chain depth
+510
+510
+without measurable interference. A
+larger-trial sweep on Qwen2.5-7B at
+T
+=
+16
+T=16
+K
+(
+K
+∈
+{
+2
+,
+4
+,
+8
+}
+K\in\{2,4,8\}
+,
+10
+10
+trials per
+K
+K
+) gives
+139
+/
+140
+139/140
+per-needle retrieval, with the single miss at a middle-distance
+position (
+K
+=
+4
+K=4
+,
+d
+=
+42
+d=42
+). The recurrence preserves
+distributed factual information, not just single</p>
+
+<p>salient facts.
+Table 5:
+Multi-needle retrieval.
+K
+K
+independent (key, value) pairs
+are inserted at evenly-spaced chunk positions; each key is queried
+separately. KV-Fold recovers all
+K
+K
+needles
+simultaneously in
+35
+/
+36
+35/36
+trials. The single miss is at
+K
+=
+4
+K=4
+,
+d
+=
+42
+d=42
+, a middle-distance position.
+Model
+T
+T
+K
+K
+trials
+per-needle
+all-correct
+isolated
+Qwen2.5-7B-Instruct
+16
+16
+K
+2
+2
+10
+10
+20
+/
+20
+20/20
+(
+100
+%
+100\%
+)
+10
+/
+10
+10/10
+0
+/
+20
+0/20
+Qwen2.5-7B-Instruct
+16
+16
+K
+4
+4
+10
+10
+39
+/
+40
+39/40
+(
+97.5
+%
+97.5\%
+)
+9
+/
+10
+9/10
+0
+/
+40
+0/40
+Qwen2.5-7B-Instruct
+16
+16
+K
+8
+8
+10
+10
+80
+/
+80
+80/80
+(
+100
+%
+100\%
+)
+10
+/
+10
+10/10
+0
+/
+80
+0/80
+Llama-3.1-8B-Instruct
+128
+128
+K
+4
+4
+3
+3
+12
+/
+12
+12/12
+(
+100
+%
+100\%
+)
+3
+/
+3
+3/3
+0
+/
+12
+0/12
+Llama-3.1-8B-Instruct
+128
+128
+K
+8
+8
+3
+3
+24
+/
+24
+24/24
+(
+100
+%
+100\%
+)
+3
+/
+3
+3/3
+0
+/
+24
+0/24
+combined
+36
+36
+175
+/
+176
+175/176
+(
+99.4
+%
+99.4\%
+)
+35
+/
+36
+35/36
+0
+/
+176
+0/176
+The KV-Fold recurrence does
+not
+reduce total memory
+consumption below full attention: the cache at chain depth
+N
+N
+stores the same information that a full forward over
+N
+​
+C
+NC
+tokens
+would store.
+The compute saving is asymptotically zero in FLOPs but operationally
+substantial in working memory.
+A single full-attention forward at
+T
+=
+128
+T{=}128
+K would require
+materializing the attention-scores matrix
+Q
+​
+K
+⊤
+QK^{\top}
+, of shape
+[
+H
+,
+T
+,
+T
+]
+[H,T,T]
+: with
+32
+32
+attention heads and bfloat16, this is
+approximately
+32
+×
+128
+​
+K
+×
+128
+​
+K
+×
+2
+32\times 128\text{K}\times 128\text{K}\ti</p>
+
+<p>mes 2
+bytes
+≈
+1
+\approx 1
+TB; infeasible on a
+40
+40
+GB
+A100 by orders of magnitude.
+KV-Fold’s per-chunk attention-scores matrix at the
+largest step has shape
+[
+H
+,
+C
+,
+T
+]
+[H,C,T]
+, approximately
+32
+×
+256
+×
+128
+​
+K
+×
+2
+32\times 256\times 128\text{K}\times 2
+bytes
+≈
+2.1
+\approx 2.1
+GB, comfortably within budget.
+Per-chunk wall-clock grows linearly with the mean cache size during
+the chain (
+0.103
+→
+0.176
+→
+0.252
+→
+0.335
+0.103\to 0.176\to 0.252\to 0.335
+s), matching the
+predicted
+O
+​
+(
+C
+⋅
+cache_size
+)
+O(C\cdot\text{cache\_size})
+scaling.
+Total chain wall-clock at
+128
+128
+K is
+171
+171
+seconds.
+At scale, the benefit is direct: KV-Fold replaces
+a single intractable forward pass with a sequence of smaller ones, preserving
+the retrieval behavior of full attention while staying within
+per-chunk memory limits of practical hardware. This is not a reduction
+in total memory or FLOPs, but a reorganization that makes computation
+feasible in practice. On a
+40
+40
+GB A100, the operational ceiling is
+reached at
+T
+≈
+135
+T{\approx}135
+K (by linear extrapolation), aligning with
+Llama-3.1-8B’s native context window.
+Pushing further requires either more GPU memory or compression of the
+stored cache. The latter is a separate axis of investigation that
+does not change the recurrence’s behavior in the regime tested here.
+6
+Comparison to StreamingLLM
+The dominant streaming-inference baseline,
+StreamingLLM
+[
+9
+]
+, achieves bounded perplexity at
+arbitrary
+T
+T
+via a sliding window of recent tokens combin</p>
+
+<p>ed with a
+small number of “attention sink” tokens preserved at the start;
+related approaches such as LM-Infinite
+[
+10
+]
+adopt similar designs. Their published characterization shows
+retrieval accuracy drops to zero past the window boundary; we test
+this directly. Both methods are evaluated on Llama-3.1-8B-Instruct
+at
+T
+=
+128
+T=128
+K and
+C
+=
+256
+C=256
+, with StreamingLLM at its published
+configuration of
+4
+4
+sink tokens plus a sliding window of
+1020
+1020
+recent tokens (total cache capacity
+1024
+1024
+). At
+T
+≤
+128
+T\leq 128
+K all
+positions stay within Llama-3.1-8B’s trained range, so we use
+position-preserving eviction without RoPE re-anchoring (faithful
+to StreamingLLM at this scale). We measure next-token loss across
+three PG-19 validation windows and needle-in-a-haystack retrieval
+at distances
+1
+1
+,
+31
+31
+,
+255
+255
+,
+511
+511
+with three trials per cell
+(Table
+6
+).
+Table 6:
+Comparison at
+T
+=
+128
+T=128
+K, chain depth
+511
+511
+.
+Three trials per retrieval cell, three windows for NLL.
+KV-Fold achieves lower next-token loss and preserves
+retrieval at all tested distances; StreamingLLM achieves bounded
+perplexity with a constant-memory cache and
+7.5
+×
+7.5\times
+faster
+wall-clock, but retrieves only when the needle falls inside the
+1024
+1024
+-token window (only
+d
+=
+1
+d{=}1
+at this scale).
+∗
+One of three trials at
+d
+=
+511
+d{=}511
+returned no extractable
+5
+5
+-digit answer; with
+N
+=
+3
+N=3
+this is statistically consistent with
+the
+12
+/
+12
+12/12
+result at the same setting in
+Section
+5
+(co</p>
+
+<p>mbined:
+14
+/
+15
+14/15
+).
+Method
+NLL
+peak GPU
+total wall
+d
+=
+1
+d{=}1
+d
+=
+31
+d{=}31
+d
+=
+255
+d{=}255
+d
+=
+511
+d{=}511
+KV-Fold
+2.46
+±
+0.12
+2.46\pm 0.12
+35.6
+35.6
+GB
+166
+166
+s
+3
+/
+3
+3/3
+3
+/
+3
+3/3
+3
+/
+3
+3/3
+2
+/
+3
+∗
+2/3^{*}
+StreamingLLM
+2.66
+±
+0.17
+2.66\pm 0.17
+16.6
+16.6
+GB
+22
+\;\;22
+s
+3
+/
+3
+3/3
+0
+/
+3
+0/3
+0
+/
+3
+0/3
+0
+/
+3
+0/3
+The pattern matches StreamingLLM’s published characterization
+exactly. Their cache stays at
+0.13
+0.13
+GB regardless of
+T
+T
+, against
+KV-Fold’s
+17.18
+17.18
+GB, with correspondingly faster
+wall-clock (
+22
+22
+s vs
+166
+166
+s for
+512
+512
+chunks). The cost is
+retrieval: only the most recent chunk’s content survives, so any
+needle further back is evicted. Distance
+1
+1
+succeeds for both
+methods; distances
+31
+31
+,
+255
+255
+,
+511
+511
+all place the needle outside
+the
+1024
+1024
+-token window, and StreamingLLM drops to
+0
+%
+0\%
+at each.
+KV-Fold maintains
+100
+%
+100\%
+at
+d
+=
+1
+d{=}1
+,
+d
+=
+31
+d{=}31
+, and
+d
+=
+255
+d{=}255
+, with
+2
+/
+3
+2/3
+at
+d
+=
+511
+d{=}511
+where one trial returned no
+extractable
+5
+5
+-digit number; combined with the
+12
+/
+12
+12/12
+result at
+the same setting in Section
+5
+, the joint retrieval
+rate at
+d
+=
+511
+d{=}511
+is
+14
+/
+15
+14/15
+.
+The two methods solve different problems. StreamingLLM is the right
+choice for bounded-memory streaming inference where perplexity
+matters more than retrieval of arbitrary content. KV-Fold
+is the right choice when retrieval at arbitrary depth
+matters and linear cache memory is acceptable.
+7
+Related work
+The introduction already discusse</p>
+
+<p>d the direct competitors —
+streaming methods
+[
+9
+,
+10
+]
+, KV-cache
+compression
+[
+11
+,
+12
+,
+13
+,
+14
+,
+15
+,
+16
+,
+17
+]
+,
+learned recurrent
+memory
+[
+22
+,
+23
+,
+24
+,
+25
+,
+26
+,
+28
+]
+,
+and state-space alternatives
+[
+34
+,
+35
+]
+. Several
+adjacent lines of work are worth distinguishing from.
+Chunked serving infrastructure.
+Production systems such as vLLM
+[
+7
+]
+chunk long inputs
+to manage memory during prefill, optimizing for throughput rather
+than characterizing cross-chunk recurrence behavior.
+ReAttention
+[
+27
+]
+similarly operates at inference
+time but caps attention to a finite scope.
+Sparse attention and kernel optimizations.
+Sparse attention patterns
+(Longformer
+[
+29
+]
+,
+BigBird
+[
+30
+]
+, Sparse
+Transformers
+[
+31
+]
+) and exact kernel optimizations
+(FlashAttention
+[
+4
+,
+5
+]
+,
+RingAttention
+[
+6
+]
+) reduce per-step cost
+without changing how information propagates across long sequences.
+They are orthogonal to KV-Fold and could compose with it.
+Linear-attention alternatives.
+Linear Attention
+[
+32
+]
+and
+Performers
+[
+33
+]
+compress past context into
+a fixed-size state, sacrificing content-based addressability for
+asymptotic efficiency — the opposite trade-off from KV-Fold.
+Position-extrapolation techniques.
+ALiBi
+[
+18
+]
+, Positional
+Interpolation
+[
+19
+]
+,
+YaRN
+[
+20
+]
+, and LongRoPE
+[
+21
+]
+extend
+the trained position range. These are complementary to our setting:
+KV-Fold operates within the trained range in our experiments
+(Llama-3.1-8B’s native 128K window), and composing with these methods</p>
+
+<p>is the natural route to pushing the operational ceiling further.
+8
+Discussion
+Taken together, the results suggest a simple picture: KV-Fold
+induces an attention regime that is slightly shifted from
+the model’s training distribution, yet remains stable and functional.
+Information propagates reliably across long chains, and the behavior
+is robust to numerical precision, architecture, and chunk size. The
+central empirical feature is the plateau in drift. Rather than
+accumulating with depth, drift rises briefly and then saturates,
+suggesting that most of the shift is introduced at the first chunk
+boundary. One way to interpret this is as an induced recurrence over
+KV states: each transition applies the same transformation, and after
+a few steps the system settles into a self-consistent regime that
+remains stable under further application. Importantly, this regime
+still preserves structured information. Because the KV state is not
+compressed and attention retains content-based addressing, exact
+facts introduced early in the sequence remain recoverable even after
+hundreds of transitions, as demonstrated by the
+needle-in-a-haystack results.
+What can be claimed.
+KV-Fold extends a pretrained transformer’s effective
+context to
+N
+N
+times the chunk size, with empirically bounded,
+non-accumulating drift. This behavior is consistent across
+architectures and largely insensitive to precision and chunk size.
+At the task level, the method achieves
+100
+%
+100\%
+exact-match retrieval
+on needle-in</p>
+
+<p>-a-haystack benchmarks through chain depth
+511
+511
+at
+128
+128
+K context (
+152
+/
+152
+152/152
+trials). While memory remains linear in
+total context, the key practical benefit is operational: a single
+intractable forward is replaced by a sequence of manageable ones.
+The information carried by the recurrence is also robust to
+storage-level perturbations. Under a per-step quantization
+round-trip (bf16
+→
+\to
+int
+N
+N
+→
+\to
+bf16) on Llama-3.1-8B at
+T
+=
+128
+T=128
+K, chain depth
+511
+511
+, int8 retrieves
+13
+/
+14
+13/14
+trials
+(
+93
+%
+93\%
+, with the single miss returning no extractable
+5
+5
+-digit
+answer), while int4 retrieves
+24
+/
+33
+24/33
+trials (
+73
+%
+73\%
+) at this
+depth, down from
+100
+%
+100\%
+at moderate depths. In contrast,
+information-removing schemes such as uniform decay or
+attention-based pruning fail to preserve retrieval at any
+meaningful depth. The recurrence tolerates noise-like
+perturbations (quantization noise distributes across positions)
+but is sensitive to systematic information loss (decay or
+eviction removes specific positions entirely).
+9
+Conclusion and outlook
+KV-Fold shows that pretrained transformers already
+contain the ingredients for long-context reasoning: by carrying the
+KV cache across chunks as the accumulator in a one-step left fold, a
+standard forward becomes a lightweight recurrence with no retraining
+or architectural changes, settling into a stable regime with bounded
+drift and intact long-range retrieval. This suggests a simple path
+forward: modest fine-</p>
+
+<p>tuning may reduce the residual plateau,
+combining with position-extension methods such as
+YaRN
+[
+20
+]
+, Positional
+Interpolation
+[
+19
+]
+, or
+LongRoPE
+[
+21
+]
+could push beyond native context
+limits, and learning to compress the KV state while preserving
+retrievability offers a promising route toward constant-memory
+long-context inference.
+References
+References
+[1]
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez,
+L. Kaiser, I. Polosukhin.
+Attention Is All You Need.
+NeurIPS
+, 2017.
+[2]
+J. Su, Y. Lu, S. Pan, A. Murtadha, B. Wen, Y. Liu.
+RoFormer: Enhanced Transformer with Rotary Position Embedding.
+Neurocomputing
+, 568:127063, 2024.
+[3]
+Y. Tay, M. Dehghani, D. Bahri, D. Metzler.
+Efficient Transformers: A Survey.
+ACM Computing Surveys
+, 55(6):109:1 to 109:28, 2022.
+[4]
+T. Dao, D. Y. Fu, S. Ermon, A. Rudra, C. Ré.
+FlashAttention: Fast and Memory-Efficient Exact Attention with
+IO-Awareness.
+NeurIPS
+, 2022.
+[5]
+T. Dao.
+FlashAttention-2: Faster Attention with Better Parallelism and
+Work Partitioning.
+ICLR
+, 2024.
+[6]
+H. Liu, M. Zaharia, P. Abbeel.
+Ring Attention with Blockwise Transformers for Near-Infinite
+Context.
+ICLR
+, 2024.
+[7]
+W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. E. Gonzalez,
+H. Zhang, I. Stoica.
+Efficient Memory Management for Large Language Model Serving with
+PagedAttention.
+SOSP
+, 2023.
+[8]
+Y. Zou, et al.
+LatentMAS: KV-Cache Communication for Lightweight Multi-Agent
+Systems.
+arXiv:2511.20639
+, 2025.
+[9]
+G. Xiao, Y. Tian, B. Chen,</p>
+
+<p>S. Han, M. Lewis.
+Efficient Streaming Language Models with Attention Sinks.
+ICLR
+, 2024.
+[10]
+C. Han, Q. Wang, H. Peng, W. Xiong, Y. Chen, H. Ji, S. Wang.
+LM-Infinite: Zero-Shot Extreme Length Generalization for Large
+Language Models.
+NAACL
+, 2024.
+[11]
+Z. Zhang, Y. Sheng, T. Zhou, T. Chen, L. Zheng, R. Cai, Z. Song,
+Y. Tian, C. Ré, C. Barrett, Z. Wang, B. Chen.
+H2O: Heavy-Hitter Oracle for Efficient Generative Inference of
+Large Language Models.
+NeurIPS
+, 2023.
+[12]
+Z. Liu, A. Desai, F. Liao, W. Wang, V. Xie, Z. Xu, A. Kyrillidis,
+A. Shrivastava.
+Scissorhands: Exploiting the Persistence of Importance Hypothesis
+for LLM KV Cache Compression at Test Time.
+NeurIPS
+, 2023.
+[13]
+Y. Li, Y. Huang, B. Yang, B. Venkitesh, A. Locatelli, H. Ye, T. Cai,
+P. Lewis, D. Chen.
+SnapKV: LLM Knows What You are Looking for Before Generation.
+arXiv:2404.14469
+, 2024.
+[14]
+Z. Cai, Y. Zhang, B. Gao, Y. Liu, T. Liu, K. Lu, W. Xiong, Y. Dong,
+B. Chang, J. Hu, W. Xiao.
+PyramidKV: Dynamic KV Cache Compression based on Pyramidal
+Information Funneling.
+arXiv:2406.02069
+, 2024.
+[15]
+S. Ge, Y. Zhang, L. Liu, M. Zhang, J. Han, J. Gao.
+Model Tells You What to Discard: Adaptive KV Cache Compression
+for LLMs.
+ICLR
+, 2024.
+[16]
+Z. Liu, J. Yuan, H. Jin, S. Zhong, Z. Xu, V. Braverman, B. Chen, X. Hu.
+KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache.
+ICML
+, 2024.
+[17]
+C. Hooper, S. Kim, H. Mohammadzadeh, M. W. Mahoney, Y. S. Shao,
+K. Keutzer, A. Gholami.
+KVQuant: Towards 10 Million Context Length LLM</p>
+
+<p>Inference with
+KV Cache Quantization.
+NeurIPS
+, 2024.
+[18]
+O. Press, N. A. Smith, M. Lewis.
+Train Short, Test Long: Attention with Linear Biases Enables
+Input Length Extrapolation.
+ICLR
+, 2022.
+[19]
+S. Chen, S. Wong, L. Chen, Y. Tian.
+Extending Context Window of Large Language Models via Positional
+Interpolation.
+arXiv:2306.15595
+, 2023.
+[20]
+B. Peng, J. Quesnelle, H. Fan, E. Shippole.
+YaRN: Efficient Context Window Extension of Large Language
+Models.
+ICLR
+, 2024.
+[21]
+Y. Ding, L. L. Zhang, C. Zhang, Y. Xu, N. Shang, J. Xu, F. Yang, M. Yang.
+LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens.
+ICML
+, 2024.
+[22]
+Z. Dai, Z. Yang, Y. Yang, J. Carbonell, Q. V. Le, R. Salakhutdinov.
+Transformer-XL: Attentive Language Models Beyond a Fixed-Length
+Context.
+ACL
+, 2019.
+[23]
+J. W. Rae, A. Potapenko, S. M. Jayakumar, T. P. Lillicrap.
+Compressive Transformers for Long-Range Sequence Modelling.
+ICLR
+, 2020.
+[24]
+Y. Wu, M. N. Rabe, D. Hutchins, C. Szegedy.
+Memorizing Transformers.
+ICLR
+, 2022.
+[25]
+A. Bulatov, Y. Kuratov, M. S. Burtsev.
+Recurrent Memory Transformer.
+NeurIPS
+, 2022.
+[26]
+D. Hutchins, I. Schlag, Y. Wu, E. Dyer, B. Neyshabur.
+Block-Recurrent Transformers.
+NeurIPS
+, 2022.
+[27]
+X. Liu, R. Li, Q. Guo, Z. Liu, Y. Song, K. Lv, H. Yan, L. Li, Q. Liu, X. Qiu.
+ReAttention: Training-Free Infinite Context with Finite Attention Scope.
+arXiv:2407.15176
+, 2024.
+[28]
+T. Munkhdalai, M. Faruqui, S. Gopal.
+Leave No Context Behind: Efficient Infinite Context Transformers
+with Infin</p>
+
+<p>i-attention.
+arXiv:2404.07143
+, 2024.
+[29]
+I. Beltagy, M. E. Peters, A. Cohan.
+Longformer: The Long-Document Transformer.
+arXiv:2004.05150
+, 2020.
+[30]
+M. Zaheer, G. Guruganesh, K. A. Dubey, J. Ainslie, C. Alberti, S. Ontañón,
+P. Pham, A. Ravula, Q. Wang, L. Yang, A. Ahmed.
+Big Bird: Transformers for Longer Sequences.
+NeurIPS
+, 2020.
+[31]
+R. Child, S. Gray, A. Radford, I. Sutskever.
+Generating Long Sequences with Sparse Transformers.
+arXiv:1904.10509
+, 2019.
+[32]
+A. Katharopoulos, A. Vyas, N. Pappas, F. Fleuret.
+Transformers are RNNs: Fast Autoregressive Transformers with
+Linear Attention.
+ICML
+, 2020.
+[33]
+K. Choromanski, V. Likhosherstov, D. Dohan, X. Song, A. Gane, T. Sarlos,
+P. Hawkins, J. Davis, A. Mohiuddin, L. Kaiser, D. Belanger, L. Colwell,
+A. Weller.
+Rethinking Attention with Performers.
+ICLR
+, 2021.
+[34]
+A. Gu, K. Goel, C. Ré.
+Efficiently Modeling Long Sequences with Structured State Spaces.
+ICLR
+, 2022.
+[35]
+A. Gu, T. Dao.
+Mamba: Linear-Time Sequence Modeling with Selective State Spaces.
+COLM
+, 2024.
+[36]
+G. Kamradt.
+Needle In A Haystack: Pressure Testing LLMs.
+GitHub
+, 2023.
+https://github.com/gkamradt/LLMTest_NeedleInAHaystack
+.
+[37]
+C.-P. Hsieh, S. Sun, S. Kriman, S. Acharya, D. Rekesh, F. Jia, Y. Zhang,
+B. Ginsburg.
+RULER: What’s the Real Context Size of Your Long-Context Language
+Models?
+COLM
+, 2024.
+[38]
+Y. Bai, X. Lv, J. Zhang, H. Lyu, J. Tang, Z. Huang, Z. Du, X. Liu,
+A. Zeng, L. Hou, Y. Dong, J. Tang, J. Li.
+LongBench: A Bilingual, Multitask Benchmark for</p>
+
+<p>Long Context
+Understanding.
+ACL
+, 2024.
+[39]
+A. Yang, B. Yang, B. Hui, B. Zheng, B. Yu, et al. (Qwen Team).
+Qwen2.5 Technical Report.
+arXiv:2412.15115
+, 2024.
+[40]
+N. Muennighoff, L. Soldaini, D. Groeneveld, K. Lo, J. Morrison, S. Min,
+W. Shi, P. Walsh, O. Tafjord, N. Lambert, Y. Gu, S. Arora, A. Bhagia,
+D. Schwenk, D. Wadden, A. Wettig, B. Hui, T. Dettmers, D. Kiela,
+A. Farhadi, N. A. Smith, P. W. Koh, A. Singh, H. Hajishirzi.
+OLMoE: Open Mixture-of-Experts Language Models.
+ICLR
+, 2025.
+[41]
+A. Grattafiori, A. Dubey, A. Jauhri, et al. (Meta AI).
+The Llama 3 Herd of Models.
+arXiv:2407.21783
+, 2024.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

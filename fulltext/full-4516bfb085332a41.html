@@ -1,0 +1,8422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pion：基于正交等价变换的保谱优化器 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Pion：基于正交等价变换的保谱优化器</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-05-12</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2605.12492" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Pion: A Spectrum-Preserving Optimizer via Orthogonal Equivalence Transformation</h4>
+            <p><strong>中文摘要：</strong> 本文提出用于大语言模型训练的保谱优化器Pion。与Adam等加性优化器不同，Pion通过左右正交等价变换更新权重矩阵，在训练中保持奇异值（谱范数）不变。该方法受POET启发但去除了重参数化，直接基于李群优化在等谱流形上更新：将梯度映射为斜对称矩阵并经矩阵指数生成正交变换。Pion无需显式归一化即可控制谱范数，兼容μP，且能保持超球面能量最小化以促进泛化。实验表明，其在LLM预训练与微调中稳定且极具...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>\usetikzlibrary
+shadows
+Pion
+: A Spectrum-Preserving Optimizer
+via Orthogonal Equivalence Transformation
+Kexuan Shi
+1,†
+Hanxuan Li
+1,†
+Zeju Qiu
+1,2
+Yandong Wen
+3
+Simon Buchholz
+2
+Weiyang Liu
+1,*
+1
+The Chinese University of Hong Kong
+2
+Max Planck Institute for Intelligent Systems
+3
+Westlake University
+Abstract
+We introduce Pion, a spectrum-preserving optimizer for large language model (LLM) training based on orthogonal equivalence transformation. Unlike additive optimizers such as Adam and Muon, Pion updates each weight matrix through left and right orthogonal transformations, preserving its singular values throughout training. This yields an optimization mechanism that modulates the geometry of weight matrices while keeping their spectral norm fixed. We derive the Pion update rule, systematically examine its design choices, and analyze its convergence behavior along with several key properties. Empirical results show that Pion offers a stable and competitive alternative to standard optimizers for both LLM pretraining and finetuning.
+†
+†
+†
+Equal contribution
+*
+Corresponding author              Project page:
+spherelab.ai/pion
+1
+Introduction
+As large language models (LLMs) continue to scale, the difficulty of training them also increases significantly. One of the most critical challenges today is designing optimizers that are both efficient and stable. Training stability can be partially characterized by the Maximal Update Parameterization (
+μ
+\mu
+P)
+[
+86
+]
+, where spectral norm</p>
+
+<p>s of weights and updates are constrained such that width-invariant activations are of constant scale and hence prevent explosions. By performing the steepest descent under the spectral norm through update orthogonalization, Muon
+[
+36
+]
+has emerged as a competitive alternative to AdamW
+[
+37
+,
+49
+]
+. Although Muon’s orthogonalization ensures that each update is easily
+μ
+\mu
+P-compatible, the spectral norms of the weight matrices themselves may still drift throughout training. Built upon Muon, recent work addresses this issue either by introducing normalization
+[
+21
+,
+32
+,
+74
+,
+42
+]
+or by incorporating spectral retraction directly into the update rule
+[
+81
+]
+. Rather than adapting Muon to achieve
+μ
+\mu
+P, we introduce Pion, a fundamentally different optimizer that constrains the spectral norm of both weights and updates through its optimization dynamics. Specifically, Pion is derived from orthogonal equivalence transformations of weight matrices, updating each matrix via coupled left and right orthogonal transformations. Its design is guided by the following principles:
+•
+Algorithmic spectrum control
+: Pion derives the update rule directly on the iso-spectral manifold, eliminating the need for explicit normalization while preserving the weight spectrum throughout optimization. This property is particularly desirable, as the upper-bounded spectral norm of the weight is closely linked to stronger generalization
+[
+55
+,
+87
+,
+35
+,
+5
+]
+. Moreover, the update’s spectral norm is also gu</p>
+
+<p>aranteed to be upper bounded, making Pion easily compatible with
+μ
+\mu
+P.
+•
+Minimum energy training
+: Pion updates weight matrices via orthogonal equivalence transformations, which inherently preserve hyperspherical energy
+[
+46
+,
+48
+]
+. This energy quantifies how uniformly normalized neurons are distributed on the hypersphere, and lower energy has been shown to correlate with better generalization
+[
+46
+,
+43
+,
+47
+]
+. Because zero-mean Gaussian weight initialization yields a minimum-energy configuration, Pion provably preserves this configuration throughout training, maintaining a uniform hyperspherical distribution of normalized neurons.
+Pion is inspired by POET
+[
+60
+,
+61
+]
+, which reparameterizes each weight matrix as a left orthogonal matrix, a randomly initialized base weight, and a right orthogonal matrix, learning only the two orthogonal factors. This reparameterization enforces spectrum preservation by construction, but recasts the optimization variables from the weights themselves to auxiliary orthogonal parameters. While this shift enables greater memory efficiency
+[
+61
+]
+, it also complicates training dynamics, giving rise to issues such as loss spikes and the need for careful momentum design. Pion, short for
+P
+OET-
+i
+nduced
+o
+ptimizer with
+n
+o reparameterization, removes this auxiliary parameterization and instead turns the same principle into a direct optimizer. Specifically, Pion updates each weight matrix through left and right orthogonal transformations, preservi</p>
+
+<p>ng its singular-value spectrum throughout training while operating directly on the model weights. This yields a spectrum-preserving optimization dynamics that retains the geometric inductive bias of POET in a simpler and more stable optimizer form.
+2
+Pion
+: A Spectrum-Preserving Optimizer for LLM Training
+2.1
+Background and Preliminaries
+Figure 1:
+Comparison of POET and Pion (Green: learnable).
+POET
+[
+60
+,
+61
+]
+reparameterizes each weight matrix as
+𝑾
+R
+​
+P
+=
+𝑹
+​
+𝑾
+0
+​
+𝑷
+\bm{W}_{RP}=\bm{R}\bm{W}_{0}\bm{P}
+, where
+𝑾
+0
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{W}_{0}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}
+is fixed at random initialization, and
+𝑹
+∈
+ℝ
+d
+out
+×
+d
+out
+\bm{R}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{out}}}
+,
+𝑷
+∈
+ℝ
+d
+in
+×
+d
+in
+\bm{P}\in\mathbb{R}^{d_{\text{in}}\times d_{\text{in}}}
+are trainable orthogonal matrices. This corresponds to an orthogonal equivalence transformation that acts on both sides of
+𝑾
+0
+\bm{W}_{0}
+, yielding the forward pass weight
+𝑹
+​
+𝑾
+0
+​
+𝑷
+\bm{R}\bm{W}_{0}\bm{P}
+.
+After training,
+𝑹
+\bm{R}
+and
+𝑷
+\bm{P}
+are merged into the weight matrix, so POET incurs no additional inference overhead. However, since optimization is performed over two orthogonal matrices while the weight matrix remains fixed throughout training, this reparameterization poses non-trivial challenges in both training stability and cross-architecture adaptability. Motivated by this, Pion introduces a novel update rule that fully preserves the weight spectrum without reparameterization.
+2.2
+S</p>
+
+<p>pectrum-Preserving Update Rule
+We begin with the intuition behind Pion’s update rule. Consider a general weight matrix
+𝑾
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{W}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}
+. At iteration
+t
+t
+, we can trivially write
+𝑾
+t
+\bm{W}_{t}
+as
+𝑾
+t
+=
+𝑰
+d
+out
+​
+𝑾
+t
+​
+𝑰
+d
+in
+\bm{W}_{t}=\bm{I}_{d_{\text{out}}}\,\bm{W}_{t}\,\bm{I}_{d_{\text{in}}}
+where
+𝑰
+d
+out
+\bm{I}_{d_{\text{out}}}
+and
+𝑰
+d
+in
+\bm{I}_{d_{\text{in}}}
+are identity matrices of the corresponding sizes.
+Geometrically, each identity matrix is the neutral element of an orthogonal group, representing a zero rotation.
+Pion leverages this observation by
+updating the identity factors directly on the orthogonal group
+without an explicit reparameterization like
+𝑹
+​
+𝑾
+​
+𝑷
+\bm{R}\bm{W}\bm{P}
+.
+This induces left and right orthogonal transformations of
+𝑾
+t
+\bm{W}_{t}
+, preserving its spectrum. See the comparison in Figure
+1
+.
+The challenge is to update the identity factors on the orthogonal group. Since the orthogonal group is a compact Lie group, we use standard techniques from Lie group optimization
+[
+54
+,
+40
+,
+12
+]
+.
+Let
+𝑮
+t
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{G}_{t}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{in}}}
+denote the gradient of
+𝑾
+t
+\bm{W}_{t}
+. Pion updates
+𝑾
+t
+\bm{W}_{t}
+in a spectrum-preserving manner:
+𝐆
+t
+in
+=
+𝐖
+t
+⊤
+​
+𝐆
+t
+−
+(
+𝐖
+t
+⊤
+​
+𝐆
+t
+)
+⊤
+,
+𝐆
+t
+out
+=
+𝐆
+t
+​
+𝐖
+t
+⊤
+−
+(
+𝐆
+t
+​
+𝐖
+t
+⊤
+)
+⊤
+,
+𝐖
+t
++
+1
+=
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+out
+)
+​
+𝐖
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+in
+)
+\bm{G}^{\text{in}}_{t}=\bm{W}_{t}^{\top}\bm{G}_{t}-(\bm{W}_{t}^{\</p>
+
+<p>top}\bm{G}_{t})^{\top},\quad\bm{G}^{\text{out}}_{t}=\bm{G}_{t}\bm{W}_{t}^{\top}-(\bm{G}_{t}\bm{W}_{t}^{\top})^{\top},\quad\boxed{\bm{W}_{t+1}=\exp(-\eta\bm{G}^{\text{out}}_{t})\,\bm{W}_{t}\,\exp(-\eta\bm{G}^{\text{in}}_{t})}
+(1)
+where
+exp
+⁡
+(
+⋅
+)
+\exp(\cdot)
+denotes the matrix exponential. The update rule can be understood in three steps.
+First, we apply the chain rule to the two identity factors
+𝑰
+d
+out
+\bm{I}_{d_{\text{out}}}
+and
+𝑰
+d
+in
+\bm{I}_{d_{\text{in}}}
+, giving the corresponding gradients
+𝑮
+t
+​
+𝑾
+t
+⊤
+\bm{G}_{t}\bm{W}_{t}^{\top}
+and
+𝑾
+t
+⊤
+​
+𝑮
+t
+\bm{W}_{t}^{\top}\bm{G}_{t}
+.
+Second, we enforce skew-symmetry to project these gradients onto the Lie algebra, producing Lie algebra elements from the two identity factors. Finally, we map these elements back to the Lie group via the matrix exponential, producing valid orthogonal transformations.
+2.3
+Properties of Pion’s Update Rule
+Pion’s update rule can be written as
+𝑾
+t
++
+1
+=
+𝑹
+t
+​
+𝑾
+t
+​
+𝑷
+t
+\bm{W}_{t+1}=\bm{R}_{t}\bm{W}_{t}\bm{P}_{t}
+with
+𝑹
+t
+=
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+out
+)
+\bm{R}_{t}=\exp(-\eta\bm{G}^{\text{out}}_{t})
+and
+𝑷
+t
+=
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+\bm{P}_{t}=\exp(-\eta\bm{G}^{\text{in}}_{t})
+, where both
+𝑹
+t
+\bm{R}_{t}
+and
+𝑷
+t
+\bm{P}_{t}
+are orthogonal. Hence Pion transforms the row and column subspaces of
+𝑾
+t
+\bm{W}_{t}
+while preserving its singular values. We start with Pion’s geometric structures.
+Proposition 2.1
+(Geometric structure of Pion’s update)
+.
+Let
+Δ
+​
+𝐖
+=
+𝐖
+t
++
+1
+−
+𝐖
+t
+\Delta\bm{W}=\bm{W}_{t+1}-\bm{W}_{t}
+. Pion</p>
+
+<p>’s update preserves the singular values of
+𝐖
+t
+\bm{W}_{t}
+and only changes its row and column subspaces through orthogonal transformations, in which positive determinant leads to rotation. Consequently,
+‖
+Δ
+​
+𝐖
+‖
+F
+\|\Delta\bm{W}\|_{F}
+characterizes the total rotational strength applied to
+𝐖
+t
+\bm{W}_{t}
+. At a finer level, the in-side and out-side updates decompose into independent planar rotations on orthogonal
+2
+2
+D invariant subspaces induced by
+𝐆
+t
+in
+\bm{G}^{\text{in}}_{t}
+and
+𝐆
+t
+out
+\bm{G}^{\text{out}}_{t}
+. The quantities
+1
+d
+in
+​
+‖
+𝐆
+t
+in
+‖
+F
+\frac{1}{\sqrt{d_{\text{in}}}}\|\bm{G}^{\text{in}}_{t}\|_{F}
+and
+1
+d
+out
+​
+‖
+𝐆
+t
+out
+‖
+F
+\frac{1}{\sqrt{d_{\text{out}}}}\|\bm{G}^{\text{out}}_{t}\|_{F}
+characterize the average rotation magnitudes on the two sides, while
+‖
+𝐆
+t
+in
+‖
+2
+\|\bm{G}^{\text{in}}_{t}\|_{2}
+and
+‖
+𝐆
+t
+out
+‖
+2
+\|\bm{G}^{\text{out}}_{t}\|_{2}
+control the maximum rotation angles.
+Because
+𝑹
+t
+\bm{R}_{t}
+and
+𝑷
+t
+\bm{P}_{t}
+are orthogonal, they preserve the
+ℓ
+2
+\ell_{2}
+norms of the rows and columns of
+𝑾
+t
+\bm{W}_{t}
+. Hence,
+Δ
+​
+𝑾
+\Delta\bm{W}
+reflects angular deviation rather than rescaling. The update norm is therefore directly interpretable as rotational motion, unlike vanilla gradient descent, which generally entangles changes in magnitude and direction. Appendix
+A
+provides a detailed derivation of the planar-rotation view.
+Then we show in the following theorem that Pion’s spectrum-preserving update admits convergence guarantees under standard assumptions.</p>
+
+<p>The proof is provided in the Appendix
+B
+.
+Theorem 2.2
+(Pion’s Convergence)
+.
+Assume that
+f
+​
+(
+𝐖
+)
+f(\bm{W})
+is
+L
+L
+-smooth and lower bounded by
+f
+inf
+f_{\inf}
+. Let the stochastic gradient be
+𝐆
+~
+t
+=
+∇
+f
+​
+(
+𝐖
+t
+)
++
+𝛏
+t
+\tilde{\bm{G}}_{t}=\nabla f(\bm{W}_{t})+\bm{\xi}_{t}
+, where
+𝔼
+t
+​
+[
+𝛏
+t
+]
+=
+0
+\mathbb{E}_{t}[\bm{\xi}_{t}]=0
+and
+𝔼
+t
+​
+[
+‖
+𝛏
+t
+‖
+F
+2
+]
+≤
+σ
+2
+\mathbb{E}_{t}[\|\bm{\xi}_{t}\|_{F}^{2}]\leq\sigma^{2}
+. Assume the iterates remain on the iso-spectral manifold induced by
+𝐖
+0
+\bm{W}_{0}
+, so that
+‖
+𝐖
+t
+‖
+2
+=
+γ
+\|\bm{W}_{t}\|_{2}=\gamma
+for all
+t
+t
+. Define
+𝐆
+t
+in
+=
+𝐖
+t
+⊤
+​
+∇
+f
+​
+(
+𝐖
+t
+)
+−
+∇
+f
+​
+(
+𝐖
+t
+)
+⊤
+​
+𝐖
+t
+\bm{G}_{t}^{\mathrm{in}}=\bm{W}_{t}^{\top}\nabla f(\bm{W}_{t})-\nabla f(\bm{W}_{t})^{\top}\bm{W}_{t}
+and
+𝐆
+t
+out
+=
+∇
+f
+​
+(
+𝐖
+t
+)
+​
+𝐖
+t
+⊤
+−
+𝐖
+t
+​
+∇
+f
+​
+(
+𝐖
+t
+)
+⊤
+.
+\bm{G}_{t}^{\mathrm{out}}=\nabla f(\bm{W}_{t})\bm{W}_{t}^{\top}-\bm{W}_{t}\nabla f(\bm{W}_{t})^{\top}.
+Assume the updates are conducted for
+T
++
+1
+T+1
+iterations with step size
+η
+=
+C
+/
+T
++
+1
+\eta=C/\sqrt{T+1}
+, where
+C
+&gt;
+0
+C&gt;0
+is sufficiently small such that the one-step descent coefficient remains positive. Then we have that
+min
+0
+≤
+t
+≤
+T
+⁡
+𝔼
+​
+[
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+]
+≤
+1
+T
++
+1
+​
+(
+C
+1
++
+C
+2
+)
+=
+𝒪
+​
+(
+1
+T
+)
+,
+\min_{0\leq t\leq T}\mathbb{E}\left[\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right]\leq\frac{1}{\sqrt{T+1}}\left(C_{1}+C_{2}\right)=\mathcal{O}(\frac{1}{\sqrt{T}}),
+(2)
+where
+C
+1
+C_{1}
+depends on the initial optimality gap
+f
+​
+(
+𝐖
+0
+)
+−
+f
+inf
+f(\bm</p>
+
+<p>{W}_{0})-f_{\inf}
+, and
+C
+2
+C_{2}
+depends on
+L
+L
+,
+γ
+\gamma
+,
+σ
+2
+\sigma^{2}
+, and
+C
+C
+.
+2.4
+Design Principles for Stable Training and Convergence
+While Pion’s update rule offers a simple and functional approach to spectrum-preserving optimization, training practical LLMs demands additional design choices for greater stability. To this end, we explore the following design principles. We note that our exploration is by no means comprehensive, but rather represents an initial yet principled effort toward building a stable spectrum-preserving optimizer.
+For rapid prototyping, we perform all design explorations using a 60M-parameter LLaMA-based model
+[
+91
+,
+69
+,
+76
+]
+, a common setup for ablation
+[
+92
+,
+60
+,
+26
+]
+. All the models in this section are trained on C4
+[
+63
+]
+with sequence length 256 for 9.6B tokens, ensuring sufficient training.
+2.4.1
+Consistent Update
+Figure 2:
+Inconsistent updates in Pion.
+To train deep neural networks effectively, prior work
+[
+34
+,
+4
+,
+82
+,
+24
+,
+86
+]
+has sought to keep network components operating under stable input/output distributions and receiving consistent feature updates. This consistency principle has also guided the scaling of modern optimizers
+[
+45
+,
+81
+,
+8
+]
+to large models. In particular, optimizer-induced parameter updates
+1
+η
+​
+Δ
+​
+𝑾
+\frac{1}{\eta}\Delta\bm{W}
+are expected to be scale-consistent,
+i.e.
+, their norms should grow proportionally with the size of the corresponding parameter space. We analyze the training dynamics of Pion an</p>
+
+<p>d identify two notable violations of this principle. First, the original update produces substantial heterogeneity in the normalized update magnitude,
+‖
+1
+η
+​
+Δ
+​
+𝑾
+‖
+F
+\|\frac{1}{\eta}\Delta\bm{W}\|_{F}
+, across identically sized parameter matrices within the same layer, as shown in Figure
+2
+(a).
+Second, for individual parameter matrices, the average bilateral rotation angles, which are measured by
+1
+d
+in
+​
+‖
+𝑮
+t
+in
+‖
+F
+\frac{1}{\sqrt{d_{\text{in}}}}\|\bm{G}^{\text{in}}_{t}\|_{F}
+and
+1
+d
+out
+​
+‖
+𝑮
+t
+out
+‖
+F
+\frac{1}{\sqrt{d_{\text{out}}}}\|\bm{G}^{\text{out}}_{t}\|_{F}
+, show a pronounced imbalance between the input and output sides, as shown in Figure
+2
+(b).
+These inconsistencies stem from a geometric mismatch: the naive update’s transformation dynamics are neither scale-consistent across the full parameter feature space nor balanced between each matrix’s input and output feature spaces.
+We resolve these mismatches by controlling update magnitude in the Lie algebra. Specifically, we normalize the in-side and out-side skew-symmetric gradients:
+𝐆
+t
+out
+←
+d
+out
+⋅
+𝐆
+t
+out
+/
+‖
+𝐆
+t
+out
+‖
+F
+,
+𝐆
+t
+in
+←
+d
+in
+⋅
+𝐆
+t
+in
+/
+‖
+𝐆
+t
+in
+‖
+F
+.
+\bm{G}^{\text{out}}_{t}\leftarrow\sqrt{d_{\text{out}}}\cdot\bm{G}^{\text{out}}_{t}/\|\bm{G}^{\text{out}}_{t}\|_{F},\quad\bm{G}^{\text{in}}_{t}\leftarrow\sqrt{d_{\text{in}}}\cdot\bm{G}^{\text{in}}_{t}/\|\bm{G}^{\text{in}}_{t}\|_{F}.
+(3)
+To enforce scale consistency across weight matrices, we introduce a per-weight coefficient
+α
+t
+\alpha_{t}
+below:
+𝐖
+t
++</p>
+
+<p>1
+=
+exp
+⁡
+(
+−
+η
+​
+α
+t
+​
+𝐆
+t
+out
+)
+​
+𝐖
+t
+​
+exp
+⁡
+(
+−
+η
+​
+α
+t
+​
+𝐆
+t
+in
+)
+,
+s.t.
+​
+RMS
+​
+(
+Δ
+​
+𝐖
+/
+η
+)
+≈
+const
+.
+\bm{W}_{t+1}=\exp(-\eta\alpha_{t}\bm{G}^{\text{out}}_{t})\,\bm{W}_{t}\,\exp(-\eta\alpha_{t}\bm{G}^{\text{in}}_{t}),\quad\text{s.t. }\mathrm{RMS}(\Delta\bm{W}/\eta)\approx\mathrm{const}.
+(4)
+Figure 3:
+Validation loss comparison of different consistent update strategies. “
+★
+\bigstar
+” denotes the achieved minimum validation loss.
+Directly computing
+1
+η
+​
+Δ
+​
+𝑾
+\frac{1}{\eta}\Delta\bm{W}
+under the exponential map would nearly double the cost, so we use a first-order approximation to compute
+α
+\alpha
+:
+α
+t
+≈
+c
+​
+d
+out
+​
+d
+in
+‖
+Δ
+​
+𝐖
+/
+η
+‖
+F
++
+ϵ
+,
+where
+​
+Δ
+​
+𝐖
+/
+η
+≈
+−
+𝐆
+t
+out
+​
+𝐖
+t
+−
+𝐖
+t
+​
+𝐆
+t
+in
+.
+\alpha_{t}\approx\frac{c\sqrt{d_{\text{out}}d_{\text{in}}}}{\|\Delta\bm{W}/\eta\|_{F}+\epsilon},\quad\text{where}~~\Delta\bm{W}/\eta\approx-\bm{G}^{\text{out}}_{t}\bm{W}_{t}-\bm{W}_{t}\bm{G}^{\text{in}}_{t}.
+(5)
+Such per-weight scaling in Equation (
+4
+) makes the effective rotational update magnitude scale with the size of each weight matrix, so that the rotational strengths across different matrices are approximately proportional to the square root of the ratio of their parameter counts. Such rms scaling is also used to enforce proportionally consistent updates in Euclidean space
+[
+45
+,
+26
+]
+.
+Results in Figure
+3
+show that the naive update rule performs well only under small learning rates and diverges when the learning rate becomes large. In contrast, the RMS-controlled scal</p>
+
+<p>e-consistent update ensures consistent update magnitudes across matrices and can effectively utilize larger learning rates to accelerate convergence. Applying bilateral normalization alone, or combining RMS control with bilateral normalization, does not further improve training stability or final performance. Taking a step further, these results suggest that scale-consistent rotation update across parameter matrices is key to stable spectrum-preserving optimization. We therefore adopt RMS-controlled scale consistency as a core component of Pion, and bilateral normalization is not adopted.
+Figure 4:
+Training loss curves of momentum designs. Figures (a) and (b) show first-order-only and second-order-only momentum, both with RMS scaling. Figure (c) combines the two momentum techniques. “Lie+Lie” denotes Lie-algebra first- and second-order momentum. “Transported Ambient + Ambient” denotes transported ambient-space first-order momentum with ambient-space second-order momentum.
+2.4.2
+Momentum Design
+A key ingredient to accelerate gradient-based iterative optimization is momentum
+[
+59
+,
+57
+]
+, which uses accumulated gradient information to adapt the current update direction. This technique has inspired a range of highly effective first-order optimizers for deep learning
+[
+22
+,
+89
+,
+37
+,
+64
+]
+. In this section, we explore how to integrate momentum into the Pion’s update rule in Equation (
+1
+).
+Transported ambient-space first-order momentum
+. We note that the update trajectory
+{
+𝑾
+t
+}</p>
+
+<p>t
+=
+1
+∞
+\{\bm{W}_{t}\}_{t=1}^{\infty}
+evolves on a smooth iso-spectral manifold
+ℳ
+\mathcal{M}
+with nonzero curvature (we assume the singular values of
+𝑾
+0
+\bm{W}_{0}
+are distinct and nonzero). Hence, momentum should be expressed in a consistent tangent space. A natural approach is to parallel-transport the historical momentum to the current tangent space
+[
+71
+,
+6
+]
+.
+Following this idea, we derive a transported first-order momentum update below. After the
+t
+t
+-th step,
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+out
+)
+\exp(-\eta\bm{G}^{\mathrm{out}}_{t})
+and
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+\exp(-\eta\bm{G}^{\mathrm{in}}_{t})
+used in the update are reused to transport
+𝒎
+t
+\bm{m}_{t}
+to the tangent space:
+𝐦
+t
+=
+β
+1
+​
+𝐦
+t
+−
+1
++
+(
+1
+−
+β
+1
+)
+​
+𝐆
+t
+,
+𝐆
+t
+in
+=
+𝐖
+t
+⊤
+​
+𝐦
+t
+−
+(
+𝐖
+t
+⊤
+​
+𝐦
+t
+)
+⊤
+,
+𝐆
+t
+out
+=
+𝐦
+t
+​
+𝐖
+t
+⊤
+−
+(
+𝐦
+t
+​
+𝐖
+t
+⊤
+)
+⊤
+,
+\displaystyle\bm{m}_{t}=\beta_{1}\bm{m}_{t-1}+(1-\beta_{1})\bm{G}_{t},\quad\bm{G}^{\text{in}}_{t}=\bm{W}_{t}^{\top}\bm{m}_{t}-(\bm{W}_{t}^{\top}\bm{m}_{t})^{\top},\quad\bm{G}^{\text{out}}_{t}=\bm{m}_{t}\bm{W}_{t}^{\top}-(\bm{m}_{t}\bm{W}_{t}^{\top})^{\top},
+(6)
+𝐖
+t
++
+1
+=
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+out
+)
+​
+𝐖
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+in
+)
+⏟
+Update rule with first-order mementum
+,
+𝐦
+t
+←
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+out
+)
+​
+𝐦
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝐆
+t
+in
+)
+⏟
+Transported to
+​
+T
+𝐖
+t
++
+1
+​
+ℳ
+.
+\displaystyle\quad\quad~~\underbrace{\bm{W}_{t+1}=\exp(-\eta\bm{G}^{\text{out}}_{t})\,\bm{W}_{t}\,\exp(-\eta\bm{G}^{\text{in}}_{t})}_{\text{Update rule with first-order mementum}},\quad\quad\underbrace{\bm{m}_{t}\leftarrow\exp(</p>
+
+<p>-\eta\bm{G}^{\text{out}}_{t})\,\bm{m}_{t}\,\exp(-\eta\bm{G}^{\text{in}}_{t})}_{\text{Transported to}~T_{\bm{W}_{t+1}}\mathcal{M}}.
+where
+T
+𝑾
+t
++
+1
+​
+ℳ
+T_{\bm{W}_{t+1}}\mathcal{M}
+denote the tangent space at
+𝑾
+t
++
+1
+∈
+ℳ
+\bm{W}_{t+1}\in\mathcal{M}
+. The next gradient
+𝑮
+t
++
+1
+\bm{G}_{t+1}
+is also in
+T
+W
+t
++
+1
+​
+ℳ
+T_{W_{t+1}}\mathcal{M}
+.
+This parallel transport improves the accuracy of first-order gradient estimation. For comparison, we also consider a first-order momentum variant without transport, referred to as ambient-space momentum.
+As shown in Figure
+4
+(a), we empirically compare the new update rule above with or without momemtum transportation, and the transported version consistently achieves faster convergence.
+Lie algebra first-order momentum
+. Because Pion’s update is performed in the Lie algebra,
+i.e.
+, within a single tangent space. This property provides another way to accumulate first-order momentum, in which the accumulation is performed directly in the Lie algebra.
+Let
+𝒎
+t
+in
+∈
+ℝ
+d
+in
+×
+d
+in
+\bm{m}^{\text{in}}_{t}\in\mathbb{R}^{d_{\text{in}}\times d_{\text{in}}}
+and
+𝒎
+t
+out
+∈
+ℝ
+d
+out
+×
+d
+out
+\bm{m}^{\text{out}}_{t}\in\mathbb{R}^{d_{\text{out}}\times d_{\text{out}}}
+denote the momentum variables associated with the in-side and out-side gradient update, respectively. Given the same
+𝑮
+t
+in
+\bm{G}^{\text{in}}_{t}
+and
+𝑮
+t
+out
+\bm{G}^{\text{out}}_{t}
+in Equation (
+1
+), the modified update rule becomes
+𝐦
+t
+in
+=
+β
+1
+​
+𝐦
+t
+−
+1
+in
++
+(
+1
+−
+β
+1
+)
+​
+𝐆
+t
+in
+⏟
+Input-side Lie a</p>
+
+<p>lgebra momentum
+,
+𝐦
+t
+out
+=
+β
+1
+​
+𝐦
+t
+−
+1
+out
++
+(
+1
+−
+β
+1
+)
+​
+𝐆
+t
+out
+⏟
+Output-side Lie algebra momentum
+,
+𝐖
+t
++
+1
+=
+exp
+⁡
+(
+−
+η
+​
+𝐦
+t
+out
+)
+​
+𝐖
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝐦
+t
+in
+)
+⏟
+Update rule with first-order momentum
+.
+\underbrace{\bm{m}^{\text{in}}_{t}=\beta_{1}\bm{m}^{\text{in}}_{t-1}+(1-\beta_{1})\bm{G}^{\text{in}}_{t}}_{\text{Input-side Lie algebra momentum}},\quad\underbrace{\bm{m}^{\text{out}}_{t}=\beta_{1}\bm{m}^{\text{out}}_{t-1}+(1-\beta_{1})\bm{G}^{\text{out}}_{t}}_{\text{Output-side Lie algebra momentum}},\quad\underbrace{\bm{W}_{t+1}=\exp(-\eta\bm{m}^{\text{out}}_{t})\,\bm{W}_{t}\,\exp(-\eta\bm{m}^{\text{in}}_{t})}_{\text{Update rule with first-order momentum}}.
+(7)
+As shown in Figure
+4
+, the Lie algebra momentum achieves the fastest convergence, slightly outperforming the transported ambient-space momentum. All the first-order momentum formulations are spectrum-preserving by construction, as they generate updates via skew-symmetric operators followed by the matrix exponential map. Ambient-space momentum is the most efficient in compute and memory, but produces biased estimates due to tangent space mismatch. Transported ambient-space momentum corrects this bias via parallel transport at added computational cost, with no extra memory overhead. Lie algebra momentum achieves exact, geometrically consistent estimation at comparable compute cost, but requires additional memory for separate in- and out-side variables.
+Second-order momentum
+. Second-order momentum tracks the</p>
+
+<p>running average of squared gradients, serving as an adaptive normalization factor. Unlike its first-order counterpart, it accumulates no directional information across tangent spaces and therefore does not require parallel transport in manifold optimization
+[
+6
+]
+. Guided by this observation and the design principles established for first-order momentum, we consider two natural implementations of second-order momentum: (1) estimating second-order momentum in the ambient space using the full gradient
+𝑮
+t
+\bm{G}_{t}
+; and (2) modeling second-order statistics separately for the in-side and out-side gradients. Specifically, we use the standard second-order momentum formulation in AdamW. For example, the second-order momentum for the in-side update in Equation (
+7
+) is
+𝒗
+t
+in
+=
+β
+2
+​
+𝒗
+t
+−
+1
+in
++
+(
+1
+−
+β
+2
+)
+​
+(
+𝑮
+t
+in
+⊙
+𝑮
+t
+in
+)
+\bm{v}^{\mathrm{in}}_{t}=\beta_{2}\bm{v}^{\mathrm{in}}_{t-1}+(1-\beta_{2})(\bm{G}^{\mathrm{in}}_{t}\odot\bm{G}^{\mathrm{in}}_{t})
+where
+⊙
+\odot
+is the element-wise multiplication. The complete algorithms are given in Algorithm
+1
+and Appendix
+G.1
+.
+From Figure
+4
+(b), we observe that the Lie Algebra variants consistently outperform the ambient-space variants. We then examine their combined behavior in Figure
+4
+(c). The Lie+Lie variant performs best, consistent with the trends observed for each momentum order individually. In contrast, mixed variants perform slightly worse, suggesting that mismatched deployments hinder this complementarity. This observation</p>
+
+<p>further suggests that, under our spectrum-preserving update rule, accumulating momentum in the Lie algebra provides a more natural and effective formulation. Thus, we adopt the Lie+Lie and Transported-Ambient+Ambient variants as two functional implementations of momentum in Pion, representing two effective design choices identified from our exploration.
+2.4.3
+Alternate Update
+The bilateral update in Equation (
+1
+) applies both input-side and output-side orthogonal transformations at every iteration. We propose a more computationally efficient Pion variant that alternates between the input-side and output-side updates across successive iterations:
+𝐖
+t
++
+1
+=
+exp
+⁡
+(
+−
+η
+​
+(
+1
+−
+ψ
+)
+​
+𝐆
+t
+out
+)
+⋅
+𝐖
+t
+⋅
+exp
+⁡
+(
+−
+η
+​
+ψ
+​
+𝐆
+t
+in
+)
+,
+with
+​
+ψ
+=
+1
+​
+if
+​
+t
+​
+is odd
+,
+ψ
+=
+0
+​
+if
+​
+t
+​
+is even
+.
+\bm{W}_{t+1}=\exp(-\eta(1-\psi)\bm{G}^{\text{out}}_{t})\cdot\bm{W}_{t}\cdot\exp(-\eta\psi\bm{G}^{\text{in}}_{t}),\quad\text{with}~\psi=1~\text{if}~t~\text{is odd},~~\psi=0~\text{if}~t~\text{is even}.
+(8)
+Figure 5:
+Training loss of bilateral and alternate update.
+The alternate update remains spectrum-preserving and also decouples the two orthogonal transformations across iterations, largely reducing per-step computation.
+Moreover, the alternation can be naturally extended to occur every few steps rather than every step.
+From Figure
+5
+, we observe that alternate update achieves performance close to bilateral update for both Lie+Lie and Transported-Ambient+Ambient variants. For Lie+Lie, the final</p>
+
+<p>loss of alternate update is 3.3654, only about
+0.23
+%
+0.23\%
+higher than the 3.3575 achieved by bilateral update.
+This small gap suggests that updating the two transformations simultaneously is not always necessary to obtain strong optimization performance, and that much of the benefit can be retained through a more lightweight alternating scheme.
+Alternate updates are slightly faster early in training, while bilateral updates overtake them near convergence, reflecting a tradeoff between efficiency and refinement. Overall, the alternate update is a strong compromise, as it preserves spectral structure, lowers computational cost, and achieves nearly the same final performance as the more expensive bilateral update.
+Figure 6:
+Comparison of different approximation schemes for
+Exp
+​
+(
+⋅
+)
+\mathrm{Exp}(\cdot)
+. Left panels: training loss curves under each scheme for the Lie+Lie and Transported-Ambient+Ambient configurations. Right panels: final singular value spectra alongside the initial spectra for reference.
+2.4.4
+Efficient Approximation to Matrix Exponential Map
+All Pion variants require computing the matrix exponential. Since exact evaluation of
+exp
+⁡
+(
+𝑨
+)
+\exp(\bm{A})
+is generally expensive, we consider two efficient approximations. The first is the Cayley transform
+[
+31
+,
+41
+,
+47
+]
+:
+exp
+⁡
+(
+𝑨
+)
+≈
+(
+𝑰
+−
+1
+2
+​
+𝑨
+)
+−
+1
+​
+(
+𝑰
++
+1
+2
+​
+𝑨
+)
+\exp(\bm{A})\approx\left(\bm{I}-\tfrac{1}{2}\bm{A}\right)^{-1}\left(\bm{I}+\tfrac{1}{2}\bm{A}\right)
+, which agrees with
+exp
+⁡
+(
+𝑨
+)
+\exp(\</p>
+
+<p>bm{A})
+up to second order with error
+𝒪
+​
+(
+‖
+𝑨
+‖
+3
+)
+\mathcal{O}(\|\bm{A}\|^{3})
+and strictly preserves orthogonality for skew-symmetric
+𝑨
+\bm{A}
+. In practice, the matrix inverse can be further cheapened via low-order series expansions
+[
+62
+,
+60
+]
+.
+The second is a truncated power series:
+exp
+⁡
+(
+𝑨
+)
+≈
+∑
+k
+=
+0
+L
+𝑨
+k
+k
+!
+\exp(\bm{A})\approx\sum_{k=0}^{L}\frac{\bm{A}^{k}}{k!}
+, whose truncation error decays rapidly with
+L
+L
+when
+‖
+𝑨
+‖
+F
+\|\bm{A}\|_{F}
+is small.
+Figure
+6
+compares first- to fourth-order power-series approximations with the Cayley transform.
+The first-order approximation degrades both convergence and singular-value preservation, while the Cayley variant offers only modest gains. The second-order approximation preserves the spectrum nearly as well as higher-order variants.
+Unlike conventional orthogonal-group optimization where errors in
+exp
+⁡
+(
+𝑨
+t
+)
+\exp(\bm{A}_{t})
+can accumulate through updates, Pion’s update always starts from the identity matrix (Equation
+1
+). This prevents repeated error compounding and improves numerical robustness, making higher-order approximations unnecessary. Pion therefore adopts a second-order exponential approximation.
+2.5
+Detailed Implementation and Computational Complexity
+Input:
+Learning rate
+η
+\eta
+, momentum coefficients
+β
+1
+,
+β
+2
+\beta_{1},\beta_{2}
+, RMS constant
+c
+c
+, stability constant
+ϵ
+\epsilon
+, alternating flag, initial weight matrix
+𝑾
+0
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{W}_{0}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}
+O</p>
+
+<p>utput:
+Optimized parameter
+𝑾
+t
+\bm{W}_{t}
+Initialize
+𝒎
+0
+in
+,
+𝒗
+0
+in
+←
+𝟎
+∈
+ℝ
+d
+in
+×
+d
+in
+\bm{m}^{\mathrm{in}}_{0},\bm{v}^{\mathrm{in}}_{0}\leftarrow\bm{0}\in\mathbb{R}^{d_{\mathrm{in}}\times d_{\mathrm{in}}}
+,
+𝒎
+0
+out
+,
+𝒗
+0
+out
+←
+𝟎
+∈
+ℝ
+d
+out
+×
+d
+out
+\bm{m}^{\mathrm{out}}_{0},\bm{v}^{\mathrm{out}}_{0}\leftarrow\bm{0}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{out}}}
+;
+Define
+ℰ
+2
+​
+(
+𝑨
+,
+α
+)
+←
+𝑰
++
+η
+​
+α
+​
+𝑨
++
+1
+2
+​
+(
+η
+​
+α
+​
+𝑨
+)
+2
+\mathcal{E}_{2}(\bm{A},\alpha)\leftarrow\bm{I}+\eta\alpha\bm{A}+\frac{1}{2}(\eta\alpha\bm{A})^{2}
+;
+for
+t
+=
+1
+,
+2
+,
+…
+t=1,2,\ldots
+do
+𝑮
+t
+←
+∇
+𝑾
+f
+​
+(
+𝑾
+t
+−
+1
+)
+\bm{G}_{t}\leftarrow\nabla_{\bm{W}}f(\bm{W}_{t-1})
+;
+𝑮
+t
+in
+←
+𝑾
+t
+−
+1
+⊤
+​
+𝑮
+t
+−
+𝑮
+t
+⊤
+​
+𝑾
+t
+−
+1
+\bm{G}^{\mathrm{in}}_{t}\leftarrow\bm{W}_{t-1}^{\top}\bm{G}_{t}-\bm{G}_{t}^{\top}\bm{W}_{t-1}
+,
+𝑮
+t
+out
+←
+𝑮
+t
+​
+𝑾
+t
+−
+1
+⊤
+−
+𝑾
+t
+−
+1
+​
+𝑮
+t
+⊤
+\bm{G}^{\mathrm{out}}_{t}\leftarrow\bm{G}_{t}\bm{W}_{t-1}^{\top}-\bm{W}_{t-1}\bm{G}_{t}^{\top}
+;
+𝒎
+t
+in
+←
+β
+1
+​
+𝒎
+t
+−
+1
+in
++
+(
+1
+−
+β
+1
+)
+​
+𝑮
+t
+in
+\bm{m}^{\mathrm{in}}_{t}\leftarrow\beta_{1}\bm{m}^{\mathrm{in}}_{t-1}+(1-\beta_{1})\bm{G}^{\mathrm{in}}_{t}
+,
+𝒎
+t
+out
+←
+β
+1
+​
+𝒎
+t
+−
+1
+out
++
+(
+1
+−
+β
+1
+)
+​
+𝑮
+t
+out
+\bm{m}^{\mathrm{out}}_{t}\leftarrow\beta_{1}\bm{m}^{\mathrm{out}}_{t-1}+(1-\beta_{1})\bm{G}^{\mathrm{out}}_{t}
+;
+𝒗
+t
+in
+←
+β
+2
+​
+𝒗
+t
+−
+1
+in
++
+(
+1
+−
+β
+2
+)
+​
+(
+𝑮
+t
+in
+⊙
+𝑮
+t
+in
+)
+\bm{v}^{\mathrm{in}}_{t}\leftarrow\beta_{2}\bm{v}^{\mathrm{in}}_{t-1}+(1-\beta_{2})(\bm{G}^{\mathrm{in}}_{t}\odot\bm{G}^{\mathrm{in}}_{t})
+,
+𝒗
+t
+out
+←
+β
+2
+​
+𝒗
+t
+−
+1
+out
++
+(
+1
+−
+β
+2
+)</p>
+
+<p>​
+(
+𝑮
+t
+out
+⊙
+𝑮
+t
+out
+)
+\bm{v}^{\mathrm{out}}_{t}\leftarrow\beta_{2}\bm{v}^{\mathrm{out}}_{t-1}+(1-\beta_{2})(\bm{G}^{\mathrm{out}}_{t}\odot\bm{G}^{\mathrm{out}}_{t})
+;
+𝑨
+t
+in
+←
+−
+𝒎
+t
+in
+/
+(
+𝒗
+t
+in
++
+ϵ
+)
+\bm{A}^{\mathrm{in}}_{t}\leftarrow-\bm{m}^{\mathrm{in}}_{t}/(\sqrt{\bm{v}^{\mathrm{in}}_{t}}+\epsilon)
+,
+𝑨
+t
+out
+←
+−
+𝒎
+t
+out
+/
+(
+𝒗
+t
+out
++
+ϵ
+)
+\bm{A}^{\mathrm{out}}_{t}\leftarrow-\bm{m}^{\mathrm{out}}_{t}/(\sqrt{\bm{v}^{\mathrm{out}}_{t}}+\epsilon)
+;
+if
+alternative update is used
+then
+if
+t
+t
+is even
+then
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+‖
+𝑨
+t
+out
+​
+𝑾
+t
+−
+1
+‖
+F
++
+ϵ
+\alpha_{t}\leftarrow\frac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{\|\bm{A}^{\mathrm{out}}_{t}\bm{W}_{t-1}\|_{F}+\epsilon}
+;
+𝑾
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝑾
+t
+−
+1
+\bm{W}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t})\bm{W}_{t-1}
+;
+else
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+‖
+𝑾
+t
+−
+1
+​
+𝑨
+t
+in
+‖
+F
++
+ϵ
+\alpha_{t}\leftarrow\frac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{\|\bm{W}_{t-1}\bm{A}^{\mathrm{in}}_{t}\|_{F}+\epsilon}
+;
+𝑾
+t
+←
+𝑾
+t
+−
+1
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{W}_{t}\leftarrow\bm{W}_{t-1}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+;
+end if
+else
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+‖
+𝑨
+t
+out
+​
+𝑾
+t
+−
+1
++
+𝑾
+t
+−
+1
+​
+𝑨
+t
+in
+‖
+F
++
+ϵ
+\alpha_{t}\leftarrow\frac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{\|\bm{A}^{\mathrm{out}}_{t}\bm{W}_{t-1}+\bm{W}_{t-1}\bm{A}^{\mathrm{in}}_{t}\|_{F}+\epsilon}
+;
+𝑾
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝑾
+t
+−
+1
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{W}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t}</p>
+
+<p>)\bm{W}_{t-1}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+;
+end if
+end for
+return
+𝐖
+t
+\bm{W}_{t}
+;
+Algorithm 1
+The Pion Optimizer (Lie Algebra)
+The previous exploration and experiments motivate four design choices.
+First, scale-consistent rotational scaling is essential for stable training and large learning rates, whereas bilateral rotation balancing has a much weaker empirical effect. Second, Lie-algebra momentum better aligns with the geometry of spectrum-preserving updates than ambient-space accumulation. Third, alternate update retains most benefits of bilateral updates at substantially lower computational cost, though bilateral updates offer slightly better refinement near the final convergence. Empirically, we find that a second-order approximation of
+exp
+⁡
+(
+⋅
+)
+\exp(\cdot)
+works sufficiently well for both optimization and spectrum preservation.
+Based on these observations, the final Pion optimizer combines RMS-controlled scaling, Lie-algebra first-order and second-order momentum, and a second-order truncated approximation to the matrix exponential. Algorithm
+1
+gives the resulting optimizer steps.
+Appendix
+G.1
+presents an alternative implementation that uses transported ambient-space first-order momentum together with ambient-space second-order momentum.
+Computation Complexity
+.
+For a weight matrix
+𝑾
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{W}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}
+, the main overhead is constructing the input- and output-side Lie algebra gradients</p>
+
+<p>and applying the second-order exponential approximation. Computing
+𝑮
+in
+=
+𝑾
+⊤
+​
+𝑮
+−
+𝑮
+⊤
+​
+𝑾
+\bm{G}^{\mathrm{in}}=\bm{W}^{\top}\bm{G}-\bm{G}^{\top}\bm{W}
+costs
+4
+​
+d
+out
+​
+d
+in
+2
+4d_{\mathrm{out}}d_{\mathrm{in}}^{2}
+FLOPs, and computing
+𝑮
+out
+=
+𝑮
+​
+𝑾
+⊤
+−
+𝑾
+​
+𝑮
+⊤
+\bm{G}^{\mathrm{out}}=\bm{G}\bm{W}^{\top}-\bm{W}\bm{G}^{\top}
+costs
+4
+​
+d
+out
+2
+​
+d
+in
+4d_{\mathrm{out}}^{2}d_{\mathrm{in}}
+FLOPs. Element-wise momentum and second-moment updates are lower-order. RMS scaling requires evaluating
+𝑨
+out
+​
+𝑾
++
+𝑾
+​
+𝑨
+in
+\bm{A}^{\mathrm{out}}\bm{W}+\bm{W}\bm{A}^{\mathrm{in}}
+, costing another
+2
+​
+d
+out
+2
+​
+d
+in
++
+2
+​
+d
+out
+​
+d
+in
+2
+2d_{\mathrm{out}}^{2}d_{\mathrm{in}}+2d_{\mathrm{out}}d_{\mathrm{in}}^{2}
+FLOPs. Applying the second-order update contributes
+𝒪
+​
+(
+d
+out
+3
++
+d
+in
+3
+)
+\mathcal{O}(d_{\mathrm{out}}^{3}+d_{\mathrm{in}}^{3})
+FLOPs for squared Lie matrices and
+2
+​
+d
+out
+2
+​
+d
+in
++
+2
+​
+d
+out
+​
+d
+in
+2
+2d_{\mathrm{out}}^{2}d_{\mathrm{in}}+2d_{\mathrm{out}}d_{\mathrm{in}}^{2}
+FLOPs for left and right multiplication with
+𝑾
+\bm{W}
+. Thus, the dominant additional cost of one bilateral Pion update is
+𝒪
+​
+(
+d
+out
+2
+​
+d
+in
++
+d
+out
+​
+d
+in
+2
++
+d
+out
+3
++
+d
+in
+3
+)
+\mathcal{O}(d_{\mathrm{out}}^{2}d_{\mathrm{in}}+d_{\mathrm{out}}d_{\mathrm{in}}^{2}+d_{\mathrm{out}}^{3}+d_{\mathrm{in}}^{3})
+. Alternate update can reduce the dominant update-side cost by roughly half. Compared with the baseline cost
+𝒪
+​
+(
+B
+​
+d
+out
+​
+d
+in
+)
+\mathcal{O}(Bd_{\mathrm{out}}d_{\mathrm{in}})
+for the forward and backward pass</p>
+
+<p>es of a linear layer with batch-token size
+B
+B
+, the relative overhead of Pion is approximately
+𝒪
+​
+(
+d
+out
++
+d
+in
+B
++
+d
+out
+3
++
+d
+in
+3
+B
+​
+d
+out
+​
+d
+in
+)
+\mathcal{O}(\frac{d_{\mathrm{out}}+d_{\mathrm{in}}}{B}+\frac{d_{\mathrm{out}}^{3}+d_{\mathrm{in}}^{3}}{Bd_{\mathrm{out}}d_{\mathrm{in}}})
+.
+In LLM pretraining,
+B
+B
+is typically large because it equals the number of tokens processed by the layer in one optimization step. Consequently, the optimizer-side matrix multiplications are amortized over a large token batch, and the overhead remains small relative to forward-backward computation. More detailed analysis and memory overhead are in Appendix
+C
+.
+2.6
+Compatibility with Maximal Update Parametrization
+μ
+\mu
+P
+[
+84
+,
+85
+,
+86
+]
+suggests that the following two spectral scaling conditions are crucial for training stability:
+Forward spectral condition:
+​
+‖
+𝐖
+‖
+2
+=
+Θ
+​
+(
+d
+out
+/
+d
+in
+)
+⏟
+This is inherently satisfied by Pion.
+​
+Update spectral condition:
+​
+‖
+Δ
+​
+𝐖
+‖
+2
+=
+Θ
+​
+(
+d
+out
+/
+d
+in
+)
+⏟
+This is easily satisfied by Muon.
+.
+\!\text{Forward spectral condition:}~\underbrace{\left\|\bm{W}\right\|_{2}=\Theta\!\left(\sqrt{{d_{\mathrm{out}}}/{d_{\mathrm{in}}}}\right)}_{\text{This is inherently satisfied by Pion.}}~~~\text{Update spectral condition:}~\underbrace{\left\|\Delta\bm{W}\right\|_{2}=\Theta\!\left(\sqrt{{d_{\mathrm{out}}}/{d_{\mathrm{in}}}}\right)}_{\text{This is easily satisfied by Muon.}}.
+(9)
+Existing
+μ
+\mu
+P-compatible optimizers
+[
+45
+,
+74
+,
+81
+]
+are built on Muon, which</p>
+
+<p>inherently satisfies the update condition. As a result, prior work focuses on modifying Muon to also satisfy the forward condition. Pion takes the opposite route: it inherently satisfies the forward condition, so our goal is to make it satisfy the update condition. To this end, we approximate Pion’s weight-update magnitude as
+‖
+Δ
+​
+𝑾
+t
+‖
+2
+≈
+η
+​
+‖
+𝑾
+t
+‖
+2
+​
+(
+‖
+𝑮
+t
+out
+‖
+2
++
+‖
+𝑮
+t
+in
+‖
+2
+)
+\|\Delta\bm{W}_{t}\|_{2}\approx\eta\|\bm{W}_{t}\|_{2}(\|\bm{G}_{t}^{\mathrm{out}}\|_{2}+\|\bm{G}_{t}^{\mathrm{in}}\|_{2})
+, where
+‖
+𝑾
+t
+‖
+2
+\|\bm{W}_{t}\|_{2}
+naturally satisfies
+μ
+\mu
+P’s spectral condition
+Θ
+​
+(
+d
+out
+/
+d
+in
+)
+\Theta(\sqrt{d_{\mathrm{out}}/d_{\mathrm{in}}})
+. Thus, it suffices to maintain
+‖
+𝑮
+t
+out
+‖
+2
+=
+Θ
+​
+(
+1
+)
+\|\bm{G}_{t}^{\mathrm{out}}\|_{2}=\Theta(1)
+and
+‖
+𝑮
+t
+in
+‖
+2
+=
+Θ
+​
+(
+1
+)
+\|\bm{G}_{t}^{\mathrm{in}}\|_{2}=\Theta(1)
+for Pion to be
+μ
+\mu
+P-compatible. This can be achieved by normalizing the spectral norms of both factors, or alternatively by orthogonalizing
+𝑮
+t
+out
+\bm{G}_{t}^{\mathrm{out}}
+and
+𝑮
+t
+in
+\bm{G}_{t}^{\mathrm{in}}
+. We give detailed derivation and full results in Appendix
+F
+.
+Figure 7:
+μ
+\mu
+P learning rate transfer across model scales.
+To assess the
+μ
+\mu
+P-compatibility of Pion, we conduct a hyperparameter transfer experiment across model scales. Specifically, we consider the Pion variant that applies simple normalization to both
+‖
+𝑮
+t
+out
+‖
+2
+\|\bm{G}_{t}^{\mathrm{out}}\|_{2}
+and
+‖
+𝑮
+t
+in
+‖
+2
+\|\bm{G}_{t}^{\mathrm{in}}\|_{2}
+. We defer the detai</p>
+
+<p>led experimental settings and extended results for the
+𝑮
+t
+\bm{G}_{t}
+-orthogonalized variant to Appendix
+F
+.
+We train two representative LLM architectures (Llama and Qwen) over a range of model widths using the
+μ
+\mu
+P-compatible Pion, and examine whether optimal hyperparameters identified at small scale transfer reliably to larger models. Figure
+7
+shows that Pion has robust hyperparameter transferability,
+i.e.
+, the optimal learning rate is invariant to model scales. More
+μ
+\mu
+P-compatible Pion variants remain unexplored, and our results represent only a first step forward.
+Figure 8:
+Dynamics of four diagnostic indicators for monitoring pretraining stability. From left to right, the four panels show, respectively, the maximum attention logit within the attention block of Layer 12, the norm of the input to the down-projection layer (equivalent to the SwiGLU activation output), the norm of the down-projection layer parameters, and the norm of its output. All indicators validate the strong stability of Pion.
+3
+Experiments and Results
+We evaluate Pion’s performance and compare it with current standard optimizers (
+e.g.
+, AdamW
+[
+49
+]
+, Muon
+[
+36
+,
+45
+]
+) across diverse training scenarios, including both pretraining and post-training (supervised finetuning and reinforcement learning). All experimental details can be found in Appendix
+D
+.
+3.1
+Stable LLM Pretraining
+Method
+ARC-C
+ARC-E
+BoolQ
+Hella.
+PIQA
+SciQ
+TriviaQA
+Wino.
+Avg
+Val Loss
+AdamW
+25.94
+45.96
+46.30
+45.10
+71.27
+70.80
+1.0</p>
+
+<p>6
+51.46
+44.74
+2.7700
+Muon
+25.34
+47.94
+51.56
+46.70
+72.20
+71.60
+1.64
+53.75
+46.34
+2.7225
+\rowcolor
+gray!15 Pion
+26.79
+49.41
+57.58
+47.34
+71.27
+73.40
+2.17
+53.59
+47.69
+2.7350
+Table 1:
+Benchmark performance and validation loss on LLaMA-1.3B. The best results are in
+Bold
+.
+Main results on pretraining
+. We first investigate the stability of Pion in LLM pretraining. Specifically, we pretrain a LLaMA-based 1.3B model (same as
+[
+92
+,
+60
+,
+26
+]
+) on 54B tokens, 2
+×
+\times
+the Chinchilla-optimal data budget
+[
+33
+]
+. We ensure that the number of training tokens are sufficient for the model to converge. These tokens are sampled from the C4 corpus
+[
+63
+]
+and preprocessed using the T5-base tokenizer with sequence length 256. This setup corresponds to roughly 400K optimization iterations, effectively simulating practice long-horizon training regimes. We compare Pion (with alternate update and Lie-Lie momentum) against two most widely used optimizers, AdamW and Muon, under the same training configuration. Main results are given in Table
+1
+. Pion achieves the best generalization performance across the evaluated benchmarks. Its validation loss is comparable to that of Muon, and both Pion and Muon yield substantially lower validation losses than AdamW.
+Figure 9:
+Weight spectrum comparison.
+Besides validation loss, we also monitor several indicators of training stability in Figure
+8
+. Specifically, we track the maximum attention logit
+[
+45
+]
+, the norm of the SwiGLU activation
+‖
+𝑿
+‖
+F
+\|\bm{X}\|_{F}</p>
+
+<p>（也是下投影层的输入）、下投影权重 ‖ 𝑾 ‖ F \|\bm{W}\|_{F} 的范数，以及下投影输出 ‖ 𝒀 ‖ F \|\bm{Y}\|_{F} 的范数，遵循 [ 80 , 20 , 66 ] 。特别是，SwiGLU 激活的范数和最大注意力 logit 已被普遍认为是大规模预训练中重要的稳定性指标 [ 73 , 44 , 1 , 19 ] 。
+这些结果揭示了优化器之间的明显差异。AdamW 表现出持续增长的注意力 logit 和迅速放大的激活幅度。Muon 显著抑制了注意力 logit 的增长，但其激活和下投影范数在整个训练过程中持续增加。相比之下，Pion 使所有监测量几乎保持平稳且非常稳定。这种独特的训练行为证明了 Pion 保谱更新的卓越稳定性，暗示了其在稳定的大规模训练中的巨大潜力。</p>
+
+<p>ng can effectively probe whether an optimizer alone can provide adequate scale regulation during pretraining.
+Under this setting, both AdamW and Muon can make initial progress but soon fail due to gradient overflow, producing NaNs. In contrast, Pion remains stable throughout the full 9.6B-token training run and converges successfully. These results show that spectrum-preserving updates can limit signal amplification even when explicit normalization mechanisms are removed. They further suggest that spectrum-preserving optimization can partially replace architectural scale-control mechanisms, providing an optimizer-level source of training stability.
+Figure 11:
+Training Loss of DeepNet.
+Pretraining on ultra-deep architectures
+.
+We further stress-test stability under LLMs with extreme depth. Training such networks often leads to severe optimization instabilities, including vanishing gradients and representation collapse
+[
+72
+]
+.
+To examine this setting, we scale the depth of a LLaMA 60M baseline from 8 to 200 layers and train each model on a 50B-token subset of the C4 dataset. For visual clarity, Fig.
+11
+reports the training loss after applying an
+N
+N
+-step moving average,
+Y
+t
+=
+1
+N
+​
+∑
+i
+=
+0
+N
+−
+1
+X
+t
+−
+i
+Y_{t}=\frac{1}{N}\sum_{i=0}^{N-1}X_{t-i}
+, where
+𝑿
+t
+\bm{X}_{t}
+and
+𝒀
+t
+\bm{Y}_{t}
+denote the raw and smoothed losses, respectively.
+We quantify stability by the mean standard deviation of the local loss trajectory, visualized as the integrated area of the shaded band.
+AdamW s</p>
+
+<p>表现出最大的损失尖峰和最差的整体稳定性。AdamW的平均标准差为0.0931，Muon为0.0927，Pion为0.0892，使得Pion成为此设置下最稳定的优化器。Pion在中间训练阶段也能更快速地降低损失，即使在极端深度下也展现出有效的优化行为。
+图12：
+DeepNet中的雅可比范数。
+为了进一步验证我们的结果，我们分析了不同优化器引起的逐层表达力。遵循文献 [
+56
+,
+72
+] 中的分析，我们使用形状归一化的Frobenius距离
+‖
+𝑱
+ℓ
+−
+𝑰
+‖</p>
+
+<p>on preserves layer-wise balanced expressivity in deep networks, avoiding the expressivity degradation observed in AdamW and Muon.
+3.2
+Efficient LLM Post-training
+Method
+Qwen2.5-1.5B
+Llama3.2-3B
+Math
+Code
+Math
+Code
+ID (%)
+OOD (%)
+ID (%)
+OOD (%)
+ID (%)
+OOD (%)
+ID (%)
+OOD (%)
+Base
+59.81
+64.83
+35.98
+63.99
+25.47
+67.59
+26.22
+53.08
+AdamW
+65.88
+62.13
+51.83
+62.64
+59.87
+60.86
+46.95
+58.64
+Muon
+65.27
+61.22
+50.00
+62.41
+57.77
+61.20
+46.34
+58.88
+\rowcolor
+gray!15 Pion
+65.76
+62.16
+53.05
+63.21
+58.83
+60.44
+47.19
+59.74
+Table 2:
+Performance comparison of Pion and baseline optimizers on finetuning tasks. ID (in-domain) evaluates downstream capability, while OOD (out-of-domain) measures the model’s robustness against forgetting.
+Bold
+values indicate the best results.
+Supervised finetuning
+. In this section, we study the effectiveness of the Pion optimizer in the LLM supervised finetuning scenarios. Specifically, we conduct full-parameter finetuning experiments utilizing the LLaMA-Factory
+[
+93
+]
+framework. We employ Qwen2.5-1.5B
+[
+75
+]
+and Llama-3.2-3B
+[
+25
+]
+as base models, fine-tuning them on the MetaMathQA
+[
+88
+]
+and Magicoder-Evol-Instruct-110K
+[
+79
+]
+datasets. For our evaluation protocol, following the setups in
+[
+9
+]
+, we analyze the stability-plasticity tradeoff
+[
+53
+]
+inherent in model adaptation. We adopt GSM8K
+[
+18
+]
+and HumanEval
+[
+16
+]
+as in-domain (ID) benchmarks for mathematical and code generation tasks respectively. Concurrently, out-of-domain (OOD) performance is assessed using ARC-</p>
+
+<p>Easy, ARC-Challenge
+[
+17
+]
+, Winogrande
+[
+67
+]
+, PIQA
+[
+10
+]
+and Hellaswag
+[
+90
+]
+benchmarks. All evaluations are conducted using the LM Evaluation Harness
+[
+23
+]
+framework with its default generation parameters. More experiment details can be found in Appendix
+D.3
+.
+The experimental results are summarized in Table
+2
+. Overall, Pion achieves a highly competitive stability-plasticity tradeoff compared to established baselines such as AdamW and Muon. In particular, it shows a clear performance advantage on code generation, achieving the highest ID and OOD scores across both base models. On mathematical finetuning, Pion matches the ID performance of competing optimizers while more effectively preserving OOD capabilities, highlighting its robustness against catastrophic forgetting.
+Method
+Qwen3-1.7B
+DeepSeek-R1-Distill-Qwen-1.5B
+AIME24
+(avg@32)
+AIME25
+(avg@32)
+AMC23
+(avg@8)
+Minerva
+Math
+(avg@4)
+Olympiad
+Bench
+(avg@8)
+Avg
+AIME24
+(avg@32)
+AIME25
+(avg@32)
+AMC23
+(avg@8)
+Minerva
+Math
+(avg@4)
+Olympiad
+Bench
+(avg@8)
+Avg
+Base
+4.06
+10.10
+30.27
+16.27
+23.67
+16.87
+20.52
+20.83
+54.06
+19.39
+36.20
+30.20
+AdamW
+22.71
+20.94
+58.43
+25.91
+46.09
+34.82
+25.42
+23.94
+62.65
+23.16
+44.69
+35.97
+Muon
+20.42
+19.27
+54.22
+24.08
+42.41
+32.08
+29.06
+23.33
+66.72
+22.89
+44.61
+37.32
+\rowcolor
+gray!15 Pion
+25.42
+21.98
+59.94
+26.84
+46.43
+36.12
+30.00
+24.38
+66.87
+23.90
+46.43
+38.32
+Table 3:
+Performance comparison of Pion and other baseline optimizers on RLVR tasks (training with GRPO). The metric avg@K denotes the average accura</p>
+
+<p>cy across K generated samples per problem.
+Bold
+values indicate the best overall average results.
+Reinforcement learning with verifiable reward (RLVR)
+.
+We study Pion as an optimizer for RLVR. Our motivation comes from recent observations
+[
+94
+]
+that RLVR updates largely preserve the spectral structure of pretrained weight matrices, suggesting that RLVR may benefit from optimizers whose update geometry aligns with the underlying matrix structure. Because Pion preserves the weight spectrum during optimization, it is naturally suitable for RLVR training. We therefore compare Pion against AdamW and Muon to assess whether it can improve the performance of RLVR.
+Figure 13:
+Training dynamics of evaluation accuracy. Pion demonstrates the fastest convergence rate among all.
+We implement the RLVR training pipeline with the VeRL framework
+[
+70
+]
+and adopt Group Relative Policy Optimization (GRPO)
+[
+68
+]
+. Experiments are conducted on two base models, Qwen3-1.7B
+[
+83
+]
+and DeepSeek-R1-Distill-Qwen-1.5B
+[
+27
+]
+, using DeepMath
+[
+30
+]
+as the training dataset. We evaluate the trained models on five mathematical reasoning benchmarks: AIME24
+[
+51
+]
+, AIME25
+[
+52
+]
+, AMC23
+[
+50
+]
+, Minerva Math
+[
+39
+]
+, and OlympiadBench
+[
+29
+]
+. The maximum generation length is set to 4096 tokens for Qwen3-1.7B and 8192 tokens for DeepSeek-R1-Distill-Qwen-1.5B. All evaluations are performed using POLARIS
+[
+3
+]
+. Details and more results are provided in Appendix
+D.4
+.
+As shown in Table
+3
+, Pion achieves the b</p>
+
+<p>est performance in both settings. These results support the premise that RLVR dynamics preserve pretrained spectral structures, making Pion a well-suited inductive bias for RLVR. Figure
+13
+further shows Pion’s faster convergence in validation accuracy.
+4
+Related Work and Concluding Remarks
+Related work
+.
+Stable LLM training relies on a delicate interplay between optimization dynamics and scale control. A common recipe combines adaptive optimizers such as AdamW
+[
+37
+]
+with normalization layers
+[
+4
+,
+32
+]
+or scale-aware parameterizations such as maximal update parameterization
+[
+85
+,
+86
+]
+. Recent work has further shown that matrix-aware optimization can substantially improve training stability by exploiting the structure of weight matrices
+[
+78
+,
+28
+,
+77
+,
+58
+,
+36
+,
+14
+,
+13
+,
+8
+,
+7
+]
+. In particular, Muon
+[
+36
+]
+and its variants
+[
+45
+,
+42
+,
+74
+,
+81
+,
+2
+,
+15
+]
+have attracted considerable attention for their empirical effectiveness.
+Our work shares the goal of stable training, but approaches it from a distinct geometric perspective. Building on ideas from orthogonal group optimization
+[
+40
+,
+54
+]
+and the geometric inductive biases of POET
+[
+61
+,
+60
+]
+, Pion elevates spectrum preservation to an optimizer-level principle. Rather than enforcing orthogonality through reparameterization, Pion directly preserves the spectral geometry of weight matrices during optimization. This view also offers a natural path to minimum hyperspherical energy
+[
+46
+,
+47
+,
+48
+]
+, while retaining sufficie</p>
+
+<p>nt flexibility for effective training.
+Concluding remarks
+.
+We introduce Pion, a spectrum-preserving optimizer for stable training via orthogonal equivalence transformations. Pion provably preserves the weight spectrum and maintains minimal hyperspherical energy throughout training without relying on explicit reparameterization. Empirical results have demonstrated Pion’s effectiveness, making it competitive with standard optimizers across diverse settings, including pretraining, supervised finetuning, and reinforcement learning.
+References
+[1]
+Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin
+Arbus, Rahul K Arora, Yu Bai, Bowen Baker, Haiming Bao, et al.
+gpt-oss-120b &amp; gpt-oss-20b model card.
+arXiv preprint arXiv:2508.10925
+, 2025.
+[2]
+Noah Amsel, David Persson, Christopher Musco, and Robert M Gower.
+The polar express: Optimal matrix sign methods and their application
+to the muon algorithm.
+arXiv preprint arXiv:2505.16932
+, 2025.
+[3]
+Chenxin An, Zhihui Xie, Xiaonan Li, Lei Li, Jun Zhang, Shansan Gong, Ming
+Zhong, Jingjing Xu, Xipeng Qiu, Mingxuan Wang, and Lingpeng Kong.
+Polaris: A post-training recipe for scaling reinforcement learning on
+advanced reasoning models, 2025.
+[4]
+Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton.
+Layer normalization.
+arXiv preprint arXiv:1607.06450
+, 2016.
+[5]
+Peter L Bartlett, Dylan J Foster, and Matus J Telgarsky.
+Spectrally-normalized margin bounds for neural networks.
+In
+NIPS
+, 2017.
+[6]
+Gary Bécigneul and Octavian</p>
+
+<p>-Eugen Ganea.
+Riemannian adaptive optimization methods.
+arXiv preprint arXiv:1810.00760
+, 2018.
+[7]
+Jeremy Bernstein and Laker Newhouse.
+Modular duality in deep learning.
+arXiv preprint arXiv:2410.21265
+, 2024.
+[8]
+Jeremy Bernstein and Laker Newhouse.
+Old optimizer, new norm: An anthology.
+arXiv preprint arXiv:2409.20325
+, 2024.
+[9]
+Dan Biderman, Jacob Portes, Jose Javier Gonzalez Ortiz, Mansheej Paul, Philip
+Greengard, Connor Jennings, Daniel King, Sam Havens, Vitaliy Chiley, Jonathan
+Frankle, et al.
+Lora learns less and forgets less.
+arXiv preprint arXiv:2405.09673
+, 2024.
+[10]
+Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jianfeng Gao, and Yejin Choi.
+Piqa: Reasoning about physical commonsense in natural language.
+In
+AAAI
+, 2020.
+[11]
+Léon Bottou, Frank E Curtis, and Jorge Nocedal.
+Optimization methods for large-scale machine learning.
+SIAM review
+, 60(2):223–311, 2018.
+[12]
+Nicolas Boumal.
+An introduction to optimization on smooth manifolds
+.
+Cambridge University Press, 2023.
+[13]
+David Carlson, Volkan Cevher, and Lawrence Carin.
+Stochastic spectral descent for restricted boltzmann machines.
+In
+AISTATS
+, 2015.
+[14]
+David Carlson, Ya-Ping Hsieh, Edo Collins, Lawrence Carin, and Volkan Cevher.
+Stochastic spectral descent for discrete graphical models.
+IEEE Journal of Selected Topics in Signal Processing
+,
+10(2):296–311, 2016.
+[15]
+Lizhang Chen, Jonathan Li, and Qiang Liu.
+Muon optimizes under spectral norm constraints.
+arXiv preprint arXiv:2506.15054
+, 2025.
+[16]
+Mark Chen, J</p>
+
+<p>erry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde De Oliveira
+Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg
+Brockman, et al.
+Evaluating large language models trained on code.
+arXiv preprint arXiv:2107.03374
+, 2021.
+[17]
+Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa
+Schoenick, and Oyvind Tafjord.
+Think you have solved question answering? try arc, the ai2 reasoning
+challenge.
+arXiv preprint arXiv:1803.05457
+, 2018.
+[18]
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz
+Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano,
+et al.
+Training verifiers to solve math word problems.
+arXiv preprint arXiv:2110.14168
+, 2021.
+[19]
+DeepSeek-AI.
+Deepseek-v4: Towards highly efficient million-token context
+intelligence, 2026.
+[20]
+Mostafa Dehghani, Josip Djolonga, Basil Mustafa, Piotr Padlewski, Jonathan
+Heek, Justin Gilmer, Andreas Peter Steiner, Mathilde Caron, Robert Geirhos,
+Ibrahim Alabdulmohsin, et al.
+Scaling vision transformers to 22 billion parameters.
+In
+ICML
+, 2023.
+[21]
+Ming Ding, Zhuoyi Yang, Wenyi Hong, Wendi Zheng, Chang Zhou, Da Yin, Junyang
+Lin, Xu Zou, Zhou Shao, Hongxia Yang, et al.
+Cogview: Mastering text-to-image generation via transformers.
+In
+NeurIPS
+, 2021.
+[22]
+John Duchi, Elad Hazan, and Yoram Singer.
+Adaptive subgradient methods for online learning and stochastic
+optimization.
+Journal of machine learning research
+, 12(7), 2011.
+[23]
+Leo Gao, Jonathan Tow, Babe</p>
+
+<p>r Abbasi, Stella Biderman, Sid Black, Anthony
+DiPofi, Charles Foster, Laurence Golding, Jeffrey Hsu, Alain Le Noac’h,
+Haonan Li, Kyle McDonell, Niklas Muennighoff, Chris Ociepa, Jason Phang,
+Laria Reynolds, Hailey Schoelkopf, Aviya Skowron, Lintang Sutawika, Eric
+Tang, Anish Thite, Ben Wang, Kevin Wang, and Andy Zou.
+The language model evaluation harness, 07 2024.
+[24]
+Xavier Glorot and Yoshua Bengio.
+Understanding the difficulty of training deep feedforward neural
+networks.
+In
+AISTATS
+, 2010.
+[25]
+Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek
+Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex
+Vaughan, et al.
+The llama 3 herd of models.
+arXiv preprint arXiv:2407.21783
+, 2024.
+[26]
+Yufei Gu and Zeke Xie.
+Mano: Restriking manifold optimization for llm training.
+arXiv preprint arXiv:2601.23000
+, 2026.
+[27]
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu,
+Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al.
+Deepseek-r1: Incentivizing reasoning capability in llms via
+reinforcement learning.
+arXiv preprint arXiv:2501.12948
+, 2025.
+[28]
+Vineet Gupta, Tomer Koren, and Yoram Singer.
+Shampoo: Preconditioned stochastic tensor optimization.
+In
+ICML
+, 2018.
+[29]
+Chaoqun He, Renjie Luo, Yuzhuo Bai, Shengding Hu, Zhen Thai, Junhao Shen, Jinyi
+Hu, Xu Han, Yujie Huang, Yuxiang Zhang, et al.
+Olympiadbench: A challenging benchmark for promoting agi with
+olympiad-level bilingual multimodal scientific problems.
+In
+Procee</p>
+
+<p>dings of the 62nd Annual Meeting of the Association for
+Computational Linguistics (Volume 1: Long Papers)
+, pages 3828–3850, 2024.
+[30]
+Zhiwei He, Tian Liang, Jiahao Xu, Qiuzhi Liu, Xingyu Chen, Yue Wang, Linfeng
+Song, Dian Yu, Zhenwen Liang, Wenxuan Wang, et al.
+Deepmath-103k: A large-scale, challenging, decontaminated, and
+verifiable mathematical dataset for advancing reasoning.
+arXiv preprint arXiv:2504.11456
+, 2025.
+[31]
+Kyle Helfrich, Devin Willmott, and Qiang Ye.
+Orthogonal recurrent neural networks with scaled cayley transform.
+In
+ICML
+, 2018.
+[32]
+Alex Henry, Prudhvi Raj Dachapally, Shubham Shantaram Pawar, and Yuxuan Chen.
+Query-key normalization for transformers.
+In
+Findings of EMNLP
+, 2020.
+[33]
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor
+Cai, Eliza Rutherford, DDL Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan
+Clark, et al.
+Training compute-optimal large language models.
+arXiv preprint arXiv:2203.15556
+, 10, 2022.
+[34]
+Sergey Ioffe and Christian Szegedy.
+Batch normalization: Accelerating deep network training by reducing
+internal covariate shift.
+In
+ICML
+, 2015.
+[35]
+Haoming Jiang, Zhehui Chen, Minshuo Chen, Feng Liu, Dingding Wang, and Tuo
+Zhao.
+On computation and generalization of generative adversarial networks
+under spectrum control.
+In
+ICLR
+, 2019.
+[36]
+Keller Jordan, Yuchen Jin, Vlado Boza, Jiacheng You, Franz Cesista, Laker
+Newhouse, and Jeremy Bernstein.
+Muon: An optimizer for hidden layers in neural networks, 2024.
+[37</p>
+
+<p>]
+Diederik P Kingma and Jimmy Ba.
+Adam: A method for stochastic optimization.
+arXiv preprint arXiv:1412.6980
+, 2014.
+[38]
+Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu,
+Joseph Gonzalez, Hao Zhang, and Ion Stoica.
+Efficient memory management for large language model serving with
+pagedattention.
+In
+Proceedings of the 29th symposium on operating systems
+principles
+, pages 611–626, 2023.
+[39]
+Aitor Lewkowycz, Anders Andreassen, David Dohan, Ethan Dyer, Henryk
+Michalewski, Vinay Ramasesh, Ambrose Slone, Cem Anil, Imanol Schlag, Theo
+Gutman-Solo, et al.
+Solving quantitative reasoning problems with language models.
+Advances in neural information processing systems
+,
+35:3843–3857, 2022.
+[40]
+Mario Lezcano-Casado and David Martınez-Rubio.
+Cheap orthogonal constraints in neural networks: A simple
+parametrization of the orthogonal and unitary group.
+In
+ICML
+, 2019.
+[41]
+Jun Li, Li Fuxin, and Sinisa Todorovic.
+Efficient riemannian optimization on the stiefel manifold via the
+cayley transform.
+arXiv preprint arXiv:2002.01113
+, 2020.
+[42]
+Zichong Li, Liming Liu, Chen Liang, Weizhu Chen, and Tuo Zhao.
+Normuon: Making muon more efficient and scalable.
+arXiv preprint arXiv:2510.05491
+, 2025.
+[43]
+Rongmei Lin, Weiyang Liu, Zhen Liu, Chen Feng, Zhiding Yu, James M. Rehg,
+Li Xiong, and Le Song.
+Regularizing neural networks via minimizing hyperspherical energy.
+In
+CVPR
+, 2020.
+[44]
+Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang
+Zhao</p>
+
+<p>, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al.
+Deepseek-v3 technical report.
+arXiv preprint arXiv:2412.19437
+, 2024.
+[45]
+Jingyuan Liu, Jianlin Su, Xingcheng Yao, Zhejun Jiang, Guokun Lai, Yulun Du,
+Yidao Qin, Weixin Xu, Enzhe Lu, Junjie Yan, et al.
+Muon is scalable for llm training.
+arXiv preprint arXiv:2502.16982
+, 2025.
+[46]
+Weiyang Liu, Rongmei Lin, Zhen Liu, Lixin Liu, Zhiding Yu, Bo Dai, and Le Song.
+Learning towards minimum hyperspherical energy.
+In
+NeurIPS
+, 2018.
+[47]
+Weiyang Liu, Rongmei Lin, Zhen Liu, James M. Rehg, Liam Paull, Li Xiong,
+Le Song, and Adrian Weller.
+Orthogonal over-parameterized training.
+In
+CVPR
+, 2021.
+[48]
+Weiyang Liu, Rongmei Lin, Zhen Liu, Li Xiong, Bernhard Schölkopf, and Adrian
+Weller.
+Learning with hyperspherical uniformity.
+In
+AISTATS
+, 2021.
+[49]
+Ilya Loshchilov and Frank Hutter.
+Decoupled weight decay regularization.
+In
+ICLR
+, 2019.
+[50]
+MAA.
+American mathematics contest 12 (amc 12), November 2023.
+[51]
+MAA.
+American invitational mathematics examination (aime), February 2024.
+[52]
+MAA.
+American invitational mathematics examination (aime), February 2025.
+[53]
+Martial Mermillod, Aurélia Bugaiska, and Patrick Bonin.
+The stability-plasticity dilemma: Investigating the continuum from
+catastrophic forgetting to age-limited learning effects.
+Frontiers in psychology
+, 4:504, 2013.
+[54]
+Zakaria Mhammedi, Andrew Hellicar, Ashfaqur Rahman, and James Bailey.
+Efficient orthogonal parametrisation of recurrent neural networks
+using householder reflect</p>
+
+<p>ions.
+In
+ICML
+, 2017.
+[55]
+Takeru Miyato, Toshiki Kataoka, Masanori Koyama, and Yuichi Yoshida.
+Spectral normalization for generative adversarial networks.
+arXiv preprint arXiv:1802.05957
+, 2018.
+[56]
+Dilxat Muhtar, Xinyuan Song, Sebastian Pokutta, Max Zimmer, Nico Pelleriti,
+Thomas Hofmann, and Shiwei Liu.
+When does sparsity mitigate the curse of depth in llms.
+arXiv preprint arXiv:2603.15389
+, 2026.
+[57]
+Yurii Nesterov.
+A method for solving the convex programming problem with convergence
+rate o (1/k2).
+In
+Dokl akad nauk Sssr
+, volume 269, page 543, 1983.
+[58]
+Thomas Pethick, Wanyun Xie, Kimon Antonakopoulos, Zhenyu Zhu, Antonio
+Silveti-Falls, and Volkan Cevher.
+Training deep learning models with norm-constrained lmos.
+arXiv preprint arXiv:2502.07529
+, 2025.
+[59]
+Boris T Polyak.
+Some methods of speeding up the convergence of iteration methods.
+Ussr computational mathematics and mathematical physics
+,
+4(5):1–17, 1964.
+[60]
+Zeju Qiu, Simon Buchholz, Tim Z Xiao, Maximilian Dax, Bernhard Schölkopf,
+and Weiyang Liu.
+Reparameterized llm training via orthogonal equivalence
+transformation.
+In
+NeurIPS
+, 2025.
+[61]
+Zeju Qiu, Lixin Liu, Adrian Weller, Han Shi, and Weiyang Liu.
+Poet-x: Memory-efficient llm training by scaling orthogonal
+transformation.
+In
+ICML
+, 2026.
+[62]
+Zeju Qiu, Weiyang Liu, Haiwen Feng, Yuxuan Xue, Yao Feng, Zhen Liu, Dan Zhang,
+Adrian Weller, and Bernhard Schölkopf.
+Controlling text-to-image diffusion by orthogonal finetuning.
+In
+NeurIPS
+, 2023.
+[63]
+Colin Raffel,</p>
+
+<p>Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael
+Matena, Yanqi Zhou, Wei Li, and Peter J Liu.
+Exploring the limits of transfer learning with a unified text-to-text
+transformer.
+Journal of machine learning research
+, 21(140):1–67, 2020.
+[64]
+Sashank J Reddi, Satyen Kale, and Sanjiv Kumar.
+On the convergence of adam and beyond.
+arXiv preprint arXiv:1904.09237
+, 2019.
+[65]
+Herbert Robbins and Sutton Monro.
+A stochastic approximation method.
+The annals of mathematical statistics
+, pages 400–407, 1951.
+[66]
+Oleg Rybakov, Mike Chrzanowski, Peter Dykas, Jinze Xue, and Ben Lanir.
+Methods of improving llm training stability.
+arXiv preprint arXiv:2410.16682
+, 2024.
+[67]
+Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi.
+Winogrande: An adversarial winograd schema challenge at scale.
+Communications of the ACM
+, 64(9):99–106, 2021.
+[68]
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei
+Zhang, Mingchuan Zhang, YK Li, Yang Wu, et al.
+Deepseekmath: Pushing the limits of mathematical reasoning in open
+language models.
+arXiv preprint arXiv:2402.03300
+, 2024.
+[69]
+Noam Shazeer.
+Glu variants improve transformer.
+arXiv preprint arXiv:2002.05202
+, 2020.
+[70]
+Guangming Sheng, Chi Zhang, Zilingfeng Ye, Xibin Wu, Wang Zhang, Ru Zhang,
+Yanghua Peng, Haibin Lin, and Chuan Wu.
+Hybridflow: A flexible and efficient rlhf framework.
+arXiv preprint arXiv: 2409.19256
+, 2024.
+[71]
+Steven Thomas Smith.
+Optimization techniques on riemannian manifo</p>
+
+<p>lds.
+arXiv preprint arXiv:1407.5965
+, 2014.
+[72]
+Wenfang Sun, Xinyuan Song, Pengxiang Li, Lu Yin, Yefeng Zheng, and Shiwei Liu.
+The curse of depth in large language models.
+arXiv preprint arXiv:2502.05795
+, 2025.
+[73]
+Gemma Team, Morgane Riviere, Shreya Pathak, Pier Giuseppe Sessa, Cassidy
+Hardin, Surya Bhupatiraju, Léonard Hussenot, Thomas Mesnard, Bobak
+Shahriari, Alexandre Ramé, et al.
+Gemma 2: Improving open language models at a practical size.
+arXiv preprint arXiv:2408.00118
+, 2024.
+[74]
+Kimi Team, Yifan Bai, Yiping Bao, Y Charles, Cheng Chen, Guanduo Chen, Haiting
+Chen, Huarong Chen, Jiahao Chen, Ningxin Chen, et al.
+Kimi k2: Open agentic intelligence.
+arXiv preprint arXiv:2507.20534
+, 2025.
+[75]
+Qwen Team.
+Qwen2.5: A party of foundation models, 2024.
+[76]
+Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert, Amjad Almahairi, Yasmine
+Babaei, Nikolay Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhosale,
+et al.
+Llama 2: Open foundation and fine-tuned chat models.
+arXiv preprint arXiv:2307.09288
+, 2023.
+[77]
+Mark Tuddenham, Adam Prügel-Bennett, and Jonathan Hare.
+Orthogonalising gradients to speed up neural network optimisation.
+arXiv preprint arXiv:2202.07052
+, 2022.
+[78]
+Nikhil Vyas, Depen Morwani, Rosie Zhao, Mujin Kwun, Itai Shapira, David
+Brandfonbrener, Lucas Janson, and Sham Kakade.
+Soap: Improving and stabilizing shampoo using adam.
+arXiv preprint arXiv:2409.11321
+, 2024.
+[79]
+Yuxiang Wei, Zhe Wang, Jiawei Liu, Yifeng Ding, and Lingming Zhang.
+Magicoder: Emp</p>
+
+<p>owering code generation with oss-instruct.
+In
+ICML
+, 2024.
+[80]
+Mitchell Wortsman, Peter J Liu, Lechao Xiao, Katie Everett, Alex Alemi, Ben
+Adlam, John D Co-Reyes, Izzeddin Gur, Abhishek Kumar, Roman Novak, et al.
+Small-scale proxies for large-scale transformer training
+instabilities.
+arXiv preprint arXiv:2309.14322
+, 2023.
+[81]
+Tian Xie, Haoming Luo, Haoyu Tang, Yiwen Hu, Jason Klein Liu, Qingnan Ren, Yang
+Wang, Wayne Xin Zhao, Rui Yan, Bing Su, et al.
+Controlled llm training on spectral sphere.
+arXiv preprint arXiv:2601.08393
+, 2026.
+[82]
+Ruibin Xiong, Yunchang Yang, Di He, Kai Zheng, Shuxin Zheng, Chen Xing,
+Huishuai Zhang, Yanyan Lan, Liwei Wang, and Tieyan Liu.
+On layer normalization in the transformer architecture.
+In
+ICML
+, 2020.
+[83]
+An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen
+Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al.
+Qwen3 technical report.
+arXiv preprint arXiv:2505.09388
+, 2025.
+[84]
+Ge Yang, Edward Hu, Igor Babuschkin, Szymon Sidor, Xiaodong Liu, David Farhi,
+Nick Ryder, Jakub Pachocki, Weizhu Chen, and Jianfeng Gao.
+Tuning large neural networks via zero-shot hyperparameter transfer.
+In
+NeurIPS
+, 2021.
+[85]
+Greg Yang and Edward J Hu.
+Feature learning in infinite-width neural networks.
+arXiv preprint arXiv:2011.14522
+, 2020.
+[86]
+Greg Yang, James B Simon, and Jeremy Bernstein.
+A spectral condition for feature learning.
+arXiv preprint arXiv:2310.17813
+, 2023.
+[87]
+Yuichi Yoshida and Takeru Miyato.
+Spectral norm regularization f</p>
+
+<p>or improving the generalizability of
+deep learning.
+arXiv preprint arXiv:1705.10941
+, 2017.
+[88]
+Longhui Yu, Weisen Jiang, Han Shi, Jincheng Yu, Zhengying Liu, Yu Zhang,
+James T Kwok, Zhenguo Li, Adrian Weller, and Weiyang Liu.
+Metamath: Bootstrap your own mathematical questions for large
+language models.
+arXiv preprint arXiv:2309.12284
+, 2023.
+[89]
+Matthew D Zeiler.
+Adadelta: an adaptive learning rate method.
+arXiv preprint arXiv:1212.5701
+, 2012.
+[90]
+Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi.
+Hellaswag: Can a machine really finish your sentence?
+In
+Proceedings of the 57th Annual Meeting of the Association for
+Computational Linguistics
+, 2019.
+[91]
+Biao Zhang and Rico Sennrich.
+Root mean square layer normalization.
+In
+NeurIPS
+, 2019.
+[92]
+Jiawei Zhao, Zhenyu Zhang, Beidi Chen, Zhangyang Wang, Anima Anandkumar, and
+Yuandong Tian.
+Galore: Memory-efficient llm training by gradient low-rank
+projection.
+arXiv preprint arXiv:2403.03507
+, 2024.
+[93]
+Yaowei Zheng, Richong Zhang, Junhao Zhang, Yanhan Ye, and Zheyan Luo.
+Llamafactory: Unified efficient fine-tuning of 100+ language models.
+In
+ACL
+, 2024.
+[94]
+Hanqing Zhu, Zhenyu Zhang, Hanxian Huang, DiJia Su, Zechun Liu, Jiawei Zhao,
+Igor Fedorov, Hamed Pirsiavash, Zhizhou Sha, Jinwon Lee, et al.
+The path not taken: Rlvr provably learns off the principals.
+arXiv preprint arXiv:2511.08567
+, 2025.
+Appendix
+Appendix A
+Geometric Structure of Pion’s Update
+We provide the detailed derivation of Proposition
+2.1</p>
+
+<p>. Recall that Pion updates a matrix parameter as
+𝑾
+t
++
+1
+=
+𝑹
+t
+​
+𝑾
+t
+​
+𝑷
+t
+,
+𝑹
+t
+=
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+out
+)
+,
+𝑷
+t
+=
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+.
+\bm{W}_{t+1}=\bm{R}_{t}\bm{W}_{t}\bm{P}_{t},\qquad\bm{R}_{t}=\exp(-\eta\bm{G}^{\mathrm{out}}_{t}),\quad\bm{P}_{t}=\exp(-\eta\bm{G}^{\mathrm{in}}_{t}).
+(10)
+Since
+𝑮
+t
+out
+\bm{G}^{\mathrm{out}}_{t}
+and
+𝑮
+t
+in
+\bm{G}^{\mathrm{in}}_{t}
+are skew-symmetric,
+𝑹
+t
+\bm{R}_{t}
+and
+𝑷
+t
+\bm{P}_{t}
+are orthogonal. Therefore, if
+𝑾
+t
+=
+𝑼
+t
+​
+𝚺
+0
+​
+𝑽
+t
+⊤
+\bm{W}_{t}=\bm{U}_{t}\bm{\Sigma}_{0}\bm{V}_{t}^{\top}
+is a singular value decomposition, then
+𝑾
+t
++
+1
+=
+(
+𝑹
+t
+​
+𝑼
+t
+)
+​
+𝚺
+0
+​
+(
+𝑷
+t
+⊤
+​
+𝑽
+t
+)
+⊤
+.
+\bm{W}_{t+1}=(\bm{R}_{t}\bm{U}_{t})\bm{\Sigma}_{0}(\bm{P}_{t}^{\top}\bm{V}_{t})^{\top}.
+(11)
+This is again a valid singular value decomposition up to orthogonal basis changes, so the singular values
+𝚺
+0
+\bm{\Sigma}_{0}
+are preserved. The update hence only rotates the left and right singular subspaces of
+𝑾
+t
+\bm{W}_{t}
+.
+This also explains why
+‖
+Δ
+​
+𝑾
+‖
+F
+\|\Delta\bm{W}\|_{F}
+, with
+Δ
+​
+𝑾
+=
+𝑾
+t
++
+1
+−
+𝑾
+t
+\Delta\bm{W}=\bm{W}_{t+1}-\bm{W}_{t}
+, measures the total strength of the update. Orthogonal multiplication preserves vector norms, so the update does not scale the row or column vectors of
+𝑾
+t
+\bm{W}_{t}
+; it changes only their directions. Thus, the Frobenius norm of the displacement reflects the aggregate angular movement induced by the two rotations.
+We next make the planar-rotation structure explicit. For simplicity, consider the one-sided update
+𝑾
+t
++
+1
+=
+𝑾</p>
+
+<p>t
+​
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+.
+\bm{W}_{t+1}=\bm{W}_{t}\exp(-\eta\bm{G}^{\mathrm{in}}_{t}).
+(12)
+Because
+𝑮
+t
+in
+\bm{G}^{\mathrm{in}}_{t}
+is real skew-symmetric, there exists an orthogonal matrix
+𝑸
+∈
+O
+​
+(
+d
+in
+)
+\bm{Q}\in O(d_{\mathrm{in}})
+such that
+𝑮
+t
+in
+=
+𝑸
+​
+diag
+​
+(
+(
+0
+θ
+1
+−
+θ
+1
+0
+)
+,
+⋯
+,
+(
+0
+θ
+m
+−
+θ
+m
+0
+)
+,
+⋯
+)
+​
+𝑸
+⊤
+=
+𝑸
+​
+𝚺
+​
+𝑸
+⊤
+.
+\bm{G}^{\mathrm{in}}_{t}=\bm{Q}\mathrm{diag}\left(\begin{pmatrix}0&amp;\theta_{1}\\
+-\theta_{1}&amp;0\end{pmatrix},\cdots,\begin{pmatrix}0&amp;\theta_{m}\\
+-\theta_{m}&amp;0\end{pmatrix},\cdots\right)\bm{Q}^{\top}=\bm{Q}\bm{\Sigma}\bm{Q}^{\top}.
+(13)
+Using
+𝑾
+t
+=
+𝑼
+t
+​
+𝚺
+0
+​
+𝑽
+t
+⊤
+\bm{W}_{t}=\bm{U}_{t}\bm{\Sigma}_{0}\bm{V}_{t}^{\top}
+, we obtain
+𝑾
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+=
+𝑼
+t
+​
+𝚺
+0
+​
+𝑽
+t
+⊤
+​
+𝑸
+​
+exp
+⁡
+(
+−
+η
+​
+𝚺
+)
+​
+𝑸
+⊤
+.
+\bm{W}_{t}\exp(-\eta\bm{G}^{\mathrm{in}}_{t})=\bm{U}_{t}\bm{\Sigma}_{0}\bm{V}_{t}^{\top}\bm{Q}\exp(-\eta\bm{\Sigma})\bm{Q}^{\top}.
+(14)
+The matrix
+exp
+⁡
+(
+−
+η
+​
+𝚺
+)
+\exp(-\eta\bm{\Sigma})
+is block diagonal, and each
+2
+×
+2
+2\times 2
+block has the form
+exp
+⁡
+(
+−
+η
+​
+(
+0
+θ
+j
+−
+θ
+j
+0
+)
+)
+,
+\exp\left(-\eta\begin{pmatrix}0&amp;\theta_{j}\\
+-\theta_{j}&amp;0\end{pmatrix}\right),
+(15)
+which is a planar rotation with angle determined by
+−
+η
+​
+θ
+j
+-\eta\theta_{j}
+. Hence the right-side update first represents the right singular space in the orthogonal basis induced by
+𝑮
+t
+in
+\bm{G}^{\mathrm{in}}_{t}
+, and then applies independent planar rotations within the corresponding
+2
+2
+D invariant subspaces.
+The Frobenius and spectral norms of the Lie algebra element</p>
+
+<p>quantify these rotations:
+‖
+−
+η
+​
+𝑮
+t
+in
+‖
+F
+=
+η
+​
+2
+​
+∑
+j
+=
+1
+⌊
+d
+in
+/
+2
+⌋
+θ
+j
+2
+,
+‖
+−
+η
+​
+𝑮
+t
+in
+‖
+2
+=
+η
+​
+max
+j
+⁡
+|
+θ
+j
+|
+.
+\|-\eta\bm{G}^{\mathrm{in}}_{t}\|_{F}=\eta\sqrt{2\sum_{j=1}^{\lfloor d_{\mathrm{in}}/2\rfloor}\theta_{j}^{2}},\qquad\|-\eta\bm{G}^{\mathrm{in}}_{t}\|_{2}=\eta\max_{j}|\theta_{j}|.
+(16)
+Thus,
+‖
+𝑮
+t
+in
+‖
+F
+/
+d
+in
+\|\bm{G}^{\mathrm{in}}_{t}\|_{F}/\sqrt{d_{\mathrm{in}}}
+characterizes the average rotation magnitude on the input side up to a constant factor, while
+‖
+𝑮
+t
+in
+‖
+2
+\|\bm{G}^{\mathrm{in}}_{t}\|_{2}
+controls the maximum angle. The same argument applies to
+𝑮
+t
+out
+\bm{G}^{\mathrm{out}}_{t}
+for the output-side update.
+Appendix B
+Convergence Analysis
+Before presenting the convergence analysis, we first introduce several basic characterizations of the geometry induced by spectrum-preserving updates in Equation
+1
+. As this update preserves the spectrum of the weight matrices, idealized trajectory stays on the set of matrices sharing the same singular values as the initialization. We denote this set by
+ℳ
+𝑾
+0
+\mathcal{M}_{\bm{W}_{0}}
+.
+Lemma B.1
+(Characterization of the Isospectral Manifold)
+.
+Let
+𝐖
+0
+∈
+ℝ
+m
+×
+n
+\bm{W}_{0}\in\mathbb{R}^{m\times n}
+be the initial weight matrix. The isospectral manifold passing through
+𝐖
+0
+\bm{W}_{0}
+is
+ℳ
+𝑾
+0
+=
+{
+𝑼
+​
+𝑾
+0
+​
+𝑽
+⊤
+∣
+𝑼
+∈
+O
+​
+(
+m
+)
+,
+𝑽
+∈
+O
+​
+(
+n
+)
+}
+.
+\mathcal{M}_{\bm{W}_{0}}=\left\{\bm{U}\bm{W}_{0}\bm{V}^{\top}\mid\bm{U}\in\mathrm{O}(m),\,\bm{V}\in\mathrm{O}(n)\right\}.
+(17)
+Proof.
+Let
+𝑾
+0
+=
+𝑼
+0
+​
+𝚺
+​
+𝑽
+0
+⊤
+\bm</p>
+
+<p>{W}_{0}=\bm{U}_{0}\bm{\Sigma}\bm{V}_{0}^{\top}
+be the singular value decomposition of
+𝑾
+0
+\bm{W}_{0}
+.
+First, if
+𝑾
+∈
+ℳ
+𝑾
+0
+\bm{W}\in\mathcal{M}_{\bm{W}_{0}}
+, then
+𝑾
+\bm{W}
+has the same singular values as
+𝑾
+0
+\bm{W}_{0}
+. Hence we can write
+𝑾
+=
+𝑼
+w
+​
+𝚺
+​
+𝑽
+w
+⊤
+\bm{W}=\bm{U}_{w}\bm{\Sigma}\bm{V}_{w}^{\top}
+. Substituting
+𝚺
+=
+𝑼
+0
+⊤
+​
+𝑾
+0
+​
+𝑽
+0
+\bm{\Sigma}=\bm{U}_{0}^{\top}\bm{W}_{0}\bm{V}_{0}
+gives
+𝑾
+=
+𝑼
+w
+​
+𝑼
+0
+⊤
+​
+𝑾
+0
+​
+𝑽
+0
+​
+𝑽
+w
+⊤
+=
+𝑼
+​
+𝑾
+0
+​
+𝑽
+⊤
+,
+\bm{W}=\bm{U}_{w}\bm{U}_{0}^{\top}\bm{W}_{0}\bm{V}_{0}\bm{V}_{w}^{\top}=\bm{U}\bm{W}_{0}\bm{V}^{\top},
+(18)
+where
+𝑼
+=
+𝑼
+w
+​
+𝑼
+0
+⊤
+∈
+O
+​
+(
+m
+)
+\bm{U}=\bm{U}_{w}\bm{U}_{0}^{\top}\in\mathrm{O}(m)
+and
+𝑽
+=
+𝑽
+w
+​
+𝑽
+0
+⊤
+∈
+O
+​
+(
+n
+)
+\bm{V}=\bm{V}_{w}\bm{V}_{0}^{\top}\in\mathrm{O}(n)
+.
+Conversely, if
+𝑾
+=
+𝑼
+​
+𝑾
+0
+​
+𝑽
+⊤
+\bm{W}=\bm{U}\bm{W}_{0}\bm{V}^{\top}
+with orthogonal
+𝑼
+\bm{U}
+and
+𝑽
+\bm{V}
+, then
+𝑾
+=
+(
+𝑼
+​
+𝑼
+0
+)
+​
+𝚺
+​
+(
+𝑽
+​
+𝑽
+0
+)
+⊤
+,
+\bm{W}=(\bm{U}\bm{U}_{0})\bm{\Sigma}(\bm{V}\bm{V}_{0})^{\top},
+(19)
+which is a valid SVD with the same singular values as
+𝑾
+0
+\bm{W}_{0}
+. Thus
+𝑾
+∈
+ℳ
+𝑾
+0
+\bm{W}\in\mathcal{M}_{\bm{W}_{0}}
+.
+∎
+Lemma B.2
+(Tangent Space of the Isospectral Manifold)
+.
+For any
+𝐖
+∈
+ℳ
+𝐖
+0
+\bm{W}\in\mathcal{M}_{\bm{W}_{0}}
+, the tangent space is
+T
+𝑾
+​
+ℳ
+𝑾
+0
+=
+{
+𝑮
+out
+​
+𝑾
++
+𝑾
+​
+𝑮
+in
+∣
+𝑮
+out
+∈
+𝔰
+​
+𝔬
+​
+(
+m
+)
+,
+𝑮
+in
+∈
+𝔰
+​
+𝔬
+​
+(
+n
+)
+}
+,
+T_{\bm{W}}\mathcal{M}_{\bm{W}_{0}}=\left\{\bm{G}_{\mathrm{out}}\bm{W}+\bm{W}\bm{G}_{\mathrm{in}}\mid\bm{G}_{\mathrm{out}}\in\mathfrak{so}(m),\,\bm{G}_{\mathrm{in}}\in\mathfrak{so}(n)\right\},
+(20)
+where
+𝔰</p>
+
+<p>​
+𝔬
+​
+(
+k
+)
+=
+{
+𝐆
+∈
+ℝ
+k
+×
+k
+∣
+𝐆
+⊤
+=
+−
+𝐆
+}
+\mathfrak{so}(k)=\{\bm{G}\in\mathbb{R}^{k\times k}\mid\bm{G}^{\top}=-\bm{G}\}
+.
+Lemma B.3
+(First-Order Stationarity on
+ℳ
+𝑾
+0
+\mathcal{M}_{\bm{W}_{0}}
+)
+.
+Let
+f
+:
+ℝ
+m
+×
+n
+→
+ℝ
+f:\mathbb{R}^{m\times n}\to\mathbb{R}
+be smooth and let
+𝐆
+=
+∇
+f
+​
+(
+𝐖
+)
+\bm{G}=\nabla f(\bm{W})
+. A point
+𝐖
+∈
+ℳ
+𝐖
+0
+\bm{W}\in\mathcal{M}_{\bm{W}_{0}}
+is a first-order critical point of
+f
+f
+restricted to
+ℳ
+𝐖
+0
+\mathcal{M}_{\bm{W}_{0}}
+if and only if
+𝑮
+in
+=
+𝑾
+⊤
+​
+𝑮
+−
+𝑮
+⊤
+​
+𝑾
+=
+𝟎
+,
+𝑮
+out
+=
+𝑮
+​
+𝑾
+⊤
+−
+𝑾
+​
+𝑮
+⊤
+=
+𝟎
+.
+\bm{G}_{\mathrm{in}}=\bm{W}^{\top}\bm{G}-\bm{G}^{\top}\bm{W}=\bm{0},\qquad\bm{G}_{\mathrm{out}}=\bm{G}\bm{W}^{\top}-\bm{W}\bm{G}^{\top}=\bm{0}.
+(21)
+Proof.
+By the first-order optimality condition on a smooth embedded manifold,
+𝑾
+\bm{W}
+is stationary if and only if
+⟨
+𝑮
+,
+δ
+​
+𝑾
+⟩
+=
+0
+,
+∀
+δ
+​
+𝑾
+∈
+T
+𝑾
+​
+ℳ
+𝑾
+0
+.
+\langle\bm{G},\delta\bm{W}\rangle=0,\qquad\forall\delta\bm{W}\in T_{\bm{W}}\mathcal{M}_{\bm{W}_{0}}.
+(22)
+Using Lemma
+B.2
+, any tangent vector can be written as
+δ
+​
+𝑾
+=
+𝑮
+m
+​
+𝑾
++
+𝑾
+​
+𝑮
+n
+\delta\bm{W}=\bm{G}_{m}\bm{W}+\bm{W}\bm{G}_{n}
+, where
+𝑮
+m
+∈
+𝔰
+​
+𝔬
+​
+(
+m
+)
+\bm{G}_{m}\in\mathfrak{so}(m)
+and
+𝑮
+n
+∈
+𝔰
+​
+𝔬
+​
+(
+n
+)
+\bm{G}_{n}\in\mathfrak{so}(n)
+. Therefore,
+Tr
+⁡
+(
+𝑮
+⊤
+​
+(
+𝑮
+m
+​
+𝑾
++
+𝑾
+​
+𝑮
+n
+)
+)
+=
+0
+\operatorname{Tr}\!\left(\bm{G}^{\top}(\bm{G}_{m}\bm{W}+\bm{W}\bm{G}_{n})\right)=0
+(23)
+for all skew-symmetric
+𝑮
+m
+\bm{G}_{m}
+and
+𝑮
+n
+\bm{G}_{n}
+.
+Since
+𝑮
+m
+\bm{G}_{m}
+and
+𝑮
+n
+\bm{G}_{n}
+vary independently, this is equivalent to
+Tr
+⁡
+(
+𝑾
+​
+𝑮
+⊤
+​
+𝑮
+m
+)
+=
+0
+,
+∀
+𝑮</p>
+
+<p>m
+∈
+𝔰
+​
+𝔬
+​
+(
+m
+)
+,
+\operatorname{Tr}(\bm{W}\bm{G}^{\top}\bm{G}_{m})=0,\quad\forall\bm{G}_{m}\in\mathfrak{so}(m),
+(24)
+and
+Tr
+⁡
+(
+𝑮
+⊤
+​
+𝑾
+​
+𝑮
+n
+)
+=
+0
+,
+∀
+𝑮
+n
+∈
+𝔰
+​
+𝔬
+​
+(
+n
+)
+.
+\operatorname{Tr}(\bm{G}^{\top}\bm{W}\bm{G}_{n})=0,\quad\forall\bm{G}_{n}\in\mathfrak{so}(n).
+(25)
+The orthogonal complement of skew-symmetric matrices under the Frobenius inner product is the space of symmetric matrices. Hence
+𝑾
+​
+𝑮
+⊤
+\bm{W}\bm{G}^{\top}
+and
+𝑮
+⊤
+​
+𝑾
+\bm{G}^{\top}\bm{W}
+must be symmetric, which gives
+𝑮
+​
+𝑾
+⊤
+−
+𝑾
+​
+𝑮
+⊤
+=
+𝟎
+,
+𝑾
+⊤
+​
+𝑮
+−
+𝑮
+⊤
+​
+𝑾
+=
+𝟎
+.
+\bm{G}\bm{W}^{\top}-\bm{W}\bm{G}^{\top}=\bm{0},\qquad\bm{W}^{\top}\bm{G}-\bm{G}^{\top}\bm{W}=\bm{0}.
+(26)
+This proves the claim.
+∎
+Lemma
+21
+shows that it is sufficient to prove
+‖
+𝑮
+t
+in
+‖
+F
+→
+0
+,
+‖
+𝑮
+t
+out
+‖
+F
+→
+0
+.
+\|\bm{G}_{t}^{\mathrm{in}}\|_{F}\to 0,\qquad\|\bm{G}_{t}^{\mathrm{out}}\|_{F}\to 0.
+(27)
+For the bilateral update, we therefore use the combined stationarity measure
+𝒮
+t
+=
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+.
+\mathcal{S}_{t}=\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}.
+(28)
+Showing
+𝒮
+t
+→
+0
+\mathcal{S}_{t}\to 0
+directly implies first-order convergence on the isospectral manifold.
+Assumption B.4
+(
+L
+L
+-smoothness)
+.
+The objective function
+f
+f
+is
+L
+L
+-smooth in the Euclidean sense, i.e.,
+f
+​
+(
+𝑾
+2
+)
+≤
+f
+​
+(
+𝑾
+1
+)
++
+⟨
+∇
+f
+​
+(
+𝑾
+1
+)
+,
+𝑾
+2
+−
+𝑾
+1
+⟩
++
+L
+2
+​
+‖
+𝑾
+2
+−
+𝑾
+1
+‖
+F
+2
+.
+f(\bm{W}_{2})\leq f(\bm{W}_{1})+\langle\nabla f(\bm{W}_{1}),\bm{W}_{2}-\bm{W}_{1}\rangle+\frac{L}{2}\|\bm{W}_{2}-\bm{W}_{1}\|_{F}^{2}.
+(</p>
+
+<p>29)
+Assumption B.5
+(Lower boundedness)
+.
+There exists
+f
+inf
+∈
+ℝ
+f_{\inf}\in\mathbb{R}
+such that
+f
+​
+(
+𝑾
+)
+≥
+f
+inf
+f(\bm{W})\geq f_{\inf}
+for all
+𝑾
+\bm{W}
+.
+Assumption B.6
+(Boundedness along the trajectory)
+.
+Along the trajectory, there exist constants
+γ
+,
+G
+,
+B
+&gt;
+0
+\gamma,G,B&gt;0
+such that
+‖
+𝑾
+t
+‖
+2
+≤
+γ
+,
+‖
+∇
+f
+​
+(
+𝑾
+t
+)
+‖
+F
+≤
+G
+,
+‖
+𝑮
+t
+in
+‖
+F
+,
+‖
+𝑮
+t
+out
+‖
+F
+≤
+B
+.
+\|\bm{W}_{t}\|_{2}\leq\gamma,\qquad\|\nabla f(\bm{W}_{t})\|_{F}\leq G,\qquad\|\bm{G}_{t}^{\mathrm{in}}\|_{F},\,\|\bm{G}_{t}^{\mathrm{out}}\|_{F}\leq B.
+(30)
+Assumptions
+B.4
+and
+B.5
+are standard in first-order convergence analysis. Assumption
+B.6
+is mild in our setting because the ideal spectrum-preserving dynamics remains on a compact isospectral manifold, and the truncated update stays in a bounded neighborhood for sufficiently small step size.
+B.1
+Simplified Single-Side Analysis
+We first briefly revisit the single-side update, since it provides the key descent identity used later for the bilateral update. Consider the in-side update
+𝑾
+t
++
+1
+=
+𝑾
+t
+​
+exp
+(
+2
+)
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+,
+𝑮
+t
+in
+=
+𝑾
+t
+⊤
+​
+𝑮
+t
+−
+𝑮
+t
+⊤
+​
+𝑾
+t
+.
+\bm{W}_{t+1}=\bm{W}_{t}\exp^{(2)}(-\eta\bm{G}_{t}^{\mathrm{in}}),\qquad\bm{G}_{t}^{\mathrm{in}}=\bm{W}_{t}^{\top}\bm{G}_{t}-\bm{G}_{t}^{\top}\bm{W}_{t}.
+(31)
+Expanding the truncated exponential gives
+𝑾
+t
++
+1
+−
+𝑾
+t
+=
+−
+η
+​
+𝑾
+t
+​
+𝑮
+t
+in
++
+η
+2
+2
+​
+𝑾
+t
+​
+(
+𝑮
+t
+in
+)
+2
+.
+\bm{W}_{t+1}-\bm{W}_{t}=-\eta\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}+\frac{\eta^{2}}{2}\bm{W}_{t}(\bm{G}_{t}^{\mathrm{in}})^{2}.
+(32)
+Let
+𝑺
+t
+=
+𝑾</p>
+
+<p>t
+⊤
+​
+𝑮
+t
+\bm{S}_{t}=\bm{W}_{t}^{\top}\bm{G}_{t}
+. Since
+𝑮
+t
+in
+=
+𝑺
+t
+−
+𝑺
+t
+⊤
+\bm{G}_{t}^{\mathrm{in}}=\bm{S}_{t}-\bm{S}_{t}^{\top}
+, we have
+⟨
+𝑮
+t
+,
+𝑾
+t
+​
+𝑮
+t
+in
+⟩
+=
+Tr
+⁡
+(
+𝑮
+t
+⊤
+​
+𝑾
+t
+​
+𝑮
+t
+in
+)
+=
+1
+2
+​
+‖
+𝑮
+t
+in
+‖
+F
+2
+.
+\left\langle\bm{G}_{t},\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}\right\rangle=\operatorname{Tr}(\bm{G}_{t}^{\top}\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}})=\frac{1}{2}\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}.
+(33)
+Therefore, the first-order part of the update gives the descent term
+⟨
+𝑮
+t
+,
+−
+η
+​
+𝑾
+t
+​
+𝑮
+t
+in
+⟩
+=
+−
+η
+2
+​
+‖
+𝑮
+t
+in
+‖
+F
+2
+.
+\left\langle\bm{G}_{t},-\eta\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}\right\rangle=-\frac{\eta}{2}\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}.
+(34)
+The out-side update gives the analogous identity
+⟨
+𝑮
+t
+,
+−
+η
+​
+𝑮
+t
+out
+​
+𝑾
+t
+⟩
+=
+−
+η
+2
+​
+‖
+𝑮
+t
+out
+‖
+F
+2
+.
+\left\langle\bm{G}_{t},-\eta\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}\right\rangle=-\frac{\eta}{2}\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}.
+(35)
+Thus, both in-side and out-side rotations are aligned with the Riemannian descent direction. The remaining second-order terms can be controlled by smoothness and boundedness, yielding convergence for the alternating version. Since the bilateral update simply applies both descent directions in the same step, we next analyze it directly.
+B.2
+Deterministic Bilateral Update
+We consider the simplified bilateral Pion update
+𝑾
+t
++
+1
+=
+exp
+(
+2
+)
+⁡
+(
+−
+η
+​
+𝑮
+t
+out
+)
+​
+𝑾
+t
+​
+exp
+(
+2
+)
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+.
+\bm{W}_{t+1}=\exp^{(2)}(-\eta\bm{G}_{t}^{\mathrm{out}})\bm{W}_{t}\exp^{(2)}(-\e</p>
+
+<p>ta\bm{G}_{t}^{\mathrm{in}}).
+(36)
+Expanding the update gives
+𝑾
+t
++
+1
+−
+𝑾
+t
+=
+−
+η
+​
+(
+𝑮
+t
+out
+​
+𝑾
+t
++
+𝑾
+t
+​
+𝑮
+t
+in
+)
++
+𝑹
+t
+,
+\bm{W}_{t+1}-\bm{W}_{t}=-\eta\left(\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}+\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}\right)+\bm{R}_{t},
+(37)
+where the remainder
+𝑹
+t
+\bm{R}_{t}
+contains all terms of order
+η
+2
+\eta^{2}
+and higher:
+𝑹
+t
+=
+\displaystyle\bm{R}_{t}=
+η
+2
+2
+​
+(
+𝑮
+t
+out
+)
+2
+​
+𝑾
+t
++
+η
+2
+​
+𝑮
+t
+out
+​
+𝑾
+t
+​
+𝑮
+t
+in
++
+η
+2
+2
+​
+𝑾
+t
+​
+(
+𝑮
+t
+in
+)
+2
+\displaystyle\frac{\eta^{2}}{2}(\bm{G}_{t}^{\mathrm{out}})^{2}\bm{W}_{t}+\eta^{2}\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}+\frac{\eta^{2}}{2}\bm{W}_{t}(\bm{G}_{t}^{\mathrm{in}})^{2}
+−
+η
+3
+2
+​
+(
+𝑮
+t
+out
+)
+2
+​
+𝑾
+t
+​
+𝑮
+t
+in
+−
+η
+3
+2
+​
+𝑮
+t
+out
+​
+𝑾
+t
+​
+(
+𝑮
+t
+in
+)
+2
++
+η
+4
+4
+​
+(
+𝑮
+t
+out
+)
+2
+​
+𝑾
+t
+​
+(
+𝑮
+t
+in
+)
+2
+.
+\displaystyle-\frac{\eta^{3}}{2}(\bm{G}_{t}^{\mathrm{out}})^{2}\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}-\frac{\eta^{3}}{2}\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}(\bm{G}_{t}^{\mathrm{in}})^{2}+\frac{\eta^{4}}{4}(\bm{G}_{t}^{\mathrm{out}})^{2}\bm{W}_{t}(\bm{G}_{t}^{\mathrm{in}})^{2}.
+(38)
+Using Assumption
+B.6
+, there exists a constant
+K
+η
+=
+O
+​
+(
+η
+2
+)
+K_{\eta}=O(\eta^{2})
+such that
+‖
+𝑹
+t
+‖
+F
+≤
+K
+η
+​
+𝒮
+t
+,
+K
+η
+=
+γ
+​
+(
+η
+2
++
+B
+​
+η
+3
+2
++
+B
+2
+​
+η
+4
+8
+)
+.
+\|\bm{R}_{t}\|_{F}\leq K_{\eta}\mathcal{S}_{t},\qquad K_{\eta}=\gamma\left(\eta^{2}+\frac{B\eta^{3}}{2}+\frac{B^{2}\eta^{4}}{8}\right).
+(39)
+By
+L
+L
+-smoothness,
+f
+​
+(
+𝑾
+t
++
+1
+)
+−
+f
+​
+(
+𝑾
+t
+)
+≤
+⟨
+𝑮
+t
+,
+𝑾
+t
++
+1
+−
+𝑾
+t
+⟩
++
+L
+2
+​
+‖
+𝑾
+t
++
+1
+−
+𝑾
+t
+‖
+F
+2
+.
+f(\bm{W}_{t+1})-f(\bm</p>
+
+<p>{W}_{t})\leq\langle\bm{G}_{t},\bm{W}_{t+1}-\bm{W}_{t}\rangle+\frac{L}{2}\|\bm{W}_{t+1}-\bm{W}_{t}\|_{F}^{2}.
+(40)
+Substituting the bilateral expansion and using the descent identities from the single-side analysis, we obtain
+⟨
+𝑮
+t
+,
+−
+η
+​
+(
+𝑮
+t
+out
+​
+𝑾
+t
++
+𝑾
+t
+​
+𝑮
+t
+in
+)
+⟩
+=
+−
+η
+2
+​
+𝒮
+t
+.
+\left\langle\bm{G}_{t},-\eta(\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}+\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}})\right\rangle=-\frac{\eta}{2}\mathcal{S}_{t}.
+(41)
+The remainder satisfies
+⟨
+𝑮
+t
+,
+𝑹
+t
+⟩
+≤
+‖
+𝑮
+t
+‖
+F
+​
+‖
+𝑹
+t
+‖
+F
+≤
+G
+​
+K
+η
+​
+𝒮
+t
+.
+\langle\bm{G}_{t},\bm{R}_{t}\rangle\leq\|\bm{G}_{t}\|_{F}\|\bm{R}_{t}\|_{F}\leq GK_{\eta}\mathcal{S}_{t}.
+(42)
+For the quadratic term,
+‖
+𝑾
+t
++
+1
+−
+𝑾
+t
+‖
+F
+2
+\displaystyle\|\bm{W}_{t+1}-\bm{W}_{t}\|_{F}^{2}
+≤
+2
+​
+η
+2
+​
+‖
+𝑮
+t
+out
+​
+𝑾
+t
++
+𝑾
+t
+​
+𝑮
+t
+in
+‖
+F
+2
++
+2
+​
+‖
+𝑹
+t
+‖
+F
+2
+\displaystyle\leq 2\eta^{2}\left\|\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}+\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}\right\|_{F}^{2}+2\|\bm{R}_{t}\|_{F}^{2}
+≤
+4
+​
+η
+2
+​
+γ
+2
+​
+𝒮
+t
++
+2
+​
+K
+η
+2
+​
+𝒮
+t
+2
+\displaystyle\leq 4\eta^{2}\gamma^{2}\mathcal{S}_{t}+2K_{\eta}^{2}\mathcal{S}_{t}^{2}
+≤
+(
+4
+​
+η
+2
+​
+γ
+2
++
+4
+​
+K
+η
+2
+​
+B
+2
+)
+​
+𝒮
+t
+,
+\displaystyle\leq\left(4\eta^{2}\gamma^{2}+4K_{\eta}^{2}B^{2}\right)\mathcal{S}_{t},
+(43)
+where the last inequality uses
+𝒮
+t
+≤
+2
+​
+B
+2
+\mathcal{S}_{t}\leq 2B^{2}
+. Combining the above inequalities yields
+f
+​
+(
+𝑾
+t
++
+1
+)
+−
+f
+​
+(
+𝑾
+t
+)
+≤
+−
+c
+η
+​
+𝒮
+t
+,
+f(\bm{W}_{t+1})-f(\bm{W}_{t})\leq-c_{\eta}\mathcal{S}_{t},
+(44)
+where
+c
+η
+=
+η
+2
+−
+G
+​
+K
+η
+−
+2
+​
+L
+​
+η
+2
+​
+γ
+2
+−
+2
+​
+L
+​
+K
+η
+2
+​
+B
+2
+.
+c_{</p>
+
+<p>\eta}=\frac{\eta}{2}-GK_{\eta}-2L\eta^{2}\gamma^{2}-2LK_{\eta}^{2}B^{2}.
+(45)
+Since
+K
+η
+=
+O
+​
+(
+η
+2
+)
+K_{\eta}=O(\eta^{2})
+, we have
+c
+η
+&gt;
+0
+c_{\eta}&gt;0
+for sufficiently small
+η
+\eta
+.
+Summing over
+t
+=
+0
+,
+…
+,
+T
+−
+1
+t=0,\ldots,T-1
+gives
+f
+​
+(
+𝑾
+T
+)
+−
+f
+​
+(
+𝑾
+0
+)
+≤
+−
+c
+η
+​
+∑
+t
+=
+0
+T
+−
+1
+𝒮
+t
+.
+f(\bm{W}_{T})-f(\bm{W}_{0})\leq-c_{\eta}\sum_{t=0}^{T-1}\mathcal{S}_{t}.
+(46)
+Using
+f
+​
+(
+𝑾
+T
+)
+≥
+f
+inf
+f(\bm{W}_{T})\geq f_{\inf}
+, we obtain
+∑
+t
+=
+0
+T
+−
+1
+𝒮
+t
+≤
+f
+​
+(
+𝑾
+0
+)
+−
+f
+inf
+c
+η
+.
+\sum_{t=0}^{T-1}\mathcal{S}_{t}\leq\frac{f(\bm{W}_{0})-f_{\inf}}{c_{\eta}}.
+(47)
+Therefore,
+min
+0
+≤
+t
+&lt;
+T
+⁡
+(
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+)
+≤
+f
+​
+(
+𝑾
+0
+)
+−
+f
+inf
+c
+η
+​
+T
+.
+\min_{0\leq t&lt;T}\left(\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right)\leq\frac{f(\bm{W}_{0})-f_{\inf}}{c_{\eta}T}.
+(48)
+By Lemma
+21
+, this implies convergence to a first-order stationary point on the isospectral manifold.
+Theorem B.7
+(Deterministic Convergence of Simplified Bilateral Pion)
+.
+Under Assumptions
+B.4
+–
+B.6
+, suppose the learning rate
+η
+\eta
+is sufficiently small such that
+c
+η
+&gt;
+0
+c_{\eta}&gt;0
+. Then the simplified bilateral Pion update satisfies
+min
+0
+≤
+t
+&lt;
+T
+⁡
+(
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+)
+≤
+f
+​
+(
+𝑾
+0
+)
+−
+f
+inf
+c
+η
+​
+T
+.
+\min_{0\leq t&lt;T}\left(\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right)\leq\frac{f(\bm{W}_{0})-f_{\inf}}{c_{\eta}T}.
+(49)
+In particular, the stationarity measure converges at rate
+𝒪
+​
+(
+1
+T
+)
+\mathcal{O}(\frac{1}{T})
+.
+B.3
+Stochas</p>
+
+<p>tic Bilateral Update
+We now consider the stochastic setting. Let
+𝑮
+~
+t
+=
+𝑮
+t
++
+𝝃
+t
+\tilde{\bm{G}}_{t}=\bm{G}_{t}+\bm{\xi}_{t}
+(50)
+be an unbiased mini-batch gradient estimator, where
+𝔼
+t
+​
+[
+𝝃
+t
+]
+=
+𝟎
+\mathbb{E}_{t}[\bm{\xi}_{t}]=\bm{0}
+and
+𝔼
+t
+​
+[
+‖
+𝝃
+t
+‖
+F
+2
+]
+≤
+σ
+2
+\mathbb{E}_{t}[\|\bm{\xi}_{t}\|_{F}^{2}]\leq\sigma^{2}
+.
+Define
+𝑮
+~
+t
+in
+=
+𝑾
+t
+⊤
+​
+𝑮
+~
+t
+−
+𝑮
+~
+t
+⊤
+​
+𝑾
+t
+,
+𝑮
+~
+t
+out
+=
+𝑮
+~
+t
+​
+𝑾
+t
+⊤
+−
+𝑾
+t
+​
+𝑮
+~
+t
+⊤
+.
+\tilde{\bm{G}}_{t}^{\mathrm{in}}=\bm{W}_{t}^{\top}\tilde{\bm{G}}_{t}-\tilde{\bm{G}}_{t}^{\top}\bm{W}_{t},\qquad\tilde{\bm{G}}_{t}^{\mathrm{out}}=\tilde{\bm{G}}_{t}\bm{W}_{t}^{\top}-\bm{W}_{t}\tilde{\bm{G}}_{t}^{\top}.
+(51)
+By linearity and unbiasedness,
+𝔼
+t
+​
+[
+𝑮
+~
+t
+in
+]
+=
+𝑮
+t
+in
+,
+𝔼
+t
+​
+[
+𝑮
+~
+t
+out
+]
+=
+𝑮
+t
+out
+.
+\mathbb{E}_{t}[\tilde{\bm{G}}_{t}^{\mathrm{in}}]=\bm{G}_{t}^{\mathrm{in}},\qquad\mathbb{E}_{t}[\tilde{\bm{G}}_{t}^{\mathrm{out}}]=\bm{G}_{t}^{\mathrm{out}}.
+(52)
+Moreover, the induced stochastic noise satisfies
+𝔼
+t
+​
+[
+‖
+𝑮
+~
+t
+in
+−
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+~
+t
+out
+−
+𝑮
+t
+out
+‖
+F
+2
+]
+\displaystyle\mathbb{E}_{t}\left[\|\tilde{\bm{G}}_{t}^{\mathrm{in}}-\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\tilde{\bm{G}}_{t}^{\mathrm{out}}-\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right]
+≤
+8
+​
+γ
+2
+​
+σ
+2
+≜
+σ
+Ω
+2
+.
+\displaystyle\qquad\leq 8\gamma^{2}\sigma^{2}\triangleq\sigma_{\Omega}^{2}.
+(53)
+Therefore,
+𝔼
+t
+​
+[
+‖
+𝑮
+~
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+~
+t
+out
+‖
+F
+2
+]
+≤
+𝒮
+t
++
+σ
+Ω
+2
+.
+\mathbb{E}_{t}\left[\|\tilde{\bm{G}}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\tilde{\bm{G}}_{t}^{\mathrm{out}}\|_{F}^{2}\right]\leq\ma</p>
+
+<p>thcal{S}_{t}+\sigma_{\Omega}^{2}.
+(54)
+Applying the deterministic bilateral descent argument to the stochastic update and taking conditional expectation gives
+𝔼
+t
+​
+[
+f
+​
+(
+𝑾
+t
++
+1
+)
+]
+−
+f
+​
+(
+𝑾
+t
+)
+≤
+−
+η
+2
+​
+𝒮
+t
++
+a
+η
+​
+(
+𝒮
+t
++
+σ
+Ω
+2
+)
+,
+\mathbb{E}_{t}[f(\bm{W}_{t+1})]-f(\bm{W}_{t})\leq-\frac{\eta}{2}\mathcal{S}_{t}+a_{\eta}(\mathcal{S}_{t}+\sigma_{\Omega}^{2}),
+(55)
+where
+a
+η
+=
+G
+​
+K
+η
++
+2
+​
+L
+​
+η
+2
+​
+γ
+2
++
+2
+​
+L
+​
+K
+η
+2
+​
+B
+2
+.
+a_{\eta}=GK_{\eta}+2L\eta^{2}\gamma^{2}+2LK_{\eta}^{2}B^{2}.
+(56)
+Equivalently,
+𝔼
+t
+​
+[
+f
+​
+(
+𝑾
+t
++
+1
+)
+]
+−
+f
+​
+(
+𝑾
+t
+)
+≤
+−
+c
+η
+​
+𝒮
+t
++
+a
+η
+​
+σ
+Ω
+2
+,
+c
+η
+=
+η
+2
+−
+a
+η
+.
+\mathbb{E}_{t}[f(\bm{W}_{t+1})]-f(\bm{W}_{t})\leq-c_{\eta}\mathcal{S}_{t}+a_{\eta}\sigma_{\Omega}^{2},\qquad c_{\eta}=\frac{\eta}{2}-a_{\eta}.
+(57)
+Taking total expectation and summing over
+t
+=
+0
+,
+…
+,
+T
+−
+1
+t=0,\ldots,T-1
+, we obtain
+c
+η
+​
+∑
+t
+=
+0
+T
+−
+1
+𝔼
+​
+[
+𝒮
+t
+]
+≤
+f
+​
+(
+𝑾
+0
+)
+−
+f
+inf
++
+T
+​
+a
+η
+​
+σ
+Ω
+2
+.
+c_{\eta}\sum_{t=0}^{T-1}\mathbb{E}[\mathcal{S}_{t}]\leq f(\bm{W}_{0})-f_{\inf}+Ta_{\eta}\sigma_{\Omega}^{2}.
+(58)
+Thus,
+min
+0
+≤
+t
+&lt;
+T
+⁡
+𝔼
+​
+[
+𝒮
+t
+]
+≤
+f
+​
+(
+𝑾
+0
+)
+−
+f
+inf
+c
+η
+​
+T
++
+a
+η
+c
+η
+​
+σ
+Ω
+2
+.
+\min_{0\leq t&lt;T}\mathbb{E}[\mathcal{S}_{t}]\leq\frac{f(\bm{W}_{0})-f_{\inf}}{c_{\eta}T}+\frac{a_{\eta}}{c_{\eta}}\sigma_{\Omega}^{2}.
+(59)
+Choosing
+η
+=
+C
+/
+T
+\eta=C/\sqrt{T}
+with sufficiently small
+C
+C
+gives the standard stochastic nonconvex rate
+min
+0
+≤
+t
+&lt;
+T
+⁡
+𝔼
+​
+[
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+]
+=
+𝒪
+​
+(
+1
+T
+)
+.
+\min_{0\leq t&lt;T}\mathbb{E}\left[\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\</p>
+
+<p>|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right]=\mathcal{O}\!\left(\frac{1}{\sqrt{T}}\right).
+(60)
+Theorem B.8
+(Stochastic Convergence of Simplified Bilateral Pion)
+.
+Under Assumptions
+B.4
+–
+B.6
+, assume the stochastic gradient is unbiased and has bounded variance. Let
+η
+=
+C
+/
+T
+\eta=C/\sqrt{T}
+with sufficiently small
+C
+&gt;
+0
+C&gt;0
+. Then
+min
+0
+≤
+t
+&lt;
+T
+⁡
+𝔼
+​
+[
+‖
+𝑮
+t
+in
+‖
+F
+2
++
+‖
+𝑮
+t
+out
+‖
+F
+2
+]
+=
+𝒪
+​
+(
+1
+T
+)
+.
+\min_{0\leq t&lt;T}\mathbb{E}\left[\|\bm{G}_{t}^{\mathrm{in}}\|_{F}^{2}+\|\bm{G}_{t}^{\mathrm{out}}\|_{F}^{2}\right]=\mathcal{O}\left(\frac{1}{\sqrt{T}}\right).
+(61)
+By Lemma
+21
+, this implies convergence to a stochastic first-order stationary neighborhood on the isospectral manifold.
+Appendix C
+Additional Discussion on Computation Complexity
+Alternate Update
+. When alternate update is enabled, only one exponential map is applied at each step. On an output-side step, the update-side cost becomes
+2
+​
+d
+out
+2
+​
+d
+in
+2d_{\mathrm{out}}^{2}d_{\mathrm{in}}
+for RMS scaling,
+𝒪
+​
+(
+d
+out
+3
+)
+\mathcal{O}(d_{\mathrm{out}}^{3})
+for forming the second-order term, and
+2
+​
+d
+out
+2
+​
+d
+in
+2d_{\mathrm{out}}^{2}d_{\mathrm{in}}
+for multiplying the exponential approximation with
+𝑾
+\bm{W}
+.
+On an input-side step, the corresponding cost is
+2
+​
+d
+out
+​
+d
+in
+2
++
+𝒪
+​
+(
+d
+in
+3
+)
++
+2
+​
+d
+out
+​
+d
+in
+2
+2d_{\mathrm{out}}d_{\mathrm{in}}^{2}+\mathcal{O}(d_{\mathrm{in}}^{3})+2d_{\mathrm{out}}d_{\mathrm{in}}^{2}
+.
+Averaged over two consecutive steps, the dominant update-side cost is therefore reduced from
+4
+​
+d
+ou</p>
+
+<p>t
+2
+​
+d
+in
++
+4
+​
+d
+out
+​
+d
+in
+2
++
+𝒪
+​
+(
+d
+out
+3
++
+d
+in
+3
+)
+4d_{\mathrm{out}}^{2}d_{\mathrm{in}}+4d_{\mathrm{out}}d_{\mathrm{in}}^{2}+\mathcal{O}(d_{\mathrm{out}}^{3}+d_{\mathrm{in}}^{3})
+to approximately
+2
+​
+d
+out
+2
+​
+d
+in
++
+2
+​
+d
+out
+​
+d
+in
+2
++
+𝒪
+​
+(
+d
+out
+3
++
+d
+in
+3
+2
+)
+.
+2d_{\mathrm{out}}^{2}d_{\mathrm{in}}+2d_{\mathrm{out}}d_{\mathrm{in}}^{2}+\mathcal{O}\!\left(\frac{d_{\mathrm{out}}^{3}+d_{\mathrm{in}}^{3}}{2}\right).
+Thus, alternate update reduces the update-side computation by roughly a factor of two.
+Memory Analysis
+.
+The persistent optimizer states consist of the first- and second-moment buffers on both Lie algebras:
+𝒎
+in
+,
+𝒗
+in
+∈
+ℝ
+d
+in
+×
+d
+in
+\bm{m}^{\mathrm{in}},\bm{v}^{\mathrm{in}}\in\mathbb{R}^{d_{\mathrm{in}}\times d_{\mathrm{in}}}
+and
+𝒎
+out
+,
+𝒗
+out
+∈
+ℝ
+d
+out
+×
+d
+out
+\bm{m}^{\mathrm{out}},\bm{v}^{\mathrm{out}}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{out}}}
+.
+Thus, the persistent memory overhead is
+2
+​
+(
+d
+in
+2
++
+d
+out
+2
+)
+2(d_{\mathrm{in}}^{2}+d_{\mathrm{out}}^{2})
+floating-point numbers, excluding the parameter matrix and its backpropagated gradient. In comparison, Adam-style optimizers store
+2
+​
+d
+out
+​
+d
+in
+2d_{\mathrm{out}}d_{\mathrm{in}}
+floating-point numbers for the same weight matrix. Therefore, the relative persistent-state overhead of Pion compared with Adam is
+(
+d
+out
+2
++
+d
+in
+2
+)
+/
+(
+d
+out
+​
+d
+in
+)
+(d_{\mathrm{out}}^{2}+d_{\mathrm{in}}^{2})/(d_{\mathrm{out}}d_{\mathrm{in}})
+.
+For nearly square matrices this is a small constant factor, while</p>
+
+<p>for highly rectangular matrices it increases with the aspect ratio.
+The transient memory is dominated by the Lie algebra gradients, the normalized algebra directions, the squared Lie matrices used in
+ℰ
+2
+\mathcal{E}_{2}
+, and temporary products with
+𝑾
+\bm{W}
+. With buffer reuse or in-place construction of
+𝑨
+in
+\bm{A}^{\mathrm{in}}
+and
+𝑨
+out
+\bm{A}^{\mathrm{out}}
+, the additional peak temporary memory is
+𝒪
+​
+(
+d
+in
+2
++
+d
+out
+2
++
+d
+out
+​
+d
+in
+)
+\mathcal{O}(d_{\mathrm{in}}^{2}+d_{\mathrm{out}}^{2}+d_{\mathrm{out}}d_{\mathrm{in}})
+.
+A naive implementation that materializes both sides of the RMS-scaling term
+𝑨
+out
+​
+𝑾
+\bm{A}^{\mathrm{out}}\bm{W}
+and
+𝑾
+​
+𝑨
+in
+\bm{W}\bm{A}^{\mathrm{in}}
+may require two extra
+d
+out
+×
+d
+in
+d_{\mathrm{out}}\times d_{\mathrm{in}}
+buffers, but this can be reduced by accumulating the Frobenius norm with buffer reuse.
+Practical Cost
+.
+We further report the practical memory and runtime cost under the same training configuration.
+All experiments are conducted on 8 NVIDIA H100 GPUs connected with NVLink. We use distributed data parallelism (DDP) without gradient accumulation, and report the peak memory usage per GPU together with the wall-clock time per training step.
+Method
+AdamW
+Muon
+Pion
+Pion w/o 2nd Moment
+Memory Usage per GPU
+51593 MB
+47251 MB
+59839 MB
+45289 MB
+Time Usage per Step
+0.3932 s
+0.5505 s
+0.5679 s
+0.5678 s
+Table 4:
+Practical memory and runtime cost of AdamW, Muon, and Pion.
+All experiments are run on 8 H100 GPUs with NVLink using DDP, without g</p>
+
+<p>梯度累积。
+内存以每个 GPU 的峰值内存使用量来报告。
+测量结果与理论分析一致。完整的 Pion 每个 GPU 使用 59,839 MB 内存，比 AdamW 高约 16.0%，比 Muon 高约 26.6%。这种增加主要来自于额外的输入和输出侧李代数状态以及临时矩阵乘积。然而，没有二阶矩缓冲区的变体将每个 GPU 的内存使用量减少到 45289 MB，比完整 Pion 低 24.3%，比 AdamW 低 12.2%，比 Muon 低 4.2%。这表明二阶矩李代数缓冲区是 Pion 常驻内存开销的主要来源。幸运的是，没有二阶矩的 Pion 与完整 Pion 相比，性能</p>
+
+<p>the detailed experimental setups and configurations for each experiment presented in the main manuscript.
+D.1
+Experiments for Design Principles
+All experiments are conducted in the Megatron-LM codebase with bf16 mixed-precision.
+Shared settings.
+Unless otherwise specified, we adopt a second-order approximation to the matrix exponential due to its strong spectrum-preserving property. We use the T5-base tokenizer for text tokenization. We use a batch size of 512 for all experiments. We use a cosine decay schedule for the learning rate, decaying to
+0.01
+0.01
+times the initial value. The initial learning rate is selected from
+{
+1
+​
+e-
+​
+4
+,
+5
+​
+e-
+​
+4
+,
+1
+​
+e-
+​
+3
+,
+5
+​
+e-
+​
+3
+,
+1
+​
+e-
+​
+2
+}
+\{1\text{e-}4,\,5\text{e-}4,\,1\text{e-}3,\,5\text{e-}3,\,1\text{e-}2\}
+, and we observe that
+lr
+=
+1
+​
+e-
+​
+3
+\text{lr}=1\text{e-}3
+consistently achieves the best performance. Therefore, results in the main text are reported with this value. In implementation, the spectrum-preserving updates are applied in a per-head manner (e.g., per attention head).
+Consistent Update.
+For bilateral normalization, independently normalizing
+G
+t
+out
+G_{t}^{\mathrm{out}}
+and
+G
+t
+in
+G_{t}^{\mathrm{in}}
+in Eq. (
+3
+) alters the overall update norm and would require additional learning-rate tuning.
+To isolate the effect of normalization itself, we rescale the resulting Lie algebra update to approximately match the norm of the original update, thereby avoiding extra hyperparameter adjustments.
+Momentum.
+We observe</p>
+
+<p>that directly applying momentum without RMS scaling is only stable under extremely small learning rates.
+Therefore, we apply RMS scaling to all variants and evaluate them under a unified setting. The RMS scaling coefficient is set to
+0.2
+0.2
+.
+For all variants, we set the first-order momentum coefficient to
+β
+1
+=
+0.9
+\beta_{1}=0.9
+and the second-order momentum coefficient to
+β
+2
+=
+0.95
+\beta_{2}=0.95
+.
+Alternate Update.
+The settings follow those of the momentum experiments.
+For the Lie+Lie variant, we find that disabling momentum accumulation on the non-updated side degrades convergence, despite reducing gradient computation. This aligns with classical stochastic optimization theory, where reducing the effective sample size for first-order moment estimation increases variance
+[
+65
+,
+11
+]
+.
+Therefore, even under alternating updates, we maintain momentum accumulation on both sides and alternate only the parameter updates.
+Approximation of
+exp
+⁡
+(
+⋅
+)
+\exp(\cdot)
+.
+The settings follow the shared configuration above.
+For the Cayley transform, we adopt the standard formulation
+(
+𝑰
+−
+1
+2
+​
+𝑺
+)
+−
+1
+​
+(
+𝑰
++
+1
+2
+​
+𝑺
+)
+(\bm{I}-\frac{1}{2}\bm{S})^{-1}(\bm{I}+\frac{1}{2}\bm{S})
+,
+where
+𝐒
+\mathbf{S}
+is a square matrix.
+In implementation, computations are performed in float32 for numerical stability, and the corresponding linear system is solved via
+torch.linalg.solve
+.
+D.2
+Pretraining
+The pretraining experiments are conducted in the Megatron-LM codebase using bfloat16 precision. We use th</p>
+
+<p>e T5-base tokenizer for text tokenization. We follow standard settings and adopt a cosine decay schedule for the learning rate, decaying to
+0.01
+0.01
+times the maximum learning rate. The maximum learning rate is set to
+5
+​
+e-
+​
+4
+5\text{e-}4
+for all methods, which is chosen based on the use of the AdamW optimizer. For both Muon and Pion, we set the RMS scaling coefficient to
+0.2
+0.2
+. For optimizer hyperparameters, we use
+β
+1
+=
+0.9
+\beta_{1}=0.9
+and
+β
+2
+=
+0.95
+\beta_{2}=0.95
+for AdamW and Pion. For Muon, we set
+β
+1
+=
+0.95
+\beta_{1}=0.95
+. For attention updates, Muon adopts a split-head strategy, where each attention head is updated independently. For Pion, due to memory constraints, we apply updates separately to query, key and value matrices. We use a batch size of 512 for all experiments.
+D.3
+Supervised Fine-tuning
+Models and Datasets.
+We employ Qwen2.5-1.5B
+[
+75
+]
+and Llama-3.2-3B
+[
+25
+]
+as our base models, fine-tuning them on the MetaMathQA
+[
+88
+]
+and Magicoder-Evol-Instruct-110K
+[
+79
+]
+datasets. To maintain a uniform computational budget across both domains, we limit each dataset to 50K samples.
+Training Details.
+All training experiments are conducted within the LLaMA-Factory
+[
+93
+]
+framework and run on NVIDIA H200 GPUs. To ensure a fair comparison, all methods are trained for 3 epochs with a global batch size of 64, a learning rate of
+1
+×
+10
+−
+5
+1\times 10^{-5}
+, a cutoff length of 4096 tokens, and using the default FP32 numerical precision for optimizer updates. Our im</p>
+
+<p>plementation of Pion optimizer deliberately omits the second-order momentum and employ a bilateral update strategy. Furthermore, we split the attention heads and the FFN gate/up projections for separate optimization.
+Evaluation Protocols.
+All evaluations are conducted using the LM Evaluation Harness
+[
+23
+]
+framework with its default generation parameters. Specifically, we evaluate GSM8K
+[
+18
+]
+in a 5-shot setting, while all other benchmarks are evaluated zero-shot. For generation-based tasks, we apply deterministic greedy decoding. Performance on the HumanEval
+[
+16
+]
+benchmark is reported using the pass@1 metric.
+D.4
+Reinforcement Learning with Verifiable Reward
+Models and Datasets.
+Experiments are conducted on two base models, Qwen3-1.7B
+[
+83
+]
+and DeepSeek-R1-Distill-Qwen-1.5B
+[
+27
+]
+, using DeepMath
+[
+30
+]
+as the training dataset. The maximum context length is set to 4096 for Qwen3-1.7B and 8192 for DeepSeek-R1-Distill-Qwen-1.5B.
+Training Details.
+We implement our RLVR training pipeline using the VeRL
+[
+70
+]
+framework, utilizing vLLM
+[
+38
+]
+for efficient rollouts and adopting GRPO
+[
+68
+]
+algorithm. All experiments run on NVIDIA H200 GPUs. To ensure a fair comparison across all methods, we fix the learning rate at
+1
+×
+10
+−
+6
+1\times 10^{-6}
+, sample 12 rollouts per prompt, and use the default FP32 numerical precision for optimizer updates. Regarding model-specific configurations, Qwen3-1.7B is trained for 400 steps with both the global batch size and on-policy minibatch siz</p>
+
+<p>e set to 128. In contrast, DeepSeek-R1-Distill-Qwen-1.5B is trained for 781 steps, with both batch sizes configured to 64. Our Pion implementation operates without second-order momentum and uses an alternating update strategy. Furthermore, we split the attention heads and the FFN gate/up projections for separate optimization.
+Evaluation Protocols.
+We evaluate our models on five widely used benchmarks: AIME24
+[
+51
+]
+, AIME25
+[
+52
+]
+, AMC23
+[
+50
+]
+, Minerva Math
+[
+39
+]
+, and OlympiadBench
+[
+29
+]
+. The maximum generation length is set to 4,096 tokens for Qwen3-1.7B and 8,192 tokens for DeepSeek-R1-Distill-Qwen-1.5B. To ensure robust evaluation, we report the averaged accuracy across multiple independent samples for each benchmark. Specifically, we average the accuracy over 32 samples for AIME24 and AIME25, 8 samples for AMC23 and OlympiadBench, and 4 samples for Minerva Math. All evaluations are conducted within the POLARIS
+[
+3
+]
+framework with a decoding temperature of 1.0, top-
+k
+k
+sampling with
+k
+=
+20
+k=20
+, and top-
+p
+p
+sampling with
+p
+=
+0.8
+p=0.8
+.
+Appendix E
+Limitations
+While Pion demonstrates exceptional stability and competitive performance, it introduces certain computational and memory overheads. First, computing the Lie-algebra gradients and applying the truncated matrix exponential mapping requires additional FLOPs. However, this overhead is largely amortized in standard LLM pretraining regimes where large token batches are used, making the practical impact on wall-c</p>
+
+<p>lock time minimal. Second, accumulating momentum directly in the Lie algebra moderately increases the optimizer’s memory footprint. Nevertheless, our framework is highly flexible: in strictly memory-constrained settings, components like second-order momentum can be seamlessly omitted while still retaining the core benefits of spectrum preservation. Finally, scaling Pion’s empirical evaluation to larger models remains an important direction for future work.
+Appendix F
+Compatibility with Maximal Update Parametrization
+In this section, we study whether the maximal update parametrization (
+μ
+\mu
+P) framework
+[
+84
+,
+85
+]
+holds under the Pion optimizer.
+[
+86
+]
+shows that
+μ
+\mu
+P can be expressed through strict spectral norm constraints on the weight matrices and their updates:
+‖
+𝑾
+‖
+2
+=
+Θ
+​
+(
+d
+out
+d
+in
+)
+\|\bm{W}\|_{2}=\Theta\!\left(\sqrt{\frac{d_{\mathrm{out}}}{d_{\mathrm{in}}}}\right)
+and
+‖
+Δ
+​
+𝑾
+‖
+2
+=
+Θ
+​
+(
+d
+out
+d
+in
+)
+\|\Delta\bm{W}\|_{2}=\Theta\!\left(\sqrt{\frac{d_{\mathrm{out}}}{d_{\mathrm{in}}}}\right)
+, where
+Δ
+​
+𝑾
+\Delta\bm{W}
+is the weight increment induced by a single optimization step. We refer to these as the Forward Spectral Condition and the Update Spectral Condition, respectively.
+In standard optimization frameworks, both spectral conditions require active maintenance throughout training. The Pion optimizer, however, operates via left and right orthogonal transformations on the weight matrix. This unique structure inherently preserves the singular values of
+𝑾
+\bm</p>
+
+<p>{W}
+, making its spectral norm strictly invariant. Consequently, as long as the initialization scheme properly enforces the Forward Spectral Condition, this stability holds automatically at every subsequent step. Therefore, the remaining critical task is to determine whether the update matrix
+Δ
+​
+𝑾
+\Delta\bm{W}
+induced by Pion can satisfy the corresponding Update Spectral Condition.
+To address this, recall the Pion update takes the form
+𝑾
+t
++
+1
+=
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+out
+)
+​
+𝑾
+t
+​
+exp
+⁡
+(
+−
+η
+​
+𝑮
+t
+in
+)
+.
+\bm{W}_{t+1}=\exp(-\eta\bm{G}_{t}^{\mathrm{out}})\,\bm{W}_{t}\,\exp(-\eta\bm{G}_{t}^{\mathrm{in}}).
+(62)
+First-order Taylor expansion around
+η
+=
+0
+\eta=0
+yields the weight increment
+Δ
+​
+𝑾
+t
+:=
+𝑾
+t
++
+1
+−
+𝑾
+t
+≈
+−
+η
+​
+(
+𝑮
+t
+out
+​
+𝑾
+t
++
+𝑾
+t
+​
+𝑮
+t
+in
+)
+.
+\Delta\bm{W}_{t}:=\bm{W}_{t+1}-\bm{W}_{t}\approx-\eta\bigl(\bm{G}_{t}^{\mathrm{out}}\bm{W}_{t}+\bm{W}_{t}\bm{G}_{t}^{\mathrm{in}}\bigr).
+(63)
+By applying the triangle inequality and the submultiplicative property of the spectral norm, we can bound the update magnitude as
+‖
+Δ
+​
+𝑾
+t
+‖
+2
+≲
+η
+​
+‖
+𝑾
+t
+‖
+2
+​
+(
+‖
+𝑮
+t
+out
+‖
+2
++
+‖
+𝑮
+t
+in
+‖
+2
+)
+.
+\|\Delta\bm{W}_{t}\|_{2}\lesssim\eta\|\bm{W}_{t}\|_{2}\left(\|\bm{G}_{t}^{\mathrm{out}}\|_{2}+\|\bm{G}_{t}^{\mathrm{in}}\|_{2}\right).
+(64)
+Since the Pion optimizer inherently preserves the Forward Spectral Condition, the norm
+‖
+𝑾
+t
+‖
+2
+=
+Θ
+​
+(
+d
+out
+/
+d
+in
+)
+\|\bm{W}_{t}\|_{2}=\Theta\!\bigl(\sqrt{d_{\mathrm{out}}/d_{\mathrm{in}}}\bigr)
+remains strictly invariant throughout training, provided it is s</p>
+
+<p>atisfied at initialization. Consequently, fulfilling the Update Spectral Condition reduces to controlling the spectral scales of the two generator matrices. Specifically, enforcing
+‖
+𝑮
+t
+out
+‖
+2
+=
+Θ
+​
+(
+1
+)
+\|\bm{G}_{t}^{\mathrm{out}}\|_{2}=\Theta(1)
+and
+‖
+𝑮
+t
+in
+‖
+2
+=
+Θ
+​
+(
+1
+)
+\|\bm{G}_{t}^{\mathrm{in}}\|_{2}=\Theta(1)
+ensures that
+‖
+Δ
+​
+𝑾
+t
+‖
+2
+\|\Delta\bm{W}_{t}\|_{2}
+inherits the identical
+Θ
+\Theta
+-order as
+‖
+𝑾
+t
+‖
+2
+\|\bm{W}_{t}\|_{2}
+, thereby satisfying the
+μ
+\mu
+P requirements. To practically enforce this
+Θ
+​
+(
+1
+)
+\Theta(1)
+spectral norm condition on the Lie-algebra generators, we consider two distinct methodological schemes:
+Scheme I: Spectral Norm Scaling.
+The most straightforward approach is to directly constrain the spectral norm of the generators. By computing the maximum singular values of the projected gradients, we can explicitly normalize
+‖
+𝑮
+t
+out
+‖
+2
+\|\bm{G}_{t}^{\mathrm{out}}\|_{2}
+and
+‖
+𝑮
+t
+in
+‖
+2
+\|\bm{G}_{t}^{\mathrm{in}}\|_{2}
+to exactly
+Θ
+​
+(
+1
+)
+\Theta(1)
+.
+Scheme II: Explicit Orthogonalization.
+Alternatively, inspired by Muon’s principle, we can explicitly orthogonalize the gradients on the Lie algebra. By applying an orthogonalization procedure via Newton-Schulz iteration to
+𝑮
+t
+out
+\bm{G}_{t}^{\mathrm{out}}
+and
+𝑮
+t
+in
+\bm{G}_{t}^{\mathrm{in}}
+, we push their non-zero singular values toward
+1
+1
+. This structurally guarantees the strictly bounded
+Θ
+​
+(
+1
+)
+\Theta(1)
+spectral norm condition while uniformly maintaining the update magnitude across</p>
+
+<p>all active spectral directions.
+Figure 14:
+μ
+\mu
+P learning rate grid search.
+A key implication of satisfying the
+μ
+\mu
+P condition is that hyperparameters become transferable under width scaling. To verify this property for both proposed schemes, we perform experiments on a LLaMA-based architecture. Specifically, we scale the hidden size, intermediate size, and number of attention heads while keeping the head dimension fixed. For each configuration, we sweep the learning rate and identify the value that yields the lowest validation loss. The hidden size is varied over
+{
+128
+,
+256
+,
+512
+}
+\{128,256,512\}
+. Regarding the specific experimental details, for Scheme I, we directly normalize the spectral norm to 1.0. For Scheme II, to prevent the large
+μ
+\mu
+P-derived learning rates from destabilizing the parameters optimized by AdamW, we explicitly set
+α
+=
+10.0
+\alpha=10.0
+in Eq.
+4
+. As illustrated in Fig.
+14
+, the validation loss curves across all three hidden sizes demonstrate a precise alignment of their optimal learning rates under both Scheme I and Scheme II, confirming that both approaches successfully achieve hyperparameter transferability.
+Appendix G
+Additional Results
+G.1
+Another variant of Pion
+Here, we provide another variant of Pion,
+i.e.
+, Pion with Transported Ambient-space Momentum.
+Input:
+Learning rate
+η
+\eta
+, momentum coefficients
+β
+1
+,
+β
+2
+\beta_{1},\beta_{2}
+, RMS constant
+c
+c
+, stability constant
+ϵ
+\epsilon
+, alternating flag, initial weight
+𝑾
+0
+∈
+ℝ
+d
+out
+×
+d</p>
+
+<p>in
+\bm{W}_{0}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}
+Output:
+Optimized parameter
+𝑾
+t
+\bm{W}_{t}
+1
+Initialize
+𝒎
+0
+,
+𝒗
+0
+←
+𝟎
+∈
+ℝ
+d
+out
+×
+d
+in
+\bm{m}_{0},\bm{v}_{0}\leftarrow\bm{0}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}
+;
+2
+Define
+ℰ
+2
+​
+(
+𝑨
+,
+α
+)
+←
+𝑰
++
+η
+​
+α
+​
+𝑨
++
+1
+2
+​
+(
+η
+​
+α
+​
+𝑨
+)
+2
+\mathcal{E}_{2}(\bm{A},\alpha)\leftarrow\bm{I}+\eta\alpha\bm{A}+\frac{1}{2}(\eta\alpha\bm{A})^{2}
+;
+3
+for
+t
+=
+1
+,
+2
+,
+…
+t=1,2,\ldots
+do
+4
+𝑮
+t
+←
+∇
+𝑾
+f
+​
+(
+𝑾
+t
+−
+1
+)
+\bm{G}_{t}\leftarrow\nabla_{\bm{W}}f(\bm{W}_{t-1})
+;
+5
+𝒎
+t
+←
+β
+1
+​
+𝒎
+t
+−
+1
++
+(
+1
+−
+β
+1
+)
+​
+𝑮
+t
+\bm{m}_{t}\leftarrow\beta_{1}\bm{m}_{t-1}+(1-\beta_{1})\bm{G}_{t}
+,
+𝒗
+t
+←
+β
+2
+​
+𝒗
+t
+−
+1
++
+(
+1
+−
+β
+2
+)
+​
+(
+𝒎
+t
+⊙
+𝒎
+t
+)
+\bm{v}_{t}\leftarrow\beta_{2}\bm{v}_{t-1}+(1-\beta_{2})(\bm{m}_{t}\odot\bm{m}_{t})
+;
+6
+𝑮
+~
+t
+←
+𝒎
+t
+/
+(
+𝒗
+t
++
+ϵ
+)
+\widetilde{\bm{G}}_{t}\leftarrow\bm{m}_{t}/(\sqrt{\bm{v}_{t}}+\epsilon)
+;
+7
+𝑺
+t
+in
+←
+𝑾
+t
+−
+1
+⊤
+​
+𝑮
+~
+t
+−
+𝑮
+~
+t
+⊤
+​
+𝑾
+t
+−
+1
+\bm{S}^{\mathrm{in}}_{t}\leftarrow\bm{W}_{t-1}^{\top}\widetilde{\bm{G}}_{t}-\widetilde{\bm{G}}_{t}^{\top}\bm{W}_{t-1}
+,
+𝑺
+t
+out
+←
+𝑮
+~
+t
+​
+𝑾
+t
+−
+1
+⊤
+−
+𝑾
+t
+−
+1
+​
+𝑮
+~
+t
+⊤
+\bm{S}^{\mathrm{out}}_{t}\leftarrow\widetilde{\bm{G}}_{t}\bm{W}_{t-1}^{\top}-\bm{W}_{t-1}\widetilde{\bm{G}}_{t}^{\top}
+;
+8
+𝑨
+t
+in
+←
+−
+𝑺
+t
+in
+\bm{A}^{\mathrm{in}}_{t}\leftarrow-\bm{S}^{\mathrm{in}}_{t}
+,
+𝑨
+t
+out
+←
+−
+𝑺
+t
+out
+\bm{A}^{\mathrm{out}}_{t}\leftarrow-\bm{S}^{\mathrm{out}}_{t}
+;
+9
+if
+alternate update is used
+then
+10
+if
+t
+t
+is odd
+then
+11
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+/
+(
+‖
+𝑾
+t
+−
+1
+​
+𝑨
+t
+in
+‖
+F
++
+ϵ
+)
+\a</p>
+
+<p>lpha_{t}\leftarrow c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}/\big(\|\bm{W}_{t-1}\bm{A}^{\mathrm{in}}_{t}\|_{F}+\epsilon\big)
+;
+12
+𝑾
+t
+←
+𝑾
+t
+−
+1
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{W}_{t}\leftarrow\bm{W}_{t-1}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+,
+𝒎
+t
+←
+𝒎
+t
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{m}_{t}\leftarrow\bm{m}_{t}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+;
+13
+14
+else
+15
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+/
+(
+‖
+𝑨
+t
+out
+​
+𝑾
+t
+−
+1
+‖
+F
++
+ϵ
+)
+\alpha_{t}\leftarrow c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}/\big(\|\bm{A}^{\mathrm{out}}_{t}\bm{W}_{t-1}\|_{F}+\epsilon\big)
+;
+16
+𝑾
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝑾
+t
+−
+1
+\bm{W}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t})\bm{W}_{t-1}
+,
+𝒎
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝒎
+t
+\bm{m}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t})\bm{m}_{t}
+;
+17
+18
+end if
+19
+20
+else
+21
+α
+t
+←
+c
+​
+d
+out
+​
+d
+in
+/
+(
+‖
+𝑨
+t
+out
+​
+𝑾
+t
+−
+1
++
+𝑾
+t
+−
+1
+​
+𝑨
+t
+in
+‖
+F
++
+ϵ
+)
+\alpha_{t}\leftarrow c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}/\big(\|\bm{A}^{\mathrm{out}}_{t}\bm{W}_{t-1}+\bm{W}_{t-1}\bm{A}^{\mathrm{in}}_{t}\|_{F}+\epsilon\big)
+;
+22
+𝑾
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝑾
+t
+−
+1
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{W}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t})\bm{W}_{t-1}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+,
+𝒎
+t
+←
+ℰ
+2
+​
+(
+𝑨
+t
+out
+,
+α
+t
+)
+​
+𝒎
+t
+​
+ℰ
+2
+​
+(
+𝑨
+t
+in
+,
+α
+t
+)
+\bm{m}_{t}\leftarrow\mathcal{E}_{2}(\bm{A}^{\mathrm{out}}_{t},\alpha_{t})\bm{m}_{t}\mathcal{E}_{2}(\bm{A}^{\mathrm{in}}_{t},\alpha_{t})
+;</p>
+
+<p>23
+24
+end if
+25
+26
+end for
+27
+return
+𝐖
+t
+\bm{W}_{t}
+;
+Algorithm 2
+Pion with Transported Ambient-Space Momentum
+G.2
+Pretraining
+In this section, we further provide additional results on spectrum evolution and training stability indicators. Specifically, we monitor the Frobenius norms of representative weight matrices together with their corresponding input and output activations, as well as the maximum attention logits throughout training. These quantities serve as practical indicators for characterizing optimization stability and activation amplification during large-scale training.
+Figure
+16
+shows that Pion preserves the spectrum of weight matrices remarkably well throughout optimization, remaining highly consistent with the initialization. In contrast, both AdamW and Muon substantially distort the original spectra as training proceeds. This observation is consistent with the spectrum-preserving design of Pion and highlights its fundamentally different optimization dynamics.
+A clear separation among optimizers can also be observed from the stability indicators (Figure
+15
+,
+17
+,
+18
+,
+19
+. AdamW exhibits continuously growing attention logits together with rapidly amplified activation magnitudes. Muon effectively suppresses the growth of attention logits, but the activations and down-projection norms still increase steadily during training. In contrast, Pion keeps nearly all monitored quantities flat and stable throughout optimization. Such distinctive behavior demonstrates th</p>
+
+<p>e exceptional stability of Pion’s spectrum-preserving updates and suggests strong potential for stable large-scale pretraining.
+Figure 15:
+Indicators for stable pretraining. These figures show the maximum attention logit in the attention block of Layer 1, 12, 24.
+G.3
+Supervised Fine-tuning
+To complement the aggregated results in the main text, we provide a detailed breakdown of scores for each individual benchmark in Table
+5
+and Table
+6
+. Furthermore, we investigate the alternating update strategy of the Pion optimizer. Empirical results indicate that while the bilateral update consistently outperforms its alternating counterpart, the alternating strategy still achieves competitive performance that is highly comparable to established baselines like AdamW and Muon. We hypothesize that in the supervised fine-tuning phase, which requires precise fitting to deterministic supervision signals, simultaneous double-side updates provide a more synchronous and direct gradient descent path.
+Method
+MetaMath-50K
+Magicoder-50K
+ARC_C
+ARC_E
+Hella.
+PIQA
+Wino.
+GSM8K
+ARC_C
+ARC_E
+Hella.
+PIQA
+Wino.
+GSM8K
+Human
+eval
+Base
+45.22
+71.76
+67.83
+75.95
+63.38
+59.81
+45.22
+71.76
+67.83
+75.95
+63.38
+59.81
+35.98
+AdamW
+41.46
+63.46
+66.88
+75.35
+63.52
+65.88
+43.71
+66.62
+67.57
+74.64
+64.03
+59.28
+51.83
+Muon
+40.69
+59.55
+67.16
+74.86
+63.85
+65.27
+42.83
+65.02
+68.35
+75.13
+64.16
+58.98
+50.00
+\rowcolor
+gray!15
+Pion
+bilateral update
+42.38
+63.59
+66.64
+75.80
+62.40
+65.76
+44.71
+66.29
+66.56
+74.59
+63.54
+63.54
+53.05
+\rowcolor
+gray!15
+Pi</p>
+
+<p>on
+alternating update
+41.21
+62.96
+66.25
+75.14
+62.50
+64.67
+43.34
+65.44
+66.41
+74.70
+63.85
+62.02
+52.61
+Table 5:
+Performance comparison of Pion and baseline optimizers on fine-tuning task using Qwen2.5-1.5B base model.
+Method
+MetaMath-50K
+Magicoder-50K
+ARC_C
+ARC_E
+Hella
+PIQA
+Wino
+GSM8K
+ARC_C
+ARC_E
+Hella
+PIQA
+Wino
+GSM8K
+Human
+eval
+Base
+45.82
+71.68
+73.63
+77.58
+69.22
+25.47
+45.82
+71.68
+73.63
+77.58
+69.22
+25.47
+26.22
+AdamW
+37.03
+57.20
+68.49
+76.17
+65.43
+59.87
+45.39
+69.65
+72.02
+76.33
+66.06
+22.37
+46.95
+Muon
+38.40
+58.33
+68.74
+76.22
+64.33
+57.77
+44.97
+67.76
+72.42
+76.22
+65.04
+26.84
+46.34
+\rowcolor
+gray!15
+Pion
+bilateral update
+37.09
+56.30
+67.70
+76.57
+64.54
+58.83
+44.14
+68.38
+71.94
+76.77
+67.69
+29.49
+47.19
+\rowcolor
+gray!15
+Pion
+alternating update
+35.41
+53.37
+67.15
+75.40
+63.93
+57.09
+43.92
+67.13
+70.96
+76.52
+67.25
+28.81
+45.12
+Table 6:
+Performance comparison of Pion and baseline optimizers on fine-tuning task using Llama-3.2-3B base model.
+G.4
+Reinforcement Learning with Verifiable Reward
+While the main text reports the RLVR performance of AdamW, Muon, and the Pion optimizer utilizing the alternating update strategy, Table
+7
+supplements these findings by providing the ablation results for Pion’s bilateral update counterpart. Interestingly, contrary to the observations in the supervised fine-tuning phase, the alternating strategy proves superior in the RL setting. Nevertheless, the bilateral approach remains highly robust, delivering overall performance that is closely comparable to the established</p>
+
+<p>baselines. While yet to be rigorously verified through targeted experiments, we hypothesize that the superiority of the alternating strategy in RL stems from its implicit promotion of exploration within the parameter space. Unlike the deterministic supervision in SFT, RL relies on discovering optimal reasoning paths through sparse and noisy reward landscapes. In such settings, rigid bilateral updates might cause the policy to greedily over-optimize toward early and potentially sub-optimal reward signals, leading to premature convergence. Conversely, we conjecture that the decoupled nature of alternating updates introduces a beneficial exploratory variance into the optimization trajectory. Theoretically, this prevents the model from rapidly collapsing into local optima, thereby maintaining a healthier exploration-exploitation balance essential for robust policy learning.
+Method
+Qwen3-1.7B
+DeepSeek-R1-Distill-Qwen-1.5B
+AIME24
+(avg@32)
+AIME25
+(avg@32)
+AMC23
+(avg@8)
+Minerva
+Math
+(avg@4)
+Olympiad
+Bench
+(avg@8)
+Avg
+AIME24
+(avg@32)
+AIME25
+(avg@32)
+AMC23
+(avg@8)
+Minerva
+Math
+(avg@4)
+Olympiad
+Bench
+(avg@8)
+Avg
+Base
+4.06
+10.10
+30.27
+16.27
+23.67
+16.87
+20.52
+20.83
+54.06
+19.39
+36.20
+30.20
+AdamW
+22.71
+20.94
+58.43
+25.91
+46.09
+34.82
+25.42
+23.94
+62.65
+23.16
+44.69
+35.97
+Muon
+20.42
+19.27
+54.22
+24.08
+42.41
+32.08
+29.06
+23.33
+66.72
+22.89
+44.61
+37.32
+\rowcolor
+gray!15
+Pion
+bilateral update
+23.44
+17.40
+54.07
+26.47
+44.33
+33.14
+25.04
+23.73
+64.76
+22.70
+43.98
+36.04
+\rowcolor
+gray!15
+Pion
+alternate updat</p>
+
+<p>e
+25.42
+21.98
+59.94
+26.84
+46.43
+36.12
+30.00
+24.38
+66.87
+23.90
+46.43
+38.32
+Table 7:
+Performance Comparison of Pion and Baseline Optimizers on RLVR Tasks. The metric (avg@K) denotes the average accuracy over
+K
+K
+generated samples per problem.
+Bold
+values indicate the best overall average results.
+Figure 16:
+Comparison of final spectrum with the initial spectrum.
+Figure 17:
+Stable indicators for Layer 1. “FFN-1” denotes the combined gate and up projections in the LLaMA-style feed-forward network, where we compute the norm using their overall input and output; “FFN-2” denotes the down projection matrix; “O-proj” denotes the output projection in the attention module; “Query” denotes the query projection; “Key” denotes the key projection; and “Value” denotes the value projection.
+Figure 18:
+Stable indicators for Layer 12. “FFN-1” denotes the combined gate and up projections in the LLaMA-style feed-forward network, where we compute the norm using their overall input and output; “FFN-2” denotes the down projection matrix; “O-proj” denotes the output projection in the attention module; “Query” denotes the query projection; “Key” denotes the key projection; and “Value” denotes the value projection.
+Figure 19:
+Stable indicators for Layer 24. “FFN-1” denotes the combined gate and up projections in the LLaMA-style feed-forward network, where we compute the norm using their overall input and output; “FFN-2” denotes the down projection matrix; “O-proj” denotes the output projection in the a</p>
+
+<p>注意力模块；“Query”表示查询投影；“Key”表示键投影；“Value”表示值投影。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
