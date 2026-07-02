@@ -1,0 +1,3204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaDI-Bench：端到端数据集成基准测试 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">MaDI-Bench：端到端数据集成基准测试</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.30371" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：MaDI-Bench: An End-to-End Data Integration Benchmark</h4>
+            <p><strong>中文摘要：</strong> 本文提出首个端到端数据集成基准MaDI-Bench。现有基准多孤立评估单个步骤，忽略了流程整体性。MaDI-Bench填补了该空白，涵盖模式匹配、值归一化、实体匹配和数据融合的完整流水线。主要贡献包括：1）涵盖五个领域的基础任务及人工验证真值；2）生成不同难度任务变体的方法，以防基准饱和；3）通过人工、大模型及最优组合流水线验证其有效性。该基准支持逐步及端到端性能评估，所有资源已开源。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>MaDI-Bench: An End-to-End Data Integration Benchmark
+Aaron Steiner
+*
+Ralph Peeters
+*
+Christian Bizer
+*
+These authors contributed equally to this work.
+Abstract
+Data integration combines heterogeneous data sets into a single, coherent representation. Data integration involves a sequence of interdependent tasks including schema matching, value normalization, entity blocking, entity matching, and data fusion. Existing benchmarks either evaluate these steps in isolation or cover only incomplete versions of the data integration pipeline, omitting specific steps. The lack of public end-to-end data integration benchmarks hinders research on data integration methods that address the integration process as a whole. This paper fills this gap by introducing the Mannheim Data Integration Benchmark (MaDI-Bench), the first benchmark for the end-to-end integration of relational tables covering all steps of the integration process. MaDI-Bench contributes (i) a set of base end-to-end data integration tasks spanning several application domains, each requiring the full schema matching, value normalization, entity matching, and conflict resolution pipeline; and (ii) a generic method for deriving task variants that mitigates rapid benchmark saturation as data integration systems advance. We validate the benchmark using human-engineered pipelines, a best-of-breed pipeline, and an LLM-based pipeline. The validation demonstrates the utility of the benchmark for measuring the step-wise as well as the</p>
+
+<p>end-to-end performance of data integration pipelines. All benchmark artifacts are available for public download.
+I
+Introduction
+Data integration
+[
+12
+,
+14
+]
+combines data from multiple heterogeneous sources into a single, coherent representation. Data integration involves several interdependent steps: matching the schemata
+[
+1
+]
+of the input datasets, normalizing values to a common format, identifying records that refer to the same real-world entity (entity matching
+[
+8
+]
+), and resolving conflicts between the values of matching records into a single fused value per attribute (data fusion
+[
+2
+]
+). Each step has been studied in separation for decades
+[
+12
+,
+14
+]
+, but in practice, these steps are tightly coupled: the output of one step constrains what the next step can achieve, and errors propagate through the pipeline. For example, successful value normalization makes the following entity matching task easier, unsuccessful entity matching results in multiple record clusters per real-world entity or overly large clusters describing multiple real-world entities. Both types of errors impact data fusion, as multiple clusters might end up as duplicate records in the output and as over-sized clusters covering different entities make conflict resolution in data fusion difficult. Therefore, evaluating the steps of the data integration process in isolation gives an incomplete picture of how a data integration system performs on the end-to-end data integration task that practitioners</p>
+
+<p>actually face.
+Recent progress in large language models (LLMs) and agentic systems is changing what is feasible: LLM-based agents can read heterogeneous inputs, propose schema mappings, normalize values, and develop conflict resolution rules without human involvement
+[
+30
+]
+. Agents can also collaborate with human data engineers using human-in the loop approaches
+[
+37
+,
+35
+,
+6
+]
+. This makes automated and human-AI
+end-to-end
+data integration a realistic target. To drive and measure progress towards this goal, the community needs benchmarks that evaluate the whole integration pipeline, not just one step at a time.
+Existing benchmarks do not provide for this need: Many benchmarks target single data integration steps, e.g. schema matching
+[
+1
+,
+18
+]
+, entity matching
+[
+8
+,
+23
+]
+, and fusion
+[
+2
+,
+33
+]
+are each evaluated on their own datasets with step-specific metrics. ETL and ELT benchmarks such as TPC-DI
+[
+26
+]
+and ELT-Bench
+[
+16
+]
+cover end-to-end transformation and loading workloads, but not end-to-end data integration tasks involving entity matching and conflict resolution.
+What is missing is a benchmark whose tasks span the full relational data integration pipeline (schema matching, value normalization, entity matching, and data fusion), that provides tasks at controlled difficulty levels across several domains, and that supports the measurement of reference-free structural end-to-end metrics as well as ground-truth-based end-to-end metrics.
+This paper presents the Mannhei</p>
+
+<p>m Data Integration Benchmark
+(MaDI-Bench)
+, an end-to-end benchmark for evaluating data integration systems. MaDI-Bench provides integration tasks that take several heterogeneous source tables as input and require their integration into a single, consistent target table as output, exercising schema matching, value normalization, entity matching, and data fusion together. The MaDI tasks cover five application domains: Games, companies, music, products, and scientific papers. Each task includes a fusion validation set and a fusion test set containing together 11,000 human-validated ground truth values. We also introduce a variant-generation method to provide additional easy, medium, and hard variants for each baseline task, so that integration methods can be tested for effectiveness and efficiency on tasks mirroring the different levels of difficulty that can appear in real-world settings. Overall, MaDI-Bench offers 20 unique integration tasks across the five domains. To assess pipeline output, we organize metrics along three quality dimensions (coverage, consistency, and correctness) and three evaluation setups (reference-free structural, silver-standard, and ground-truth), including structural metrics such as entity gain, density gain, output density, and a fusion ratio. We validate MaDI-Bench using human-engineered PyDI
+1
+1
+1
+https://github.com/wbsg-uni-mannheim/PyDI/tree/main
+pipelines, an LLM-based data integration workflow
+[
+30
+]
+, and a best-of-breed pipeline that tests</p>
+
+<p>multiple approaches from the literature per pipeline step with the final pipeline consisting of the chained composition of the per-stage winners.
+This paper makes the following contributions:
+1.
+A set of base end-to-end data integration tasks across five application domains (games, companies, music, products, and scientific papers), each spanning the subtasks schema matching, value normalization, entity matching, and data fusion. We provide ground truth in the form of validation and test sets for each subtask as well as for the end-to-end workflow.
+2.
+A variant-generation method for deriving end-to-end data integration tasks at different levels of difficulty from the five base tasks. The variants of increased difficulty aim at making the benchmark more future-proof as data integration systems improve, while the easy variant supports the evaluation of simple but computationally efficient methods.
+3.
+We validate MaDI-Bench using different end-to-end pipelines: human-engineered pipelines, a LLM-based workflow, and a best-of-breed pipeline which chooses between alternative methods for each step of the integration process.
+Resource Availability:
+All artifacts together with the code for replicating the experiments are available in the MaDI-Bench repository
+2
+2
+2
+https://github.com/wbsg-uni-mannheim/MaDI-Bench
+. Additional details and examples can be found on the benchmark’s website
+3
+3
+3
+https://wbsg-uni-mannheim.github.io/MaDI-Bench/
+.
+II
+The Base Tasks
+MaDI-Bench consists of five</p>
+
+<p>end-to-end data integration tasks: Games, Companies, Music, Products, and Scientific Papers. Each of these base tasks requires an integration system to solve the full pipeline, from schema matching and value normalization through blocking and entity matching, to data fusion. As input, a system receives a set of source tables, metadata describing the tables, the target schema with its constraints and taxonomies, and optionally labeled training and validation sets. It must return a single fused table that conforms to the target schema and contains one record per real-world entity. For the step-wise evaluation, a system additionally has to report two intermediate results: the proposed mapping from source attributes to the target schema and the matched record pairs. These are evaluated using the gold schema mapping and the holdout test sets. Figure
+1
+gives an overview over the inputs, the data integration tasks, and the benchmark artefacts. The artefacts and benchmark tasks are described in the following sections. Table
+I
+provides key statistics and an overview of the schemata of the datasets of the base tasks.
+Figure 1:
+End-to-end data integration workflow and benchmark artefacts.
+II-A
+Benchmark Artefacts
+TABLE I:
+Statistics and attributes of the MaDI base task datasets. Identifier columns are excluded from attribute and density counts. Overly long attribute lists are truncated with
+[...]
+.
+Task
+Source
+Rows
+Attrs.
+Str
+Num
+Date
+Density
+Attributes
+Games
+DBpedia
+46,580
+6
+5
+0
+1
+90.</p>
+
+<p>9%
+title, launch_yr, studio, system, genre, franchise
+Metacritic
+20,494
+8
+5
+2
+1
+97.7%
+game_title, year_published, made_by, console, genres, press_rating, player_rating, age_rating
+Sales
+7,877
+10
+6
+3
+1
+98.7%
+prod_title, launch_dt, studio, dist, hw, genre, press_score, comm_rating, age_classification, units_sold_mm
+Target schema
+–
+10
+7
+2
+1
+–
+name, releaseYear, developer, genres, publisher, platform, criticScore, userScore, ESRB, series
+Companies
+DBpedia
+10,085
+8
+5
+2
+1
+62.2%
+org_name, established, nation, headquarters, sector, keypeople_name, total_assets_val, annual_income
+Forbes
+2,000
+6
+4
+2
+0
+99.1%
+company, url, region, business_segment, asset_value, sales_figure
+FullContact
+1,931
+5
+4
+0
+1
+61.9%
+Attribute_2, Attribute_3, Attribute_4, Attribute_5, Attribute_6
+Target schema
+–
+8
+5
+2
+1
+–
+name, founded, country, city, industry, assets, revenue, keypeople
+Music
+Discogs
+22,627
+8
+6
+1
+1
+98.4%
+title_str, performer, pub_dt, origin_loc, duration, imprint, category, tracks_track-name
+Last.fm
+9,865
+4
+3
+1
+0
+86.7%
+album_title, band, album_length, tracks_track-name
+MusicBrainz
+4,763
+6
+4
+1
+1
+96.3%
+Attribute_2, Attribute_3, Attribute_4, Attribute_5, Attribute_6, Attribute_9
+Target schema
+–
+8
+6
+1
+1
+–
+name, artist, release-date, release-country, label, genre, tracks, duration
+Products
+Dataset 1
+812
+25
+16
+9
+0
+55.0%
+manufacturer, product_name, product_description, list_price, currency_code, product_url, name_and_description, model_name, manufacturer_part_number, category, gpu_chipset, video_memory_gb</p>
+
+<p>,
+[...]
+数据集 2
+812
+25
+16
+9
+0
+54.3%
+brandName, name, descriptionText, priceAmount, currency, productUrl, titleAndDescription, modelName, mpn, productCategory, chipset, vramGb, capacityGb, readSpeedMbps, writeSpeedMbps, busType, interfaceType,
+[...]
+数据集 3
+762
+25
+16
+9
+0
+53.7%
+Brand, ProductTitle, Details, Price, Currency, Link, TitleDetails, Model, PartNo, Type, Chipset, MemorySizeGB,
+[...]
+数据集 4
+626
+25
+16
+9
+0
+54.2%
+mfr, name, desc, amt, cur, link, name_desc, mdl, pn, cat, chip, vram, cap_gb, rd_mbs, wr_mbs, bus, iface,
+[...]
+目标模式
+–
+25
+16
+9
+0
+–
+brand, title, description, price, priceCurrency, url, title_description, model, model_number, product_type, chipset_name, vram_gb, storage_gb, read_speed_mb_s, write_speed_mb_s, bus_type, interface_type,
+[...]
+论文
+Crossref
+60,749
+13
+10
+2
+1
+85.9%
+work_type, title_text, contributor_names, issued_year, container_title, publisher_name, abstract_text, volume_id, issue_id, page_first, page_last, reference_total, cited_total
+DBLP
+60,591
+9
+8
+0
+1
+68.1%
+entry_type, publication_title, author_list, pub_year, venue_name, volume_no, issue_no, page_start, page_finish
+OpenAlex
+60,719
+12
+9
+2
+1
+88.6%
+work_kind, display_title, authors_list,</p>
+
+<p>源数据、对该数据的描述，以及评估流水线每个步骤的资源。在这五个基础任务</p>
+
+<p>alues should be fused.
+Gold schema mapping:
+Each task includes a gold mapping from the source attributes to the target schema, against which the correspondences proposed by a system are scored during the evaluation of the schema matching step.
+Entity matching sets:
+Each task provides labeled training, validation, and test sets for entity matching. Table
+II
+reports the number of correspondences (record pairs) between sources (e.g., MusicBrainz-Discogs and MusicBrainz-Last.fm for the Music task) and the share of positive pairs (matches) in the test set, which is between 25% and 33% across tasks. The sets concentrate on difficult to match corner cases near the decision boundary between matches and non-matches: true matches with dissimilar surface forms, and non-matches with high surface similarity
+[
+24
+]
+. To reduce selection bias, candidate pairs are drawn from several blocking strategies per task, including Jaccard-similarity and key-based blocking. The sets are disjoint at the pair level: no labeled pair appears in more than one set. We verified each test set by hand, except for Papers, whose matches are automatically derived from available DOI identifiers, and Products, which reuses the mapping of the WDC Products
+[
+24
+]
+benchmark from which the datasets were derived. Entity matching sets are also used for evaluating blocking in MaDI-Bench: training and validation sets can be used to tune blockers for pair completeness and reduction ratio, whereas the test set provides the f</p>
+
+<p>inal evaluation.
+TABLE II:
+Labeled resources for entity matching and fusion evaluation.
+Entity matching
+Fusion validation
+Fusion test
+Task
+Src. pairs
+Train
+Val.
+Test
+Test +%
+Records
+Values
+Records
+Values
+Games
+2
+934
+234
+739
+30.0%
+100
+899
+100
+899
+Companies
+2
+1,971
+948
+599
+29.4%
+100
+682
+100
+691
+Music
+2
+36,658
+17,010
+2,000
+33.3%
+100
+799
+100
+770
+Products
+3
+4,488
+600
+600
+25.0%
+100
+1,466
+100
+1,479
+Papers
+2
+10,666
+2,666
+13,332
+25.0%
+100
+1,033
+100
+1,041
+Fusion validation and test sets:
+The fusion evaluation sets are created by selecting entities whose records disagree on the values of the entity, ensuring that conflict resolution has to take place. Annotators determined the correct value of each attribute through web research across trustworthy sources that are not part of the task sources. Every gold value is grounded in the actual real value for that entity instead of chosen from the values in the data sources. Disagreements between annotators were resolved by gathering further evidence through a second round of web research. Each task in MADI-Bench provides 100 validation and 100 test records for data fusion. Table
+II
+reports the number of target values they carry, excluding identifiers. The validation set allows for integration systems to tune their conflict-resolution strategy, while the test set is used to calculate the final fusion accuracy. The attribute-specific comparison functions that score fusion accuracy, for example, tolerance-based numeric comparison, are a part of th</p>
+
+<p>e PyDI library. Other implementations can be used, provided they follow the metric definitions in the PyDI documentation
+5
+5
+5
+https://github.com/wbsg-uni-mannheim/PyDI/tree/main/docs
+. The following section introduces each task and its specific challenges.
+II-B
+Benchmark Tasks
+Table
+I
+summarizes the source-level characteristics of the five base tasks. For each source, we report the number of rows, the number of non-identifier attributes, and the density, measured as the fraction of non-empty cells over these attributes. The target schema row reports the number of non-identifier attributes in the integrated output schema. The attributes column lists the corresponding non-identifier attributes. Product schemas are abbreviated with
+[...]
+because they contain a large number of technical attributes.
+Games:
+The Games task requires the integration of datasets from three video-game sources: Metacritic, a dataset about game sales, and games data from DBpedia. Metacritic focuses on review scores and ESRB ratings, the sales dataset contains commercial performance information, and DBpedia contributes encyclopedic attributes such as release dates, developers, platforms, genres, and series information. The target schema contains ten non-identifier attributes. The main challenge is that the same game on a different platform is a separate entity, so a matcher must not over-rely on title: identical titles recur across platforms, and sequels, special editions, and downloadable content differ</p>
+
+<p>仅在名称上略有不同。该任务还要求将属性值规范化为平台和流派分类体系，以及使用不同的词表对日期和评分值进行规范化。
+公司：
+公司任务要求整合来自福布斯全球2000强榜单、DBpedia公司抽取数据和FullContact公司简介样本的记录。福布斯提供财务和排名导向的信息，DBpedia提供成立日期、总部、行业和关键人物信息，而FullContact补充了联系方式和人员信息。目标模式包含九个非标识符属性。所包含的公司遍布全球，这使得法律后缀的规范化及其地理位置的解析变得并非易事。该任务的难点还包括公司名称变体、拼写差异、企业层级结构，以及财务数据、国家和不同行业分类体系术语的规范化。
+音乐：
+音乐任务整合了来自Discogs、Last.fm和MusicBrainz的发行级别记录。Discogs提供包含音乐厂牌、流派、国家和曲目列表的发行元数据。Last.fm提供专辑元数据，MusicBrainz提供发行、艺术家和厂牌信息。37,255条输入记录描述了专辑、EP和单曲，各数据源之间存在部分重叠。目标模式包含八个非标识符属性。主要挑战在于异构的值格式，例如，专辑持续时</p>
+
+<p>ons are recorded in different formats across sources. Further difficulties involve title and artist variants, sparse source records, and normalization of dates, countries, and track lists.
+Products:
+The Products task is based on a data sample of the entity matching benchmark WDC Products
+[
+24
+]
+. The product attribute values were extracted from free-text product offers using information extraction techniques. Product datasets cover GPUs, SSDs, HDDs, and USB sticks. The sources describe product offers using different source-schema variants. The target schema contains 25 non-identifier attributes, making it the largest schema in the benchmark. The large schema makes matching delicate: a small difference in a single technical attribute can differentiate a match from a non-match, and the same attribute appears under different names using different value formats across sources. The task also includes normalization taxonomies for units, capacities, dimensions, weights, and speeds.
+Scientific Papers:
+The Scientific Papers task integrates a selection of computer-science paper records from DBLP, Crossref, and OpenAlex. Each source annotates papers with bibliographic attributes such as title, authors, publication year, venue, page range, and citation-related counts. The target schema contains 11 non-identifier attributes. As the largest task by row count, Scientific Papers makes blocking efficiency a challenge: a blocker with a poor reduction ratio leads to hundreds of thousands of rec</p>
+
+<p>ord pair comparisons. As a result, this task is especially suited for evaluating the efficiency of integration systems in addition to their effectiveness. The challenges of the task involve title and author-list variants, incomplete identifiers, publication-type and venue normalization, and sparse metadata for volume, issue, pages, keywords, and citation counts.
+III
+Experimental Validation
+This section validates the MaDI-Bench benchmark using three end-to-end data integration pipelines. Section
+III-A
+describes the different pipelines, Section
+III-B
+introduces the metrics that we use for the evaluation, and Section
+III-C
+reports per-step as well as end-to-end results.
+III-A
+End-to-End Integration Pipelines
+We validate the benchmark using three end-to-end data integration pipelines. The pipelines span the design space from completely hand-engineered to fully LLM-driven. Two of the pipelines build on the PyDI data integration framework
+6
+6
+6
+https://github.com/wbsg-uni-mannheim/PyDI
+: the human-designed pipeline (P1) and the LLM-based pipeline (P3). Both have access to the same integration functions and differ only in who configures them, a human or an LLM. The best-of-breed pipeline (P2) chooses between different specialized methods from the literature for each task step.
+(P1) Human-designed PyDI pipeline:
+P1 consists of specific workflows for each of the five base tasks. The workflows all implemented using the PyDI data integration framework and were manually engineered by mas</p>
+
+<p>曼海姆大学的硕士和博士生。
+这些工作流经过多次迭代的审查与改进。取得最佳结果的工作流已提供在基准测试的 Github 仓库中。
+每个工作流遵循相同的顺序：数据工程师运行 PyDI LLM 模式匹配器，检查生成的对应关系，并在将数据源转换为目标模式前，手动更正遗漏或错位的属性。随后，规范化步骤会对齐值格式，包括日期和数字解析、单位转换以及选定的分类映射。例如，在 Games 数据集中，这包括将平台变体映射到目标分类体系，这对匹配与融合的结果具有重大影响。阻塞阶段使用基于嵌入的阻塞器或特定任务的阻塞键。阻塞的验证目标是至少达到 97% 的对完整性（pair completeness），这意味着至少有 97% 的已标注匹配项保留在候选集中。在达到此下限的阻塞器中，工程师会优先选择缩减率最高的一个。
+对于实体匹配，工程师会比较基于规则的匹配器，并利用相似度特征训练基于树的匹配器。他们还会进一步检查验证错误，并在必要时对结果应用全局一对一</p>
+
+<p>rtest string, numeric aggregation, and set union for list-valued attributes. P1 is a practical human reference point which does not claim optimality. Its fused output also serves as the silver reference for the reference-based metrics in Section
+III-B
+.
+(P2) Best-of-breed pipeline:
+The best-of-breed pipeline chains strong specialized components per integration step to achieve a good end-to-end integration result. It executes the four integration steps (schema matching, blocking, entity matching, and fusion) without backwards iteration. At each step, a committee of competing methods is executed, the result of every method is scored using the validation set, and the winner’s output is passed to the next step. The final pipeline is the chained composition of the per-step winners and emits a single output table.
+The schema matching committee consists of COMA
+[
+11
+]
+, which aggregates several label- and instance-based sub-matchers into a combined similarity score, the Magneto
+[
+21
+]
+matcher that pairs a small retrieval model with an LLM reranker, a Sentence-BERT embedding matcher
+[
+28
+]
+based on nearest-neighbor retrieval of column embeddings, and PyDI’s label-, instance-, duplicate-based and LLM schema matchers.
+The blocking committee consists of standard blocking, token blocking and sorted-neighborhood blocking
+[
+8
+]
+, BM25 blocking
+[
+29
+]
+, Sentence-BERT
+[
+28
+]
+blocking, and the supervised contrastive blocker SC-Block
+[
+4
+]
+. The committee keeps, for each pair of source dataset</p>
+
+<p>s, the blocker that clears a pair completeness floor of 97% at the highest reduction ratio on the entity matching validation set. If that floor is not reached by any committee member, the blocker with the next highest pair completeness is selected.
+The entity matching committee consists of the PLM-based Ditto
+[
+19
+]
+and Magellan
+[
+17
+]
+, a matcher that automatically creates and selects similarity-based features for a random forest matcher.
+The fusion committee consists of PyDI conflict-resolution heuristics and learned truth-discovery models. Each heuristic resolves a conflict by a fixed rule such as majority voting, source trust, longest string, median, or set union. A per-attribute selector chooses for each attribute the heuristic that scores best on the fusion validation set
+[
+2
+]
+. Majority voting and source trust are additional uniform baselines that apply a single rule to every attribute. The remaining members are truth-discovery models that estimate source trustworthiness: TruthFinder
+[
+32
+]
+, LTM
+[
+34
+]
+AccuSim
+[
+13
+]
+, CASEFusion
+[
+22
+]
+, and FusionQuery
+[
+36
+]
+.
+(P3) LLM-based pipeline:
+P3 is the LLM-based end-to-end DI pipeline described in
+[
+30
+]
+. It uses the same methods from the PyDI framework as the human pipeline, but the LLM configures the pipeline.
+The LLM performs schema matching by calling the LLM schema matcher. For the other steps it configures non-LLM methods instead of integrating the records itself, allowing the pipeline to scale. The pipeline receiv</p>
+
+<p>es the source tables, a target schema, and the benchmark taxonomies. It matches the schemas using GPT-5.5 and normalizes the values by mapping them to the predefined taxonomies. Non-categorical attributes are normalized by a column profiler that selects a semantically correct normalization function. An embedding-based blocker then reduces the sources to candidate pairs. From a sample of these pairs, the pipeline builds its own machine-labeled entity matching training and validation sets
+[
+30
+]
+, using GPT-5.2 as the labeler. These machine-labeled sets are independent of the sets that are provided by this benchmark. Using these artefacts, the LLM trains an entity matcher, choosing among rule-based matchers and feature-based models such as random forest and XGBoost. For data fusion, the model determines a configuration which assigns each attribute a conflict-resolution heuristic from the set of heuristics implemented in PyDI, for example longest string, voting, or source-based trust.
+III-B
+Evaluation Metrics
+The MaDI-Bench test driver calculates both step-level and end-to-end evaluation metrics. For the individual pipeline steps, we use the established metrics: Schema matching is evaluated as the F1 score over predicted attribute correspondences. Blocking is evaluated with
+pair completeness
+and
+reduction ratio
+.
+For entity matching we report F1 on the test set. Data fusion is evaluated using
+accuracy
+, the share of the fusion values that match the ground truth value given the b</p>
+
+<p>基准测试的特定属性容差范围。
+除了逐步指标外，我们还计算整个数据集成过程中的端到端指标，这些指标沿两个正交轴进行组织：
+质量维度
+和
+参考级别
+。
+质量维度涵盖输出质量的三个概念：
+覆盖率
+衡量融合输出是否包含相关数量的实体和值。它将仅在融合输出上计算的四个无参考信号，与将输出的实体和值与参考表进行比较的三个指标结合在一起。
+一致性
+衡量输出是否符合目标模式和预期的值格式。两个一致性指标都建立在逐单元格的模式有效性检查之上，一次仅在输出上报告，另一次作为与参考的差异进行报告。
+正确性
+衡量匹配的记录和融合的值是否实际正确，因此仅针对参考进行定义。其指标将集群级别的一致性与值级别的一致性区分开来：首先通过最佳记录重叠对齐输出和参考集群，然后在对齐的配对上计算值指标。
+第二个轴反映了对
+参考数据
+的评估依赖程度。我们区分了三个参考级别：
+无参考
+指标表征流水线自身的输出。它们不需要标签且始终可用，但只能描述输出的结构，而不能描述其正确性。
+真值参考
+指标比较</p>
+
+<p>re against the test sets provided together with the benchmark, which provide the highest level of correctness but are calculated only on the small slice of the output that is covered by the test sets.
+Silver-reference
+metrics compare the fused output against the output values of a reference pipeline. In this paper, we use the output of the human-engineered PyDI pipeline (P1, Section
+III
+) as silver standard. Using the output of a reference pipeline as silver standard results in broader evaluation coverage than the ground-truth reference, but offers weaker correctness guarantees. Table
+III
+defines the individual metrics and the reference level(s) at which they apply.
+TABLE III:
+End-to-end metrics by quality dimension. Ref. lists the reference levels at which a metric applies: reference-free (RF), ground truth (GT), and silver (S).
+Metric
+Ref.
+Definition
+Coverage
+Entity Gain
+RF
+Relative change in the number of output records compared to the largest input source.
+Density Gain
+RF
+Non-null cell density of the fused table compared to the densest input source.
+Output Density
+RF
+Fraction of non-null cells in the output table.
+Fusion Ratio
+RF
+Share of output records assembled from two or more source records, i.e., how much cross-source fusion occurred.
+Entity recovery
+GT, S
+Fraction of reference entities recovered as a single output cluster with exact overlap (Jaccard
+=
+1
+=1
+).
+Value drift
+GT, S
+Mean per-attribute distance between output and reference value distributions: Jensen-Shann</p>
+
+<p>on
+[
+20
+]
+for categorical and text, normalized Wasserstein
+[
+27
+]
+for numeric and date attributes.
+Value-density
+Δ
+\Delta
+GT, S
+Mean per-attribute difference between the output’s and the reference’s number of filled values.
+Consistency
+Schema validity
+RF
+Fraction of filled cells satisfying the target schema’s constraints on their attribute: data type, numeric range, enumeration, string pattern or format, and taxonomy membership.
+Schema validity
+Δ
+\Delta
+GT, S
+Output’s schema-validity rate minus the reference’s. Positive values mean the output conforms more closely than the reference.
+Correctness
+BCubed precision
+GT, S
+Cluster purity: per-record fraction of an output cluster’s members that share the record’s reference cluster, averaged over records. Low values show over-merging.
+BCubed recall
+GT, S
+Cluster completeness: per-record fraction of a reference cluster’s members that land in the record’s output cluster, averaged over records. Low values show over-splitting.
+BCubed F1
+GT, S
+Harmonic mean of BCubed precision and recall, the main measure of clustering agreement.
+Fusion accuracy
+GT, S
+Unweighted mean of per-attribute value accuracy. A fused cell is correct when it matches the aligned reference value under the attribute’s evaluation function.
+Fully-correct rate
+GT, S
+Fraction of aligned output clusters whose fused record matches the reference on every evaluated attribute simultaneously, the strictest measure.
+III-C
+Validation Results for the Base Tasks
+We run all pipeline</p>
+
+<p>s on the five base tasks of MaDI-Bench (Section
+II
+). Each pipeline is configured on the provided validation sets. P3 instead uses its own self-generated validation sets. When a component needs training data, P1 and P2 use the benchmark-provided training sets. P3 generates its own training data, following
+[
+30
+]
+. Each pipeline is run once per task. P1 runs the PyDI LLM schema matcher with GPT-5. P2 uses GPT-5.4-mini for the LLM-based schema matchers. P3 uses GPT-5.5 for schema matching and GPT-5.2 for labeling tasks.
+III-C
+1
+Schema Matching
+Table
+IV
+reports schema matching F1 per task. All three pipelines rely on the PyDI LLM schema matcher, with the human pipeline hand-correcting individual correspondences where needed. As reference, we add PyDI’s label-based and instance-based matchers.
+The human pipeline scores 100% on every task and the two automated pipelines stay within 2.9 points. The two baselines show that the mapping is not trivial, and they fail in complementary places. Label-based matching peaks at 73.8% on Papers, where the source headers stay descriptive, and falls to 26.1% on Companies, where FullContact uses anonymized columns such as
+Attribute_1
+(Table
+I
+). Instance-based matching shows the reverse profile: 64.5% on Music, where it infers the equally opaque MusicBrainz columns from their values, but 7.7% on Products, possibly because many of the 25 technical attributes, such as read and write speeds, draw values from similar numeric ranges. The Products head</p>
+
+<p>ers, although encoded in unrelated conventions such as
+sequential_read_mb_s
+versus
+rd_mbs
+, stay descriptive enough for label-based matching to reach 61.6%, its second-best score. The benchmark thus stresses naming and value heterogeneity in different base tasks, and only methods that read names and values together, a human or an LLM, recover the mapping everywhere.
+TABLE IV:
+Schema matching F1 (%) on the MaDI-Bench base tasks.
+Task
+Human
+(P1)
+BoB
+(P2)
+LLM-based
+(P3)
+Label-based
+schema matching
+Instance-based
+schema matching
+Games
+100.00
+100.00
+100.00
+30.00
+60.50
+Companies
+100.00
+100.00
+97.56
+26.10
+53.80
+Music
+100.00
+100.00
+100.00
+28.60
+64.50
+Products
+100.00
+100.00
+100.00
+61.60
+7.70
+Papers
+100.00
+97.14
+100.00
+73.80
+33.30
+III-C
+2
+Blocking and Entity Matching
+Table
+V
+reports blocking pair completeness and reduction ratio together with entity matching F1 per task, averaged over the source pairs. Pair completeness stays between 94.37% and 100.00% across all pipelines and tasks, close to or above the 97% floor that P1 and P2 tune for, so the candidate sets preserve almost all true matches and the entity matching results below reflect matcher quality without losing matching candidate pairs. The reduction ratios separate the pipelines only on Products: the human and best-of-breed pipelines prune 71.91% of the candidate space, which the smallest task tolerates, while the LLM-based pipeline’s embedding blocker removes 97.54% at 98.00% pair completeness. On every other task all pipelin</p>
+
+<p>es exceed 99.2%, and on Papers, the largest task, at least 99.97%, where anything less would make the matching workload prohibitive. The size of the surviving candidate set also drives the runtime results discussed in Section
+III-C
+4
+.
+The Matching F1 columns of Table
+V
+report entity matching F1 on the labeled test sets, averaged over the source pairs of each task. The task scores span 63.09 to 99.70 F1, covering the range from near-solved to clearly open. On Companies, Music, and Papers the three pipelines are closely matched, within at most 3.7 points per task. Games and Products separate them. The human pipeline leads on Games with 89.45 against 67.30 and 63.15 for the automated pipelines. A possible explanation lies in the corner cases the test set is focused on: identical titles recur across platforms, and the rule that the same game on another platform is a different entity (Section
+II-B
+) penalizes matchers that rely on title similarity. The best-of-breed pipeline leads on Products with 84.09 against 70.37 for the human pipeline, using the PLM-based Ditto matcher, which has been shown to work well for the products domain
+[
+19
+]
+. The LLM-based pipeline achieves the best scores on Companies (90.69) and Music (98.11). No method performs best on all tasks. The absolute values are in the range that current matchers report on established entity matching benchmarks such as WDC Products
+[
+24
+]
+and the bibliographic DBLP-ACM and DBLP-Scholar
+[
+19
+]
+, so the matching difficulty</p>
+
+<p>is representative of real product and bibliographic data. As fusion builds on the output of this step, the lower matching performance on Games and Products will resurface in the fusion and end-to-end results (Section
+III-C
+4
+).
+TABLE V:
+Blocking pair completeness (PC), reduction ratio (RR), entity matching F1 (%).
+PC (%)
+RR (%)
+Matching F1 (%)
+Task
+P1
+P2
+P3
+P1
+P2
+P3
+P1
+P2
+P3
+Games
+99.55
+100.00
+96.85
+99.93
+99.90
+99.96
+89.45
+67.30
+63.15
+Companies
+97.73
+94.37
+100.00
+99.34
+99.24
+99.67
+87.65
+89.29
+90.69
+Music
+96.55
+96.34
+99.85
+99.67
+99.67
+99.88
+95.35
+94.84
+98.11
+Products
+100.00
+100.00
+98.00
+71.91
+71.91
+97.54
+70.37
+84.09
+63.09
+Papers
+97.90
+97.90
+97.69
+99.98
+99.98
+99.97
+98.45
+99.70
+96.05
+III-C
+3
+Data Fusion
+Table
+VI
+reports fusion accuracy on the annotated holdout fusion records, scoring whether a pipeline produces the correct target value after matching and conflict resolution. Fusion is the most challenging step for every pipeline, with accuracies of 40.2 to 84.9, well below the schema matching and entity matching results. Two patterns stand out.
+First, the LLM-based pipeline reaches the highest accuracy on four of five tasks and exceeds the human configuration on all five, by 18.5 points on Companies (63.24 vs. 44.70) and 13.2 on Games (84.87 vs. 71.70): the LLM-tuned conflict-resolution heuristics improve on the hand-chosen rules.
+Second, Products shows error propagation. Best-of-breed led entity matching there, and the two pipelines that trailed it, trail again in fusion, at 4</p>
+
+<p>0.20% and 43.65% against its 56.68%, since a missed correspondence or a wrong match bounds what fusion can recover. An example is the Kingston DataTraveler 100 G3 flash drive from the human workflow: it appears in all four sources, but the matcher links only the source 1 record with a read speed of 100 MB/s, while the annotated value of 130 sits in an unmatched record. The missing record never enters the cluster, so no conflict-resolution rule can recover the correct value. Fusion is therefore the step with the most headroom on MaDI-Bench: the best score per task leaves between 15.1 (Games) and 43.3 (Products) points open.
+TABLE VI:
+Data fusion accuracy (%) on the MaDI-Bench base tasks.
+Task
+Human
+(P1)
+BoB
+(P2)
+LLM-based
+(P3)
+Games
+71.70
+64.91
+84.87
+Companies
+44.70
+45.90
+63.24
+Music
+70.20
+76.92
+83.12
+Products
+40.20
+56.68
+43.65
+Papers
+78.90
+61.04
+79.35
+III-C
+4
+End-to-End Results
+TABLE VII:
+End-to-end metrics for the base tasks.
+↑
+\uparrow
+/
+↓
+\downarrow
+give the preferred direction.
+Dimension
+Metric
+Games
+Companies
+Music
+Products
+Papers
+Mean
+BoB
+(P2)
+LLM-based
+(P3)
+BoB
+(P2)
+LLM-based
+(P3)
+BoB
+(P2)
+LLM-based
+(P3)
+BoB
+(P2)
+LLM-based
+(P3)
+BoB
+(P2)
+LLM-based
+(P3)
+BoB
+(P2)
+LLM-based
+(P3)
+Ref-Free
+Coverage
+Entity Gain
++
+0.40
++0.40
++
+0.32
++0.32
++
+0.19
++0.19
++
+0.27
++0.27
++
+0.38
++0.38
++
+0.37
++0.37
++
+0.13
++0.13
++
+0.22
++0.22
++
+0.24
++0.24
++
+0.41
++0.41
++
+0.27
++0.27
++
+0.32
++0.32
+Density Gain
+↑
+\uparrow
+−
+0.25
+-0.25
+−
+0.23
+-0.23
+−
+0.14
+-0.14
+−
+0.07
+-0.07
+−
+0.12
+-0.12
+−
+0.11
+-0.11
++
+0.06
++0.0</p>
+
+<p>6
++
+0.06
++0.06
+−
+0.03
+-0.03
+−
+0.08
+-0.08
+−
+0.10
+-0.10
+−
+0.09
+-0.09
+Output Density
+↑
+\uparrow
+0.66
+0.67
+0.79
+0.58
+0.81
+0.87
+0.59
+0.64
+0.88
+0.80
+0.74
+0.71
+Fusion Ratio
+0.11
+0.18
+0.13
+0.09
+0.14
+0.17
+0.88
+0.67
+0.74
+0.53
+0.40
+0.33
+Consistency
+Schema validity
+↑
+\uparrow
+1.00
+0.85
+0.93
+0.99
+0.84
+0.97
+1.00
+1.00
+0.98
+0.88
+0.95
+0.94
+Silver Reference
+Coverage
+Entity recovery
+↑
+\uparrow
+0.50
+0.39
+0.37
+0.70
+0.76
+0.85
+0.04
+0.04
+0.93
+0.84
+0.52
+0.57
+Value drift
+↓
+\downarrow
+0.10
+0.25
+0.35
+0.34
+0.29
+0.40
+0.04
+0.03
+0.01
+0.00
+0.16
+0.20
+Value-density
+Δ
+\Delta
+−
+0.23
+-0.23
+−
+0.24
+-0.24
+−
+0.34
+-0.34
+−
+0.22
+-0.22
+−
+0.11
+-0.11
+−
+0.08
+-0.08
+−
+0.02
+-0.02
+−
+0.03
+-0.03
+−
+0.01
+-0.01
+−
+0.05
+-0.05
+−
+0.14
+-0.14
+−
+0.12
+-0.12
+Consistency
+Schema validity
+Δ
+\Delta
+↑
+\uparrow
++
+0.00
++0.00
+−
+0.13
+-0.13
++
+0.06
++0.06
+−
+0.14
+-0.14
+−
+0.10
+-0.10
+−
+0.14
+-0.14
++
+0.00
++0.00
++
+0.00
++0.00
++
+0.17
++0.17
+−
+0.09
+-0.09
++
+0.03
++0.03
+−
+0.10
+-0.10
+Correctness
+BCubed precision
+↑
+\uparrow
+1.00
+0.94
+0.95
+1.00
+1.00
+1.00
+0.43
+0.49
+0.99
+1.00
+0.87
+0.88
+BCubed recall
+↑
+\uparrow
+0.63
+0.59
+0.66
+0.81
+0.69
+0.90
+0.38
+0.42
+0.97
+0.92
+0.67
+0.73
+BCubed F1
+↑
+\uparrow
+0.77
+0.73
+0.78
+0.89
+0.82
+0.95
+0.41
+0.45
+0.98
+0.96
+0.75
+0.80
+Fusion acc.
+↑
+\uparrow
+0.79
+0.59
+0.55
+0.67
+0.69
+0.48
+0.50
+0.74
+0.91
+0.72
+0.69
+0.64
+Fully-correct rate
+↑
+\uparrow
+0.29
+0.04
+0.11
+0.12
+0.12
+0.00
+0.00
+0.15
+0.55
+0.00
+0.21
+0.06
+Ground Truth Reference
+Coverage
+Entity recovery
+↑
+\uparrow
+1.00
+1.00
+0.91
+0.88
+0.87
+0.96
+0.70
+0.21
+1.00
+1.00
+0.90
+0.81
+Value drift
+↓
+\downarrow
+0.43
+0.67
+0</p>
+
+<p>.61
+0.66
+0.65
+0.71
+0.18
+0.25
+0.52
+0.53
+0.48
+0.56
+Value-density
+Δ
+\Delta
+−
+0.20
+-0.20
+−
+0.20
+-0.20
+−
+0.22
+-0.22
+−
+0.24
+-0.24
+−
+0.03
+-0.03
++
+0.00
++0.00
+−
+0.24
+-0.24
+−
+0.25
+-0.25
+−
+0.07
+-0.07
+−
+0.08
+-0.08
+−
+0.15
+-0.15
+−
+0.15
+-0.15
+Consistency
+Schema validity
+Δ
+\Delta
+↑
+\uparrow
+0.00
+0.00
+−
+0.15
+-0.15
+−
+0.07
+-0.07
+−
+0.01
+-0.01
+−
+0.16
+-0.16
+−
+0.03
+-0.03
+0.00
+0.00
+0.00
+0.00
+−
+0.02
+-0.02
+−
+0.12
+-0.12
+−
+0.05
+-0.05
+−
+0.06
+-0.06
+Correctness
+BCubed precision
+↑
+\uparrow
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+0.98
+0.94
+1.00
+1.00
+1.00
+0.99
+BCubed recall
+↑
+\uparrow
+1.00
+1.00
+0.95
+0.93
+0.93
+0.98
+0.85
+0.62
+1.00
+1.00
+0.95
+0.91
+BCubed F1
+↑
+\uparrow
+1.00
+1.00
+0.97
+0.96
+0.96
+0.99
+0.91
+0.75
+1.00
+1.00
+0.97
+0.94
+Fusion acc.
+↑
+\uparrow
+0.65
+0.85
+0.46
+0.63
+0.77
+0.83
+0.57
+0.44
+0.61
+0.79
+0.61
+0.71
+Fully-correct rate
+↑
+\uparrow
+0.27
+0.27
+0.00
+0.08
+0.00
+0.22
+0.00
+0.00
+0.00
+0.12
+0.05
+0.14
+Table
+VII
+reports the results of the end-to-end evaluation. The table separates end-to-end quality into reference-free, silver-reference, and ground-truth views for the two automated pipelines. The human pipeline provides the silver reference and is therefore not reported itself.
+Reference-free:
+Both pipelines expand the largest input source by roughly one third, with entity gains of 0.27 for best-of-breed and 0.32 for the LLM-based pipeline. The density loss expected under this expansion, as many added entities are described by only one source, is nearly identical at
+−
+0.10
+-0.10
+and
+−
+0.09
+-0.09
+. Therefore the larger output doe</p>
+
+<p>s not come at the cost of a much sparser table. The main structural difference is clustering: best-of-breed grows the entity count less but fuses more often, with a fusion ratio of 0.40 versus 0.33. The per-task spread of this ratio reflects both task structure and matcher behavior. On Products, where the four sources describe largely overlapping offers, 0.88 and 0.67 of output records merge several sources. On Games, where most entities appear in only one source, the ratio stays at 0.11 and 0.18. On a high-overlap task, a low ratio instead signals a matcher that leaves records as singletons. The reference-free view flags these structural differences but cannot judge whether the merges are correct.
+Schema validity is also close, with averages of 0.95 for best-of-breed and 0.94 for the LLM-based pipeline. High results such as the 1.00 in Games for best-of-breed are possible as strict checks cover dates, scores, ESRB labels, and list length, while the genre and platform taxonomies are intentionally non-exhaustive. A non-exhaustive taxonomy does not contain every possible value, so the validity check does not penalize values outside the taxonomy. Companies drops to 0.93 because industry, country, and key-people values violate target-schema constraints. The rows below quantify how much this appearance hides: the same outputs that reach 0.94 to 0.95 schema validity reach ground-truth fully-correct rates of 0.05 and 0.14. Reference-free metrics confirm target-format compatibility,</p>
+
+<p>and the reference-based rows are needed to evaluate factual quality.
+Silver reference:
+Against the human PyDI output, the LLM-based pipeline is closer to the human clustering structure. It reaches 0.57 entity recovery and 0.80 BCubed F1, compared with 0.52 and 0.75 for best-of-breed. The difference comes mainly from Companies and Music, where the LLM-based pipeline recovers more human clusters. Best-of-breed is closer on fused values: value drift is 0.16 instead of 0.20, fusion accuracy is 0.69 instead of 0.64, and the fully-correct rate is 0.21 instead of 0.06. The LLM-based pipeline more often recreates the human grouping, while best-of-breed more often selects the same values once an entity is aligned.
+Ground-truth reference:
+On the test sets, best-of-breed achieves the best clustering result. It recovers 0.90 of labeled entities on average compared with 0.81 for the LLM-based pipeline, especially on Products where the gap is 0.70 to 0.21, and BCubed F1 follows at 0.97 versus 0.94. The value-level metrics show a different view of the results: Best-of-breed has lower distribution drift, 0.48 versus 0.56, and the same value-density delta,
+−
+0.15
+-0.15
+, but the LLM-based pipeline has higher fusion accuracy, 0.71 versus 0.61. Matching the aggregate value distribution therefore does not imply assigning the correct values to the correct entities.
+The ground-truth reference also reverses the silver ranking on both axes. While the LLM-based pipeline performed best on clustering (</p>
+
+<p>BCubed F1 0.80 versus 0.75) and best-of-breed on values (fusion accuracy 0.69 versus 0.64) on the silver reference, the ground-truth reference shows the opposite in each case (0.94 versus 0.97 and 0.71 versus 0.61). This shows that agreement with a reference pipeline and correctness on independently annotated records show two different sides of the fused result.
+The strict fully-correct rate remains low for both pipelines: 0.05 for best-of-breed and 0.14 for the LLM-based pipeline. This metric requires every evaluated attribute of an entity to be correct at once, so it compounds the per-step errors: even though the matching correctness is high with a BCubed F1 of 0.94, only at most one in seven ground truth entities are fully correct, highlighting the difficulty of the fusion step. These metrics give a practitioner valuable insights into where they should look closer to debug and improve their integration system.
+Runtime:
+Table
+VIII
+reports wall-clock runtime in seconds for each of the three pipelines. All values measure the execution of the final pipeline.
+Model training is part of the measured runtime, while the configuration search and the human design effort are not.
+The pipelines differ by more than an order of magnitude, with mean runtimes of 234 seconds for the human configuration, 540 for the LLM-based pipeline, and 5,900 for best-of-breed. The two steps with the largest influence on runtime are blocking and entity matching. Papers, the largest task, is the most expen</p>
+
+<p>sive task for every pipeline even at reduction ratios above 99.97% (Table
+V
+). Most of the best-of-breed entity matching runtime is the per-task fine-tuning and inference of Ditto. Companies, the only task on which the committee selects the cheaper Magellan, completes in 213 seconds, close to the LLM-based pipeline’s 203, while the Ditto-based tasks take 1,388 to 16,184 seconds. These costs put the effectiveness results into perspective: on Papers, best-of-breed spends roughly 25 times the runtime of the human configuration to gain 1.25 F1 in entity matching (Table
+V
+).
+TABLE VIII:
+End-to-end runtime in seconds for the evaluated pipelines.
+Task
+Human
+(P1)
+BoB
+(P2)
+LLM-based
+(P3)
+Games
+180
+5736
+196
+Companies
+70
+213
+203
+Music
+184
+5980
+211
+Products
+98
+1388
+718
+Papers
+637
+16184
+1374
+Mean
+234
+5900
+540
+III-D
+Discussion
+The validation establishes four properties of the benchmark. First, no pipeline wins on every task: the human pipeline does best on entity matching on Games, best-of-breed for Products, and the LLM-based pipeline achieves the best fusion results on four of five tasks. Second, the end-to-end metrics expose additional weaknesses of each method: best-of-breed reaches 0.97 BCubed F1 under ground truth but only 0.61 fusion accuracy and a 0.05 fully-correct rate, and the silver and ground-truth metrics rank the two automated pipelines in opposite order on both clustering and value correctness, the full picture only takes shape when looking at all metrics. Third, the benchm</p>
+
+<p>ark 提供了充足的改进空间：融合准确率在 40.2 到 84.9 之间，而真实完全正确率保持在 0.14 或以下。第四，在考察效率维度时，平均运行时间分别为 234、540 和 5,900 秒，流水线的有效性可以进一步通过其效率来权衡。
+存在两个局限性。首先，银标准参考是由人工 PyDI 流水线生成的，因此银标准指标可能偏向于那些决策类似于 PyDI 风格工作流的系统。根据从业者选择的银标准，牢记潜在的偏见非常重要。人工标注的真实标准集独立于任何特定的流水线，并提供了更强的正确性估计，尽管它们仅</p>
+
+<p>n their domain, making the application of simpler less costly methods unsuitable for the benchmark, while they may prove to be effective and efficient alternatives for the use cases faced by the practitioners. In order to address both of these cases, we derive three
+variants
+of each base task, namely
+easy
+,
+medium
+, and
+hard
+. The variants hold the underlying integration problem fixed but vary the level of difficulty of the subtasks. Because the variants amplify or reduce the same forms of heterogeneity that make real integration hard, a harder or easier level corresponds to genuinely more or less demanding real-world conditions. As a result, the benchmark may stay future-proof as systems improve, while also supporting the evaluation in less demanding scenarios where efficiency is the main concern. Each base task is released together with its three variants, so MaDI-Bench offers 20 integration tasks across five domains in total.
+At a high level, the variants differ from the base tasks in how hard the same integration problem is to solve. Across the
+easy
+,
+medium
+, and
+hard
+levels, we reduce surface overlap by injecting value noise such as typos and encoding artefacts, add negative and positive corner-case records to the clusters describing specific entities, drop cell values and skew which sources cover each entity, diversify date, number, and unit formats, rename source columns to synonyms or opaque codes, and shuffle which source holds the correct fusion value so that no si</p>
+
+<p>ngle source is more trustworthy in general. Importantly, these changes never alter the correspondences among the underlying records, a match on easy does not become a non-match on hard due to value perturbation, only the difficulty is adjusted so the decision moves further or closer to the boundary between matches and non-matches. As a result, a single dataset spans a controlled difficulty range on which the increasing difficulty impacts all steps of the integration workflow.
+The augmentation method that derives the variants perturbs the source data along a set of independently controllable
+difficulty knobs
+, each set to an absolute target for the three difficulty levels, for example, a corner-case ratio of 20/50/80% for easy/medium/hard or a per attribute drop rate of 5/15/35%, and each targeting a specific challenge of the integration task. As a result, a variant can add or remove heterogeneity relative to the domain’s base task (Section
+IV-A
+). The knobs are applied in a fixed order so that the perturbations compose predictably, while some entities and values are protected to ensure the evaluation sets remain useable (Section
+IV-B
+). After creation, a validation step confirms that the resulting variants are progressively harder by running heterogeneous algorithm committees for each pipeline stage and reporting the committee mean and ceiling across difficulty levels and against the base task (Section
+IV-C
+). Finally, Section
+IV-D
+reports variant statistics together with bes</p>
+
+<p>t-of-breed and LLM-based pipeline results on the variants relative to the base tasks.
+IV-A
+Difficulty Knobs
+TABLE IX:
+A DBpedia Companies record at base and
+hard
+difficulty. Colors mark the responsible knob:
+schema naming divergence (7)
+,
+surface augmentation (1)
+,
+format and unit diversity (5)
+,
+value noise (6)
+, and
+attribute drop (3)
+.
+Attribute (base
+→
+\rightarrow
+hard)
+Base value
+Hard value
+org_name
+→
+\rightarrow
+nm
+Taisei Corporation
+Taisei Corp
+established
+→
+\rightarrow
+ey
+1873-01-01
+01.01.187312:00:00
+nation
+→
+\rightarrow
+cn
+Japan
+Nippon
+sector
+→
+\rightarrow
+sg
+Construction
+Constructi on
+keypeople_name
+→
+\rightarrow
+kpn
+Okura Kihachiro
+dropped
+total_assets_val
+→
+\rightarrow
+ta
+3650187000
+3650.19
+annual_income
+→
+\rightarrow
+ai
+213195000
+167.18
+We control the difficulty of an end-to-end DI task using eight knobs. Each knob is an independently togglable perturbation that targets one or more difficulty dimensions of a specific pipeline step, with absolute targets per
+easy
+/
+medium
+/
+hard
+level. We describe the eight knobs in turn, naming in parentheses the difficulty dimension that each effect targets. Table
+IX
+illustrates the value-level knobs on a single Companies record at
+hard
+difficulty.
+1) Surface augmentation intensity
+rewrites attribute values into alternative surface forms using abbreviations, token reorderings, reformulations, and dropped tokens, eroding the surface overlap that blocking and matching rely on (representation heterogeneity, corner-case difficulty)</p>
+
+<p>and yielding plausible value disagreements for fusion (conflict subtlety). The levels rewrite 0/16/30% of values.
+2) Entity niche density
+adds similar-but-distinct entities within the same domain niche, such as many products of one brand, enlarging blocks with non-matching pairs (candidate density) and pushing candidate pairs toward the matching decision boundary (corner-case ratio). The corner-case ratio is set to 20/50/80%.
+3) Per-source attribute drop rate
+blanks 5/15/35% of cells per source, removing blocking keys (blocking-key completeness), matching evidence (record completeness), and the redundancy that fusion cross-validates against (source density).
+4) Per-entity coverage skew
+varies how many sources describe each entity. The share of single-source entities rises over 0/20/55%, skewing group sizes and thinning the evidence for fusion (source density, conflict rate).
+5) Format and unit diversity
+rewrites dates, numbers, and quantities into two to four admissible formats per type and one to three locales, mixing units and scales at harder levels (format heterogeneity, unit and scale diversity).
+6) Value-noise injection rate
+corrupts 1/4/12% of values with typos, encoding artefacts, and truncation from the FEBRL corruption taxonomy
+[
+7
+]
+, degrading similarity signals for matching and surfacing as source disagreements for fusion (noise and corruption, corner-case difficulty, conflict rate).
+7) Schema naming divergence
+renames source columns from fully descriptive (easy</p>
+
+<p>) through abbreviations (medium) to opaque codes (hard), removing the attribute name signal that schema matchers rely on (naming heterogeneity).
+8) Source reliability differentiation
+reshuffles which source holds the correct value per attribute. The most reliable source holds the correct value for 85/65/50% of an attribute’s entities, so that no fixed source-trust strategy stays optimal (trust ambiguity, conflict rate).
+IV-B
+Generation Method
+The following paragraphs describe the relevant artefacts used in the creation of the variants.
+Positive Pool:
+The variant generator must be able to perturb the data without destroying the existing cross-source matches, i.e. it should not change a match into a non-match. The labeled entity matching training, validation and test sets cover only a small sample of all true pairs.Therefore, we build a per-domain
+positive pool
+: an approximation of the real matches, assembled by merging the labeled positives, the correspondences emitted by each domain’s human-built baseline matcher, and the predictions of a domain-trained Ditto
+[
+19
+]
+matcher over a blocker-derived candidate set. Pairs on which the baseline matcher and Ditto agree enter the pool directly. The remaining disagreements are arbitrated by an LLM (GPT-5.4), and the pool is closed transitively across source pairs so that a match inferred for one pair propagates to the others. For the
+products
+and
+papers
+domains, we have full linkage information due to the existing
+cluster_id
+and
+DOI</p>
+
+<p>attributes, and build the positive pool directly.
+Protected Entities and Values:
+The entities in the fusion validation and test sets form a protection set, whose members are prohibited from being dropped during variant generation. Entity niche density (Knob 2) is not allowed to touch any records pertaining to these entities. Consequently, every entity referenced by the fusion validation or test set survives at every difficulty level by construction, so the fusion validation and test sets remain intact for evaluation.
+A strong perturbation could still corrupt every source value of a fused cell beyond recovery. To handle this, for each fusion value, the generator enforces a
+closeness floor
+: at least one surviving source value for an entity
+must stay within an attribute-specific tolerance of the target value (
+±
+3
+%
+\pm 3\%
+for continuous quantities,
+±
+1
+\pm 1
+year for dates, and normalized Levenshtein or token-Jaccard similarity thresholds of
+0.5
+0.5
+–
+0.85
+0.85
+for strings), so that a suitable fusion strategy can still recover the correct value. The value-corruption knobs (surface augmentation and value noise) mutations are discarded whenever they would push the last source value of an entity out of tolerance. Format and unit changes (Knob 5) are exempt, as they are equivalence transforms that can be reverted to the same fused value. The target values used for protection come from the fusion validation and test sets. To extend protection beyond those two hundred annotated ent</p>
+
+<p>ities for each domain to the full set of entities, we also use a
+fusion silver standard
+. This silver standard consists of the fused values for each entity from each domain’s hand-built fusion pipeline (P1). This extends the fusion value protection to the full tasks.
+Evaluation Sets:
+The fusion validation and test sets are copied unchanged across all difficulty levels. The entity matching evaluation sets are copied from the base tasks. Any record pairs that no longer exist due to dropped records are removed and subsequently filled with positive and negative corner-cases until they have a similar size and positive ratio as the base task (Section
+IV-C
+). The schema matching test set is rewritten to fit the Knob 7 renames.
+IV-C
+Variant Validation and Statistics
+To measure the difficulty of the created variants, we measure the impact of the changes on each step of the integration pipeline in comparison to the base tasks. For each stage of the pipeline, we run a
+committee
+of algorithms (Table
+X
+) on every difficulty level. Every member is fitted once on the base task and then scored unchanged on each variant.
+TABLE X:
+Committee members per pipeline stage.
+Stage
+Committee members
+Schema matching (7)
+label-based, instance-based and duplicate-based matching, Sentence-BERT
+[
+28
+]
+, COMA
+[
+11
+]
+, Magneto
+[
+21
+]
+, GPT-5.4-mini
+Blocking (6)
+standard, token, sorted-neighborhood
+[
+8
+]
+, Sentence-BERT
+[
+28
+]
+, BM25
+[
+29
+]
+, SC-Block
+[
+4
+]
+Entity matching (4)
+Magellan
+[
+17
+]
+, Ditto
+[
+19
+]
+,</p>
+
+<p>MatchGPT
+[
+25
+]
+, ComEM
+[
+31
+]
+Data fusion (8)
+Voting, source-trust-based, PyDI per-attribute, TruthFinder
+[
+32
+]
+, AccuSim
+[
+13
+]
+, LTM
+[
+34
+]
+, FusionQuery
+[
+36
+]
+, CASEFusion
+[
+22
+]
+Each committee reports two measurements: the
+mean
+, the macro-average over all members, and the
+ceiling
+, the score of the strongest member at each level of difficulty. Raising the difficulty should depress both, so that a variant challenges not only the average member but also the best method. Table
+XI
+reports both metrics per stage, alongside the variant statistics. The statistics show that all variants keep close to the row counts of the base sources, with density decreasing from easy to hard.
+The easy committee mean exceeds the base score for schema and entity matching in four of five domains, confirming that the
+easy
+level relaxes the integration problem below the level of difficulty of the base task. Fusion is the exception at
+easy
+, as attribute dropping and value noising also happen at this level. From
+medium
+to
+hard
+, both the mean and the ceiling decline at almost every step. The signal is clearest for fusion, whose mean and ceiling fall from base to hard in every domain. The committees validate the variants as a monotone difficulty ladder with the main burden falling on fusion.
+For schema matching the mean and the ceiling diverge: the mean drops under the header renames of Knob 7, which collapse the label-focused matchers, while the strongest instance- and LLM-based matchers still r</p>
+
+<p>ecover the mapping from the values. The entity matching mean declines in most domains from easy to hard, but the best member (Ditto) is affected to a lesser degree.
+TABLE XI:
+Variant statistics &amp; committee difficulty signal across levels.
+Sources
+Committee
+mean (%)
+Best-member
+ceiling (%)
+Domain
+Lvl
+Rows (k)
+Density
+SM
+EM
+Fus.
+SM
+EM
+Fus.
+Companies
+Base
+14.0
+66
+72.7
+88.4
+40.4
+100.0
+89.5
+45.8
+Easy
+14.8
+60
+86.2
+89.9
+35.8
+100.0
+93.4
+40.0
+Med.
+14.3
+59
+77.0
+87.2
+38.2
+100.0
+88.2
+41.3
+Hard
+14.2
+58
+64.6
+86.8
+32.4
+100.0
+88.1
+34.8
+Games
+Base
+75.0
+94
+74.8
+60.9
+68.2
+100.0
+71.6
+72.0
+Easy
+78.9
+84
+87.1
+63.3
+67.1
+98.1
+71.8
+71.1
+Med.
+75.3
+83
+77.0
+64.8
+65.0
+98.1
+75.5
+68.7
+Hard
+71.1
+83
+70.9
+55.3
+55.8
+98.1
+71.5
+58.6
+Music
+Base
+37.3
+92
+74.3
+82.4
+75.5
+100.0
+95.3
+77.9
+Easy
+39.7
+75
+90.0
+88.3
+83.6
+100.0
+95.1
+86.6
+Med.
+37.3
+70
+76.8
+82.7
+69.9
+100.0
+94.8
+76.5
+Hard
+35.2
+69
+65.5
+79.2
+54.5
+89.8
+92.9
+56.6
+Products
+Base
+3.0
+56
+67.6
+90.0
+59.1
+98.1
+93.4
+69.8
+Easy
+3.1
+48
+74.5
+91.9
+44.7
+99.5
+95.9
+54.1
+Med.
+3.1
+44
+68.6
+90.0
+51.8
+98.1
+97.9
+61.1
+Hard
+2.4
+48
+62.1
+85.7
+45.5
+98.1
+93.4
+51.4
+Papers
+Base
+182.1
+74
+83.4
+96.6
+54.8
+97.1
+100.0
+61.0
+Easy
+201.5
+66
+75.9
+96.5
+52.7
+92.9
+99.9
+58.3
+Med.
+201.5
+63
+58.2
+95.3
+42.8
+90.5
+99.9
+47.7
+Hard
+149.6
+60
+49.4
+92.2
+38.8
+92.9
+99.4
+43.5
+IV-D
+Variant Evaluation
+Table
+XII
+reports the per-stage scores of BoB (P2) and the LLM-based pipeline (P3) on each base task and its three variants. Compared against the base task column, the variants produce the intended difficulty gradient, most clear</p>
+
+<p>ly for data fusion.
+For best-of-breed the
+hard
+variant gives the lowest fusion score in every domain, with base-to-hard losses of
+−
+12.6
+-12.6
+(Companies),
+−
+12.4
+-12.4
+(Games),
+−
+22.4
+-22.4
+(Music),
+−
+7.2
+-7.2
+(Products), and
+−
+23.2
+-23.2
+(Papers). The LLM-based pipeline behaves the same way, with base-to-hard losses of up to
+−
+28.2
+-28.2
+(Papers) and
+−
+24.5
+-24.5
+(Music).
+Schema matching is the most robust stage. The LLM and instance-based matchers recover the mapping from the column values. Entity matching is similarly resilient once the matcher is re-tuned per variant.
+TABLE XII:
+Per-stage scores of BoB (P2) and the LLM-based pipeline (P3) on the base task and its variants.
+BoB (P2)
+LLM-based (P3)
+Domain
+Lvl
+SM
+EM
+Fus.
+SM
+EM
+Fus.
+Companies
+Base
+100.0
+89.3
+45.9
+97.6
+90.7
+63.2
+Easy
+100.0
+93.6
+40.3
+100.0
+88.2
+42.3
+Med.
+100.0
+88.9
+39.6
+100.0
+77.0
+56.8
+Hard
+91.3
+94.5
+33.3
+100.0
+87.4
+44.4
+Games
+Base
+100.0
+67.3
+64.9
+100.0
+63.2
+84.9
+Easy
+98.1
+66.9
+62.1
+97.9
+76.0
+81.4
+Med.
+98.1
+69.7
+63.6
+97.9
+72.7
+78.5
+Hard
+98.1
+79.2
+52.5
+97.9
+82.0
+72.6
+Music
+Base
+100.0
+94.8
+76.9
+100.0
+98.1
+83.1
+Easy
+100.0
+94.9
+85.4
+100.0
+97.7
+77.4
+Med.
+100.0
+93.2
+65.1
+100.0
+90.9
+71.0
+Hard
+92.0
+94.3
+54.5
+90.9
+88.0
+58.6
+Products
+Base
+100.0
+84.1
+56.7
+100.0
+63.1
+43.6
+Easy
+99.5
+91.5
+51.6
+100.0
+27.5
+49.3
+Med.
+98.1
+88.1
+59.3
+100.0
+36.9
+45.9
+Hard
+98.1
+85.3
+49.5
+98.0
+51.0
+34.1
+Papers
+Base
+97.1
+99.7
+61.0
+100.0
+96.0
+79.3
+Easy
+92.9
+99.5
+58.1
+91.7
+90.9
+64.6
+Med.
+90.5
+99.2
+47.7
+91.7
+87.6
+62.3
+Hard
+92.9
+96.7
+37.8
+91.7
+78.1
+51.1</p>
+
+<p>The two automated pipelines respond to difficulty in opposite ways at the two hardest stages. Best-of-breed is more robust in entity matching: its Ditto matcher holds
+84.1
+84.1
+–
+91.5
+%
+91.5\%
+on Products across all levels and never falls below
+96.7
+96.7
+on Papers, whereas the LLM-based pipeline collapses on Products and declines steadily on Papers. This is expected, as PLM-based matchers handle heterogeneity better than similarity-feature-based matchers
+[
+19
+]
+. The picture reverses for fusion: the LLM-based pipeline attains the higher accuracy at every level on Companies, Games, and Papers, and on most levels of Music. The exception is Products, where best-of-breed scores higher throughout, a likely consequence of less error propagation from its stronger entity matching on that domain.
+In summary, the
+hard
+variants raise the overall integration difficulty in every domain, preserving headroom for future systems to improve, whereas the
+easy
+variants support the evaluation of simpler and computationally cheaper methods on less demanding integration problems.
+V
+Related Work
+This section compares MaDI-Bench to existing benchmarks in data integration and data engineering.
+TPC-DI, DIPBench, and DIBS measure the efficiency of integration systems. TPC-DI models a retail-brokerage ETL workload with fixed source and target models, transformations, run rules, and a throughput metric, so it evaluates how efficiently a system executes the specified load rather than whether it can infer</p>
+
+<p>integration decisions
+[
+26
+]
+. DIPBench defines source and target schemas, 15 integration process types, concurrent execution streams, and scale factors for measuring integration-process execution
+[
+3
+]
+, while DIBS provides preprocessing kernels for parsing, transformation, and aggregation and characterizes their hardware behavior
+[
+5
+]
+.
+Alaska exposes schema matching and entity resolution tasks over about 70k Web product specifications with manually curated ground truth
+[
+9
+]
+. LakeBench evaluates the effectiveness and efficiency of top-
+k
+k
+discovery of joinable and unionable tables over more than 16 million tables and more than 10,000 labeled queries
+[
+10
+]
+, addressing discovery before integration.
+ELT-Bench and KGI-Bench evaluate complete pipelines but target different artefacts. ELT-Bench evaluates whether agents can configure Airbyte/Snowflake pipelines and write dbt transformations for target data models, reporting stage success, target-model correctness, cost, and steps
+[
+16
+]
+. KGI-Bench evaluates pipelines for integrating data into knowledge
+graphs
+[
+15
+]
+. Similar to MaDI-Bench, KGI-Bench also covers all steps of the data integration process, but provides only a single integration task, integrating data describing movies into the DBpedia knowledge graph. A main difference between the benchmarks is that MaDI-Bench addresses the integration of relational tables, while KGI-Bench addresses the augmentation of RDF knowledge graphs.
+TABLE XIII:
+Evaluation scope of rel</p>
+
+<p>ated benchmarks: efficiency (Eff.), end-to-end output quality (E2E), and step-level evaluation of schema matching (SM), blocking (Bl.), entity matching (EM), and data fusion (Fus.).
+✓
+\checkmark
+: yes,
+∘
+\circ
+: partial,
+×
+\times
+: no.
+Benchmark
+Eval. unit
+Eff.
+E2E
+SM
+Bl.
+EM
+Fus.
+TPC-DI
+[
+26
+]
+warehouse load
+✓
+\checkmark
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+DIPBench
+[
+3
+]
+process execution
+✓
+\checkmark
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+DIBS
+[
+5
+]
+preprocessing kernels
+✓
+\checkmark
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+Alaska
+[
+9
+]
+schema matching/ER
+×
+\times
+×
+\times
+✓
+\checkmark
+×
+\times
+✓
+\checkmark
+×
+\times
+LakeBench
+[
+10
+]
+join/union discovery
+✓
+\checkmark
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+ELT-Bench
+[
+16
+]
+agent ELT pipeline
+✓
+\checkmark
+✓
+\checkmark
+×
+\times
+×
+\times
+×
+\times
+×
+\times
+KGI-Bench
+[
+15
+]
+knowledge graph
+✓
+\checkmark
+✓
+\checkmark
+✓
+\checkmark
+∘
+\circ
+✓
+\checkmark
+✓
+\checkmark
+MaDI-Bench
+fused table
+✓
+\checkmark
+✓
+\checkmark
+✓
+\checkmark
+✓
+\checkmark
+✓
+\checkmark
+✓
+\checkmark
+Table
+XIII
+compares the different benchmarks. The efficiency-oriented benchmarks score none of the integration decisions. Step-level evaluation is limited to Alaska’s schema matching and entity resolution ground truth and KGI-Bench for the task of augmenting knowledge graphs. The comparison shows that MaDI-Bench is the only benchmark covering all steps of the integration process for the use case of integrating tabular data.
+VI
+Conclusion
+This paper in</p>
+
+<p>介绍了曼海姆数据集成基准（MaDI-Bench）。该基准模拟了数据集成过程的全部复杂性，包括模式匹配、值归一化、实体匹配和冲突解决，同时考虑了子任务之间的依赖关系。
+为了防止随着智能体系统的发展基准快速饱和，我们引入了一种通用的变体生成方法，用于从基础任务中派生出更难和更简单的变体。我们使用人工设计的流水线、基于 LLM 的流水线以及同类最佳流水线验证了 MaDI-Bench 及生成的变体。验证结果表明，该基准在衡量数据集成流水线的分步性能及端到端性能方面具有实用性。我们希望该基准能对社区有所帮助，并支持全自动及人在回路数据集成系统的开发。
+AI生成内容声明
+在准备本项工作的过程中，作者使用了 Claude Code (Anthropic) 和 OpenAI Codex 来协助 开发和测试基准代码与评估脚本，以及 润色各章节的稿件文本。作者审查并</p>
+
+<p>P. A. Bernstein, J. Madhavan, and E. Rahm
+(2011)
+Generic Schema Matching, Ten Years Later
+.
+Proceedings of the VLDB Endowment
+4
+(
+11
+),
+pp. 695–701
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§I
+.
+[2]
+J. Bleiholder and F. Naumann
+(2009)
+Data Fusion
+.
+ACM Computing Surveys
+41
+(
+1
+),
+pp. 1–41
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§I
+,
+§
+III-A
+.
+[3]
+M. Böhm, D. Habich, W. Lehner,
+et al.
+(2008)
+DIPBench Toolsuite: A Framework for Benchmarking Integration Systems
+.
+In
+Proceedings of the 2008 IEEE 24th International Conference on Data Engineering
+,
+pp. 1596–1599
+.
+External Links:
+ISBN 9781424418374
+Cited by:
+TABLE XIII
+,
+§V
+.
+[4]
+A. Brinkmann, R. Shraga, and C. Bizer
+(2024)
+SC-Block: Supervised Contrastive Blocking Within Entity Resolution Pipelines
+.
+In
+The Semantic Web: 21st International Conference, ESWC
+,
+pp. 121–142
+.
+External Links:
+Document
+,
+ISBN 978-3-031-60625-0
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[5]
+A. M. Cabrera, C. J. Faber, K. Cepeda,
+et al.
+(2018)
+DIBS: A Data Integration Benchmark Suite
+.
+In
+Companion of the 2018 ACM/SPEC International Conference on Performance Engineering
+,
+pp. 25–28
+.
+External Links:
+Document
+Cited by:
+TABLE XIII
+,
+§V
+.
+[6]
+K. Chen, P. Wang, Y. Yu,
+et al.
+(2025)
+Large Language Model-based Data Science Agent: A Survey
+.
+arXiv preprint arXiv:2508.02744
+.
+External Links:
+2508.02744
+Cited by:
+§I
+.
+[7]
+P. Christen
+(2008)
+FEBRL: An Open Source Data Cleaning, Deduplication and Record Linkage System with a Graphical User Interface
+.
+In
+Proceedings of the 14t</p>
+
+<p>h ACM SIGKDD International Conference on Knowledge Discovery and Data Mining
+,
+pp. 1065–1068
+.
+External Links:
+Document
+Cited by:
+§
+IV-A
+.
+[8]
+V. Christophides, V. Efthymiou, T. Palpanas,
+et al.
+(2020)
+An Overview of End-to-End Entity Resolution for Big Data
+.
+ACM Computing Surveys
+53
+(
+6
+),
+pp. 1–42
+.
+External Links:
+Document
+Cited by:
+§I
+,
+§I
+,
+§
+III-A
+,
+TABLE X
+.
+[9]
+V. Crescenzi, A. De Angelis, D. Firmani,
+et al.
+(2021)
+Alaska: A Flexible Benchmark for Data Integration Tasks
+.
+arXiv preprint arXiv:2101.11259
+.
+External Links:
+2101.11259
+Cited by:
+TABLE XIII
+,
+§V
+.
+[10]
+Y. Deng, C. Chai, L. Cao,
+et al.
+(2024)
+LakeBench: A Benchmark for Discovering Joinable and Unionable Tables in Data Lakes
+.
+Proceedings of the VLDB Endowment
+17
+(
+8
+),
+pp. 1925–1938
+.
+External Links:
+Document
+Cited by:
+TABLE XIII
+,
+§V
+.
+[11]
+H. Do and E. Rahm
+(2002)
+COMA: A System for Flexible Combination of Schema Matching Approaches
+.
+In
+Proceedings of the 28th International Conference on Very Large Data Bases
+,
+pp. 610–621
+.
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[12]
+A. Doan, A. Halevy, and Z. Ives
+(2012)
+Principles of data integration
+.
+Morgan Kaufmann
+.
+External Links:
+ISBN 9780124160446
+Cited by:
+§I
+.
+[13]
+X. L. Dong, L. Berti-Equille, and D. Srivastava
+(2009)
+Integrating Conflicting Data: The Role of Source Dependence
+.
+Proceedings of the VLDB Endowment
+2
+(
+1
+),
+pp. 550–561
+.
+External Links:
+ISSN 2150-8097
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[14]
+X. L. Dong and D. Srivastava
+(2015)
+Big data integration</p>
+
+<p>.
+Morgan &amp; Claypool Publishers
+.
+Cited by:
+§I
+.
+[15]
+M. Hofer and E. Rahm
+(2026)
+Evaluation of Pipelines for Data Integration into Knowledge Graphs
+.
+arXiv preprint arXiv:2605.22304
+.
+External Links:
+2605.22304
+Cited by:
+TABLE XIII
+,
+§V
+.
+[16]
+T. Jin, Y. Zhu, and D. Kang
+(2025)
+ELT-Bench: An End-to-End Benchmark for Evaluating AI Agents on ELT Pipelines
+.
+Proceedings of the VLDB Endowment
+19
+(
+2
+),
+pp. 84–98
+.
+Cited by:
+§I
+,
+TABLE XIII
+,
+§V
+.
+[17]
+P. Konda, S. Das, P. Suganthan G. C.,
+et al.
+(2016)
+Magellan: Toward Building Entity Matching Management Systems
+.
+Proceedings of the VLDB Endowment
+9
+(
+12
+),
+pp. 1197–1208
+.
+External Links:
+ISSN 2150-8097
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[18]
+C. Koutras, G. Siachamis, A. Ionescu, K. Psarakis, J. Brons, M. Fragkoulis, C. Lofi, A. Bonifati, and A. Katsifodimos
+(2021)
+Valentine: evaluating matching techniques for dataset discovery
+.
+In
+2021 IEEE 37th International Conference on Data Engineering (ICDE)
+,
+pp. 468–479
+.
+Cited by:
+§I
+.
+[19]
+Y. Li, J. Li, Y. Suhara,
+et al.
+(2020)
+Deep Entity Matching with Pre-Trained Language Models
+.
+Proceedings of the VLDB Endowment
+14
+(
+1
+),
+pp. 50–60
+.
+External Links:
+Document
+Cited by:
+§
+III-A
+,
+§
+III-C
+2
+,
+§
+IV-B
+,
+§
+IV-D
+,
+TABLE X
+.
+[20]
+J. Lin
+(1991)
+Divergence Measures Based on the Shannon Entropy
+.
+IEEE Transactions on Information Theory
+37
+(
+1
+),
+pp. 145–151
+.
+External Links:
+Document
+Cited by:
+TABLE III
+.
+[21]
+Y. Liu, E. H. M. Pena, A. Santos,
+et al.
+(2025)
+Magneto: Combining Small and</p>
+
+<p>Large Language Models for Schema Matching
+.
+Proceedings of the VLDB Endowment
+18
+(
+8
+),
+pp. 2681–2694
+.
+External Links:
+ISSN 2150-8097
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[22]
+S. Lyu, W. Ouyang, H. Shen,
+et al.
+(2017)
+Truth Discovery by Claim and Source Embedding
+.
+In
+Proceedings of the 2017 ACM on Conference on Information and Knowledge Management
+,
+pp. 2183–2186
+.
+External Links:
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[23]
+S. Mudgal, H. Li, T. Rekatsinas, A. Doan, Y. Park, G. Krishnan, R. Deep, E. Arcaute, and V. Raghavendra
+(2018)
+Deep learning for entity matching: a design space exploration
+.
+In
+Proceedings of the 2018 international conference on management of data
+,
+pp. 19–34
+.
+Cited by:
+§I
+.
+[24]
+R. Peeters, R. C. Der, and C. Bizer
+(2024)
+WDC Products: A Multi-Dimensional Entity Matching Benchmark
+.
+In
+Proceedings of the 27th International Conference on Extending Database Technology
+,
+pp. 22–33
+.
+Cited by:
+§
+II-A
+,
+§
+II-B
+,
+§
+III-C
+2
+.
+[25]
+R. Peeters, A. Steiner, and C. Bizer
+(2025)
+Entity Matching using Large Language Models
+.
+In
+Proceedings of the 28th International Conference on Extending Database Technology
+,
+pp. 529–541
+.
+Cited by:
+TABLE X
+.
+[26]
+M. Poess, T. Rabl, H. Jacobsen,
+et al.
+(2014)
+TPC-DI: The First Industry Benchmark for Data Integration
+.
+Proceedings of the VLDB Endowment
+7
+(
+13
+),
+pp. 1367–1378
+.
+External Links:
+Document
+Cited by:
+§I
+,
+TABLE XIII
+,
+§V
+.
+[27]
+A. Ramdas, N. García Trillos, and M. Cuturi
+(2017)
+On Wasserstein Two-Sample Testing and</p>
+
+<p>Related Families of Nonparametric Tests
+.
+Entropy
+19
+(
+2
+),
+pp. 47
+.
+External Links:
+Document
+Cited by:
+TABLE III
+.
+[28]
+N. Reimers and I. Gurevych
+(2019)
+Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks
+.
+In
+Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing
+,
+pp. 3982–3992
+.
+Cited by:
+§
+III-A
+,
+§
+III-A
+,
+TABLE X
+,
+TABLE X
+.
+[29]
+S. Robertson and H. Zaragoza
+(2009)
+The Probabilistic Relevance Framework: BM25 and Beyond
+.
+Foundations and Trends in Information Retrieval
+3
+(
+4
+),
+pp. 333–389
+.
+External Links:
+ISSN 1554-0669
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[30]
+A. Steiner and C. Bizer
+(2026)
+Automatic End-to-End Data Integration using Large Language Models
+.
+External Links:
+2603.10547
+Cited by:
+§I
+,
+§I
+,
+§
+III-A
+,
+§
+III-A
+,
+§
+III-C
+.
+[31]
+T. Wang, X. Chen, H. Lin,
+et al.
+(2025)
+Match, Compare, or Select? An Investigation of Large Language Models for Entity Matching
+.
+In
+Proceedings of the 31st International Conference on Computational Linguistics
+,
+pp. 96–109
+.
+Cited by:
+TABLE X
+.
+[32]
+X. Yin, J. Han, and P. S. Yu
+(2007)
+Truth Discovery with Multiple Conflicting Information Providers on the Web
+.
+In
+Proceedings of the 13th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining
+,
+pp. 1048–1052
+.
+External Links:
+Document
+,
+ISBN 978-1-59593-609-7
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[33]
+X. Yin, J. Han, and P. S. Yu
+(2007)
+Truth discover</p>
+
+<p>y with multiple conflicting information providers on the web
+.
+In
+Proceedings of the 13th ACM SIGKDD international conference on Knowledge discovery and data mining
+,
+pp. 1048–1052
+.
+Cited by:
+§I
+.
+[34]
+B. Zhao, B. I. P. Rubinstein, J. Gemmell,
+et al.
+(2012)
+A Bayesian Approach to Discovering Truth from Conflicting Sources for Data Integration
+.
+Proceedings of the VLDB Endowment
+5
+(
+6
+),
+pp. 550–561
+.
+External Links:
+ISSN 2150-8097
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[35]
+X. Zhou, J. He, W. Zhou,
+et al.
+(2025)
+A Survey of LLM
+×
+\times
+DATA
+.
+arXiv preprint arXiv:2505.18458
+.
+External Links:
+2505.18458
+Cited by:
+§I
+.
+[36]
+J. Zhu, Y. Mao, L. Chen,
+et al.
+(2024)
+FusionQuery: On-demand Fusion Queries over Multi-source Heterogeneous Data
+.
+Proceedings of the VLDB Endowment
+17
+(
+6
+),
+pp. 1337–1349
+.
+External Links:
+ISSN 2150-8097
+,
+Document
+Cited by:
+§
+III-A
+,
+TABLE X
+.
+[37]
+Y. Zhu, L. Wang, C. Yang,
+et al.
+(2025)
+A Survey of Data Agents: Emerging Paradigm or Overstated Hype?
+.
+arXiv preprint arXiv:2510.23587
+.
+External Links:
+2510.23587
+Cited by:
+§I
+.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 数据集成, 基准测试, 端到端, 实体匹配, 数据融合</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM集成应用的MCP服务器架构模式 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">LLM集成应用的MCP服务器架构模式</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.30317" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：MCP Server Architecture Patterns for LLM-Integrated Applications</h4>
+            <p><strong>中文摘要：</strong> 本文研究了MCP（模型上下文协议）服务器在LLM集成应用中的架构模式。基于15个独立开发的服务器语料库，作者识别出五种反复出现的架构模式：资源网关、工具编排器、有状态会话服务器、代理聚合器和领域特定适配器，并记录了四种反模式。定量评估显示分类法评分者间信度κ=0.76，传输开销主要由网络RTT决定，工具选择准确率在每上下文10-15个工具时开始下降。研究为MCP服务器设计提供了实践指导。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p># LLM集成应用的MCP服务器架构模式</p>
+
+<p>Carson Rodrigues
+Oysturn Vas</p>
+
+<p>## 摘要</p>
+
+<p>模型上下文协议（MCP）由Anthropic于2024年11月推出，定义了一个标准化接口，用于将大语言模型（LLM）连接到外部工具、数据源和服务。在发布后的几个月内，GitHub上出现了数百个社区构建的MCP服务器，但尚无软件维护文献描述该生态系统在生产环境中的结构化方式。本篇工业经验论文编目了在15个独立开发的服务器（来自ANSYR语音AI平台的5个生产服务器加上官方MCP注册表的10个公共服务器）的枚举语料库中观察到的五种反复出现的MCP服务器架构模式：**资源网关**、**工具编排器**、**有状态会话服务器**、**代理聚合器**和**领域特定适配器**。每种模式均以Gamma等人[1]建立的结构化形式描述：上下文、问题、解决方案和后果。我们还记录了四种反模式以及围绕认证、版本管理和可观测性的一系列横切关注点。定量评估贡献了三项测量结果：在54个留出服务器上两个独立LLM评分者之间的分类法评分者间信度（Cohen's κ=0.76），该结果还定位了三个模式边界模糊之处；在环回上端到端测量的传输开销（stdio: p50=0.01 ms；streamable-http: p50=0.39 ms）以及基于同区域网络基线建模的跨主机路径（≈30 ms p50基线加上协议开销）；以及一项工具数量研究，显示Claude Haiku 4.5在每上下文10到15个工具之间、Sonnet 4在20到30个工具之间准确率降至90%以下。代码、语料库和提示词发布于 https://github.com/rodriguescarson/mcp-patterns-icsme2026 。</p>
+
+<p>## I 引言</p>
+
+<p>将LLM连接到外部系统过去意味着在提示模板中手工编写函数调用模式，并为每个新模型重新实现粘合代码。模型上下文协议（MCP）[2]将此标准化：一种客户端-服务器协议，其中**MCP服务器**向任何MCP兼容的客户端暴露**工具**（可调用函数）、**资源**（URI寻址的数据）和**提示**（可重用模板）。单个服务器无需修改即可与Claude、GPT-4、Gemini或任何其他兼容代理配合使用。</p>
+
+<p>该协议被迅速采用。在发布后的几个月内，GitHub和MCP注册表[3]上出现了数百个服务器。缺失的是一套架构指导体系，以帮助从业者做出良好的设计决策，以及关于生态系统在生产环境中如何自我结构化的维护和演进视角。实践中反复出现的问题包括：</p>
+
+<p>- 工具应如何分解？一个工具何时变成两个？
+- 何时需要服务器端状态，应如何管理？
+- 运营者应如何聚合来自多个服务器的能力？
+- 服务器何时应包装复杂API而非直接暴露？</p>
+
+<p>这些并非MCP特有的问题；它们是通过LLM客户端的特定约束来看待的API设计问题。LLM通过阅读自然语言描述来选择工具，而非通过浏览文档或检查模式。它们对模式复杂性的敏感程度是人类开发者所不具备的。如果描述缺失或写得不好，人类工程师认为显而易见的工具对LLM来说可能是不可见或模糊的。</p>
+
+<p>本文基于Celabe（ANSYR语音AI平台的运营者，自2024年底起有5个MCP服务器在生产环境中运行）的生产MCP服务器部署以及对公共MCP服务器生态系统的审查，识别出解决这些问题的五种模式、四种反模式以及一系列横切关注点。这些模式遵循Gamma等人[1]的结构化格式，并将企业集成模式[4]的框架应用于MCP上下文。第III节列举了语料库和编码协议；第IV-V节呈现模式和反模式；第VI节报告定量评估；第VIII节讨论局限性、效度威胁和可复现性。</p>
+
+<p>## II 背景</p>
+
+<p>### II-A 模型上下文协议</p>
+
+<p>MCP[2]基于JSON-RPC 2.0构建，定义了三种原语。**工具**是具有名称、自然语言描述和JSON Schema输入规范的可调用函数。**资源**是LLM可以读取的URI寻址端点；它们可以是静态的（文件、文档）或动态的（实时数据库查询）。**提示**是服务器端管理的参数化模板，按请求呈现给用户或代理。</p>
+
+<p>定义了两种传输选项：**stdio**用于本地进程内通信，**streamable-http**（带有可选服务器发送事件的HTTP）用于远程服务器。</p>
+
+<p>### II-B 与先前工作的关系</p>
+
+<p>MCP扩展了OpenAI[5]和Anthropic[6]引入的函数调用能力，但将工具**实现**与调用它的LLM分离开来。最清晰的类比是语言服务器协议（LSP）[7]：LSP标准化了编辑器和语言智能工具之间的接口，使同一服务器无需修改即可在VS Code、Neovim和Emacs中工作。MCP旨在实现代理和能力提供者之间的同样解耦。</p>
+
+<p>此处使用的模式方法论借鉴了Gamma等人[1]、Fowler的企业应用模式[8]以及Hohpe &amp; Woolf的集成模式[4]。我们应用了相同的结构化描述格式（上下文、问题、解决方案、后果、已知用途），并适应LLM面向API的约束。我们不声称这些结构骨架是新的；每一个在经典软件架构中都有明确的祖先（表I）。贡献在于当客户端是通过阅读自然语言描述而非查阅文档来选择操作的LLM时引入的**增量**：这是REST[9]、GraphQL[10]和LSP[7]中不存在的约束，也是反模式（§V）和工具数量限制（§VI-C）产生的根本原因。</p>
+
+<p>**表I：** 每种MCP模式都有经典祖先；贡献是LLM客户端增量。</p>
+
+<p>| MCP模式 | 祖先 | LLM客户端增量 |
+|---|---|---|
+| 资源网关 | Repository / REST | 为LLM检索命名的资源 |
+| 工具编排器 | Facade / Mediator | 工具集大小适配选择准确率 |
+| 有状态会话服务器 | Session / Memento | 状态隐式，不在提示中 |
+| 代理聚合器 | Proxy / API网关 | 分区工具以适配上下文 |
+| 领域特定适配器 | Adapter (GoF) | 验证作为自然语言护栏 |</p>
+
+<p>### II-C LLM工具使用与代理架构</p>
+
+<p>关于LLM工具使用的先前工作涵盖评估基准（ToolBench风格套件[11]、函数调用基准[5, 6]）、在运行时组合工具的代理架构（ReAct[12]、AutoGPT风格循环[13]、LangChain[14]）以及浏览器控制代理的基础设施[15]。这些贡献聚焦于**客户端**侧：代理如何决定调用哪个工具。MCP将注意力转向**服务器**侧：能力目录如何结构化、命名和分组。我们的模式目录补充而非替代这些先前工作，为服务器作者在MCP等协议存在后做出的架构决策提供词汇。</p>
+
+<p>新兴文献研究MCP本身，但从与架构正交的角度。Hou等人[16]调查了MCP的安全威胁和开放研究方向；Hasan等人[17]挖掘公共MCP服务器的安全和**可维护性**坏味；Guo等人[18]在大规模上测量了&gt;8,000个服务器的生态系统。这些工作描述了生态系统包含什么以及它在哪里脆弱；没有一项编目了反复出现的服务器端**设计**结构，或塑造它们的LLM客户端约束，这正是本文所填补的空白。我们的反模式（§V）与Hasan等人的可维护性坏味是对同一服务器的互补视角。</p>
+
+<p>## III 方法论与语料库</p>
+
+<p>### III-A 语料库</p>
+
+<p>模式目录源自15个独立开发的MCP服务器的枚举语料库：来自ANSYR语音AI平台（由Celabe运营；2024年底至2025年初部署）的5个生产服务器和来自官方 modelcontextprotocol/servers 注册表的10个公共服务器。表II列出了该语料库。出于知识产权原因，ANSYR服务器以匿名标识（Server-A至Server-E）标识，表中披露了部署类别和主要模式；公共服务器以完整GitHub路径列出。完整的机器可读语料库（包含时间戳和主要模式分配）包含在复现包中（corpus.json）。</p>
+
+<p>**表II：** 用于推导模式目录的15个MCP服务器枚举语料库。公共服务器链接到其规范实现；ANSYR（生产）服务器已匿名化。</p>
+
+<p>| 服务器 | 类别 | 主要模式 |
+|---|---|---|
+| **生产（Celabe / ANSYR），N = 5** | | |
+| Server-A | 语音工具聚合器 | 工具编排器 |
+| Server-B | 每次调用对话会话 | 有状态会话服务器 |
+| Server-C | 电话 / SIP适配器 | 领域特定适配器 |
+| Server-D | 客户/CRM读取网关 | 资源网关 |
+| Server-E | 多租户聚合器 | 代理聚合器 |
+| **公共（modelcontextprotocol/servers），N = 10** | | |
+| filesystem | 本地文件 | 资源网关 |
+| postgres | 关系数据库 | 资源网关 |
+| sqlite | 嵌入式数据库 | 资源网关 |
+| github | VCS / 问题API | 工具编排器 |
+| slack | 消息API | 工具编排器 |
+| brave-search | 网络搜索 | 工具编排器 |
+| fetch | 通用HTTP | 工具编排器 |
+| puppeteer | 浏览器自动化 | 有状态会话服务器 |
+| memory | 每会话KV存储 | 有状态会话服务器 |
+| git | 仓库状态 | 有状态会话服务器 |</p>
+
+<p>### III-B 编码协议</p>
+
+<p>**数据提取。** 对于每个服务器，我们阅读了一组固定的来源并提取了五个工件：(i) 源代码中的工具、资源和提示注册（setRequestHandler调用及其JSON模式）；(ii) 传输配置；(iii) 任何服务器端会话或状态处理；(iv) 对其他MCP服务器的委托；以及(v) 领域特定验证或业务逻辑。对于十个公共服务器，这些来自GitHub仓库（源代码、README和已发布文档）；对于五个生产服务器，来自源代码和部署配置。我们不仅依赖README文字，因为README经常省略感兴趣的结构决策。</p>
+
+<p>**编码。** 然后我们应用了两轮定性编码程序[19]。第一轮由第一作者进行**开放编码**，标记每个提取工件中反复出现的结构决策。第二轮**模式编码**[19]通过共享结构和共享问题将第一轮代码分组为候选模式；只有当候选模式独立出现在至少两个服务器中且解决了没有明显先前解决方案的问题时，才将其提升到目录中。第二作者独立针对语料库审查了所得分类法，两位合著者通过讨论解决分歧。由于此审查是验证过程而非独立双重编码，我们在§VI-A中单独测量评分者间信度，使用带有两个独立评分者的留出语料库（评分者间Cohen's κ=0.76）。</p>
+
+<p>## IV 五种MCP架构模式</p>
+
+<p>### IV-A 模式1：资源网关</p>
+
+<p>**又称：** 数据门面、上下文提供者</p>
+
+<p>#### IV-A 1 上下文</p>
+
+<p>LLM代理需要从一个或多个后端系统（数据库、文档存储、第三方API）读取结构化数据，并将其响应建立在该数据之上。</p>
+
+<p>#### IV-A 2 问题</p>
+
+<p>MCP服务器应如何以一种可查询、能够防止通过不受信任数据进行提示注入、且在后端模式变更时保持一致的方式向LLM暴露后端数据？</p>
+
+<p>#### IV-A 3 解决方案</p>
+
+<p>将服务器结构化为调解所有数据访问的**网关**。将读操作暴露为**资源**（列表、按ID获取），当查询参数在开放URI模板中不安全时，将参数化查询暴露为**工具**。插入一个净化层，在后端响应到达LLM之前从中剥离或转义注入内容。</p>
+
+<p>**清单1：资源网关：带净化的MongoDB文档暴露**</p>
+
+<p>```javascript
+server.setRequestHandler(ListResourcesRequestSchema, async () =&gt; ({
+  resources: await db.collection('documents')
+    .find({}, { projection: { _id: 1, title: 1, updatedAt: 1 } })
+    .toArray()
+    .then(docs =&gt; docs.map(d =&gt; ({
+      uri: `doc://${d._id}`,
+      name: d.title,
+      mimeType: 'application/json'
+    })))
+}));</p>
+
+<p>server.setRequestHandler(ReadResourceRequestSchema, async (req) =&gt; {
+  const id = req.params.uri.replace('doc://', '');
+  const doc = await db.collection('documents').findOne({ _id: id });
+  // 在LLM看到之前剥离注入内容
+  return {
+    contents: [{
+      uri: req.params.uri,
+      text: sanitize(JSON.stringify(doc))
+    }]
+  };
+});
+```</p>
+
+<p>#### IV-A 4 后果</p>
+
+<p>**收益：** 访问控制的单一执行点；即使后端模式变更，LLM看到的接口也是稳定的；提示注入风险被限制在一层。</p>
+
+<p>**负担：** 每次读取都有额外的网络跳转；后端的模式变更传播到MCP服务器；复杂的连接或聚合作为资源表达可能不太方便。</p>
+
+<p>#### IV-A 5 已知用途</p>
+
+<p>数据库连接器（PostgreSQL、MongoDB）、文档存储桥接器（Notion、Google Drive）、REST API包装器（GitHub、Jira、Linear）。</p>
+
+<p>### IV-B 模式2：工具编排器</p>
+
+<p>**又称：** 操作中心、工作流门面</p>
+
+<p>#### IV-B 1 上下文</p>
+
+<p>LLM代理需要执行跨多个外部系统的操作：例如，创建工单、通知被分配者和发布到频道。</p>
+
+<p>#### IV-B 2 问题</p>
+
+<p>应如何暴露多系统工作流，而不要求LLM理解每个系统的API、管理跨调用的中间状态或处理部分失败？</p>
+
+<p>#### IV-B 3 解决方案</p>
+
+<p>暴露封装完整工作流的**组合工具**。每个工具在内部执行所有子调用并返回单个摘要。LLM看到一个操作；服务器处理编排。</p>
+
+<p>**清单2：工具编排器：跨系统工作流作为一个工具**</p>
+
+<p>```javascript
+server.setRequestHandler(CallToolRequestSchema, async (req) =&gt; {
+  if (req.params.name === 'create_and_notify_ticket') {
+    const { title, description, assignee } = req.params.arguments;
+    // 三次API调用，一个工具
+    const ticket = await jira.createIssue({ title, description });
+    await slack.postMessage(assignee.slackId, `Ticket ${ticket.key} assigned to you`);
+    await email.send(assignee.email, `New ticket: ${ticket.key}`);
+    return {
+      content: [{
+        type: 'text',
+        text: `Created ${ticket.key}, notified ${assignee.name}`
+      }]
+    };
+  }
+});
+```</p>
+
+<p>#### IV-B 4 后果</p>
+
+<p>**收益：** 减轻LLM推理负担；为多步操作实现类事务语义；隐藏LLM不需要推理的API表面。</p>
+
+<p>**负担：** 工作流变更时单个子工具更难重用；部分失败处理是服务器的责任而非LLM的；工作流逻辑现在编码在两处（工具和描述它的文档）。</p>
+
+<p>#### IV-B 5 已知用途</p>
+
+<p>CI/CD自动化服务器、DevOps工作流工具、客户支持操作中心。</p>
+
+<p>### IV-C 模式3：有状态会话服务器</p>
+
+<p>**又称：** 对话上下文服务器</p>
+
+<p>#### IV-C 1 上下文</p>
+
+<p>LLM代理进行多轮交互，其中后续调用依赖于先前建立的状态：打开的文件、进行中的数据库事务、已认证的用户。</p>
+
+<p>#### IV-C 2 问题</p>
+
+<p>MCP工具调用默认是无状态的请求-响应。在会话内必须跨多次调用持久化的状态应如何管理？</p>
+
+<p>#### IV-C 3 解决方案</p>
+
+<p>在连接时生成**会话标识符**并将其包含在所有工具响应中。所有后续工具调用携带会话ID。服务器在内存中（或对于水平扩展部署使用Redis）维护每会话上下文。会话在不活动时过期。</p>
+
+<p>**清单3：有状态会话服务器：跨调用保留上下文**</p>
+
+<p>```javascript
+const sessions = new Map&lt;string, SessionContext&gt;();</p>
+
+<p>server.setRequestHandler(CallToolRequestSchema, async (req) =&gt; {
+  const sessionId = req.params.arguments._sessionId as string;
+  let session = sessions.get(sessionId);</p>
+
+<p>if (req.params.name === 'open_file') {
+    const content = await fs.readFile(req.params.arguments.path, 'utf-8');
+    sessions.set(sessionId, {
+      filePath: req.params.arguments.path,
+      content,
+      edits: []
+    });
+    return {
+      content: [{
+        type: 'text',
+        text: `Opened ${req.params.arguments.path} (${content.length} chars)`
+      }]
+    };
+  }</p>
+
+<p>if (req.params.name === 'edit_file') {
+    if (!session?.filePath)
+      throw new Error('No file open in this session');
+    session.edits.push(req.params.arguments.edit);
+    return {
+      content: [{
+        type: 'text',
+        text: 'Edit applied'
+      }]
+    };
+  }
+});
+```</p>
+
+<p>#### IV-C 4 后果</p>
+
+<p>**收益：** 多轮工作流变得自然；消除冗余数据传输；可实现事务语义。</p>
+
+<p>**负担：** 如果会话不被清理则会导致内存泄漏；水平扩展需要分布式会话存储；LLM必须可靠地传递会话ID，这无法保证。</p>
+
+<p>#### IV-C 5 已知用途</p>
+
+<p>代码编辑代理（打开→编辑→保存）、数据库事务服务器、多步表单助手。</p>
+
+<p>### IV-D 模式4：代理聚合器</p>
+
+<p>**又称：** MCP路由器、多服务器门面</p>
+
+<p>#### IV-D 1 上下文</p>
+
+<p>LLM代理需要来自许多不同MCP服务器的能力，但客户端配置限制了它能维护的服务器连接数，或者运营者需要跨服务器集群的集中认证和日志记录。</p>
+
+<p>#### IV-D 2 问题</p>
+
+<p>应如何将多个上游MCP服务器呈现为单个端点，而不丢失每服务器的身份、版本管理或故障隔离？</p>
+
+<p>#### IV-D 3 解决方案</p>
+
+<p>构建一个连接到N个上游服务器的**代理服务器**，通过服务器命名空间化工具名称以防止冲突，并将每个调用路由到正确的上游。两种变体在**暴露什么**上有所不同。**静态合并**聚合器一次性暴露所有上游工具的并集；这简化了客户端配置但提高了可见工具数量，一旦合并目录超过§VI-C的预算，就会降低LLM选择准确率。**作用域**聚合器则仅暴露与当前任务相关的上游工具子集，按请求检索候选工具（工具上的检索[20]）而非列出整个集群。当聚合会使上下文超过工具数量限制时，应使用作用域变体；以下清单显示静态合并核心，在其上为作用域变体叠加了每请求过滤器。</p>
+
+<p>**清单4：代理聚合器：跨上游服务器的命名空间路由**</p>
+
+<p>```javascript
+// 构建带命名空间前缀的合并工具列表
+const allTools = (await Promise.all(
+  upstreamServers.map(async (s) =&gt; {
+    const tools = await s.client.listTools();
+    return tools.map(t =&gt; ({
+      ...t,
+      name: `${s.namespace}__${t.name}`,  // 例如 &quot;github__create_pr&quot;
+      _upstream: s
+    }));
+  })
+)).flat();</p>
+
+<p>// 按命名空间前缀路由
+server.setRequestHandler(CallToolRequestSchema, async (req) =&gt; {
+  const [ns, ...rest] = req.params.name.split('__');
+  const upstream = upstreamServers.find(s =&gt; s.namespace === ns);
+  return upstream.client.callTool({
+    name: rest.join('__'),
+    arguments: req.params.arguments
+  });
+});
+```</p>
+
+<p>#### IV-D 4 后果</p>
+
+<p>**收益：** 简化客户端配置；实现集中认证和审计日志；支持跨大型服务器集群的工具发现。</p>
+
+<p>**负担：** 引入单点故障；每次调用增加一个网络跳转；命名空间冲突需要仔细治理；上游服务器故障通过聚合器暴露；作用域变体增加了每请求工具检索步骤，该步骤本身必须快速且准确。</p>
+
+<p>#### IV-D 5 已知用途</p>
+
+<p>企业MCP网关、开发者平台聚合器、多领域AI助手后端。</p>
+
+<p>### IV-E 模式5：领域特定适配器</p>
+
+<p>**又称：** 语义层、领域翻译器</p>
+
+<p>#### IV-E 1 上下文</p>
+
+<p>现有系统有一个有用但对LLM不友好的API：机器可读的标识符、低级操作、复杂的认证流程，或需要大量后处理的输出格式。</p>
+
+<p>#### IV-E 2 问题</p>
+
+<p>MCP服务器应如何将复杂的低级API转换为LLM能准确使用的形式，而无需在服务器中重新实现业务逻辑？</p>
+
+<p>#### IV-E 3 解决方案</p>
+
+<p>构建一个包装现有API的**语义适配器**，并添加：引导LLM选择的人类可读工具描述；输入规范化（接受自然语言日期、名称、模糊标识符）；输出丰富（将ID解析为显示名称）；以及错误翻译（将API错误代码转换为纯英文）。</p>
+
+<p>#### IV-E 4 后果</p>
+
+<p>**收益：** 当描述精确时，LLM工具选择准确率提高；API复杂性被隔离到适配器；后端API版本管理可在适配器层吸收。</p>
+
+<p>**负担：** 底层API变更时必须更新适配器；当底层API已经对LLM友好时，过度工程化是一个真实风险。</p>
+
+<p>#### IV-E 5 已知用途</p>
+
+<p>CRM适配器（Salesforce、HubSpot）、金融数据连接器、医疗记录系统。</p>
+
+<p>## V 反模式</p>
+
+<p>以下四种反模式**不是**推导语料库（表II）中任何服务器的主导结构；维护良好的服务器应避免它们。我们在生产服务器的开发和代码审查过程中将它们记录为降低LLM工具使用质量的反复出现的**局部**错误，并在公共仓库中针对问题和拉取请求讨论逐一交叉检查。我们报告它们是因为每种都对应一个具体的、反复出现的失败模式且有已知修复方法，这对从业者来说是有用的单元，尽管语料库中没有单个服务器由其中一种定义。</p>
+
+<p>### V-A 万能工具</p>
+
+<p>单个工具接受一个大型、无差异的模式，如 `do_anything(action: string, params: object)`，LLM必须推理&quot;action&quot;的含义。工具选择准确率崩溃。修复方法是分解：为每个不同的操作提供自己的命名工具，具有精确的模式和描述。</p>
+
+<p>### V-B 未净化的资源内容</p>
+
+<p>在资源响应中直接返回用户生成的内容（评论、文档正文、表单输入）而不进行净化。包含&quot;忽略之前的指令并……&quot;的文档将被LLM作为指令而非数据处理。在所有外部来源内容进入MCP响应之前对其进行净化。</p>
+
+<p>### V-C 同步长时间运行操作</p>
+
+<p>将视频编码、大文件处理或任何耗时超过几秒的操作暴露为同步工具。MCP没有内置异步回调机制；客户端会超时。模式：同步返回作业ID并暴露一个单独的 `poll_job(id)` 工具。</p>
+
+<p>### V-D 缺失或模糊的工具描述</p>
+
+<p>提供名为 `send_message` 的工具但没有描述，或者描述只是重述名称。LLM通过阅读描述来选择工具，而非通过检查模式。编写描述时，应解释工具做什么、何时使用以及返回什么，就像向从未见过它的人解释一样。</p>
+
+<p>## VI 定量评估</p>
+
+<p>为补充定性模式描述，我们进行了三项实验：一项分类法信度研究，其中两个独立LLM评分者对54个留出服务器进行分类（§VI-A）；一项传输延迟基准测试，包含主机内传输的端到端测量行和跨主机传输的建模行（§VI-B）；以及工具数量与选择准确率的分析（§VI-C）。所有实验均可从 https://github.com/rodriguescarson/mcp-patterns-icsme2026 的复现包中复现。</p>
+
+<p>### VI-A 模式分类与评分者间信度</p>
+
+<p>我们评估五种模式分类法是否能被独立评分者**可靠地**应用，以及其边界在哪里模糊。我们组装了一个54个服务器的留出语料库（来自官方MCP注册表和流行的社区服务器，均未用于推导模式），并编写了**中性的、功能聚焦的**描述，说明每个服务器做什么而不命名任何架构（例如，&quot;在仓库中暂存更改、提交、显示差异和切换分支&quot;）。两个独立评分者（Claude Haiku 4.5和Claude Sonnet 4，在温度0下以确保可复现性，各自仅获得五种模式定义）对每个服务器进行分类。我们报告评分者之间的Cohen's κ（在服务器上进行bootstrap 95%置信区间）以及每个评分者与作者标签的一致性。我们刻意避免对命名自身架构的**规范**描述进行分类这一更简单的协议：对作者编写的规范描述的试点研究得分为97%，但那测量的是描述措辞，而非分类法是否能经受住现实的、架构中性的输入。</p>
+
+<p>评分者间一致性是**实质性的**：κ=0.76（95% CI [0.62, 0.88]；81.5%原始一致率），因此独立评分者一致地应用该分类法。与作者预期标签的一致性较低，Haiku为68.5%，Sonnet为75.9%，且分歧是系统性的，集中在三个边界。(1) **有状态性从功能中不可见**：每个有状态服务器（git、puppeteer、playwright、selenium等）被读为工具编排器，因为能力列表枚举了操作而不揭示服务器端会话状态。(2) **领域逻辑不可见**：领域适配器（kubernetes、salesforce、shopify、fhir）在工具编排器和资源网关之间分裂，因为验证和业务规则不在功能描述中体现。(3) **读取式工具类似网关**：面向检索的编排器（sentry、notion）被重新分类为资源网关。因此，与架构命名描述的97%试点相比，一旦描述是架构中性的，与预期标签的一致性为69-76%，残余错误集中在这三个边界而非分散。因此，我们将有状态性和领域逻辑视为服务器可能在其主要结构模式之外携带的**横切属性**，而非互斥类别，我们建议模式分配应利用实现信号，而非仅凭能力列表。</p>
+
+<p>### VI-B 传输延迟</p>
+
+<p>表III报告了五种MCP传输配置的p50、p95和p99。两行是**测量的**：一个最小JSON-RPC 2.0回显服务器通过stdio和环回streamable-http（HTTP POST到本地http.server）执行，每种传输N=100次调用加10次预热调用，将协议开销与任何LLM往返隔离开来。三行是为需要我们未插桩的多主机部署的跨主机路径**建模的**：每行建模行是测量的环回开销加上显式网络RTT校准常数（同区域HTTPS RTT约为p50≈30 ms、p95≈80 ms、p99≈180 ms，与MCP Python SDK基准[21]和pipecat集成数据[22]中报告的典型同区域云HTTPS往返分布一致），每行校准来源记录在复现包中。**方法**列在每一行明确区分了这一点；我们在全文的论述中保持同样的区分。</p>
+
+<p>**表III：** MCP传输延迟。标记为**测量**的行是端到端环回测量（N=100次调用+10次预热）。标记为**建模**的行是环回开销加上有文档记录的同区域网络RTT校准；它们不是直接测量。</p>
+
+<p>| 传输 | 方法 | p50 | p95 | p99 |
+|---|---|---|---|---|
+| stdio（本地） | 测量 | 0.01 ms | 0.02 ms | 0.02 ms |
+| streamable-http（环回） | 测量 | 0.39 ms | 0.45 ms | 0.48 ms |
+| streamable-http（同区域远程） | 建模 | 30.4 ms | 80.4 ms | 180.4 ms |
+| 有状态会话服务器（远程） | 建模 | 38.4 ms | 100.4 ms | 216.4 ms |
+| 代理聚合器（远程，单跳） | 建模 | 62.4 ms | 160.4 ms | 308.4 ms |</p>
+
+<p>实质性发现：传输开销主要由网络RTT决定，而非协议层。主机内传输（stdio、环回streamable-http）增加的开销远低于一毫秒；stdio和streamable-http之间的差距是真实的，但在任何跨越主机边界的部署中都无关紧要，其中同区域网络RTT比任一协议自身的开销大两到三个数量级。因此，架构上重要的选择是 服务器是否与客户端共置，以及 下游扇出（代理聚合器）是否增加另一个网络跳转，而非使用哪种传输编码。</p>
+
+<p>**图1：** 按配置的MCP传输延迟（p50/p95/p99，对数刻度）；行标签指示**测量**与**建模**。</p>
+
+<p>### VI-C 工具数量与准确率（观察性）</p>
+
+<p>为表征工具选择准确率作为上下文大小的函数，我们报告来自ANSYR语音AI平台2025年第一季度生产遥测的**观察性**数据。这不是为本文进行的新鲜受控实验，而是对生产日志的回顾性分析；每个桶的数字和来源作为 tool_count_telemetry.csv 发布在复现包中以供独立验证。对于每个工具数量桶 b∈{1,3,5,10,15,20,30,50}，我们抽取了 Nb=200 个生产会话轮次；在生产中，每个轮次由Claude Haiku 4.5或Claude Sonnet 4服务（模型由租户配置决定）。真实值是人工操作员在通话后质量审查（常规生产审计步骤）中确认为正确的工具。图2显示了准确率和延迟；所有桶的Wilson 95%置信区间在±4个百分点以内。</p>
+
+<p>Haiku在10到15个工具之间降至90%准确率阈值以下（10个工具时91%，15个时87%）；Sonnet在20个工具之前保持≥90%，在30个工具时降至以下。在10个工具时，Haiku以中位数245 ms实现91%准确率；Sonnet以410 ms实现95%。</p>
+
+<p>对资源网关和工具编排器模式的影响是直接的：当单个MCP服务器暴露超过≈10-15个工具时，应使用§IV-D的**作用域**代理聚合器变体（每上下文工具过滤，也称为工具上的检索）来分区工具空间，使得在任何单个上下文中只有相关子集可见。简单的静态合并会使问题更糟而非更好，因此缓解措施是选择性暴露，而非聚合本身。我们的阈值是现已在大规模上记录的效果的保守起始：Gan和Sun[20]报告工具选择成功率仅在≈30个候选工具之前高于90%，在≈100之后急剧下降；Kate等人[23]测量到随着工具目录增长，准确率下降7-85%。我们的生产数据定位了对于延迟受限的语音部署，退化**开始**的位置；[20]的基于检索的缓解是我们推荐的代理聚合器分区的一个具体实例。</p>
+
+<p>**图2：** 工具数量与准确率和延迟（Claude Haiku 4.5和Claude Sonnet 4；来自ANSSYR生产日志的每桶Nb=200个请求）。阴影区域标记推荐范围（≤10个工具每上下文）。</p>
+
+<p>**注意事项：** 数据是观察性的，来自一个组织的生产工具表面；对于强调语义重叠工具或具有刻意模糊描述的工具清单，结果可能不同，且这些数字无法纯粹从发布的代码中重新推导（生产会话日志本身未发布）。</p>
+
+<p>## VII 横切关注点</p>
+
+<p>### VII-A 认证</p>
+
+<p>streamable-http传输支持Bearer令牌认证。在传输层认证，而非在工具处理程序内部。将令牌范围限定到特定工具集。记录所有带有调用者身份的工具调用；没有调用日志，调试LLM行为非常困难。</p>
+
+<p>### VII-B 错误处理</p>
+
+<p>尽可能以结构化错误内容返回工具错误，而非抛出异常。这允许LLM看到错误，推理是否重试，并决定是否升级给用户。</p>
+
+<p>### VII-C 版本管理</p>
+
+<p>在服务器的initialize响应中包含版本字段。工具模式的破坏性变更应增加主版本号；在迁移窗口期间保持旧模式存活，而非强制客户端立即更新。</p>
+
+<p>### VII-D 可观测性</p>
+
+<p>记录每次工具调用：工具名称、输入哈希、延迟、输出大小、错误代码。这些日志是LLM不当行为的主要调试表面。</p>
+
+<p>## VIII 讨论</p>
+
+<p>### VIII-A LSP类比</p>
+
+<p>MCP反映了语言服务器协议[7]的意图：将宿主（编辑器或LLM客户端）与提供者（语言服务器或MCP服务器）解耦，使提供者可跨宿主重用。LSP将语言智能从编辑器特定插件转变为共享生态系统；MCP是否对LLM能力做到同样，部分取决于是否出现模式词汇来指导良好的实现，本文旨在为此播种。</p>
+
+<p>### VIII-B 面向LLM客户端的API设计</p>
+
+<p>上述模式表明，MCP服务器设计从根本上是一个API设计问题，但有一个不寻常的约束：客户端通过阅读自然语言描述而非查阅文档来推理调用哪个API。这颠覆了通常的API设计假设。精确的、信息密集的描述是必要的，而非可选的，并直接决定工具是否被正确使用。将工具描述视为代码工作完成后快速编写的文档注释的从业者会发现他们的服务器表现不佳。</p>
+
+<p>### VIII-C 对从业者和维护的影响</p>
+
+<p>对于选择结构的从业者，目录简化为几个决策。将读取为主的后端数据暴露为带有净化层的资源网关；将多系统工作流封装为工具编排器；仅当一轮真正依赖于先前状态时才使用有状态会话服务器，并在这样做时预算会话清理；使用**作用域**代理聚合器变体而非静态合并来聚合集群；并将任何单个上下文保持在§VI-C的≈10-15个工具准确率预算以下。</p>
+
+<p>维护和演进视角是模式证明其成本的地方。每种模式也是一个局部化变更的**接缝**：领域特定适配器吸收上游API变动，使LLM面向的表面保持稳定；代理聚合器是版本管理、认证和审计集群的唯一位置；资源网关将后端模式迁移限制在一层。同样的模式也带有作者继承的维护**负担**：会话存储必须被清理否则会泄漏；有状态性对客户端和分类法本身都是不可见的（§VI-A），因此必须显式记录；工具描述是承重工件，除非像代码一样审查，否则会与行为不同步。从这个角度看，§V的反模式是反复出现的可维护性坏味，并直接连接到Hasan等人[17]的坏味目录。</p>
+
+<p>对于研究者，三个问题随之而来：在生态系统规模上对推导语料库进行独立人工双重编码；超越两个Claude模型的多模型评分者小组，以区分真正的分类法模糊性与共享LLM盲点；以及将模式选择与测量延迟和可靠性相关联的预测性研究，这将把目录从描述性词汇转变为经验工具。</p>
+
+<p>### VIII-D 局限性</p>
+
+<p>四个局限性界定了本文的贡献。(1) 推导语料库是来自一个组织加上官方公共注册表的十五个服务器；最近的一项测量研究编目了&gt;8,000个公共MCP服务器[18]，在该规模上的分层复现（我们未尝试）可能发现超出此集合的模式。(2) 分类法是通过单编码者开放编码加二次验证推导的，而非独立双重编码；我们通过在§VI-A中单独的留出评分者间研究（κ=0.76，N=54）来缓解这一点，但对推导语料库的完整独立双重编码仍是未来工作。(3) 分类语料库由合成和真实衍生的服务器**描述**组成，而非运行中的服务器本身；分类器在生产服务器上的准确率可能不同。(4) 传输延迟表中的五行中有三行是建模的，而非端到端测量的；我们逐行明确标注方法论以避免过度声明。</p>
+
+<p>### VIII-E 效度威胁</p>
+
+<p>**构念效度：** 信度研究（§VI-A）在留出服务器上使用两个独立LLM评分者，这缓解了单一评分者偏差，但两个评分者都是LLM，可能共享盲点；独立人工双重编码仍是未来工作。</p>
+
+<p>**内部效度：** 表III中建模的传输行将测量的环回开销与网络RTT常数组合；该常数针对同区域云遥测进行了校准，但具有跨区域或拥塞网络路径的部署将看到截然不同的绝对数字（配置的相对排序比绝对值更稳定）。</p>
+
+<p>**外部效度：** 所有五个ANSYR生产服务器来自一个应用领域（单一行业的语音AI）；在具有不同操作特征的领域中，模式可能不同。</p>
+
+<p>**结论效度：** 信度语料库（N=54）产生了评分者间κ的bootstrap 95% CI [0.62, 0.88]；虽然这是&quot;实质性&quot;一致，但不应仅从54个服务器样本中过度解读目录对完整设计空间的覆盖。</p>
+
+<p>### VIII-F 可复现性</p>
+
+<p>完整的复现包以MIT许可证发布于 https://github.com/rodriguescarson/mcp-patterns-icsme2026 。它包含：枚举推导语料库（corpus.json）、54个服务器信度语料库和双评分者分类脚本（kappa_eval.py）、传输基准测试（transport_bench.py）、分类提示模板（prompts/classification_prompt.txt）、观察性工具数量遥测（tool_count_telemetry.csv）以及依赖清单（requirements.txt）。两个评分者（claude-haiku-4-5-20251001和Claude Sonnet 4）均在温度0下查询以确保确定性。两个评分者的每服务器预测、带有bootstrap CI的评分者间κ以及每个评分者与作者标签的一致性写入 results_kappa.json；原始传输样本写入 results/transport_measured.json。</p>
+
+<p>### VIII-G 利益冲突</p>
+
+<p>Carson Rodrigues受雇于Celabe，即ANSYR语音AI平台（语料库生产部分的来源）的运营者。Oysturn Vas是滑铁卢大学的学者，与Celabe或ANSYR没有商业关系。模式目录源自平衡的语料库（5个生产+10个公共服务器）；分类实验使用合成描述和公共服务器的抽象（不向分类器提供生产遥测），工具数量研究（§VI-C）公开标记为观察性ANSYR生产遥测。</p>
+
+<p>## IX 结论</p>
+
+<p>本文编目了五种反复出现的MCP服务器架构模式（资源网关、工具编排器、有状态会话服务器、代理聚合器和领域特定适配器）以及四种反模式和一系列横切关注点，源自15个独立开发服务器的枚举语料库。我们用三项定量测量补充了定性描述：分类法的实质性评分者间信度（在54个留出服务器上两个独立评分者之间κ=0.76，该结果还定位了三个模式边界模糊之处）、主机内传输开销的端到端测量和跨主机路径的显式建模估计，以及一项工具数量研究，识别出≈10-15个工具每上下文作为当前Haiku级模型的实际准确率边界。随着MCP生态系统的成熟，三个方向仍待未来工作：在更大且更多领域多样化的语料库上对分类法进行独立编码者间验证；跨模式变体的LLM工具选择准确率的定量评估；以及MCP服务器攻击面的安全分析，特别是通过资源进行的提示注入。</p>
+
+<p>## AI披露</p>
+
+<p>根据ICSME工业赛道AI内容披露指南，我们记录以下内容。Claude Sonnet 4.6（Anthropic）在稿件准备期间用作写作和编辑助手；所有最终文本均由人工作者审查和编辑，我们对其承担全部责任。Claude Haiku 4.5（claude-haiku-4-5-20251001）和Claude Sonnet 4是§VI-A信度实验的两个独立评分者主体；提示词和每次调用输出随复现包发布。§VI-B中的网络RTT校准常数取自引用的先前测量（MCP Python SDK和pipecat），并非LLM生成。没有AI系统贡献了作者级别的智力内容（研究问题、模式定义、研究设计或声明）。我们未使用AI生成或修改图表。</p>
+
+<p>## 参考文献</p>
+
+<p>[1] E. Gamma, R. Helm, R. Johnson, and J. Vlissides, *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley, 1994.</p>
+
+<p>[2] Anthropic, &quot;Model context protocol specification,&quot; November 2024. [Online]. Available: https://modelcontextprotocol.io/specification</p>
+
+<p>[3] ——, &quot;Model context protocol reference servers,&quot; 2025. [Online]. Available: https://github.com/modelcontextprotocol/servers</p>
+
+<p>[4] G. Hohpe and B. Woolf, *Enterprise Integration Patterns: Designing, Building, and Deploying Messaging Solutions*. Addison-Wesley Professional, 2003.</p>
+
+<p>[5] OpenAI, &quot;Function calling and other api updates,&quot; 2023. [Online]. Available: https://openai.com/blog/function-calling-and-other-api-updates</p>
+
+<p>[6] Anthropic, &quot;Tool use (function calling) — anthropic documentation,&quot; 2024. [Online]. Available: https://docs.anthropic.com/en/docs/build-with-claude/tool-use</p>
+
+<p>[7] Microsoft, &quot;Language server protocol specification,&quot; 2016. [Online]. Available: https://microsoft.github.io/language-server-protocol/</p>
+
+<p>[8] M. Fowler, *Patterns of Enterprise Application Architecture*. Addison-Wesley Professional, 2002.</p>
+
+<p>[9] R. T. Fielding, &quot;Architectural styles and the design of network-based software architectures,&quot; Ph.D. dissertation, University of California, Irvine, 2000.</p>
+
+<p>[10] O. Hartig and J. Pérez, &quot;Semantics and complexity of GraphQL,&quot; in *Proc. The Web Conference (WWW)*, 2018, pp. 1155–1164.</p>
+
+<p>[11] T. Schick, J. Dwivedi-Yu, R. Dessì, R. Raileanu, M. Lomeli, L. Zettlemoyer, N. Cancedda, and T. Scialom, &quot;Toolformer: Language models can teach themselves to use tools,&quot; in *Advances in Neural Information Processing Systems 36 (NeurIPS 2023)*, 2023, published version; arXiv:2302.04761; DOI verified on CrossRef.</p>
+
+<p>[12] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao, &quot;React: Synergizing reasoning and acting in language models,&quot; 2022. [Online]. Available: https://arxiv.org/abs/2210.03629</p>
+
+<p>[13] S. Gravitas, &quot;Auto-gpt: An autonomous gpt-4 experiment,&quot; 2023. [Online]. Available: https://github.com/Significant-Gravitas/Auto-GPT</p>
+
+<p>[14] H. Chase, &quot;Langchain: Building applications with llms through composability,&quot; 2022. [Online]. Available: https://github.com/langchain-ai/langchain</p>
+
+<p>[15] Anthropic, &quot;Introducing computer use, a new claude 3.5 sonnet, and claude 3.5 haiku,&quot; 2024. [Online]. Available: https://www.anthropic.com/news/3-5-models-and-computer-use</p>
+
+<p>[16] X. Hou, Y. Zhao, S. Wang, and H. Wang, &quot;Model Context Protocol (MCP): Landscape, Security Threats, and Future Research Directions,&quot; *ACM Transactions on Software Engineering and Methodology*, 2026, [DOI verified on CrossRef].</p>
+
+<p>[17] M. M. Hasan, H. Li, E. Fallahzadeh, G. K. Rajbahadur, B. Adams, and A. E. Hassan, &quot;Model Context Protocol (MCP) at First Glance: Studying the Security and Maintainability of MCP Servers,&quot; *ACM Transactions on Software Engineering and Methodology*, 2026, [DOI verified on CrossRef].</p>
+
+<p>[18] H. Guo, Y. Hao, Y. Zhang, M. Xu, P. Lv, J. Chen, and X. Cheng, &quot;A measurement study of model context protocol ecosystem,&quot; 2025. [Online]. Available: https://arxiv.org/abs/2509.25292</p>
+
+<p>[19] J. Saldaña, *The Coding Manual for Qualitative Researchers*, 4th ed. SAGE Publications, 2021, [Verified on CrossRef].</p>
+
+<p>[20] T. Gan and Q. Sun, &quot;RAG-MCP: Mitigating prompt bloat in LLM tool selection via retrieval-augmented generation,&quot; *arXiv preprint arXiv:2505.03275*, 2025.</p>
+
+<p>[21] Anthropic, &quot;Model context protocol python sdk,&quot; https://github.com/modelcontextprotocol/python-sdk, 2024, official Python implementation of the MCP specification.</p>
+
+<p>[22] Daily, &quot;Pipecat: Open source framework for voice and multimodal ai agents,&quot; https://github.com/pipecat-ai/pipecat, 2024, gitHub repository; used for MCP transport benchmarking.</p>
+
+<p>[23] K. Kate, T. Pedapati, K. Basu et al., &quot;LongFuncEval: Measuring the effectiveness of long context models for function calling,&quot; *arXiv preprint arXiv:2505.10570*, 2025.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> MCP服务器, 架构模式, 大语言模型, 软件维护, API设计</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
