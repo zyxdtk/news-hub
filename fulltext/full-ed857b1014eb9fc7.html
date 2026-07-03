@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiDAR SLAM的自监督几何推理 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">LiDAR SLAM的自监督几何推理</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.30166" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Self-supervised Geometry Reasoning for LiDAR Simultaneous Localization and Mapping</h4>
+            <p><strong>中文摘要：</strong> 本文提出了一种自监督几何推理框架，用于改进LiDAR SLAM。该框架将每个点表示为高斯分布，通过协方差描述局部几何，无需密集几何标签或真值位姿，利用对应关系似然和位姿似然进行自监督学习。学习到的几何反馈到SLAM中形成互惠循环，改进的几何增强定位与建图，改进的定位为后续推理提供更干净的监督。该框架与后端无关，可插入现有SLAM流程。KITTI实验表明，在16和32通道稀疏LiDAR下，里程计漂移减少约50%，全局配准成功率也显著提升。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p># LiDAR SLAM的自监督几何推理</p>
+
+<p>**Jiwoo Kim**¹,∗ **Jinwoo Lee**¹,∗ **Woojae Shin**¹ **Giseop Kim**² **Hyondong Oh**¹,†</p>
+
+<p>¹ 韩国科学技术院（KAIST），大田，大韩民国
+² 大邱庆北科学技术院（DGIST），大邱，大韩民国</p>
+
+<p>∗ 同等贡献。
+† 通讯作者。</p>
+
+<p>邮箱：{tars0523, jinwoolee, oj7987, h.oh}@kaist.ac.kr, gsk@dgist.ac.kr</p>
+
+<p>## 摘要</p>
+
+<p>LiDAR同步定位与建图（SLAM）依赖于局部几何量，如协方差、对应关系和表面结构。然而，大多数现有流程依赖手工设计的局部几何估计，并将其作为LiDAR SLAM的固定输入，这使得在点云稀疏区域或使用低分辨率LiDAR时，估计的局部几何变得嘈杂且不稳定。为解决这一问题，本文引入了一个自监督框架，该框架学习局部几何的显式符号表示，并利用其递归地改进LiDAR SLAM。具体而言，每个点被表示为高斯分布，从而允许通过协方差来描述局部几何。在无需密集几何标签或真值位姿的情况下，该框架通过最大化局部几何的似然进行学习，其中自监督来源于符号几何表示上的一致性关系，包括预测的协方差、对应关系和SLAM轨迹。学习到的几何随后被反馈到LiDAR SLAM中，形成一个互惠循环：改进的几何增强定位与建图，而改进的定位为后续几何推理提供更干净的监督。该框架与后端无关，可以在不改变架构的情况下插入现有的LiDAR SLAM流程中。在KITTI上不同LiDAR分辨率下的实验表明，所提方法同时改进了里程计和全局配准。</p>
+
+<p>## I 引言</p>
+
+<p>LiDAR同步定位与建图（SLAM）是一项基础技术，使机器人能够探索、定位并与未知环境交互[1]。许多LiDAR SLAM模块背后的共同原理是利用从点云中提取的局部几何信息。例如，LiDAR里程计通常依赖局部协方差结构来实现精确的扫描匹配[18]，而全局配准方法则利用表面法线和局部几何一致性来建立跨远距离扫描的可靠对应关系[8]。</p>
+
+<p>然而，大多数现有流程使用手工设计的邻域统计量来估计此类局部几何，然后将其作为后续优化的固定输入。这些估计在点云稀疏区域或低分辨率LiDAR观测下可能变得嘈杂且不稳定，使得整体SLAM性能高度依赖于环境和传感器特性。</p>
+
+<p>**图1**：所提自监督几何推理框架概览。神经模块推断逐点协方差作为局部几何，并利用该协方差采样额外点以生成致密化点云供LiDAR SLAM使用。推理模块从内存中的对应关系和轨迹提供基于似然的自监督，而更新的SLAM轨迹被写回内存，形成几何推理与SLAM之间的互惠循环。</p>
+
+<p>在本文中，我们超越了这一视角，提出了一个自监督几何推理框架，该框架从原始LiDAR观测中递归推断场景几何，并将其用于定位与建图，而无需密集几何标签或真值轨迹。我们的公式化受到命令式学习[14]的启发，后者引入了一个通用的自监督神经符号框架，其中神经模块、符号推理和内存通过双层优化相互优化。在我们的公式化中，神经模块从原始LiDAR观测中预测局部几何，而LiDAR SLAM利用该信息估计轨迹。所得轨迹反过来作为不断演化的内存，为下一轮几何推理提供更可靠的位姿和对应关系。神经模块、推理模块、内存和SLAM后端之间的这种互惠交互总结在图1中。所提框架与后端无关，使学习到的几何先验能够以自监督方式改进现有的LiDAR SLAM流程。</p>
+
+<p>## II 相关工作</p>
+
+<p>### II-A 从点云估计底层几何</p>
+
+<p>估计点云的底层几何对于几何感知至关重要[4]。经典方法通常使用手工设计的邻域统计量，如基于PCA的协方差分析[11]和表面法线估计[10]。虽然高效，但这些方法严重依赖局部采样质量和邻域选择，使其在稀疏、嘈杂和非均匀的LiDAR测量下变得脆弱[9]。</p>
+
+<p>已有基于学习的方法被提出用于推断更丰富的几何结构，通常通过致密化稀疏点云或重建完整表面来实现[13, 15]。然而，这些方法通常需要密集的真值几何进行监督，并且可能产生不受实际测量支持的、未观测到的结构的幻觉[15]。与全场景补全不同，我们的工作旨在推断观测点周围的局部底层几何，为几何感知提供一种紧凑的、不确定性感知的、物理上有依据的表示。</p>
+
+<p>### II-B 自监督神经符号学习</p>
+
+<p>神经符号学习将神经感知与符号推理相结合，以提高可解释性和泛化能力[14]。在机器人学中，符号推理不仅可以包括逻辑规则[14]，还可以包括物理原理和几何优化，如束调整[17]和位姿图优化[2]。最近的命令式学习框架[14]使用此类推理引擎作为自监督的来源，允许神经模块在没有显式标签的情况下进行学习。</p>
+
+<p>我们的工作将命令式学习[14]实例化于LiDAR SLAM中的点云几何推理。我们将推理组件特化为局部几何的最大似然估计（MLE）框架，其中逐点协方差被学习以解释两种SLAM一致性：对应点之间的残差和SLAM后端估计的相对位姿。在此公式化中，神经模块预测高斯局部几何，内存存储SLAM估计的位姿和对应关系，而似然通过强制它们之间的一致性来提供自监督。所得局部几何随后被反馈到SLAM流程中，以改进里程计和全局配准等下游任务，而精炼的SLAM输出反过来为后续几何推理提供更干净的内存。这形成了一种互惠结构，其中局部几何和SLAM一致性逐步相互增强。</p>
+
+<p>## III 底层几何作为统计流形的概率建模</p>
+
+<p>为了形式化这种几何推理，我们首先引入底层几何的概率表示[7]。</p>
+
+<p>**图2**：说明底层几何如何表示为统计流形的可视化。它解释了在不同坐标系中观测到的两个点可以被视为从同一底层分布中抽取的样本。</p>
+
+<p>**定义1**（世界几何的统计流形）。统计流形 $\mathcal{M}_{\bm{g}}$ 通过全局参考系中的概率近似来表示底层世界表面流形。流形 $\mathcal{M}_{\bm{g}}$ 被定义为3D高斯分布族，每个分布由均值 $\bm{\bar{x}}_{\bm{g}_{i}}\in\mathbb{R}^{3}$ 和协方差矩阵 $\bm{C}_{\bm{g}_{i}}\in\mathbb{S}_{+}^{3}$ 参数化。</p>
+
+<p>每个高斯分布定义了观测点 $\bm{x}_{i}$ 相对于 $\bm{\bar{x}}_{\bm{g}_{i}}$ 处局部切平面测量的概率密度。</p>
+
+<p>当 $\bm{x}_{i}$ 由高精度LiDAR传感器获取时，所得高斯分布近似局部平面几何。在此公式化中，协方差矩阵 $\bm{C}_{\bm{g}_{i}}$ 提供了 $\bm{\bar{x}}_{\bm{g}_{i}}$ 邻域中几何的定量表示，如图2所示。</p>
+
+<p>**命题1**（来自不同传感器帧的统计流形表示）。给定传感器相对于全局参考系的位姿 $\bm{T}_{\bm{p}}=(\bm{R}_{\bm{p}},\bm{t}_{\bm{p}})\in SE(3)$，局部统计流形 $\mathcal{M}_{\bm{p}}$ 的参数 $\bm{\bar{x}}_{\bm{p}_{i}}$ 和 $\bm{C}_{\bm{p}_{i}}$ 通过 $\bm{T}_{\bm{p}}^{-1}$ 将全局模型 $\mathcal{M}_{\bm{g}}$ 变换到传感器帧来定义：</p>
+
+<p>$$\bm{\bar{x}}_{\bm{p}_{i}}\triangleq\bm{R}_{\bm{p}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{p}}),\qquad\bm{C}_{\bm{p}_{i}}\triangleq\bm{R}_{\bm{p}}^{\top}\bm{C}_{\bm{g}_{i}}\bm{R}_{\bm{p}}.$$</p>
+
+<p>类似地，对于位姿为 $\bm{T}_{\bm{q}}=(\bm{R}_{\bm{q}},\bm{t}_{\bm{q}})\in SE(3)$ 的第二个观测帧，统计流形 $\mathcal{M}_{\bm{q}}$ 的参数 $\bm{\bar{x}}_{\bm{q}_{i}}$ 和 $\bm{C}_{\bm{q}_{i}}$ 通过 $\bm{T}_{\bm{q}}^{-1}$ 定义：</p>
+
+<p>$$\bm{\bar{x}}_{\bm{q}_{i}}\triangleq\bm{R}_{\bm{q}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{q}}),\qquad\bm{C}_{\bm{q}_{i}}\triangleq\bm{R}_{\bm{q}}^{\top}\bm{C}_{\bm{g}_{i}}\bm{R}_{\bm{q}}.$$</p>
+
+<p>**定理1**（残差分布）。设 $\mathcal{P}\triangleq(\bm{p}_{1},\dots,\bm{p}_{N})$ 和 $\mathcal{Q}\triangleq(\bm{q}_{1},\dots,\bm{q}_{N})$ 分别表示从帧 $\bm{T}_{\bm{p}}$ 和 $\bm{T}_{\bm{q}}$ 获取的两个扫描，具有已知对应关系 $(\bm{p}_{i},\bm{q}_{i})$。每个点作为其局部高斯分布的嘈杂观测独立采样，即 $\bm{p}_{i}\sim\mathcal{N}(\bm{\bar{x}}_{\bm{p}_{i}},\bm{C}_{\bm{p}_{i}})$ 和 $\bm{q}_{i}\sim\mathcal{N}(\bm{\bar{x}}_{\bm{q}_{i}},\bm{C}_{\bm{q}_{i}})$，逐点协方差为 $\bm{C}_{\bm{p}}\triangleq(\bm{C}_{\bm{p}_{1}},\dots,\bm{C}_{\bm{p}_{N}})$ 和 $\bm{C}_{\bm{q}}\triangleq(\bm{C}_{\bm{q}_{1}},\dots,\bm{C}_{\bm{q}_{N}})$。</p>
+
+<p>由于 $\mathcal{P}$ 和 $\mathcal{Q}$ 源于通过同一底层世界表面的等距刚体变换关联的流形，它们共享相同的局部几何，即 $\bm{C}_{\bm{g}_{i}}$。在此局部几何模型下，第 $i$ 个对应关系的位移 $\bm{d}_{i}$（由相对变换 $\bm{T}\triangleq\bm{T}_{\bm{q}}^{-1}\bm{T}_{\bm{p}}$ 定义）满足</p>
+
+<p>$$\bm{d}_{i}\triangleq\bm{q}_{i}-\bm{T}\bm{p}_{i},\qquad\bm{d}_{i}\sim\mathcal{N}\!\left(\bm{0},\,2\bm{C}_{\bm{q}_{i}}\right). \tag{1}$$</p>
+
+<p>**证明。** 设 $\bm{T}=(\bm{R},\bm{t})\triangleq\bm{T}_{\bm{q}}^{-1}\bm{T}_{\bm{p}}$，其中 $\bm{R}=\bm{R}_{\bm{q}}^{\top}\bm{R}_{\bm{p}}$，$\bm{t}=\bm{R}_{\bm{q}}^{\top}(\bm{t}_{\bm{p}}-\bm{t}_{\bm{q}})$。</p>
+
+<p>使用高斯扰动形式，我们写</p>
+
+<p>$$\bm{p}_{i}=\bm{R}_{\bm{p}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{p}})+\bm{\epsilon}_{\bm{p}_{i}},\qquad\bm{q}_{i}=\bm{R}_{\bm{q}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{q}})+\bm{\epsilon}_{\bm{q}_{i}},$$</p>
+
+<p>其中 $\bm{\epsilon}_{\bm{p}_{i}}\sim\mathcal{N}(\bm{0},\bm{C}_{\bm{p}_{i}})$，$\bm{\epsilon}_{\bm{q}_{i}}\sim\mathcal{N}(\bm{0},\bm{C}_{\bm{q}_{i}})$，且两个扰动相互独立。则</p>
+
+<p>$$\bm{d}_{i}\triangleq\bm{q}_{i}-\bm{T}\bm{p}_{i}$$</p>
+
+<p>$$=\bm{R}_{\bm{q}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{q}})-\left(\bm{R}\bm{R}_{\bm{p}}^{\top}(\bm{\bar{x}}_{\bm{g}_{i}}-\bm{t}_{\bm{p}})+\bm{t}\right)+\bm{\epsilon}_{\bm{q}_{i}}-\bm{R}\bm{\epsilon}_{\bm{p}_{i}}.$$</p>
+
+<p>由于 $\bm{R}=\bm{R}_{\bm{q}}^{\top}\bm{R}_{\bm{p}}$ 且 $\bm{t}=\bm{R}_{\bm{q}}^{\top}(\bm{t}_{\bm{p}}-\bm{t}_{\bm{q}})$，确定性项相消，得到</p>
+
+<p>$$\bm{d}_{i}=\bm{\epsilon}_{\bm{q}_{i}}-\bm{R}\bm{\epsilon}_{\bm{p}_{i}}.$$</p>
+
+<p>因此，</p>
+
+<p>$$\mathbb{E}[\bm{d}_{i}]=\bm{0},$$</p>
+
+<p>且由独立性（即独立采样），</p>
+
+<p>$$\mathrm{Cov}[\bm{d}_{i}]$$</p>
+
+<p>$$=\bm{C}_{\bm{q}_{i}}+\bm{R}\bm{C}_{\bm{p}_{i}}\bm{R}^{\top}$$</p>
+
+<p>$$=\bm{R}_{\bm{q}}^{\top}\bm{C}_{\bm{g}_{i}}\bm{R}_{\bm{q}}+\bm{R}_{\bm{q}}^{\top}\bm{R}_{\bm{p}}\left(\bm{R}_{\bm{p}}^{\top}\bm{C}_{\bm{g}_{i}}\bm{R}_{\bm{p}}\right)\bm{R}_{\bm{p}}^{\top}\bm{R}_{\bm{q}}$$</p>
+
+<p>$$=2\bm{R}_{\bm{q}}^{\top}\bm{C}_{\bm{g}_{i}}\bm{R}_{\bm{q}}=2\bm{C}_{\bm{q}_{i}}.$$</p>
+
+<p>因此，</p>
+
+<p>$$\bm{d}_{i}\sim\mathcal{N}\!\left(\bm{0},\,2\bm{C}_{\bm{q}_{i}}\right),$$</p>
+
+<p>证明了式(1)。□</p>
+
+<p>**推论1**（点的分布）。给定相对变换 $\bm{T}$ 和源点 $\bm{p}_{i}$，目标点 $\bm{q}_{i}$ 可表示为</p>
+
+<p>$$\bm{q}_{i}=\bm{T}\bm{p}_{i}+\bm{d}_{i}.$$</p>
+
+<p>由定理1，残差服从 $\bm{d}_{i}\sim\mathcal{N}(\bm{0},2\bm{C}_{\bm{q}_{i}})$。</p>
+
+<p>因此，在给定 $\bm{p}_{i}$ 和 $\bm{T}$ 的条件下，目标点服从</p>
+
+<p>$$\bm{q}_{i}\mid\bm{p}_{i},\bm{T},\bm{C}_{\bm{q}_{i}}\sim\mathcal{N}\!\left(\bm{T}\bm{p}_{i},2\bm{C}_{\bm{q}_{i}}\right).$$</p>
+
+<p>**定理2**（点云的分布）。假设不同对应关系条件独立，给定固定源集 $\mathcal{P}$，目标集 $\mathcal{Q}$ 的条件似然分解为</p>
+
+<p>$$p(\mathcal{Q}\mid\mathcal{P},\bm{T},\bm{C}_{\bm{q}})=\prod_{i=1}^{N}p(\bm{q}_{i}\mid\bm{p}_{i},\bm{T},\bm{C}_{\bm{q}_{i}}) \tag{2}$$</p>
+
+<p>$$=\prod_{i=1}^{N}\frac{1}{\sqrt{(2\pi)^{3}\,|2\bm{C}_{\bm{q}_{i}}|}}\exp\!\left(-\frac{1}{2}\,\bm{d}_{i}^{\top}(2\bm{C}_{\bm{q}_{i}})^{-1}\bm{d}_{i}\right),$$</p>
+
+<p>其中最后一个等式由推论1得出。</p>
+
+<p>## IV 几何的最大似然估计</p>
+
+<p>在本节中，我们介绍两种局部几何（即 $\bm{C}_{\bm{q}_{i}}$）的MLE方法。</p>
+
+<p>### IV-A 对应关系似然</p>
+
+<p>第一个估计器直接来自定理2中的似然。</p>
+
+<p>**命题2**（最大化对应关系似然）。式(2)中 $\bm{C}_{\bm{q}}$ 的最大似然估计为</p>
+
+<p>$$\bm{\hat{C}}_{\bm{q}}=\arg\max_{\bm{C}_{\bm{q}}}\;p(\mathcal{Q}\mid\mathcal{P},\bm{T}=\bm{T}^{\star},\bm{C}_{\bm{q}}). \tag{3}$$</p>
+
+<p>我们将此公式化称为对应关系似然最大化，因为它在给定的对应点对上定义，并刻画它们之间的残差。</p>
+
+<p>取式(3)的负对数似然并丢弃常数，MLE简化为</p>
+
+<p>$$\bm{\hat{C}}_{\bm{q}}=\arg\min_{\bm{C}_{\bm{q}}}\;\tfrac{1}{2}\sum_{i=1}^{N}\left[\log\lvert 2\bm{C}_{\bm{q}_{i}}\rvert+\bm{d}_{i}^{\star\top}(2\bm{C}_{\bm{q}_{i}})^{-1}\bm{d}^{\star}_{i}\right], \tag{4}$$</p>
+
+<p>其中 $\bm{d}^{\star}_{i}=\bm{q}_{i}-\bm{T}^{\star}\bm{p}_{i}$。在实践中，真值位姿 $\bm{T}^{\star}$ 很少可用；相反，它可以从LiDAR SLAM中获取。</p>
+
+<p>### IV-B 位姿似然</p>
+
+<p>第二个估计器采用不同的视角。我们问：给定候选 $\bm{C}_{\bm{q}}$，由对应关系似然隐含的位姿是否与观测位姿 $\bm{\tilde{T}}$（例如来自LiDAR SLAM）一致？</p>
+
+<p>为此，我们首先定义给定协方差集时由对应关系似然隐含的位姿：</p>
+
+<p>$$\bm{T}(\bm{C}_{\bm{q}})\triangleq\arg\max_{\bm{T}}\;p(\mathcal{Q}\mid\mathcal{P},\bm{T},\bm{C}_{\bm{q}}), \tag{5}$$</p>
+
+<p>等价于加权最小二乘问题</p>
+
+<p>$$\bm{T}(\bm{C}_{\bm{q}})=\arg\min_{\bm{T}}\;\sum_{i=1}^{N}\bm{d}_{i}(\bm{T})^{\top}(2\bm{C}_{\bm{q}_{i}})^{-1}\bm{d}_{i}(\bm{T}).$$</p>
+
+<p>我们现在刻画 $\bm{T}(\bm{C}_{\bm{q}})$ 的采样分布。</p>
+
+<p>**命题3**（对应关系隐含位姿的分布）。式(5)中的位姿估计器是 $\bm{T}^{\star}$ 的加权最小二乘MLE。由MLE的标准渐近理论，</p>
+
+<p>$$\bm{T}(\bm{C}_{\bm{q}})=\bm{T}^{\star}\mathrm{Exp}(\bm{\eta}),\quad\bm{\eta}\sim\mathcal{N}\!\left(\bm{0},\,\bm{H}^{-1}(\bm{C}_{\bm{q}})\right),$$</p>
+
+<p>其中 $\mathrm{Exp}(\cdot)$ 表示 $SE(3)$ 的指数映射，将 $\mathbb{R}^{6}$ 李代数扰动提升为相对变换，$\bm{H}(\bm{C}_{\bm{q}})$ 是加权最小二乘目标在 $\bm{T}(\bm{C}_{\bm{q}})$ 处的Hessian矩阵。</p>
+
+<p>我们还对 $\bm{\tilde{T}}$ 采用高斯位姿观测模型，通常从测量中获取（例如LiDAR SLAM的位姿）：</p>
+
+<p>$$\bm{\tilde{T}}=\bm{T}^{\star}\mathrm{Exp}(\bm{\xi}),\qquad\bm{\xi}\sim\mathcal{N}(\bm{0},\bm{\Gamma}), \tag{6}$$</p>
+
+<p>其中 $\bm{\xi}\in\mathbb{R}^{6}$ 是李代数中的位姿噪声，$\bm{\Gamma}$ 是其协方差。结合式(6)和命题3，得到对应关系隐含位姿与观测位姿之间差异的分布。</p>
+
+<p>**命题4**（位姿差异的分布）。在位姿测量噪声 $\bm{\xi}$ 和估计噪声 $\bm{\eta}$ 独立的条件下，$\bm{T}(\bm{C}_{\bm{q}})$ 与 $\bm{\tilde{T}}$ 在李代数中的差异满足</p>
+
+<p>$$\mathrm{Log}\!\left(\bm{T}(\bm{C}_{\bm{q}})^{-1}\bm{\tilde{T}}\right)\approx\bm{\xi}-\bm{\eta}\sim\mathcal{N}\!\left(\bm{0},\,\bm{W}(\bm{C}_{\bm{q}})\right),$$</p>
+
+<p>其中近似来自一阶Baker–Campbell–Hausdorff（BCH）展开，且</p>
+
+<p>$$\bm{W}(\bm{C}_{\bm{q}})\triangleq\bm{\Gamma}+\bm{H}^{-1}(\bm{C}_{\bm{q}}).$$</p>
+
+<p>此处，$\mathrm{Log}(\cdot)$ 表示 $SE(3)$ 的对数映射，将相对变换映射到其 $\mathbb{R}^{6}$ 李代数表示。</p>
+
+<p>**推论2**（观测位姿的分布）。给定对应关系隐含位姿 $\bm{T}(\bm{C}_{\bm{q}})$ 和差异协方差 $\bm{W}(\bm{C}_{\bm{q}})$，观测位姿 $\bm{\tilde{T}}$ 可表示为</p>
+
+<p>$$\bm{\tilde{T}}=\bm{T}(\bm{C}_{\bm{q}})\,\mathrm{Exp}(\bm{\mu}),$$</p>
+
+<p>其中由命题4，差异服从</p>
+
+<p>$$\bm{\mu}\sim\mathcal{N}(\bm{0},\bm{W}(\bm{C}_{\bm{q}})).$$</p>
+
+<p>因此，在给定 $\bm{T}(\bm{C}_{\bm{q}})$ 和 $\bm{W}(\bm{C}_{\bm{q}})$ 的条件下，观测位姿服从</p>
+
+<p>$$\bm{\tilde{T}}\mid\bm{T}(\bm{C}_{\bm{q}}),\bm{W}(\bm{C}_{\bm{q}})\sim\mathcal{N}\!\left(\bm{T}(\bm{C}_{\bm{q}}),\,\bm{W}(\bm{C}_{\bm{q}})\right),$$</p>
+
+<p>即其关于 $\bm{T}(\bm{C}_{\bm{q}})$ 的李代数扰动为高斯分布。</p>
+
+<p>**命题5**（最大化位姿似然）。推论2中分布的 $\bm{C}_{\bm{q}}$ 的最大似然估计为</p>
+
+<p>$$\bm{\hat{C}}_{\bm{q}}=\arg\max_{\bm{C}_{\bm{q}}}\;p\!\left(\bm{\tilde{T}}\mid\bm{T}(\bm{C}_{\bm{q}}),\bm{W}(\bm{C}_{\bm{q}})\right). \tag{7}$$</p>
+
+<p>我们将其称为位姿似然最大化，因为它在对应关系隐含位姿 $\bm{T}(\bm{C}_{\bm{q}})$ 与观测位姿 $\bm{\tilde{T}}$ 之间的差异上定义。</p>
+
+<p>取式(7)的负对数似然并丢弃常数，MLE简化为</p>
+
+<p>$$\bm{\hat{C}}_{\bm{q}}=\arg\min_{\bm{C}_{\bm{q}}}\;\tfrac{1}{2}\,\bm{\mu}(\bm{C}_{\bm{q}})^{\top}\bm{W}(\bm{C}_{\bm{q}})^{-1}\bm{\mu}(\bm{C}_{\bm{q}})\,+\,\tfrac{1}{2}\log\lvert\bm{W}(\bm{C}_{\bm{q}})\rvert, \tag{8}$$</p>
+
+<p>其中 $\bm{\mu}(\bm{C}_{\bm{q}})\triangleq\mathrm{Log}\!\left(\bm{T}(\bm{C}_{\bm{q}})^{-1}\bm{\tilde{T}}\right)$。</p>
+
+<p>## V LiDAR SLAM的几何推理</p>
+
+<p>基于上述基于似然的公式化，我们现在在LiDAR SLAM流程中实例化几何推理。所提框架由三个组件组成：从原始点云预测局部几何的**神经模块**、评估几何似然的**推理**模块，以及存储它们之间交换数据的共享**内存**。这些组件通过在不同尺度上运行的三个过程耦合：算法1从固定内存快照训练神经模块；算法2使用训练好的模块通过SLAM精炼内存；算法3交替执行两者直到收敛。我们依次描述。</p>
+
+<p>**内存。** 我们定义内存模块 $\mathbf{M}$ 为</p>
+
+<p>$$\mathbf{M}\triangleq\bigl\{\{\mathcal{S}_{k}\}_{k=1}^{K},\;\hat{\mathcal{T}},\;\mathcal{C}\bigr\},$$</p>
+
+<p>其中 $\mathcal{S}_{k}$ 是第 $k$ 个LiDAR扫描。给定扫描对图 $\mathcal{E}$，位姿和对应关系内存定义为</p>
+
+<p>$$\hat{\mathcal{T}}\triangleq\{\hat{\bm{T}}_{k,l}\}_{(k,l)\in\mathcal{E}},\qquad\mathcal{C}\triangleq\{\mathcal{C}_{k,l}\}_{(k,l)\in\mathcal{E}},$$</p>
+
+<p>其中 $\hat{\bm{T}}_{k,l}\in SE(3)$ 是从 $\mathcal{S}_{k}$ 到 $\mathcal{S}_{l}$ 的估计相对位姿，$\mathcal{C}_{k,l}=\{(\bm{p}_{i},\bm{q}_{i})\mid\bm{p}_{i}\in\mathcal{S}_{k},\bm{q}_{i}\in\mathcal{S}_{l}\}$ 是对应的点对集合。内存向神经和空间推理模块提供扫描、位姿和对应关系，并在互惠学习期间由SLAM模块 $\mathcal{F}_{\mathrm{SLAM}}$ 更新。</p>
+
+<p>**算法1** 几何推理的自监督训练</p>
+
+<p>1: 神经模块 $f_{\bm{\theta}}$，内存 $\mathbf{M}=(\{\mathcal{S}_{k}\}_{k=1}^{K},\hat{\mathcal{T}},\mathcal{C})$，超参数 $\Omega=\{\eta,I,\lambda_{\mathrm{corr}},\lambda_{\mathrm{pose}},\epsilon\}$
+2: 训练好的神经网络 $f_{\bm{\theta}^{\star}}$
+3: **for** $i=1$ **to** $I$ **do**
+4: $\mathcal{L}(\bm{\theta})\leftarrow 0$
+5: **for** 每对 $(k,l)\in\mathcal{E}$ **do**
+6: $\mathcal{P}\leftarrow\mathcal{S}_{k},\;\mathcal{Q}\leftarrow\mathcal{S}_{l}$
+7: $\hat{\bm{T}}_{k,l}\leftarrow\hat{\mathcal{T}}_{k,l},\quad\mathcal{C}_{k,l}\leftarrow\mathcal{C}(k,l)$
+8: /* 通过Cholesky参数化 $\mathcal{Q}\to\bm{C}_{\bm{q}}$ */
+9: $\bm{L}_{\bm{q}}\leftarrow f_{\bm{\theta}}(\mathcal{Q})$，$\bm{C}_{\bm{q}}\leftarrow\bm{L}_{\bm{q}}\bm{L}_{\bm{q}}^{\top}+\epsilon\bm{I}$
+10: /* 对应关系似然，式(4) */
+11: $\mathcal{L}_{\mathrm{corr}}\leftarrow\sum_{i}\left[\log\lvert 2\bm{C}_{\bm{q}_{i}}\rvert+\bm{\tilde{d}}_{i}^{\top}(2\bm{C}_{\bm{q}_{i}})^{-1}\bm{\tilde{d}}_{i}\right]$
+12: /* 位姿似然，式(8) */
+13: $\bm{T}(\bm{C}_{\bm{q}})\leftarrow\texttt{SDPRLayer}(\bm{C}_{\bm{q}},\mathcal{C}_{k,l},\mathcal{P},\mathcal{Q})$
+14: $\mathcal{L}_{\mathrm{pose}}\leftarrow\bm{\mu}^{\top}\bm{W}^{-1}\bm{\mu}+\log\lvert\bm{W}\rvert$
+15: $\mathcal{L}(\bm{\theta})\mathrel{+}=\lambda_{\mathrm{corr}}\mathcal{L}_{\mathrm{corr}}+\lambda_{\mathrm{pose}}\mathcal{L}_{\mathrm{pose}}$
+16: $\bm{\theta}\leftarrow\bm{\theta}-\eta\,\nabla_{\bm{\theta}}\mathcal{L}(\bm{\theta})$
+17: **end for**
+18: **end for**
+19: **return** $f_{\bm{\theta}^{\star}}$</p>
+
+<p>**算法2** 基于推理几何的SLAM</p>
+
+<p>1: 内存 $\mathbf{M}=(\{\mathcal{S}_{k}\},\hat{\mathcal{T}},\mathcal{C})$，训练好的网络 $f_{\bm{\theta}^{\star}}$，SLAM模块 $\mathcal{F}_{\mathrm{SLAM}}$，超参数 $\Omega=\{\tau_{\mathrm{ani}},M\}$
+2: 更新的内存 $\mathbf{M}^{+}=(\{\mathcal{S}^{+}_{k}\},\hat{\mathcal{T}}^{+},\mathcal{C}^{+})$
+3: **for** $k=1$ **to** $K$ **do**
+4: /* 构造正定协方差 */
+5: $\bm{L}_{k}\leftarrow f_{\bm{\theta}^{\star}}(\mathcal{S}_{k})$，$\bm{C}_{k}\leftarrow\bm{L}_{k}\bm{L}_{k}^{\top}+\epsilon\bm{I}$
+6: $\mathcal{S}^{+}_{k}\leftarrow\emptyset$
+7: **for** 每个点 $\bm{s}_{k,i}\in\mathcal{S}_{k}$ **do**
+8: 从 $\bm{C}_{k,i}$ 计算各向异性 $a_{k,i}$
+9: /* 基于符号的离群点剔除 */
+10: **if** $a_{k,i}&gt;\tau_{\mathrm{ani}}$ **then**
+11: 采样 $\{\bm{s}_{k,i}^{(m)}\}_{m=1}^{M}\sim\mathcal{N}(\bm{s}_{k,i},\bm{C}_{k,i})$
+12: $\mathcal{S}^{+}_{k}\leftarrow\mathcal{S}^{+}_{k}\cup\{\bm{s}_{k,i}^{(m)}\}_{m=1}^{M}$
+13: **end if**
+14: **end for**
+15: **end for**
+16: /* 内存更新 */
+17: $\hat{\mathcal{T}}^{+}\leftarrow\mathcal{F}_{\mathrm{SLAM}}(\{\mathcal{S}^{+}_{k}\})$
+18: $\mathcal{C}^{+}\leftarrow\texttt{UpdateCorrespondence}(\hat{\mathcal{T}}^{+},\mathcal{C})$
+19: **return** $\mathbf{M}^{+}=(\mathcal{S}_{k},\hat{\mathcal{T}}^{+},\mathcal{C}^{+})$</p>
+
+<p>**神经模块的自监督训练。** 给定当前内存 $\mathbf{M}$，算法1训练 $f_{\bm{\theta}}$ 以预测与内存中存储的轨迹和对应关系一致的逐点协方差。训练信号由两种似然组成。对应关系似然（第8行）询问预测的协方差是否在统计上解释了对应点之间的残差，遵循命题2中建立的高斯分布。位姿似然（第11行）询问由预测协方差隐含的轨迹是否与内存中已有的轨迹一致，遵循命题5。评估位姿似然需要加权最小二乘问题的全局最优解以及通过该最优解的梯度。我们使用SDPR层[5]同时获得两者，该层利用隐函数定理（IFT）通过优化问题进行微分（第10行）。</p>
+
+<p>**注记1**（来自符号一致性的自监督）。不需要真值协方差标签：监督完全来源于预测几何、对应关系和轨迹之间的一致性。</p>
+
+<p>**算法3** 互惠学习</p>
+
+<p>1: 原始扫描 $\{\mathcal{S}_{k}\}_{k=1}^{K}$，初始网络 $f_{\bm{\theta}^{(0)}}$，SLAM模块 $\mathcal{F}_{\mathrm{SLAM}}$，超参数 $\Omega$，阈值 $\delta$
+2: 精炼内存 $\mathbf{M}^{\star}$，训练好的网络 $f_{\bm{\theta}^{\star}}$
+3: /* 通过SLAM初始化内存 */
+4: $(\hat{\mathcal{T}}^{(0)},\mathcal{C}^{(0)})\leftarrow\mathcal{F}_{\mathrm{SLAM}}(\{\mathcal{S}_{k}\})$
+5: $\mathbf{M}^{(0)}\leftarrow(\{\mathcal{S}_{k}\},\hat{\mathcal{T}}^{(0)},\mathcal{C}^{(0)})$
+6: $r\leftarrow 0$
+7: **while** 未收敛 **do**
+8: /* 从内存更新神经模块 */
+9: $f_{\bm{\theta}^{(r+1)}}\leftarrow\textbf{算法1}(f_{\bm{\theta}^{(r)}},\mathbf{M}^{(r)},\Omega)$
+10: /* 通过推理更新内存 */
+11: $\mathbf{M}^{(r+1)}\leftarrow\textbf{算法2}(\mathbf{M}^{(r)},f_{\bm{\theta}^{(r+1)}},\mathcal{F}_{\mathrm{SLAM}},\Omega)$
+12: **if** $\|\hat{\mathcal{T}}^{(r+1)}-\hat{\mathcal{T}}^{(r)}\|&lt;\delta$ **then** 收敛
+13: $r\leftarrow r+1$
+14: **end while**
+15: **return** $\mathbf{M}^{\star}=\mathbf{M}^{(r)},\;f_{\bm{\theta}^{\star}}=f_{\bm{\theta}^{(r)}}$</p>
+
+<p>**(a) 原始扫描** **(b) 致密化扫描**</p>
+
+<p>**图3**：原始和致密化点云。(a) 原始32通道扫描。(b) 从学习协方差生成的致密化扫描。</p>
+
+<p>**图4**：协方差估计器的网络架构。</p>
+
+<p>**基于推理几何的SLAM。** 一旦 $f_{\bm{\theta}^{\star}}$ 训练完成，算法2将其应用于每个扫描并相应地精炼内存。对于每个扫描，网络预测逐点协方差（第3行），每个点通过其各向异性进行过滤（第8行）。如第III节所建立的，在高精度LiDAR下从局部表面采样的点引起各向异性协方差；因此，近各向同性的预测表明高斯模型不忠实于底层几何。保留的点从预测分布中重采样（第9行）以形成几何增强的扫描，定性结果如图3所示。这些扫描随后传递给 $\mathcal{F}_{\mathrm{SLAM}}$ 以更新轨迹和对应关系（第15–16行）。注意，SLAM模块被视为黑盒，因此任何LiDAR SLAM流程都可以插入。</p>
+
+<p>**互惠学习。** 算法1和2相互依赖：神经模块从内存中训练，而内存使用神经模块精炼。算法3通过在两者之间交替来解决这种循环性，从在原始扫描上运行SLAM获得的初始内存开始（第2–3行）。每次迭代更新神经模块（第7行）然后更新内存（第9行），当轨迹变化低于 $\delta$ 时循环终止（第10行）。</p>
+
+<p>**(a) 各epoch的RPE** **(b) 轨迹比较**</p>
+
+<p>**图5**：不同训练epoch下的里程计性能。(a) 300帧区间上的平移RPE。(b) 对应epoch的估计轨迹。</p>
+
+<p>**表I**：不同LiDAR分辨率下的里程计性能。我们报告300帧区间上的平移RPE，括号内为相对于Raw的相对误差降低。</p>
+
+<p>| 输入 | 16通道 | 32通道 | 64通道 |
+|------|--------|--------|--------|
+| Raw | 15.55 | 7.88 | 3.68 |
+| 1步 | 10.02 (↓35.6%) | 4.80 (↓39.1%) | 3.50 (↓4.9%) |
+| 2步 | 7.85 (↓49.5%) | 4.11 (↓47.8%) | 3.46 (↓6.0%) |</p>
+
+<p>## VI 实验</p>
+
+<p>### VI-A 实验设置</p>
+
+<p>我们在KITTI里程计序列00[3]上验证所提框架，分别在64、32和16通道LiDAR设置下。32和16通道扫描分别通过以步长2和4对原始64通道LiDAR进行下采样生成。我们使用轻量级基于VGICP的里程计流程[6]作为 $\mathcal{F}_{\mathrm{SLAM}}$，使用受PointNet++[12]启发的架构作为神经模块 $f_{\bm{\theta}}$（图4）。从VGICP获得的原始内存信息出发，我们运行两轮互惠作为最小实验设置，以检验几何推理与SLAM之间的互惠效应。原始扫描被替换为从推理的底层几何生成的致密化扫描，在以下实验中记为 + Reasoning，如算法2第3–9行和图3所示。</p>
+
+<p>### VI-B 评估协议</p>
+
+<p>我们同时评估里程计和全局配准。对于里程计，我们将初始VGICP轨迹与一次（1步）和两次（2步）互惠更新后的轨迹进行比较，使用300帧区间上的平移相对位姿误差（RPE）。对于全局配准，我们随机采样100个真值平移距离在10m以内的扫描对，使用TEASER[16]进行对齐，当旋转误差低于10°且平移误差低于2m时计为成功。</p>
+
+<p>### VI-C 结果与分析</p>
+
+<p>**里程计。** 表I显示几何推理在所有分辨率下都减少了平移漂移，在更稀疏的输入上增益更大。在16和32通道下，2步模型将漂移减少约一半（49.5%和47.8%），而64通道的增益较小（6.0%），因为密集扫描已经提供了可靠的几何。第二轮互惠在所有设置中进一步改进了里程计，表明渐进的轨迹精炼（图5）。</p>
+
+<p>**(a) TEASER** **(b) TEASER + Reasoning**</p>
+
+<p>**图6**：全局配准结果的定性比较。 稀疏LiDAR输入下TEASER失败。 所提推理使TEASER成功。</p>
+
+<p>**表II**：不同LiDAR分辨率下的全局配准性能。我们报告成功率，括号内为相对于Raw的相对改进。</p>
+
+<p>| 输入 | 16通道 | 32通道 | 64通道 |
+|------|--------|--------|--------|
+| Raw | 79.00% | 90.00% | 97.00% |
+| 1步 | 83.00% (↑5.1%) | 96.00% (↑6.7%) | 97.00% (−0.0%) |
+| 2步 | 80.00% (↑1.3%) | 94.00% (↑4.4%) | 98.00% (↑1.0%) |</p>
+
+<p>**全局配准。** 表II显示了一致的成功率改进，其中32通道的增益最大（1步时+6.7%）。大部分增益在第一轮推理中获得，而后续更新的收益递减，64通道除外，其达到98%。图6展示了一个TEASER在原始扫描上失败但使用推理成功的案例。</p>
+
+<p>## VII 局限性</p>
+
+<p>尽管所提框架显示了有前景的结果，但它有几个需要进一步研究的局限性。</p>
+
+<p>- 当前的致密化策略仅从高各向异性点采样。更有原则的基于协方差的致密化仍是未来工作；
+- 训练过程耗时，在我们的设置中每个epoch约需15分钟。预训练的几何推理模型可以降低这一成本；
+- 互惠更新并不总是改进所有指标，如表II所示。可靠的停止准则仍是一个开放问题。</p>
+
+<p>## VIII 结论</p>
+
+<p>我们提出了一个自监督几何推理框架，在无需真值位姿或密集几何标签的情况下学习LiDAR SLAM的底层几何。虽然结果展示了学习局部几何对LiDAR SLAM的潜力，但解决上述局限性是使该框架广泛适用的必要条件。</p>
+
+<p>## 参考文献</p>
+
+<p>[1] C. Cadena, L. Carlone, H. Carrillo, Y. Latif, D. Scaramuzza, J. Neira, I. Reid, and J. J. Leonard (2017) Past, Present, and Future of Simultaneous Localization and Mapping: Toward the Robust-Perception Age. *IEEE Transactions on Robotics (T-RO)*. 引用于：§I.</p>
+
+<p>[2] T. Fu, S. Su, Y. Lu, and C. Wang (2024) iSLAM: Imperative SLAM. *IEEE Robotics and Automation Letters (RA-L)*. 引用于：§II-B.</p>
+
+<p>[3] A. Geiger, P. Lenz, and R. Urtasun (2012) Are We Ready for Autonomous Driving? The KITTI Vision Benchmark Suite. In *IEEE Conference on Computer Vision and Pattern Recognition (CVPR)*. 引用于：§VI-A.</p>
+
+<p>[4] Y. Guo, H. Wang, Q. Hu, H. Liu, L. Liu, and M. Bennamoun (2020) Deep Learning for 3D Point Clouds: A Survey. *IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)*. 引用于：§II-A.</p>
+
+<p>[5] C. Holmes, F. D&quot;umbgen, and T. D. Barfoot (2025) SDPRLayers: Certifiable Backpropagation Through Polynomial Optimization Problems in Robotics. *IEEE Transactions on Robotics (T-RO)*. 引用于：§V.</p>
+
+<p>[6] K. Koide, M. Yokozuka, S. Oishi, and A. Banno (2021) Voxelized GICP for Fast and Accurate 3D Point Cloud Registration. In *IEEE International Conference on Robotics and Automation (ICRA)*. 引用于：§VI-A.</p>
+
+<p>[7] J. Lee, J. Kim, W. Shin, G. Kim, and H. Oh (2026) Learning Point Cloud Geometry as a Statistical Manifold: Theory and Practice. *arXiv preprint arXiv:2605.10456*. 引用于：§III.</p>
+
+<p>[8] H. Lim, B. Kim, D. Kim, E. M. Lee, and H. Myung (2024) Quatro++: Robust Global Registration Exploiting Ground Segmentation for Loop Closing in LiDAR SLAM. *The International Journal of Robotics Research (IJRR)*. 引用于：§I.</p>
+
+<p>[9] C. Lin, J. Chen, P. Su, and C. Chen (2014) Eigen-Feature Analysis of Weighted Covariance Matrices for LiDAR Point Cloud Classification. *ISPRS Journal of Photogrammetry and Remote Sensing (ISPRS JPRS)*. 引用于：§II-A.</p>
+
+<p>[10] N. J. Mitra and A. Nguyen (2003) Estimating Surface Normals in Noisy Point Cloud Data. In *Annual Symposium on Computational Geometry (SoCG)*. 引用于：§II-A.</p>
+
+<p>[11] M. Pauly, R. Keiser, and M. Gross (2003) Multi-Scale Feature Extraction on Point-Sampled Surfaces. In *Computer Graphics Forum (CGF)*. 引用于：§II-A.</p>
+
+<p>[12] C. R. Qi, L. Yi, H. Su, and L. J. Guibas (2017) PointNet++: Deep Hierarchical Feature Learning on Point Sets in a Metric Space. *Advances in Neural Information Processing Systems (NeurIPS)*. 引用于：§VI-A.</p>
+
+<p>[13] I. Vizzo, B. Mersch, R. Marcuzzi, L. Wiesmann, J. Behley, and C. Stachniss (2022) Make It Dense: Self-Supervised Geometric Scan Completion of Sparse 3D LiDAR Scans in Large Outdoor Environments. *IEEE Robotics and Automation Letters (RA-L)*. 引用于：§II-A.</p>
+
+<p>[14] C. Wang, K. Ji, J. Geng, Z. Ren, T. Fu, F. Yang, Y. Guo, H. He, X. Chen, Z. Zhan, et al. (2024) Imperative Learning: A Self-Supervised Neuro-Symbolic Learning Framework for Robot Autonomy. *The International Journal of Robotics Research (IJRR)*. 引用于：§I, §II-B, §II-B.</p>
+
+<p>[15] B. Yang, P. Pfreundschuh, R. Siegwart, M. Hutter, P. Moghadam, and V. Patil (2024) Tulip: Transformer for Upsampling of LiDAR Point Clouds. In *IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*. 引用于：§II-A.</p>
+
+<p>[16] H. Yang, J. Shi, and L. Carlone (2020) TEASER: Fast and Certifiable Point Cloud Registration. *IEEE Transactions on Robotics (T-RO)*. 引用于：§VI-B.</p>
+
+<p>[17] Z. Zhan, D. Gao, Y. Lin, Y. Xia, and C. Wang (2024) iMatching: Imperative Correspondence Learning. In *European Conference on Computer Vision (ECCV)*. 引用于：§II-B.</p>
+
+<p>[18] J. Zhang, S. Singh, et al. (2014) LOAM: Lidar Odometry and Mapping in Real-Time. In *Robotics: Science and Systems (RSS)*. 引用于：§I.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> LiDAR SLAM, 自监督学习, 几何推理, 点云协方差, 互惠学习</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
