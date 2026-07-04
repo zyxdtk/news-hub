@@ -1,0 +1,3274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于词元共现图的高效检索增强生成 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于词元共现图的高效检索增强生成</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.30093" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Efficient Retrieval-Augmented Generation via Token Co-occurrence Graphs</h4>
+            <p><strong>中文摘要：</strong> 本文提出TIGRAG，一种基于词元共现图的高效检索增强生成框架。针对传统向量RAG多跳推理能力弱，以及现有GraphRAG依赖大模型构建图谱导致计算成本高且易产生幻觉的问题，TIGRAG通过统计词元在滑动窗口内的共现频率直接构建知识图谱。该框架包含离线图构建、语义扩展检索、动态图加权评分和神经重排序四个核心模块。实验表明，TIGRAG在多跳问答任务上不仅性能优于现有基线方法，还大幅降低了索引时间、...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>基于词元共现图的高效检索增强生成
+Gianluca Bonifazi
+g.bonifazi@</p>
+
+<p>estion Answering (QA) benchmarks. Experimental results demonstrated that our framework consistently outperforms dense retrieval and graph-based RAG methods in both retrieval and downstream QA tasks, while substantially reducing indexing time, inference latency, and prompt footprint.
+keywords:
+Retrieval-Augmented Generation , Knowledge Graphs , Multi-hop Question Answering , Large Language Models , Information Retrieval
+fn1
+fn1
+footnotetext:
+This is the first author footnote.
+fn2
+fn2
+footnotetext:
+Another author footnote, this is a very long
+footnote and it should be a really long footnote. But this
+footnote is not yet sufficiently long enough to make two
+lines of footnote text.
+fn3
+fn3
+footnotetext:
+Yet another author footnote.
+\affiliation
+[1]organization=Università Politecnica delle Marche,
+city=Ancona,
+country=Italy
+\affiliation
+[2]organization=Università di Modena e Reggio Emilia,
+city=Modena,
+country=Italy
+1
+Introduction
+As Large Language Models (LLMs) become more widespread, the research community is paying increasing attention to their inherent vulnerabilities, particularly the hallucination phenomenon
+[
+30
+,
+47
+]
+. Retrieval-Augmented Generation (RAG) has emerged as a well-established approach to mitigate hallucinations by anchoring LLM outputs in external, factual knowledge
+[
+8
+,
+29
+,
+3
+]
+. In a standard RAG pipeline, a user query is encoded as a vector, which is then employed to retrieve relevant text chunks from a large document corpus through a similarity search
+[</p>
+
+<p>27
+,
+17
+]
+. This retrieved information is then used to provide the LLM with contextual evidence during generation
+[
+21
+,
+23
+,
+48
+]
+. However, traditional vector-based RAG systems are ineffective because they treat documents as largely disconnected units, which limits their ability to reason across multiple pieces of information. Consequently, they often struggle with multi-hop queries, which require synthesizing dispersed evidence across independent chunks
+[
+2
+,
+38
+,
+26
+,
+49
+]
+.
+To address this issue, Graph-augmented RAG (GraphRAG) approaches rely on structured representations, often formalized as Knowledge Graphs (KGs). In KGs, nodes and edges capture textual elements and their complex relationships, which provides a topological space to map and navigate knowledge
+[
+5
+,
+11
+]
+. These approaches range from injecting graph-derived knowledge (such as triplets or community summaries) directly into the context
+[
+5
+]
+, to using the topological structure as a routing mechanism to retrieve the most relevant raw text chunks
+[
+13
+]
+. Due to their interconnected structure, GraphRAG approaches can inherently address the complex reasoning paths required by multi-hop Question Answering (QA)
+[
+33
+,
+19
+]
+. Nevertheless, two critical challenges hinder their broader adoption. First, offline KG construction introduces significant computational overhead and latency
+[
+28
+,
+4
+]
+. Second, traditional GraphRAG pipelines
+[
+5
+,
+11
+]
+rely heavily on LLM-based entity and relationship extraction, making</p>
+
+<p>them susceptible to hallucinated, noisy, or missing connections. These graph construction errors can propagate through the retrieval pipeline and ultimately cause cascading failures in downstream reasoning and generation
+[
+9
+]
+.
+This paper aims to address these computational overheads and extraction-based vulnerabilities by proposing TIGRAG (Token-Induced GraphRAG), a highly efficient graph-augmented RAG. Unlike traditional GraphRAG systems, TIGRAG statistically constructs its topological foundation by extracting tokens from the corpus and linking them based on co-occurrences within a sliding window. TIGRAG’s architecture consists of four core components:
+(i)
+an offline graph extraction stage that efficiently builds the topological KG,
+(ii)
+a semantic expansion and candidate retrieval module powered by Personalized PageRank (PPR)
+[
+14
+]
+,
+(iii)
+a dynamic graph-weighted scoring mechanism for contextual chunk evaluation, and
+(iv)
+a final neural reranking module that distills the top chunks based on semantic alignment with the query.
+We evaluated TIGRAG using the standard protocols outlined in the literature
+[
+13
+,
+12
+]
+on three multi-hop QA benchmarks: HotpotQA
+[
+46
+]
+, 2WikiMultiHopQA
+[
+15
+]
+, and MuSiQue
+[
+40
+]
+. Our empirical results demonstrate that TIGRAG not only outperforms existing RAG baselines across all datasets but also yields substantial efficiency improvements. Indeed, it significantly reduces indexing and retrieval latency, as well as overall token consumption.</p>
+
+<p>This paper is organized as follows: Section
+2
+discusses related work. Section
+3
+details the TIGRAG’s architecture and its core algorithms. Section
+4
+describes the experimental campaign performed to evaluate TIGRAG. Section
+5
+presents a discussion on our framework. Finally, Section
+6
+draws our conclusions and outlines some promising directions for future research.
+2
+Related Work
+This section illustrates approaches related to TIGRAG. Specifically, Subsection
+2.1
+presents standard RAG approaches. Subsection
+2.2
+describes Structure-Augmented Retrieval Approaches. Finally, Subsection
+2.3
+discusses the Network-Based Retrieval and Multi-Hop Reasoning paradigms.
+2.1
+Standard Retrieval-Augmented Generation
+RAG has emerged as a key paradigm for limiting LLM hallucinations. It anchors LLM outputs in reliable and up-to-date external knowledge sources, thereby improving factual accuracy and response quality
+[
+6
+]
+.
+Within this established paradigm, traditional RAG frameworks typically use lexical searches
+[
+32
+]
+or semantic similarities
+[
+20
+]
+to retrieve the necessary context. These approaches encode text chunks as continuous vectors and apply similarity metrics, such as cosine similarity, to effectively retrieve documents that share semantic overlap with the input query. However, standard RAG approaches treat documents as isolated units. Consequently, they have significant difficulty with complex, multi-hop queries that require synthesizing information across disparate texts. In fact, i</p>
+
+<p>n this case they are limited by the lexical and semantic gap between the initial question and the distant supporting facts
+[
+2
+,
+38
+]
+.
+Furthermore, standard dense retrieval methods often retrieve overly long contexts, resulting in severe information redundancy and substantial computational overhead. To address this issue, recent studies have explored context pruning techniques. For instance, AttentionRAG
+[
+7
+]
+introduces an attention-guided compression mechanism to reduce token consumption and filter out irrelevant information from the retrieved passages. While context compression offers a partial remedy, it often struggles to balance compression rates with the risk of information loss. Therefore, a more structural solution is needed to accurately identify interconnected evidence instead of just compressing flat text.
+2.2
+Structure-Augmented Retrieval Approaches
+To overcome the limitations of flat vector spaces, recent approaches have integrated structural dependencies into the RAG pipeline. In this context, GraphRAG has emerged as a promising paradigm that leverages graph-based indexing and retrieval to exploit relationships among entities. This allows for more precise and context-aware reasoning over complex knowledge bases
+[
+29
+]
+.
+Several specific architectures have been proposed based on this paradigm. For instance, RAPTOR
+[
+35
+]
+organizes textual knowledge into recursive tree structures through iterative abstractive processing, which facilitates retrieval at various le</p>
+
+<p>粒度级别。同样地，TreeRAG [ 39 ] 通过采用基于树的分块</p>
+
+<p>以及生成质量。
+这些方法中有许多是有效的，但它们依赖于计算成本高昂的LLM驱动提取管道或广泛的结构预训练来构建其底层图
+[
+45
+]。此外，最近的研究表明，像GraphRAG这样的实现在现实世界的大规模部署中会遇到显著的可扩展性问题。在这些</p>
+
+<p>关系，但计算成本高昂，且可能会丢失上下文信息。相反，粗粒度的文档级图保留了上下文，但难以对复杂的多跳关系进行建模。最近的方法，例如 QCG-RAG
+[
+44
+]
+，通过构建以查询为中心的图来检索不同粒度级别的相关块，从而解决了这一问题。其他方法则依赖具有查询感知注意力机制的图神经网络（GNN），以动态识别并聚合来自知识图谱（KGs）的相关信息
+[
+1
+]
+。
+与其依赖显式的查询分解或训练计算密集型的 GNN 架构，一种并行且高效的策略利用网络理论算法来有机地导航这些知识结构。像 HippoRAG
+[
+13
+]
+及其继任者 HippoRAG2
+[
+12
+]
+这样的方法，已经证明了使用 PPR 来模拟人类认知索引的有效性。这使得检索信号能够在语义节点间自然传播。
+尽管 TIGRAG 受到这些基于网络的原则的启发，但它引入了词元级提取阶段、动态候选池策略以及迭代的、实体驱动的多跳检索过程。具体而言，它从第一个检索跳中提取命名实体以扩展查询，并应用神经重排序步骤。这使其能够检索到传统密集型或基于单跳图的方法经常忽略的相互关联的证据。
+3
+提出的方法
+本节概述了技术特</p>
+
+<p>atures of TIGRAG. Specifically, Subsection
+3.1
+explains the rationale behind our framework, whereas the following subsections describe the various steps that comprise its underlying approach.
+3.1
+Motivations
+Standard RAG systems often struggle with multi-hop reasoning, whereas graph-based retrieval approaches frequently incur the cost of complex LLM-driven graph construction. To address these issues, we propose TIGRAG, a lightweight graph-augmented retrieval framework based on token co-occurrence graphs. Instead of relying on LLM-driven graph construction, TIGRAG builds a token-level topological representation directly from textual co-occurrences, enabling efficient and scalable graph creation. During retrieval, it combines graph-based semantic expansion with neural reranking to identify interconnected evidence for multi-hop reasoning. Then, an iterative, entity-driven retrieval strategy progressively augments the query using bridging entities extracted from previously retrieved contexts. TIGRAG substantially reduces prompt size, inference latency, and overall computational overhead by dynamically selecting compact and highly relevant contexts, outperforming existing GraphRAG approaches.
+Figure
+1
+illustrates the TIGRAG’s workflow. As shown in this figure, the TIGRAG architecture operates across two fundamental stages:
+(i)
+Offline Graph Construction, and
+(ii)
+Online Inference. During the offline phase, TIGRAG segments the raw corpus into overlapping chunks, from which token co</p>
+
+<p>-occurrence frequencies are used to construct the topological KG. At the same time, TIGRAG precomputes and indexes chunk-level dense embeddings and token-to-chunk provenance maps. At inference time, it tokenizes the incoming query to identify topological seed nodes. These seeds then drive a semantic expansion process that fetches an initial pool of candidate chunks. Next, TIGRAG applies a graph-weighted scoring mechanism to dynamically filter the candidates before passing them to a neural reranker for precise semantic alignment. Ultimately, it injects the top distilled chunks into the LLM’s prompt to ground the final generation. This single-hop retrieval process is then repeated to enable multi-hop reasoning.
+Figure 1
+:
+Workflow of TIGRAG, showing graph construction, semantic expansion, and iterative multi-hop retrieval
+3.2
+Pre-processing and Text Chunking
+Let
+𝒟
+=
+{
+d
+1
+,
+…
+,
+d
+f
+}
+\mathcal{D}=\{d_{1},\dots,d_{f}\}
+be the initial corpus of
+f
+f
+documents. Each document
+d
+i
+∈
+D
+d_{i}\in D
+is defined as a tuple
+⟨
+t
+i
+,
+b
+i
+⟩
+\langle t_{i},b_{i}\rangle
+, representing its title and its body, respectively. First, we apply a sentence tokenizer to segment the body
+b
+i
+b_{i}
+into an ordered sequence of sentences
+S
+i
+=
+(
+ϱ
+i
+1
+,
+…
+,
+ϱ
+i
+m
+)
+S_{i}=(\varrho_{i_{1}},\dots,\varrho_{i_{m}})
+. Afterwards, we perform a preprocessing pipeline to prepare the raw corpus for subsequent graph construction. Since TIGRAG relies on token co-occurrences, preserving local semantic coherence during chun</p>
+
+<p>king is essential to avoid noisy graph connections.
+Although recent attention-based segmentation strategies
+[
+10
+]
+improve semantic preservation, they introduce additional computational overhead. Therefore, TIGRAG does not adopt these strategies but uses a lightweight, sentence-level, sliding-window strategy.
+Let
+s
+s
+be the window size (i.e., number of sentences per chunk) and let
+o
+o
+be the overlap. We define the stride length as
+l
+=
+s
+−
+o
+l=s-o
+. Finally, let
+λ
+i
+\lambda_{i}
+be the number of chunks of
+d
+i
+d_{i}
+. The
+k
+k
+-th chunk of
+d
+i
+d_{i}
+,
+1
+≤
+k
+≤
+λ
+i
+1\leq k\leq\lambda_{i}
+, denoted as
+c
+i
+k
+c_{i_{k}}
+, is formally defined as the subsequence:
+c
+i
+k
+=
+(
+ϱ
+i
+(
+k
+−
+1
+)
+​
+l
++
+1
+,
+…
+,
+ϱ
+i
+(
+k
+−
+1
+)
+​
+l
++
+s
+)
+c_{i_{k}}=(\varrho_{i_{(k-1)l+1}},\dots,\,\varrho_{i_{(k-1)l+s}})
+(3.1)
+To facilitate the computation of semantic similarity during the retrieval phase, we map each chunk
+c
+i
+k
+c_{i_{k}}
+into a dense vector representation. Specifically, we use an embedding model
+ℳ
+\mathcal{M}
+to compute the chunk-level embedding
+ϵ
+i
+k
+∈
+ℝ
+δ
+\epsilon_{i_{k}}\in\mathbb{R}^{\delta}
+:
+ϵ
+i
+k
+=
+ℳ
+​
+(
+c
+i
+k
+)
+\epsilon_{i_{k}}=\mathcal{M}(c_{i_{k}})
+(3.2)
+where
+δ
+\delta
+is the embedding dimensionality. We store these dense representations and use them for cosine similarity-based retrieval (see below). This enables us to efficiently select the most relevant chunks for generation.
+After chunking, we tokenize each chunk
+c
+i
+k
+c_{i_{k}}
+through a function
+τ
+​
+(
+⋅
+)
+\tau(\cdot)
+that receives a chu</p>
+
+<p>nk and returns the set of its tokens. To reduce noise, we remove stopwords that could negatively affect the graph structure. Let
+𝒮
+\mathcal{S}
+be the set of stopwords and let
+ϕ
+​
+(
+⋅
+)
+\phi(\cdot)
+be a boolean validation function that takes a token as input and enforces minimum length and numerical constraints (i.e., it preserves years and large numerical values while discarding punctuation and tokens shorter than three characters). The final set
+V
+i
+k
+V_{i_{k}}
+of valid tokens extracted from
+c
+i
+k
+c_{i_{k}}
+is defined as:
+V
+i
+k
+=
+{
+v
+∈
+τ
+​
+(
+c
+i
+k
+)
+∣
+v
+∉
+𝒮
+∧
+ϕ
+​
+(
+v
+)
+}
+V_{i_{k}}=\{v\in\tau(c_{i_{k}})\mid v\notin\mathcal{S}\land\phi(v)\}
+(3.3)
+The tokens of
+V
+i
+k
+{V_{i_{k}}}
+form the basis for constructing the KG supporting TIGRAG, as explained in the next subsections.
+3.3
+Knowledge Graph Construction
+After extracting the valid token sets
+V
+i
+k
+V_{i_{k}}
+for each chunk
+c
+i
+k
+c_{i_{k}}
+, we construct a weighted, undirected KG:
+𝒢
+=
+⟨
+N
+,
+E
+⟩
+\mathcal{G}=\langle N,E\rangle
+(3.4)
+N
+N
+is the set of nodes in
+𝒢
+{\cal G}
+. There is a node
+n
+p
+∈
+N
+n_{p}\in N
+for each token
+v
+p
+∈
+V
+v_{p}\in V
+.
+V
+V
+is defined as the union of all valid tokens extracted across the entire corpus. Formally speaking:
+V
+=
+⋃
+i
+=
+1
+.
+.
+f
+,
+k
+=
+1
+.
+.
+λ
+i
+V
+i
+k
+V=\bigcup_{i=1..f,k=1..\lambda_{i}}V_{i_{k}}
+(3.5)
+Since each node
+n
+p
+∈
+N
+n_{p}\in N
+corresponds to exactly one token
+v
+p
+∈
+V
+v_{p}\in V
+, we use the terms “node” and “token”, as well as the symbols
+n
+p
+n_{p}
+and
+v
+p
+v_{p}
+, interchangeably.
+E
+E
+is the</p>
+
+<p>set of edges in
+𝒢
+{\cal G}
+. It is based on token co-occurrences in such a way as to establish semantic relationships between extracted concepts. Specifically, for each processed chunk
+c
+i
+k
+c_{i_{k}}
+, let
+V
+i
+k
+V_{i_{k}}
+represent the ordered sequence of its valid tokens. We traverse this sequence using a sliding window of size
+w
+w
+and add an edge
+(
+n
+p
+,
+n
+q
+,
+ω
+p
+​
+q
+)
+(n_{p},n_{q},\omega_{pq})
+to
+E
+E
+if the tokens
+v
+p
+v_{p}
+and
+v
+q
+v_{q}
+co-occur at least once within this window. The weight
+ω
+p
+​
+q
+\omega_{pq}
+is equal to the cumulative frequency of the co-occurrences of
+v
+p
+v_{p}
+and
+v
+q
+v_{q}
+across all sliding windows in the corpus. It reflects the strengths of the semantic association between
+v
+p
+v_{p}
+and
+v
+q
+v_{q}
+.
+3.4
+Query Pre-processing and Semantic Expansion
+During inference, an incoming natural language query
+μ
+\mu
+undergoes the same preprocessing and tokenization pipeline used for graph construction. Let
+V
+μ
+V_{\mu}
+denote the set of valid tokens extracted from
+μ
+\mu
+, and let
+V
+s
+​
+e
+​
+e
+​
+d
+=
+V
+μ
+∩
+V
+V_{seed}=V_{\mu}\cap V
+denote the subset of the tokens of
+μ
+\mu
+appearing in
+𝒢
+{\cal G}
+. We use the nodes corresponding to
+V
+s
+​
+e
+​
+e
+​
+d
+V_{seed}
+to perform a PPR process over
+𝒢
+\mathcal{G}
+. This allows us to explore the topological neighborhood of
+μ
+\mu
+and identify semantically related concepts.
+Specifically, we define a personalization vector
+𝐯
+∈
+ℝ
+|
+V
+|
+\mathbf{v}\in\mathbb{R}^{|V|}
+, where the restart probability is uniformly distributed across the n</p>
+
+<p>odes of
+V
+s
+​
+e
+​
+e
+​
+d
+V_{seed}
+and set to zero otherwise. In particular, the component
+𝐯
+p
+\mathbf{v}_{p}
+of
+𝐯
+\mathbf{v}
+, corresponding to the node
+v
+p
+∈
+V
+v_{p}\in V
+, is defined as follows:
+𝐯
+p
+=
+{
+1
+|
+V
+s
+​
+e
+​
+e
+​
+d
+|
+if
+​
+v
+p
+∈
+V
+s
+​
+e
+​
+e
+​
+d
+0
+otherwise
+\mathbf{v}_{p}=\begin{cases}\frac{1}{|V_{seed}|}&amp;\text{if }v_{p}\in V_{seed}\\
+0&amp;\text{otherwise}\end{cases}
+(3.6)
+We then execute PPR on
+𝒢
+\mathcal{G}
+using
+𝐯
+\mathbf{v}
+as the personalization vector. Upon convergence, we sort the nodes of
+𝒢
+{\cal G}
+according to their PageRank scores, and select the top-
+γ
+\gamma
+nodes to form the expanded token set
+Φ
+μ
+\Phi_{\mu}
+corresponding to
+μ
+\mu
+. Finally, we
+L
+1
+L_{1}
+-normalize the corresponding PPR scores to obtain a discrete probability score
+p
+^
+​
+(
+v
+)
+\hat{p}(v)
+for each token
+v
+∈
+Φ
+μ
+v\in\Phi_{\mu}
+.
+3.5
+Candidate Retrieval and Graph-Weighted Scoring
+After the expansion step, we retrieve a set of candidate text chunks. A chunk
+c
+c
+is considered a candidate if it contains at least one token from the union of the original query tokens and the expanded set of tokens, i.e., from
+V
+μ
+∪
+Φ
+μ
+V_{\mu}\cup\ \Phi_{\mu}
+.
+We introduce a graph-weighted scoring to rank these candidate chunks. In particular, we combine the probabilistic retrieval capabilities of BM25
+[
+37
+]
+with the semantic information provided by the PPR expansion. The relevance score
+ρ
+​
+(
+c
+,
+μ
+)
+\rho(c,\mu)
+for a candidate chunk
+c
+c
+, given the query
+μ
+\mu
+, is defined as the sum of the BM25 contributions of</p>
+
+<p>the tokens of
+Φ
+μ
+\Phi_{\mu}
+present in
+c
+c
+, weighted by their PPR:
+ρ
+​
+(
+c
+,
+μ
+)
+=
+∑
+v
+∈
+Φ
+μ
+∩
+V
+c
+p
+^
+​
+(
+v
+)
+⋅
+B
+​
+M
+​
+25
+​
+(
+v
+,
+c
+)
+\rho(c,\mu)=\sum_{v\in\Phi_{\mu}\cap V_{c}}\hat{p}(v)\cdot BM25(v,c)
+(3.7)
+Here,
+V
+c
+V_{c}
+is the set of tokens within
+c
+c
+,
+B
+​
+M
+​
+25
+​
+(
+v
+,
+c
+)
+BM25(v,c)
+represents the standard BM25 score contribution of the token
+v
+v
+of
+c
+c
+, and
+p
+^
+​
+(
+v
+)
+\hat{p}(v)
+acts as a topological modulating factor derived from the PPR distribution. This formulation ensures that candidate chunks are ranked not merely by superficial lexical overlap but also by the structural relevance of the underlying concepts.
+3.6
+Dynamic Candidate Pooling and Reranking
+Although graph-weighted scoring effectively retrieves a broad set of contextually relevant chunks, relying strictly on a fixed cutoff can introduce noise. To dynamically filter the candidate set, we apply a cumulative score thresholding mechanism.
+Let
+𝒞
+μ
+\mathcal{C}_{\mu}
+be the list of retrieved candidate chunks sorted in descending order by their hybrid score
+ρ
+​
+(
+⋅
+,
+⋅
+)
+\rho(\cdot,\cdot)
+. First, we calculate the total retrieval score mass
+ρ
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+\rho_{\mu_{total}}
+as the sum of all the scores of all chunks in
+𝒞
+μ
+{\cal C}_{\mu}
+:
+ρ
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+=
+∑
+c
+k
+∈
+𝒞
+μ
+ρ
+​
+(
+c
+k
+,
+μ
+)
+\rho_{\mu_{total}}=\sum_{c_{k}\in\mathcal{C}_{\mu}}\rho(c_{k},\mu)
+(3.8)
+Then, we construct a refined candidate pool
+𝒫
+μ
+\mathcal{P}_{\mu}
+of chunks by selecting the top
+α
+\alpha
+chunks such that their cumula</p>
+
+<p>tive score reaches a predefined fractional threshold
+t
+​
+h
+ρ
+th_{\rho}
+:
+α
+=
+min
+m
+=
+1
+.
+.
+|
+𝒞
+μ
+|
+⁡
+(
+∑
+k
+=
+1
+m
+ρ
+​
+(
+c
+k
+,
+μ
+)
+ρ
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+≥
+t
+​
+h
+ρ
+)
+\alpha=\min_{m=1..|\mathcal{C}_{\mu}|}\left(\frac{\sum_{k=1}^{m}\rho(c_{k},\mu)}{\rho_{\mu_{total}}}\geq th_{\rho}\right)
+(3.9)
+This dynamic cutoff ensures that TIGRAG retains only the most significant chunks, automatically adjusting the size of the pool based on the model’s confidence level.
+Finally, to ensure the maximum semantic fidelity to the query
+μ
+\mu
+, we perform a neural reranking on the dynamic pool
+𝒫
+μ
+\mathcal{P}_{\mu}
+. To this end, we use the embedding model
+ℳ
+\mathcal{M}
+to project the natural language query
+μ
+\mu
+into the same continuous vector space as the precomputed chunk embeddings, yielding
+ϵ
+μ
+=
+ℳ
+​
+(
+μ
+)
+∈
+ℝ
+δ
+\epsilon_{\mu}=\mathcal{M}(\mu)\in\mathbb{R}^{\delta}
+. For each candidate chunk
+c
+∈
+𝒫
+μ
+c\in\mathcal{P}_{\mu}
+with an embedding
+ϵ
+c
+\epsilon_{c}
+, we determine the final ranking by computing the cosine similarity
+σ
+c
+​
+μ
+\sigma_{c\mu}
+between the vectors
+ϵ
+c
+\epsilon_{c}
+and
+ϵ
+μ
+\epsilon_{\mu}
+. After constructing
+𝒫
+μ
+\mathcal{P}_{\mu}
+, we reorder its chunks
+c
+∈
+𝒫
+μ
+c\in\mathcal{P}_{\mu}
+in descending order according to the cosine similarity
+σ
+c
+​
+μ
+\sigma_{c\mu}
+. This yields the definitive ranking for the initial retrieval phase that returns the results of the one-hop query. We call
+𝒫
+^
+μ
+\hat{\mathcal{P}}_{\mu}
+the ordered list of chunks thus obtained.
+3.7
+Multi-Hop Reasoning and E</p>
+
+<p>ntity-Driven Query Expansion
+To address complex, multi-hop queries, i.e., queries that may lack the explicit vocabulary required to retrieve all supporting evidence, we introduce an iterative, entity-driven retrieval mechanism. At each hop
+j
+j
+, let
+ℋ
+μ
+j
+\mathcal{H}_{\mu}^{j}
+denote the list of the top
+ι
+\iota
+retrieved chunks sorted by the similarity degrees between their embeddings and the embedding of
+μ
+\mu
+. Clearly,
+ℋ
+μ
+1
+\mathcal{H}_{\mu}^{1}
+coincides with the top
+ι
+\iota
+chunks of
+𝒫
+^
+μ
+\hat{\mathcal{P}}_{\mu}
+. Finally, we denote by
+σ
+c
+​
+μ
+j
+\sigma^{j}_{c\mu}
+the cosine similarity between the embeddings
+ϵ
+c
+\epsilon_{c}
+and
+ϵ
+μ
+\epsilon_{\mu}
+at the hop
+j
+j
+. Clearly,
+σ
+c
+​
+μ
+1
+\sigma^{1}_{c\mu}
+coincides with
+σ
+c
+​
+μ
+\sigma_{c\mu}
+. We process the chunks of
+ℋ
+μ
+j
+\mathcal{H}_{\mu}^{j}
+through a Named Entity Recognition (NER) pipeline to extract the set of salient entities:
+𝒩
+μ
+j
+=
+N
+​
+E
+​
+R
+​
+(
+ℋ
+μ
+j
+)
+{\cal N}_{\mu}^{j}=NER(\mathcal{H}_{\mu}^{j})
+(3.10)
+To avoid semantic looping and encourage the discovery of new evidence, we only retain entities that have not yet been seen:
+𝒩
+¯
+μ
+j
+=
+𝒩
+μ
+j
+∖
+⋃
+r
+=
+1
+j
+−
+1
+𝒩
+μ
+r
+\overline{\cal N}_{\mu}^{j}={\cal N}_{\mu}^{j}\setminus\bigcup_{r=1}^{j-1}{\cal N}_{\mu}^{r}
+(3.11)
+If
+𝒩
+¯
+μ
+j
+=
+∅
+\overline{\cal N}_{\mu}^{j}=\emptyset
+, the retrieval process terminates. Otherwise, we update the cumulative entity set:
+𝒩
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+=
+⋃
+r
+=
+1
+j
+𝒩
+¯
+μ
+r
+{\cal N}^{j}_{\mu_{total}}=\bigcup_{r=1}^{j}\overline{\cal N}^{r}_{\mu}
+(3.1</p>
+
+<p>2)
+We assume that
+𝒩
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+{\cal N}^{j}_{\mu_{total}}
+consists of
+z
+z
+entities:
+𝒩
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+=
+{
+e
+1
+,
+e
+2
+,
+⋯
+,
+e
+z
+}
+{\cal N}^{j}_{\mu_{total}}=\{e_{1},e_{2},\cdots,e_{z}\}
+(3.13)
+Let
+t
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+=
+⨁
+x
+=
+1
+.
+.
+z
+e
+x
+t^{j}_{\mu_{total}}=\bigoplus_{x=1..z}e_{x}
+denote the textual concatenation of all entities in
+𝒩
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+{\cal N}^{j}_{\mu_{total}}
+. We then construct the expanded query:
+μ
+e
+​
+x
+​
+p
+j
+=
+μ
+⊕
+t
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+\mu^{j}_{exp}=\mu\oplus t^{j}_{\mu_{total}}
+(3.14)
+together with an expanded set of embeddings:
+ℰ
+μ
+e
+​
+x
+​
+p
+j
+=
+{
+ℳ
+​
+(
+μ
+⊕
+e
+x
+)
+|
+e
+x
+∈
+𝒩
+μ
+t
+​
+o
+​
+t
+​
+a
+​
+l
+j
+}
+{\cal E}^{j}_{\mu_{exp}}=\{{\cal M}(\mu\oplus e_{x})|e_{x}\in{\cal N}^{j}_{\mu_{total}}\}
+(3.15)
+We use the expanded query
+μ
+e
+​
+x
+​
+p
+j
+\mu^{j}_{exp}
+to reapply the same graph-based retrieval and candidate selection procedure described previously. Instead, the neural reranking stage works on the expanded embedding set
+ℰ
+μ
+e
+​
+x
+​
+p
+j
+{\cal E}^{j}_{\mu_{exp}}
+. This design maintains the semantic connection to the original query throughout the multi-hop exploration process and prevents the expanded entity context from overriding the retrieval objective. The resulting ranked chunks define the next retrieval hop
+ℋ
+μ
+j
++
+1
+\mathcal{H}_{\mu}^{j+1}
+.
+Finally, we merge the retrieved candidate sets from all executed hops. In particular, let
+h
+h
+be the number of executed hops. For any chunk
+c
+c
+detected during the retrieval hops, we retain its</p>
+
+<p>maximum relevance score across all hops:
+σ
+c
+​
+μ
+f
+​
+i
+​
+n
+​
+a
+​
+l
+=
+max
+u
+=
+1
+.
+.
+h
+⁡
+σ
+c
+​
+μ
+u
+\sigma_{c\mu}^{final}=\max_{u=1..h}\sigma^{u}_{c\mu}
+(3.16)
+After computing the final relevance scores for all chunks, we construct a list
+ℒ
+μ
+{\cal L}_{\mu}
+of chunks sorted by their corresponding final scores in a descending order. Finally, we construct the list
+ℋ
+μ
+f
+​
+i
+​
+n
+​
+a
+​
+l
+{\cal H}_{\mu}^{final}
+by selecting the top
+β
+\beta
+chunks from
+ℒ
+μ
+{\cal L}_{\mu}
+.
+ℋ
+μ
+f
+​
+i
+​
+n
+​
+a
+​
+l
+{\cal H}_{\mu}^{final}
+represents the final context window.
+4
+Experimental Campaign
+In this section, we describe the experimental campaign that we conducted to validate TIGRAG. Specifically, Subsection
+4.1
+presents the experimental setup, and Subsection
+4.2
+illustrates the obtained results.
+4.1
+Experimental Setup
+In this section, we describe the experimental setup for our tests. Specifically, we outline the datasets used, the baselines considered, the model and prompting protocol, the evaluated metrics, and finally the hyperparameter configuration. We conducted all experiments on a server with 256 AMD EPYC 7742 CPUs, 1 TB of RAM, and two NVIDIA A100 GPUs, each with 40 GB of memory. To ensure a fair comparison among the evaluated methods, we executed all indexing, retrieval, and generation experiments on the same hardware infrastructure.
+4.1.1
+Datasets
+We evaluated TIGRAG’s retrieval and reasoning capabilities across three widely adopted multi-hop Question Answering datasets: HotpotQA
+[
+46
+]
+, 2</p>
+
+<p>WikiMultiHopQA
+[
+15
+]
+, and MuSiQue
+[
+40
+]
+. To mitigate the computational overhead while maintaining statistical significance, we subsampled
+1
+,
+000
+1,000
+queries from each dataset, following standard practices from previous studies
+[
+13
+,
+41
+,
+31
+]
+. Each dataset provided questions to be answered and a corpus of associated documents. This corpus served as the evidence pool from which relevant context had to be retrieved. Furthermore, each query was paired with a ground-truth answer, enabling a rigorous assessment during the downstream evaluation phase.
+Table
+1
+provides a comprehensive overview of the statistics of the graph generated from each dataset.
+Method
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+Number of nodes
+55,733
+35,251
+56,467
+Number of edges
+1,315,330
+658,326
+1,370,777
+Average degree
+47.20
+37.35
+48.55
+Average number of documents per node
+8.15
+6.99
+8.18
+Number of chunks
+11,851
+7,870
+13,067
+Density
+0.0008
+0.0011
+0.0009
+Number of connected components
+1
+1
+1
+Table 1
+:
+Graph statistics for each dataset
+4.1.2
+Baselines
+To rigorously evaluate the effectiveness of TIGRAG, we benchmarked it against a diverse set of state-of-the-art RAG methods, covering both conventional dense retrieval techniques and more advanced structure-aware architectures. Specifically, we used
+NaiveRAG
+as a standard dense retrieval baseline, and employed
+RAPTOR
+[
+35
+]
+,
+GraphRAG
+[
+5
+]
+,
+LightRAG
+[
+11
+]
+,
+ToG
+[
+36
+]
+,
+KGP
+[
+42
+]
+, and
+HippoRAG2
+[
+12
+]
+as recent approaches incorporating hierarchical, graph-bas</p>
+
+<p>ed, or knowledge-guided retrieval mechanisms. We also considered the case in which no RAG is used. To ensure fairness, we used the same generation prompt, designed to strictly enforce evidence-grounded reasoning. It is shown in Figure
+2
+.
+4.1.3
+Models and prompting protocol
+The LLM we used for our experiments was
+gemma3:27b-it-qat
+1
+1
+1
+https://ollama.com/library/gemma3:27b-it-qat
+. During the generation phase, we supplied it with the user question and the retrieved context via a prompt template shown in Figure
+2
+. Finally, to ensure a fair comparison, we standardized the generation stage across all three evaluated baselines by applying an equivalent prompting strategy. We employed the Nomic Text 1.5 model
+2
+2
+2
+https://ollama.com/library/nomic-embed-text:v1.5
+for dense retrieval and semantic similarity computations. We performed tokenization using NLTK, which is based on the Treebank tokenizer and Punkt sentence segmentation. We extracted named entities using the spacy NER pipeline.
+You are a strict information extraction assistant.
+Examine the context to find the exact answer.
+You MUST follow this format:
+Thought: &lt;your step-by-step reasoning&gt;
+Answer: &lt;the concise answer only&gt;
+If the answer is in the text, you must find it. Do not chat.
+Example:
+Context:
+Wikipedia Title: The Last Horse
+The Last Horse (Spanish: El último caballo) is a 1950 Spanish comedy film directed by Edgar Neville starring Fernando Fernán Gómez.
+Question: Who directed The Last Horse?
+Thought: The text st</p>
+
+<p>ates that the film ‘The Last Horse’ was directed by Edgar Neville.
+Answer: Edgar Neville.
+---
+Context: &lt;CONTEXT_STR&gt;
+Question: &lt;QUESTION&gt;
+Thought:
+Answer:
+Figure 2
+:
+Prompt template used during the generation phase for Question Answering.
+&lt;CONTEXT_STR&gt;
+represents the retrieved context, while
+&lt;QUESTION&gt;
+is the question to be answered.
+4.1.4
+Metrics
+Following the procedure of
+[
+13
+]
+, we evaluated TIGRAG across three dimensions: retrieval efficacy, downstream generation quality, and computational efficiency.
+We quantified retrieval performance using Recall@2 (R@2) and Recall@5 (R@5), which measure the proportion of queries for which gold-standard supporting evidence is successfully retrieved within the top two (R@2) or top five (R@5) candidate chunks. For the generative Question Answering phase, we assessed performance using Exact Match (EM) and token-level F1. EM evaluates strict string equivalence, while token-level F1 evaluates the overlap between the LLM’s output and the ground-truth answers at the token level. All of these metrics fall within the real range
+[
+0
+,
+1
+]
+[0,1]
+, or
+[
+0
+,
+100
+]
+[0,100]
+if we express them in percentages; the higher their value, the better the performance. We omitted Recall@
+k
+k
+for KGP, ToG, and RAPTOR because their structural retrieval mechanisms are incompatible with chunk-level evaluation. In fact, KGP and ToG retrieve KG entities and relationships, while RAPTOR retrieves hierarchical summary nodes. Thus, these three systems do not permit rel</p>
+
+<p>iable evaluation of retrieval quality through Recall. Finally, we omitted Recall@k for NoRAG because this system has no retrieval mechanism.
+In addition to accuracy, we evaluated the computational load of RAG approaches. Specifically, we measured the time required for offline graph construction in order to evaluate scalability with large corpora. For the online phase, we reported end-to-end inference latency, capturing both retrieval and LLM generation. We also measured the prompt footprint as the average token length of the retrieved context. This computational metric is critical because reducing the context footprint not only lowers computational overhead and latency but also helps mitigate the loss of focus during generation.
+4.1.5
+Hyperparameter configuration
+We evaluated TIGRAG using a fixed hyperparameter configuration. In particular, we set the threshold
+t
+​
+h
+ρ
+th_{\rho}
+to 0.8 (see Equation
+3.9
+), the hyperparameter
+ι
+\iota
+(denoting the cardinality of
+ℋ
+μ
+j
+{\cal H}_{\mu}^{j}
+- see Section
+3.7
+) to
+1
+1
+and the number
+h
+h
+of hops to
+2
+2
+(see Section
+3.7
+). Furthermore, we set the hyperparameter
+β
+\beta
+(denoting the number of chunks composing the final context window - see Section
+3.7
+) to 5. We also set the length
+w
+w
+of the token co-occurrence window to 4. Finally, we set the window size
+s
+s
+to 6 and the overlap
+o
+o
+to 2; therefore, the stride length
+l
+l
+was set to 4 (see Section
+3.2
+). In Section
+4.2.3
+, we report a hyperparameter and ablation study supporting thi</p>
+
+<p>s configuration.
+4.2
+Results
+In this section, we present the results obtained from our experimental campaign. Specifically, Subsection
+4.2.1
+compares the performance of TIGRAG with that of other related systems proposed in the literature. Subsection
+4.2.2
+presents a comparison of the computational resources required by TIGRAG and other related approaches. Finally, Subsection
+4.2.3
+presents a hyperparameter and ablation study of TIGRAG.
+4.2.1
+Performance Comparison
+Table
+2
+reports the retrieval performance of the compared methods in terms of R@2 and R@5 across the considered multi-hop Question Answering benchmarks. For each column, the number in bold indicates the maximum value, while the underlined number denotes the sub-maximum value.
+Method
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+Average
+R@2
+R@5
+R@2
+R@5
+R@2
+R@5
+R@2
+R@5
+HippoRAG2
+57.45%
+84.05%
+63.42%
+78.73%
+35.50%
+51.29%
+52.12%
+71.36%
+LightRAG
+69.05%
+85.25%
+59.98%
+69.58%
+35.62%
+49.68%
+54.88%
+68.17%
+NaiveRAG
+71.65%
+85.05%
+64.35%
+70.40%
+38.39%
+51.21%
+58.13%
+68.89%
+TIGRAG
+78.60%
+92.05%
+72.98%
+87.20%
+42.57%
+56.28%
+64.72%
+78.51%
+Table 2
+:
+Retrieval performance (R@2 and R@5) on multi-hop Question Answering benchmarks
+This table shows that TIGRAG outperforms all baselines consistently across all evaluated scenarios. On HotpotQA, it improves R@2 by 9.70% and R@5 by 8.23% compared to NaiveRAG. This trend continues on 2WikiMultiHopQA, where TIGRAG achieves a 13.41% gain on R@2 over NaiveRAG, and a 10.76% gain on R@5 over HippoRAG2. On the mo</p>
+
+<p>re challenging MuSiQue benchmark, which requires multi-step semantic reasoning, TIGRAG’s margin of improvement increases further, with a 19.92% gain on R@2 and a 9.73% gain on R@5 over HippoRAG2. These results demonstrate the effectiveness of token-level topological expansion in enhancing multi-hop retrieval.
+Afterwards, we shifted our focus from retrieval metrics to downstream generative performance. Table
+3
+shows the Question Answering performance of the compared methods on the multi-hop benchmarks using Exact Match (EM) and token-level F1 (F1).
+Method
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+Average
+EM
+F1
+EM
+F1
+EM
+F1
+EM
+F1
+NoRAG
+28.30%
+37.93%
+30.90%
+35.20%
+7.40%
+17.59%
+22.20%
+30.24%
+HippoRAG2
+52.80%
+64.40%
+50.20%
+55.57%
+26.50%
+33.89%
+43.17%
+51.29%
+Raptor
+39.80%
+55.69%
+32.40%
+38.24%
+14.40%
+24.21%
+28.87%
+39.38%
+KGP
+22.50%
+32.26%
+11.40%
+13.08%
+11.10%
+18.15%
+15.00%
+21.16%
+ToG
+20.60%
+26.63%
+14.50%
+17.02%
+5.80%
+8.60%
+13.63%
+17.42%
+GraphRAG
+29.99%
+39.91%
+7.60%
+8.41%
+0.50%
+1.67%
+12.70%
+16.66%
+LightRAG
+52.50%
+66.91%
+45.70%
+51.17%
+22.20%
+32.14%
+40.13%
+50.07%
+NaiveRAG
+53.40%
+64.84%
+44.40%
+48.49%
+21.00%
+29.88%
+39.60%
+47.74%
+TIGRAG
+60.70%
+72.60%
+50.90%
+58.60%
+26.20%
+35.80%
+45.93%
+55.67%
+Table 3
+:
+Question answering performance (EM and F1) on multi-hop Question Answering benchmarks
+As shown in Table
+3
+, TIGRAG improves answer quality on HotpotQA consistently, achieving gains of 13.67% in EM and 11.97% in F1 over NaiveRAG. A similar trend is observed on 2WikiMultiHopQA, where TIGRAG surpasses Hi</p>
+
+<p>ppoRAG2 by 1.39% in EM and 5.45% in F1. On the MuSiQue benchmark, HippoRAG2 obtains a marginally higher EM value, but TIGRAG preserves a higher F1 value. Since EM heavily penalizes partially correct but more detailed answers, TIGRAG’s stronger F1 results suggest that our framework provides more comprehensive and semantically reliable evidence for multi-hop reasoning.
+4.2.2
+Resource Comparison
+The practical viability of a RAG architecture depends not only on retrieval accuracy but also on computational efficiency. After analyzing retrieval performance in Section
+4.2.1
+, we now focus on resource consumption during the offline and online phases. To this end, we analyze three critical dimensions: offline graph construction time (also referred to as indexing time), online end-to-end inference latency, and prompt footprint (quantified by the retrieved context’s length expressed in number of tokens). These metrics evaluate TIGRAG’s scalability and practical usability. Offline indexing time measures the cost of processing large corpora, while end-to-end inference latency captures the responsiveness of the entire retrieval-generation pipeline. Excessively large contexts can slow down generation and distract the LLM; thus, reducing the context footprint is essential for improving both efficiency and reasoning quality. Table
+4
+reports the offline indexing time and the average online inference latency per query obtained by TIGRAG and related approaches when performing the tests described</p>
+
+<p>in Section
+4.2.1
+.
+Method
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+Indexing (s)
+Retrieval (s)
+Indexing (s)
+Retrieval (s)
+Indexing (s)
+Retrieval (s)
+HippoRAG2
+308,664
+75.60
+121,945
+79.48
+318,282
+81.67
+Raptor
+29,452
+14.80
+17,001
+14.56
+35,851
+15.46
+KGP
+1,893
+30.57
+1,514
+25.90
+4,096
+37.16
+ToG
+139,372
+55.27
+70,660
+39.91
+146,146
+48.58
+GraphRAG
+657,055
+14.91
+74,802
+15.75
+195,325
+15.75
+LightRAG
+721,833
+20.31
+343,812
+19.96
+593,942
+20.46
+NaiveRAG
+102
+3.35
+66
+3.71
+114
+4.45
+TIGRAG
+191
+3.72
+155
+3.26
+202
+4.14
+Table 4
+:
+Indexing and retrieval time; the latter includes both the effective retrieval time and the LLM response time
+The analysis of this table shows that NaiveRAG has the shortest indexing time in the offline phase due to its simple, dense-retrieval architecture, which bypasses graph construction. Although TIGRAG is slower than NaiveRAG, it is still substantially faster than other graph-based methods while achieving stronger retrieval and generation performance (see Table
+2
+).
+A compelling trend emerges during the online inference phase. On HotpotQA, TIGRAG is slightly slower than NaiveRAG. However, on more complex datasets, such as 2WikiMultiHopQA and MuSiQue, TIGRAG surpasses NaiveRAG in end-to-end speed. This efficiency gain validates our hypothesis that, by dynamically extracting highly concentrated and relevant context, TIGRAG can drastically reduce the LLM’s prompt processing and generation time. This reduction more than offsets the minimal latency introduced by the graph traversal</p>
+
+<p>necessary for PPR. Compared to RAPTOR, the fastest graph-based baseline, TIGRAG is roughly four times faster, setting a highly scalable standard for graph-augmented RAG systems.
+Table
+5
+details the average context footprint, measured in number of tokens, generated per query.
+Method
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+HippoRAG2
+579.45
+639.43
+656.61
+Raptor
+867.88
+860.08
+869.98
+GraphRAG
+3,843.83
+888.46
+1421.63
+KGP
+2,501.16
+367.28
+2,323.68
+ToG
+117.96
+117.10
+115.30
+LightRAG
+5,893.51
+5,579.22
+7,304.93
+NaiveRAG
+742.80
+719.44
+800.26
+TIGRAG
+578.02
+570.66
+635.41
+Table 5
+:
+Average context length (in number of tokens) across datasets
+As this table shows, approaches that rely strictly on dynamically filtered text chunks produce a significantly more compact context. In contrast, frameworks that augment their prompts by injecting extensive sets of KG triplets or community summaries, such as GraphRAG and LightRAG, suffer from highly inflated context windows. TIGRAG reduces prompt size by relying on a compact and highly relevant chunk pool, thereby improving inference speed and limiting the loss of focus.
+4.2.3
+Hyperparameter and Ablation Study
+First, we examine how the retrieval budget affects the way an LLM constructs context, with a specific focus on the number
+β
+\beta
+of chunks supplied to the LLM for context construction (see Section
+3.7
+). By varying
+β
+\beta
+, we evaluate the tradeoff between providing sufficient supporting evidence and introducing semantic noise. Thus, we assess how conte</p>
+
+<p>xt size ultimately influences EM and F1 scores. In Table
+6
+, we present the results obtained from this experiment. In each column, we show in bold the best value obtained for the corresponding metric. The results of this table highlight that performance peaks at an intermediate value of
+β
+\beta
+(
+β
+=
+5
+\beta=5
+). Increasing the context window beyond this threshold decreases both EM and F1 scores. This behavior underscores LLMs’ susceptibility to distraction when exposed to overly long and noisy contexts. Conversely, setting
+β
+\beta
+too low starves the generative model of necessary supporting evidence. Thus,
+β
+=
+5
+\beta=5
+is the optimal configuration, which maximizes informational density without overwhelming the reasoning model’s capacity.
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+β
+\mathbf{\beta}
+EM
+F1
+EM
+F1
+EM
+F1
+3
+57.40%
+70.02%
+45.20%
+52.41%
+23.30%
+32.68%
+5
+60.70%
+72.60%
+50.90%
+58.60%
+26.20%
+35.80%
+10
+55.80%
+69.21%
+44.90%
+52.66%
+22.80%
+33.09%
+Table 6
+:
+Sensitivity analysis for the hyperparameter
+β
+\beta
+Table
+7
+reports the impact of the hyperparameter
+ι
+\iota
+, which denotes the cardinality of
+ℋ
+μ
+j
+{\cal H}_{\mu}^{j}
+(see Section
+3.7
+) on the effectiveness of retrieval, measured in terms of R@2 and R@5. In this table, we note that
+ι
+\iota
+directly influences the precision of the retrieval space. Empirical results indicate that the optimal configuration is achieved with
+ι
+=
+1
+\iota=1
+across most scenarios. This suggests that the essential bridging context is concentrated in the hig</p>
+
+<p>hest-ranked chunk, and incorporating subsequent chunks introduces distracting entities. In fact, in the latter case, the entity pool used for query augmentation excessively expands, inevitably introducing semantic drift and degrading overall performance. The only exception is observed on the 2WikiMultiHopQA dataset, where R@5 peaks at
+ι
+=
+2
+\iota=2
+.
+ι
+\iota
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+R@2
+R@5
+R@2
+R@5
+R@2
+R@5
+1
+78.60%
+92.05%
+72.98%
+87.20%
+42.57%
+56.28%
+2
+74.05%
+91.45%
+63.52%
+90.58%
+37.78%
+55.17%
+3
+68.00%
+91.10%
+55.13%
+88.18%
+33.92%
+55.16%
+Table 7
+:
+Sensitivity analysis for the hyperparameter
+ι
+\iota
+Table
+8
+shows how the hyperparameter
+h
+h
+, which denotes the number of query hops (see Section
+3.7
+), affects the TIGRAG’s retrieval performance. We carried out this evaluation considering one, two, and three hops, aligning this hyperparameter with the multi-hop complexity of the underlying benchmarks. We did not explore beyond three hops because that exceeds the maximum ground-truth reasoning chain required by the selected datasets. Thus, additional hops would primarily introduce computational overhead and semantic noise rather than useful evidence. As shown in this table, using two hops yields the best tradeoff between semantic expansion and topological noise across all benchmarks.
+h
+h
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+R@2
+R@5
+R@2
+R@5
+R@2
+R@5
+1
+71.50%
+85.55%
+61.92%
+70.27%
+38.01%
+50.72%
+2
+78.60%
+92.05%
+72.98%
+87.20%
+42.57%
+56.28%
+3
+78.40%
+91.90%
+72.75%
+87.18%
+42.47%
+56.19%
+Ta</p>
+
+<p>ble 8
+:
+Sensitivity analysis for the hyperparameter
+h
+h
+Table
+9
+evaluates the effect of the cumulative score threshold
+t
+​
+h
+ρ
+th_{\rho}
+used in the candidate pooling stage (see Equation
+3.9
+). As shown in this table, higher values of
+t
+​
+h
+ρ
+th_{\rho}
+improve retrieval effectiveness by enabling broader semantic exploration before the final reranking stage, filtering out the least relevant evidence. Performance consistently peaks when
+t
+​
+h
+ρ
+=
+0.8
+th_{\rho}=0.8
+, suggesting that a large and diverse candidate pool benefits multi-hop reasoning. A lower value of
+t
+​
+h
+ρ
+th_{\rho}
+, instead, would introduce overly aggressive pruning and would limit access to interconnected evidence.
+t
+​
+h
+ρ
+th_{\rho}
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+R@2
+R@5
+R@2
+R@5
+R@2
+R@5
+0.1
+78.30%
+91.70%
+72.78%
+87.05%
+41.83%
+54.49%
+0.2
+78.55%
+92.05%
+72.72%
+86.92%
+42.05%
+55.09%
+0.5
+78.60%
+92.10%
+72.52%
+86.75%
+42.42%
+55.91%
+0.8
+78.60%
+92.05%
+72.98%
+87.20%
+42.57%
+56.28%
+0.9
+78.60%
+92.05%
+72.92%
+87.15%
+42.57%
+56.28%
+Table 9
+:
+Sensitivity analysis for the hyperparameter
+t
+​
+h
+ρ
+th_{\rho}
+Table
+10
+presents an ablation study designed to isolate the contributions of TIGRAG’s main components. Specifically, we evaluated:
+(i)
+a TIGRAG variant without BM25, where retrieval relies solely on graph topology-aware matching;
+(ii)
+a TIGRAG variant based on degree centrality instead of PPR-driven expansion; and
+(iii)
+a TIGRAG variant without the final neural reranking stage.
+Approach
+HotpotQA
+2WikiMultiHopQA
+MuSiQue
+R@2
+R@5
+R@2</p>
+
+<p>R@5
+R@2
+R@5
+TIGRAG without BM25
+78.55%
+92.00%
+72.92%
+87.15%
+42.33%
+55.91%
+TIGRAG based on degree centrality
+22.00%
+24.15%
+44.97%
+51.98%
+12.86%
+16.54%
+TIGRAG without reranking
+51.10%
+69.00%
+48.18%
+64.32%
+29.53%
+41.40%
+TIGRAG
+78.60%
+92.05%
+72.98%
+87.20%
+42.57%
+56.28%
+Table 10
+:
+Ablation study evaluating the contribution of the main components of TIGRAG on retrieval performance across the considered benchmarks
+The ablation results highlight the importance of each component of the proposed framework. Removing BM25 yields only marginal performance drops, confirming that the graph-based expansion mechanism alone captures highly relevant evidence. Replacing PPR with degree centrality dramatically decreases performance across all datasets, demonstrating the importance of topology-aware semantic propagation over simple node degree. Finally, eliminating the neural reranking stage significantly reduces retrieval effectiveness, indicating that the reranking is essential for filtering out noisy candidates introduced during graph expansion.
+5
+Discussion
+From a performance point of view, the topological approach underlying TIGRAG enhances retrieval and consistently outperforms baselines. This high-fidelity retrieval directly translates into superior downstream Question Answering generation, setting new state-of-the-art Exact Match and token-level F1 score benchmarks. Beyond strict accuracy, the most significant implication of TIGRAG lies in its resource efficiency. By constructing the stru</p>
+
+<p>ctural graph solely through statistical co-occurrences, TIGRAG eliminates the need for the computationally expensive LLM-driven entity extraction pipelines required by traditional GraphRAG approaches. Consequently, it consumes a fraction of the time and token budget during offline graph construction and online inference, offering a highly scalable solution for real-world deployment.
+Despite these promising results, TIGRAG has some limitations that suggest interesting directions for future research. First,
+TIGRAG’s iterative, entity-driven retrieval strategy relies heavily on the quality of the Named Entity Recognition (NER) pipeline. Since query expansion is guided by entities extracted from previously retrieved chunks, inaccurate, ambiguous, or irrelevant entities can spread across retrieval stages, resulting in semantic drift and reduced retrieval precision. Therefore, exploring more robust entity disambiguation and filtering mechanisms is an important direction for future work.
+Second, as with other co-occurrence-based approaches, TIGRAG primarily captures relationships emerging from token proximity. Future work will investigate lightweight semantic enrichment strategies that can better model implicit connections while preserving TIGRAG’s computational efficiency.
+6
+Conclusion
+In this work, we presented TIGRAG, an effective and highly efficient RAG framework driven by a token co-occurrence KG. Unlike traditional GraphRAG approaches, which rely on expensive LLM-based entity</p>
+
+<p>and relation extraction pipelines, TIGRAG constructs a lightweight topological representation directly from token co-occurrences. It also uses PPR-based semantic expansion and dynamic neural reranking to retrieve interconnected evidence across multiple hops. By bypassing computationally expensive LLM-based graph construction indexing, the token-level approach underlying TIGRAG enables faster offline graph construction while preserving the structural dependencies necessary for multi-hop reasoning. Empirical evaluations across HotpotQA, 2WikiMultiHopQA, and MuSiQue demonstrate that TIGRAG significantly improves retrieval performance, establishing new state-of-the-art performance compared to baseline models. These findings prove that graph-augmented RAG systems can solve complex, multi-hop reasoning tasks without sacrificing computational efficiency.
+Our current evaluation focuses on textual, multi-hop datasets; however, this study suggests several promising directions for future research. First, we plan to expand the graph topology beyond statistical co-occurrences by introducing semantic edges. This semantic smoothing will connect lexically distinct but semantically similar tokens, capturing implicit relationships. Second, we plan to address the inherent limitations of treating tokens as only lexical units, by introducing semantic-aware nodes to address token polysemy. This will allow the graph to dynamically disambiguate meanings for more granular and precise retrieval. Fina</p>
+
+<p>lly, since modern information ecosystems are heterogeneous by nature, a future development is to extend TIGRAG to multimodal settings. This will involve integrating images and videos into the topological space to support more complex QA tasks.
+Declaration of competing interest
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+Data availability
+The code used for our study will be available after publication.
+References
+[1]
+V. Agrawal, F. Wang, and R. Puri
+(2025)
+Query-Aware Graph Neural Networks for Enhanced Retrieval-Augmented Generation
+.
+arXiv preprint arXiv:2508.05647
+.
+Cited by:
+§2.3
+.
+[2]
+P.J. Ammann, J. Golde, and A. Akbik
+(2025)
+Question decomposition for retrieval-augmented generation
+.
+In
+Proc. of the Annual Meeting of the Association for Computational Linguistics (ACL’25)
+,
+Vienna, Austria
+,
+pp. 497–507
+.
+Cited by:
+§1
+,
+§2.1
+.
+[3]
+H. Cheng, K. Wang, Q. Wang, T. Liu, and K. Sheng
+(2026)
+A Chinese financial event knowledge graph-based retrieval-augmented generation framework for financial question answering
+.
+Engineering Applications of Artificial Intelligence
+175
+,
+pp. 114670
+.
+Note:
+Elsevier
+Cited by:
+§1
+.
+[4]
+P.K. Choubey, X. Su, M. Luo, X. Peng, C. Xiong, T. Le, S. Rosenman, V. Lal, P.L. Mui, R. Ho, P. Howard, and C.S. Wu
+(2025)
+Scaling Knowledge Graph Construction through Synthetic Data Generation and Distillation
+.
+In
+Proc. of the Internationa</p>
+
+<p>l Conference on Learning Representations (ICLR’26)
+,
+Rio de Janeiro, Brasil
+.
+Cited by:
+§1
+.
+[5]
+D. Edge, H. Trinh, N. Cheng, J. Bradley, A. Chao, A. Mody, S. Truitt, D. Metropolitansky, R.O. Ness, and J. Larson
+(2024)
+From local to global: A graph RAG approach to query-focused summarization
+.
+arXiv preprint arXiv:2404.16130
+.
+Cited by:
+§1
+,
+§2.2
+,
+§4.1.2
+.
+[6]
+W. Fan, Y. Ding, L. Ning, S. Wang, H. Li, D. Yin, T. Chua, and Q. Li
+(2024)
+A survey on RAG meeting LLMS: Towards retrieval-augmented large language models
+.
+In
+Proc. of the ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD’24)
+,
+Barcelona, Catalunya, Spain
+,
+pp. 6491–6501
+.
+Cited by:
+§2.1
+.
+[7]
+Y. Fang, T. Sun, Y. Shi, and X. Gu
+(2025)
+Attentionrag: Attention-guided context pruning in retrieval-augmented generation
+.
+arXiv preprint arXiv:2503.10720
+.
+Cited by:
+§2.1
+.
+[8]
+Y. Gao, Y. Xiong, X. Gao, K. Jia, J. Pan, Y. Bi, Y. Dai, J. Sun, M. Wang, and H. Wang
+(2023)
+Retrieval-augmented generation for large language models: A survey
+.
+arXiv preprint arXiv:2312.10997
+2
+(
+1
+),
+pp. 32
+.
+Cited by:
+§1
+.
+[9]
+H. Ghanem and C. Cruz
+(2025)
+Fine-tuning or prompting on llms: evaluating knowledge graph construction task
+.
+Frontiers in Big Data
+8
+,
+pp. 1505877
+.
+Note:
+Frontiers Media SA
+Cited by:
+§1
+.
+[10]
+T. Guo, C. Wang, Q. Yang, J. Tang, Y. Liu, and Y. Wen
+(2025)
+WADSeg: Exploiting Weak Attention Associations for Enhanced Knowledge Segmentation in RAG
+.
+Expert Systems with Applications
+,
+pp. 129297
+.
+Note:
+Elsevier
+C</p>
+
+<p>ited by:
+§3.2
+.
+[11]
+Z. Guo, L. Xia, Y. Yu, T. Ao, and C. Huang
+(2025)
+LightRAG: Simple and Fast Retrieval-Augmented Generation
+.
+In
+Findings of the Association for Computational Linguistics: EMNLP 2025
+,
+Suzhou, China
+,
+pp. 10746–10761
+.
+Cited by:
+§1
+,
+§2.2
+,
+§4.1.2
+.
+[12]
+B. J. Guti’errez, Y. Shu, W. Qi, S. Zhou, and Y. Su
+(2025)
+From RAG to Memory: Non-Parametric Continual Learning for Large Language Models
+.
+In
+Proc. of the International Conference on Machine Learning (ICLR’25)
+,
+Singapore
+,
+pp. 21497–21515
+.
+Cited by:
+§1
+,
+§2.3
+,
+§4.1.2
+.
+[13]
+B.J. Gutiérrez, Y. Shu, Y. Gu, M. Yasunaga, and Y. Su
+(2024)
+Hipporag: Neurobiologically inspired long-term memory for large language models
+.
+In
+Proc. of the Annual Conference on Neural Information Processing Systems (NeurIPS’24)
+,
+Vol.
+37
+,
+Vancouver, British Columbia, Canada
+,
+pp. 59532–59569
+.
+Cited by:
+§1
+,
+§1
+,
+§2.3
+,
+§4.1.1
+,
+§4.1.4
+.
+[14]
+T.H. Haveliwala
+(2002)
+Topic-sensitive pagerank
+.
+In
+Proc. of the International Conference on World Wide Web (WWW’02)
+,
+Honolulu, HI, USA
+,
+pp. 517–526
+.
+Cited by:
+§1
+.
+[15]
+X. Ho, A.D. Nguyen, S. Sugawara, and A. Aizawa
+(2020)
+Constructing a multi-hop qa dataset for comprehensive evaluation of reasoning steps
+.
+In
+Proc. of the International Conference on Computational Linguistics (ICLR’20)
+,
+Barcelona, Catalunya, Spain
+,
+pp. 6609–6625
+.
+Cited by:
+§1
+,
+§4.1.1
+.
+[16]
+Y. Hu, Z. Lei, Z. Zhang, B. Pan, C. Ling, and L. Zhao
+(2025)
+GRAG: Graph Retrieval-Augmented Generation
+.
+In
+Findings of the</p>
+
+<p>Association for Computational Linguistics: NAACL 2025
+,
+Albuquerque, NM, USA
+,
+pp. 4145–4157
+.
+Note:
+ACL
+Cited by:
+§2.3
+.
+[17]
+Y.B. Jeong, H.I. Seo, Y.H. Kim, and W.Y. Kim
+(2025)
+Retrieval-augmented visual parcel invoice understanding transformer for address correction
+.
+Engineering Applications of Artificial Intelligence
+158
+,
+pp. 111542
+.
+Note:
+Elsevier
+Cited by:
+§1
+.
+[18]
+Y. Ji, K. Wu, J. Li, W. Chen, M. Zhong, J. Xu, and M. Zhang
+(2024)
+Retrieval and Reasoning on KGs: Integrate Knowledge Graphs into Large Language Models for Complex Question Answering
+.
+In
+Findings of the Association for Computational Linguistics: EMNLP 2024
+,
+Miami, FL, USA
+,
+pp. 7598–7610
+.
+Note:
+ACL
+Cited by:
+§2.3
+.
+[19]
+B. Jin, C. Xie, J. Zhang, K.K. Roy, Y. Zhang, Z. Li, R. Li, X. Tang, S. Wang, Y. Meng, and J. Han
+(2024)
+Graph chain-of-thought: Augmenting large language models by reasoning on graphs
+.
+In
+Findings of the Association for Computational Linguistics: ACL 2024
+,
+St. Julian’s, Malta
+,
+pp. 163–184
+.
+Note:
+ACL
+Cited by:
+§1
+.
+[20]
+V. Karpukhin, B. Oguz, S. Min, P. Lewis, L. Wu, S. Edunov, D. Chen, and W. Yih
+(2020)
+Dense passage retrieval for open-domain question answering
+.
+In
+Proc. of the International Conference on Empirical Methods in Natural Language Processing (EMNLP’20)
+,
+online
+,
+pp. 6769–6781
+.
+Cited by:
+§2.1
+.
+[21]
+Y. Kuratov, A. Bulatov, P. Anokhin, D. Sorokin, A. Sorokin, and M. Burtsev
+(2024)
+In search of needles in a 11m haystack: Recurrent memory finds what llms miss
+.
+arXiv pr</p>
+
+<p>eprint arXiv:2402.10790
+.
+Cited by:
+§1
+.
+[22]
+J. Linders and J.M. Tomczak
+(2025)
+Knowledge graph-extended retrieval augmented generation for question answering
+.
+Applied Intelligence
+55
+(
+17
+),
+pp. 1102
+.
+Cited by:
+§2.3
+.
+[23]
+N.F. Liu, K. Lin, J. Hewitt, A. Paranjape, M. Bevilacqua, F. Petroni, and P. Liang
+(2024)
+Lost in the middle: How language models use long contexts
+.
+Transactions of the Association for Computational Linguistics
+12
+,
+pp. 157–173
+.
+Note:
+MIT Press
+Cited by:
+§1
+.
+[24]
+H. Luo, G. Chen, Y. Zheng, X. Wu, Y. Guo, Q. Lin, Y. Feng, Z. Kuang, M. Song, Y. Zhu, and A.T. Luu
+(2025)
+HyperGraphRAG: Retrieval-Augmented Generation via Hypergraph-Structured Knowledge Representation
+.
+In
+Proc. of the Annual Conference on Neural Information Processing Systems (NeurIPS’25)
+,
+San Diego, CA, USA
+.
+Cited by:
+§2.2
+.
+[25]
+L. Luo, Z. Zhao, G. Haffari, D. Phung, C. Gong, and S. Pan
+(2025)
+GFM-RAG: Graph Foundation Model for Retrieval Augmented Generation
+.
+In
+Proc. of the Annual Conference on Neural Information Processing Systems (NeurIPS’25)
+,
+San Diego, CA, USA
+.
+Cited by:
+§2.2
+.
+[26]
+C. Ma, Y. Chen, T. Wu, A. Khan, and H. Wang
+(2025)
+Large language models meet knowledge graphs for question answering: Synthesis and opportunities
+.
+In
+Proc. of the Conference on Empirical Methods in Natural Language Processing (EMNLP’25)
+,
+Suzhou, China
+,
+pp. 24589–24608
+.
+Cited by:
+§1
+.
+[27]
+M. S. Malik, V. T. Le, and Y. Y. Ou
+(2026)
+Enhancing the classification of metal-binding residue in prote</p>
+
+<p>ins with retrieval-augmented generation, protein language models, and deep learning
+.
+Engineering Applications of Artificial Intelligence
+171
+,
+pp. 114330
+.
+Note:
+Elsevier
+Cited by:
+§1
+.
+[28]
+C. Min, S. Bansal, J. Pan, A. Keshavarzi, R. Mathew, and A.V. Kannan
+(2025)
+Towards Practical GraphRAG: Efficient Knowledge Graph Construction and Hybrid Retrieval at Scale
+.
+arXiv preprint arXiv:2507.03226
+.
+Cited by:
+§1
+.
+[29]
+B. Peng, Y. Zhu, Y. Liu, X. Bo, H. Shi, C. Hong, Y. Zhang, and S. Tang
+(2025)
+Graph retrieval-augmented generation: A survey
+.
+ACM Transactions on Information Systems
+44
+(
+2
+),
+pp. 1–52
+.
+Note:
+ACM
+Cited by:
+§1
+,
+§2.2
+,
+§2.2
+.
+[30]
+G. Perkovi’c, A. Drobnjak, and I. Botički
+(2024)
+Hallucinations in llms: Understanding and addressing challenges
+.
+In
+Proc. of the MIPRO ICT and Electronics Convention (MIPRO’24)
+,
+Opatija, Croatia
+,
+pp. 2084–2088
+.
+Note:
+IEEE
+Cited by:
+§1
+.
+[31]
+O. Press, M. Zhang, S. Min, L. Schmidt, N. A. Smith, and M. Lewis
+(2023)
+Measuring and narrowing the compositionality gap in language models
+.
+In
+Findings of the Association for Computational Linguistics: EMNLP 2023
+,
+Singapore
+,
+pp. 5687–5711
+.
+Cited by:
+§4.1.1
+.
+[32]
+O. Ram, Y. Levine, I. Dalmedigos, D. Muhlgay, A. Shashua, K. Leyton-Brown, and Y. Shoham
+(2023)
+In-context retrieval-augmented language models
+.
+Transactions of the Association for Computational Linguistics
+11
+,
+pp. 1316–1331
+.
+Note:
+MIT Press
+Cited by:
+§2.1
+.
+[33]
+A.O. Saleh, G. Tur, and Y. Saygin
+(2024)
+SG-RAG: Multi-hop quest</p>
+
+<p>ion answering with large language models through knowledge graphs
+.
+In
+Proc. of the International Conference on Natural Language and Speech Processing (ICNLSP’24)
+,
+Trento, Italy
+,
+pp. 439–448
+.
+Cited by:
+§1
+.
+[34]
+B. Sarmah, D. Mehta, B. Hall, R. Rao, S. Patel, and S. Pasquali
+(2024)
+HybridRAG: Integrating Knowledge Graphs and Vector Retrieval Augmented Generation for Efficient Information Extraction
+.
+In
+Proc. of the ACM International Conference on AI in Finance, (ICAIF’24)
+,
+Brooklyn, NY, USA
+,
+pp. 608–616
+.
+Note:
+ACM
+Cited by:
+§2.2
+.
+[35]
+P. Sarthi, S. Abdullah, A. Tuli, S. Khanna, A. Goldie, and C.D. Manning
+(2024)
+RAPTOR: Recursive abstractive processing for tree-organized retrieval
+.
+In
+Proc. of the International Conference on Learning Representations (ICLR’24)
+,
+Vienna, Austria
+.
+Cited by:
+§2.2
+,
+§4.1.2
+.
+[36]
+J. Sun, C. Xu, L. Tang, S. Wang, C. Lin, Y. Gong, L. Ni, H. Shum, and J. Guo
+(2024)
+Think-on-Graph: Deep and Responsible Reasoning of Large Language Model on Knowledge Graph
+.
+In
+Proc. of the International Conference on Learning Representations (ICLR’24)
+,
+Vienna, Austria
+.
+Cited by:
+§2.2
+,
+§4.1.2
+.
+[37]
+K.M. Svore and C.J. Burges
+(2009)
+A machine learning approach for improved BM25 retrieval
+.
+In
+Proc. of the Proceedings of the ACM Conference on Information and Knowledge Management (CIKM’09)
+,
+Hong Kong, China
+,
+pp. 1811–1814
+.
+Cited by:
+§3.5
+.
+[38]
+Y. Tang and Y. Yang
+(2024)
+MultiHop-RAG: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries
+.
+In
+P</p>
+
+<p>roc. of the First Conference on Language Modeling (COLM’24)
+,
+Philadelphia, PA, USA
+.
+Cited by:
+§1
+,
+§2.1
+.
+[39]
+W. Tao, X. Xing, Y. Chen, L. Huang, and X. Xu
+(2025)
+Treerag: Unleashing the power of hierarchical storage for enhanced knowledge retrieval in long documents
+.
+In
+Findings of the Association for Computational Linguistics: ACL 2025
+,
+Vienna, Austria
+,
+pp. 356–371
+.
+Cited by:
+§2.2
+.
+[40]
+H. Trivedi, N. Balasubramanian, T. Khot, and A. Sabharwal
+(2022)
+♫ MuSiQue: Multihop Questions via Single-hop Question Composition
+.
+Transactions of the Association for Computational Linguistics
+10
+,
+pp. 539–554
+.
+Note:
+MIT Press
+Cited by:
+§1
+,
+§4.1.1
+.
+[41]
+H. Trivedi, N. Balasubramanian, T. Khot, and A. Sabharwal
+(2023)
+Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions
+.
+In
+Proc. of the Annual Meeting of the Association for Computational Linguistics (ACL’23)
+,
+Toronto, Ontario, Canada
+,
+pp. 10014–10037
+.
+Cited by:
+§4.1.1
+.
+[42]
+Y. Wang, N. Lipka, R. A. Rossi, A. Siu, R. Zhang, and T. Derr
+(2024)
+Knowledge graph prompting for multi-document question answering
+.
+In
+Proc. of the AAAI Conference on Artificial Intelligence (AAAI’24)
+,
+Vol.
+38
+,
+Vancouver, British Columbia, Canada
+,
+pp. 19206–19214
+.
+Cited by:
+§2.2
+,
+§4.1.2
+.
+[43]
+Y. Wang, N. Lipka, R. Zhang, A.F. Siu, Y. Zhao, B. Ni, X. Wang, R.A. Rossi, and T. Derr
+(2024)
+Topology-aware Retrieval Augmentation for Text Generation
+.
+In
+Proc. of the ACM International Conference on Informat</p>
+
+<p>ion and Knowledge Management, (CIKM’24)
+,
+Boise, ID, USA
+,
+pp. 2442–2452
+.
+Note:
+ACM
+Cited by:
+§2.3
+.
+[44]
+Y. Wu, J. Bo, Y. Zhang, S. Liang, and Y. Liu
+(2025)
+Query-Centric Graph Retrieval Augmented Generation
+.
+arXiv preprint arXiv:2509.21237
+.
+Cited by:
+§2.3
+.
+[45]
+Y. Xiao, J. Dong, C. Zhou, S. Dong, Q. Zhang, D. Yin, X. Sun, and X. Huang
+(2025)
+Graphrag-bench: Challenging domain-specific reasoning for evaluating graph retrieval-augmented generation
+.
+arXiv preprint arXiv:2506.02404
+.
+Cited by:
+§2.2
+.
+[46]
+Z. Yang, P. Qi, S. Zhang, Y. Bengio, W. Cohen, R. Salakhutdinov, and C.D. Manning
+(2018)
+HotpotQA: A dataset for diverse, explainable multi-hop question answering
+.
+In
+Proc. of the conference on empirical methods in natural language processing (EMNLP’18)
+,
+Brussels, Belgium
+,
+pp. 2369–2380
+.
+Cited by:
+§1
+,
+§4.1.1
+.
+[47]
+J. Yao, K. Ning, Z. Liu, M. Ning, Y. Liu, and L. Yuan
+(2023)
+LLM lies: Hallucinations are not bugs, but features as adversarial examples
+.
+arXiv preprint arXiv:2310.01469
+.
+Cited by:
+§1
+.
+[48]
+T. Yu, A. Xu, and R. Akkiraju
+(2024)
+In defense of RAG in the era of long-context language models
+.
+arXiv preprint arXiv:2409.01666
+.
+Cited by:
+§1
+.
+[49]
+S.H. Zhang and J.W. Lin
+(2026)
+Direction-aware graph traversal for efficient multi-hop retrieval-augmented generation
+.
+Engineering Applications of Artificial Intelligence
+181
+,
+pp. 115383
+.
+Note:
+Elsevier
+Cited by:
+§1
+.
+[50]
+X. Zhu, Y. Xie, Y. Liu, Y. Li, and W. Hu
+(2025)
+Knowledge Graph-Guided Retrieval Augmented</p>
+
+<p>生成
+.
+载于
+计算语言学协会美洲国家分会会议：人类</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 检索增强生成, 知识图谱, 多跳问答, 词元共现图, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
