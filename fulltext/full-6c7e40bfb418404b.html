@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>对齐动力学的物理直觉：以随机性结晶为例 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">对齐动力学的物理直觉：以随机性结晶为例</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.29933" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Towards Physical Intuitions for Alignment Dynamics: A Case Study With Randomness Crystallization</h4>
+            <p><strong>中文摘要：</strong> 本文提出将物理科学中的热力学相变理论引入大语言模型对齐研究，以结晶过程为案例，揭示后训练对齐的三个阶段：液相（预训练模型的高熵多样分布）、成核阶段（SFT导致分布坍缩到基础模型中已有的种子分布）、稳定阶段（DPO/RL在种子峰值内进一步集中概率）。研究在15个随机任务和两个模型家族上验证了该框架，发现种子分布可跨模型迁移，表明结晶动力学是数据分布属性的结构特征而非模型特定现象。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p># 对齐动力学的物理直觉：以随机性结晶为例</p>
+
+<p>Kunal Samanta¹, Ari Holtzman², Peter West¹</p>
+
+<p>¹英属哥伦比亚大学，²芝加哥大学</p>
+
+<p>samanta.kunal02@gmail.com</p>
+
+<p>## 摘要</p>
+
+<p>语言模型的对齐通常通过能力基准来研究，但模型在后训练阶段如何变化的**动力学**仍然知之甚少。我们认为，物理科学，特别是热力学相变理论，为推理这些动力学提供了一套有原则且尚未充分探索的词汇。作为案例研究，我们通过材料**结晶**的视角来具体阐述这一立场，结晶是一种被广泛研究的热力学相变。对于随机数生成等任务，这一过程分为三个阶段：（1）预训练模型中的高熵**液相**，模型可通过不同提示获得多种不同的采样分布；（2）由监督微调引起的**成核阶段**，行为坍缩到预训练大语言模型中已存在的单一种子分布上；（3）**稳定阶段**，强化学习技术重新分配坍缩分布的概率，但基本将其集中在与种子分布相同的选项上。我们提出了直观的指标来验证这些阶段之间的转变，并在一系列随机任务上验证了这一想法。结晶是我们认为对齐研究应引入的更广泛物理框架类别的**一个**实例，用以回答以下问题：对齐引入的结构从何而来，为何在特定位置收敛，以及它从根本上无法改变什么。</p>
+
+<p>---</p>
+
+<p># 1 引言</p>
+
+<p>自然语言处理领域在理解**如何对齐**大语言模型使其有用、安全且遵循指令方面取得了显著的实证进展（Ouyang et al., 2022; Bai et al., 2022）。然而，**这些变化如何展开**——即预训练模型如何转变为具有近乎确定性行为、强指令遵循能力和个性化倾向的对齐模型——其结构化过程仍然知之甚少。对齐所施加的结构从何而来？为什么收敛发生在特定的行为吸引子上，而非其他？对齐研究的主流词汇本质上是分类性的。它们描述了有效的配方及其终态：对齐/未对齐、多样/坍缩、有能力/无能力，但缺乏一个连贯的框架来描述它们之间的转变。</p>
+
+<p>物理科学一个多世纪以来一直在处理高度类似的问题，形成了丰富且潜在有用的理论。基于能量的模型和统计力学已经在机器学习场景中证明了其价值（LeCun et al., 2006），而相变理论尤其提供了一套精确适合复杂系统在有序和无序状态之间移动的动力学词汇。成核、过冷、亚稳态和回火等概念编码了关于转变**如何**展开的丰富预测，而不仅仅是它们是否发生。这在机器学习中已经取得了成果：grokking被分析为一种相变（Liu et al., 2022），扩散模型基于非平衡热力学（Ho et al., 2020）。在每种情况下，物理视角揭示了纯实证描述所遗漏的结构，并有助于指向新的干预方法。延续这一传统，我们认为**应积极引入物理理论，为理解对齐过程本身提供丰富的、预测性的框架**。</p>
+
+<p>采用这些理论作为自然语言处理的新使命，将使该领域从编目结果转向理解过程；关键的是，从事后描述转向**先验**预测哪些行为会被对齐放大、哪些会被抑制，以及为什么。</p>
+
+<p>**图1：** **结晶**，以**数字**任务为例说明。预训练基础大语言模型表现出高熵**液相**：不同的提示引发不同的输出分布，就像液体中的原子同时向多个方向运动一样（左）。监督微调（SFT）充当**成核**事件：无论提示如何变化，模型的输出分布迅速坍缩到基础模型中已存在的单一潜在**种子**分布上（中）。这反映了成核行为，即多样化的原子突然对齐到种子晶体上。随后的偏好优化阶段（DPO、RLHF）驱动了**稳定**过程，在SFT已建立的结晶支撑内锐化和重新分配概率质量（右）。</p>
+
+<p>如图1所示的案例研究，我们发展了**结晶**框架，作为物理基础对齐理论可能样貌的典型示例。物理结晶描述了液体（具有许多自由度的高熵系统）如何经历相变成为刚性晶体——一种围绕种子组织的低熵结构。我们表明，当在具有**有限支撑**的任务上检验时，后训练对齐恰好遵循这一模式，在这些任务中，我们可以在有限且共享的可能输出集合上比较模型行为/指纹。</p>
+
+<p>给定一个随机任务，如&quot;给我一个0到9之间的随机数字&quot;，结晶类比可以理解为三个阶段的转变（图1）。第一个是**液相**：预训练（或**基础**）大语言模型包含潜在分布的叠加，每个分布可通过不同提示访问；这是一种高熵状态，其多样性几乎没有受到系统关注。第二个是**成核阶段**：我们发现仅SFT就足以触发分布坍缩，输出分布突然坍缩到基础模型中已潜在存在的某个**种子分布**上，提示敏感性几乎完全消失，远在强化学习介入之前。这种&quot;吸附到网格&quot;的行为反映了物理晶体中的成核，围绕模型中已存在的内容结晶。第三个是**稳定阶段**，由DPO和强化学习驱动：概率质量进一步集中在成核时建立的峰值上，而不逃脱SFT创建的结晶支撑，这一模式类似于回火，我们预测它将对后续对齐阶段能改变的内容设定严格限制。我们在第2节正式发展这一框架。</p>
+
+<p>我们在15个随机任务上实证测试了结晶框架，在两个不同的强大公开模型上发现了类似模式：OLMo 2（OLMo et al., 2024）和Tulu 3（Lambert et al., 2024），这两个模型在整个过程中都有可用的检查点。我们还发现种子分布可以在不同大语言模型之间共享，并进一步展示了框架当前实例化在何处失效（大输出空间、开放式生成），并论证这些失败指向了扩展方向：发展更丰富的指标和与物理学更深层的**形式联系**。最后，我们规划了未来待探索的物理类比及其潜在影响（§5）。</p>
+
+<p>结晶是一个更广泛计划的概念验证。通过展示一个被充分表征的物理过程映射到对齐动力学上，我们论证了将大语言模型训练的某些方面简化为已知的物理现象可以作为通向数学结构、可测试预测以及最终有原则干预的途径。将物理推理引入机器学习——如将统计力学引入泛化或将热力学引入扩散——已经产生了新的描述和算法。结晶是对齐研究整体上朝这一方向迈出的第一步。</p>
+
+<p>**(a) OLMo（digit）**</p>
+
+<p>**(b) Tulu（int 1-50）**</p>
+
+<p>**图2：** 跨模型和任务，我们看到基础模型在前缀上的分布有巨大的多样性。SFT锁定一个特定的&quot;种子&quot;基础分布，DPO/Instruct在SFT成核建立的某些已有峰值内集中概率质量。</p>
+
+<p>---</p>
+
+<p># 2 通过对齐的结晶</p>
+
+<p>虽然以往的工作注意到了对齐大语言模型中的模式坍缩（Yang and Holtzman, 2025; West and Potts, 2025），但这一过程的底层动力学尚未被充分理解。在本节中，我们通过在大语言模型概率分布中的模式坍缩与物理结晶的热力学相变之间建立强类比，以物理直觉推理对齐动力学为例进行说明。以图1为直观指导，我们受结晶中的平行现象启发，提出了模式坍缩的3个不同阶段，并在§3中对随机采样任务进行了实验测试。</p>
+
+<p>后训练对齐和物理结晶之间有许多密切相关的概念，这些概念为本次讨论提供了基础。物理材料由许多原子或分子组成，每个原子或分子具有速度和温度等个体属性，这些属性决定了整体属性。类似地，大语言模型可以被视为许多上下文分布的组合，可通过模型的不同提示来访问。每个分布在哪些输出可能是方面有自己的**方向**，以及香农熵（Shannon, 1948），这是温度的自然类比。在高层次上，结晶和模式坍缩都是将这些元素带入低温、高一致性（即跨元素一致性）状态的过程。虽然它不直接参与下面的讨论，但另一个联系是晶体结构的稳定性编码在其动力学矩阵的特征谱中，就像神经网络损失曲面的局部曲率决定了其学习动力学和结构稳定性一样。</p>
+
+<p>## 2.1 液相：预训练熵与潜在叠加</p>
+
+<p>在结晶之前，物理液体由许多原子或分子组成，以不同的速度方向和大小自由流动。简而言之，液体由具有高度变化属性的粒子组成。</p>
+
+<p>在这里，我们将此与预训练（基础）大语言模型对给定任务可以输出的不同输出分布进行类比。在图1（底部，左）中，我们使用略微不同的提示来提出一个随机任务：**给我一个0到9之间的随机数字**。不同提示产生的输出分布（用不同颜色的直方图线表示）高度多样——一个提示（红色）产生在7处有清晰峰值的分布，而另一个（绿色）对生成1有强烈偏好。就像液体中的粒子速度一样，大语言模型产生的输出分布具有截然不同的方向和大小。因此，我们称之为**液相**。</p>
+
+<p>这直观地符合基础大语言模型的训练目标。给定大语言模型的预训练阶段产生了一个专门设计用于捕捉训练数据所代表的人类文本自然多样性的模型（Andreas, 2022）。给定自然上下文或文档，预训练或**基础**大语言模型应该给出它可能如何延续的校准概率。这自然导致了捕捉许多文档和作者的多样行为。</p>
+
+<p>## 2.2 成核阶段：监督微调</p>
+
+<p>物理晶体在**成核阶段**开始形成：一个**种子晶体**导致所有其他粒子开始吸附到网格上，迅速从具有许多不同速度转变为形成一个具有共享结构的连贯物体——晶体本身。</p>
+
+<p>在图1（底部，中间）中，我们可以在通常是后训练对齐第一步的监督微调（SFT）中看到类似的效果。在这一步中，给定任务的所有输出分布似乎已收敛到本质上相同的行为（红色直方图线）。就像物理结晶中一样，方向和大小的多样性消失了。关键的是，坍缩的行为非常接近于在对齐开始之前就已存在的某个**种子分布**（虚线红线）。这反映了物理结晶中的**种子晶体**，即形成连贯性的第一个元素。物理晶体和处于成核阶段的大语言模型都经历了方差的快速下降和一致性的急剧增加。</p>
+
+<p>## 2.3 稳定阶段：偏好优化</p>
+
+<p>物理晶体的最终结构可能通过回火等过程发生移动和稳定，在回火过程中材料被加热，内部应力得到释放。虽然材料倾向于保持其总体结构，但在稳定过程中会有较小的移动。</p>
+
+<p>我们可以在图1（底部，右）中对齐的最后阶段看到相关现象。不同的输出分布保持连贯（红线），但从原始种子分布移动到对齐模型的最终行为。特别是，模型倾向于将概率集中在种子分布中存在的几个峰值上，**稳定**到一个较低熵的终态，类似于回火产生的低能态。在图中，我们看到主峰值（7）之外的概率减少，并集中在该峰值上。这发生在对齐的最后阶段，即直接偏好优化和随后的基于强化学习的Instruct阶段（在此测试的模型OLMo 2和Tulu 3中）。我们称之为**稳定阶段**。</p>
+
+<p>## 2.4 阶段诊断指标的数学表述</p>
+
+<p>为了提供这些阶段的定量描述，我们在模型可提示的输出分布上定义指标。设 $x_{1}$ 和 $x_{2}$ 表示大语言模型在给定随机任务的预定义词汇表或有效词元子集上生成的两个离散概率分布。例如，这可以是图1中采样任务可以提示的两个不同分布（绿色和红色）。</p>
+
+<p>### 2.4.1 均方误差与种子分布</p>
+
+<p>为了匹配分布之间直观和视觉上的差异概念（如图1所示），我们使用均方误差作为分布的第一比较：</p>
+
+<p>$$\text{MSE}(x_{1},x_{2})=\left(\frac{1}{n}\sum_{i=1}^{n}(x_{1}[i]-x_{2}[i])^{2}\right)$$</p>
+
+<p>如§2.1所提出并在§3中所验证的，液相（即基础大语言模型）中不同的可提示分布在MSE方面通常彼此差异较大。**成核**（§2.2）的概念假设基础模型中的这些分布之一——**种子分布**——与SFT模型产生的分布距离较低。在我们的实验中，我们提出一个候选种子分布：</p>
+
+<p>$$x_{seed}=\arg\min_{x_{b}\in X_{base}}\frac{1}{|X_{SFT}|}\sum_{x_{i}\in X_{SFT}}MSE(x_{b},x_{i})$$</p>
+
+<p>(1)</p>
+
+<p>其中 $X_{base}, X_{SFT}$ 是基础模型和SFT模型对给定随机任务（如随机数生成）产生的输出分布集合。换言之，种子与SFT模型分布的总均方MSE最低。</p>
+
+<p>仅凭这一点并不能支持成核的概念。相反，如果一个种子分布 $x_{seed}$ 非常接近所有SFT大语言模型分布 $X_{SFT}$，但远离其他基础大语言模型分布 $X_{base}$，则成核发生。换言之，$x_{seed}$ 紧密预测后续阶段将采取的结构。因此，我们将成核发生的程度测量为**距离比**：</p>
+
+<p>$$r_{d}=\frac{\max_{x_{i}\in X_{SFT}}MSE(x_{seed},x_{i})}{\max_{x_{j}\in X_{base}}MSE(x_{seed},x_{j})}$$</p>
+
+<p>(2)</p>
+
+<p>这假设相同的集合大小 $|X_{SFT}|=|X_{base}|$。如果 $X_{base}$ 中存在比 $X_{SFT}$ 中任何分布都远离 $x_{seed}$ 的分布，则该比值较低。在图1的示例中就是如此。将其定义为比值使我们能够比较非常不同任务之间的成核，在这些任务上原始MSE值可能没有良好校准，但从 $x_{seed}$ 在成核期间MSE的相对**下降**是相似的。</p>
+
+<p>### 2.4.2 结晶学支撑：概率质量重叠</p>
+
+<p>虽然MSE有效地描述了成核，但稳定阶段（§2.3）看到的概率集中和移动可能无法被这一距离很好地捕捉：在图1中，稳定阶段的分布明显与种子分布相关，但不如成核阶段接近。</p>
+
+<p>稳定阶段的关键思想是概率被移动，但基本保持在相同的峰值上，甚至与早期阶段相比进一步集中在这些峰值上。为了捕捉这一点，我们引入概率质量重叠（ProbMass）的数学表述。为了定义种子分布 $x_{seed}$ 的**有意义**峰值，ProbMass指标采用基于核采样技术（Top-p）的截断函数（Holtzman et al., 2019）。设 $T_{p}(x_{1})$ 为识别参考分布 $x_{1}$ 中最小索引子集 $S$ 的函数，使得它们的概率之和达到严格阈值 $p$（其中 $p$ 严格设为 $0.9$）。</p>
+
+<p>数学上，$S$ 定义为使得：</p>
+
+<p>$$\sum_{i\in S}x[i]\geq 0.9$$</p>
+
+<p>换言之，所有不在前0.9概率中的峰值都被剪枝。此剪枝函数应用于 $x_{seed}$ 得到 $x_{seed}^{0}$。接下来，概率集中定义为某个分布 $x$ 中与 $x_{seed}$ 的未剪枝峰值重叠的总概率：</p>
+
+<p>$$\text{ProbMass}(x)=\sum_{i}x[i]*(x_{seed}^{0}[i]&gt;0)$$</p>
+
+<p>(3)</p>
+
+<p>或本质上，$x$ 中与 $x_{seed}^{0}$ 的剩余峰值重叠的总概率质量。如果我们看到平均ProbMass在对齐过程中上升，这将表明概率逐渐集中在种子分布 $x_{seed}$ 的较大峰值上。</p>
+
+<p>**图3：** §2.4中定义的指标，对表1中定义的15个随机任务取平均。结晶阶段得到强烈支持：从种子分布的MSE（归一化到基础模型）在成核阶段（SFT）迅速下降。概率集中度在对齐各阶段单调上升，支持稳定阶段。</p>
+
+<p>| 任务 | 描述 |
+|------|------|
+| int_0_100 | 0到100之间的随机整数 |
+| int_1_50 | 1到50之间的随机整数 |
+| int_50_100 | 50到100之间的随机整数 |
+| int_101_200 | 101到200之间的随机整数 |
+| int_1_500 | 1到500之间的随机整数 |
+| even_1_20 | 1到20范围内的偶数 |
+| odd_1_20 | 1到20范围内的奇数 |
+| odd_1_100 | 1到100范围内的奇数 |
+| mult_5 | 0到100之间5的倍数 |
+| mult_10 | 0到100之间10的倍数 |
+| power_of_2 | 1到128之间2的幂 |
+| prime_under_50 | 50以下的素数 |
+| prime_under_200 | 200以下的素数 |
+| digit | 0到9之间的单个数字 |
+| dice_roll | 标准六面骰子掷出（1到6） |</p>
+
+<p>**表1：** 我们实验套件中使用的15个评估随机性任务的总结。</p>
+
+<p>---</p>
+
+<p># 3 实验：随机采样中的结晶</p>
+
+<p>## 3.1 任务表述</p>
+
+<p>我们在随机实验的横截面上实例化结晶框架。我们在15个随机任务（§1）和两个开放权重模型家族在对齐过程中的四个训练检查点上进行测试：Tulu 3（Llama-3.1-8B base、SFT、DPO、Instruct）和OLMo 2（OLMo-2-1124-7B base、SFT、DPO、Instruct）。对于每个任务，我们通过从100个在语域和风格上变化很大的不同生成前缀中采样来恢复经验输出分布：从俏皮的（&quot;*鼓声*…你的幸运数字是：&quot;）到正式的（&quot;根据我的计算，数字是&quot;），这使我们对每个模型每个任务有100个不同的输出分布，每个来自2,000次成功解析。完整的任务描述、有效输出集和前缀列表在附录A和B中。</p>
+
+<p>## 3.2 结果：结晶的经验特征</p>
+
+<p>图3总结了两个模型家族的两个结晶指标。三阶段模式一致且清晰。</p>
+
+<p>**液相（基础模型）。** 基础模型在不同提示间产生高度多样的输出分布：前缀间MSE一致较高，反映了对表面框架的真正敏感性，没有训练信号强制一致性。这反映了液体中原子的无序、高熵状态。</p>
+
+<p>**成核（SFT）。** 在监督微调之后，生成多样性完全坍缩。MSE距离比 $r_{d}$（§2.4）急剧下降，表明所有被提示的分布收敛到单一种子上——关键的是，该种子已经存在于基础模型可提示的分布中（图1、图2）。种子不是由SFT发明的；它是从潜在液体中选择的。这是成核的决定性预测。</p>
+
+<p>**稳定（DPO/Instruct）。** 偏好优化进一步细化分布。从种子的绝对MSE略有上升，标志着分布锐化偏离了种子的精确形状，而ProbMass单调增加，确认概率质量正在集中**到**种子的峰值上而非远离它们。概率质量比从1.00一致增加到OLMo 2的 $\sim1.43$ 和Tulu 3的 $\sim1.28$。后续对齐阶段在结晶支撑内重新加权；它们不扩展它。</p>
+
+<p>一个值得注意的例外是 **int_1_500**，在图4中可见为异常值：ProbMass在对齐阶段没有如预期那样集中。值得注意的是，MSE距离比 $r_{d}$ 在SFT时确实下降了，虽然ProbMass下降，但MSE距离比在稳定阶段保持较低。这表明类似于稳定的现象，分布在对齐期间保持接近，但大支撑分布可能需要考虑采样空间元素之间的**相似性**等因稀疏性而不同的指标。</p>
+
+<p>**(a) 距种子分布的距离（MSE）**</p>
+
+<p>**(b) 概率集中度**</p>
+
+<p>**图4：** 对齐阶段中两个结晶指标的任务级视图（任务子集）。 MSE距种子分布的距离在SFT（成核）时急剧下降，然后在稳定期间略有上升——反映了偏离精确种子形状的锐化。 ProbMass单调上升，确认概率质量在对齐各阶段持续向种子峰值集中。注意异常值 **int 1-500**，其大输出空间阻止了基础模型中种子的可靠识别（见§3.3）。</p>
+
+<p>**(a) 颜色生成**</p>
+
+<p>**(b) 隐喻生成**</p>
+
+<p>**图5：** 使用平均SFT分布作为代理种子的ProbMass。即使无法直接识别基础模型种子，**稳定**仍然成立。</p>
+
+<p>**(a) OLMo Base → Tulu Aligned（prime_under_50）**</p>
+
+<p>**(b) Tulu Base → OLMo Aligned（odd_1_20）**</p>
+
+<p>**图6：** 跨家族结晶。从一个模型家族基础模型识别的种子预测了完全独立的对齐管线中的成核，表明种子选择是**任务和数据的属性，而非模型的属性**。</p>
+
+<p>## 3.3 当种子分布难以找到时</p>
+
+<p>对于开放式输出空间，如随机颜色名称、涉及时间的一词隐喻，我们的100个前缀库无法恢复基础模型种子分布。我们使用平均SFT分布作为代理，并问：稳定是否仍然成立？如图5所示，ProbMass在两个任务的DPO和Instruct阶段单调增加，确认即使种子本身难以识别，偏好优化仍在SFT建立的支撑内集中概率。在开放式任务上恢复实际种子是未来提示优化工作的自然目标。</p>
+
+<p>## 3.4 种子分布是否在模型之间迁移？</p>
+
+<p>我们进一步发现对齐种子不是模型特定的：从一个模型家族识别的种子分布可以预测完全独立对齐管线中的成核行为。</p>
+
+<p>为了证明这一点，对于给定的随机任务，我们在一个模型家族（如OLMo 2）的基础模型分布中搜索，找到与完全不同的家族（如Tulu 3）的平均SFT分布MSE最小的前缀。这个&quot;外来种子&quot;纯粹从未对齐的基础模型中识别，不包含Tulu 3如何训练的任何信息。如图6所示，当我们通过目标模型的对齐阶段向前追踪这个外来种子时，概率质量在SFT期间坍缩到它上面，并通过DPO和Instruct继续集中在其峰值周围——完整的结晶模式，由来自完全不同架构的种子驱动。</p>
+
+<p>这对我们提出的立场有直接含义：此处观察到的结晶动力学不是特定架构或训练配方的产物。它们似乎是对齐如何与语言数据的分布属性交互的结构特征：正是物理框架（而非模型特定的解释）适合捕捉的那种规律性。</p>
+
+<p>---</p>
+
+<p># 4 相关工作</p>
+
+<p>**对齐与生成多样性：** 对齐期间输出方差的减少已有充分记录。最近的工作引入了分支因子（BF），一种与词元无关的合理下一步度量，证明对齐模型相对于基础模型经历了BF的数量级下降（从 $\sim12$ 到 $\sim1.2$）（Yang and Holtzman, 2025）。这种概率集中支撑了大语言模型微调中频繁观察到的模式坍缩（O'Mahony et al., 2024）。支持我们对随机任务的关注，West and Potts（2025）证明基础模型在需要不可预测性的任务上始终优于其对齐模型，如随机数生成和混合策略博弈，其中对齐模型可预测地坍缩到特定的、有偏的输出上。将这一观察扩展到开放式创意领域，Jiang et al.（2025）在数十个大语言模型中识别出&quot;人工蜂群思维&quot;效应，特征是严重的模型内重复和模型间同质性。这种广泛的同质化与我们稳定阶段的数学表述完美一致，其中偏好优化在相同的、普遍偏好的峰值上刚性集中概率质量。</p>
+
+<p>**表层对齐假说：** 我们的工作与表层对齐假说相关，该假说认为对齐调优（如SFT）仅教会基础模型选择现有格式和潜在能力的子分布，对齐主要是关于学习风格（Zhou et al., 2023）。我们通过ProbMass指标扩展了这一点，支持了不仅SFT选择这一子分布，而且后续偏好优化被限制在其几何边界之内。</p>
+
+<p>---</p>
+
+<p># 5 结论</p>
+
+<p>本文提出了一个方法论立场：自然语言处理对齐研究将受益于系统性地从物理科学引入相变框架，帮助该领域从描述对齐**结果**转向预测对齐**动力学**。作为概念验证，本文引入结晶作为理解大语言模型后训练对齐机制的框架，我们展示了结晶作为物理类比在15个随机任务和两个模型家族上连贯地映射到后训练动力学。</p>
+
+<p>我们以它所激励的研究议程作结：</p>
+
+<p>**成核预测。** 能否在SFT**之前**从基础模型中识别种子分布？在物理系统中，成核位点通常可以从液体的结构属性中预测（Sosso et al., 2016）。类比将是找到预训练分布中预测给定训练配方将选择哪个潜在子分布的属性；从而实现对齐的主动而非事后理解。</p>
+
+<p>**过冷与亚稳态。** 物理液体可以在不发生成核的情况下被冷却到其结晶温度以下，进入亚稳态（Debenedetti and Stillinger, 2001）。大语言模型对齐中是否存在类似的状态：通过SFT保持液相多样性的训练条件？如果存在，它们将代表多样性保持对齐研究的有原则目标。</p>
+
+<p>**多晶对齐。** 真实晶体通常由许多具有不同取向的小域组成，在晶界处相遇。这可能描述了表现出多个竞争行为吸引子的大语言模型，如不一致的人设、领域变化的行为。晶界动力学预测此类模型在持续训练下如何演化：较小的域溶解到较大的域中，这是一种类似于奥斯特瓦尔德熟化的粗化过程（Lifshitz and Slyozov, 1961）。</p>
+
+<p>**成核抑制剂。** 在化学中，某些添加剂通过干扰种子形成来阻止或延迟结晶（Xu et al., 2021）。是否存在充当成核抑制剂的训练干预，如数据混合、正则化、架构选择？这用具体的物理目标重新构架了对齐时保持多样性的问题。</p>
+
+<p>这些中的每一个都突出了与物理上明确定义的过程和已知数学结构的类比，转化为关于大语言模型行为的具体经验预测。每次将物理推理引入机器学习的主要引入——统计力学引入泛化、热力学引入扩散模型、能量景观引入优化——都不仅产生了新描述，还产生了新算法和干预。我们相信对齐研究应该追求同样的目标。</p>
+
+<p>---</p>
+
+<p># 局限性</p>
+
+<p>本文的经验说明是有意限定的：我们的案例研究聚焦于具有离散、有限输出空间的随机生成任务，其中结晶特征最清晰、最可测量。完整的三阶段结构是否推广到开放式生成、多轮对话或推理任务仍然是一个开放问题，我们将其视为框架的自然扩展。</p>
+
+<p>MSE指标虽然直观，但无法处理大型或稀疏输出空间，如int_1_500案例所示；更具表达力的分布距离将加强诊断工具包。</p>
+
+<p>最后，我们的实验覆盖了两个具有中间对齐步骤完全可用开放检查点的模型家族。跨家族种子迁移结果表明动力学不是模型特定的，但在架构、规模和对齐配方上需要更广泛的验证，才能充分表征框架的范围。</p>
+
+<p>---</p>
+
+<p># 伦理声明</p>
+
+<p>本研究关注大语言模型在后训练对齐期间的行为属性。我们的实验完全在公开可用的模型检查点（OLMo 2和Tulu 3）上使用合成随机任务进行。我们不收集人类数据或在敏感场景中部署系统。虽然我们的发现揭示了对齐无法完全逃脱基础模型中潜在的分布（包括可能有偏见或不受欢迎的分布），但我们相信关于这一局限性的透明度本身就是对负责任AI开发的贡献。</p>
+
+<p>---</p>
+
+<p># 可复现性声明</p>
+
+<p>所有实验使用OLMo 2和Tulu 3家族的公开可用模型检查点，可通过Hugging Face访问。我们的评估套件包含15个随机任务，具有完全指定的指令、有效输出集和前缀（§3.1、§A、§B）。对于每个任务、模型和前缀组合，我们使用默认参数（Temp=1.0, Top-p=0.95）采样，直到收集到2,000个有效解析。§2.4中定义的距离比和ProbMass指标除了固定的核采样阈值 $p=0.9$ 外没有自由参数。不执行自定义训练。</p>
+
+<p>---</p>
+
+<p># 参考文献</p>
+
+<p>J. Andreas (2022). Language models as agent models. In *Findings of the Association for Computational Linguistics: EMNLP 2022*, pp. 5769–5779. Cited by: §2.1.</p>
+
+<p>Y. Bai, A. Jones, K. Ndousse, A. Askell, A. Chen, N. DasSarma, D. Drain, S. Fort, D. Ganguli, T. Henighan, et al. (2022). Training a helpful and harmless assistant with reinforcement learning from human feedback. *arXiv preprint arXiv:2204.05862*. Cited by: §1.</p>
+
+<p>P. G. Debenedetti and F. H. Stillinger (2001). Supercooled liquids and the glass transition. *Nature* 410(6825), pp. 259–267. Cited by: §5.</p>
+
+<p>J. Ho, A. Jain, and P. Abbeel (2020). Denoising diffusion probabilistic models. *Advances in neural information processing systems* 33, pp. 6840–6851. Cited by: §1.</p>
+
+<p>A. Holtzman, J. Buys, L. Du, M. Forbes, and Y. Choi (2019). The curious case of neural text degeneration. *arXiv preprint arXiv:1904.09751*. Cited by: §2.4.2.</p>
+
+<p>L. Jiang, Y. Chai, M. Li, M. Liu, R. Fok, N. Dziri, Y. Tsvetkov, M. Sap, A. Albalak, and Y. Choi (2025). Artificial hivemind: the open-ended homogeneity of language models (and beyond). *arXiv preprint arXiv:2510.22954*. Cited by: §4.</p>
+
+<p>N. Lambert, J. Morrison, V. Pyatkin, S. Huang, H. Ivison, F. Brahman, L. J. V. Miranda, A. Liu, N. Dziri, S. Lyu, et al. (2024). Tulu 3: pushing frontiers in open language model post-training. *arXiv preprint arXiv:2411.15124*. Cited by: §1.</p>
+
+<p>Y. LeCun, S. Chopra, R. Hadsell, M. Ranzato, F. Huang, et al. (2006). A tutorial on energy-based learning. *Predicting structured data* 1(0). Cited by: §1.</p>
+
+<p>I. M. Lifshitz and V. V. Slyozov (1961). The kinetics of precipitation from supersaturated solid solutions. *Journal of Physics and Chemistry of Solids* 19, pp. 35–50. Cited by: §5.</p>
+
+<p>Z. Liu, O. Kitouni, N. S. Nolte, E. Michaud, M. Tegmark, and M. Williams (2022). Towards understanding grokking: an effective theory of representation learning. *Advances in Neural Information Processing Systems* 35, pp. 34651–34663. Cited by: §1.</p>
+
+<p>L. O'Mahony, L. Grinsztajn, H. Schoelkopf, and S. Biderman (2024). Attributing mode collapse in the fine-tuning of large language models. In *ICLR 2024 Workshop on Mathematical and Empirical Understanding of Foundation Models*, Vol. 2, pp. 2. Cited by: §4.</p>
+
+<p>T. OLMo, P. Walsh, L. Soldaini, D. Groeneveld, K. Lo, S. Arora, A. Bhagia, Y. Gu, S. Huang, M. Jordan, et al. (2024). 2 olmo 2 furious. *arXiv preprint arXiv:2501.00656*. Cited by: §1.</p>
+
+<p>L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray, et al. (2022). Training language models to follow instructions with human feedback. *Advances in neural information processing systems* 35, pp. 27730–27744. Cited by: §1.</p>
+
+<p>C. E. Shannon (1948). A mathematical theory of communication. *The Bell system technical journal* 27(3), pp. 379–423. Cited by: §2.</p>
+
+<p>G. C. Sosso, J. Chen, S. J. Cox, M. Fitzner, P. Pedevilla, A. Zen, and A. Michaelides (2016). Crystal nucleation in liquids: open questions and future challenges in molecular dynamics simulations. *Chemical reviews* 116(12), pp. 7078–7116. Cited by: §5.</p>
+
+<p>P. West and C. Potts (2025). Base models beat aligned models at randomness and creativity. *arXiv preprint arXiv:2505.00047*. Cited by: §2, §4.</p>
+
+<p>S. Xu, D. Cao, Y. Liu, and Y. Wang (2021). Role of additives in crystal nucleation from solutions: a review. *Crystal Growth &amp; Design* 22(3), pp. 2001–2022. Cited by: §5.</p>
+
+<p>C. Yang and A. Holtzman (2025). LLM probability concentration: how alignment shrinks the generative horizon. *arXiv preprint arXiv:2506.17871*. Cited by: §2, §4.</p>
+
+<p>C. Zhou, P. Liu, P. Xu, S. Iyer, J. Sun, Y. Mao, X. Ma, A. Efrat, P. Yu, L. Yu, et al. (2023). Lima: less is more for alignment. *Advances in Neural Information Processing Systems* 36, pp. 55006–55021. Cited by: §4.</p>
+
+<p>---</p>
+
+<p># 附录A 任务描述与有效输出</p>
+
+<p>为确保模型随机性的严格评估，我们的实验套件执行严格的生成和提取标准。对于每个前缀和任务组合，模型持续采样直到收集到恰好2,000个有效样本。在预热阶段执行最低1.0%的解析率阈值。如果模型未能以此速率产生有效输出，则跳过该前缀以保持效率。</p>
+
+<p>模型响应使用任务特定的正则表达式解析（例如，单个数字用 `\b(\d)\b`，1-99用 `\b([1-9][0-9]?)\b`，一般整数用 `-?\d+`）。在正则提取后，解析的整数必须通过针对预定义目标集的成员验证检查。</p>
+
+<p>15个评估任务的完整有效输出列表及指令定义在表2中。</p>
+
+<p>| 任务 | 指令 | 有效输出 |
+|------|------|----------|
+| int_0_100 | 给我一个0到100之间的随机整数。不要使用python代码。 | 整数 $\{0,1,\dots,100\}$ |
+| int_1_50 | 给我一个1到50之间的随机整数。不要使用python代码。 | 整数 $\{1,2,\dots,50\}$ |
+| int_50_100 | 给我一个50到100之间的随机整数。不要使用python代码。 | 整数 $\{50,51,\dots,100\}$ |
+| int_101_200 | 给我一个101到200之间的随机整数。不要使用python代码。 | 整数 $\{101,102,\dots,200\}$ |
+| int_1_500 | 给我一个1到500之间的随机整数。不要使用python代码。 | 整数 $\{1,2,\dots,500\}$ |
+| even_1_20 | 选一个1到20之间的随机偶数。不要使用python代码。 | $\{2,4,6,8,10,12,14,16,18,20\}$ |
+| odd_1_20 | 选一个1到20之间的随机奇数。不要使用python代码。 | $\{1,3,5,7,9,11,13,15,17,19\}$ |
+| odd_1_100 | 给我一个1到100之间的随机奇数。不要使用python代码。 | 整数 $\{1,3,5,\dots,95,97,99\}$ |
+| mult_5 | 给我一个0到100（含）之间5的倍数的随机数。不要使用python代码。 | $\{0,5,10,\dots,100\}$ |
+| mult_10 | 给我一个0到100（含）之间10的倍数的随机数。不要使用python代码。 | $\{0,10,20,\dots,100\}$ |
+| power_of_2 | 选一个1到128（含）之间2的幂的随机数。不要使用python代码。 | $\{1,2,4,8,16,32,64,128\}$ |
+| prime_under_50 | 给我一个小于50的随机素数。不要使用python代码。 | 素数 $\{2,3,5,\dots,43,47\}$ |
+| prime_under_200 | 给我一个小于200的随机素数。不要使用python代码。 | 素数 $\{2,3,5,\dots,197,199\}$ |
+| digit | 给我一个0到9之间的随机数字。不要使用python代码。 | $\{0,1,2,3,4,5,6,7,8,9\}$ |
+| dice_roll | 掷一个标准六面骰子并告诉我结果。不要使用python代码。 | $\{1,2,3,4,5,6\}$ |</p>
+
+<p>**表2：** 我们实验中使用的15个随机性评估任务的提示指令和有效输出集。</p>
+
+<p>---</p>
+
+<p># 附录B 助手前缀集</p>
+
+<p>以下列表包含我们在随机采样实验中用于助手补全的所有前缀。</p>
+
+<p>&quot;*drum roll* Your lucky number is:&quot;</p>
+
+<p>&quot;Huzzah! The mystical orb reveals&quot;</p>
+
+<p>&quot;Let's pick the number:&quot;</p>
+
+<p>&quot;Here is the random integer:&quot;</p>
+
+<p>&quot;Beep boop! Computing... The answer is&quot;</p>
+
+<p>&quot;Without a doubt, the number is&quot;</p>
+
+<p>&quot;Aye aye captain! Thar number be:&quot;</p>
+
+<p>&quot;Surprise! The number is&quot;</p>
+
+<p>&quot;tyty ur # is&quot;</p>
+
+<p>&quot;It is:&quot;</p>
+
+<p>&quot;The chosen number is&quot;</p>
+
+<p>&quot;Congrats! You've won the number:&quot;</p>
+
+<p>&quot;I choose:&quot;</p>
+
+<p>&quot;Mission accomplished. Number:&quot;</p>
+
+<p>&quot;And the answer comes out to be&quot;</p>
+
+<p>&quot;*tips fedora* M'number:&quot;</p>
+
+<p>&quot;Yeet! The number is literally&quot;</p>
+
+<p>&quot;The generated value is&quot;</p>
+
+<p>&quot;N U M B E R  I S:&quot;</p>
+
+<p>&quot;It's:&quot;</p>
+
+<p>&quot;Num:&quot;</p>
+
+<p>&quot;I'll go with:&quot;</p>
+
+<p>&quot;N U M B E R:&quot;</p>
+
+<p>&quot;Probably:&quot;</p>
+
+<p>&quot;Ladies and gentlemen, we got 'em:&quot;</p>
+
+<p>&quot;Perhaps:&quot;</p>
+
+<p>&quot;If I had to choose, I'd go with:&quot;</p>
+
+<p>&quot;o k  t h e  n u m b e r  i s&quot;</p>
+
+<p>&quot;Maybe:&quot;</p>
+
+<p>&quot;Just a guess, but:&quot;</p>
+
+<p>&quot;For real, the number is&quot;</p>
+
+<p>&quot;What if we pick:&quot;</p>
+
+<p>&quot;I'm feeling:&quot;</p>
+
+<p>&quot;The selected number is:&quot;</p>
+
+<p>&quot;I'd say the number is&quot;</p>
+
+<p>&quot;Let's make it:&quot;</p>
+
+<p>&quot;Hmm, let's see… maybe&quot;</p>
+
+<p>&quot;Maybe something like&quot;</p>
+
+<p>&quot;How about:&quot;</p>
+
+<p>&quot;Off the top of my head, the number is&quot;</p>
+
+<p>&quot;Here's what I got:&quot;</p>
+
+<p>&quot;Choice:&quot;</p>
+
+<p>&quot;Let us do:&quot;</p>
+
+<p>&quot;We could do:&quot;</p>
+
+<p>&quot;Try:&quot;</p>
+
+<p>&quot;Let's do:&quot;</p>
+
+<p>&quot;How does this sound:&quot;</p>
+
+<p>&quot;Why not the number&quot;</p>
+
+<p>&quot;Going with:&quot;</p>
+
+<p>&quot;Pick:&quot;</p>
+
+<p>&quot;Result:&quot;</p>
+
+<p>&quot;Output:&quot;</p>
+
+<p>&quot;Value:&quot;</p>
+
+<p>&quot;Answer:&quot;</p>
+
+<p>&quot;Sure, the number is&quot;</p>
+
+<p>&quot;Fine, the number is&quot;</p>
+
+<p>&quot;OK:&quot;</p>
+
+<p>&quot;Roger that:&quot;</p>
+
+<p>&quot;Done, the number is&quot;</p>
+
+<p>&quot;There:&quot;</p>
+
+<p>&quot;Here:&quot;</p>
+
+<p>&quot;Got it, the number is&quot;</p>
+
+<p>&quot;The random integer is:&quot;</p>
+
+<p>&quot;Picked:&quot;</p>
+
+<p>&quot;Settled:&quot;</p>
+
+<p>&quot;Locked in:&quot;</p>
+
+<p>&quot;Final answer:&quot;</p>
+
+<p>&quot;My pick:&quot;</p>
+
+<p>&quot;My number:&quot;</p>
+
+<p>&quot;My choice:&quot;</p>
+
+<p>&quot;My vote:&quot;</p>
+
+<p>&quot;Rolling with:&quot;</p>
+
+<p>&quot;Sticking with:&quot;</p>
+
+<p>&quot;Dropping:&quot;</p>
+
+<p>&quot;Presenting:&quot;</p>
+
+<p>&quot;Drumroll…&quot;</p>
+
+<p>&quot;Tada:&quot;</p>
+
+<p>&quot;Voilà:&quot;</p>
+
+<p>&quot;By the power ... the number to be:&quot;</p>
+
+<p>&quot;I would be ... The number you desire is&quot;</p>
+
+<p>&quot;Well well well, if it isn't the number:&quot;</p>
+
+<p>&quot;In accordance ... thy number shall be:&quot;</p>
+
+<p>&quot;Let's go with:&quot;</p>
+
+<p>&quot;The number is&quot;</p>
+
+<p>&quot;According to ... the number is:&quot;</p>
+
+<p>&quot;According to my calculations, the number is&quot;</p>
+
+<p>&quot;BREAKING NEWS: Local number generator produces&quot;</p>
+
+<p>&quot;Boom:&quot;</p>
+
+<p>&quot;Bam:&quot;</p>
+
+<p>&quot;Bingo:&quot;</p>
+
+<p>&quot;There it is:&quot;</p>
+
+<p>&quot;Here you go, the number is&quot;</p>
+
+<p>&quot;Easy:&quot;</p>
+
+<p>&quot;Simple, the number is&quot;</p>
+
+<p>&quot;Clearly:&quot;</p>
+
+<p>&quot;Obviously:&quot;</p>
+
+<p>&quot;Naturally:&quot;</p>
+
+<p>&quot;Absolutely, the number is&quot;</p>
+
+<p>&quot;Definitely:&quot;</p>
+
+<p>&quot;Certainly, the number is&quot;</p>
+
+<p>---</p>
+
+<p># 附录C 指标图与直方图</p>
+
+<p>**(a) 距种子分布的距离（MSE）**</p>
+
+<p>**(b) 概率集中度**</p>
+
+<p>**图7：** OLMo 2的结晶指标</p>
+
+<p>**(a) 距种子分布的距离（MSE）**</p>
+
+<p>**(b) 概率集中度**</p>
+
+<p>**图8：** Tulu 3的结晶指标</p>
+
+<p>**图9：** 任务直方图（OLMo 2）</p>
+
+<p>**图10：** 任务直方图（Tulu 3）</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 对齐动力学, 结晶相变, 模式坍缩, 后训练, 热力学类比</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

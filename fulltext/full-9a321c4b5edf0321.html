@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H-GRPO：面向接地视觉推理的排列不变强化学习 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">H-GRPO：面向接地视觉推理的排列不变强化学习</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.29915" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：H-GRPO: Permutation-Invariant Reinforcement Learning for Grounded Visual Reasoning</h4>
+            <p><strong>中文摘要：</strong> 本文提出H-GRPO框架，通过分解式证据接地增强视觉语言模型的性能与可解释性。该方法将全局查询分解为子问题、子答案和空间证据边界框三元组序列，构建结构化推理路径。核心创新是排列不变的匈牙利匹配奖励，通过二部匹配对齐预测与参考推理步骤，允许灵活推理顺序同时保证证据一致性。实验表明该方法在域内VQA和域外空间推理基准上均显著提升性能，尤其在定位密集型任务中表现突出，同时提高了推理过程的可解释性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p># H-GRPO：面向接地视觉推理的排列不变强化学习</p>
+
+<p>**Eric Peh**
+新加坡科技研究局高性能计算研究所
+新加坡科技研究局前沿人工智能研究中心</p>
+
+<p>**Debaditya Roy**
+印度理工学院卡拉格普尔分校计算机科学与工程系</p>
+
+<p>**Basura Fernando**
+新加坡科技研究局高性能计算研究所
+新加坡科技研究局前沿人工智能研究中心
+新加坡南洋理工大学计算与数据科学学院</p>
+
+<p>## 摘要</p>
+
+<p>视觉语言模型（VLMs）在基准测试中通常能取得高性能，但仍然是&quot;黑箱&quot;，且容易产生幻觉或依赖表面捷径。在本研究中，我们提出了一个旨在通过分解式证据接地来同时增强性能和可解释性的框架。与整体式推理方法不同，我们的方法强制模型将全局查询分解为一系列原子子问题序列，每个子问题需要明确的子答案，以及关键的局部证据边界框。通过将中间逻辑步骤（例如识别容器、分析液体属性和评估环境上下文）锚定在特定视觉区域中，我们构建了一条类似人类演绎的结构化推理路径。这使得最终答案作为已验证视觉事实的逻辑推论而非统计猜测而呈现。</p>
+
+<p>## 1 引言</p>
+
+<p>**图1：**
+我们接地推理的概览。给定图像 $I$ 和问题 $x$，VLM 将推理分解为一系列三元组 $\tau_{i}=\langle q_{i},a_{i},b_{i}\rangle$，其中每个三元组包含一个子问题、中间答案和支持性空间证据。中间三元组随后被合成为连贯的推理路径 $r$ 和最终答案 $a^{final}$，产生结构化且可验证的推理过程。</p>
+
+<p>视觉推理经历了几个重要里程碑的发展：它始于经典的视觉计算和认知理论，特别是 Marr 将视觉表述为信息处理问题的理论，这有助于定义如何以计算方式研究视觉感知 [21]。早期的符号AI随后探索了对简化视觉世界的推理，如 Winograd 的 SHRDLU 积木世界系统和 Winston 关于学习结构描述的工作，其中感知、语言、空间关系和行动紧密相连 [43, 44]。现代深度学习时代通过视觉问答重新定义了视觉推理，系统需要回答关于图像的自然语言问题，而不仅仅是分类或描述它们 [3]。随后出现了更丰富的结构化资源，如 Visual Genome，它强调对象、属性、关系、区域图、场景图和问答标注作为关系图像理解的基础 [15]。另一个里程碑是 CLEVR，它为组合推理、计数、比较、空间关系和逻辑运算提供了一个受控的诊断基准，同时减少了语言和数据集偏差 [14]。后续方法如神经模块网络 [2]、关系网络 [29] 和 MAC 网络 [11] 引入了更明确的组合、关系和多步视觉输入推理机制。最近，神经符号视觉推理将深度视觉感知与符号程序执行和结构化场景表示重新联系起来 [48]，而抽象推理基准如 RAVEN [51] 则将领域扩展到受 Raven 渐进矩阵启发的结构、关系和类比推理 [13]。</p>
+
+<p>视觉语言模型（VLMs）在视觉问答和多模态推理基准上取得了强劲的表现。然而，高答案准确率并不一定意味着忠实的视觉推理，这一点也被一些理论发现所研究 [27]。模型可能产生正确答案，但依赖于虚假相关性、忽略相关视觉证据或幻觉中间事实 [35, 1, 52, 7]。当VLMs使用强化学习（RL）进行后训练时，答案正确性与推理忠实性之间的差距变得尤为棘手，因为优化最终答案正确性可能放大捷径推理而非改善基于证据的推理。</p>
+
+<p>最近基于RL的多模态推理方法，如 R1-VL [53]、Vision-R1 [10]、Reason-RFT [38] 和 VLM-R1 [34]，通过结果级或逐步奖励来改善推理。然而，这些方法主要监督文本推理，而未将每个中间步骤锚定到局部视觉证据。因此，模型可能生成看似合理的文本推理，但关注的是不相关或错误的图像区域。相反，接地方法如 Visual-RFT [18] 和 ViGoRL [30] 使用定位信号，但将接地视为辅助而非推理的组成部分。这需要明确地将每个推理步骤与其支持的视觉证据对齐。</p>
+
+<p>此外，最近的数据集如 Visual CoT [32] 提供了大规模视觉思维链标注，并将每个问答对与视觉证据关联。然而，它们通常不为每个中间推理步骤提供明确的空间接地。因此，当前方法缺乏同时捕获推理结构、中间答案和局部视觉证据的大规模数据。</p>
+
+<p>忠实的视觉推理需要的不仅仅是最终答案或单一证据区域。它应该将问题分解为中间子问题，逐一回答，并将每个答案锚定到其支持的视觉区域；见图1。这使得推理变得明确、可验证，且不易受到捷径或幻觉中间声明的影响。</p>
+
+<p>因此，我们提出了一个**视觉接地过程强化学习**框架。我们的框架训练VLMs生成结构化推理分解，其中每个中间步骤表示为由子问题、子答案和空间证据边界框组成的三元组。这种表述鼓励模型外化其推理过程并将每个推理步骤锚定在图像中。我们使用问答式分解，因为它为视觉推理提供了自然且可验证的接口。与自由形式的思维链相比，子问题分解使每个推理步骤变得明确：子问题指定需要验证什么，子答案记录推断的事实，边界框指示支持证据的位置。这种结构允许人类和奖励函数评估模型是否从正确的视觉证据中进行推理。</p>
+
+<p>然而，评估这种分解引入了一个新的困难：有效的推理路径不是唯一的。不同的模型可能使用不同的中间步骤解决同一视觉问题，或以不同顺序生成等价步骤。因此，在固定序列中直接将生成的推理链与参考链比较可能会不公平地惩罚正确的推理。</p>
+
+<p>为克服这一限制，我们引入了**匈牙利群组相对策略优化（H-GRPO）**，这是一个排列不变的RL框架，通过二部匹配对齐预测和参考推理步骤。由此产生的奖励同时评估语义对齐和空间接地，允许灵活的推理轨迹同时仍然强制证据一致性。需要注意的是，GRPO [9] 是 H-GRPO 的特例，其中 H-GRPO 的对角匹配退化为 GRPO。</p>
+
+<p>我们的框架建立在三个主要组件之上。首先，我们引入了**接地推理分解协议**，将每个中间推理步骤表示为子问题、子答案和证据边界框。其次，我们开发了**可扩展数据合成管道**，用于生成逐步接地的推理轨迹，无需大量人工标注。第三，我们提出了**H-GRPO**，使用基于匈牙利匹配的奖励为接地推理提供密集的、排列不变的监督。</p>
+
+<p>除了模型训练，我们还引入了一个统一的评估协议，联合衡量最终答案正确性、接地保真度、逐步推理对齐和对视觉证据的依赖性。我们的实验表明，先前方法通常在推理和接地之间表现出权衡，而我们的方法通过鼓励模型通过明确、接地和可验证的推理过程来回答视觉问题，同时解决了这两个维度。</p>
+
+<p>我们的贡献总结如下：</p>
+
+<p>- 我们提出了接地推理分解协议，将每个中间推理步骤表示为子问题、子答案和空间证据边界框。
+- 我们开发了可扩展的数据合成管道，用于生成逐步接地的推理轨迹，无需大量人工标注即可实现视觉推理的过程级监督。
+- 我们引入了 H-GRPO，一个排列不变的强化学习框架，通过在语义和空间证据上进行匈牙利匹配来对齐预测和参考推理步骤。
+- 我们提出了一个评估协议，联合衡量答案正确性、接地保真度、逐步推理对齐和视觉证据依赖性。</p>
+
+<p>## 2 相关工作</p>
+
+<p>视觉问答已成为评估视觉理解最有前景的方法之一，涵盖因果推理 [47, 25]、情境推理 [45]、运动推理 [16]、数学推理 [19]、物理推理 [54]、知识推理 [23] 和程序性推理 [24]。</p>
+
+<p>思维链推理已扩展到VLMs，用于组合和多步视觉推理。Visual CoT [32] 和 Multimodal-CoT [55] 引入了视觉-文本输入上的中间推理，而 ScienceQA [20] 和 Kosmos-2 [26] 支持多模态科学推理和视觉接地。最近的工作进一步探索了逐步监督、自我反思和工具辅助推理 [53, 10, 38, 42]。然而，大多数视觉CoT方法主要在语言空间中监督推理，未将每个推理步骤明确锚定到局部图像证据，允许看似合理但视觉上不支持的推理链。</p>
+
+<p>基于奖励的后训练已被用于改善VLM的事实性和对齐。LLaVA-RLHF [37] 使用事实增强的RLHF和基于描述的事实信号来减少幻觉，而 RLHF-V [49] 通过片段级修正和密集DPO提高数据效率。相关的具有可验证奖励的RL方法，包括基于 DeepSeek-R1 [9] 的 Visual-RFT [18] 和 VLM-R1 [34]，使用IoU或准确率等奖励来优化感知和接地。然而，这些方法主要针对偏好对齐、事实性或任务级接地，而非在整个推理过程中强制逐步视觉接地。</p>
+
+<p>受 DeepSeek-R1 [9] 启发，最近的工作将RL应用于多步视觉推理。Vision-R1 [10] 将冷启动多模态CoT与GRPO结合，R1-VL [53] 引入 StepGRPO 用于中间步骤奖励，Reason-RFT [38] 使用 SFT-then-GRPO 进行稳健的跨域推理，VL-Rethinker [42] 通过选择性重放和强制重新思考来缓解优势消失。然而，这些方法主要评估文本推理轨迹或最终答案，未强制将每个推理步骤锚定到图像区域。</p>
+
+<p>最近的方法强调视觉推理的接地。ViGoRL [30] 使用MCTS生成的接地轨迹和具有动态缩放的多轮GRPO，而 Vision-SR1 [17] 通过将感知与推理分离并奖励感知质量来解决&quot;思考优于观察&quot;的问题。这些工作表明接地至关重要，但未将推理表述为接地的子问题、子答案和证据区域三元组，也未定义用于匹配预测和参考推理步骤的排列不变奖励。</p>
+
+<p>## 3 方法</p>
+
+<p>### 3.1 概述</p>
+
+<p>我们提出了**匈牙利群组相对策略优化（H-GRPO）**，一个用于接地视觉推理的微调框架。给定图像 $I$ 和问题 $x$，模型被训练为不仅产生最终答案，还要产生推理过程到接地中间步骤的明确分解。每个中间步骤包含一个子问题、一个中间答案和一个空间证据边界框。关键思想是用一个联合鼓励以下方面的奖励来训练模型： 正确的输出格式， 正确的最终答案，以及 视觉接地且语义有意义的推理分解。与标准序列级奖励表述不同，我们的方法使用排列不变的匈牙利匹配分数来评估中间推理步骤。这允许不同但逻辑有效的推理顺序获得适当的奖励。</p>
+
+<p>### 3.2 接地推理分解</p>
+
+<p>我们要求VLM将整体式视觉推理过程转化为一系列可验证的接地子任务。给定图像 $I$ 和问题 $x$，模型生成分解 $D=\{\tau_{1},\tau_{2},\dots,\tau_{m}\}$，其中每个推理三元组定义为 $\tau_{i}=\langle q_{i},a_{i},b_{i}\rangle$。这里，$q_{i}$ 表示对应于离散推理步骤的子问题，$a_{i}$ 表示模型对该子问题的中间答案，$b_{i}$ 表示用于证明答案的空间证据。边界框表示为 $b_{i}=[x_{\min},y_{\min},x_{\max},y_{\max}]$。</p>
+
+<p>在产生中间推理三元组后，VLM将它们合成为两个最终组件：</p>
+
+<p>- **推理路径**（$r$）——将中间证据 $\tau_{1:m}$ 整合为连贯论证的自然语言解释，以及
+- **最终答案**（$a^{\mathrm{final}}$）——对原始问题的简洁回答。</p>
+
+<p>因此，完整的模型输出为 $y=\{\tau_{1},\dots,\tau_{m},r,a^{\mathrm{final}}\}$。</p>
+
+<p>这种分解鼓励模型明确暴露导致最终答案的视觉证据和逻辑步骤，从而降低幻觉或基于捷径的推理的可能性。</p>
+
+<p>### 3.3 强化学习表述</p>
+
+<p>我们将接地视觉推理表述为强化学习问题。设 $\pi_{\theta}$ 表示策略模型。给定输入图像-问题对 $(I,x)$，策略生成一个输出轨迹 $y$，由接地推理三元组、推理路径和最终答案组成。对于每个提示，策略 $\pi_{\theta}$ 通过独立展开采样一组 $G$ 个推理轨迹：</p>
+
+<p>$$\{y_{1},y_{2},\dots,y_{G}\}\sim\pi_{\theta}(\cdot\mid I,x).$$</p>
+
+<p>策略被优化以最大化复合奖励 $\mathcal{J}$，该奖励同时评估最终正确性和中间推理过程的质量。</p>
+
+<p>最近的GRPO和RLVR方法在数学和代码生成等领域显示出强劲结果，这些领域的正确性通常可以通过相对密集和结构良好的奖励来验证 [33, 9]。然而，视觉推理更加灵活：一个问题可能允许多条有效的推理路径，它们在顺序、结构或视觉接地上有所不同。在生成和参考推理链之间进行固定序列级比较可能仅仅因为有效推理以不同顺序出现而惩罚它。为解决这一限制，我们引入了H-GRPO，用排列不变的匈牙利匹配奖励替代对顺序敏感的推理链比较。</p>
+
+<p>### 3.4 用于推理评估的匈牙利匹配</p>
+
+<p>对于每个生成的轨迹 $y$，设 $\hat{D}=\{\hat{\tau}_{1},\hat{\tau}_{2},\dots,\hat{\tau}_{m}\}$ 为预测推理三元组集合，其中 $\hat{\tau}_{i}=(\hat{q}_{i},\hat{a}_{i},\hat{b}_{i})$，设 $D^{*}=\{\tau_{1}^{*},\tau_{2}^{*},\dots,\tau_{n}^{*}\}$ 为参考推理三元组集合，其中 $\tau_{j}^{*}=(q_{j}^{*},a_{j}^{*},b_{j}^{*})$。</p>
+
+<p>我们不在固定顺序中比较预测和参考三元组，而是在 $\hat{D}$ 和 $D^{*}$ 之间构建二部匹配问题。我们首先定义相似度矩阵 $S\in\mathbb{R}^{m\times n}$，其中每个条目 $S_{ij}$ 衡量预测三元组 $\hat{\tau}_{i}$ 和参考三元组 $\tau_{j}^{*}$ 之间的相似度。相似度分数定义为：</p>
+
+<p>$$S_{ij}=\frac{1}{4}\Big(E(\hat{b}_{i},b_{j}^{*})+\mathrm{sim}_{q}(\hat{q}_{i},q_{j}^{*})+\mathrm{sim}_{a}(\hat{a}_{i},a_{j}^{*})+\mathrm{IoU}(\hat{b}_{i},b_{j}^{*})\Big).$$</p>
+
+<p>这里，$E(\hat{b}_{i},b_{j}^{*})$ 衡量预测边界框是否存在并与参考证据区域兼容，$\mathrm{sim}_{q}$ 和 $\mathrm{sim}_{a}$ 是预测和参考子问题及答案之间的 Sentence-BERT 余弦相似度 [28]，$\mathrm{IoU}(\hat{b}_{i},b_{j}^{*})$ 衡量预测和参考边界框之间的空间重叠。</p>
+
+<p>为处理预测和参考三元组数量不同的情况，我们将相似度矩阵填充为 $k\times k$ 大小，其中 $k=\max(m,n)$。然后我们在二元分配矩阵 $X\in\{0,1\}^{k\times k}$ 上求解二部匹配问题，其中 $x_{ij}=1$ 表示预测三元组 $\hat{\tau}_{i}$ 匹配到参考三元组 $\tau_{j}^{*}$。最优分配通过求解以下问题获得：</p>
+
+<p>$$X^{*}=\arg\max_{X}\sum_{i=1}^{k}\sum_{j=1}^{k}S_{ij}x_{ij},$$</p>
+
+<p>受一对一匹配约束：</p>
+
+<p>$$\sum_{j=1}^{k}x_{ij}\leq 1,\qquad\sum_{i=1}^{k}x_{ij}\leq 1.$$</p>
+
+<p>获得最优分配 $X^{*}$ 后，我们计算总有效匹配分数：</p>
+
+<p>$$S_{\mathrm{HS}}=\frac{1}{\min(m,n)}\sum_{(i,j)\in\mathcal{M}}S_{ij},$$</p>
+
+<p>其中 $\mathcal{M}$ 表示满足 $x_{ij}^{*}=1$ 且 $i\leq{m}$ 和 $j\leq{n}$ 的匹配预测-参考对集合。该分数奖励与参考分解语义对齐且锚定在正确视觉证据中的预测推理步骤。</p>
+
+<p>### 3.5 奖励设计</p>
+
+<p>总奖励结合了三个组件：格式奖励、答案奖励和匈牙利奖励。我们将总体奖励定义为：</p>
+
+<p>$$\mathcal{R}=\alpha\mathcal{R}_{\mathrm{format}}+\beta\mathcal{R}_{\mathrm{answer}}\cdot\mathcal{R}_{\mathrm{HS}}, \tag{1}$$</p>
+
+<p>其中 $\alpha$ 和 $\beta$ 控制格式和答案-接地奖励的相对重要性。该表述将最终答案奖励条件化于匈牙利奖励。因此，模型只有在通过充分接地和对齐良好的中间推理产生正确答案时才能获得强奖励。</p>
+
+<p>**格式奖励**</p>
+
+<p>格式奖励确保模型遵循所需的结构化推理协议。我们检查完成是否包含配对的子问题和子答案、明确的推理路径和最终答案。设 $\mathrm{count}(\cdot)$ 表示所需标签模式的出现次数。格式奖励定义为：</p>
+
+<p>$$\mathcal{R}_{\mathrm{format}}=\frac{1}{3}\left(\mathbb{I}_{\mathrm{pair}}+\mathbb{I}_{\mathrm{reason}}+\mathbb{I}_{\mathrm{final}}\right).$$</p>
+
+<p>这里，$\mathbb{I}_{\mathrm{pair}}$ 验证每个子问题都配有中间答案且至少有一个子问题：</p>
+
+<p>$$\mathbb{I}_{\mathrm{pair}}=\mathbf{1}\left[(\mathrm{count}(\mathcal{T}_{q})=\mathrm{count}(\mathcal{T}_{a}))\;\land\;\mathrm{count}(\mathcal{T}_{q})&gt;0\right].$$</p>
+
+<p>$\mathbb{I}_{\mathrm{reason}}$ 验证明确推理路径的存在：</p>
+
+<p>$$\mathbb{I}_{\mathrm{reason}}=\mathbf{1}\left[\mathrm{count}(\mathcal{T}_{r})&gt;0\right].$$</p>
+
+<p>$\mathbb{I}_{\mathrm{final}}$ 验证最终答案的存在：</p>
+
+<p>$$\mathbb{I}_{\mathrm{final}}=\mathbf{1}\left[\mathrm{count}(\mathcal{T}_{f})&gt;0\right].$$</p>
+
+<p>**最终答案奖励**</p>
+
+<p>评估从结构化输出中提取的最终答案的正确性：</p>
+
+<p>$$\mathcal{R}_{\mathrm{answer}}=\begin{cases}1,&amp;\text{if }\hat{a}_{\mathrm{final}}=a^{*}_{\mathrm{final}},\\ 0,&amp;\text{otherwise}.\end{cases}$$</p>
+
+<p>**匈牙利推理奖励**</p>
+
+<p>我们将匈牙利匹配分数转化为密集的过程级奖励：</p>
+
+<p>$$\mathcal{R}_{\text{HS}}=\max(0,S_{\text{HS}}-\gamma),$$</p>
+
+<p>其中 $\gamma$ 是控制最低可接受推理质量的阈值。该阈值机制抑制弱或接地不良的推理轨迹，同时为中间推理步骤与参考分解充分对齐的轨迹保留正向奖励。因此，最终答案奖励仅在生成的推理展示出足够的语义和接地一致性时被激活。</p>
+
+<p>### 3.6 H-GRPO 优化</p>
+
+<p>对于每个输入 $(I,x)$，H-GRPO 从当前策略中采样一组 $G$ 个轨迹。每个轨迹使用复合奖励 $\mathcal{R}$（公式1）评分。然后使用组级奖励计算相对优势，遵循GRPO式优化原则。总体而言，H-GRPO优化模型以同时满足三个条件：输出必须遵循所需推理格式，最终答案必须正确，中间推理必须在视觉上接地并与参考推理步骤语义对齐。</p>
+
+<p>## 4 实验与结果</p>
+
+<p>**训练数据。** 我们构建了一个合成接地推理数据集，记为GVRS，为监督微调和强化学习提供监督。每个训练样本由图像 $I$、问题 $x$、最终答案 $a^{final}$ 和由中间三元组 $(q_{i},a_{i},b_{i})$ 组成的结构化推理轨迹构成。</p>
+
+<p>该数据集通过多阶段管道生成。首先，我们构建了一个包含40个代表性视觉推理示例的高质量参考集。每个示例最初使用 GPT-4o [12] 起草，然后通过人在环验证进行细化，以确保逻辑一致性和答案正确性。为提高空间精度，我们使用 SAM3 [5] 进一步细化接地标注，其中生成的子答案用作边界框细化的文本提示。该参考集作为提示选择和奖励校准的金标准集。</p>
+
+<p>接下来，我们构建了12个候选系统提示池。三个LLM——GPT-4o [12]、Gemini-3 [39] 和 Qwen3.5-Omni-Plus [41]——各自被要求使用参考示例生成四个候选提示。每个提示通过为参考集生成接地推理轨迹并使用我们的复合奖励函数评分来评估。表现最佳的提示随后用于生成10,000个训练样本。</p>
+
+<p>为鼓励广泛的视觉推理覆盖，GVRS从四个来源构建：Visual7W [56]、Visual-CoT [32]、A-OKVQA [31] 和 ERQA [40]。我们使用三名专家标注员在100个示例的随机子集上手动验证生成轨迹的质量。标注员使用自定义标注界面评估子问题的逻辑一致性、子答案的语义正确性和边界框的空间准确性，详见附录 LABEL:appendix:evaluator_interface。</p>
+
+<p>**模型。** 我们使用两个开源VLM骨干实例化H-GRPO：Qwen2.5-VL-3B [4] 和 SmolVLM-2.2B [22]。这使我们能够评估所提出的接地过程奖励是否对更强和更小的视觉语言模型都有益。</p>
+
+<p>**训练协议。** 训练包括两个阶段。首先，我们在GVRS上进行一个epoch的监督微调。该阶段教会模型遵循所需的输出格式，并为分解式接地推理提供初始行为先验。其次，我们应用基于GRPO的强化学习，每个样本 $G=8$ 次展开。两个阶段使用相同的优化超参数：学习率 $5\times 10^{-6}$，预热比例 $0.03$，权重衰减 $0.01$。更多细节见附录 LABEL:appendix:training_hyperparameters。</p>
+
+<p>**评估基准。** 我们在两种设置下评估性能。对于域内评估，我们使用 A-OKVQA [31] 和 Visual7W [56] 的标准评估分割。这些数据集与数据集构建期间使用的视觉推理领域重叠，因此衡量模型是否在目标训练分布上有所改善。对于域外评估，我们使用 MMMU [50]、RealWorldQA [46]、RoboSpatial [36] 和 MMStar [6]。这些基准测试了跨学科推理、真实世界空间理解、机器人空间推理和多模态感知方面更广泛的泛化能力。这一评估很重要，因为H-GRPO不仅旨在提高答案准确率，还旨在鼓励在分布偏移下保持视觉接地的推理过程。</p>
+
+<p>### 4.1 域内和域外结果</p>
+
+<p>表1显示H-GRPO改善了域内性能，特别是对于较小的 SmolVLM-2.2B 骨干。对于 SmolVLM-2.2B，SFT改善了 A-OKVQA 和 Visual7W，而原始GRPO仅给出边际或不稳定的增益。相比之下，H-GRPO为该骨干取得了最佳结果，在 A-OKVQA 上提升至 73.4%，在 Visual7W 上提升至 77.2%。这表明稀疏的最终答案奖励对较小的VLMs不足，而匈牙利过程奖励为中间接地推理步骤提供了有用的监督。</p>
+
+<p>对于 Qwen2.5-VL-3B，SFT已经比基础模型带来大幅提升，在 A-OKVQA 上从 72.6% 提升至 82.6%，在 Visual7W 上从 65.7% 提升至 81.1%。GRPO在 A-OKVQA 上获得最佳结果，而H-GRPO在 Visual7W 上获得最佳结果。这表明更强的模型从SFT中获益显著，但显式接地奖励对定位敏感任务仍然有用。</p>
+
+<p>| 方法 | A-OKVQA | Visual7W |
+|------|---------|----------|
+| Reason-RFT-2B | 61.8 | 59.8 |
+| R1-VL-2B | 79.3 | 79.5 |
+| ViGoRL-3B | 78.6 | 77.3 |
+| SmolVLM-2.2B | 71.1 | 72.5 |
+| SFT (SmolVLM-2.2B) | 72.5 | 74.6 |
+| GRPO (SmolVLM-2.2B) | 71.7 | 74.7 |
+| H-GRPO (SmolVLM-2.2B) | 73.4 | 77.2 |
+| Qwen2.5-VL-3B | 72.6 | 65.7 |
+| SFT (Qwen2.5-VL-3B) | 82.6 | 81.1 |
+| GRPO (Qwen2.5-VL-3B) | 83.4 | 83.7 |
+| H-GRPO (Qwen2.5-VL-3B) | 82.8 | 83.9 |</p>
+
+<p>**表1：** A-OKVQA 验证分割和 Visual7W 测试分割上的域内评估。</p>
+
+<p>表2显示H-GRPO很好地泛化到OOD基准，特别是那些需要空间和几何推理的基准。它在 RealWorldQA、RoboSpatial 和 MMStar 上取得了比较方法中的最佳性能，其中在 RoboSpatial 上的增益最大，达到 70.2%。这表明接地中间推理步骤有助于模型在分布偏移下保持空间约束。在 MMMU 上的改善较为温和。H-GRPO 比基础 Qwen2.5-VL-3B 模型有所改善，但仍低于 ViGoRL。这表明H-GRPO对视觉接地的空间推理任务最有效，而知识密集型基准如 MMMU 可能需要更广泛的科学和文档级监督。</p>
+
+<p>| 方法 | MMMU | RWQA | RoboSpatial | MMStar |
+|------|------|------|-------------|--------|
+| R1-VL-2B | 39.9 | 57.6 | 52.5 | 49.8* |
+| Reason-RFT-2B | 41.1* | 53.1* | 57.7 | - |
+| ViGoRL-3B (UGround) | 47.6* | 57.5* | 67.1 | 47.5 |
+| Qwen2.5-VL-3B | 42.0* | 59.0 | 54.4 | 46.0* |
+| H-GRPO (Qwen2.5-VL-3B) | 45.2 | 60.3 | 70.2 | 52.4 |</p>
+
+<p>**表2：** 多学科和空间推理基准上的域外评估。标记 * 的结果来自相应论文。</p>
+
+<p>### 4.2 消融分析</p>
+
+<p>消融结果显示了SFT预热和所提出的匈牙利过程奖励的重要性。SFT为结构化接地推理提供了强大的行为先验，在两个骨干上比其基础模型都有大幅改善。例如，Qwen2.5-VL-3B 在 Visual7W 上从 65.7% 提升至 81.1%，表明接触接地推理轨迹已经非常有效。</p>
+
+<p>原始GRPO的增益不太一致。对于 SmolVLM-2.2B，它略微改善了 Visual7W，但将 A-OKVQA 从 72.5% 降至 71.7%，表明稀疏的最终答案奖励可能产生噪声更新并可能强化接地不良的推理。</p>
+
+<p>H-GRPO产生了最一致的改善，特别是对于较小的 SmolVLM-2.2B 模型和定位敏感任务。其排列不变的匈牙利奖励明确鼓励语义和空间对齐的中间步骤，而不强制固定的推理顺序。因此，H-GRPO在保持有效推理路径灵活性的同时验证每个步骤都锚定在视觉证据中。</p>
+
+<p>### 4.3 可解释性评估</p>
+
+<p>我们使用 Gemini 3 Flash [8] 作为LLM评审来评估生成推理轨迹的可解释性。每个模型输出在五个维度上评分：相关性、连贯性、一致性、清晰度和整体可解释性，使用1-5分制。评估提示见附录 LABEL:appendix:interpretability。</p>
+
+<p>如表3所示，H-GRPO在所有维度上取得最高分。它获得了4.73的整体可解释性分数，而 R1-VL 为4.25，ViGoRL 为3.81，Reason-RFT 为3.02。它还获得了4.92的最高清晰度分数和4.94的最高相关性分数。这些结果表明H-GRPO同时改善了任务准确率和推理过程的透明度。改善在连贯性和一致性方面尤为明显，H-GRPO分别得分4.77和4.74。这表明将每个中间答案锚定到局部区域有助于模型产生更容易检查和验证的推理链。H-GRPO不是生成非结构化的文本思维链或单一最终预测，而是产生一系列视觉锚定的推理步骤。</p>
+
+<p>| 方法 | 可解释性 | 相关性 | 连贯性 | 一致性 | 清晰度 |
+|------|---------|--------|--------|--------|--------|
+| Reason-RFT | 3.02 | 3.80 | 3.12 | 3.31 | 3.97 |
+| ViGoRL | 3.81 | 4.60 | 3.85 | 4.04 | 4.25 |
+| R1-VL | 4.25 | 4.84 | 4.33 | 4.34 | 4.79 |
+| H-GRPO | 4.73 | 4.94 | 4.77 | 4.74 | 4.92 |</p>
+
+<p>**表3：** 推理可解释性的LLM评审评估。可解释性：整体可解释性，相关性：相关性，连贯性：连贯性，一致性：一致性，清晰度：清晰度。分数在1-5分制上衡量，越高越好。</p>
+
+<p>### 4.4 定性分析</p>
+
+<p>**图2：** 接地推理分解的定性示例。对于每个图像-问题对，H-GRPO将答案分解为中间视觉推理步骤。每个步骤包含一个子问题、一个子答案和一个局部证据区域。示例显示模型在合成最终答案之前接地的关键视觉线索，包括服装、物体、动物部位、人类属性、动作和艺术纹理。这产生了可解释和可验证的推理路径，而非未接地的最终预测。</p>
+
+<p>图2显示了H-GRPO产生的接地推理分解的定性示例。对于每个图像-问题对，模型生成多个中间推理步骤，每个步骤与一个局部证据区域关联。这使得最终答案可以追溯到明确的视觉观察。</p>
+
+<p>示例说明了几个理想特性。首先，模型将类别级推理锚定在对象证据中。例如，在厨师示例中，模型在预测答案&quot;厨师&quot;之前识别了白色夹克、食物柜台、松饼烤盘和烘焙食品。其次，模型接地空间和关系推理。在大象示例中，它定位了座位、动物身体和象鼻，以推断座位在大象上。第三，模型通过接地视觉线索（如服装、滑雪板、身体姿势和纹理笔触）支持动作和属性推理。这些示例表明H-GRPO产生的推理轨迹不仅更具可解释性，而且更忠实于视觉内容。</p>
+
+<p>重要的是，定性示例还展示了过程级接地为何有用。模型可能通过利用语言先验或数据集捷径产生正确的最终答案，但H-GRPO要求中间声明得到视觉支持。这使得推理过程更可检查，并降低了不受支持的幻觉解释的风险。</p>
+
+<p>## 5 结论</p>
+
+<p>我们提出了H-GRPO，一个用于接地视觉推理的强化学习框架，训练VLMs将答案分解为明确的子问题、子答案和证据区域三元组。与先前奖励最终答案正确性或任务级接地的方法不同，H-GRPO通过排列不变匹配对齐预测和参考推理步骤，提供密集的过程级监督。</p>
+
+<p>在域内VQA数据集和域外多模态推理基准上的实验表明，接地分解对定位密集型和空间推理任务特别有益。H-GRPO在 RoboSpatial 等基准上提高了鲁棒性，并在LLM评审评估下产生了更具可解释性的推理轨迹。同时，在广泛的知识密集型基准上的结果表明，仅靠过程级接地无法弥补基础模型领域知识的不足。</p>
+
+<p>未来工作将把接地监督扩展到以对象为中心的VQA之外的更具挑战性的领域，包括科学推理、符号推理、图表理解和长上下文多模态推理。这些设置要求模型不仅接地可见对象和空间关系，还要接地抽象概念、方程、趋势、图表以及分布在多个视觉或文本输入中的证据。我们还计划开发更灵活的奖励函数，以更好地处理多样化的有效推理路径、不同抽象层次和多个可能的证据区域。此外，我们将扩大接地推理数据集以支持更大接地推理模型的开发，并发布一个评估逐步推理质量、接地保真度和视觉证据依赖性的基准。这将使更系统地评估VLMs是否真正从视觉证据推理而非依赖捷径或不受支持的文本解释成为可能。</p>
+
+<p>## 局限性</p>
+
+<p>尽管H-GRPO改善了接地视觉推理，但它有几个局限性。首先，其性能取决于用于训练的合成接地推理轨迹的质量和多样性。由于GVRS主要关注对象级接地、空间关系和视觉分解，该方法在 MMMU 和 MMStar 等知识密集型基准上效果较差，这些基准的成功还需要强大的领域知识和抽象推理。其次，匈牙利奖励依赖于参考分解和边界框，可能无法捕获所有有效的推理路径或证据区域。第三，我们的实验限于相对较小的VLMs，H-GRPO在更大模型上的有效性有待进一步研究。最后，逐步接地提高了可解释性，但可能增加训练和推理期间的生成长度和计算成本。未来工作应将接地监督扩展到科学、符号、基于图表和长上下文多模态推理任务，并开发更灵活的奖励以更好地处理多样化的有效推理路径。</p>
+
+<p>此外，我们计划扩展数据集以支持更大规模的接地推理模型开发，并为接地推理和评估提供更强的基准。</p>
+
+<p>## 致谢</p>
+
+<p>本研究/项目由新加坡国家研究基金会在其NRF Fellowship奖编号NRF-NRFF14-2022-0001下支持。本研究还由新加坡科技研究局（A*STAR）在其SERC中央研究基金（CRF）以及前沿人工智能研究中心（CFAR）下分配给B.F.的资金支持。</p>
+
+<p>## 参考文献</p>
+
+<p>[1] A. Agrawal, D. Batra, D. Parikh, and A. Kembhavi (2018). Don't just assume; look and answer: overcoming priors for visual question answering. In *Proceedings of the IEEE conference on computer vision and pattern recognition*, pp. 4971–4980. 引用于：§1.</p>
+
+<p>[2] J. Andreas, M. Rohrbach, T. Darrell, and D. Klein (2016). Neural module networks. In *Proceedings of the IEEE conference on computer vision and pattern recognition*, pp. 39–48. 引用于：§1.</p>
+
+<p>[3] S. Antol, A. Agrawal, J. Lu, M. Mitchell, D. Batra, C. L. Zitnick, and D. Parikh (2015). Vqa: visual question answering. In *Proceedings of the IEEE international conference on computer vision*, pp. 2425–2433. 引用于：§1.</p>
+
+<p>[4] S. Bai, K. Chen, X. Liu, J. Wang, W. Ge, S. Song, K. Dang, P. Wang, S. Wang, J. Tang, H. Zhong, Y. Zhu, M. Yang, Z. Li, J. Wan, P. Wang, W. Ding, Z. Fu, Y. Xu, J. Ye, X. Zhang, T. Xie, Z. Cheng, H. Zhang, Z. Yang, H. Xu, and J. Lin (2025). Qwen2.5-vl technical report. External Links: 2502.13923, Link. 引用于：§4.</p>
+
+<p>[5] N. Carion, L. Gustafson, Y. Hu, S. Debnath, R. Hu, D. Suris, C. Ryali, K. V. Alwala, H. Khedr, A. Huang, et al. (2025). Sam 3: segment anything with concepts. arXiv preprint arXiv:2511.16719. 引用于：§4.</p>
+
+<p>[6] L. Chen, J. Li, X. Dong, P. Zhang, Y. Zang, Z. Chen, H. Duan, J. Wang, Y. Qiao, D. Lin, et al. (2024). Are we on the right way for evaluating large vision-language models? *Advances in Neural Information Processing Systems* 37, pp. 27056–27087. 引用于：§4.</p>
+
+<p>[7] C. Dancette, R. Cadene, D. Teney, and M. Cord (2021). Beyond question-based biases: assessing multimodal shortcut learning in visual question answering. In *Proceedings of the IEEE/CVF International Conference on Computer Vision*, pp. 1574–1583. 引用于：§1.</p>
+
+<p>[8] Google DeepMind (2025). Gemini 3 flash: high-efficiency agentic multimodal understanding. Note: https://ai.google.dev/gemini-api/docs/gemini-3 Accessed: May 2026. 引用于：§4.3.</p>
+
+<p>[9] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi, et al. (2025). DeepSeek-r1 incentivizes reasoning in llms through reinforcement learning. *Nature* 645(8081), pp. 633–638. 引用于：§1, §2, §2, §3.3.</p>
+
+<p>[10] W. Huang, B. Jia, Z. Zhai, S. Cao, Z. Ye, F. Zhao, Z. Xu, X. Tang, Y. Hu, and S. Lin (2025). Vision-r1: incentivizing reasoning capability in multimodal large language models. arXiv preprint arXiv:2503.06749. 引用于：§1, §2, §2.</p>
+
+<p>[11] D. A. Hudson and C. D. Manning (2018). Compositional attention networks for machine reasoning. In *International Conference on Learning Representations*. 引用于：§1.</p>
+
+<p>[12] A. Hurst, A. Lerer, A. P. Goucher, A. Perelman, A. Ramesh, A. Clark, A. Ostrow, A. Welihinda, A. Hayes, A. Radford, et al. (2024). Gpt-4o system card. arXiv preprint arXiv:2410.21276. 引用于：§4.</p>
+
+<p>[13] John and J. Raven (2003). Raven progressive matrices. In *Handbook of nonverbal assessment*, pp. 223–237. 引用于：§1.</p>
+
+<p>[14] J. Johnson, B. Hariharan, L. Van Der Maaten, L. Fei-Fei, C. Lawrence Zitnick, and R. Girshick (2017). Clevr: a diagnostic dataset for compositional language and elementary visual reasoning. In *Proceedings of the IEEE conference on computer vision and pattern recognition*, pp. 2901–2910. 引用于：§1.</p>
+
+<p>[15] R. Krishna, Y. Zhu, O. Groth, J. Johnson, K. Hata, J. Kravitz, S. Chen, Y. Kalantidis, L. Li, D. A. Shamma, et al. (2017). Visual genome: connecting language and vision using crowdsourced dense image annotations. *International journal of computer vision* 123(1), pp. 32–73. 引用于：§1.</p>
+
+<p>[16] C. Li, C. Sugandhika, Y. K. Ee, E. Peh, H. Zhang, H. Yang, D. Rajan, and B. Fernando (2025). IMoRe: implicit program-guided reasoning for human motion q&amp;a. In *Proceedings of the IEEE/CVF International Conference on Computer Vision*, pp. 12987–12996. 引用于：§2.</p>
+
+<p>[17] Z. Li, W. Yu, C. Huang, Z. Liang, R. Liu, F. Liu, J. Chen, D. Yu, J. L. Boyd-Graber, H. Mi, et al. (2026). Vision-sr1: self-rewarding vision-language model via reasoning decomposition and multi-reward policy optimization. In *The Fourteenth International Conference on Learning Representations*. 引用于：§2.</p>
+
+<p>[18] Z. Liu, Z. Sun, Y. Zang, X. Dong, Y. Cao, H. Duan, D. Lin, and J. Wang (2025). Visual-rft: visual reinforcement fine-tuning. In *Proceedings of the IEEE/CVF International Conference on Computer Vision*, pp. 2034–2044. 引用于：§1, §2.</p>
+
+<p>[19] P. Lu, H. Bansal, T. Xia, J. Liu, C. Li, H. Hajishirzi, H. Cheng, K. Chang, M. Galley, and J. Gao (2024). Mathvista: evaluating mathematical reasoning of foundation models in visual contexts. In *International Conference on Learning Representations*, Vol. 2024, pp. 23439–23554. 引用于：§2.</p>
+
+<p>[20] P. Lu, S. Mishra, T. Xia, L. Qiu, K. Chang, S. Zhu, O. Tafjord, P. Clark, and A. Kalyan (2022). Learn to explain: multimodal reasoning via thought chains for science question answering. *Advances in neural information processing systems* 35, pp. 2507–2521. 引用于：§2.</p>
+
+<p>[21] D. Man and A. Vision (1982). A computational investigation into the human representation and processing of visual information. WH San Francisco: Freeman and Company, San Francisco 1(1), pp. 4. 引用于：§1.</p>
+
+<p>[22] A. Marafioti, O. Zohar, M. Farré, M. Noyan, E. Bakouch, P. Cuenca, C. Zakka, L. B. Allal, A. Lozhkov, N. Tazi, V. Srivastav, J. Lochner, H. Larcher, M. Morlon, L. Tunstall, L. von Werra, and T. Wolf (2025). SmolVLM: redefining small and efficient multimodal models. arXiv preprint arXiv:2504.05299. 引用于：§4.</p>
+
+<p>[23] K. Marino, M. Rastegari, A. Farhadi, and R. Mottaghi (2019). Ok-vqa: a visual question answering benchmark requiring external knowledge. In *Proceedings of the IEEE/cvf conference on computer vision and pattern recognition*, pp. 3195–3204. 引用于：§2.</p>
+
+<p>[24] T. Nguyen, H. Yang, T. Y. Neoh, H. Zhang, E. Y. Keat, and B. Fernando (2026). PKR-qa: a benchmark for procedural knowledge reasoning with knowledge module learning. 引用于：§2.</p>
+
+<p>[25] P. Parmar, E. Peh, R. Chen, T. E. Lam, Y. Chen, E. Tan, and B. Fernando (2024). Causalchaos! dataset for comprehensive causal action question answering over longer causal chains grounded in dynamic visual scenes. *Advances in Neural Information Processing Systems* 37, pp. 92769–92802. 引用于：§2.</p>
+
+<p>[26] Z. Peng, W. Wang, L. Dong, Y. Hao, S. Huang, S. Ma, and F. Wei (2024). Grounding multimodal large language models to the world. 引用于：§2.</p>
+
+<p>[27] I. S. Rawal, A. Matyasko, S. Jaiswal, B. Fernando, and C. Tan (2023). Dissecting multimodality in videoqa transformer models by impairing modality fusion. arXiv preprint arXiv:2306.08889. 引用于：§1.</p>
+
+<p>[28] N. Reimers and I. Gurevych (2019). Sentence-bert: sentence embeddings using siamese bert-networks. In *Proceedings of the 2019 conference on empirical methods in natural language processing and the 9th international joint conference on natural language processing (EMNLP-IJCNLP)*, pp. 3982–3992. 引用于：§3.4.</p>
+
+<p>[29] A. Santoro, D. Raposo, D. G. T. Barrett, M. Malinowski, R. Pascanu, P. Battaglia, and T. Lillicrap (2017). A simple neural network module for relational reasoning. In *Advances in Neural Information Processing Systems*, Vol. 30. 引用于：§1.</p>
+
+<p>[30] G. H. Sarch, S. Saha, N. Khandelwal, A. Jain, M. J. Tarr, A. Kumar, and K. Fragkiadaki (2025). Grounded reinforcement learning for visual reasoning. In *The Thirty-ninth Annual Conference on Neural Information Processing Systems*. 引用于：§1, §2.</p>
+
+<p>[31] D. Schwenk, A. Khandelwal, C. Clark, K. Marino, and R. Mottaghi (2022). A-okvqa: a benchmark for visual question answering using world knowledge. In *European conference on computer vision*, pp. 146–162. 引用于：§4, §4.</p>
+
+<p>[32] H. Shao, S. Qian, H. Xiao, G. Song, Z. Zong, L. Wang, Y. Liu, and H. Li (2024). Visual cot: advancing multi-modal language models with a comprehensive dataset and benchmark for chain-of-thought reasoning. *Advances in Neural Information Processing Systems* 37, pp. 8612–8642. 引用于：§1, §2, §4.</p>
+
+<p>[33] Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. Li, Y. Wu, et al. (2024). Deepseekmath: pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300. 引用于：§3.3.</p>
+
+<p>[34] H. Shen, P. Liu, J. Li, C. Fang, Y. Ma, J. Liao, Q. Shen, Z. Zhang, K. Zhao, Q. Zhang, et al. (2025). VLM-r1: a stable and generalizable r1-style large vision-language model. arXiv e-prints, pp. arXiv–2504. 引用于：§1, §2.</p>
+
+<p>[35] Q. Si, F. Meng, M. Zheng, Z. Lin, Y. Liu, P. Fu, Y. Cao, W. Wang, and J. Zhou (2022). Language prior is not the only shortcut: a benchmark for shortcut learning in VQA. In *Findings of the Association for Computational Linguistics: EMNLP 2022*. 引用于：§1.</p>
+
+<p>[36] C. H. Song, V. Blukis, J. Tremblay, S. Tyree, Y. Su, and S. Birchfield (2025). Robospatial: teaching spatial understanding to 2d and 3d vision-language models for robotics. In *Proceedings of the Computer Vision and Pattern Recognition Conference*, pp. 15768–15780. 引用于：§4.</p>
+
+<p>[37] Z. Sun, S. Shen, S. Cao, H. Liu, C. Li, Y. Shen, C. Gan, L. Gui, Y. Wang, Y. Yang, et al. (2024). Aligning large multimodal models with factually augmented rlhf. In *Findings of the Association for Computational Linguistics: ACL 2024*, pp. 13088–13110. 引用于：§2.</p>
+
+<p>[38] H. Tan, Y. Ji, X. Hao, X. Chen, P. Wang, Z. Wang, and S. Zhang (2025). Reason-rft: reinforcement fine-tuning for visual reasoning of vision language models. In *The Thirty-ninth Annual Conference on Neural Information Processing Systems*. 引用于：§1, §2, §2.</p>
+
+<p>[39] G. Team, R. Anil, S. Borgeaud, J. Alayrac, J. Yu, R. Soricut, J. Schalkwyk, A. M. Dai, A. Hauth, K. Millican, et al. (2023). Gemini: a family of highly capable multimodal models. arXiv preprint arXiv:2312.11805. 引用于：§4.</p>
+
+<p>[40] G. R. Team, S. Abeyruwan, J. Ainslie, J. Alayrac, M. G. Arenas, T. Armstrong, A. Balakrishna, R. Baruch, M. Bauza, M. Blokzijl, et al. (2025). Gemini robotics: bringing ai into the physical world. arXiv preprint arXiv:2503.20020. 引用于：§4.</p>
+
+<p>[41] Q. Team (2026). Qwen3.5-omni technical report. External Links: 2604.15804, Link. 引用于：§4.</p>
+
+<p>[42] H. Wang, C. Qu, Z. Huang, W. Chu, F. Lin, and W. Chen (2025). VL-rethinker: incentivizing self-reflection of vision-language models with reinforcement learning. In *The Thirty-ninth Annual Conference on Neural Information Processing Systems*. 引用于：§2, §2.</p>
+
+<p>[43] T. Winograd (1971). Procedures as a representation for data in a computer program for understanding natural language. Technical report. 引用于：§1.</p>
+
+<p>[44] P. H. Winston (1970). Learning structural descriptions from examples. 引用于：§1.</p>
+
+<p>[45] B. Wu, S. Yu, Z. Chen, J. B. Tenenbaum, and C. Gan (2024). Star: a benchmark for situated reasoning in real-world videos. arXiv preprint arXiv:2405.09711. 引用于：§2.</p>
+
+<p>[46] xAI (2024). RealWorldQA: a benchmark for real-world spatial understanding. Note: https://huggingface.co/datasets/visheratin/realworldqa Benchmark released with the Grok-1.5 Vision preview. Accessed: 2026-05-22. 引用于：§4.</p>
+
+<p>[47] J. Xiao, X. Shang, A. Yao, and T. Chua (2021). Next-qa: next phase of question-answering to explaining temporal actions. In *Proceedings of the IEEE/CVF conference on computer vision and pattern recognition*, pp. 9777–9786. 引用于：§2.</p>
+
+<p>[48] K. Yi, J. Wu, C. Gan, A. Torralba, P. Kohli, and J. Tenenbaum (2018). Neural-symbolic vqa: disentangling reasoning from vision and language understanding. *Advances in neural information processing systems* 31. 引用于：§1.</p>
+
+<p>[49] T. Yu, Y. Yao, H. Zhang, T. He, Y. Han, G. Cui, J. Hu, Z. Liu, H. Zheng, M. Sun, et al. (2024). Rlhf-v: towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback. In *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition*, pp. 13807–13816. 引用于：§2.</p>
+
+<p>[50] X. Yue, Y. Ni, K. Zhang, T. Zheng, R. Liu, G. Zhang, S. Stevens, D. Jiang, W. Ren, Y. Sun, et al. (2024). Mmmu: a massive multi-discipline multimodal understanding and reasoning benchmark for expert agi. In *Proceedings of the IEEE/CVF conference on computer vision and pattern recognition*, pp. 9556–9567. 引用于：§4.</p>
+
+<p>[51] C. Zhang, F. Gao, B. Jia, Y. Zhu, and S. Zhu (2019). Raven: a dataset for relational and analogical visual reasoning. In *Proceedings of the IEEE/CVF conference on computer vision and pattern recognition*, pp. 5317–5327. 引用于：§1.</p>
+
+<p>[52] H. Zhang, C. Li, and B. Fernando (2025). Mitigating easy option bias in multiple-choice question answering. arXiv preprint arXiv:2508.13428. 引用于：§1.</p>
+
+<p>[53] J. Zhang, J. Huang, H. Yao, S. Liu, X. Zhang, S. Lu, and D. Tao (2025-10). R1-vl: learning to reason with multimodal large language models via step-wise group relative policy optimization. In *Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)*, pp. 1859–1869. 引用于：§1, §2, §2.</p>
+
+<p>[54] X. Zhang, Y. Dong, Y. Wu, J. Huang, C. Jia, B. Fernando, M. Z. Shou, L. Zhang, and J. Liu (2025). Physreason: a comprehensive benchmark towards physics-based reasoning. In *Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, pp. 16593–16615. 引用于：§2.</p>
+
+<p>[55] Z. Zhang, A. Zhang, M. Li, H. Zhao, G. Karypis, and A. Smola (2024). Multimodal chain-of-thought reasoning in language models. *Transactions on Machine Learning Research* 2024. 引用于：§2.</p>
+
+<p>[56] Y. Zhu, O. Groth, M. Bernstein, and L. Fei-Fei (2016). Visual7w: grounded question answering in images. In *Proceedings of the IEEE conference on computer vision and pattern recognition*, pp. 4995–5004. 引用于：§4, §4.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 视觉语言模型, 强化学习, 视觉推理, 接地推理, 匈牙利匹配</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

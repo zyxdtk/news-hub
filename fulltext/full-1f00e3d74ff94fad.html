@@ -1,0 +1,5856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向基于样本的生成模型的决策感知训练 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向基于样本的生成模型的决策感知训练</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-01</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.01171" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Decision-Aware Training for Sample-Based Generative Models</h4>
+            <p><strong>中文摘要：</strong> 基于样本的生成模型常用于高风险决策的概率预测，但其传统训练目标（如能量分数）忽略了决策者的成本结构。为此，本文提出决策感知训练方法，将可微决策损失与能量分数目标结合，直接惩罚基于模型预测采取行动所产生的成本。由于决策损失本身是适当的评分规则，该组合具有理论依据，且能量分数可防止模型在非成本敏感区域退化。实验表明，该方法在成本敏感区域实现了针对性改进，同时保留了完整的概率预测能力。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>Decision-Aware Training for Sample-Based
+Generative Models
+Kornelius Raeth
+Nicole Ludwig
+Abstract
+Sample-based generative models are increasingly used for probabilistic forecasting in high-stakes decision settings, yet their training objectives are blind to the decision maker’s cost structure.
+These models are commonly trained with strictly proper scoring rules, such as the energy score, which allocate their training signal in proportion to data density, with no awareness of where forecast errors are most costly for downstream decisions.
+We therefore propose
+decision-aware training for sample-based generative models
+, augmenting the energy score objective with a differentiable decision loss that directly penalises the cost incurred by acting on the model’s forecast.
+This combined loss is theoretically grounded, as the decision loss is itself a proper scoring rule.
+We validate our method on one synthetic and two real-world tasks, showing targeted improvements in cost-sensitive regions while retaining full probabilistic forecasts.
+1
+Introduction
+Probabilistic forecasting models are increasingly deployed in high-stakes decision-making, for example, a wind farm operator committing to a power contract based on a wind forecast, risking costly shortfall penalties if they over-commit, or a farmer deciding whether to apply frost protection based on a temperature forecast, balancing asset loss against the cost of intervention.
+In the weather domain, state-of-the-art forecasting systems</p>
+
+<p>(Lang
+et al.
+,
+2024
+; Price
+et al.
+,
+2023
+)
+are trained with strictly proper scoring rules such as the energy score
+(Gneiting and Raftery,
+2007
+)
+,
+which are uniquely minimised by the true conditional distribution.
+In practice, however, limited model capacity and empirical risk minimisation yield only local optimality
+(Blasiok
+et al.
+,
+2023
+)
+,
+inducing tradeoffs between model error in different regions of the input/output space
+(Donti
+et al.
+,
+2017
+)
+: proper scoring rules distribute the training gradient in proportion to data density, with no awareness of the decision maker’s cost structure.
+The model’s limited capacity is allocated globally, leaving decision-critical regions of the output space potentially underserved.
+Given a forecast, a decision maker with cost function
+c
+​
+(
+a
+,
+y
+)
+c(a,y)
+, of action
+a
+a
+and outcome
+y
+y
+, selects the action that minimises expected cost under the forecast distribution;
+a point forecast is insufficient to evaluate this expectation.
+A good forecast should yield low expected costs when acted upon and correctly anticipate those costs, the latter property being known as
+decision calibration
+(Zhao
+et al.
+,
+2021
+)
+.
+Crucially, the observed cost of the optimal action is itself a proper scoring rule
+(Hartline
+et al.
+,
+2025
+; Kleinberg
+et al.
+,
+2023
+)
+, placing it in the same family as the energy score which licenses their combination as a theoretically well-founded training objective for decision-aware training.
+We augment the energy score with</p>
+
+<p>the optimal action cost as a differentiable decision loss.
+The decision loss alone is insufficient as a training objective: it only constrains the model in cost-sensitive regions, leaving the rest of the distribution unanchored and prone to degeneration. The energy score acts as that anchor, preventing the model from collapsing outside cost-sensitive regions.
+During training, samples drawn from the model are used to compute the optimal action
+a
+∗
+a^{*}
+via a differentiable optimization layer; the decision loss then evaluates the cost incurred by
+a
+∗
+a^{*}
+against the true outcome
+y
+y
+, and gradients flow back through
+a
+∗
+a^{*}
+to the model parameters via implicit differentiation.
+Our method is theoretically grounded and leads to better downstream decisions while retaining full probabilistic forecasts, as validated on synthetic and real-world forecasting tasks.
+Contributions.
+•
+An end-to-end
+decision-aware
+training framework for implicit generative models and distributional diffusion models,
+bridging decision-focused learning and probabilistic forecasting by retaining distributional accuracy via an energy score anchor.
+•
+A theoretically principled combination of decision loss and energy score, exploiting the equivalence between optimal action costs and proper scoring rules.
+•
+A gradient analysis showing which regions benefit from the decision loss and why, based on the cost function structure.
+•
+Empirical validation on synthetic and real-world forecasting tasks, evaluating bo</p>
+
+<p>th decision loss and decision calibration.
+In the following, we start with summarising the necessary background in
+Sections
+2
+and
+3
+before introducing our method in
+Section
+4
+and validating it in
+Section
+5
+.
+2
+Probabilistic Regression and Scoring Rules
+We consider a probabilistic regression setting where input features
+X
+∈
+𝒳
+X\in\mathcal{X}
+and target
+Y
+∈
+𝒴
+Y\in\mathcal{Y}
+are random variables distributed according to
+P
+X
+,
+Y
+P_{X,Y}
+.
+Given a realisation
+x
+x
+of
+X
+X
+, the goal is to learn a model
+h
+θ
+h_{\theta}
+that produces a predictive distribution
+F
+^
+x
+=
+h
+θ
+​
+(
+x
+)
+\hat{F}_{x}=h_{\theta}(x)
+over
+Y
+Y
+which ideally recovers the true conditional
+Y
+∣
+X
+=
+x
+Y\mid X=x
+.
+We drop the subscript
+x
+x
+throughout for brevity.
+For this work, we consider two classes of sample-based generative models: implicit generative models, which map noise directly to samples, and distributional diffusion models, which generate samples via an iterative denoising process. Both represent
+F
+^
+x
+\hat{F}_{x}
+implicitly via samples
+{
+y
+^
+m
+}
+m
+=
+1
+M
+\{\hat{y}_{m}\}_{m=1}^{M}
+.
+Implicit generative models
+(Mohamed and Lakshminarayanan,
+2016
+)
+map a conditioning input
+x
+x
+and a noise vector
+ε
+m
+∼
+𝒩
+​
+(
+0
+,
+I
+)
+\varepsilon_{m}\sim\mathcal{N}(0,I)
+directly to a sample
+y
+^
+m
+∼
+F
+^
+x
+\hat{y}_{m}\sim\hat{F}_{x}
+via
+y
+^
+m
+=
+f
+θ
+​
+(
+x
+,
+ε
+m
+)
+\hat{y}_{m}=f_{\theta}(x,\varepsilon_{m})
+; drawing
+M
+M
+independent noise vectors in parallel yields
+M
+M
+samples in a single forward pass.
+Diffusion models
+(Ho
+et al.
+,
+2020</p>
+
+<p>; Song
+et al.
+,
+2020
+)
+gradually add noise to the clean target
+y
+0
+y_{0}
+and learn a reverse denoising process conditioned on
+x
+x
+.
+1
+1
+1
+We use
+y
+0
+,
+y
+t
+y_{0},y_{t}
+for the clean and noisy target following our regression notation; the standard diffusion literature uses
+x
+0
+,
+x
+t
+x_{0},x_{t}
+.
+At each reverse step, a denoiser estimates the clean target
+y
+0
+y_{0}
+from a noisy observation
+y
+t
+y_{t}
+and the conditioning input
+x
+x
+; in the standard formulation this prediction is a point estimate.
+Since
+y
+0
+y_{0}
+is genuinely uncertain given
+(
+y
+t
+,
+x
+)
+(y_{t},x)
+, we consider the special class of
+distributional diffusion models
+(De Bortoli
+et al.
+,
+2025
+; Kneissl
+et al.
+,
+2025
+)
+whose denoiser models a full distribution over
+y
+0
+y_{0}
+, from which samples can be drawn at each step.
+At inference, samples from
+F
+^
+\hat{F}
+are obtained by iterating the full reverse chain.
+A scoring rule
+S
+​
+(
+F
+^
+,
+y
+)
+S(\hat{F},y)
+assigns a scalar score to a predictive distribution
+F
+^
+\hat{F}
+given the realised outcome
+y
+y
+.
+It is
+proper
+if the true conditional
+F
+F
+minimises the expected score,
+𝔼
+Y
+∼
+F
+​
+[
+S
+​
+(
+F
+^
+,
+Y
+)
+]
+≥
+𝔼
+Y
+∼
+F
+​
+[
+S
+​
+(
+F
+,
+Y
+)
+]
+\mathbb{E}_{Y\sim F}[S(\hat{F},Y)]\geq\mathbb{E}_{Y\sim F}[S(F,Y)]
+for all
+F
+^
+\hat{F}
+, and
+strictly proper
+if
+F
+F
+is the unique minimiser.
+The
+energy score
+(ES)
+(Gneiting and Raftery,
+2007
+)
+is a popular example of a strictly proper scoring rule that admits a sample-based estimator (see
+Section
+A.1
+). For univariate targets the energy score redu</p>
+
+<p>ces to the
+continuous ranked probability score
+(CRPS), widely used in meteorological forecast verification
+(Gneiting
+et al.
+,
+2007
+)
+and as a training objective for state-of-the-art ML weather prediction models
+(Lang
+et al.
+,
+2024
+; Price
+et al.
+,
+2023
+)
+.
+Both model classes introduced above are commonly trained by minimising strictly proper scoring rules, and in particular the energy score.
+3
+Decision-Making Under Uncertainty
+Given a probabilistic forecast
+F
+^
+\hat{F}
+over
+𝒴
+\mathcal{Y}
+, a decision maker selects an action
+a
+∈
+𝒜
+a\in\mathcal{A}
+to minimise expected cost under the forecast.
+This is modelled via a cost function
+c
+:
+𝒜
+×
+𝒴
+→
+ℝ
+c:\mathcal{A}\times\mathcal{Y}\to\mathbb{R}
+that encodes the preferences of a particular decision maker; the Bayes-optimal action is
+a
+∗
+​
+(
+F
+^
+)
+\displaystyle a^{*}(\hat{F})
+≔
+argmin
+a
+∈
+𝒜
+𝔼
+Y
+∼
+F
+^
+​
+[
+c
+​
+(
+a
+,
+Y
+)
+]
+\displaystyle\coloneqq\operatorname*{argmin}_{a\in\mathcal{A}}\,\mathbb{E}_{Y\sim\hat{F}}[c(a,Y)]
+(1)
+≈
+argmin
+a
+∈
+𝒜
+1
+M
+​
+∑
+m
+=
+1
+M
+c
+​
+(
+a
+,
+y
+^
+m
+)
+≕
+a
+∗
+​
+(
+F
+^
+M
+)
+.
+\displaystyle\approx\operatorname*{argmin}_{a\in\mathcal{A}}\frac{1}{M}\sum_{m=1}^{M}c(a,\hat{y}_{m})\eqqcolon a^{*}(\hat{F}_{M}).
+(2)
+The expectation ensures that rare but sufficiently costly events still influence the optimal action.
+For sample-based models, the expectation is replaced by its Monte Carlo estimate over samples
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+, where
+F
+^
+M
+\hat{F}_{M}
+denotes the empirical forecast distribution over
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+.</p>
+
+<p>The realised cost when acting on forecast
+F
+^
+\hat{F}
+and observing the true outcome
+y
+y
+is
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+)
+,
+y
+)
+c(a^{*}(\hat{F}),y)
+.
+A forecast is
+decision-calibrated
+(Zhao
+et al.
+,
+2021
+)
+if its predicted expected cost matches the realised cost in expectation over inputs:
+𝔼
+X
+​
+𝔼
+Y
+∼
+F
+^
+X
+​
+[
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+X
+)
+,
+Y
+)
+]
+=
+𝔼
+(
+X
+,
+Y
+)
+​
+[
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+X
+)
+,
+Y
+)
+]
+.
+\mathbb{E}_{X}\,\mathbb{E}_{Y\sim\hat{F}_{X}}\bigl[c(a^{*}(\hat{F}_{X}),\,Y)\bigr]=\mathbb{E}_{(X,Y)}\bigl[c(a^{*}(\hat{F}_{X}),\,Y)\bigr].
+(3)
+Intuitively, that means a decision-calibrated model correctly anticipates the cost of its own optimal action. We measure decision miscalibration as the mean absolute difference between predicted cost and realised cost across test points
+1
+N
+​
+∑
+i
+=
+1
+N
+|
+𝔼
+Y
+∼
+F
+^
+x
+i
+​
+[
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+x
+i
+)
+,
+Y
+)
+]
+−
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+x
+i
+)
+,
+y
+i
+)
+|
+\frac{1}{N}\sum_{i=1}^{N}\left|\mathbb{E}_{Y\sim\hat{F}_{x_{i}}}\bigl[c(a^{*}(\hat{F}_{x_{i}}),Y)\bigr]-c(a^{*}(\hat{F}_{x_{i}}),y_{i})\right|
+.
+In principle, strictly proper scoring rules provide a path to optimal decisions: they guarantee convergence to
+F
+F
+at the global optimum
+(Gneiting and Raftery,
+2007
+)
+, and the true
+F
+F
+yields optimal decisions by construction.
+2
+2
+2
+In fact, distribution calibration
+(Song
+et al.
+,
+2019
+)
+would suffice for optimal decisions, but even this weaker condition is not attainable nor verifiable in practice, motivating a focus on decision calibration directly
+(Derr
+et al.
+,
+2025
+; Sahoo
+et</p>
+
+<p>al.
+,
+2021
+)
+.
+In practice, however, limited data, model capacity, and stochastic optimisation yield only approximate local minima
+(Blasiok
+et al.
+,
+2023
+)
+, with no awareness of where
+c
+c
+is sensitive
+(Donti
+et al.
+,
+2017
+)
+, so a model minimising the energy score may be decision-miscalibrated and incur high decision cost.
+Figure 1
+:
+Method overview.
+In the forward pass the model
+h
+θ
+h_{\theta}
+produces samples
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+given input
+x
+x
+.
+These feed two branches: the
+Energy Score
+(CRPS) computes the standard scoring rule loss given the observed target
+y
+y
+;
+the
+Optimization layer
+solves
+Eq.
+1
+to obtain
+a
+∗
+a^{*}
+, and the
+decision loss
+evaluates
+c
+​
+(
+a
+∗
+,
+y
+)
+c(a^{*},y)
+.
+Gradients flow back from CRPS via standard autodiff (green arrows) and from decision loss through the optimization layer via implicit differentiation (orange arrow).
+4
+Decision-Aware Training
+We address the gap between scoring-rule training and downstream decision quality by augmenting the scoring rule objective with a differentiable decision loss that directly penalises suboptimal decisions (
+Figure
+1
+).
+We first establish the theoretical grounding and introduce the combined objective (
+Section
+4.1
+),
+then analyse the gradient chain through the optimal action (
+Section
+4.2
+),
+and describe the model architectures and training procedure (
+Section
+4.3
+).
+4.1
+Loss formulation and theoretical grounding
+The decision problem of
+Section
+3
+suggests a natural training signal: directly penalise the</p>
+
+<p>cost incurred by the model’s optimal action at the realised outcome.
+We define the
+decision loss
+S
+c
+​
+(
+F
+^
+,
+y
+)
+=
+c
+​
+(
+a
+∗
+​
+(
+F
+^
+)
+,
+y
+)
+,
+S_{c}(\hat{F},y)=c\!\left(a^{*}(\hat{F}),\,y\right),
+(4)
+where
+a
+∗
+​
+(
+F
+^
+)
+a^{*}(\hat{F})
+is the Bayes-optimal action in
+Eq.
+1
+.
+The key observation is that
+S
+c
+S_{c}
+is itself a proper scoring rule.
+Proposition 4.1
+(Hartline et al., 2025; Kleinberg et al., 2023)
+.
+The decision loss
+S
+c
+S_{c}
+is a proper scoring rule:
+𝔼
+Y
+∼
+F
+​
+[
+S
+c
+​
+(
+F
+,
+Y
+)
+]
+≤
+𝔼
+Y
+∼
+F
+​
+[
+S
+c
+​
+(
+F
+^
+,
+Y
+)
+]
+\mathbb{E}_{Y\sim F}[S_{c}(F,Y)]\leq\mathbb{E}_{Y\sim F}[S_{c}(\hat{F},Y)]
+for all forecasts
+F
+^
+\hat{F}
+.
+However, it is not strictly proper: there can be
+F
+^
+≠
+F
+\hat{F}\neq F
+with
+a
+∗
+​
+(
+F
+^
+)
+=
+a
+∗
+​
+(
+F
+)
+a^{*}(\hat{F})=a^{*}(F)
+that achieve the same minimum.
+This means
+S
+c
+S_{c}
+is part of the same loss family as the energy score.
+3
+3
+3
+The result is even stronger: the space of decision losses induced by arbitrary bounded cost functions is equivalent to the space of proper scoring rules
+(Hartline
+et al.
+,
+2025
+; Kleinberg
+et al.
+,
+2023
+)
+— every proper scoring rule arises as the optimal action cost of some cost function.
+However, since the minimum is not unique, optimising
+S
+c
+S_{c}
+alone admits degenerate solutions.
+The energy score provides the missing uniqueness: as a strictly proper scoring rule, it admits
+F
+F
+as its unique minimiser, and a positive linear combination of a strictly proper and a proper scoring rule remains strictly proper (
+Sect</p>
+
+<p>ion
+A.2
+,
+Section
+A.2
+).
+This result directly applies to the training of sample-based generative models, offering a natural extension to the existing scoring rule training objective.
+Combined loss.
+Hence, we define our loss as convex combination of energy score and decision loss
+ℒ
+=
+(
+1
+−
+w
+d
+)
+​
+ES
++
+w
+d
+​
+S
+c
+,
+w
+d
+∈
+[
+0
+,
+1
+)
+,
+\mathcal{L}=(1-w_{d})\,\mathrm{ES}+w_{d}\,S_{c},\qquad w_{d}\in[0,1),
+(5)
+with a unique minimum at
+F
+^
+=
+F
+\hat{F}=F
+. The decision weight
+w
+d
+w_{d}
+controls the tradeoff between distributional accuracy and decision awareness.
+The energy score serves as a theoretical anchor, eliminating the degenerate solutions admitted by
+S
+c
+S_{c}
+alone, while
+S
+c
+S_{c}
+concentrates the gradient on the cost-relevant region. This combination yields a theoretically grounded objective that is both decision-aware and distribution preserving.
+4.2
+Optimizing the decision loss
+Training with the decision loss
+S
+c
+S_{c}
+requires computing
+a
+∗
+a^{*}
+from samples via
+Eq.
+2
+; the backward pass must then differentiate
+a
+∗
+a^{*}
+with respect to those samples.
+For general cost functions,
+a
+∗
+a^{*}
+has no closed-form expression in the samples
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+, so we cannot differentiate it with respect to
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+directly; instead we differentiate the optimality conditions that define
+a
+∗
+a^{*}
+treating
+a
+∗
+a^{*}
+as an implicit function of
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+(implicit differentiation).
+We compute
+a
+∗
+a^{*}
+within a
+differentiable optimization la</p>
+
+<p>yer
+(Amos and Kolter,
+2017
+; Donti
+et al.
+,
+2017
+; Blondel
+et al.
+,
+2022
+)
+over the feasible set
+𝒜
+=
+[
+a
+min
+,
+a
+max
+]
+\mathcal{A}=[a_{\mathrm{min}},a_{\mathrm{max}}]
+, treating model samples as fixed.
+This requires
+c
+c
+to be differentiable in
+a
+a
+and the expected cost in
+Eq.
+1
+to be strictly convex at
+a
+∗
+a^{*}
+, allowing implicit differentiation through
+a
+∗
+a^{*}
+.
+The decision loss
+S
+c
+=
+c
+​
+(
+a
+∗
+,
+y
+obs
+)
+S_{c}=c(a^{*},y_{\mathrm{obs}})
+depends on model parameters only through the samples
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+and hence through
+a
+∗
+a^{*}
+.
+The gradient with respect to each sample is
+∂
+S
+c
+∂
+y
+^
+m
+=
+∂
+c
+∂
+a
+|
+a
+∗
+⋅
+∂
+a
+∗
+∂
+y
+^
+m
+,
+\frac{\partial S_{c}}{\partial\hat{y}_{m}}=\left.\frac{\partial c}{\partial a}\right|_{a^{*}}\cdot\frac{\partial a^{*}}{\partial\hat{y}_{m}},
+(6)
+where
+∂
+a
+∗
+/
+∂
+y
+^
+m
+\partial a^{*}/\partial\hat{y}_{m}
+is obtained via implicit differentiation, whereas the remaining upstream gradient with respect to model parameters is computed via standard automatic differentiation.
+Per-sample gradient.
+When
+a
+∗
+∈
+(
+a
+min
+,
+a
+max
+)
+a^{*}\in(a_{\mathrm{min}},a_{\mathrm{max}})
+, implicit differentiation gives
+∂
+a
+∗
+∂
+y
+^
+m
+=
+−
+[
+1
+M
+​
+∑
+j
+=
+1
+M
+∂
+2
+c
+∂
+a
+2
+​
+(
+a
+∗
+,
+y
+^
+j
+)
+]
+−
+1
+​
+1
+M
+​
+∂
+2
+c
+∂
+a
+​
+∂
+y
+^
+m
+​
+(
+a
+∗
+,
+y
+^
+m
+)
+.
+\frac{\partial a^{*}}{\partial\hat{y}_{m}}=-\left[\frac{1}{M}\sum_{j=1}^{M}\frac{\partial^{2}c}{\partial a^{2}}(a^{*},\hat{y}_{j})\right]^{-1}\frac{1}{M}\,\frac{\partial^{2}c}{\partial a\,\partial\hat{y}_{m}}(a^{*},\hat{y}_{m}).
+(7)
+The</p>
+
+<p>gradient signal is concentrated on samples
+y
+^
+m
+\hat{y}_{m}
+where the cost has non-zero cross-curvature,
+∂
+2
+c
+/
+∂
+a
+​
+∂
+y
+^
+m
+≠
+0
+\partial^{2}c/\partial a\partial\hat{y}_{m}\neq 0
+, i.e., where small perturbations of
+y
+^
+m
+\hat{y}_{m}
+change how sensitive the cost is to
+a
+a
+; samples in flat or saturated cost regions contribute almost nothing (full derivation in
+Section
+A.4
+).
+In parametric approaches (e.g. a Gaussian MLP), gradients update distribution parameters such as mean and variance, shifting the entire predictive distribution simultaneously.
+In our sample-based models, the noise input
+ε
+\varepsilon
+enables flexible distributional shapes and targeted corrections to specific parts of the predictive distribution even with shared weights. However, this flexibility can also lead to distributional degeneration at high
+w
+d
+w_{d}
+in practice.
+Constraint boundary blocking.
+Eq.
+7
+applies when
+a
+∗
+a^{*}
+is interior, where the first-order condition
+∇
+a
+𝔼
+​
+[
+c
+​
+(
+a
+∗
+,
+{
+y
+^
+m
+}
+)
+]
+=
+0
+\nabla_{a}\mathbb{E}[c(a^{*},\{\hat{y}_{m}\})]=0
+holds.
+When
+a
+∗
+a^{*}
+reaches a constraint boundary (
+a
+∗
+∈
+{
+a
+min
+,
+a
+max
+}
+a^{*}\in\{a_{\mathrm{min}},a_{\mathrm{max}}\}
+),
+Eq.
+7
+does not apply. In this case the gradient is simply zero:
+geometrically, small perturbations of the samples do not move
+a
+∗
+a^{*}
+off the boundary, so
+∂
+a
+∗
+/
+∂
+y
+^
+m
+=
+0
+\partial a^{*}/\partial\hat{y}_{m}=0
+(formal derivation via KKT conditions in
+Section
+A.4
+),
+blocking the decision loss gradient chain in
+Eq.
+6
+e</p>
+
+<p>ntirely.
+4
+4
+4
+The measure-zero case where the unconstrained minimiser coincides exactly with the boundary is excluded.
+The energy score is then the only active training signal.
+4.3
+Model architectures and training procedure
+For this work, we consider two sample-based generative architectures representative of those used in operational forecasting systems.
+We extend both with a differentiable optimization layer that computes
+a
+∗
+a^{*}
+from the model samples during training.
+Implicit generative model.
+An MLP maps
+M
+M
+independent noise draws to
+M
+M
+samples in a single forward pass, from which
+a
+∗
+a^{*}
+is computed.
+Architecture details are given in
+Appendix
+B
+.
+Distributional diffusion model.
+An MLP denoiser produces
+M
+M
+samples of
+y
+0
+y_{0}
+at each denoising step, from which
+a
+∗
+a*
+is computed.
+The decision loss acts at the denoiser level, while the predictive distribution
+F
+^
+x
+\hat{F}_{x}
+at inference is shaped by iterating the full reverse chain, a second layer of sampling not present in the implicit generative model.
+Training procedure.
+At each training step, the model is trained by optimising the combined loss (
+Eq.
+5
+).
+The model produces a set of samples
+{
+y
+^
+m
+}
+m
+=
+1
+M
+\{\hat{y}_{m}\}_{m=1}^{M}
+for each input
+x
+x
+in the batch.
+These samples enter both terms of the combined loss (
+Figure
+1
+). First, the energy score (CRPS for univariate targets) is evaluated as usual (see Appendix
+Section
+A.1
+), with gradients computed via standard autodiff. Second,
+a
+∗
+a^{*}
+is compu</p>
+
+<p>ted by minimising the expected cost over the same samples (
+Eq.
+2
+) via the optimisation layer forward pass, treating the model samples as fixed.
+The decision loss
+S
+c
+S_{c}
+is then evaluated and its gradient flows back through
+a
+∗
+a^{*}
+via implicit differentiation (
+Section
+4.2
+).
+In practice, both loss terms are estimated from finite
+M
+M
+samples.
+Both losses are normalised to unit scale before training, so that
+w
+d
+w_{d}
+directly controls the relative weighting between the two terms independently of the cost function’s magnitude; further implementation details are given in
+Appendix
+B
+.
+5
+Experiments
+In the following we evaluate our method on one synthetic and two real-world decision tasks.
+5.1
+Synthetic Decision Task
+Figure 2
+:
+Synthetic decision task.
+Left:
+Cost function
+c
+​
+(
+a
+,
+y
+)
+c(a,y)
+for five protection levels
+a
+a
+, overlaid with the marginal
+p
+​
+(
+y
+)
+p(y)
+(grey). The threshold at
+y
+=
+1.0
+y=1.0
+separates the two modes; mode positions are fixed across
+x
+x
+, only the mixture weight varies.
+Center (two panels):
+Predicted
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+(mean
+±
+\pm
+1 std over training seeds, representative data seed) for
+w
+d
+=
+0
+w_{d}=0
+and
+w
+d
+=
+0.95
+w_{d}=0.95
+. Pure CRPS (
+w
+d
+=
+0
+w_{d}=0
+, left) fails to track the ground truth at the transitions; decision-aware training (ours) recovers the correct shape (
+w
+d
+=
+0.95
+w_{d}=0.95
+, right).
+Right:
+Marginal mode 2 mass vs.
+w
+d
+w_{d}
+(mean
+±
+\pm
+std over seeds); dashed line marks the true mass (
+0.4
+0.4
+). Mass approaches the tru</p>
+
+<p>e value for larger decision weights
+w
+d
+w_{d}
+.
+Setup.
+To study the mechanism underlying decision-aware training in a controlled setting where the ground-truth conditional distribution is known, we construct a synthetic dataset with the following structure.
+The target
+Y
+∣
+X
+Y\mid X
+follows a bimodal Gaussian mixture distribution with fixed mode positions (
+μ
+1
+=
+0
+\mu_{1}=0
+,
+μ
+2
+=
+2.5
+\mu_{2}=2.5
+), fixed standard deviations (
+σ
+1
+=
+0.2
+\sigma_{1}=0.2
+,
+σ
+2
+=
+0.4
+\sigma_{2}=0.4
+),
+but a sinusoidally varying mixture weight
+w
+​
+(
+x
+)
+w(x)
+, with mode 2 (the right mode at
+y
+=
+2.5
+y=2.5
+in
+Figure
+2
+left) having lower marginal weight
+0.4
+0.4
+.
+The decision maker must choose a protection level
+a
+∈
+[
+0
+,
+1
+]
+a\in[0,1]
+against a hazard concentrated above a threshold at
+y
+=
+1.0
+y=1.0
+(between the two modes): higher
+a
+a
+reduces exposure to the hazard but incurs a growing protection cost.
+The threshold is set so that the mixture weight
+w
+​
+(
+x
+)
+w(x)
+is the key determinant of the optimal action and mode-weight tracking, thus the key diagnostic.
+We train a distributional diffusion model on this task across multiple data and training seeds; details are in
+Section
+C.1
+.
+Results.
+With this setup in place, we first ask whether a standard proper scoring rule suffices. Under pure CRPS training (
+w
+d
+=
+0
+)
+w_{d}=0)
+, the diffusion model roughly captures the extreme values of
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+but fails to reproduce the sinusoidal transitions of
+a
+∗
+a^{*}
+between extremes, reflecting inaccur</p>
+
+<p>ate mode weight tracking across
+x
+x
+(
+Figure
+2
+).
+Inspecting the mode weights of the marginal predictive distributions shows that the costly mode (mode 2 in
+Figure
+2
+) is systematically underweighted when trained with CRPS alone (
+w
+d
+=
+0
+w_{d}=0
+).
+Adding the decision loss directly addresses this: as the decision weight
+w
+d
+w_{d}
+increases, the predicted
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+tracks the ground truth more closely, with larger improvements at higher
+w
+d
+w_{d}
+, consistently across data seeds (
+Figure
+2
+).
+The marginal mode weights are progressively corrected as
+w
+d
+w_{d}
+increases, with probability mass shifting toward mode 2, improving decision skill. Results for all data seeds and aggregate metrics are provided in
+Section
+C.1
+.
+5.2
+Wind Power Dispatch
+Setup.
+Wind power output is inherently uncertain, thus wind power operators must commit to a power production level (the dispatch) hours before realised output is known; over-commitment incurs shortfall penalties while under-commitment forgoes revenue
+(Bruninx
+et al.
+,
+2025
+; Botterud
+et al.
+,
+2011
+; Bourry
+et al.
+,
+2008
+)
+.
+The power curve
+P
+P
+maps wind speeds to power output and introduces a non-trivial complication: at high wind speeds, turbines are shut down for safety (cut-off event), so production drops from peak output to zero; this cut-off regime is the most consequential for the dispatch decision since a missed cut-off event incurs the largest shortfall penalty.
+Accurate probabilistic modelling of this regime is therefo</p>
+
+<p>re crucial for optimal decision-making.
+We study wind power dispatch at an offshore wind farm (North Sea, Norway), where the decision maker must commit to a normalized power dispatch level
+a
+∈
+[
+0
+,
+1
+]
+a\in[0,1]
+based on a forecast.
+We model this task via a cost function with quadratic shortfall penalty
+(Bruninx
+et al.
+,
+2025
+)
+c
+​
+(
+a
+,
+y
+)
+=
+−
+a
++
+λ
+​
+relu
+​
+(
+a
+−
+P
+​
+(
+y
+)
+)
+2
+,
+c(a,y)=-a+\lambda\,\mathrm{relu}(a-P(y))^{2},
+(8)
+where
+−
+a
+-a
+reflects the revenue from committing to dispatch level
+a
+a
+(higher commitment earns more),
+P
+​
+(
+⋅
+)
+P(\cdot)
+is a differentiable power curve (
+Figure
+C.6
+), and
+λ
+\lambda
+controls the shortfall penalty.
+The modeled power curve has three regions: a
+ramp
+region where output rises with wind speed (3–15 m/s at turbine hub height), a
+rated
+region of flat maximum output (15–22 m/s), and a
+cut-off
+region where output drops sharply to zero above
+≈
+\approx
+22 m/s (
+≈
+\approx
+5% of observations).
+We forecast wind speed (at 10 m) 6 h ahead from ERA5 reanalysis data
+(Hersbach
+et al.
+,
+2020
+)
+, using lagged wind speed observations as inputs. We deliberately limit the feature set to preserve meaningful forecast uncertainty.
+Forecast samples are extrapolated to turbine hub height, passed through
+P
+​
+(
+⋅
+)
+P(\cdot)
+, and
+a
+∗
+a^{*}
+is solved via the optimisation layer; the observed cost is then computed using the true observed power (see
+Section
+C.2.1
+for details).
+We train an implicit generative model and a distributional diffusion model across
+w
+d
+∈</p>
+
+<p>{
+0.0
+,
+0.1
+,
+0.3
+,
+0.5
+,
+0.7
+,
+0.9
+}
+w_{d}\in\{0.0,0.1,0.3,0.5,0.7,0.9\}
+with three seeds (training details in
+Section
+C.2.1
+).
+We sweep
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+and report
+λ
+=
+5
+\lambda=5
+as the primary setting.
+Results.
+Figure 3
+:
+Wind power dispatch results
+(
+λ
+=
+5
+\lambda=5
+, implicit generative model).
+Left:
+aggregate CRPS vs. decision loss trade-off across all
+w
+d
+w_{d}
+and seeds. Increasing
+w
+d
+w_{d}
+trades CRPS for decision loss improvement at the aggregate level.
+Right (three panels):
+conditional metrics by power curve region vs.
+w
+d
+w_{d}
+(mean
+±
+\pm
+1 std across seeds).
+Improvements concentrate in the cut-off region; the rated region degrades (in CRPS); the ramp region is mostly unaffected.
+At the aggregate level (
+Figure
+3
+, left), increasing
+w
+d
+w_{d}
+traces a consistent trade-off in the implicit generative model: decision loss improves while CRPS degrades, with
+w
+d
+≈
+0.5
+w_{d}\approx 0.5
+–
+0.7
+0.7
+offering the best balance.
+Figure
+3
+disaggregates performance across all three power curve regions (for
+λ
+=
+5
+\lambda=5
+).
+The effect of decision-aware training concentrates in the cut-off region (
+v
+&gt;
+20
+v&gt;20
+m/s
+5
+5
+5
+We use 20 m/s as the analysis threshold rather than the physical cut-off speed of 22 m/s to include events near the cut-off where power is already falling sharply.
+),
+where forecast errors are most costly: at
+w
+d
+=
+0.9
+w_{d}=0.9
+, CRPS improves by 11%, decision cost by 18%, and decision calibration by 32% on average compared to
+w
+d
+=
+0</p>
+
+<p>w_{d}=0
+.
+This improvement in the cut-off region comes at the cost of a slight degradation in CRPS and decision cost in the rated region (monotonically with
+w
+d
+w_{d}
+), and no effect in the ramp region.
+Consistent improvements are also observed for the diffusion model (
+Section
+C.2.3
+).
+Cut-off improvements scale monotonically with
+λ
+\lambda
+in both models (
+Figures
+C.8
+and
+C.13
+): higher penalty produces stronger corrections in the tail. However, at very high
+w
+d
+w_{d}
+, CRPS degrades again, suggesting the decision loss overshoots the optimal distributional correction.
+The correction mechanism is further visible via a median shift
+Δ
+​
+Q
+0.5
+​
+(
+v
+)
+\Delta Q_{0.5}(v)
+in the predictive distributions (
+Figures
+C.9
+and
+C.14
+): corrections are negative in the ramp (more conservative dispatch) and positive beyond the cut-off threshold (more mass in the tail where power drops to zero).
+The decision calibration gap closes from both sides: observed cost decreases (trained objective) while the estimated expected cost increases, indicating more accurate cost estimation in both models; most visible in the cut-off region (
+Figures
+C.10
+and
+C.15
+).
+Mechanism.
+The regional pattern of improvements and degradations follows from how the decision-loss gradient propagates through the power curve.
+In the
+ramp
+region (
+∂
+P
+/
+∂
+y
+&gt;
+0
+\partial P/\partial y&gt;0
+,
+a
+∗
+a^{*}
+interior), gradients propagate and produce a shift to more conservative values in the predictive distribution, but aggregate metr</p>
+
+<p>ics remain unaffected.
+In the
+rated
+region,
+∂
+P
+/
+∂
+y
+≈
+0
+\partial P/\partial y\approx 0
+suppressing the decision loss gradient, leaving CRPS at reduced weight
+(
+1
+−
+w
+d
+)
+(1-w_{d})
+and explaining the degradation.
+In the
+cut-off
+region,
+∂
+P
+/
+∂
+y
+≪
+0
+\partial P/\partial y\ll 0
+and
+a
+∗
+a^{*}
+is interior; the gradient is strong, providing explicit supervision on the rare, high-cost tail events that CRPS under-weights due to their low frequency.
+5.3
+Frost Protection
+Setup.
+Frost is among the most economically damaging meteorological hazards
+(Juurakko
+et al.
+,
+2021
+; White and Haas,
+1975
+)
+, requiring decision makers to commit to protection resources before temperatures are observed. However, protection comes at a cost and should only be applied when required.
+We study this frost protection task in Berlin using ERA5 reanalysis data
+(Hersbach
+et al.
+,
+2020
+)
+, forecasting temperature (at 2 m, T2m) 24 h ahead from lagged ERA5 temperature observations over a spatial patch, restricted to winter months.
+The decision maker chooses a frost protection level
+a
+∈
+[
+0
+,
+1
+]
+a\in[0,1]
+before observing the realised temperature
+y
+y
+. The cost function has the same sigmoid threshold structure as in
+Section
+5.1
+(
+Figure
+2
+, left), but mirrored: the hazard lies below rather than above the threshold.
+It penalises both unprotected frost (false negatives, FN) and unnecessary protection (false positives, FP), with
+α
+\alpha
+controlling the FP/FN cost ratio such that lower
+α
+\alpha
+penalises false nega</p>
+
+<p>tives (unprotected frost) more heavily.
+Unlike the rare cut-off event in
+Section
+5.2
+, frost occurs in approximately 25% of observations, making this a common event, where CRPS is less likely to under-weight the relevant area.
+We train an implicit generative model and a distributional diffusion model across
+w
+d
+∈
+{
+0.0
+,
+0.1
+,
+…
+,
+0.9
+}
+w_{d}\in\{0.0,0.1,\ldots,0.9\}
+and
+α
+∈
+{
+0.2
+,
+0.3
+,
+0.5
+}
+\alpha\in\{0.2,0.3,0.5\}
+with three seeds (training details in
+Section
+C.3.1
+); diffusion model results are in
+Section
+C.3.3
+.
+Figure 4
+:
+Frost protection results
+(implicit generative model).
+Left (three panels):
+Aggregate CRPS, decision loss, and decision miscalibration vs.
+w
+d
+w_{d}
+for
+α
+∈
+{
+0.2
+,
+0.3
+,
+0.5
+}
+\alpha\in\{0.2,0.3,0.5\}
+(mean
+±
+\pm
+std over seeds). Decision loss remains mostly flat, with a small improvement for
+α
+∈
+{
+0.3
+,
+0.5
+}
+\alpha\in\{0.3,0.5\}
+; CRPS degrades with
+w
+d
+w_{d}
+; decision miscalibration improves most visibly for
+α
+=
+0.5
+\alpha=0.5
+.
+Right (two panels):
+Conditional predictive density for
+w
+d
+=
+0
+w_{d}=0
+and
+w
+d
+=
+0.3
+w_{d}=0.3
+(
+α
+=
+0.3
+\alpha=0.3
+) contioned on observed temperature. A warm bias present at
+w
+d
+=
+0
+w_{d}=0
+(
+T
+&lt;
+0
+T&lt;0
+°C) is corrected at
+w
+d
+=
+0.3
+w_{d}=0.3
+, with the predictive distribution concentrating closer to the diagonal.
+Results.
+At the aggregate level, CRPS degrades with
+w
+d
+w_{d}
+, more steeply for lower
+α
+\alpha
+, while aggregate decision loss is mostly flat (
+Figure
+4
+). For
+w
+d
+&gt;
+0.5
+w_{d}&gt;0.5
+, we observe spread collapse</p>
+
+<p>in many forecasts around the freezing point due to excessive decision loss correction.
+Decision miscalibration improves for all
+α
+\alpha
+, most visibly for
+α
+=
+0.5
+\alpha=0.5
+by approximately 15% at
+w
+d
+=
+0.3
+w_{d}=0.3
+–
+0.4
+0.4
+. Forecasts of sub-zero temperatures align more closely with observations when trained with decision loss (
+Figure
+4
+, right).
+Unlike in wind power dispatch, where both decision cost and decision calibration improve, here decision calibration improves more visibly.
+We attribute this to the 25% base rate of frost: unlike the rare cut-off event, frost occurs frequently enough that CRPS already allocates substantial gradient signal to the threshold region, producing a near-optimal
+a
+∗
+a^{*}
+even without the decision loss.
+The decision loss, therefore, has little room to shift
+a
+∗
+a^{*}
+further, leaving aggregate cost unchanged.
+Decision calibration can nonetheless improve because even a near-optimal action leaves room to better estimate the expected cost
+𝔼
+​
+[
+c
+​
+(
+a
+∗
+,
+y
+)
+]
+\mathbb{E}[c(a^{*},y)]
+from the model samples.
+A conditional breakdown (
+Figure
+C.19
+) shows that the no-frost regime drives the improvement in decision calibration, while the frost regime degrades slightly.
+Mechanism.
+Due to the sharp sigmoid cost function, the decision loss gradient is concentrated near the 0 °C threshold. Therefore, quantiles closer to the threshold (cost-sensitive region) shift more than those further away, as shown by the quantile shift plot in
+Figure
+C.20
+,</p>
+
+<p>aligning with the gradient analysis in
+Section
+4.2
+.
+Unlike in the wind power cut-off region, many forecasts here straddle the threshold, making the decision loss gradient signal dense and its effects already visible at
+w
+d
+=
+0.1
+w_{d}=0.1
+–
+0.2
+0.2
+, whereas wind power cut-off improvements require
+w
+d
+≈
+0.5
+w_{d}\approx 0.5
+–
+0.7
+0.7
+due to the rarity of cut-off events.
+Together, the two real-world experiments show that our method adapts to the cost structure: in the wind power dispatch task, the gradient signal concentrates on rare high-cost tail events that CRPS underweights; in the frost protection task, it redistributes probability mass around a frequent threshold.
+6
+Related Work
+The relevant prior work spans statistics, decision theory, and machine learning. These strands have not previously been connected; we combine them to enable decision-aware training of sample-based generative models.
+Decision-focused learning.
+Decision-focused learning integrates the downstream decision task into the training objective, most commonly in predict-then-optimise pipelines where a point prediction is followed by a combinatorial or linear programme.
+Elmachtoub and Grigas (
+2022
+)
+and
+Wilder
+et al.
+(
+2019
+)
+replace the prediction loss with a surrogate of the task loss.
+Donti
+et al.
+(
+2017
+)
+embeds a differentiable optimisation layer and trains end-to-end. All target point predictions rather than distributions, and evaluate only task loss; we additionally measure decision calibration
+(Zh</p>
+
+<p>ao
+et al.
+,
+2021
+)
+, which assesses whether the model correctly prices the cost of its own decisions.
+Our setting differs fundamentally: we work with probabilistic generative models that must produce forecast distributions, and the decision maker evaluates expected cost under the full distribution.
+To our knowledge, no existing decision-focused learning method operates in the sample-based generative model setting.
+Weighted proper scoring rules.
+Weighted proper scoring rules
+(Gneiting and Ranjan,
+2011
+; Lerch
+et al.
+,
+2017
+)
+emphasise specific regions of the outcome space, but require a fixed, pre-specified weight function.
+Additionally, they require a closed-form density or cumulative distribution function, making them incompatible with sample-based generative models.
+Our method requires no pre-specified weight: the decision loss gradient signal automatically concentrates on the cost-relevant region, which can change for different
+a
+∗
+a^{*}
+and therefore adapts to the predicted distribution.
+Differentiable optimisation.
+Differentiable optimisation layers
+(Amos and Kolter,
+2017
+; Donti
+et al.
+,
+2017
+; Blondel
+et al.
+,
+2022
+)
+enable gradients to flow through the solution of an optimisation problem embedded in a neural network layer.
+We use this machinery to differentiate through the optimal action
+a
+∗
+a^{*}
+, connecting the decision loss to model parameters via implicit differentiation.
+Generative weather models.
+State-of-the-art probabilistic ML weather prediction models incre</p>
+
+<p>asingly use sample-based generative architectures, including diffusion-based
+(Price
+et al.
+,
+2023
+; Couairon
+et al.
+,
+2024
+)
+and implicit generative
+(Lang
+et al.
+,
+2024
+; Bonev
+et al.
+,
+2025
+)
+approaches.
+We apply decision-aware training to representative architectures from these classes; the weather domain motivates this directly, as forecasts routinely inform high-stakes operational decisions where calibration in cost-relevant regions matters more than aggregate accuracy.
+7
+Conclusion
+Decision-aware training for generative models is theoretically grounded and empirically effective, but its impact is selective. Whether a region of the output space receives a corrective signal depends on the optimal action: interior optima steer approximation errors toward less costly regions; boundary optima leave the original scoring-rule objective in full control. We demonstrated the mechanism on synthetic data, where decision-aware training corrects mode weight misattribution and improves downstream decisions; on wind power dispatch, where it concentrates improvements in the rare but costly cut-off region; and on frost protection, where it improves decision calibration.
+A practical limitation is that the optimal decision weight
+w
+d
+w_{d}
+is task-dependent and requires tuning: at moderate
+w
+d
+w_{d}
+, a sweet spot typically exists where decision loss improves with little degradation in distributional accuracy, but the right balance depends on the cost function and data regime.
+The method al</p>
+
+<p>so requires a dedicated model per decision-maker, since the cost function is embedded into the training objective.
+The optimisation layer adds computational overhead at each training step; further details are provided in
+Appendix
+B
+.
+For distributional diffusion models, our gradient analysis (
+Section
+4.2
+) characterises the decision loss training signal at the level of individual denoising steps, but does not account for inference-time reverse chain dynamics; a score-function formulation for the distributional denoiser could clarify when and why the effect carries through, and remains an open theoretical question.
+Decision-aware training produces forecasts that are more actionable for specific downstream tasks, with direct applications in safety-critical domains such as weather hazard prediction, where better forecasts can directly reduce societal harm. A potential risk is that if the cost function encodes biased priorities, the model will optimise for them, potentially reinforcing skewed downstream decisions.
+Extending decision-aware training to large-scale probabilistic weather prediction models
+(Lang
+et al.
+,
+2024
+; Bonev
+et al.
+,
+2025
+)
+is an interesting direction for future work. These systems share the same sample-based scoring rule training setup and are deployed in operational contexts where the gap between forecast skill and decision skill is operationally consequential.
+References
+M. Abbes and J. Belhadj (2012)
+Wind resource estimation and wind park design in el-ke</p>
+
+<p>f region, tunisia
+.
+Energy
+40
+(
+1
+),
+pp. 348–357
+.
+Cited by:
+§C.2.1
+.
+B. Amos and J. Z. Kolter (2017)
+Optnet: differentiable optimization as a layer in neural networks
+.
+In
+International conference on machine learning
+,
+pp. 136–145
+.
+Cited by:
+§4.2
+,
+§6
+.
+J. Blasiok, P. Gopalan, L. Hu, and P. Nakkiran (2023)
+When does optimizing a proper loss yield calibration?
+.
+Advances in Neural Information Processing Systems
+36
+,
+pp. 72071–72095
+.
+Cited by:
+§1
+,
+§3
+.
+M. Blondel, Q. Berthet, M. Cuturi, R. Frostig, S. Hoyer, F. Llinares-López, F. Pedregosa, and J. Vert (2022)
+Efficient and modular implicit differentiation
+.
+Advances in neural information processing systems
+35
+,
+pp. 5230–5242
+.
+Cited by:
+§A.4
+,
+§4.2
+,
+§6
+.
+B. Bonev, T. Kurth, A. Mahesh, M. Bisson, J. Kossaifi, K. Kashinath, A. Anandkumar, W. D. Collins, M. S. Pritchard, and A. Keller (2025)
+Fourcastnet 3: a geometric approach to probabilistic machine-learning weather forecasting at scale
+.
+arXiv preprint arXiv:2507.12144
+.
+Cited by:
+§6
+,
+§7
+.
+A. Botterud, Z. Zhou, J. Wang, R. J. Bessa, H. Keko, J. Sumaili, and V. Miranda (2011)
+Wind power trading under uncertainty in lmp markets
+.
+IEEE Transactions on power systems
+27
+(
+2
+),
+pp. 894–903
+.
+Cited by:
+§5.2
+.
+F. Bourry, J. Juban, L. Costa, and G. Kariniotakis (2008)
+Advanced strategies for wind power trading in short-term electricity markets
+.
+In
+European Wind Energy Conference &amp; Exhibition EWEC 2008
+,
+pp. 8–pages
+.
+Cited by:
+§5.2
+.
+M. Bruninx, T. Verstraeten, J. Kazempour, and</p>
+
+<p>J. Helsen (2025)
+Day-ahead bidding strategies for wind farm operators under a one-price balancing scheme
+.
+In
+Proceedings of the 16th ACM International Conference on Future and Sustainable Energy Systems
+,
+pp. 719–726
+.
+Cited by:
+§C.2.1
+,
+§5.2
+.
+G. Couairon, R. Singh, A. Charantonis, C. Lessig, and C. Monteleoni (2024)
+Archesweather &amp; archesweathergen: a deterministic and generative model for efficient ml weather forecasting
+.
+arXiv preprint arXiv:2412.12971
+.
+Cited by:
+§6
+.
+V. De Bortoli, A. Galashov, J. S. Guntupatti, G. Zhou, K. Murphy, A. Gretton, and A. Doucet (2025)
+Distributional diffusion models with scoring rules
+.
+arXiv preprint arXiv:2502.02483
+.
+Cited by:
+Appendix B
+,
+§2
+.
+R. Derr, J. Finocchiaro, and R. C. Williamson (2025)
+Three types of calibration with properties and their semantic and formal relationships
+.
+arXiv preprint arXiv:2504.18395
+.
+Cited by:
+footnote 2
+.
+P. Donti, B. Amos, and J. Z. Kolter (2017)
+Task-based end-to-end model learning in stochastic optimization
+.
+Advances in neural information processing systems
+30
+.
+Cited by:
+§1
+,
+§3
+,
+§4.2
+,
+§6
+,
+§6
+.
+A. N. Elmachtoub and P. Grigas (2022)
+Smart “predict, then optimize”
+.
+Management Science
+68
+(
+1
+),
+pp. 9–26
+.
+Cited by:
+§6
+.
+T. Gneiting, F. Balabdaoui, and A. E. Raftery (2007)
+Probabilistic forecasts, calibration and sharpness
+.
+Journal of the Royal Statistical Society Series B: Statistical Methodology
+69
+(
+2
+),
+pp. 243–268
+.
+Cited by:
+§2
+.
+T. Gneiting and A. E. Raftery (2007)
+Strictly proper scoring</p>
+
+<p>rules, prediction, and estimation
+.
+Journal of the American statistical Association
+102
+(
+477
+),
+pp. 359–378
+.
+Cited by:
+§1
+,
+§2
+,
+§3
+.
+T. Gneiting and R. Ranjan (2011)
+Comparing density forecasts using threshold-and quantile-weighted scoring rules
+.
+Journal of Business &amp; Economic Statistics
+29
+(
+3
+),
+pp. 411–422
+.
+Cited by:
+§6
+.
+J. Hartline, Y. Wu, and Y. Yang (2025)
+Smooth calibration and decision making
+.
+arXiv preprint arXiv:2504.15582
+.
+Cited by:
+§1
+,
+footnote 3
+.
+H. Hersbach, B. Bell, P. Berrisford, S. Hirahara, A. Horányi, J. Muñoz-Sabater, J. Nicolas, C. Peubey, R. Radu, D. Schepers,
+et al.
+(2020)
+The era5 global reanalysis
+.
+Quarterly journal of the royal meteorological society
+146
+(
+730
+),
+pp. 1999–2049
+.
+Cited by:
+Appendix B
+,
+§5.2
+,
+§5.3
+.
+J. Ho, A. Jain, and P. Abbeel (2020)
+Denoising diffusion probabilistic models
+.
+Advances in neural information processing systems
+33
+,
+pp. 6840–6851
+.
+Cited by:
+§2
+.
+C. L. Juurakko, V. K. Walker,
+et al.
+(2021)
+Cold acclimation and prospects for cold-resilient crops
+.
+Plant Stress
+2
+,
+pp. 100028
+.
+Cited by:
+§5.3
+.
+D. P. Kingma and J. Ba (2014)
+Adam: a method for stochastic optimization
+.
+arXiv preprint arXiv:1412.6980
+.
+Cited by:
+Appendix B
+.
+B. Kleinberg, R. P. Leme, J. Schneider, and Y. Teng (2023)
+U-calibration: forecasting for an unknown agent
+.
+In
+The Thirty Sixth Annual Conference on Learning Theory
+,
+pp. 5143–5145
+.
+Cited by:
+§1
+,
+footnote 3
+.
+C. Kneissl, C. Bulte, P. Scholl, and G. Kutyniok (2025)
+Improved probabilistic</p>
+
+<p>regression using diffusion models
+.
+arXiv preprint arXiv:2510.04583
+.
+Cited by:
+Appendix B
+,
+Appendix B
+,
+§2
+.
+S. G. Krantz and H. R. Parks (2002)
+The implicit function theorem: history, theory, and applications
+.
+Vol.
+202
+,
+Springer
+.
+Cited by:
+§A.4
+.
+S. Lang, M. Alexe, M. C. Clare, C. Roberts, R. Adewoyin, Z. B. Bouallègue, M. Chantry, J. Dramsch, P. D. Dueben, S. Hahner,
+et al.
+(2024)
+AIFS-crps: ensemble forecasting using a model trained with a loss function based on the continuous ranked probability score
+.
+arXiv preprint arXiv:2412.15832
+.
+Cited by:
+§1
+,
+§2
+,
+§6
+,
+§7
+.
+S. Lerch, T. L. Thorarinsdottir, F. Ravazzolo, and T. Gneiting (2017)
+Forecaster’s dilemma: extreme events and forecast evaluation
+.
+Statistical Science
+,
+pp. 106–127
+.
+Cited by:
+§6
+.
+S. Mohamed and B. Lakshminarayanan (2016)
+Learning in implicit generative models
+.
+arXiv preprint arXiv:1610.03483
+.
+Cited by:
+§2
+.
+I. Price, A. Sanchez-Gonzalez, F. Alet, T. R. Andersson, A. El-Kadi, D. Masters, T. Ewalds, J. Stott, S. Mohamed, P. Battaglia,
+et al.
+(2023)
+Gencast: diffusion-based ensemble forecasting for medium-range weather
+.
+arXiv preprint arXiv:2312.15796
+.
+Cited by:
+§1
+,
+§2
+,
+§6
+.
+R. Sahoo, S. Zhao, A. Chen, and S. Ermon (2021)
+Reliable decisions with threshold calibration
+.
+Advances in Neural Information Processing Systems
+34
+,
+pp. 1831–1844
+.
+Cited by:
+footnote 2
+.
+H. Song, T. Diethe, M. Kull, and P. Flach (2019)
+Distribution calibration for regression
+.
+In
+International Conference on Machine Learning</p>
+
+<p>,
+pp. 5897–5906
+.
+Cited by:
+footnote 2
+.
+Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole (2020)
+Score-based generative modeling through stochastic differential equations
+.
+arXiv preprint arXiv:2011.13456
+.
+Cited by:
+§2
+.
+Y. Wang, Q. Hu, L. Li, A. M. Foley, and D. Srinivasan (2019)
+Approaches to wind power curve modeling: a review and discussion
+.
+Renewable and Sustainable Energy Reviews
+116
+,
+pp. 109422
+.
+Cited by:
+§C.2.1
+.
+G. F. White and J. E. Haas (1975)
+Assessment of research on natural hazards
+.
+MIT Press
+,
+Cambridge, MA
+.
+Cited by:
+§5.3
+.
+B. Wilder, B. Dilkina, and M. Tambe (2019)
+Melding the data-decisions pipeline: decision-focused learning for combinatorial optimization
+.
+In
+Proceedings of the AAAI conference on artificial intelligence
+,
+Vol.
+33
+,
+pp. 1658–1665
+.
+Cited by:
+§6
+.
+S. Zhao, M. Kim, R. Sahoo, T. Ma, and S. Ermon (2021)
+Calibrating predictions to decisions: a novel approach to multi-class calibration
+.
+Advances in Neural Information Processing Systems
+34
+,
+pp. 22313–22324
+.
+Cited by:
+§1
+,
+§3
+,
+§6
+.
+Appendix A
+Theory
+This section provides a definition of the energy score, a proof of
+Section
+A.2
+and a detailed derivation of the decision loss gradient in
+Eq.
+7
+.
+A.1
+Energy Score
+The energy score evaluates a predictive distribution
+F
+^
+\hat{F}
+against a realised outcome
+y
+y
+via
+ES
+​
+(
+F
+^
+,
+y
+)
+=
+𝔼
+Y
+∼
+F
+^
+​
+‖
+Y
+−
+y
+‖
+−
+1
+2
+​
+𝔼
+Y
+,
+Y
+′
+∼
+F
+^
+​
+‖
+Y
+−
+Y
+′
+‖
+\mathrm{ES}(\hat{F},y)=\mathbb{E}_{Y\sim\hat{F}}\|Y-y\|-\frac{1}{2}\mathbb{E}_{</p>
+
+<p>Y,Y^{\prime}\sim\hat{F}}\|Y-Y^{\prime}\|
+(9)
+For sample-based models, both expectations are approximated by Monte Carlo estimates over
+M
+M
+samples
+{
+y
+^
+m
+}
+\{\hat{y}_{m}\}
+forming
+F
+^
+M
+\hat{F}_{M}
+:
+ES
+​
+(
+F
+^
+M
+,
+y
+)
+=
+1
+M
+​
+∑
+m
+=
+1
+M
+‖
+y
+^
+m
+−
+y
+‖
+−
+1
+2
+​
+M
+​
+(
+M
+−
+1
+)
+​
+∑
+m
+=
+1
+M
+∑
+j
+=
+1
+M
+‖
+y
+^
+m
+−
+y
+^
+j
+‖
+.
+\mathrm{ES}(\hat{F}_{M},y)=\frac{1}{M}\sum_{m=1}^{M}\|\hat{y}_{m}-y\|-\frac{1}{2M(M-1)}\sum_{m=1}^{M}\sum_{j=1}^{M}\|\hat{y}_{m}-\hat{y}_{j}\|.
+(10)
+For univariate targets the energy score reduces to the continuous ranked probability score (CRPS).
+A.2
+Proof of
+Section
+A.2
+Lemma A.1
+.
+Let
+S
+1
+S_{1}
+be a strictly proper scoring rule and
+S
+2
+S_{2}
+be a proper scoring rule.
+Then
+S
+=
+(
+1
+−
+w
+d
+)
+​
+S
+1
++
+w
+d
+​
+S
+2
+S=(1-w_{d})\,S_{1}+w_{d}\,S_{2}
+is strictly proper for any
+w
+d
+∈
+[
+0
+,
+1
+)
+w_{d}\in[0,1)
+.
+Proof.
+The result follows immediately from the definitions. Let
+F
+F
+be the true distribution and
+F
+^
+≠
+F
+\hat{F}\neq F
+any forecast. Then
+𝔼
+Y
+∼
+F
+​
+[
+S
+​
+(
+F
+^
+,
+Y
+)
+]
+\displaystyle\mathbb{E}_{Y\sim F}[S(\hat{F},Y)]
+=
+(
+1
+−
+w
+d
+)
+​
+𝔼
+​
+[
+S
+1
+​
+(
+F
+^
+,
+Y
+)
+]
++
+w
+d
+​
+𝔼
+​
+[
+S
+2
+​
+(
+F
+^
+,
+Y
+)
+]
+\displaystyle=(1-w_{d})\,\mathbb{E}[S_{1}(\hat{F},Y)]+w_{d}\,\mathbb{E}[S_{2}(\hat{F},Y)]
+&gt;
+(
+1
+−
+w
+d
+)
+​
+𝔼
+​
+[
+S
+1
+​
+(
+F
+,
+Y
+)
+]
++
+w
+d
+​
+𝔼
+​
+[
+S
+2
+​
+(
+F
+,
+Y
+)
+]
+\displaystyle&gt;(1-w_{d})\,\mathbb{E}[S_{1}(F,Y)]+w_{d}\,\mathbb{E}[S_{2}(F,Y)]
+=
+𝔼
+Y
+∼
+F
+​
+[
+S
+​
+(
+F
+,
+Y
+)
+]
+,
+\displaystyle=\mathbb{E}_{Y\sim F}[S(F,Y)],
+where the strict inequality uses
+𝔼
+​
+[
+S
+1
+​
+(
+F
+^
+,
+Y
+)
+]
+&gt;
+𝔼
+​
+[
+S
+1
+​</p>
+
+<p>(
+F
+,
+Y
+)
+]
+\mathbb{E}[S_{1}(\hat{F},Y)]&gt;\mathbb{E}[S_{1}(F,Y)]
+(strict properness of
+S
+1
+S_{1}
+) with weight
+(
+1
+−
+w
+d
+)
+&gt;
+0
+(1-w_{d})&gt;0
+, and
+𝔼
+​
+[
+S
+2
+​
+(
+F
+^
+,
+Y
+)
+]
+≥
+𝔼
+​
+[
+S
+2
+​
+(
+F
+,
+Y
+)
+]
+\mathbb{E}[S_{2}(\hat{F},Y)]\geq\mathbb{E}[S_{2}(F,Y)]
+(properness of
+S
+2
+S_{2}
+) with weight
+w
+d
+≥
+0
+w_{d}\geq 0
+.
+∎
+A.3
+Finite-Sample Analysis of the Training Objective
+A.4
+Derivation of per-sample gradient (
+Eq.
+7
+)
+Problem setup.
+Define
+f
+​
+(
+a
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+:=
+1
+M
+​
+∑
+j
+=
+1
+M
+c
+​
+(
+a
+,
+y
+^
+j
+)
+f(a;\{\hat{y}_{j}\}_{j=1}^{M}):=\frac{1}{M}\sum_{j=1}^{M}c(a,\hat{y}_{j})
+; we write
+f
+​
+(
+a
+)
+f(a)
+for brevity, making the sample dependence explicit only where the argument requires it.
+The optimal action solves
+min
+a
+⁡
+f
+​
+(
+a
+)
+s.t.
+a
+≥
+a
+min
+,
+a
+≤
+a
+max
+.
+\min_{a}\ f(a)\quad\text{s.t.}\quad a\geq a_{\mathrm{min}},\quad a\leq a_{\mathrm{max}}.
+(11)
+Since the feasible action set
+[
+a
+min
+,
+a
+max
+]
+[a_{\min},a_{\max}]
+satisfies Slater’s condition, the KKT conditions are necessary at the optimal action
+a
+∗
+a^{*}
+.
+Rewriting the constraints in standard form
+g
+1
+​
+(
+a
+)
+=
+a
+min
+−
+a
+≤
+0
+g_{1}(a)=a_{\mathrm{min}}-a\leq 0
+,
+g
+2
+​
+(
+a
+)
+=
+a
+−
+a
+max
+≤
+0
+g_{2}(a)=a-a_{\mathrm{max}}\leq 0
+, the Lagrangian is
+ℒ
+​
+(
+a
+,
+μ
+1
+,
+μ
+2
+)
+=
+f
+​
+(
+a
+)
++
+μ
+1
+​
+(
+a
+min
+−
+a
+)
++
+μ
+2
+​
+(
+a
+−
+a
+max
+)
+,
+\mathcal{L}(a,\mu_{1},\mu_{2})=f(a)+\mu_{1}(a_{\mathrm{min}}-a)+\mu_{2}(a-a_{\mathrm{max}}),
+(12)
+with KKT conditions at
+a
+∗
+a^{*}
+:
+(stationarity)
+f
+′
+​
+(
+a
+∗
+)
+−
+μ
+1
++
+μ
+2
+\displaystyle f^{\prime}(a^{*})-\</p>
+
+<p>mu_{1}+\mu_{2}
+=
+0
+,
+\displaystyle=0,
+(13)
+(dual feasibility)
+μ
+1
+,
+μ
+2
+\displaystyle\mu_{1},\,\mu_{2}
+≥
+0
+,
+\displaystyle\geq 0,
+(14)
+(complementary slackness)
+μ
+1
+​
+(
+a
+∗
+−
+a
+min
+)
+\displaystyle\mu_{1}(a^{*}-a_{\mathrm{min}})
+=
+0
+,
+μ
+2
+​
+(
+a
+max
+−
+a
+∗
+)
+=
+0
+,
+\displaystyle=0,\quad\mu_{2}(a_{\mathrm{max}}-a^{*})=0,
+(15)
+where
+f
+′
+​
+(
+a
+∗
+)
+:=
+∂
+f
+/
+∂
+a
+​
+(
+a
+∗
+)
+f^{\prime}(a^{*}):=\partial f/\partial a\,(a^{*})
+.
+Interior solution.
+When
+a
+∗
+a^{*}
+is interior, both constraints are inactive, so complementary slackness forces
+μ
+1
+=
+μ
+2
+=
+0
+\mu_{1}=\mu_{2}=0
+and all KKT conditions reduce to the first-order condition:
+f
+′
+​
+(
+a
+∗
+)
+=
+1
+M
+​
+∑
+j
+=
+1
+M
+∂
+c
+∂
+a
+​
+(
+a
+∗
+,
+y
+^
+j
+)
+=
+0
+.
+f^{\prime}(a^{*})=\frac{1}{M}\sum_{j=1}^{M}\frac{\partial c}{\partial a}(a^{*},\hat{y}_{j})=0.
+(16)
+To obtain
+∂
+a
+∗
+/
+∂
+y
+^
+m
+\partial a^{*}/\partial\hat{y}_{m}
+we differentiate the optimality condition
+Eq.
+16
+implicitly with respect to
+y
+^
+m
+\hat{y}_{m}
+.
+Implicit function theorem
+(Blondel
+et al.
+,
+2022
+; Krantz and Parks,
+2002
+)
+(IFT).
+If
+F
+:
+ℝ
+×
+ℝ
+n
+→
+ℝ
+F\colon\mathbb{R}\times\mathbb{R}^{n}\to\mathbb{R}
+is continuously differentiable with
+F
+​
+(
+x
+0
+,
+θ
+0
+)
+=
+0
+F(x_{0},\theta_{0})=0
+and
+∂
+F
+/
+∂
+x
+≠
+0
+\partial F/\partial x\neq 0
+at
+(
+x
+0
+,
+θ
+0
+)
+(x_{0},\theta_{0})
+,
+then there exists a unique smooth function
+x
+∗
+​
+(
+θ
+)
+x^{*}(\theta)
+near
+θ
+0
+\theta_{0}
+satisfying
+x
+∗
+​
+(
+θ
+0
+)
+=
+x
+0
+x^{*}(\theta_{0})=x_{0}
+and
+F
+​
+(
+x
+∗
+​
+(
+θ
+)
+,
+θ
+)
+=
+0
+F(x^{*}(\theta),\theta)=0
+.
+Applying this with
+x
+=
+a
+x=a
+,
+θ
+=
+{</p>
+
+<p>y
+^
+j
+}
+j
+=
+1
+M
+\theta=\{\hat{y}_{j}\}_{j=1}^{M}
+, and
+F
+​
+(
+a
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+:=
+f
+′
+​
+(
+a
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+F(a;\{\hat{y}_{j}\}_{j=1}^{M}):=f^{\prime}(a;\{\hat{y}_{j}\}_{j=1}^{M})
+, the IFT requires
+∂
+F
+/
+∂
+a
+≠
+0
+\partial F/\partial a\neq 0
+at
+a
+∗
+a^{*}
+:
+∂
+F
+∂
+a
+|
+a
+∗
+=
+1
+M
+∑
+j
+=
+1
+M
+∂
+2
+c
+∂
+a
+2
+(
+a
+∗
+,
+y
+^
+j
+)
+=
+:
+H
+&gt;
+0
+,
+\frac{\partial F}{\partial a}\bigg|_{a^{*}}=\frac{1}{M}\sum_{j=1}^{M}\frac{\partial^{2}c}{\partial a^{2}}(a^{*},\hat{y}_{j})=:H&gt;0,
+(17)
+where
+H
+&gt;
+0
+H&gt;0
+follows from strict convexity of
+f
+f
+at
+a
+∗
+a^{*}
+; the IFT therefore guarantees that
+a
+∗
+a^{*}
+is locally a smooth function of
+{
+y
+^
+j
+}
+j
+=
+1
+M
+\{\hat{y}_{j}\}_{j=1}^{M}
+.
+In our setting,
+a
+∗
+a^{*}
+is already defined as a function of
+{
+y
+^
+j
+}
+\{\hat{y}_{j}\}
+; the role of the IFT is therefore to establish smoothness of this function, licensing the implicit differentiation below — not to establish the functional dependence itself.
+Since
+F
+​
+(
+a
+∗
+​
+(
+{
+y
+^
+j
+}
+)
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+=
+0
+F(a^{*}(\{\hat{y}_{j}\});\{\hat{y}_{j}\}_{j=1}^{M})=0
+holds for all
+{
+y
+^
+j
+}
+\{\hat{y}_{j}\}
+, its total derivative with respect to any
+y
+^
+m
+\hat{y}_{m}
+is zero; applying the chain rule gives
+∂
+F
+∂
+a
+|
+a
+∗
+⋅
+∂
+a
+∗
+∂
+y
+^
+m
++
+∂
+F
+∂
+y
+^
+m
+|
+a
+∗
+=
+0
+,
+∂
+F
+∂
+y
+^
+m
+|
+a
+∗
+=
+1
+M
+​
+∂
+2
+c
+∂
+a
+​
+∂
+y
+^
+m
+​
+(
+a
+∗
+,
+y
+^
+m
+)
+,
+\left.\frac{\partial F}{\partial a}\right|_{a^{*}}\cdot\frac{\partial a^{*}}{\partial\hat{y}_{m}}+\left.\frac{\partial F}{\partial\hat{y}_{m}}\right|_{a^{*}}=0,\qquad\left.\frac{\partial F}{\partial</p>
+
+<p>\hat{y}_{m}}\right|_{a^{*}}=\frac{1}{M}\frac{\partial^{2}c}{\partial a\,\partial\hat{y}_{m}}(a^{*},\hat{y}_{m}),
+(18)
+where only the
+j
+=
+m
+j=m
+term in the sum contributes to
+∂
+F
+/
+∂
+y
+^
+m
+\partial F/\partial\hat{y}_{m}
+.
+Solving for
+∂
+a
+∗
+/
+∂
+y
+^
+m
+\partial a^{*}/\partial\hat{y}_{m}
+gives Equation
+Eq.
+7
+in
+Section
+4.2
+.
+Boundary solution.
+Consider
+a
+∗
+=
+a
+max
+a^{*}=a_{\mathrm{max}}
+(the case
+a
+∗
+=
+a
+min
+a^{*}=a_{\mathrm{min}}
+is symmetric).
+Since
+g
+1
+g_{1}
+is inactive, complementary slackness gives
+μ
+1
+=
+0
+\mu_{1}=0
+, and
+Eq.
+13
+becomes
+f
+′
+​
+(
+a
+max
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+=
+−
+μ
+2
+≤
+0
+,
+f^{\prime}(a_{\mathrm{max}};\{\hat{y}_{j}\}_{j=1}^{M})=-\mu_{2}\leq 0,
+(19)
+where the inequality follows from dual feasibility
+μ
+2
+≥
+0
+\mu_{2}\geq 0
+.
+Excluding the measure-zero case
+f
+′
+​
+(
+a
+max
+)
+=
+0
+f^{\prime}(a_{\mathrm{max}})=0
+(the unconstrained minimiser coincides exactly with
+a
+max
+a_{\mathrm{max}}
+), we have
+f
+′
+​
+(
+a
+max
+)
+&lt;
+0
+f^{\prime}(a_{\mathrm{max}})&lt;0
+strictly.
+Since
+f
+f
+depends on
+y
+^
+m
+\hat{y}_{m}
+through the
+m
+m
+-th summand,
+f
+′
+​
+(
+a
+max
+;
+{
+y
+^
+j
+}
+j
+=
+1
+M
+)
+f^{\prime}(a_{\mathrm{max}};\{\hat{y}_{j}\}_{j=1}^{M})
+is continuous in
+y
+^
+m
+\hat{y}_{m}
+and therefore remains strictly negative under small perturbations
+y
+^
+m
+→
+y
+^
+m
++
+δ
+\hat{y}_{m}\to\hat{y}_{m}+\delta
+.
+Since
+f
+′
+​
+(
+a
+max
+)
+f^{\prime}(a_{\mathrm{max}})
+remains strictly negative (the objective still pushes beyond the boundary), the constraint
+g
+2
+g_{2}
+stays active and
+a
+∗
+a^{*}
+stays at
+a
+max
+a_{\mathrm{max}}
+;</p>
+
+<p>the multiplier
+μ
+2
+\mu_{2}
+adjusts to maintain
+Eq.
+13
+without
+a
+∗
+a^{*}
+moving.
+Consequently,
+∂
+a
+∗
+∂
+y
+^
+m
+=
+0
+.
+\frac{\partial a^{*}}{\partial\hat{y}_{m}}=0.
+(20)
+Appendix B
+Implementation Details
+Parts of our implementation build on code from
+Kneissl
+et al.
+(
+2025
+)
+, released under the MIT licence.
+Code for reproducing our experiments can be found at
+https://anonymous.4open.science/r/decision-aware-training-2114
+.
+Training.
+We use the Adam optimizer
+(Kingma and Ba,
+2014
+)
+with learning rate
+10
+−
+3
+10^{-3}
+to train the models over
+2000
+2000
+epochs. Loss scales of CRPS and decision loss are estimated once before training and fixed throughout; optionally, a short CRPS pre-training phase precedes scale estimation to ensure realistic samples and cost values. We perform 200 epochs of CRPS pre-training for the wind power dispatch task, since we observe that untrained predictions yield outliers with non-realistic costs. We validate performance every 10 epochs on a validation set and apply early stopping with a patience of 600 epochs.
+Distributional diffusion model.
+The denoiser is an MLP with DDPM-style linear noise schedule over
+T
+=
+100
+T=100
+steps, with 5 hidden layers of dimension 50 and ReLU activations.
+T
+=
+100
+T=100
+is selected based on
+(De Bortoli
+et al.
+,
+2025
+; Kneissl
+et al.
+,
+2025
+)
+, where improvements saturate for larger
+T
+T
+. We also ran pilot experiments with larger
+T
+T
+but found no improvements. At each step the denoiser predicts a distribution over
+ϵ
+\epsilon
+(eq</p>
+
+<p>uivalently
+y
+0
+y_{0}
+) given noisy
+y
+t
+y_{t}
+, drawing
+M
+M
+samples per step. Conditional input
+x
+x
+and a per-sample noise vector are injected via FiLM (Feature-wise Linear Modulation) conditioning at every hidden layer, giving each of the
+M
+M
+samples a unique modulation.
+Implicit generative model.
+The implicit generative model is an MLP with 5 hidden layers of dimension 50 and ReLU activations. It maps the concatenation of conditioning input
+x
+x
+and noise vector
+ε
+∼
+𝒩
+​
+(
+0
+,
+I
+)
+\varepsilon\sim\mathcal{N}(0,I)
+directly to a sample
+y
+^
+m
+\hat{y}_{m}
+;
+M
+M
+independent noise draws in parallel yield
+M
+M
+samples in a single forward pass.
+Optimization layer.
+The optimal action
+a
+∗
+a^{*}
+is obtained via projected gradient descent on
+1
+M
+​
+∑
+m
+c
+​
+(
+a
+,
+y
+^
+m
+)
+\frac{1}{M}\sum_{m}c(a,\hat{y}_{m})
+over
+𝒜
+\mathcal{A}
+, implemented within the optimization layer forward pass. We use 50 optimization steps during training, which small pilot experiments confirmed to be sufficient for convergence; at inference we use 200 steps for higher precision.
+Second-order derivatives required for computing the decision loss gradient (
+Eq.
+7
+) are computed via PyTorch
+autograd
+.
+Decision-aware training adds computational overhead relative to standard energy score training through the optimisation layer, which is invoked at every forward pass.
+The overhead scales with the number of samples
+M
+M
+(the optimisation objective is evaluated over all
+M
+M
+samples per batch element) and the number of iterations r</p>
+
+<p>equired to solve
+Eq.
+1
+to convergence.
+Computational resources
+We use an internal compute cluster with NVIDIA A100 GPUs. Training of all models required approximately 50 GPU hours.
+Data
+The ERA5 dataset used in the real-world experiments s provided by the Copernicus Climate Change Service under a licence permitting research use
+(Hersbach
+et al.
+,
+2020
+)
+.
+Appendix C
+Additional Results
+This section presents additional experimental details and results for all three experiments in the main paper.
+C.1
+Synthetic Decision Task
+We use a 1600/200/400 train/val/test split across 3 data seeds and 3 training seeds, training a distributional diffusion model. The denoiser uses
+M
+=
+10
+M=10
+samples during training. At inference, we draw 200 samples from the learned predictive distributions via independent reverse chain runs.
+The cost function belongs to the same sigmoid threshold family as the frost hazard cost; strict convexity of the expected cost at interior solutions is verified in
+Section
+C.3.1
+.
+Figure
+C.1
+shows the data generating process (bimodal conditional GMM with input-dependent mode weights and ground-truth optimal action
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+).
+Figure
+C.2
+shows aggregate CRPS, decision loss, and decision calibration vs.
+w
+d
+w_{d}
+, pooled across all seeds.
+Figure
+C.3
+shows the predictive marginal distributions across seeds and
+w
+d
+w_{d}
+values: mode 1 is heavily overrepresented at
+w
+d
+=
+0
+w_{d}=0
+(CRPS failure), with mode 2 mass progressively recovering as
+w
+d
+w_{d}
+increases.</p>
+
+<p>Figure
+C.4
+shows the predicted
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+across data seeds and
+w
+d
+w_{d}
+: tracking improves consistently, though some of the troughs (boundary
+a
+∗
+=
+0
+a^{*}=0
+, no gradient) remain a blind spot.
+Figure
+C.5
+shows the conditional mode 2 mass as a function of input
+x
+x
+: dec loss partially recovers the true
+w
+​
+(
+x
+)
+w(x)
+around the peaks but overshoots at high
+w
+d
+w_{d}
+.
+Figure C.1
+:
+Bimodal conditional GMM (top) and ground-truth optimal action
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+(bottom). The optimal action depends on the mixing weight of the GMM.
+Figure C.2
+:
+Aggregate CRPS, decision loss, and decision miscalibration vs.
+w
+d
+w_{d}
+(mean
+±
+\pm
+std, pooled across training and data seeds). CRPS and decision loss improve slightly with
+w
+d
+w_{d}
+; average decision calibration improves more consistently throughout.
+Figure C.3
+:
+Predictive marginal distributions for
+w
+d
+∈
+{
+0.0
+,
+0.5
+,
+0.9
+}
+w_{d}\in\{0.0,0.5,0.9\}
+across three training (one seed per column). Mode 1 is overrepresented at
+w
+d
+=
+0
+w_{d}=0
+; mode 2 mass recovers with increasing
+w
+d
+w_{d}
+. Predictive distributions remain underdispersed within each mode relative to the true Gaussians.
+Figure C.4
+:
+Predicted
+a
+∗
+​
+(
+x
+)
+a^{*}(x)
+(mean
+±
+\pm
+std over training seeds) vs ground truth across
+w
+d
+w_{d}
+and data seeds (one seed per row). Pure CRPS training (
+w
+d
+=
+0
+w_{d}=0
+) fails to track the ground truth action at the transitions between the extremes; decision-aware training (
+w
+d
+&gt;
+0.0
+w_{d}&gt;0.0
+) improves the tracking of
+a</p>
+
+<p>∗
+a*
+and gets closer to the ground truth for large
+w
+d
+w_{d}
+. Some of the troughs (
+a
+∗
+=
+0
+a^{*}=0
+, boundary case) that exist for
+w
+d
+=
+0
+w_{d}=0
+remain a blind spot throughout.
+Figure C.5
+:
+Conditional mode 2 mass estimated within 40
+x
+x
+-bins for different
+w
+d
+w_{d}
+, per data seed (one seed per panel). Lines show mean over training seeds; shaded band is
+±
+\pm
+1 std.
+Decision loss often improves the conditional mode mass estimate (moving towards
+w
+​
+(
+x
+)
+w(x)
+) around the peaks and the transitions but overshoots at high
+w
+d
+w_{d}
+;
+data seed
+0
+(left panel) shows that decision loss can overcorrect even when the baseline already matches the true mode weights.
+C.2
+Wind Power Dispatch
+In this section we report experimental details of the wind power dispatch experiment followed by additional results for the implicit generative model as well as results for the distributional diffusion model on this task.
+C.2.1
+Experimental setup
+The power curve maps 10m wind speed to normalised power output via a differentiable sigmoid approximation
+(Wang
+et al.
+,
+2019
+)
+; hub-height wind speeds are recovered via a power-law profile
+(Abbes and Belhadj,
+2012
+)
+.
+The dispatch cost is
+c
+​
+(
+a
+,
+y
+)
+=
+−
+a
++
+λ
+​
+relu
+​
+(
+a
+−
+P
+​
+(
+y
+)
+)
+2
+c(a,y)=-a+\lambda\,\mathrm{relu}(a-P(y))^{2}
+, where
+a
+∈
+[
+0
+,
+1
+]
+a\in[0,1]
+is the committed power fraction,
+P
+​
+(
+y
+)
+P(y)
+is the normalised power output, and
+λ
+\lambda
+controls the shortfall penalty. We do not apply a penalty for power overproduction since th</p>
+
+<p>is case can be avoided by windpower providers by dynamically reducing power output (curtailment) to match the promised amount
+(Bruninx
+et al.
+,
+2025
+)
+. In this case, only opportunity costs remain (
+c
+=
+−
+a
+c=-a
+), since a larger
+a
+a
+could have been chosen to increase revenue.
+ERA5 inputs are observed wind speed at
+t
+t
+,
+t
+−
+6
+t{-}6
+h, and
+t
+−
+12
+t{-}12
+h.
+We use 2005–2019 for training, 2020 for validation, and 2021 for testing.
+The test set contains 105 cut-off events (
+v
+&gt;
+20
+v&gt;20
+m/s at hub height), 230 rated, and 1074 ramp observations.
+The implicit generative model uses
+M
+=
+10
+M=10
+samples during training and
+M
+=
+500
+M=500
+at inference. The distributional diffusion model uses
+M
+=
+10
+M=10
+samples for the probabilistic denoiser during training; at inference, 500 samples are drawn via independent reverse chain runs.
+Strict convexity of
+f
+​
+(
+a
+)
+=
+1
+M
+​
+∑
+j
+c
+​
+(
+a
+,
+y
+^
+j
+)
+f(a)=\frac{1}{M}\sum_{j}c(a,\hat{y}_{j})
+(
+Section
+A.4
+) at interior solutions holds analytically:
+since
+∂
+2
+∂
+a
+2
+​
+c
+​
+(
+a
+,
+y
+^
+j
+)
+=
+2
+​
+λ
+\frac{\partial^{2}}{\partial a^{2}}c(a,\hat{y}_{j})=2\lambda
+when
+y
+^
+j
+&lt;
+a
+\hat{y}_{j}&lt;a
+and
+0
+otherwise, we have
+H
+=
+(
+2
+​
+λ
+/
+M
+)
+​
+#
+​
+{
+j
+:
+P
+​
+(
+y
+^
+j
+)
+&lt;
+a
+∗
+}
+H=(2\lambda/M)\,\#\{j:P(\hat{y}_{j})&lt;a^{*}\}
+.
+At any interior
+a
+∗
+a^{*}
+, at least one sample must satisfy
+y
+^
+j
+&lt;
+a
+∗
+\hat{y}_{j}&lt;a^{*}
+— otherwise
+f
+′
+​
+(
+a
+∗
+)
+=
+−
+1
+&lt;
+0
+f^{\prime}(a^{*})=-1&lt;0
+, contradicting optimality — so
+H
+&gt;
+0
+H&gt;0
+.
+Figure C.6
+:
+Left:
+differentiable power curve used for conv</p>
+
+<p>erting wind speed at turbine hub height to normalized power output.
+Right:
+dispatch cost
+c
+​
+(
+a
+,
+y
+)
+c(a,y)
+for
+λ
+=
+5
+\lambda=5
+as a function of committed power
+a
+a
+and observed power output
+y
+y
+.
+C.2.2
+Additional results: implicit generative model
+Figure
+C.7
+shows the aggregate CRPS vs decision loss trade-off across seeds and
+w
+d
+w_{d}
+and the regional breakdown for
+λ
+=
+3
+\lambda=3
+and
+λ
+=
+10
+\lambda=10
+(the main text shows
+λ
+=
+5
+\lambda=5
+).
+Figure
+C.8
+shows the cut-off region ablation across
+λ
+\lambda
+: improvements scale monotonically with
+λ
+\lambda
+.
+Figure
+C.9
+shows the rolling-window median shift
+Δ
+​
+Q
+0.5
+​
+(
+v
+)
+\Delta Q_{0.5}(v)
+: the correction is negative in the ramp region, reverses beyond cut-off, and its magnitude (in ramp region) tracks the power curve slope.
+Figure
+C.10
+shows the decision calibration decomposition for
+λ
+∈
+{
+3
+,
+10
+}
+\lambda\in\{3,10\}
+.
+Figure C.7
+:
+Same plot as
+Figure
+3
+in main text (
+λ
+=
+5
+\lambda=5
+), for
+λ
+=
+3
+\lambda=3
+(top row) and
+λ
+=
+10
+\lambda=10
+(bottom row); implicit generative model.
+Left column:
+Aggregate CRPS vs decision loss trade-off across seeds and
+w
+d
+w_{d}
+for
+λ
+∈
+{
+3
+,
+10
+}
+\lambda\in\{3,10\}
+.
+Right (three columns):
+Regional metrics (cut-off, ramp, rated) vs
+w
+d
+w_{d}
+for
+λ
+=
+3
+\lambda=3
+(top) and
+λ
+=
+10
+\lambda=10
+(bottom).
+Cut-off improvements are strongest for
+λ
+=
+10
+\lambda=10
+, confirming that higher shortfall penalty amplifies the gradient signal in the cut-off region.
+Figure C.8
+:
+Cut-off region metrics vs
+w
+d
+w</p>
+
+<p>_{d}
+across
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+, implicit generative model.
+Decision cost and calibration improvements scale monotonically with
+λ
+\lambda
+as a result of a stronger decision loss gradient; CRPS degrades at high
+w
+d
+w_{d}
+and high
+λ
+\lambda
+, indicating overshoot (distributional fit degrades).
+Figure C.9
+:
+Rolling-window median shift
+Δ
+​
+Q
+0.5
+​
+(
+v
+)
+\Delta Q_{0.5}(v)
+conditioned on observed wind speed for
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+, implicit generative model.
+Correction is negative in the ramp (more conservative dispatch) with the correction magnitude tracking the power curve slope, and positive in the cut-off region (more mass in costly tail where power drops to zero). This effect strenghthens with
+λ
+\lambda
+. The model learns different correction behavior across outputs that reflects the cost function structure. Window size
+±
+1.5
+​
+m/s
+\pm 1.5\text{ m/s}
+.
+Figure C.10
+:
+Decision calibration decomposition for
+λ
+=
+3
+\lambda=3
+(left) and
+λ
+=
+10
+\lambda=10
+(right), implicit generative model. Each bar shows the test-set average of one side of
+Eq.
+3
+:
+average observed cost
+1
+N
+​
+∑
+n
+c
+​
+(
+a
+n
+∗
+,
+y
+n
+)
+\frac{1}{N}\sum_{n}c(a^{*}_{n},y_{n})
+and average estimated expected cost
+1
+N
+​
+∑
+n
+𝔼
+y
+^
+​
+[
+c
+​
+(
+a
+n
+∗
+,
+y
+^
+)
+]
+\frac{1}{N}\sum_{n}\mathbb{E}_{\hat{y}}[c(a^{*}_{n},\hat{y})]
+.
+The observed cost decreases (training objective) while the estimated expected cost increases, indicating more accurate cost estimation; both bars move toward each other</p>
+
+<p>with increasing
+w
+d
+w_{d}
+.
+Note that the experiment results in the main text (decision miscalibration) use a stronger variant to compute this gap by averaging per-sample absolute differences. The gap between bars in this plot, therefore, provides a lower bound on decision miscalibration reported in the main paper.
+C.2.3
+Distributional diffusion model results
+Figure
+C.11
+shows aggregate metrics vs
+w
+d
+w_{d}
+: CRPS improves then overshoots at high
+w
+d
+w_{d}
+; aggregate decision loss is flat; decision calibration improves consistently for all
+λ
+\lambda
+.
+Figure
+C.12
+shows the full regional breakdown for each
+λ
+\lambda
+.
+Figure
+C.13
+shows the cut-off region ablation across
+λ
+\lambda
+.
+Figure
+C.14
+shows the rolling-window median shift.
+Figure
+C.15
+shows the decision calibration decomposition for
+λ
+∈
+{
+3
+,
+10
+}
+\lambda\in\{3,10\}
+.
+Figure C.11
+:
+Aggregate metrics vs
+w
+d
+w_{d}
+for
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+, distributional diffusion model. The tradeoff between CRPS and decision loss is less prominent than for the implicit generative model. CRPS improves with
+w
+d
+w_{d}
+, but degrades for large values. Average decision loss stays relatively flat but decision miscalibration improves with
+w
+d
+w_{d}
+. Decision calibration improvements are stronger at higher shortfall penalty
+λ
+\lambda
+.
+Figure C.12
+:
+Regional metrics (cut-off, ramp, rated) vs
+w
+d
+w_{d}
+for
+λ
+=
+3
+\lambda=3
+(top),
+λ
+=
+5
+\lambda=5
+(middle), and
+λ
+=
+10
+\lambda=10
+(bottom), distributional diffusion model. Simil</p>
+
+<p>ar to the implicit generative model in the main text, performance in the cut-off region improves with
+w
+d
+w_{d}
+.
+Cut-off improvements are stronger at higher
+λ
+\lambda
+; most rated region metrics degrade with
+w
+d
+w_{d}
+across all
+λ
+\lambda
+.
+Figure C.13
+:
+Cut-off region metrics vs
+w
+d
+w_{d}
+across
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+, distributional diffusion model.
+We observe a clear monotonic improvement pattern across
+λ
+\lambda
+, similar to the implicit generative model. For larger
+λ
+\lambda
+, the decision loss gradient provides a stronger learning signal in the cut-off region. Again, CRPS degrades for large
+λ
+\lambda
+and
+w
+d
+w_{d}
+, incidating overshoot (distributional fit degrades).
+Figure C.14
+:
+Rolling-window median shift
+Δ
+​
+Q
+0.5
+​
+(
+v
+)
+\Delta Q_{0.5}(v)
+conditioned on observed wind speed for
+λ
+∈
+{
+3
+,
+5
+,
+10
+}
+\lambda\in\{3,5,10\}
+, distributional diffusion model. Similar pattern as for the implicit generative model: negative corrections in the ramp region and positive corrections above the cut-off threshold. For
+λ
+=
+10
+\lambda=10
+, the model learns to transition from negative to positive median corrections at the cut-off speed threshold.
+Figure C.15
+:
+Decision calibration decomposition for
+λ
+=
+3
+\lambda=3
+(left) and
+λ
+=
+10
+\lambda=10
+(right), distributional diffusion model.
+Each bar shows the test-set average of one side of
+Eq.
+3
+: average observed cost
+1
+N
+​
+∑
+n
+c
+​
+(
+a
+n
+∗
+,
+y
+n
+)
+\frac{1}{N}\sum_{n}c(a^{*}_{n},y_{n})
+and average estimated expected cost
+1
+N</p>
+
+<p>​
+∑
+n
+𝔼
+y
+^
+​
+[
+c
+​
+(
+a
+n
+∗
+,
+y
+^
+)
+]
+\frac{1}{N}\sum_{n}\mathbb{E}_{\hat{y}}[c(a^{*}_{n},\hat{y})]
+. The observed cost decreases (trained objective) while the estimated expected cost increases, indicating more accurate cost estimation; both bars move toward each other with increasing
+w
+d
+w_{d}
+. Note that the experiment results in the main text (decision miscalibration) use a stronger variant to compute this gap by averaging per-sample absolute differences. The gap between bars in this plot, therefore, provides a lower bound on decision miscalibration reported in the main paper.
+C.3
+Frost Protection
+In this section we report experimental details of the frost protection experiment followed by additional results for the implicit generative model as well as results for the distributional diffusion model on this task.
+C.3.1
+Experimental setup
+ERA5 inputs are 2 m temperature from a
+3
+×
+3
+3{\times}3
+spatial patch (centered around the target grid point) at three time steps (27 features), restricted to November–March.
+The implicit generative model uses
+M
+=
+10
+M=10
+samples during training and
+M
+=
+500
+M=500
+at inference. The distributional diffusion model uses
+M
+=
+10
+M=10
+samples from the probabilistic denoiser during training; at inference, 500 samples are drawn via independent reverse chain runs.
+The cost function is a sigmoid threshold at
+0
+°C;
+α
+=
+F
+​
+P
+F
+​
+N
+\alpha=\frac{FP}{FN}
+controls the asymmetry between false positive and false negative costs (
+Figure
+C.16
+).
+The gradient d</p>
+
+<p>erivation requires strict convexity of
+f
+​
+(
+a
+)
+=
+1
+M
+​
+∑
+j
+c
+​
+(
+a
+,
+y
+^
+j
+)
+f(a)=\frac{1}{M}\sum_{j}c(a,\hat{y}_{j})
+(
+Section
+A.4
+) at interior solutions;
+this was verified empirically across 100,000 randomly drawn sample sets of size
+M
+=
+50
+M=50
+from the marginal training distribution, with
+H
+&gt;
+0
+H&gt;0
+(strict convexity) in all cases.
+Figure C.16
+:
+Frost protection cost function for
+α
+=
+0.5
+\alpha=0.5
+.
+C.3.2
+Additional results: implicit generative model
+The main text shows aggregate metrics for all
+α
+\alpha
+values and the conditional KDE for
+α
+=
+0.3
+\alpha=0.3
+.
+Figure
+C.17
+shows the conditional KDE for all three
+α
+\alpha
+values at
+w
+d
+=
+0.3
+w_{d}=0.3
+, alongside the shared
+w
+d
+=
+0
+w_{d}=0
+baseline.
+Figure
+C.18
+shows the marginal 2m temperature (T2m) distributions for
+α
+=
+0.5
+\alpha=0.5
+: a cold mode missed by pure CRPS (
+w
+d
+=
+0.0
+w_{d}=0.0
+) progressively aligns with the observed distribution at the sweet spot
+w
+d
+=
+0.3
+−
+0.5
+w_{d}=0.3-0.5
+, before shifting slightly beyond it at
+w
+d
+=
+0.9
+w_{d}=0.9
+.
+Figure
+C.19
+shows the conditional breakdown by frost and no-frost observations for
+α
+∈
+{
+0.2
+,
+0.3
+,
+0.5
+}
+\alpha\in\{0.2,0.3,0.5\}
+, the no-frost regime improves in terms of decision calibration while the frost regime degrades slightly or stays constant across
+w
+d
+w_{d}
+.
+Figure
+C.20
+shows the quantile shift in the predictive distributions introduced through decision loss training: quantiles closer to the cost-sensitive threshold region get shifted more strongly, supportin</p>
+
+<p>g the claim of probability mass being redistributed around the decision threshold.
+Figure C.17
+:
+Rolling-window conditional predictive density of temperature forecasts for
+w
+d
+=
+0
+w_{d}=0
+(leftmost, shared baseline) and
+w
+d
+=
+0.3
+w_{d}=0.3
+for
+α
+=
+0.2
+\alpha=0.2
+,
+α
+=
+0.3
+\alpha=0.3
+, and
+α
+=
+0.5
+\alpha=0.5
+(left to right), implicit generative model.
+A warm bias for sub-zero temperatures visible at
+w
+d
+=
+0
+w_{d}=0
+is corrected at
+w
+d
+=
+0.3
+w_{d}=0.3
+across all
+α
+\alpha
+values, with the predictive distribution concentrating closer to the diagonal in the frost region. Window size
+±
+1
+∘
+\pm 1^{\circ}
+C.
+Figure C.18
+:
+Marginal T2m distribution (observed vs predicted) for
+α
+=
+0.5
+\alpha=0.5
+at
+w
+d
+∈
+{
+0.0
+,
+0.3
+,
+0.5
+,
+0.9
+}
+w_{d}\in\{0.0,0.3,0.5,0.9\}
+, implicit generative model. The cold mode aligns with the observed distribution at
+w
+d
+=
+0.3
+w_{d}=0.3
+and shifts slightly beyond it at
+w
+d
+=
+0.9
+w_{d}=0.9
+.
+Figure C.19
+:
+Conditional metrics for frost and no-frost observations vs
+w
+d
+w_{d}
+for
+α
+∈
+{
+0.2
+,
+0.3
+,
+0.5
+}
+\alpha\in\{0.2,0.3,0.5\}
+, implicit generative model: frost performance (top row, obs. temp.
+&lt;
+0
+&lt;0
+°C) and no-frost performance (bottom row, obs. temp.
+&gt;
+0
+&gt;0
+°C). At
+α
+=
+0.5
+\alpha=0.5
+, the no-frost region improves with
+w
+d
+w_{d}
+while the frost region shows now improvement (decision loss and miscalibration). Lowering
+α
+\alpha
+(increasing cost for unprotected frost) degrades CRPS more quickly.
+Figure C.20
+:
+Rolling quantile shift (relative to
+w
+d
+=
+0
+w_{d}=0
+) for</p>
+
+<p>w
+d
+∈
+{
+0.1
+,
+0.2
+,
+0.3
+}
+w_{d}\in\{0.1,0.2,0.3\}
+, implicit generative model (
+α
+=
+0.3
+\alpha=0.3
+, window
+±
+1
+\pm 1
+°C).
+For observations near the threshold (obs
+≈
+0
+\approx 0
+°C), all quantiles shift more uniformly as the whole ensemble straddles the cost-active region.
+For deep-cold observations (obs
+&lt;
+−
+5
+&lt;-5
+°C), the upper quantiles (Q
+0.7
+0.7
+) are closest to the 0°C threshold and therefore sit closest to the cost-active region, shifting substantially more than the lower quantiles (Q
+0.3
+0.3
+), which are further from the threshold.
+This quantile ordering directly illustrates the sample-level redistribution effect of the decision loss gradient predicted by the gradient analysis in
+Section
+4.2
+.
+The effect scales consistently with
+w
+d
+w_{d}
+across all three panels.
+C.3.3
+Distributional diffusion model results
+For the distributional diffusion model, the decision loss does not improve the forecast distributions as expected.
+The baseline (
+w
+d
+=
+0
+w_{d}=0
+) already exhibits a cold bias: for sub-zero observations, the conditional forecast distribution is shifted toward colder temperatures relative to the observed values, as visible in the KDE plots (
+Figure
+C.21
+).
+Decision loss training (
+w
+d
+&gt;
+0
+w_{d}&gt;0
+) does not correct this artifact.
+CRPS degrades monotonically for larger
+w
+d
+w_{d}
+in all
+α
+\alpha
+settings, yet, decision miscalibration improves for
+α
+&lt;
+0.5
+\alpha&lt;0.5
+.
+Notably, the same sigmoid cost function with a distributional diffusion model yields clear improvement</p>
+
+<p>s on the synthetic decision task (
+Section
+5
+), so the failure is not inherent to the cost structure or model class.
+We do not have a complete explanation for this failure mode, one hypothesis is that samples from the baseline model (
+w
+d
+=
+0
+w_{d}=0
+) are already outside of the strong gradient region of the cost function (too cold), thus the decision loss has no handle to correct them.
+We also note that the reverse chain dynamics at inference time are not captured by the per-step training objective (
+Section
+7
+), potentially introducing compounding errors at inference.
+Figure C.21
+:
+Frost protection results, distributional diffusion model. Same plot as for implicit generative model in
+Figure
+4
+.
+Left (three panels):
+Aggregate CRPS, decision loss, and decision miscalibration vs
+w
+d
+w_{d}
+for
+α
+∈
+{
+0.2
+,
+0.3
+,
+0.5
+}
+\alpha\in\{0.2,0.3,0.5\}
+(mean
+±
+\pm
+1 std over seeds).
+Right (two panels):
+Conditional predictive density for
+w
+d
+=
+0
+w_{d}=0
+and
+w
+d
+=
+0.3
+w_{d}=0.3
+(
+α
+=
+0.3
+\alpha=0.3
+) conditioned on observed temperature. The baseline (
+w
+d
+=
+0
+w_{d}=0
+) already exhibits a cold bias for sub-zero observations visible in the conditional KDE. Decision loss training (
+w
+d
+=
+0.3
+w_{d}=0.3
+) does not correct this bias. CRPS degrades monotonically with larger
+w
+d
+w_{d}
+for all
+α
+\alpha
+while decision loss stays flat throughout. For
+α
+&lt;
+0.5
+\alpha&lt;0.5
+, decision calibration nonetheless improves with
+w
+d
+w_{d}
+, suggesting the expected cost of the optimal action becomes better aligned</p>
+
+<p>即使整体分布质量下降，也伴随着观察到的成本。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

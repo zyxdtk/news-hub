@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log_bQuant：在对数空间中量化语言模型 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Log_bQuant：在对数空间中量化语言模型</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-01</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.01127" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：$\text{Log}_\text{b}$Quant: Quantizing Language Models in Logarithmic Space</h4>
+            <p><strong>中文摘要：</strong> 本文提出了Log_bQuant，一种具有可调基数的对数量化方法，用于压缩语言模型。该方法通过对数空间量化，将精度向权重分布密集区域偏移，并结合基于能量的剪枝策略。实验表明，在4位精度下，该方法在多个基准测试中显著优于非对称线性量化，同时实现约65%的内存节省和适度加速，使14B参数模型可在12GB显存的消费级GPU上运行。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>1
+1
+institutetext:
+慕尼黑工业大学计算、信息与技术学院，德国慕尼黑
+1
+1
+email:
+{firstname.lastname}@tum.de
+Log
+b
+\text{Log}_{\text{b}}
+Quant：在对数空间中量化语言模型
+Jeremias Bohn
+Tizian Dippold
+Mahdi Koubaa
+Elias R. Wahl
+Georg Groh
+摘要
+量化已成为降低现代语言模型内存需求和推理延迟的重要工具，尤其使其能够在消费级设备和边缘设备上运行。虽然以往的工作主要集中于均匀量化码本，但由于低频高幅度权重的存在，这类方法容易产生次优表示。我们提出了 Log
+b
+{}_{\text{b}}
+Quant，一种具有可调基数的对数量化方法，以适应常见的参数分布。我们表明，在张量级粒度上，我们的方法在4位精度的多个性能基准测试中优于非对称线性量化，同时实现了适度的加速和高内存节省，使其适合在消费级GPU上进行私人使用。
+1
+引言
+虽然大型语言模型及其应用在过去几年中已进入主流，但大多数模型是闭源的，仅可通过API和Web界面访问。然而，即使是开源模型，如Meta的Llama
+[
+17
+]
+和Qwen的
+[
+43
+]
+模型，其硬件要求也往往超出常见的私人配置，后者通常包含单个消费级GPU或智能手机等边缘设备。在此类配置中，一个重要的瓶颈是内存大小，它构成了本地模型推理的硬性准入门槛。内存速度进一步加剧了这一问题，它是小批量大小（在本地场景中很常见）的主要延迟来源，也被称为
+内存墙
+[
+15
+]
+。虽然存在多种减少参数数量或改进缓存的方法（这些方法也能减少内存负载和带宽利用率），但我们的工作专注于权重量化，它为终端用户提供了一种快速且性能高效的措施来解决这些问题。尽管大多数量化方法依赖于非对称线性码本，但我们表明，在对数空间中的量化在多个基准测试中更好地保持了性能，特别是在低位宽情况下。
+图1：
+Llama-3.1-1B第一层上投影的权重分布。左侧：4位线性码本的负半部分以蓝色标记。右侧：4位Log
+b
+{}_{\text{b}}
+Quant码本的正半部分以绿色标记。
+2
+相关工作
+减少机器学习模型计算和内存需求的方法早在早期就已讨论
+[
+22
+,
+19
+]
+，因为加速神经网络一直是一个重要问题。虽然有多种方法考虑剪枝
+[
+38
+,
+28
+,
+26
+]
+或模型压缩
+[
+4
+,
+21
+,
+24
+]
+，但量化方法（即降低权重和/或激活值的表示精度）因其易于应用和对模型性能影响较小而得到广泛采用。通常区分
+均匀量化
+[
+14
+]
+（即使用等距码本条目）和
+非均匀量化
+，如我们自己的方法Log
+b
+{}_{\text{b}}
+Quant。均匀量化可以描述为线性函数
+Quant
+(
+s
+,
+z
+,
+x
+)
+=
+⌊
+x
+s
+⌉
+−
+z
+\mathrm{Quant}(s,z,x)=\lfloor\frac{x}{s}\rceil-z
+，其中缩放因子为
+s
+s
+，零点为
+z
+z
+（其中
+⌊
+⋅
+⌉
+\lfloor\cdot\rceil
+是舍入函数）。这类方法因其算术特性而受到青睐，但可能为了适应低频值而消耗过多精度（见图
+1
+，左侧）。另一方面，非均匀量化更好地适应了现代神经网络的值分布，后者通常在零附近密集分布，并有少量离群值
+[
+32
+,
+34
+,
+14
+,
+39
+,
+13
+]
+。以往与我们方法类似的应用对数刻度码本的工作主要集中于预定义基数
+[
+32
+,
+2
+,
+7
+,
+34
+,
+35
+]
+，主要是基数2或其幂次，这可能无法最优地拟合分布。另一方面，我们将基数（和范围）视为每层的可优化参数，以使我们的码本适应权重分布。
+量化方法在范围上进一步有所不同：
+仅权重量化
+降低模型参数精度，同时激活值保持全精度，以减少内存占用和带宽使用
+[
+14
+,
+11
+]
+。
+激活量化
+量化隐藏表示
+[
+42
+]
+，这对于现在常见的基于GLU的MLP
+[
+37
+]
+模型尤为重要，因为它们投影到高维空间。
+权重和激活量化
+对两者都进行精度降低，提供更优的压缩和加速，但也引入了更大的算法和数值挑战
+[
+5
+]
+。由于我们的重点是消费级和边缘设备（其中小批量的解码是内存受限的），我们专注于仅权重方法，该方法具有显著的内存节省，并且比更激进的权重和激活量化更可靠地保持性能
+[
+15
+,
+25
+,
+11
+]
+。
+最后，为了从量化误差中恢复，应用了两种主要的校准技术。在量化感知训练（QAT）中，模型通过基于梯度的优化来学习消除精度损失。QAT方法，如可微分软量化
+[
+16
+]
+，通常能重新实现优越的性能，但需要大量的训练和数据，并面临量化函数中不可微舍入操作的问题
+[
+44
+]
+。由于这些问题，训练后量化（PTQ）方法如VPTQ
+[
+27
+]
+、GPTQ
+[
+11
+]
+和GPTAQ
+[
+23
+]
+通常更受青睐，因为这些方法可以使用小型校准数据集或完全无数据
+[
+33
+]
+快速量化模型。在我们的工作中，我们使用GPTQ，因为它被广泛使用且易于适应新的量化函数。
+3
+方法
+我们引入了Log
+b
+{}_{\text{b}}
+Quant，一种在对数空间中的新型对称量化方案。我们的方法基于这样一个观察：语言模型中的权重近似服从正态分布（见图
+1
+），因此我们将精度向分布密集的区域偏移。Log
+b
+{}_{\text{b}}
+Quant减少了在更高粒度级别上操作的需求，而是允许张量级量化且性能损失最小。
+3.1
+量化方案
+如上所述，平衡映射到我们码本
+C
+C
+每个条目的权重数量是我们方法的核心。因此，我们为每个权重矩阵定义一个码本，由基数
+b
+∈
+ℝ
+b\in\mathbb{R}
+和偏移
+s
+∈
+ℝ
+s\in\mathbb{R}
+参数化。考虑任意权重
+x
+∈
+ℝ
+x\in\mathbb{R}
+，任意量化权重
+q
+∈
+ℤ
+q\in\mathbb{Z}
+和任意码本位宽
+n
+∈
+ℕ
+n\in\mathbb{N}
+。然后我们定义量化和反量化函数为
+Quant
+​
+(
+b
+,
+s
+,
+x
+)
+\displaystyle\mathrm{Quant}(b,s,x)
+≔
+{
+0
+x
+=
+0
+sign
+(
+x
+)
+⌊
+log
+b
+(
+|
+x
+|
+)
++
+s
+⌉
+−
+q
+max
+q
+max
+x
+≠
+0
+\displaystyle\coloneqq\begin{cases}0&amp;x=0\\
+\mathrm{sign}(x)\left\lfloor\log_{b}(\left\lvert x\right\rvert)+s\right\rceil_{-q_{\mathrm{max}}}^{q_{\mathrm{max}}}&amp;x\neq 0\end{cases}
+(1)
+Dequant
+​
+(
+b
+,
+s
+,
+q
+)
+\displaystyle\mathrm{Dequant}(b,s,q)
+≔
+{
+0
+q
+=
+0
+sign
+​
+(
+q
+)
+⋅
+b
+|
+q
+|
+−
+s
+q
+≠
+0
+\displaystyle\coloneqq\begin{cases}0&amp;q=0\\
+\mathrm{sign}(q)\cdot b^{\left\lvert q\right\rvert-s}&amp;q\neq 0\end{cases}
+(2)
+其中
+q
+max
+≔
+2
+n
+−
+1
+−
+1
+q_{\mathrm{max}}\coloneqq 2^{n-1}-1
+，
+⌊
+⋅
+⌉
+a
+b
+\lfloor\cdot\rceil_{a}^{b}
+是四舍五入到最近整数并进行截断。给定单个矩阵的有效权重范围
+[
+−
+w
+min
+,
+−
+w
+max
+]
+∪
+[
+w
+min
+,
+w
+max
+]
+[-w_{\mathrm{min}},-w_{\mathrm{max}}]\cup[w_{\mathrm{min}},w_{\mathrm{max}}]
+，我们可以定义
+b
+b
+为
+b
+≔
+(
+w
+max
+w
+min
+)
+1
+q
+max
+b\coloneqq\left(\frac{w_{\mathrm{max}}}{w_{\mathrm{min}}}\right)^{\frac{1}{q_{\mathrm{max}}}}
+(3)
+这确保了从
+w
+min
+w_{\mathrm{min}}
+到
+w
+max
+w_{\mathrm{max}}
+的
+q
+max
+q_{\mathrm{max}}
+个对数步长。为了将值
+w
+max
+w_{\mathrm{max}}
+与码本中的
+q
+max
+q_{\mathrm{max}}
+对齐，我们最终定义
+s
+s
+为
+s
+≔
+q
+max
+−
+⌊
+log
+b
+⁡
+w
+max
+⌋
+s\coloneqq q_{\mathrm{max}}-\left\lfloor\log_{b}w_{\mathrm{max}}\right\rfloor
+(4)
+虽然这些值在码本平衡方面不一定是最优的，但它们作为一种启发式方法来近似给定矩阵的动态范围，而无需对公式
+1
+进行非凸优化。
+3.2
+基于能量的剪枝
+如图
+1
+所示，权重分布密度通常在
+0
+附近最高。然而，以往关于模型剪枝的工作
+[
+19
+,
+18
+,
+8
+]
+已经确定，低幅度权重通常对模型的计算贡献较小，可以在对预测影响较小的情况下设为
+0
+。尽管利用非结构化稀疏性通常很困难，但我们可以使用这种方法将码本密度转移到真正重要的部分。我们遵循基于信号能量的剪枝策略，并使用它来定义第
+3.1
+小节中的有效权重范围。虽然我们可以直接将最大值定义为
+w
+max
+≔
+max
+i
+⁡
+|
+w
+i
+|
+w_{\mathrm{max}}\coloneqq\max_{i}\left\lvert w_{i}\right\rvert
+，但我们通过将最小值定义为以下方式来剪枝权重：
+w
+min
+≔
+min
+⁡
+{
+t
+∣
+∑
+|
+w
+i
+|
+≤
+t
+w
+i
+2
+∑
+i
+w
+i
+2
+≥
+ε
+}
+w_{\mathrm{min}}\coloneqq\min\left\{t\mid\frac{\sum_{\left\lvert w_{i}\right\rvert\leq t}w_{i}^{2}}{\sum_{i}w_{i}^{2}}\geq\varepsilon\right\}
+(5)
+这使我们能够丢弃总能量中
+ε
+\varepsilon
+的比例。该方法在各层之间自校准：在标准差较低的分布中，接近
+0
+的权重持有总能量的显著部分，从而降低
+w
+min
+w_{\mathrm{min}}
+，而权重分布更平坦的矩阵则移除较大的权重。我们进行了超参数搜索，结果表明通常
+ε
+=
+4
+×
+10
+−
+3
+\varepsilon=4\times 10^{-3}
+和
+ε
+=
+1
+×
+10
+−
+6
+\varepsilon=1\times 10^{-6}
+分别对4位和8位量化效果最佳。
+3.3
+实现
+由于我们使用仅权重量化方法，我们必须在推理时反量化权重以计算线性层输出。然而，由于对公式
+2
+中的每个权重进行浮点指数运算在计算上代价高昂，我们转而依赖查找表（LUT）直接检索反量化权重。为此，我们采用了FLUTE内核
+[
+6
+]
+，它还直接允许我们对4位量化应用权重打包。由于FLUTE是为分块量化方法设计的，我们使用64的组大小来模拟我们的张量级方法，该组大小是在优化速度基准测试的超参数搜索后选择的。
+4
+实验
+为了评估我们量化方案的质量和效率，我们在来自两个模型系列的8个不同的纯文本解码器语言模型上评估了我们的方法：Qwen3和Llama-3.1/3.2。我们按照
+[
+10
+]
+的方法论，在下游任务准确率和困惑度方面比较模型性能，并在令牌吞吐量和峰值内存使用方面比较其效率与标准非对称线性量化方案。
+4.1
+设置
+在所有实验中，我们使用训练后量化方法GPTQ
+[
+11
+]
+进行模型校准，实现为Hugging Face Transformers
+[
+41
+]
+管道。对于校准数据，我们遵循GPTQ中描述的方法，从WikiText-2的
+[
+30
+]
+训练集中随机（使用种子0）采样128个样本，每个样本2048个令牌。我们对非对称线性和我们自己的对数方案都应用基于张量的仅权重量化方法，应用于模型Llama-3.1-8B、Llama-3.2-1B和-3B，以及大小为0.6B、1.7B、4B、8B和14B的Qwen3模型。在所有情况下，嵌入层和语言建模头保持全16位精度，而其余权重被降低到4位或8位。对于性能基准测试，我们使用Eleuther AI的LM Evaluation Harness
+[
+12
+]
+。效率基准测试使用PyTorch的
+[
+1
+]
+基准框架进行。所有实验均在配备48GB显存的单一Nvidia A40 GPU上进行，搭配AMD Epyc 7413 24核CPU @2.65GHz和512 GB DDR4内存。
+4.2
+性能基准测试
+下游性能以MMLU
+[
+20
+]
+（5-shot）的准确率和PIQA
+[
+3
+]
+及ARC-C
+[
+9
+]
+（均为零样本）的归一化准确率来衡量。结果见表
+1
+。未量化模型的性能见表
+5
+（附录
+0.A
+）。
+表1：
+MMLU的准确率（
+↑
+\uparrow
+）和ARC-C及PIQA的归一化准确率（
+↑
+\uparrow
+）。我们比较非对称线性量化与我们自己的Log
+b
+{}_{\text{b}}
+Quant方法。
+模型
+MMLU
+ARC-C
+PIQA
+平均
+lin
+log
+lin
+log
+lin
+log
+lin
+log
+8位
+Llama-3.2-1B
+28.79
+26.32
+37.12
+33.96
+73.94
+73.56
+46.62
+44.61
+Llama-3.2-3B
+54.55
+48.21
+45.82
+42.83
+76.33
+76.50
+58.90
+55.85
+Llama-3.1-8B
+64.03
+63.43
+52.56
+52.30
+79.38
+79.65
+65.32
+65.13
+Qwen3-0.6B
+46.98
+45.22
+33.02
+31.74
+67.63
+65.89
+49.21
+47.62
+Qwen3-1.7B
+59.3
+56.96
+42.15
+41.21
+71.76
+71.11
+57.74
+56.43
+Qwen3-4B
+69.25
+68.99
+53.58
+53.33
+74.54
+74.70
+65.79
+65.67
+Qwen3-8B
+74.46
+74.67
+57.51
+56.40
+77.26
+77.80
+69.74
+69.62
+Qwen3-14B
+78.69
+78.54
+62.12
+60.07
+79.54
+80.03
+73.45
+72.88
+4位
+Llama-3.2-1B
+24.12
+24.78
+26.79
+30.97
+50.60
+66.70
+33.84
+40.82
+llama-3.2-3B
+23.38
+29.72
+26.02
+35.58
+50.87
+71.44
+33.42
+45.58
+llama-3.1-8B
+25.22
+45.42
+25.43
+39.42
+51.52
+74.59
+34.06
+53.14
+Qwen3-0.6B
+24.65
+34.02
+26.19
+27.56
+52.18
+62.19
+34.34
+41.26
+Qwen3-1.7B
+24.33
+47.83
+26.19
+32.42
+50.76
+66.05
+33.76
+48.77
+Qwen3-4B
+24.70
+60.09
+28.07
+42.83
+50.22
+72.80
+34.33
+58.57
+Qwen3-8B
+25.06
+66.02
+27.05
+44.88
+50.27
+74.86
+34.13
+61.92
+Qwen3-14B
+24.68
+72.97
+24.83
+49.15
+49.29
+77.75
+32.93
+66.62
+表2：
+Wikitext-2、PennTreebank和C4上的困惑度（
+↓
+\downarrow
+）。我们比较非对称线性量化与我们自己的Log
+b
+{}_{\text{b}}
+Quant方法。模型L指Llama-3.1/3.2，模型Q指Qwen3。
+模型
+WT2
+PTB
+C4
+平均
+lin
+log
+lin
+log
+lin
+log
+lin
+log
+8位
+L-1B
+10.49
+15.13
+17.72
+22.00
+14.95
+24.11
+14.39
+20.41
+L-3B
+8.32
+9.46
+13.35
+15.70
+12.07
+14.38
+11.25
+13.18
+L-8B
+6.88
+6.97
+11.13
+11.40
+10.40
+10.60
+9.47
+9.66
+Q-0.6B
+22.60
+24.10
+43.83
+47.53
+30.69
+32.25
+32.37
+34.63
+Q-1.7B
+18.09
+20.31
+32.30
+36.55
+23.04
+25.11
+24.48
+27.32
+Q-4B
+14.69
+15.21
+24.49
+25.77
+20.27
+21.10
+19.82
+20.69
+Q-8B
+10.41
+10.57
+17.17
+17.50
+15.76
+15.87
+14.45
+14.65
+Q-14B
+9.26
+9.27
+15.40
+15.60
+14.20
+14.10
+12.95
+12.99
+4位
+L-1B
+1.88
+×
+10
+4
+1.88\text{\times}{10}^{4}
+18.26
+4.09
+×
+10
+4
+4.09\text{\times}{10}^{4}
+32.81
+3.88
+×
+10
+4
+3.88\text{\times}{10}^{4}
+30.78
+3.28
+×
+10
+4
+3.28\text{\times}{10}^{4}
+27.28
+L-3B
+9.63
+×
+10
+4
+9.63\text{\times}{10}^{4}
+13.33
+1.38
+×
+10
+5
+1.38\text{\times}{10}^{5}
+24.61
+7.46
+×
+10
+4
+7.46\text{\times}{10}^{4}
+21.46
+1.03
+×
+10
+5
+1.03\text{\times}{10}^{5}
+19.80
+L-8B
+1.53
+×
+10
+5
+1.53\text{\times}{10}^{5}
+10.30
+1.60
+×
+10
+5
+1.60\text{\times}{10}^{5}
+18.76
+1.17
+×
+10
+5
+1.17\text{\times}{10}^{5}
+17.98
+1.44
+×
+10
+5
+1.44\text{\times}{10}^{5}
+15.68
+Q-0.6B
+5.37
+×
+10
+3
+5.37\text{\times}{10}^{3}
+31.85
+3.86
+×
+10
+4
+3.86\text{\times}{10}^{4}
+65.23
+1.47
+×
+10
+4
+1.47\text{\times}{10}^{4}
+45.31
+1.95
+×
+10
+4
+1.95\text{\times}{10}^{4}
+47.46
+Q-1.7B
+2.76
+×
+10
+4
+2.76\text{\times}{10}^{4}
+22.10
+8.12
+×
+10
+4
+8.12\text{\times}{10}^{4}
+43.46
+3.16
+×
+10
+4
+3.16\text{\times}{10}^{4}
+29.23
+4.68
+×
+10
+4
+4.68\text{\times}{10}^{4}
+31.60
+Q-4B
+1.63
+×
+10
+3
+1.63\text{\times}{10}^{3}
+16.94
+4.29
+×
+10
+3
+4.29\text{\times}{10}^{3}
+28.95
+6.72
+×
+10
+3
+6.72\text{\times}{10}^{3}
+23.90
+4.21
+×
+10
+3
+4.21\text{\times}{10}^{3}
+23.26
+Q-8B
+325.18
+11.82
+1.84
+×
+10
+3
+1.84\text{\times}{10}^{3}
+19.63
+2.11
+×
+10
+3
+2.11\text{\times}{10}^{3}
+18.00
+1.42
+×
+10
+3
+1.42\text{\times}{10}^{3}
+16.48
+Q-14B
+241.30
+10.65
+1.34
+×
+10
+3
+1.34\text{\times}{10}^{3}
+18.94
+1.44
+×
+10
+3
+1.44\text{\times}{10}^{3}
+16.28
+1.01
+×
+10
+3
+1.01\text{\times}{10}^{3}
+15.29
+语言建模性能以WikiText-2
+[
+30
+]
+、Penn Treebank（PTB）
+[
+29
+]
+和C4数据集
+[
+36
+]
+的1000个样本的验证集上的困惑度来衡量。困惑度计算为长度2048的块的平均值，不使用滑动窗口。结果见表
+2
+。未量化模型的性能见表
+6
+（附录
+0.A
+）。
+对于8位量化，线性量化方法在困惑度方面始终优于我们自己的方法，尽管两种方法之间的差异随着模型大小的增加而变得微乎其微。在我们的下游评估中，线性方法在ARC-C和大部分MMLU上仍然表现更好，但两种方法之间的差异再次很小。两种方法在PIQA数据集上持平。然而，值得注意的是，两种方法几乎都饱和了原始16位模型的性能。此外，我们使用同等大小的RedPajama
+[
+40
+]
+数据集样本对Llama模型进行校准的额外实验。在这些运行中，我们的对数方法在几乎所有基准测试中优于非对称线性量化（尽管也只是略微领先），并且两种方法的平均得分都持续略好（见表
+7
+和表
+8
+，附录
+0.A
+）。为了确保公平比较并使我们的方法论与文献一致，我们决定报告在WikiText-2上校准后的得分。
+当量化到4位表示时，更有趣的效果变得可见。在我们的下游基准测试中，线性量化完全破坏了模型的推理能力，结果几乎与随机猜测相同。另一方面，我们自己的方法与基线相比仍然表现良好，尽管性能略有下降。困惑度结果进一步强调了这一模式：线性量化的模型无法再准确预测下一个令牌。性能随着模型大小的增加略有恢复，但困惑度仍然显著高于对数量化的模型。实验还表明，我们基于能量剪枝的
+ε
+\varepsilon
+值是稳健的，在不同模型上具有良好的泛化性。虽然8位精度下更宽松的剪枝是足够的，但对于4位量化，需要更积极地移除低幅度权重，因为更紧凑的有效权重范围改善了小码本的近似。
+4.3
+效率基准测试
+为了衡量我们方法的效率，我们在4位下比较了我们方法的模型吞吐量（见表
+3
+）和峰值内存使用（见表
+4
+）与基线模型（未量化，bfloat16）。在本节的所有实验中，我们对每个输入提示精确生成128个新令牌（输入提示在所有批量样本中相同），使用贪婪搜索。运行重复进行直到挂钟时间统计稳定，最终取平均值。需要注意的是，与内存节省不同，速度不是我们方法的重点，因为推理时的反量化引入了开销。
+表3：
+模型吞吐量，以每秒令牌数计（
+↑
+\uparrow
+）。我们比较原始16位bfloat模型与我们的4位Log
+b
+{}_{\text{b}}
+Quant模型，针对3种不同的批量大小。模型L指Llama-3.1/3.2，模型Q指Qwen3。
+模型
+批量大小1
+批量大小32
+批量大小128
+full
+log
+加速比
+full
+log
+加速比
+full
+log
+加速比
+L-1B
+78.06
+81.74
+1.05
+×
+1.05\times
+2435.39
+2685.20
+1.10
+×
+1.10\times
+9743.38
+8225.03
+0.84
+×
+0.84\times
+L-3B
+45.51
+49.18
+1.08
+×
+1.08\times
+1430.64
+1565.21
+1.09
+×
+1.09\times
+4673.76
+3659.98
+0.78
+×
+0.78\times
+L-8B
+31.23
+40.88
+1.31
+×
+1.31\times
+875.01
+1231.72
+1.41
+×
+1.41\times
+2751.18
+1704.08
+0.62
+×
+0.62\times
+Q-0.6B
+39.59
+39.83
+1.01
+×
+1.01\times
+1225.51
+1279.95
+1.04
+×
+1.04\times
+4408.56
+4965.88
+1.13
+×
+1.13\times
+Q-1.7B
+36.16
+38.74
+1.07
+×
+1.07\times
+1157.96
+1218.55
+1.05
+×
+1.05\times
+4521.08
+4603.01
+1.02
+×
+1.02\times
+Q-4B
+27.68
+30.11
+1.09
+×
+1.09\times
+904.29
+967.06
+1.07
+×
+1.07\times
+3364.21
+2527.99
+0.75
+×
+0.75\times
+Q-8B
+27.61
+28.33
+1.03
+×
+1.03\times
+785.01
+885.33
+1.13
+×
+1.13\times
+2478.66
+1572.74
+0.63
+×
+0.63\times
+Q-14B
+17.42
+26.24
+1.51
+×
+1.51\times
+494.13
+723.44
+1.46
+×
+1.46\times
+1614.11
+909.88
+0.56
+×
+0.56\times
+然而，我们仍然实现了从微小到适度的加速，特别是随着模型大小的增长。
+[
+10
+]
+也观察到类似的结果，我们遵循了其线性实现。我们将吞吐量的增加归因于前述的内存墙：由于权重以压缩表示流式传输，我们不再受内存带宽的限制。当以批量大小128运行时，加速消失或变为减速。我们假设这是由于使用LUT进行反量化时对共享内存库的过度读取。通过将Qwen3-0.6B/1.7B与Llama-3.2-1B进行比较，进一步支持了这一假设：虽然Llama模型只有16个隐藏层，但两个Qwen3模型有28个隐藏层，这意味着每层的权重数量更少，因此同时读取的次数更少。
+表4：
+模型峰值内存使用量，以GB计（
+↓
+\downarrow
+）。我们比较原始16位bfloat模型与我们的4位Log
+b
+{}_{\text{b}}
+Quant模型，针对3种不同的批量大小。模型L指Llama-3.1/3.2，模型Q指Qwen3。
+模型
+批量大小1
+批量大小32
+批量大小128
+full
+log
+节省
+full
+log
+节省
+full
+log
+节省
+L-1B
+2.43
+1.20
+50.40%
+2.60
+1.37
+47.09%
+3.13
+1.90
+39.12%
+L-3B
+6.30
+2.43
+61.44%
+6.80
+2.93
+56.92%
+8.35
+4.48
+46.35%
+L-8B
+15.71
+5.87
+62.62%
+16.28
+6.44
+60.44%
+18.03
+8.19
+54.56%
+Q-0.6B
+1.19
+0.73
+38.64%
+1.69
+1.23
+27.13%
+3.26
+2.80
+14.11%
+Q-1.7B
+3.39
+1.54
+54.62%
+3.89
+2.04
+47.54%
+5.45
+3.60
+33.92%
+Q-4B
+7.89
+2.85
+63.90%
+8.52
+3.48
+59.14%
+10.49
+5.45
+48.04%
+Q-8B
+16.03
+6.24
+61.09%
+16.66
+6.87
+58.76%
+16.66
+8.84
+52.55%
+Q-14B
+28.88
+10.10
+65.03%
+29.58
+10.80
+63.49%
+31.75
+12.97
+59.15%
+我们的主要关注点是内存效率，Log
+b
+{}_{\text{b}}
+Quant在这方面表现出色。由于我们提供仅权重量化方法，内存节省随批量大小增加而减少，因为激活和KV缓存需要更多内存。由于未量化的嵌入层和语言建模头对内存使用产生负面影响，节省量偏离了全4位量化可能达到的最优75%，且随着模型大小增加，相对值更高。
+5
+讨论与局限性
+我们的新量化方案Log
+b
+{}_{\text{b}}
+Quant在4位精度下显示出优于非对称线性量化的基准性能，并带来与未量化模型相比从微小到适度的加速和显著的内存节省。特别值得注意的是，使用我们方法量化的Qwen3-14B显示令牌吞吐量增加了
+1.51
+×
+1.51\times
+，内存减少
+65
+%
+65\%
+至10.10 GB，平均准确率下降约6个百分点，使其成为我们实验中（从线性、对数和未量化中）可以在具有12 GB显存的常见消费级显卡（如Nvidia RTX 5070）上运行的最佳模型。
+Log
+b
+{}_{\text{b}}
+Quant在小码本中表现良好，因为高幅度离群值可以被适当表示，而不会像非对称线性方法那样在权重分布的高密度区域扭曲精度。我们的结果表明，粗粒度的张量级量化在低位宽下不一定意味着显著的性能损失，而是可以显示出与较弱压缩同样好的结果。然而，8位对数量化相对于线性方法没有优势，两种方法几乎饱和或超过基线模型性能。由于直接反量化或显著更大的LUT的开销比线性量化到int8施加了更强的约束，后者在这种情况下更可取。此外，FP8格式的量化（如今在加速器上越来越广泛可用
+[
+31
+]
+）可能解决线性Log
+b
+{}_{\text{b}}
+Quant int8方法在这种情况下的各自问题。
+Log
+b
+{}_{\text{b}}
+Quant的加速在理论上还受到权重和激活量化中基数
+b
+b
+自由选择的限制：由于基数在不同张量之间不同且为实值，直接在int8中进行乘法和特别是加法的近似变得不稳定。这与权重和激活线性量化方案形成对比，后者可以通过直接在int8中计算来实现高吞吐量。
+6
+结论与未来工作
+我们引入了Log
+b
+{}_{\text{b}}
+Quant，一种新型量化方案，并表明在粗粒度设置和低位宽精度下，它在多个基准测试中相对于非对称量化表现尤为出色。除了并非本工作主要关注的有形加速外，显著的内存节省使我们能够将具有14B参数的模型量化为在推理时适合12 GB显存，且对性能影响较小，这对于当前消费硬件的加速至关重要。
+虽然我们的结果已经展示了我们的方法在测试设置中的优势，但向更低位宽表示的泛化特别值得关注。由于我们的主要目标是减少消费级和边缘设备的内存需求，激活量化不在范围内，因为个人使用的内存节省可以忽略不计。尽管如此，将我们的方法扩展到激活和KV缓存仍然可能值得关注。或者，将Log
+b
+{}_{\text{b}}
+Quant与与我们正交的其他方法（如TurboQuant
+[
+45
+]
+）结合测试，可能进一步提高内存效率。
+参考文献
+[1]
+Ansel, J., Yang, E., He, H., Gimelshein, N., Jain, A., Voznesensky, M., Bao,
+B., Bell, P., Berard, D., Burovski, E., Chauhan, G., Chourdia, A., Constable,
+W., Desmaison, A., DeVito, Z., Ellison, E., Feng, W., Gong, J., Gschwind, M.,
+Hirsh, B., Huang, S., Kalambarkar, K., Kirsch, L., Lazos, M., Lezcano, M.,
+Liang, Y., Liang, J., Lu, Y., Luk, C.K., Maher, B., Pan, Y., Puhrsch, C.,
+Reso, M., Saroufim, M., Siraichi, M.Y., Suk, H., Zhang, S., Suo, M., Tillet,
+P., Zhao, X., Wang, E., Zhou, K., Zou, R., Wang, X., Mathews, A., Wen, W.,
+Chanan, G., Wu, P., Chintala, S.: Pytorch 2: Faster machine learning through
+dynamic python bytecode transformation and graph compilation. In: Proceedings
+of the 29th ACM International Conference on Architectural Support for
+Programming Languages and Operating Systems, Volume 2. p. 929–947. ASPLOS
+'24, Association for Computing Machinery, New York, NY, USA (2024).
+https://doi.org/10.1145/3620665.3640366,
+https://doi.org/10.1145/3620665.3640366
+[2]
+Berger, C.: Linear and logarithmic quantization approaches for efficient
+inference with deep neural networks. Tech. rep., Technical University Munich,
+Chair of Data Processing, Munich, Germany (2022)
+[3]
+Bisk, Y., Zellers, R., Bras, R.L., Gao, J., Choi, Y.: Piqa: Reasoning about
+physical commonsense in natural language (2019),
+https://arxiv.org/abs/1911.11641
+[4]
+Bohn, J., Mrozinski, F., Groh, G.: Adaptive parameter compression for language
+models. In: Findings of the Association for Computational Linguistics: NAACL
+2025. pp. 7269–7286 (2025)
+[5]
+Bondarenko, Y., Nagel, M., Blankevoort, T.: Understanding and overcoming the
+challenges of efficient transformer quantization (2021),
+https://arxiv.org/abs/2109.12948
+[6]
+Brüggemann, A., Hundt, R., Schneider, T., Suresh, A., Yalame, H.: FLUTE:
+Fast and secure lookup table evaluations (full version),
+https://eprint.iacr.org/2023/499
+, publication info: Published
+elsewhere. IEEE Security &amp; Privacy 2023
+[7]
+Cai, J., Takemoto, M., Nakajo, H.: A deep look into logarithmic quantization of
+model parameters in neural networks. In: Proceedings of the 10th
+International Conference on Advances in Information Technology (IAIT).
+pp. 1–8. ACM (2018)
+[8]
+Cheng, H., Zhang, M., Shi, J.Q.: A survey on deep neural network pruning:
+Taxonomy, comparison, analysis, and recommendations. IEEE Transactions
+on Pattern Analysis and Machine Intelligence
+46
+(12), 10558–10578
+(2024)
+[9]
+Clark, P., Cowhey, I., Etzioni, O., Khot, T., Sabharwal, A., Schoenick, C.,
+Tafjord, O.: Think you have solved question answering? try arc, the ai2
+reasoning challenge (2018),
+https://arxiv.org/abs/1803.05457
+[10]
+Dettmers, T., Lewis, M., Belkada, Y., Zettlemoyer, L.: LLM.int8(): 8-bit
+Matrix Multiplication for Transformers at Scale (2022),
+https://arxiv.org/abs/2208.07339
+[11]
+Frantar, E., Ashkboos, S., Hoefler, T., Alistarh, D.: Gptq: Accurate
+post-training quantization for generative pre-trained transformers (2023),
+https://arxiv.org/abs/2210.17323
+[12]
+Gao, L., Tow, J., Abbasi, B., Biderman, S., Black, S., DiPofi, A., Foster, C.,
+Golding, L., Hsu, J., Le Noac'h, A., Li, H., McDonell, K., Muennighoff, N.,
+Ociepa, C., Phang, J., Reynolds, L., Schoelkopf, H., Skowron, A., Sutawika,
+L., Tang, E., Thite, A., Wang, B., Wang, K., Zou, A.: The language model
+evaluation harness (07 2024). https://doi.org/10.5281/zenodo.12608602,
+https://zenodo.org/records/12608602
+[13]
+Geng, X., Liu, S., Wang, H., Han, J., Jiang, H.: Lookup table refactoring:
+Towards efficient logarithmic number system addition for large language
+models. In: 2025 Design, Automation &amp; Test in Europe Conference (DATE).
+pp. 1–7 (2025). https://doi.org/10.23919/DATE64628.2025.10993215
+[14]
+Gholami, A., Kim, S., Dong, Z., Yao, Z., Mahoney, M.W., Keutzer, K.: A survey
+of quantization methods for efficient neural network inference.
+https://doi.org/10.48550/arXiv.2103.13630,
+http://arxiv.org/abs/2103.13630
+[15]
+Gholami, A., Yao, Z., Kim, S., Hooper, C., Mahoney, M.W., Keutzer, K.: AI and
+memory wall. IEEE Micro
+44
+(3), 33–39 (2024).
+https://doi.org/10.1109/MM.2024.3373763
+[16]
+Gong, R., Liu, X., Jiang, S., Li, T., Hu, P., Lin, J., Yu, F., Yan, J.:
+Differentiable soft quantization: Bridging full-precision and low-bit neural
+networks. https://doi.org/10.48550/arXiv.1908.05033,
+http://arxiv.org/abs/1908.05033
+[17]
+Grattafiori, A., et al.: The Llama 3 Herd of Models (2024),
+https://arxiv.org/abs/2407.21783
+[18]
+Han, S., Pool, J., Tran, J., Dally, W.J.: Learning both weights and connections
+for efficient neural networks. In: Advances in Neural Information Processing
+Systems. vol. 28 (2015)
+[19]
+Hassibi, B., Stork, D.G.: Second order derivatives for network pruning:
+Optimal Brain Surgeon. In: Advances in Neural Information Processing
+Systems. vol. 5, pp. 164–171. Morgan Kaufmann (1992)
+[20]
+Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D.,
+Steinhardt, J.: Measuring massive multitask language understanding (2021),
+https://arxiv.org/abs/2009.03300
+[21]
+Hsu, Y.C., Hua, T., Chang, S., Lou, Q., Shen, Y., Jin, H.: Language model
+compression with weighted low-rank factorization. In: International
+Conference on Learning Representations (2022)
+[22]
+LeCun, Y., Denker, J., Solla, S.: Optimal brain damage. Advances in neural
+information processing systems
+2
+(1989)
+[23]
+Li, Y., Yin, R., Lee, D., Xiao, S., Panda, P.: GPTAQ: Efficient
+finetuning-free quantization for asymmetric calibration. In: International
+Conference on Machine Learning. pp. 36690–36706. PMLR (2025)
+[24]
+Lin, C.H., Gao, S., Smith, J., Patel, A., Tuli, S., Shen, Y., Jin, H., Hsu,
+Y.C.: MoDeGPT: Modular decomposition for large language model compression.
+In: International Conference on Learning Representations. vol. 2025, pp.
+101355–101390 (2025)
+[25]
+Lin, J., Tang, J., Tang, H., Yang, S., Chen, W.M., Wang, W.C., Xiao, G., Dang,
+X., Gan, C., Han, S.: Awq: Activation-aware weight quantization for llm
+compression and acceleration (2024),
+https://arxiv.org/abs/2306.00978
+[26]
+Ling, G., Wang, Z., Yan, Y., Liu, Q.: SlimGPT: Layer-wise structured pruning
+for large language models. Advances in Neural Information Processing Systems
+37
+, 107112–107137 (2024)
+[27]
+Liu, Y., Wen, J., Wang, Y., Ye, S., Zhang, L.L., Cao, T., Li, C., Yang, M.:
+VPTQ: Extreme low-bit vector post-training quantization for large language
+models. In: Proceedings of the 2024 Conference on Empirical Methods in
+Natural Language Processing. pp. 8181–8196 (2024)
+[28]
+Ma, X., Fang, G., Wang, X.: Llm-pruner: On the structural pruning of large
+language models. Advances in neural information processing systems
+36
+, 21702–21720 (2023)
+[29]
+Marcus, M.P., Santorini, B., Marcinkiewicz, M.A.: Building a large annotated
+corpus of english: The penn treebank. Computational Linguistics
+19
+(2), 313–330 (1993)
+[30]
+Merity, S., Xiong, C., Bradbury, J., Socher, R.: Pointer sentinel mixture
+models (2016),
+https://arxiv.org/abs/1609.07843
+[31]
+Micikevicius, P., Stosic, D., Burgess, N., Cornea, M., Dubey, P.,
+Grisenthwaite, R., Ha, S., Heinecke, A., Judd, P., Kamalu, J., et al.: FP8
+formats for deep learning. arXiv preprint arXiv:2209.05433 (2022)
+[32]
+Miyashita, D., Lee, E.H., Murmann, B.: Convolutional neural networks using
+logarithmic data representation. arXiv preprint arXiv:1603.01025 (2016)
+[33]
+Nagel, M., Baalen, M.v., Blankevoort, T., Welling, M.: Data-free quantization
+through weight equalization and bias correction. In: Proceedings of the
+IEEE/CVF international conference on computer vision. pp. 1325–1334 (2019)
+[34]
+Pospieszny, P., Mormul, W., Szyndler, K., Kumar, S.: ADALog: Adaptive
+unsupervised anomaly detection in logs with self-attention masked language
+model. https://doi.org/10.48550/arXiv.2505.13496,
+http://arxiv.org/abs/2505.13496
+[35]
+Przewlocka-Rus, D., Sarwar, S.S., Sumbul, H.E., Li, Y., Salvo, B.D.:
+Power-of-two quantization for low bitwidth and hardware compliant neural
+networks. https://doi.org/10.48550/arXiv.2203.05025,
+http://arxiv.org/abs/2203.05025
+[36]
+Raffel, C., Shazeer, N., Roberts, A., Lee, K., Narang, S., Matena, M., Zhou,
+Y., Li, W., Liu, P.J.: Exploring the limits of transfer learning with a
+unified text-to-text transformer. Journal of Machine Learning Research
+21
+, 140:1–140:67 (2020)
+[37]
+Shazeer, N.: GLU variants improve transformer. arXiv preprint
+arXiv:2002.05202 (2020)
+[38]
+Sun, M., Liu, Z., Bair, A., Kolter, Z.: A simple and effective pruning approach
+for large language models. In: International Conference on Learning
+Representations. vol. 2024, pp. 4942–4964 (2024)
+[39]
+Vogel, S., Liang, M., Guntoro, A., Stechele, W., Ascheid, G.: Efficient
+hardware acceleration of CNNs using logarithmic data representation with
+arbitrary log-base. In: Proceedings of the International Conference on
+Computer-Aided Design. pp. 1–8. ACM (2018). https://doi.org/10.1145/3240765.3240803,
+https://dl.acm.org/doi/10.1145/3240765.3240803
+[40]
+Weber, M., Fu, D., Anthony, Q., Oren, Y., Adams, S., Alexandrov, A., Lyu, X.,
+Nguyen, H., Yao, X., Adams, V., Athiwaratkun, B., Chalamala, R., Chen, K.,
+Ryabinin, M., Dao, T., Liang, P., Ré, C., Rish, I., Zhang, C.: RedPajama:
+an open dataset for training large language models.
+https://doi.org/10.48550/arXiv.2411.12372,
+http://arxiv.org/abs/2411.12372
+[41]
+Wolf, T., Debut, L., Sanh, V., Chaumond, J., Delangue, C., Moi, A., Cistac, P.,
+Rault, T., Louf, R., Funtowicz, M., Davison, J., Shleifer, S., von Platen,
+P., Ma, C., Jernite, Y., Plu, J., Xu, C., Le Scao, T., Gugger, S., Drame, M.,
+Lhoest, Q., Rush, A.: Transformers: State-of-the-art natural language
+processing. In: Liu, Q., Schlangen, D. (eds.) Proceedings of the 2020
+Conference on Empirical Methods in Natural Language Processing: System
+Demonstrations. pp. 38–45. Association for Computational Linguistics, Online
+(Oct 2020). https://doi.org/10.18653/v1/2020.emnlp-demos.6,
+https://aclanthology.org/2020.emnlp-demos.6/
+[42]
+Xiao, G., Lin, J., Seznec, M., Wu, H., Demouth, J., Han, S.: Smoothquant:
+Accurate and efficient post-training quantization for large language models
+(2024),
+https://arxiv.org/abs/2211.10438
+[43]
+Yang, A., et al.: Qwen3 Technical Report (2025),
+https://arxiv.org/abs/2505.09388
+[44]
+Yin, P., Lyu, J., Zhang, S., Osher, S., Qi, Y., Xin, J.: Understanding
+straight-through estimator in training activation quantized neural nets.
+arXiv preprint arXiv:1903.05662 (2019)
+[45]
+Zandieh, A., Daliri, M., Hadian, M., Mirrokni, V.: TurboQuant: Online vector
+quantization with near-optimal distortion rate. arXiv preprint
+arXiv:2504.19874 (2025)
+附录 0.A
+附加表格
+表5：
+MMLU的准确率（
+↑
+\uparrow
+）和ARC-C及PIQA的归一化准确率（
+↑
+\uparrow
+）。报告的值为BF16基线模型的值。
+模型
+MMLU
+ARC-C
+PIQA
+平均
+Llama-3.2-1B
+37.84
+37.03
+74.65
+49.84
+Llama-3.2-3B
+55.01
+46.42
+77.80
+59.74
+Llama-3.1-8B
+63.87
+54.86
+81.01
+66.58
+Qwen3-0.6B
+40.09
+33.96
+67.63
+47.23
+Qwen3-1.7B
+55.55
+43.09
+72.20
+56.95
+Qwen3-4B
+68.37
+54.01
+75.19
+65.86
+Qwen3-8B
+72.90
+56.48
+77.69
+69.11
+Qwen3-14B
+77.15
+60.15
+79.76
+72.35
+表6：
+Wikitext-2、PennTreebank和C4上的困惑度（
+↓
+\downarrow
+）。报告的值为BF16基线模型的值。
+模型
+WT2
+PTB
+C4
+平均
+Llama-3.2-1B
+10.05
+16.78
+13.87
+13.57
+Llama-3.2-3B
+7.97
+12.81
+11.25
+10.68
+Llama-3.1-8B
+6.52
+10.74
+9.52
+8.93
+Qwen3-0.6B
+22.44
+43.08
+30.25
+31.92
+Qwen3-1.7B
+18.00
+32.48
+22.83
+24.44
+Qwen3-4B
+14.64
+24.52
+20.32
+19.83
+Qwen3-8B
+10.32
+16.97
+15.56
+14.28
+Qwen3-14B
+9.16
+14.93
+13.92
+12.67
+表7：
+在RedPajama上校准进行8位量化后，MMLU的准确率（
+↑
+\uparrow
+）和ARC-C及PIQA的归一化准确率（
+↑
+\uparrow
+）。我们比较非对称线性量化与我们自己的Log
+b
+{}_{\text{b}}
+Quant方法。
+模型
+MMLU
+ARC-C
+PIQA
+平均
+lin
+log
+lin
+log
+lin
+log
+lin
+log
+Llama-3.2-1B
+34.80
+37.67
+36.01
+37.12
+74.86
+74.54
+48.56
+49.78
+Llama-3.2-3B
+54.46
+54.94
+45.99
+45.73
+77.37
+77.91
+59.27
+59.53
+Llama-3.1-8B
+62.29
+64.11
+53.24
+54.52
+80.52
+80.79
+65.35
+66.47
+表8：
+在RedPajama上校准进行8位量化后，Wikitext-2、PennTreebank和C4上的困惑度（
+↓
+\downarrow
+）。我们比较非对称线性量化与我们自己的Log
+b
+{}_{\text{b}}
+Quant方法。L指Llama-3.1/3.2。
+模型
+WT2
+PTB
+C4
+平均
+lin
+log
+lin
+log
+lin
+log
+lin
+log
+Llama-3.2-1B
+10.33
+10.12
+17.14
+16.90
+14.31
+13.95
+13.93
+13.66
+Llama-3.2-3B
+8.08
+8.00
+12.97
+12.86
+11.45
+11.29
+10.83
+10.72
+Llama-3.2-8B
+6.74
+6.55
+10.97
+10.78
+9.98
+9.58
+9.23
+8.97</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 对数量化, 语言模型, 模型压缩, 低比特量化, 消费级GPU</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
