@@ -1,0 +1,7514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS-PPO：无评论家RLHF的前缀采样PPO - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">PS-PPO：无评论家RLHF的前缀采样PPO</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-06-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2606.29758" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：PS-PPO: Prefix-Sampling PPO for Critic-Free RLHF</h4>
+            <p><strong>中文摘要：</strong> 现有无评论家RLHF方法将奖励均匀传播至所有token，导致长轨迹优化成本高昂。观察到中间前缀通常已能决定最终结果，本文提出计算高效的PS-PPO方法。它引入基于提示的截断分布，为每条轨迹采样截断点，仅对前缀进行反向传播。同时，通过重要性加权校正纠正随机截断偏差，确保期望更新与全序列更新一致。该方法在保持准确率的同时，显著降低了训练计算量和GPU内存峰值。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>PS-PPO：用于无评论家 RLHF 的前缀采样 PPO
+Doo Hwan Hwang
+Kee-Eung Kim
+摘要
+大语言模型的人类反馈强化学习（RLHF）越来越依赖于无评论家（critic-free）方法，作为演员-评论家（actor-critic）训练的实用替代方案。尽管现有的无评论家方法很简单，但它们会将轨迹级别的学习信号均匀地传播到轨迹中的所有 token 上。这要求每次 rollout 都进行全轨迹策略更新，导致长推理轨迹的优化成本高昂，尽管中间前缀通常已包含足够的信息来在很大程度上决定最终结果。
+我们提出了前缀采样近端策略优化（PS-PPO），这是一种计算高效的无评论家 RLHF 方法，利用了这种时间冗余。PS-PPO 引入了一个基于提示条件的截断分布，并为每条轨迹采样一个截断时间步。在更新阶段，PS-PPO 仅通过每条轨迹的采样前缀进行反向传播，并应用重要性加权校正，</p>
+
+<p>nd decision-making tasks, the quality of a generated response is determined not merely by linguistic fluency, but by its alignment with human preferences and task objectives
+(Radford
+et al.
+,
+2019
+; Brown
+et al.
+,
+2020
+; Anil
+et al.
+,
+2023
+; Wang
+et al.
+,
+2024
+; Jaech
+et al.
+,
+2024
+)
+. Since such objectives are difficult to encode directly in a token-level likelihood objective, Reinforcement Learning from Human Feedback (RLHF) has become a standard method for aligning model behavior with desired outcomes
+(Ouyang
+et al.
+,
+2022
+; Wang
+et al.
+,
+2024
+)
+. In practice, RLHF typically assigns a single scalar reward after a full completion is generated. This delayed feedback provides little information about which parts of a long trajectory were responsible for success or failure, making temporal credit assignment a central challenge
+(Arjona-Medina
+et al.
+,
+2019
+; Harutyunyan
+et al.
+,
+2019
+; Li
+et al.
+,
+2025
+)
+.
+Figure 1
+:
+Prefix-conditioned success rate on AIME 2024 and MATH-500 versus prefix
+progress, where prefix progress denotes the percentage of the full completion
+length. We estimate the success rate using Qwen2.5-Math-7B with 32 suffix
+rollouts per prefix. The success rate often stabilizes well before the end of
+the full completion.
+A classic remedy is to introduce a critic network to estimate token-level value functions and provide the value estimates to support policy-gradient optimization, such as Proximal Policy Optimization (PPO)
+(Schulman
+et al.
+,
+2017
+)
+. However, train</p>
+
+<p>ing a critic at LLM scale incurs substantial compute and memory overhead and is often a major source of optimization instability
+(Shao
+et al.
+,
+2024
+; Hao
+et al.
+,
+2025
+; Kazemnejad
+et al.
+,
+2025
+)
+.
+These limitations have motivated critic-free alternatives such as GRPO
+(Shao
+et al.
+,
+2024
+)
+and RLOO
+(Ahmadian
+et al.
+,
+2024
+)
+, which avoid explicit value learning by estimating advantages from multiple trajectories sampled per prompt.
+However, they commonly broadcast the reward signal uniformly across all timesteps
+(Lambert,
+2024
+)
+, requiring full-trajectory updates that lead to substantial compute cost for long reasoning traces.
+Our motivation for addressing this full-trajectory bottleneck comes from the observation that, in many reasoning tasks, intermediate prefixes already contain substantial information about the final outcome.
+For example, in step-by-step mathematical reasoning, early decisions such as the choice of decomposition or intermediate derivation often strongly constrain whether the final answer can be correct.
+Later tokens may still be useful, especially when a model revises or corrects its earlier reasoning. However, our late-recovery analysis in Appendix
+A
+suggests that such cases are not the dominant pattern in the reasoning traces we study.
+We empirically support this observation by analyzing success rates conditioned on intermediate prefixes, as shown in Figure
+1
+.
+Across tasks, prefix-conditioned success rates often saturate before the end of the comple</p>
+
+<p>tion, indicating that intermediate prefixes can be highly predictive of the final outcome.
+Building on this observation, we propose
+Prefix-Sampling Proximal Policy Optimization (PS-PPO)
+, a compute-efficient critic-free method.
+PS-PPO defines a prompt-dependent cutoff distribution of timesteps from a prefix uncertainty signal, retaining only the prefix up to the sampled cutoff during the policy gradient update.
+To correct the randomness introduced by truncation, we derive a reweighted estimator whose expectation over cutoff sampling recovers the corresponding full critic-free broadcast update.
+Our main contributions are as follows:
+•
+We propose PS-PPO, a compute-efficient critic-free method that samples a prompt-dependent cutoff and computationally truncates forward
+and
+backward computation beyond the cutoff.
+•
+We derive an inclusion-probability reweighted estimator that corrects for stochastic truncation and recovers the full broadcast update in expectation over cutoff sampling, without additional rollouts or auxiliary models.
+•
+We demonstrate that PS-PPO reduces training-time compute and peak GPU memory while maintaining accuracy relative to strong critic-free baselines on mathematical reasoning and RLHF benchmarks.
+2
+Related Work
+2.1
+Post-Training for LLM Alignment
+Post-training of pretrained LLMs is typically conducted via Supervised Fine-Tuning (SFT) or Reinforcement Learning (RL)
+(Grattafiori
+et al.
+,
+2024
+; Trung
+et al.
+,
+2024
+)
+.
+While SFT relies on imitating static d</p>
+
+<p>atasets provided by humans, RL offers a distinct advantage by optimizing for reward maximization.
+This approach reduces the dependency on extensive ground-truth demonstrations and encourages the model to explore diverse solution paths beyond the training data distribution
+(Shao
+et al.
+,
+2024
+; Jaech
+et al.
+,
+2024
+)
+.
+This capability has established a new paradigm for reasoning models, enabling them to solve complex problems through broad exploration.
+2.2
+Critic-Free Policy Optimization in LLMs
+Standard RLHF pipelines commonly employ actor–critic algorithms to optimize a policy with respect to scalar rewards produced by a reward model.
+While effective, scaling actor–critic training to large language models often
+requires substantial memory and compute, and the resulting updates can be sensitive
+to value estimation accuracy, potentially affecting training stability
+(Gao
+et al.
+,
+2024
+)
+.
+Motivated by these challenges, critic-free alternatives such as RLOO
+(Ahmadian
+et al.
+,
+2024
+)
+, GRPO
+(Shao
+et al.
+,
+2024
+)
+, Dr.GRPO
+(Liu
+et al.
+,
+2025
+)
+, and DAPO
+(Yu
+et al.
+,
+2025
+)
+have been proposed. In these methods, the parameterized value network is removed and advantages are computed from multiple samples generated for the same prompt.
+They broadcast a single trajectory-level learning signal across all tokens, which requires backpropagating through the entire completion.
+This makes the update increasingly expensive as completions grow longer, motivating token-selective policy optimiza</p>
+
+<p>tion.
+2.3
+大语言模型的 Token 选择性强化学习
+为了缓解全序列更新的低效性，最近的工作探索了 token 选择性策略优化，即仅将学习信号应用于选定的 token 子集。
+Wang</p>
+
+<p>x
+,
+o
+)
+R(x,o)
+given a prompt
+x
+x
+from a query distribution
+p
+Q
+p_{Q}
+.
+Formally,
+let
+o
+=
+[
+o
+1
+,
+…
+,
+o
+T
+]
+o=[o_{1},\ldots,o_{T}]
+represent a sequence of length
+T
+T
+,
+where each token
+o
+t
+o_{t}
+belongs to the vocabulary
+𝒱
+\mathcal{V}
+.
+We define the prefix state at timestep
+t
+t
+as
+s
+t
+=
+[
+x
+,
+o
+1
+,
+…
+,
+o
+t
+−
+1
+]
+s_{t}=[x,o_{1},\ldots,o_{t-1}]
+and
+the suffix tokens after timestep
+t
+t
+as
+o
+&gt;
+t
+=
+[
+o
+t
++
+1
+,
+…
+,
+o
+T
+]
+o_{&gt;t}=[o_{t+1},\ldots,o_{T}]
+.
+To optimize the policy
+π
+θ
+\pi_{\theta}
+,
+we adopt the standard PPO training objective:
+𝒥
+PPO
+​
+(
+θ
+)
+=
+𝔼
+x
+∼
+p
+Q
+,
+o
+∼
+π
+θ
+old
+(
+⋅
+∣
+x
+)
+\displaystyle\mathcal{J}_{\text{PPO}}(\theta)=\mathbb{E}_{\begin{subarray}{c}x\sim p_{Q},o\sim\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)\end{subarray}}
+[
+∑
+t
+=
+1
+T
+min
+⁡
+(
+ρ
+t
+​
+(
+θ
+)
+​
+A
+^
+t
+,
+clip
+​
+(
+ρ
+t
+​
+(
+θ
+)
+,
+1
+−
+ϵ
+,
+1
++
+ϵ
+)
+​
+A
+^
+t
+)
+]
+\displaystyle\left[\sum_{t=1}^{T}\min\left(\rho_{t}(\theta)\ \hat{A}_{t},\,\mathrm{clip}(\rho_{t}(\theta),1-\epsilon,1+\epsilon)\hat{A}_{t}\right)\right]
+(1)
+where
+ρ
+t
+​
+(
+θ
+)
+=
+π
+θ
+​
+(
+o
+t
+∣
+s
+t
+)
+π
+θ
+old
+​
+(
+o
+t
+∣
+s
+t
+)
+\rho_{t}(\theta)=\frac{\pi_{\theta}(o_{t}\mid s_{t})}{\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})}
+is
+the per-timestep importance weight,
+A
+^
+t
+\hat{A}_{t}
+is the estimated advantage at timestep
+t
+t
+,
+and
+ϵ
+\epsilon
+is the clipping range.
+The advantage
+A
+t
+π
+A_{t}^{\pi}
+quantifies
+the relative benefit of selecting token
+o
+t
+o_{t}
+compared to the expected reward at the current state
+s
+t
+s_{t}
+.
+It is formally defined as:
+A
+t
+π
+=
+Q
+t
+π
+−
+V
+t</p>
+
+<p>π
+,
+A_{t}^{\pi}=Q_{t}^{\pi}-V_{t}^{\pi},
+where
+Q
+t
+π
+:=
+𝔼
+π
+​
+[
+R
+∣
+s
+t
+,
+o
+t
+]
+Q_{t}^{\pi}:=\mathbb{E}_{\pi}[R\mid s_{t},o_{t}]
+is the action-value function
+and
+V
+t
+π
+:=
+𝔼
+π
+​
+[
+R
+∣
+s
+t
+]
+V_{t}^{\pi}:=\mathbb{E}_{\pi}[R\mid s_{t}]
+is the state-value function.
+In the context of RLHF,
+rather than using per-token value estimates,
+it is common to use a broadcast advantage estimator:
+A
+^
+t
+=
+R
+​
+(
+x
+,
+o
+)
+−
+b
+​
+(
+x
+)
+,
+\hat{A}_{t}\;=\;R(x,o)-b(x),
+which is shared across all timesteps within a completion
+(Shao
+et al.
+,
+2024
+)
+.
+Here, the baseline
+b
+​
+(
+x
+)
+b(x)
+is typically estimated as the mean reward
+over multiple completions sampled for the same prompt
+x
+x
+.
+While the broadcast advantage estimator assigns the same scalar weight
+A
+^
+t
+\hat{A}_{t}
+to every token in the completion
+o
+o
+, this does not imply that
+all timesteps are equally informative about the final outcome. As illustrated in
+Figure
+1
+, many trajectories become highly predictive
+before the completion ends, suggesting that full-sequence updates in
+Eq. (
+1
+) can spend substantial computation and memory on suffix
+tokens with redundant marginal learning signal. Importantly, later tokens may
+still matter in self-correcting traces; PS-PPO therefore uses stochastic
+truncation rather than deterministically discarding all suffix tokens.
+To enhance computational efficiency,
+we propose a completion truncation method based on prefix sampling.
+However, applying a fixed truncation length across all completions
+introduces signific</p>
+
+<p>ant bias;
+a fixed timestep
+t
+t
+does not ensure
+that the advantage of the discarded suffix
+o
+&gt;
+t
+o_{&gt;t}
+is truly near zero for every prompt-completion pair.
+3.2
+Unbiased Stochastic Truncation
+Cutting off completions and performing gradient
+updates only for truncated prefixes introduce bias.
+In this section,
+we introduce a reweighting scheme
+that ensures the expected update for prefixes
+matches that of a full-sequence update.
+We begin by assuming that
+the minimum prefix length
+H
+H
+required for policy optimization
+is a random variable governed by a survival function,
+which is in turn determined by a non-increasing sequence of cutoff probabilities.
+ξ
+1
+≥
+ξ
+2
+≥
+⋯
+≥
+ξ
+T
+,
+ξ
+1
+=
+1
+.
+\xi_{1}\geq\xi_{2}\geq\cdots\geq\xi_{T},\quad\xi_{1}=1.
+The quantity
+ξ
+t
+\xi_{t}
+denotes
+the probability that the
+t
+t
+-th token
+o
+t
+o_{t}
+is retained during training,
+or the probability that the effective truncation point
+H
+H
+is at least
+t
+t
+(i.e.,
+Pr
+⁡
+(
+H
+≥
+t
+|
+x
+)
+=
+ξ
+t
+\Pr\!\big(H\geq t\,\big|\,x\big)=\xi_{t}
+).
+Under this framework,
+we backpropagate gradients only through the prefix tokens
+o
+t
+o_{t}
+where
+t
+≤
+H
+t\leq H
+,
+𝔼
+x
+,
+o
+∼
+π
+θ
+,
+H
+​
+[
+∑
+t
+=
+1
+H
+A
+^
+t
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+o
+t
+|
+s
+t
+)
+]
+.
+\mathbb{E}_{x,o\sim\pi_{\theta},H}[\sum_{t=1}^{H}\hat{A}_{t}\nabla_{\theta}\log\pi_{\theta}(o_{t}|s_{t})].
+However, simply truncating the summation at
+H
+H
+results in a biased estimator of the full update.
+To construct an unbiased estimator,
+we must reweight the gradients.
+First,
+let us define the per-timestep</p>
+
+<p>policy gradient
+for completion
+o
+(
+k
+)
+o^{(k)}
+at timestep
+t
+t
+over the group
+K
+K
+assuming the use of the GRPO method:
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+≔
+A
+^
+t
+(
+k
+)
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+o
+t
+(
+k
+)
+∣
+s
+t
+(
+k
+)
+)
+.
+g_{t}^{(k)}(\theta)\;\coloneqq\;\hat{A}_{t}^{(k)}\,\nabla_{\theta}\log\pi_{\theta}\!\big(o_{t}^{(k)}\mid s_{t}^{(k)}\big).
+The full update direction for prompt
+x
+x
+is then
+G
+​
+(
+θ
+)
+≔
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+G(\theta)\;\coloneqq\;\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}g_{t}^{(k)}(\theta).
+(2)
+Given sampled cutoffs
+{
+H
+(
+k
+)
+}
+k
+=
+1
+K
+\{H^{(k)}\}_{k=1}^{K}
+, we form the truncated yet unbiased estimator
+via reweighting the gradients,
+G
+^
+​
+(
+θ
+)
+≔
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+H
+(
+k
+)
+1
+ξ
+t
+​
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+\widehat{G}(\theta)\;\coloneqq\;\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{H^{(k)}}\frac{1}{\xi_{t}}\,g_{t}^{(k)}(\theta).
+(3)
+However,
+this reweighting introduces extra variance
+(see Appendix
+B
+for the derivation).
+3.3
+Budgeted Monotone Cutoff Distribution
+Our goal is to choose a cutoff distribution
+ξ
+1
+:
+T
+\xi_{1:T}
+that minimizes the additional update variance induced by
+the importance sampling weights,
+subject to a gradient update compute budget
+B
+B
+.
+The optimization problem is formulated as:
+min
+ξ
+1
+:
+T
+⁡
+𝔼
+​
+[
+tr
+​
+(
+Cov
+H
+​
+(
+G
+^
+​
+(
+θ
+)
+∣
+x
+)
+)
+]
+\displaystyle\min_{\xi_{1:T}}\mathbb{E}\left[\mathrm{tr}\!\Big(\mathrm{Cov}_{H}\big(\widehat{G}(\theta)\mid x\big)\Big)\right]
+s.t.
+∑
+t
+=
+1
+T
+t
+​
+(
+ξ
+t
+−
+ξ
+t
++
+1
+)
+=
+B
+,
+ξ
+T
++
+1
+≔
+0
+,
+\displaystyle\text{s.t.}\quad\s</p>
+
+<p>um_{t=1}^{T}t\,\bigl(\xi_{t}-\xi_{t+1}\bigr)=B,\quad\xi_{T+1}\coloneqq 0,
+1
+≥
+ξ
+1
+≥
+⋯
+≥
+ξ
+T
+&gt;
+0
+.
+\displaystyle 1\geq\xi_{1}\geq\cdots\geq\xi_{T}&gt;0.
+The budget
+B
+B
+constrains
+the expected length of prefixes
+for which we perform gradient updates,
+∑
+t
+=
+1
+T
+t
+​
+(
+ξ
+t
+−
+ξ
+t
++
+1
+)
+\sum_{t=1}^{T}t\,\bigl(\xi_{t}-\xi_{t+1}\bigr)
+,
+where
+ξ
+T
++
+1
+≔
+0
+\xi_{T+1}\coloneqq 0
+for notational simplicity.
+For tractability, we use a timestep-wise trace surrogate of the exact cutoff-induced variance.
+The exact expansion contains cross-timestep covariance terms due to autoregressive dependence, but including them would couple the cutoff probabilities across timesteps and obscure a timestep-wise allocation of the update budget.
+We therefore retain the diagonal trace terms as a tractable surrogate, yielding the following approximation (derivation in Appendix
+C
+):
+𝔼
+​
+[
+tr
+​
+(
+Cov
+H
+​
+(
+G
+^
+​
+(
+θ
+)
+∣
+x
+)
+)
+]
+≈
+1
+K
+​
+∑
+t
+=
+1
+T
+w
+t
+θ
+​
+(
+x
+)
+​
+(
+1
+ξ
+t
+−
+1
+)
+.
+\mathbb{E}\!\left[\mathrm{tr}\!\Big(\mathrm{Cov}_{H}\big(\widehat{G}(\theta)\mid x\big)\Big)\right]\;\approx\;\frac{1}{K}\sum_{t=1}^{T}w_{t}^{\theta}(x)\Big(\frac{1}{\xi_{t}}-1\Big).
+(4)
+where
+w
+t
+θ
+​
+(
+x
+)
+w^{\theta}_{t}(x)
+is defined by
+w
+t
+θ
+​
+(
+x
+)
+\displaystyle w^{\theta}_{t}(x)
+≔
+𝔼
+[
+∥
+g
+t
+(
+θ
+)
+∥
+2
+|
+x
+]
+\displaystyle\coloneqq\mathbb{E}\!\left[\left\|g_{t}(\theta)\right\|^{2}\,\middle|\,x\right]
+=
+𝔼
+[
+A
+^
+t
+2
+∥
+∇
+θ
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+|
+x
+]
+.
+\displaystyle=\mathbb{E}\!\left[\hat{A}_{t}^{2}\,\big\|\nabla_{\theta}\log\pi_{\theta}(o_{</p>
+
+<p>t}\mid s_{t})\big\|^{2}\,\middle|\,x\right].
+Minimizing (
+4
+) with respect to
+ξ
+1
+:
+T
+\xi_{1:T}
+is equivalent to solving
+min
+ξ
+1
+:
+T
+​
+∑
+t
+=
+1
+T
+w
+t
+θ
+​
+(
+x
+)
+ξ
+t
+.
+\min_{\xi_{1:T}}\;\;\sum_{t=1}^{T}\frac{w^{\theta}_{t}(x)}{\xi_{t}}.
+(5)
+To compute Eq. (
+5
+),
+we must estimate the weights
+w
+t
+θ
+​
+(
+x
+)
+w^{\theta}_{t}(x)
+.
+However,
+w
+t
+θ
+​
+(
+x
+)
+w^{\theta}_{t}(x)
+involves the score-norm factor
+∥
+∇
+θ
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+\|\nabla_{\theta}\log\pi_{\theta}(o_{t}\mid s_{t})\|^{2}
+, and
+computing it exactly would require full backward passes,
+offsetting the compute savings from truncation.
+We therefore construct a forward-only proxy from the model’s output head.
+Forward-only proxy of
+w
+t
+θ
+​
+(
+x
+)
+w^{\theta}_{t}(x)
+.
+The score gradient
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+o
+t
+∣
+s
+t
+)
+\nabla_{\theta}\log\pi_{\theta}(o_{t}\mid s_{t})
+requires a full backpropagation pass through the entire network.
+However, for computing the cutoff probabilities, we do not need the exact score norm at every timestep.
+Rather, we need a tractable signal that captures the relative update importance of different timesteps.
+We therefore use the gradient at the output head,
+∇
+θ
+out
+log
+⁡
+π
+θ
+​
+(
+o
+t
+∣
+s
+t
+)
+\nabla_{\theta_{\mathrm{out}}}\log\pi_{\theta}(o_{t}\mid s_{t})
+,
+as a forward-computable proxy for the score-norm factor in
+w
+t
+θ
+​
+(
+x
+)
+w_{t}^{\theta}(x)
+:
+∥
+∇
+θ
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+≈
+∥
+∇
+θ
+out
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+.
+\|\nabla_{\theta}\log\pi_{\theta}(o_{t}\mid s_{t})\|^{2}\approx\|\nabla_{\theta_{\mathrm{</p>
+
+<p>out}}}\log\pi_{\theta}(o_{t}\mid s_{t})\|^{2}.
+This approximation is motivated by our empirical finding that the output-head score norm is strongly correlated with the full-parameter score norm across timesteps; the correlation analysis is reported in Appendix
+H
+.
+For a standard softmax head in the last layer,
+the norm
+∥
+∇
+θ
+out
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+\|\nabla_{\theta_{\mathrm{out}}}\log\pi_{\theta}(o_{t}\mid s_{t})\|^{2}
+has the following closed-form expression using only forward-pass activations:
+γ
+t
+(
+s
+t
+,
+o
+t
+)
+≔
+∥
+h
+t
+∥
+2
+2
+(
+1
+−
+2
+π
+θ
+old
+(
+o
+t
+∣
+s
+t
+)
++
+∥
+π
+θ
+old
+(
+⋅
+∣
+s
+t
+)
+∥
+2
+2
+)
+.
+\gamma_{t}(s_{t},o_{t})\;\coloneqq\;\|h_{t}\|_{2}^{2}\Bigl(1-2\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})+\|\pi_{\theta_{\mathrm{old}}}(\cdot\mid s_{t})\|_{2}^{2}\Bigr).
+(6)
+See Appendix
+D
+for the derivation.
+We then define the proxy-based weights as
+w
+~
+t
+(
+x
+)
+≔
+𝔼
+[
+A
+^
+t
+2
+γ
+t
+(
+s
+t
+,
+o
+t
+)
+|
+x
+]
+.
+\tilde{w}_{t}(x)\;\coloneqq\;\mathbb{E}\!\left[\hat{A}_{t}^{2}\,\gamma_{t}(s_{t},o_{t})\,\middle|\,x\right].
+Both approximations are used only to compute the cutoff probabilities
+ξ
+1
+:
+T
+\xi_{1:T}
+.
+They do not affect the unbiasedness of the truncated estimator itself.
+In critic-free methods,
+the advantage is broadcast within a completion, so
+A
+^
+t
+=
+A
+^
+=
+R
+−
+b
+​
+(
+x
+)
+\hat{A}_{t}=\hat{A}=R-b(x)
+for all
+t
+t
+in that completion.
+Using the law of total expectation over the prefix state
+s
+t
+s_{t}
+and a mean-field approximation,
+we obtain
+w
+~
+t
+(
+x
+)
+≔
+𝔼
+[
+(
+R
+−
+b
+(
+x
+)
+)
+2
+γ
+t
+(
+s
+t
+,
+o
+t</p>
+
+<p>)
+|
+x
+]
+\displaystyle\tilde{w}_{t}(x)\!\coloneqq\mathbb{E}\!\left[(R-b(x))^{2}\,\gamma_{t}(s_{t},o_{t})\,\middle|\,x\right]
+≈
+𝔼
+s
+t
+∣
+x
+[
+𝔼
+[
+(
+R
+−
+b
+(
+x
+)
+)
+2
+|
+s
+t
+]
+]
+⋅
+𝔼
+s
+t
+|
+x
+,
+o
+t
+∼
+π
+θ
+old
+(
+⋅
+∣
+s
+t
+)
+​
+[
+γ
+t
+​
+(
+s
+t
+,
+o
+t
+)
+]
+⏟
+≕
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+.
+\displaystyle\approx\!\mathbb{E}_{s_{t}\mid x}\!\left[\mathbb{E}\!\left[(R-b(x))^{2}\,\middle|\,s_{t}\right]\right]\!\cdot\!\underbrace{\mathbb{E}_{s_{t}|x,o_{t}\sim\pi_{\theta_{\mathrm{old}}}{(\cdot\mid s_{t})}}\!\left[\gamma_{t}(s_{t},o_{t})\right]}_{\eqqcolon\,\bar{\gamma}_{t}(x,t)}.
+(7)
+To estimate
+E
+s
+t
+|
+x
+​
+[
+(
+R
+−
+b
+​
+(
+x
+)
+)
+2
+|
+s
+t
+]
+E_{s_{t}|x}[(R-b(x))^{2}|s_{t}]
+,
+we consider the upper bound of reward variance
+Var
+​
+(
+R
+∣
+s
+t
+)
+\mathrm{Var}(R\mid s_{t})
+.
+This is because the baseline
+b
+​
+(
+x
+)
+b(x)
+is typically close to the expected reward
+𝔼
+​
+[
+R
+|
+s
+t
+]
+\mathbb{E}[R|s_{t}]
+, resulting in near-zero bias.
+For binary rewards, we use the following reward-uncertainty proxy:
+u
+t
+(
+x
+)
+:=
+1
+2
+−
+1
+2
+∥
+p
+(
+x
+)
+π
+¯
+G
+(
+⋅
+∣
+t
+,
+x
+)
+−
+(
+1
+−
+p
+(
+x
+)
+)
+π
+¯
+B
+(
+⋅
+∣
+t
+,
+x
+)
+∥
+1
+,
+u_{t}(x):=\frac{1}{2}-\frac{1}{2}\left\|p(x)\bar{\pi}_{G}(\cdot\mid t,x)-(1-p(x))\bar{\pi}_{B}(\cdot\mid t,x)\right\|_{1},
+where
+p
+​
+(
+x
+)
+=
+Pr
+⁡
+(
+R
+=
+1
+∣
+x
+)
+p(x)=\Pr(R=1\mid x)
+, and
+π
+¯
+G
+\bar{\pi}_{G}
+and
+π
+¯
+B
+\bar{\pi}_{B}
+denote the
+state-averaged next-token distributions over successful and unsuccessful
+rollouts, respectively. Appendix
+E
+shows that
+𝔼
+​
+[
+Var
+​
+(
+R
+∣
+S
+t
+)
+∣
+x
+]
+≤
+u
+t
+​
+(
+x
+)
+\mathbb{E}[\mathrm{Var}(R\mid S_{t})\mid x]\le</p>
+
+<p>q u_{t}(x)
+.
+Therefore,
+we use the reward uncertainty at each timestep
+t
+t
+for the advantage
+when optimizing the cutoff distribution
+ξ
+1
+:
+T
+\xi_{1:T}
+.
+Final optimization problem.
+Consequently,
+we solve the following convex optimization problem:
+arg
+⁡
+min
+ξ
+1
+:
+T
+\displaystyle\arg\min_{\xi_{1:T}}\
+∑
+t
+=
+1
+T
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+​
+u
+t
+​
+(
+x
+)
+ξ
+t
+\displaystyle\sum_{t=1}^{T}\frac{\bar{\gamma}_{t}(x,t)u_{t}(x)}{\xi_{t}}
+(8)
+s.t.
+∑
+t
+=
+1
+T
+t
+​
+(
+ξ
+t
+−
+ξ
+t
++
+1
+)
+=
+B
+,
+ξ
+T
++
+1
+≔
+0
+,
+\displaystyle\sum_{t=1}^{T}t\,\bigl(\xi_{t}-\xi_{t+1}\bigr)=B,\quad\xi_{T+1}\coloneqq 0,
+1
+≥
+ξ
+1
+≥
+⋯
+≥
+ξ
+T
+&gt;
+0
+.
+\displaystyle 1\geq\xi_{1}\geq\cdots\geq\xi_{T}&gt;0.
+The uncertainty term
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+measures the residual uncertainty of the
+terminal reward after observing the prefix state
+s
+t
+s_{t}
+. When
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+is small,
+the prefix already makes the final reward largely predictable, so the
+corresponding timestep can be sampled less frequently. Conversely, large
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+indicates that the terminal outcome remains uncertain, so skipping
+that timestep would induce larger variance. The design objective therefore
+assigns larger inclusion probabilities to timesteps with larger
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+​
+u
+t
+​
+(
+x
+)
+\bar{\gamma}_{t}(x,t)u_{t}(x)
+, while allowing predictable regions to be truncated
+more aggressively under the compute budget. This yields shorter sampled
+prefixes once the reward becomes sufficiently predictable, without changing
+the full-sequence update in expectation.
+Di</p>
+
+<p>rectly optimizing Eq. (
+8
+)
+is challenging due to the monotonicity constraint.
+To address this within this convex problem,
+we employ the Pooling Adjacent Violations (PAV) algorithm
+(Brummer and du Preez,
+2013
+)
+,
+which returns the optimal monotone solution.
+We begin by solving
+the Lagrangian relaxation of the problem Eq. (
+8
+)
+without the monotonicity constraint,
+yielding the closed-form solution:
+ξ
+t
+=
+B
+⋅
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+​
+u
+t
+​
+(
+x
+)
+∑
+j
+=
+1
+T
+γ
+¯
+j
+​
+(
+x
+,
+j
+)
+​
+u
+j
+​
+(
+x
+)
+.
+\xi_{t}=B\cdot\frac{\sqrt{\bar{\gamma}_{t}(x,t)u_{t}(x)}}{\sum_{j=1}^{T}\sqrt{\bar{\gamma}_{j}(x,j)u_{j}(x)}}.
+We then apply the PAV algorithm
+to these initial values to obtain the final monotone optimum
+ξ
+1
+:
+T
+⋆
+\xi^{\star}_{1:T}
+.
+The complete derivation and the details of the pooling procedure are provided in Appendix
+F
+.
+Using the optimized
+ξ
+1
+:
+T
+⋆
+\xi^{\star}_{1:T}
+, we independently sample a cutoff
+H
+(
+k
+)
+H^{(k)}
+for each completion
+k
+∈
+{
+1
+,
+…
+,
+K
+}
+k\in\{1,\ldots,K\}
+.
+We then construct an importance-weighted truncated update by reweighting each retained timestep by
+1
+/
+ξ
+t
+⋆
+1/\xi_{t}^{\star}
+:
+G
+^
+PS
+​
+-
+​
+PPO
+​
+(
+θ
+)
+≔
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+H
+(
+k
+)
+1
+ξ
+t
+⋆
+​
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+\widehat{G}^{\mathrm{PS\text{-}PPO}}(\theta)\;\coloneqq\;\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{H^{(k)}}\frac{1}{\xi_{t}^{\star}}\,g_{t}^{(k)}(\theta).
+(9)
+The full procedure is summarized in Algorithm
+1
+.
+Algorithm 1
+Prefix-Sampling PPO (PS-PPO)
+Require
+: policy model
+π
+θ
+\pi_{\theta}
+; prompt distribution
+p</p>
+
+<p>Q
+p_{Q}
+; reward function
+R
+​
+(
+⋅
+,
+⋅
+)
+R(\cdot,\cdot)
+;
+max training steps
+N
+N
+; old-policy refresh period
+F
+F
+; group size
+K
+K
+;
+max completion length
+T
+T
+; budget
+B
+B
+.
+1:
+Initialize policy parameters
+θ
+\theta
+, and set
+θ
+old
+←
+θ
+\theta_{\mathrm{old}}\leftarrow\theta
+.
+2:
+for
+iteration
+n
+=
+1
+n=1
+to
+N
+N
+do
+3:
+Sample a prompt
+x
+∼
+p
+Q
+x\sim p_{Q}
+.
+4:
+Sample
+K
+K
+completions
+{
+τ
+(
+i
+)
+}
+i
+=
+1
+K
+\{\tau^{(i)}\}_{i=1}^{K}
+from
+π
+θ
+old
+(
+⋅
+∣
+x
+)
+\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)
+.
+5:
+Compute terminal rewards
+{
+R
+(
+i
+)
+}
+i
+=
+1
+K
+\{R^{(i)}\}_{i=1}^{K}
+.
+6:
+Compute critic-free advantages
+{
+A
+^
+(
+i
+)
+}
+i
+=
+1
+K
+\{\hat{A}^{(i)}\}_{i=1}^{K}
+using the within-prompt baseline.
+7:
+Compute per-timestep proxies
+{
+u
+t
+​
+(
+x
+)
+,
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+}
+t
+=
+1
+T
+\{u_{t}(x),\,\bar{\gamma}_{t}(x,t)\}_{t=1}^{T}
+from
+{
+(
+τ
+(
+i
+)
+,
+R
+(
+i
+)
+)
+}
+i
+=
+1
+K
+\{(\tau^{(i)},R^{(i)})\}_{i=1}^{K}
+.
+8:
+Set cutoff weights
+w
+t
+​
+(
+x
+)
+←
+γ
+¯
+t
+​
+(
+x
+,
+t
+)
+​
+u
+t
+​
+(
+x
+)
+w_{t}(x)\leftarrow{\bar{\gamma}_{t}(x,t)u}_{t}(x)
+for
+t
+=
+1
+,
+…
+,
+T
+t=1,\dots,T
+.
+9:
+Compute monotone cutoff probabilities
+ξ
+1
+:
+T
+\xi_{1:T}
+by solving the budgeted design problem
+with constraints.
+10:
+Sample cutoffs
+{
+H
+(
+i
+)
+}
+i
+=
+1
+K
+\{H^{(i)}\}_{i=1}^{K}
+from the cutoff distribution induced by
+ξ
+1
+:
+T
+\xi_{1:T}
+.
+11:
+During the update pass, backpropagate only through tokens
+t
+≤
+H
+(
+i
+)
+t\leq H^{(i)}
+and reweight token losses by
+1
+/
+ξ
+t
+1/\xi_{t}
+.
+12:
+Update
+θ
+\theta
+using PPO with the truncated, reweighted gradient estimator in Eq. (
+9
+).
+13:
+i</p>
+
+<p>f
+n
+mod
+F
+=
+0
+n\bmod F=0
+then
+14:
+θ
+old
+←
+θ
+\theta_{\mathrm{old}}\leftarrow\theta
+.
+15:
+end
+if
+16:
+end
+for
+17:
+return
+optimized policy model
+π
+θ
+\pi_{\theta}
+.
+4
+Experiments
+We evaluate our method on a diverse set of math reasoning benchmarks. Our goal is to assess whether the proposed approach yields consistent gains over strong critic-free baselines in terms of task performance and efficiency. We further conduct a sensitivity analysis over key hyperparameters to characterize robustness.
+Experiment setup.
+For training on mathematical reasoning, we train on MATH
+(Hendrycks
+et al.
+,
+2021
+)
+, excluding Level 1 and Level 2 problems, and use Llama-3.1-8B-Instruct
+1
+1
+1
+https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+and Qwen2.5-Math-7B
+2
+2
+2
+https://huggingface.co/Qwen/Qwen2.5-Math-7B
+(Yang
+et al.
+,
+2024
+)
+as backbone models. Prompts are designed to elicit step-by-step derivations via an explicit instruction, and we optimize the policy with a binary reward based on final-answer correctness.
+We also evaluate performance on challenging benchmarks: MATH500
+(Hendrycks
+et al.
+,
+2021
+)
+, AMC 2023
+(Li
+et al.
+,
+2024
+)
+, Minerva Math
+(Lewkowycz
+et al.
+,
+2022
+)
+, CollegeMath
+(Tang
+et al.
+,
+2024
+)
+, and AIME 2024/2025
+(Art of Problem Solving,
+2026
+)
+.
+Although our main experiments focus on mathematical reasoning, PS-PPO is not tied to binary correctness rewards.
+The stochastic truncation estimator preserves the corresponding full-sequence update in expectation, so the same update pr</p>
+
+<p>inciple applies to RLHF settings with general terminal rewards.
+We therefore include continuous-reward text-generation experiments in Appendix
+G
+, where PS-PPO reduces training time and memory while maintaining competitive reward performance.
+(a)
+(b)
+(c)
+(d)
+Figure 2
+:
+Efficiency of PS-PPO: PS-PPO matches baseline performance while reducing training-time compute.
+We report reward versus wall-clock time, training time per step, peak GPU memory, and loss-applied versus backpropagated tokens.
+Here, training time denotes the time spent on the gradient-update stage (including computing
+ξ
+1
+:
+T
+\xi_{1:T}
+and the forward/backward passes), excluding rollout/generation.
+All methods use the same number of training steps with
+K
+=
+8
+K{=}8
+rollouts per prompt and are trained for 3 epochs.
+Table 1
+:
+Training-time breakdown per training step excluding rollout/generation. Values are mean
+±
+\pm
+std over training steps.
+PS-PPO substantially reduces training time per step primarily by lowering the forward/backward cost, even after accounting for the overhead of computing
+ξ
+1
+:
+T
+​
+(
+x
+)
+\xi_{1:T}(x)
+.
+Method
+Training-time breakdown (s)
+Total training time (s)
+Computing
+ξ
+1
+:
+T
+\xi_{1:T}
+Forward
+Backward
+Other
+PS-PPO (Optimized, B=128)
+0.43
+±
+0.02
+0.43\pm 0.02
+0.32
+±
+0.04
+0.32\pm 0.04
+1.01
+±
+0.14
+1.01\pm 0.14
+0.01
+±
+0.01
+0.01\pm 0.01
+1.77
+±
+0.02
+1.77\pm 0.02
+S-GRPO
+n/a
+0.82
+±
+0.07
+0.82\pm 0.07
+1.81
+±
+0.10
+1.81\pm 0.10
+0.03
+±
+0.02
+0.03\pm 0.02
+2.66
+±
+0.01
+2.66\pm 0.01
+DAPO
+n/a
+1.11
+±
+0.04
+1.11\pm</p>
+
+<p>0.04
+2.10
+±
+0.13
+2.10\pm 0.13
+0.02
+±
+0.01
+0.02\pm 0.01
+3.23
+±
+0.01
+3.23\pm 0.01
+DAPO (with forking tokens)
+n/a
+1.12
+±
+0.02
+1.12\pm 0.02
+2.12
+±
+0.11
+2.12\pm 0.11
+0.01
+±
+0.01
+0.01\pm 0.01
+3.25
+±
+0.01
+3.25\pm 0.01
+Baselines.
+We compare PS-PPO against representative critic-free RLHF baselines and methods that aim to reduce the cost of policy updates.
+We include GRPO
+(Shao
+et al.
+,
+2024
+)
+, Dr.GRPO
+(Liu
+et al.
+,
+2025
+)
+, DAPO
+(Yu
+et al.
+,
+2025
+)
+, and RLOO
+(Ahmadian
+et al.
+,
+2024
+)
+, which backpropagate through the full generated completion.
+We also compare to a fixed-prefix baseline that always backpropagates through a predetermined prefix length
+L
+L
+, as well as update-efficient baselines including DAPO with forking tokens
+(Wang
+et al.
+,
+2025
+)
+and S-GRPO
+(Lee and Tong,
+2025
+)
+.
+To isolate the effect of the cutoff distribution, we evaluate PS-PPO variants that differ only in the cutoff-sampling distribution :
+(i)
+PS-PPO (Uniform)
+, which samples the cutoff uniformly over timesteps;
+(ii)
+PS-PPO (Time Prior)
+, which sets
+ξ
+t
+=
+exp
+⁡
+(
+−
+λ
+​
+(
+t
+−
+1
+)
+)
+\xi_{t}=\exp(-\lambda(t-1))
+with
+λ
+≥
+0
+\lambda\geq 0
+controlling how strongly the cutoff favors earlier timesteps;
+(iii)
+PS-PPO (Heuristic)
+, which first computes an unconstrained sequence of cutoff probabilities
+ξ
+1
+:
+T
+{\xi}_{1:T}
+, and then enforces the required prefix monotonicity via a simple post-processing:
+ξ
+1
+=
+ξ
+1
+\xi_{1}=\xi_{1}
+and
+ξ
+t
+←
+min
+⁡
+(
+ξ
+t
+−
+1
+,
+ξ
+t
+)
+\xi_{t}\leftarrow\min(\xi_{t-1},\xi_{t})
+for
+t
+=
+2
+,
+…
+,
+T</p>
+
+<p>t=2,\ldots,T
+,
+without optimizing the monotone cutoff objective;
+(iv)
+PS-PPO (Optimized)
+, which optimizes the cutoff distribution under the prefix monotonicity and compute-budget constraints.
+Table 2
+:
+Pass@1 accuracy (%) on mathematical reasoning benchmarks. All methods use the same number of training steps and the same number of rollouts per prompt (
+K
+K
+). Under this fixed rollout, PS-PPO attains competitive accuracy relative to strong critic-free baselines with improved training-time efficiency (Fig.
+2
+, Table
+1
+). Values are averaged over three independent runs. (
+Bold
+: best,
+underlined
+: second best).
+Base model
+Method
+MATH500
+AMC23
+CollegeMath
+MinervaMath
+AIME24
+AIME25
+Llama-3.1
+8B-Instruct
+Base
+43.2
+25.0
+30.1
+25.7
+3.3
+0.0
+GRPO
+45.2
+30.0
+32.1
+27.9
+6.6
+0.0
+Dr.GRPO
+46.0
+27.5
+32.8
+28.3
+6.6
+3.3
+RLOO
+45.2
+27.5
+32.1
+26.1
+6.6
+0.0
+DAPO
+46.8
+32.5
+34.2
+29.4
+10.0
+3.3
+DAPO (with forking tokens)
+47.0
+32.5
+33.4
+29.2
+10.0
+3.3
+S-GRPO
+46.2
+30.8
+33.0
+28.6
+10.0
+3.3
+Fixed Length (
+L
+=
+512
+L{=}512
+)
+45.5
+27.5
+32.2
+26.7
+6.6
+0.0
+PS-PPO (Uniform)
+45.8
+27.8
+32.6
+27.0
+6.6
+1.1
+PS-PPO (Time-Prior)
+45.6
+27.6
+32.5
+26.9
+6.6
+1.1
+PS-PPO (Heuristic)
+45.9
+28.0
+32.7
+27.1
+6.6
+1.1
+PS-PPO (Optimized,
+B
+=
+128
+B{=}128
+)
+47.6
+32.5
+33.5
+29.2
+10.0
+3.3
+Qwen-2.5
+Math-7B
+Base
+82.5
+52.5
+21.5
+27.6
+6.6
+6.7
+GRPO
+83.9
+55.8
+23.7
+29.4
+13.3
+10.0
+Dr.GRPO
+83.5
+57.5
+23.6
+29.8
+13.3
+10.0
+RLOO
+83.6
+55.0
+22.7
+28.7
+10.0
+6.7
+DAPO
+85.2
+57.5
+24.2
+30.5
+16.7
+10.0
+DAPO (with forking tokens)
+85.1
+58.3
+25.0
+30.1
+16.7
+10.0
+S-GRPO
+84.7
+56</p>
+
+<p>.7
+22.8
+29.0
+16.7
+10.0
+Fixed Length (
+L
+=
+512
+L{=}512
+)
+83.3
+55.0
+23.4
+28.3
+10.0
+8.9
+PS-PPO (Uniform)
+83.6
+55.8
+23.7
+28.7
+13.3
+9.0
+PS-PPO (Time-Prior)
+84.6
+55.6
+23.7
+27.8
+10.0
+6.7
+PS-PPO (Heuristic)
+83.7
+56.0
+22.7
+27.9
+13.3
+10.0
+PS-PPO (optimized,
+B
+=
+128
+B{=}128
+)
+85.0
+58.5
+23.9
+30.1
+16.7
+13.3
+Table 3:
+Scaling with maximum completion length. Training time per step excludes rollout/generation and measures the update stage. Accuracy is pass@1. Avg. is averaged over MATH500, AIME24, and AIME25.
+T
+max
+T_{\max}
+Method
+Time/step
+MATH500
+AIME24
+AIME25
+Avg.
+1024
+PS-PPO
+1.77
+±
+0.02
+1.77\pm 0.02
+85.0
+16.7
+13.3
+38.3
+\mathbf{38.3}
+S-GRPO
+2.66
+±
+0.01
+2.66\pm 0.01
+84.7
+16.7
+10.0
+37.1
+DAPO
+3.23
+±
+0.01
+3.23\pm 0.01
+85.2
+16.7
+10.0
+37.3
+¯
+\underline{37.3}
+2048
+PS-PPO
+2.02
+±
+0.03
+2.02\pm 0.03
+86.2
+23.3
+16.7
+42.1
+\mathbf{42.1}
+S-GRPO
+4.03
+±
+0.03
+4.03\pm 0.03
+85.6
+20.0
+13.3
+39.6
+¯
+\underline{39.6}
+DAPO
+4.93
+±
+0.03
+4.93\pm 0.03
+86.4
+23.3
+16.7
+42.1
+\mathbf{42.1}
+4096
+PS-PPO
+2.39
+±
+0.04
+2.39\pm 0.04
+86.4
+23.3
+16.7
+42.1
+¯
+\underline{42.1}
+S-GRPO
+6.70
+±
+0.04
+6.70\pm 0.04
+85.8
+20.0
+13.3
+39.7
+DAPO
+7.78
+±
+0.04
+7.78\pm 0.04
+86.6
+23.3
+16.7
+42.2
+\mathbf{42.2}
+4.1
+Mathematical Reasoning
+Compute efficiency and performance.
+We evaluate PS-PPO on mathematical reasoning benchmarks, asking whether it can reduce
+training time (excluding rollout/generation, which is shared across methods) while matching strong critic-free baselines.
+We use a backpropagation budget of
+B
+=
+128
+B{=}128
+, where
+B
+B
+denotes the expecte</p>
+
+<p>d number of prefix tokens
+included in the gradient update.
+This setting yielded the best accuracy–training-time trade-off in our sweep, and ablations over
+B
+B
+are
+reported in Sec.
+4.2
+.
+All methods use the same rollout (group size
+K
+K
+) and the same number of training steps.
+Table
+2
+shows that PS-PPO (Optimized) achieves accuracy comparable to strong
+critic-free baselines.
+Importantly, this competitive performance is attained alongside improved computational efficiency:
+as shown in Fig.
+2
+and Table
+1
+, PS-PPO reaches high rewards faster while reducing training time and peak GPU memory usage.
+The savings primarily come from lower forward/backward cost.
+Although PS-PPO incurs additional overhead to compute the cutoff probabilities
+ξ
+1
+:
+T
+​
+(
+x
+)
+\xi_{1:T}(x)
+for truncation, this cost is outweighed by the savings from shorter backpropagated prefixes, yielding a 33%–45% reduction in training time per step relative to the baselines.
+Peak GPU memory also decreases because truncation reduces stored activations, reducing peak memory by 15%–17% relative to the non-truncated baselines.
+In contrast, masking-only baselines (S-GRPO; DAPO with forking tokens) reduce the number of loss-included tokens (i.e., tokens with non-zero loss after masking; Fig.
+2
+(d)), but do not necessarily reduce the dominant forward/backward cost because computation is still performed over the full sequence length. Accordingly, these baselines yield only modest reductions in training time per step and peak memo</p>
+
+<p>ry, whereas PS-PPO achieves larger savings by truncating the gradient-update computation itself.
+Scaling with maximum completion length.
+PS-PPO reduces update computation by backpropagating only through sampled prefixes, so its efficiency advantage is expected to become more pronounced as the maximum completion length grows.
+To test this, we vary the maximum completion length
+T
+max
+∈
+{
+1024
+,
+2048
+,
+4096
+}
+T_{\max}\in\{1024,2048,4096\}
+and compare PS-PPO with S-GRPO and DAPO under the same rollout and training-step budget.
+As shown in Table
+3
+, PS-PPO maintains accuracy comparable to DAPO while becoming increasingly faster as
+T
+max
+T_{\max}
+grows.
+At
+T
+max
+=
+4096
+T_{\max}=4096
+, PS-PPO achieves
+2.8
+×
+2.8\times
+speedup over S-GRPO and
+3.3
+×
+3.3\times
+speedup over DAPO in update-stage training time per step.
+These results show that the computational benefit of prefix sampling becomes more pronounced in the long-completion regime targeted by PS-PPO.
+Understanding the effect of cutoff strategy.
+To isolate the impact of the cutoff strategy, we compare PS-PPO variants under a fixed backpropagation budget.
+We train all models with a maximum completion length of
+T
+=
+1024
+T{=}1024
+.
+Under the uniform-cutoff strategy, the cutoff length
+H
+H
+is sampled uniformly over timesteps, yielding an expected retained prefix length of
+𝔼
+​
+[
+H
+]
+=
+T
+/
+2
+=
+512
+\mathbb{E}[H]=T/2=512
+.
+We therefore set the backpropagation budget to
+B
+=
+512
+B{=}512
+so that all strategies are compared under the same expe</p>
+
+<p>cted backpropagated length.
+Figure
+3
+plots reward versus wall-clock time.
+PS-PPO (Optimized) and PS-PPO (Heuristic) incur additional per-step overhead to compute the cutoff probabilities
+ξ
+1
+:
+T
+​
+(
+x
+)
+\xi_{1:T}(x)
+, yet they reach the reward plateau substantially earlier than the baselines.
+This indicates that the improvement is not solely due to reduced per-step cost, but to allocating the same backpropagation budget to more informative parts of each completion, improving time-to-reward.
+Since the time-prior baseline does not yield clear gains over uniform cutoff, simply favoring earlier timesteps is not sufficient for effective learning.
+In contrast, fixed-length truncation has low per-step overhead but can be misaligned with where useful learning signal occurs: for some prompts it truncates informative suffix tokens, while for others it propagates through uninformative suffix tokens, leading to inefficient updates.
+Uniform truncation exhibits the complementary issue: without guidance on which tokens to keep, some updates are cut too aggressively and discard learning signal, whereas others retain long, low-utility suffixes that increase computation with limited benefit.
+Overall, our optimized cutoff distribution offsets its modest overhead by extracting more learning signal per unit wall-clock time, resulting in faster training progress.
+(a)
+(b)
+Figure 3
+:
+Understanding the effect of cutoff strategies.
+(a) Reward versus wall-clock time under a matched backpropagation budg</p>
+
+<p>et (
+B
+=
+512
+B{=}512
+,
+T
+=
+1024
+T{=}1024
+).
+PS-PPO (Optimized) reaches the plateau earlier than alternative cutoff strategies.
+(b) Training time per step (excluding rollout/generation) with a breakdown into forward/backward, cutoff-probability (
+ξ
+\xi
+) computation, and other costs.
+Prompt-conditioned cutoffs (Optimized/Heuristic) incur additional
+ξ
+\xi
+-computation overhead, but achieve faster progress in wall-clock time.
+4.2
+Analysis on Hyperparameters
+The budget size
+B
+B
+.
+The budget
+B
+B
+controls the expected cutoff length, which directly determines how many tokens are included in the forward and backward passes during each update.
+We parameterize the cutoff distribution by
+ξ
+t
+​
+(
+x
+)
+≔
+Pr
+⁡
+(
+H
+≥
+t
+∣
+x
+)
+\xi_{t}(x)\coloneqq\Pr(H\geq t\mid x)
+, so that
+𝔼
+​
+[
+H
+∣
+x
+]
+=
+∑
+t
+=
+1
+T
+ξ
+t
+​
+(
+x
+)
+=
+B
+\mathbb{E}[H\mid x]=\sum_{t=1}^{T}\xi_{t}(x)=B
+.
+To study its effect, we sweep
+B
+∈
+{
+64
+,
+128
+,
+256
+,
+512
+}
+B\in\{64,128,256,512\}
+.
+Table
+4
+reports pass@1 on our evaluation and the training-time per step.
+We observe two coupled effects as
+B
+B
+varies. With smaller budgets, truncation becomes more aggressive, which reduces training compute but also shortens the backpropagated prefix and can remove informative parts of the trajectory from the update. At the same time, smaller
+B
+B
+increases the magnitude of the truncation correction, leading to a higher variance gradient estimator. As
+B
+B
+increases, longer prefixes are retained and the correction weakens, yielding more stable optimizat</p>
+
+<p>ion. However, beyond a moderate budget, accuracy gains saturate while training time continues to grow as more tokens participate in forward and backward computation. Overall, these results highlight
+B
+B
+as a trade-off parameter between computational savings and statistical efficiency, motivating our default choice of
+B
+=
+128
+B=128
+.
+Table 4
+:
+Effect of the update budget
+B
+B
+in PS-PPO (pass@1 accuracy, %). All runs use the same number of training steps and rollouts per step. All values are averaged over three independent runs.
+Benchmark
+Budget
+B
+B
+64
+128
+256
+512
+MATH500
+82.9
+85.0
+85.1
+85.0
+AMC23
+54.2
+58.5
+57.8
+57.5
+CollegeMath
+22.0
+23.9
+24.7
+24.2
+MinervaMath
+28.0
+30.1
+30.4
+30.1
+AIME24
+10.0
+16.7
+16.7
+16.7
+AIME25
+6.7
+13.3
+10.0
+13.3
+Avg.
+34.0
+37.9
+37.5
+37.8
+Training-time / step (sec)
+1.15
+1.77
+2.01
+2.56
+Table 5
+:
+Effect of the number of rollouts
+K
+K
+in PS-PPO (pass@1 accuracy, %).
+All runs use the same number of training steps and the same update setting (
+B
+B
+=128).
+Training time per step excludes rollout/generation.
+All values are averaged over three independent runs.
+Benchmark
+#Rollouts per step
+K
+K
+2
+4
+8
+16
+MATH500
+82.8
+84.0
+85.0
+85.2
+AMC23
+55.0
+57.5
+58.5
+58.1
+CollegeMath
+22.0
+23.0
+23.9
+24.1
+MinervaMath
+28.7
+29.8
+30.1
+30.5
+AIME24
+10.0
+13.3
+16.7
+20.0
+AIME25
+6.7
+10.0
+13.3
+13.3
+Avg.
+34.2
+36.3
+37.9
+38.5
+Training time / step (sec)
+1.14
+1.43
+1.77
+2.24
+The number of rollouts
+K
+K
+.
+We ablate the number of rollouts per prompt
+K
+∈
+{
+2
+,
+4
+,
+8
+,
+16
+}
+K\in\{2,4,8,16\}
+while keeping other</p>
+
+<p>settings fixed.
+In critic-free methods, the broadcast advantage takes the form
+A
+^
+(
+k
+)
+=
+R
+(
+k
+)
+−
+R
+¯
+\hat{A}^{(k)}=R^{(k)}-\bar{R}
+with
+R
+¯
+=
+1
+K
+​
+∑
+j
+=
+1
+K
+R
+(
+j
+)
+\bar{R}=\frac{1}{K}\sum_{j=1}^{K}R^{(j)}
+.
+When all rollouts for a prompt are either correct or incorrect,
+A
+^
+(
+k
+)
+=
+0
+\hat{A}^{(k)}=0
+for all
+k
+k
+,
+yielding no learning signal for that prompt.
+As
+K
+K
+increases, such degenerate cases may become less frequent, which can make training updates more stable.
+This effect can be more pronounced in PS-PPO, since cutoff selection relies on a per-timestep uncertainty signal.
+Specifically, we use a lightweight prompt-conditioned signal
+u
+^
+t
+​
+(
+x
+)
+\hat{u}_{t}(x)
+as an upper-bound proxy for
+Var
+​
+(
+R
+∣
+s
+t
+)
+\mathrm{Var}(R\mid s_{t})
+when constructing the cutoff distribution.
+Estimating
+u
+^
+t
+​
+(
+x
+)
+\hat{u}_{t}(x)
+requires observing reward variability among rollouts that share similar prefixes:
+with small
+K
+K
+, outcomes are often degenerate or too sparse, causing
+u
+^
+t
+​
+(
+x
+)
+\hat{u}_{t}(x)
+to be noisy or nearly flat across
+t
+t
+,
+in which case the resulting cutoff distribution tends toward a conservative, near-uniform behavior.
+As
+K
+K
+increases, mixed outcomes tend to appear more often and the estimate of
+u
+^
+t
+​
+(
+x
+)
+\hat{u}_{t}(x)
+becomes more reliable,
+which yields a more informative cutoff distribution.
+Empirically, increasing
+K
+K
+improves final performance but also increases training time per step,
+since more sampled completions induce additional training-ti</p>
+
+<p>me computation (forward/backward).
+In our main experiments, we use
+K
+=
+8
+K{=}8
+as a practical trade-off: it achieves performance comparable to
+K
+=
+16
+K{=}16
+while incurring substantially lower per-step training cost.
+5
+Conclusion
+In this paper, we presented PS-PPO (Prefix-Sampling PPO), a framework that reduces the training cost of critic-free RLHF, where policy updates typically require backpropagation through long reasoning traces. PS-PPO derives an optimized prompt-conditioned cutoff distribution by formulating its design as a convex optimization problem, which minimizes a variance surrogate of the truncated gradient estimator under a training-budget constraint. It then samples a cutoff during training and applies an inclusion-probability correction, so that the truncated update matches the full-sequence objective in expectation while requiring substantially less computation.
+Empirically, PS-PPO achieves accuracy comparable to strong critic-free baselines across mathematical reasoning benchmarks while substantially reducing training time and peak GPU memory usage. These results suggest that, in many long reasoning traces, intermediate prefixes already contain substantial information about the final outcome. By allocating update computation through stochastic prefix sampling while preserving the full-sequence update in expectation, PS-PPO offers a scalable path to aligning large language models under substantially reduced resource requirements.
+Impact Statement
+This work im</p>
+
+<p>proves the computational efficiency of RLHF for large language
+models by reducing policy-update computation and peak memory. This may make
+post-training long-reasoning models more accessible to academic and
+resource-constrained groups and reduce the hardware requirements and overall
+cost of repeated training experiments. However, more efficient post-training
+may also accelerate the development of capable generative models, which can
+produce misleading, unsafe, biased, or harmful content if trained or deployed
+without appropriate safeguards. PS-PPO is an optimization method and does not
+by itself determine the behavior or safety properties of the resulting model.
+Its broader impact therefore depends on the reward specification, training
+data, deployment context, and safety evaluations used in conjunction with the
+method.
+Acknowledgments
+This work was supported by the Institute of Information &amp; Communications Technology Planning &amp; Evaluation (IITP) grant funded by the Korea government (MSIT) (No. RS-2020-II200940, No. RS-2022-II220311, No. RS-2019-II190075, No. RS-2024-00457882, and No. RS-2024-00343989).
+References
+A. Ahmadian, C. Cremer, M. Gallé, M. Fadaee, J. Kreutzer, O. Pietquin, A. Üstün, and S. Hooker (2024)
+Back to basics: revisiting REINFORCE-style optimization for learning from human feedback in LLMs
+.
+In
+Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics
+,
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+,
+§2.2
+,
+§4
+.
+R. Anil, A. M.</p>
+
+<p>Dai, O. Firat, M. Johnson, D. Lepikhin, A. Passos, S. Shakeri, E. Taropa, P. Bailey, Z. Chen,
+et al.
+(2023)
+PaLM-2 technical report
+.
+External Links:
+2305.10403
+Cited by:
+§1
+.
+J. A. Arjona-Medina, M. Gillhofer, M. Widrich, T. Unterthiner, J. Brandstetter, and S. Hochreiter (2019)
+RUDDER: return decomposition for delayed rewards
+.
+In
+Advances in Neural Information Processing Systems (NeurIPS)
+,
+Cited by:
+§1
+.
+Art of Problem Solving (2026)
+AIME problems and solutions
+.
+Note:
+Accessed: 2026-01-04
+Cited by:
+§4
+.
+Y. Bai, A. Jones, K. Ndousse, A. Askell, A. Chen, N. DasSarma, D. Drain, S. Fort, D. Ganguli, T. Henighan,
+et al.
+(2022)
+Training a helpful and harmless assistant with reinforcement learning from human feedback
+.
+External Links:
+2204.05862
+Cited by:
+Appendix G
+.
+T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell,
+et al.
+(2020)
+Language models are few-shot learners
+.
+In
+Advances in Neural Information Processing Systems
+,
+Cited by:
+§1
+.
+N. Brummer and J. du Preez (2013)
+The PAV algorithm optimizes binary proper scoring rules
+.
+External Links:
+1304.2331
+,
+Link
+Cited by:
+§3.3
+.
+Z. Gao, J. D. Chang, W. Zhan, O. Oertell, G. Swamy, K. Brantley, T. Joachims, D. Bagnell, J. D. Lee, and W. Sun (2024)
+REBEL: reinforcement learning via regressing relative rewards
+.
+In
+Advances in Neural Information Processing Systems
+,
+Cited by:
+§2.2
+.
+A. Grattafiori, A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Letman, A.</p>
+
+<p>Mathur, A. Schelten, A. Vaughan,
+et al.
+(2024)
+The Llama 3 herd of models
+.
+External Links:
+2407.21783
+Cited by:
+§2.1
+.
+Y. Hao, L. Dong, X. Wu, S. Huang, Z. Chi, and F. Wei (2025)
+On-policy RL with optimal reward baseline
+.
+CoRR
+abs/2505.23585
+.
+External Links:
+Link
+Cited by:
+§1
+.
+A. Harutyunyan, W. Dabney, T. Mesnard, N. Heess, M. G. Azar, B. Piot, H. van Hasselt, S. Singh, G. Wayne, D. Precup, and R. Munos (2019)
+Hindsight credit assignment
+.
+In
+Advances in Neural Information Processing Systems (NeurIPS)
+,
+Cited by:
+§1
+.
+D. Hendrycks, C. Burns, S. Kadavath, A. Arora, S. Basart, E. Tang, D. Song, and J. Steinhardt (2021)
+Measuring mathematical problem solving with the MATH dataset
+.
+In
+NeurIPS Datasets and Benchmarks Track
+,
+Cited by:
+§4
+.
+A. Jaech, A. Kalai, A. Lerer, A. Richardson, A. El-Kishky, A. Low, A. Helyar, A. Madry, A. Beutel, A. Carney,
+et al.
+(2024)
+OpenAI o1 system card
+.
+OpenAI
+.
+Cited by:
+§1
+,
+§2.1
+.
+A. Kazemnejad, M. Aghajohari, E. Portelance, A. Sordoni, S. Reddy, A. Courville, and N. L. Roux (2025)
+VinePPO: refining credit assignment in RL training of LLMs
+.
+In
+Forty-second International Conference on Machine Learning
+,
+External Links:
+Link
+Cited by:
+§1
+.
+N. Lambert (2024)
+Reinforcement learning from human feedback
+.
+Note:
+Draft/online book
+Cited by:
+§1
+.
+A. Lee and H. Tong (2025)
+Token-efficient RL for LLM reasoning
+.
+External Links:
+Link
+Cited by:
+§2.3
+,
+§4
+.
+A. Lewkowycz, A. Andreassen, D. Dohan, E. Dyer, H. Michalewski, V. Ramasesh, A. Slone, C. Anil, I</p>
+
+<p>. Schlag, T. Gutman-Solo, Y. Wu, B. Neyshabur, G. Gur-Ari, and V. Misra (2022)
+Solving quantitative reasoning problems with language models
+.
+In
+Advances in Neural Information Processing Systems
+,
+Cited by:
+§4
+.
+J. Li, E. Beeching, L. Tunstall, B. Lipkin, R. Soletskyi, S. Huang, K. Rasul, L. Yu, A. Q. Jiang, Z. Shen,
+et al.
+(2024)
+NuminaMath: the largest public dataset in AI4Maths with 860k pairs of competition math problems and solutions
+.
+Cited by:
+§4
+.
+J. Li, L. Li, T. Chang, K. Kuang, L. Chen, J. Zhou, and C. Yang (2025)
+RED: unleashing token-level rewards from holistic feedback via reward redistribution
+.
+In
+Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing
+,
+Cited by:
+§1
+.
+Z. Liu, C. Chen, W. Li, P. Qi, T. Pang, C. Du, W. S. Lee, and M. Lin (2025)
+Understanding R1-Zero-like training: a critical perspective
+.
+External Links:
+2503.20783
+Cited by:
+§2.2
+,
+§4
+.
+A. L. Maas, R. E. Daly, P. T. Pham, D. Huang, A. Y. Ng, and C. Potts (2011)
+Learning word vectors for sentiment analysis
+.
+In
+Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies
+,
+Cited by:
+Appendix G
+.
+L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray,
+et al.
+(2022)
+Training language models to follow instructions with human feedback
+.
+In
+Advances in Neural Information Processing Systems
+,
+Cited by:
+§1
+,
+§3.1
+.
+A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, I.</p>
+
+<p>Sutskever,
+et al.
+(2019)
+Language models are unsupervised multitask learners
+.
+OpenAI
+.
+Cited by:
+§1
+.
+J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov (2017)
+Proximal policy optimization algorithms
+.
+External Links:
+1707.06347
+Cited by:
+§1
+.
+Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. Li, Y. Wu,
+et al.
+(2024)
+DeepSeekMath: pushing the limits of mathematical reasoning in open language models
+.
+External Links:
+2402.03300
+Cited by:
+§1
+,
+§2.1
+,
+§2.2
+,
+§3.1
+,
+§4
+.
+Y. Sun, Z. Zhao, Y. Wei, Y. Zhang, and C. Gong (2025)
+Well begun, half done: reinforcement learning with prefix optimization for LLM reasoning
+.
+arXiv preprint arXiv:2512.15274
+.
+Cited by:
+§2.3
+.
+Z. Tang, X. Zhang, B. Wang, and F. Wei (2024)
+MathScale: scaling instruction tuning for mathematical reasoning
+.
+In
+International Conference on Machine Learning
+,
+Cited by:
+§4
+.
+L. Trung, X. Zhang, Z. Jie, P. Sun, X. Jin, and H. Li (2024)
+ReFT: reasoning with reinforced fine-tuning
+.
+In
+Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics
+,
+Cited by:
+§2.1
+.
+P. Wang, L. Li, Z. Shao, R. Xu, D. Dai, Y. Li, D. Chen, Y. Wu, and Z. Sui (2024)
+Math-Shepherd: verify and reinforce LLMs step-by-step without human annotations
+.
+In
+Association for Computational Linguistics
+,
+External Links:
+Link
+Cited by:
+§1
+.
+S. Wang, L. Yu, C. Gao, C. Zheng, S. Liu, R. Lu, K. Dang, X. Chen, J. Yang, Z. Zhang, Y. Liu, A. Yang, A. Zhao, Y. Yue, S. Song, B. Yu, G. Huang, and J. Lin</p>
+
+<p>(2025)
+Beyond the 80/20 rule: high-entropy minority tokens drive effective reinforcement learning for LLM reasoning
+.
+CoRR
+abs/2506.01939
+.
+External Links:
+Link
+Cited by:
+§2.3
+,
+§4
+.
+A. Yang, B. Zhang, B. Hui, B. Gao, B. Yu, C. Li, D. Liu, J. Tu, J. Zhou, J. Lin,
+et al.
+(2024)
+Qwen2.5-Math technical report: toward mathematical expert model via self-improvement
+.
+External Links:
+2409.12122
+Cited by:
+§4
+.
+Q. Yu, Z. Zhang, R. Zhu, Y. Yuan, X. Zuo, Y. Yue, T. Fan, G. Liu, L. Liu, X. Liu, H. Lin, Z. Lin, B. Ma, G. Sheng, Y. Tong, C. Zhang, M. Zhang, W. Zhang, H. Zhu, J. Zhu, J. Chen, J. Chen, C. Wang, H. Yu, W. Dai, Y. Song, X. Wei, H. Zhou, J. Liu, W. Ma, Y. Zhang, L. Yan, M. Qiao, Y. Wu, and M. Wang (2025)
+DAPO: an open-source LLM reinforcement learning system at scale
+.
+CoRR
+abs/2503.14476
+.
+External Links:
+Link
+Cited by:
+§2.2
+,
+§4
+.
+Appendix A
+Late-Recovery Analysis
+We further examine whether final correctness often depends on information that appears only late in the completion.
+For each MATH-500 problem, we first generate a full greedy completion with a maximum generation length of 4096 tokens.
+We then take the 50% and 75% prefixes of that completion and sample 32 suffix rollouts from each prefix.
+Let
+p
+r
+p_{r}
+denote the prefix-conditioned success rate at prefix ratio
+r
+r
+.
+We report two statistics.
+The first is prefix sufficiency, defined as the fraction of problems for which
+p
+r
+≥
+0.8
+p_{r}\geq 0.8
+.
+The second is late recovery, defined as the fraction of finally correct</p>
+
+<p>completions whose prefix-conditioned success rate is still below
+0.8
+0.8
+at that prefix:
+Pr
+⁡
+(
+p
+r
+​
+&lt;
+0.8
+∣
+​
+final correct
+)
+.
+\Pr(p_{r}&lt;0.8\mid\text{final correct}).
+Table 6:
+Prefix sufficiency and late recovery on MATH-500. Each
+p
+r
+p_{r}
+is estimated from 32 suffix rollouts conditioned on the
+r
+r
+-prefix of a greedy completion.
+Model
+% problems
+p
+0.5
+≥
+0.8
+p_{0.5}\geq 0.8
+% problems
+p
+0.75
+≥
+0.8
+p_{0.75}\geq 0.8
+Late recovery @ 50%
+Pr
+⁡
+(
+p
+0.5
+​
+&lt;
+0.8
+∣
+​
+correct
+)
+\Pr(p_{0.5}&lt;0.8\mid\mathrm{correct})
+Late recovery @ 75%
+Pr
+⁡
+(
+p
+0.75
+​
+&lt;
+0.8
+∣
+​
+correct
+)
+\Pr(p_{0.75}&lt;0.8\mid\mathrm{correct})
+Qwen2.5-Math-7B
+73.4
+82.2
+16.9
+7.1
+DeepSeek-R1-Distill-Qwen-7B
+74.2
+84.4
+18.9
+8.6
+Table
+6
+shows that a large fraction of problems already have highly predictive prefixes well before the end of the completion.
+At the 75% prefix, only 7.1% of finally correct Qwen2.5-Math-7B completions and 8.6% of finally correct DeepSeek-R1-Distill-Qwen-7B completions still have
+p
+0.75
+&lt;
+0.8
+p_{0.75}&lt;0.8
+.
+Equivalently, 92.9% and 91.4% of finally correct completions already have
+p
+0.75
+≥
+0.8
+p_{0.75}\geq 0.8
+, respectively.
+These results suggest that late correction can occur, but a large fraction of finally correct completions already have highly predictive prefixes before the end of the trajectory.
+Appendix B
+Unbiasedness of the Truncated, Reweighted Estimator
+We justify that the truncated estimator in Eq. (
+9
+) preserves the
+expected (full) update under the cutoff randomness. Fix a prompt
+x
+x</p>
+
+<p>and the
+K
+K
+sampled
+trajectories, and denote by
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+g_{t}^{(k)}(\theta)
+the per-timestep gradient contribution at timestep
+t
+t
+for trajectory
+k
+k
+that would appear in the full update
+G
+​
+(
+θ
+)
+≔
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+G(\theta)\;\coloneqq\;\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}g_{t}^{(k)}(\theta).
+(10)
+Define the inclusion probability
+ξ
+t
+≔
+ℙ
+​
+(
+H
+(
+k
+)
+≥
+t
+∣
+x
+)
+∈
+(
+0
+,
+1
+]
+,
+\xi_{t}\;\coloneqq\;\mathbb{P}\!\left(H^{(k)}\geq t\mid x\right)\in(0,1],
+(11)
+and introduce the inclusion indicator
+I
+t
+(
+k
+)
+≔
+𝟏
+​
+{
+t
+≤
+H
+(
+k
+)
+}
+I_{t}^{(k)}\coloneqq\mathbf{1}\{t\leq H^{(k)}\}
+. Then the
+truncated estimator can be written as
+G
+^
+​
+(
+θ
+)
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+I
+t
+(
+k
+)
+ξ
+t
+​
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+,
+\widehat{G}(\theta)=\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}\frac{I_{t}^{(k)}}{\xi_{t}}\,g_{t}^{(k)}(\theta),
+(12)
+where we may sum to
+T
+T
+by noting that
+I
+t
+(
+k
+)
+=
+0
+I_{t}^{(k)}=0
+for
+t
+&gt;
+H
+(
+k
+)
+t&gt;H^{(k)}
+.
+By construction,
+𝔼
+​
+[
+I
+t
+(
+k
+)
+∣
+x
+]
+=
+ℙ
+​
+(
+H
+(
+k
+)
+≥
+t
+∣
+x
+)
+=
+ξ
+t
+\mathbb{E}[I_{t}^{(k)}\mid x]=\mathbb{P}(H^{(k)}\geq t\mid x)=\xi_{t}
+.
+Moreover, conditional on
+x
+x
+and the sampled trajectories,
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+g_{t}^{(k)}(\theta)
+is fixed and the
+only remaining randomness is due to the cutoff
+H
+(
+k
+)
+H^{(k)}
+.
+Therefore,
+𝔼
+​
+[
+G
+^
+​
+(
+θ
+)
+∣
+x
+,
+o
+1
+:
+k
+]
+\displaystyle\mathbb{E}\!\left[\widehat{G}(\theta)\mid x,o_{1:k}\right]
+=
+1
+K
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+𝔼
+[
+I
+t
+(
+k
+)
+ξ
+t
+g
+t
+(
+k
+)
+(
+θ
+)
+|
+x
+,
+o
+1
+:
+k
+]
+\displaystyle=\frac{1}{K}\sum_{k=1}</p>
+
+<p>^{K}\sum_{t=1}^{T}\mathbb{E}\!\left[\frac{I_{t}^{(k)}}{\xi_{t}}\,g_{t}^{(k)}(\theta)\,\middle|\,x,o_{1:k}\right]
+(13)
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+ξ
+t
+​
+𝔼
+​
+[
+I
+t
+(
+k
+)
+∣
+x
+]
+\displaystyle=\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}\frac{g_{t}^{(k)}(\theta)}{\xi_{t}}\,\mathbb{E}\!\left[I_{t}^{(k)}\mid x\right]
+(14)
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+ξ
+t
+​
+ξ
+t
+\displaystyle=\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}\frac{g_{t}^{(k)}(\theta)}{\xi_{t}}\,\xi_{t}
+(15)
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+=
+G
+​
+(
+θ
+)
+.
+\displaystyle=\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}g_{t}^{(k)}(\theta)=G(\theta).
+(16)
+Finally, taking expectation over the trajectory sampling yields
+𝔼
+​
+[
+G
+^
+​
+(
+θ
+)
+∣
+x
+]
+=
+G
+​
+(
+θ
+)
+\mathbb{E}[\widehat{G}(\theta)\mid x]=G(\theta)
+.
+Appendix C
+Derivation of Eq. (
+4
+)
+Fix a prompt
+x
+x
+and omit the dependence on
+x
+x
+in
+{
+ξ
+t
+}
+t
+=
+1
+T
+\{\xi_{t}\}_{t=1}^{T}
+for readability.
+For each completion
+k
+∈
+{
+1
+,
+…
+,
+K
+}
+k\in\{1,\ldots,K\}
+, let
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+∈
+ℝ
+d
+g_{t}^{(k)}(\theta)\in\mathbb{R}^{d}
+denote the (pre-clipping)
+PPO contribution at timestep
+t
+t
+.
+We sample an independent cutoff length
+H
+(
+k
+)
+H^{(k)}
+with survival probabilities
+ξ
+t
+≔
+Pr
+⁡
+(
+H
+(
+k
+)
+≥
+t
+∣
+x
+)
+\xi_{t}\coloneqq\Pr(H^{(k)}\geq t\mid x)
+.
+The cutoff-based (reweighted) update estimator can be written as
+G
+^
+​
+(
+θ
+)
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+𝟏
+​
+{
+H
+(
+k
+)
+≥
+t
+}
+ξ
+t
+​
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+\widehat{G}(\theta)\;=\;\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}\frac{\mathbf{1</p>
+
+<p>}\{H^{(k)}\geq t\}}{\xi_{t}}\,g_{t}^{(k)}(\theta).
+In this appendix,
+Var
+H
+(
+⋅
+∣
+x
+)
+\mathrm{Var}_{H}(\cdot\mid x)
+denotes variance over the cutoff variables
+{
+H
+(
+k
+)
+}
+k
+=
+1
+K
+\{H^{(k)}\}_{k=1}^{K}
+only (conditioning on the realized rollouts), and we measure update variability
+using the trace/diagonal surrogate
+Var
+H
+​
+(
+G
+^
+∣
+x
+)
+≡
+tr
+​
+(
+Cov
+H
+​
+(
+G
+^
+∣
+x
+)
+)
+=
+𝔼
+H
+​
+[
+‖
+G
+^
+−
+𝔼
+H
+​
+[
+G
+^
+]
+‖
+2
+∣
+x
+]
+\mathrm{Var}_{H}(\widehat{G}\mid x)\equiv\mathrm{tr}(\mathrm{Cov}_{H}(\widehat{G}\mid x))=\mathbb{E}_{H}[\|\widehat{G}-\mathbb{E}_{H}[\widehat{G}]\|^{2}\mid x]
+.
+Since
+𝔼
+H
+​
+[
+𝟏
+​
+{
+H
+(
+k
+)
+≥
+t
+}
+∣
+x
+]
+=
+ξ
+t
+\mathbb{E}_{H}[\mathbf{1}\{H^{(k)}\geq t\}\mid x]=\xi_{t}
+, we have
+𝔼
+H
+​
+[
+𝟏
+​
+{
+H
+(
+k
+)
+≥
+t
+}
+/
+ξ
+t
+∣
+x
+]
+=
+1
+\mathbb{E}_{H}[\mathbf{1}\{H^{(k)}\geq t\}/\xi_{t}\mid x]=1
+, hence
+G
+^
+​
+(
+θ
+)
+−
+𝔼
+H
+​
+[
+G
+^
+​
+(
+θ
+)
+∣
+x
+]
+=
+1
+K
+​
+∑
+k
+=
+1
+K
+∑
+t
+=
+1
+T
+(
+𝟏
+​
+{
+H
+(
+k
+)
+≥
+t
+}
+ξ
+t
+−
+1
+)
+​
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+.
+\widehat{G}(\theta)-\mathbb{E}_{H}[\widehat{G}(\theta)\mid x]=\frac{1}{K}\sum_{k=1}^{K}\sum_{t=1}^{T}\Big(\frac{\mathbf{1}\{H^{(k)}\geq t\}}{\xi_{t}}-1\Big)\,g_{t}^{(k)}(\theta).
+Because cutoffs are sampled independently across
+k
+k
+, cross-completion covariances vanish under
+Var
+H
+(
+⋅
+∣
+x
+)
+\mathrm{Var}_{H}(\cdot\mid x)
+, and thus
+Var
+H
+(
+G
+^
+(
+θ
+)
+∣
+x
+)
+=
+1
+K
+𝔼
+H
+[
+∥
+∑
+t
+=
+1
+T
+(
+𝟏
+​
+{
+H
+≥
+t
+}
+ξ
+t
+−
+1
+)
+g
+t
+(
+θ
+)
+∥
+2
+|
+x
+]
+,
+\mathrm{Var}_{H}(\widehat{G}(\theta)\mid x)=\frac{1}{K}\,\mathbb{E}_{H}\!\left[\left\|\sum_{t=1}^{T}\Big(\frac{\mathbf{1}\{H\geq t\}}{\xi_{t}}-1\Big)\,g_</p>
+
+<p>{t}(\theta)\right\|^{2}\middle|x\right],
+where
+(
+H
+,
+g
+t
+)
+(H,g_{t})
+denotes a generic completion (dropping the superscript
+k
+k
+).
+Expanding the squared norm yields diagonal terms and cross-timestep inner products; under the
+diagonal/trace surrogate we ignore the cross-timestep covariances and keep only the diagonal terms:
+Var
+H
+(
+G
+^
+(
+θ
+)
+∣
+x
+)
+≈
+1
+K
+∑
+t
+=
+1
+T
+𝔼
+H
+[
+(
+𝟏
+​
+{
+H
+≥
+t
+}
+ξ
+t
+−
+1
+)
+2
+|
+x
+]
+∥
+g
+t
+(
+θ
+)
+∥
+2
+.
+\mathrm{Var}_{H}(\widehat{G}(\theta)\mid x)\;\approx\;\frac{1}{K}\sum_{t=1}^{T}\mathbb{E}_{H}\!\left[\Big(\frac{\mathbf{1}\{H\geq t\}}{\xi_{t}}-1\Big)^{2}\middle|x\right]\big\|g_{t}(\theta)\big\|^{2}.
+For each
+t
+t
+, since
+Pr
+⁡
+(
+H
+≥
+t
+∣
+x
+)
+=
+ξ
+t
+\Pr(H\geq t\mid x)=\xi_{t}
+,
+𝔼
+H
+[
+(
+𝟏
+​
+{
+H
+≥
+t
+}
+ξ
+t
+−
+1
+)
+2
+|
+x
+]
+=
+ξ
+t
+(
+1
+ξ
+t
+−
+1
+)
+2
++
+(
+1
+−
+ξ
+t
+)
+⋅
+1
+=
+1
+ξ
+t
+−
+1
+.
+\mathbb{E}_{H}\!\left[\Big(\frac{\mathbf{1}\{H\geq t\}}{\xi_{t}}-1\Big)^{2}\middle|x\right]=\xi_{t}\Big(\frac{1}{\xi_{t}}-1\Big)^{2}+(1-\xi_{t})\cdot 1=\frac{1}{\xi_{t}}-1.
+Substituting gives
+Var
+H
+​
+(
+G
+^
+​
+(
+θ
+)
+∣
+x
+)
+≈
+1
+K
+​
+∑
+t
+=
+1
+T
+(
+1
+ξ
+t
+−
+1
+)
+​
+‖
+g
+t
+​
+(
+θ
+)
+‖
+2
+.
+\mathrm{Var}_{H}(\widehat{G}(\theta)\mid x)\;\approx\;\frac{1}{K}\sum_{t=1}^{T}\Big(\frac{1}{\xi_{t}}-1\Big)\big\|g_{t}(\theta)\big\|^{2}.
+Finally, taking expectation over rollouts conditioned on
+x
+x
+and defining
+w
+t
+​
+(
+x
+)
+≔
+𝔼
+​
+[
+‖
+g
+t
+(
+k
+)
+​
+(
+θ
+)
+‖
+2
+∣
+x
+]
+w_{t}(x)\coloneqq\mathbb{E}[\|g_{t}^{(k)}(\theta)\|^{2}\mid x]
+yields
+𝔼
+​
+[
+Var
+H
+​
+(
+G
+^
+​
+(
+θ
+)
+∣
+x
+)
+]
+≈
+1
+K
+​
+∑
+t
+=
+1
+T
+w
+t
+​
+(
+x
+)
+​
+(
+1
+ξ
+t
+−
+1
+)
+,
+\mathbb{E}\!\lef</p>
+
+<p>t[\mathrm{Var}_{H}(\widehat{G}(\theta)\mid x)\right]\;\approx\;\frac{1}{K}\sum_{t=1}^{T}w_{t}(x)\Big(\frac{1}{\xi_{t}}-1\Big),
+which is Eq. (
+4
+).
+Appendix D
+Output-Head Score Proxy
+We derive a forward-only proxy for the per-token score-norm factor that avoids additional backward passes.
+For an autoregressive LM with a softmax output head at step
+t
+t
+,
+z
+t
+=
+W
+​
+h
+t
++
+b
+,
+p
+t
+=
+softmax
+​
+(
+z
+t
+)
+,
+o
+t
+∼
+p
+t
+,
+z_{t}=Wh_{t}+b,\qquad p_{t}=\mathrm{softmax}(z_{t}),\qquad o_{t}\sim p_{t},
+where
+h
+t
+h_{t}
+is the last-layer hidden state (available from the forward pass) and
+W
+,
+b
+W,b
+are the output-head parameters.
+For the sampled token
+o
+t
+o_{t}
+, the score with respect to the output-head parameters admits a closed form:
+∇
+W
+log
+⁡
+p
+t
+​
+(
+o
+t
+)
+=
+(
+e
+o
+t
+−
+p
+t
+)
+​
+h
+t
+⊤
+,
+∇
+b
+log
+⁡
+p
+t
+​
+(
+o
+t
+)
+=
+e
+o
+t
+−
+p
+t
+.
+\nabla_{W}\log p_{t}(o_{t})=(e_{o_{t}}-p_{t})\,h_{t}^{\top},\qquad\nabla_{b}\log p_{t}(o_{t})=e_{o_{t}}-p_{t}.
+Consequently,
+‖
+∇
+W
+log
+⁡
+p
+t
+​
+(
+o
+t
+)
+‖
+F
+2
+=
+‖
+h
+t
+‖
+2
+2
+​
+‖
+e
+o
+t
+−
+p
+t
+‖
+2
+2
+,
+‖
+∇
+b
+log
+⁡
+p
+t
+​
+(
+o
+t
+)
+‖
+2
+2
+=
+‖
+e
+o
+t
+−
+p
+t
+‖
+2
+2
+,
+\big\|\nabla_{W}\log p_{t}(o_{t})\big\|_{F}^{2}=\|h_{t}\|_{2}^{2}\,\|e_{o_{t}}-p_{t}\|_{2}^{2},\qquad\big\|\nabla_{b}\log p_{t}(o_{t})\big\|_{2}^{2}=\|e_{o_{t}}-p_{t}\|_{2}^{2},
+and the probability-only term satisfies
+‖
+e
+o
+t
+−
+p
+t
+‖
+2
+2
+=
+1
+−
+2
+​
+p
+t
+​
+(
+o
+t
+)
++
+‖
+p
+t
+‖
+2
+2
+.
+\|e_{o_{t}}-p_{t}\|_{2}^{2}=1-2p_{t}(o_{t})+\|p_{t}\|_{2}^{2}.
+Thus, the output-head contribution to the score norm is determined entirely by forward-pass</p>
+
+<p>quantities
+(
+h
+t
+,
+p
+t
+)
+(h_{t},p_{t})
+.
+In the main text, we use the following proxy (corresponding to the weight-matrix contribution):
+γ
+t
+≔
+‖
+h
+t
+‖
+2
+2
+​
+(
+1
+−
+2
+​
+p
+t
+​
+(
+o
+t
+)
++
+‖
+p
+t
+‖
+2
+2
+)
+.
+\gamma_{t}\;\coloneqq\;\|h_{t}\|_{2}^{2}\Bigl(1-2p_{t}(o_{t})+\|p_{t}\|_{2}^{2}\Bigr).
+Since
+(
+W
+,
+b
+)
+(W,b)
+is a subset of all parameters, the full score norm satisfies
+∥
+∇
+θ
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+2
+2
+≥
+∥
+∇
+W
+,
+b
+log
+p
+t
+(
+o
+t
+)
+∥
+2
+2
+,
+\big\|\nabla_{\theta}\log\pi_{\theta}(o_{t}\mid s_{t})\big\|_{2}^{2}\;\geq\;\big\|\nabla_{W,b}\log p_{t}(o_{t})\big\|_{2}^{2},
+because squared norms decompose additively across parameter blocks.
+Finally, we incorporate this proxy into the timestep weights by defining
+w
+~
+t
+(
+x
+)
+≔
+𝔼
+[
+A
+^
+t
+2
+γ
+t
+|
+x
+]
+,
+\tilde{w}_{t}(x)\coloneqq\mathbb{E}\!\left[\hat{A}_{t}^{2}\,\gamma_{t}\,\middle|\,x\right],
+where the expectation is over on-policy rollouts generated by
+π
+θ
+old
+(
+⋅
+∣
+x
+)
+\pi_{\theta_{\mathrm{old}}}(\cdot\mid x)
+.
+A practical concern is that
+‖
+p
+t
+‖
+2
+2
+=
+∑
+i
+p
+t
+,
+i
+2
+\|p_{t}\|_{2}^{2}=\sum_{i}p_{t,i}^{2}
+appears to require the full vocabulary distribution.
+Let
+z
+t
+∈
+ℝ
+|
+V
+|
+z_{t}\in\mathbb{R}^{|V|}
+be the logits and define two log-sum-exp reductions:
+ℓ
+1
+≔
+log
+​
+∑
+i
+e
+z
+t
+,
+i
+,
+ℓ
+2
+≔
+log
+​
+∑
+i
+e
+2
+​
+z
+t
+,
+i
+.
+\ell_{1}\coloneqq\log\sum_{i}e^{z_{t,i}},\qquad\ell_{2}\coloneqq\log\sum_{i}e^{2z_{t,i}}.
+Then
+‖
+p
+t
+‖
+2
+2
+=
+∑
+i
+(
+e
+z
+t
+,
+i
+∑
+j
+e
+z
+t
+,
+j
+)
+2
+=
+∑
+i
+e
+2
+​
+z
+t
+,
+i
+(
+∑
+j
+e
+z
+t
+,
+j
+)
+2
+=
+exp
+⁡
+(
+ℓ
+2
+−
+2
+​
+ℓ
+1
+)
+.
+\|p_{t}\|_{2}^{2}=\sum_{i</p>
+
+<p>}\left(\frac{e^{z_{t,i}}}{\sum_{j}e^{z_{t,j}}}\right)^{2}=\frac{\sum_{i}e^{2z_{t,i}}}{\left(\sum_{j}e^{z_{t,j}}\right)^{2}}=\exp(\ell_{2}-2\ell_{1}).
+Moreover,
+p
+t
+​
+(
+o
+t
+)
+=
+exp
+⁡
+(
+z
+t
+,
+o
+t
+−
+ℓ
+1
+)
+p_{t}(o_{t})=\exp(z_{t,o_{t}}-\ell_{1})
+is already available when computing the token log-probability.
+Therefore,
+γ
+t
+\gamma_{t}
+can be computed using only forward activations (
+h
+t
+h_{t}
+) and two scalar reductions
+(
+ℓ
+1
+,
+ℓ
+2
+\ell_{1},\ell_{2}
+), without any additional backward passes.
+Appendix E
+Derivation of the Reward-Uncertainty Upper Bound
+We derive the reward-uncertainty proxy used in Eq. (
+7
+).
+Consider a binary terminal reward
+R
+∈
+{
+0
+,
+1
+}
+R\in\{0,1\}
+. For a prompt
+x
+x
+, let
+S
+t
+S_{t}
+denote the random prefix state at timestep
+t
+t
+, and define
+p
+t
+​
+(
+s
+t
+)
+≔
+Pr
+⁡
+(
+R
+=
+1
+∣
+S
+t
+=
+s
+t
+)
+,
+p
+​
+(
+x
+)
+≔
+Pr
+⁡
+(
+R
+=
+1
+∣
+x
+)
+.
+p_{t}(s_{t})\coloneqq\Pr(R=1\mid S_{t}=s_{t}),\qquad p(x)\coloneqq\Pr(R=1\mid x).
+Since
+R
+R
+is Bernoulli conditioned on
+S
+t
+=
+s
+t
+S_{t}=s_{t}
+,
+Var
+​
+(
+R
+∣
+S
+t
+=
+s
+t
+)
+=
+p
+t
+​
+(
+s
+t
+)
+​
+(
+1
+−
+p
+t
+​
+(
+s
+t
+)
+)
+≤
+min
+⁡
+{
+p
+t
+​
+(
+s
+t
+)
+,
+1
+−
+p
+t
+​
+(
+s
+t
+)
+}
+.
+\mathrm{Var}(R\mid S_{t}=s_{t})=p_{t}(s_{t})(1-p_{t}(s_{t}))\leq\min\{p_{t}(s_{t}),1-p_{t}(s_{t})\}.
+(17)
+Using
+min
+⁡
+{
+a
+,
+b
+}
+=
+1
+2
+​
+(
+a
++
+b
+−
+|
+a
+−
+b
+|
+)
+\min\{a,b\}=\frac{1}{2}(a+b-|a-b|)
+with
+a
+=
+p
+t
+​
+(
+s
+t
+)
+a=p_{t}(s_{t})
+and
+b
+=
+1
+−
+p
+t
+​
+(
+s
+t
+)
+b=1-p_{t}(s_{t})
+, we obtain
+min
+⁡
+{
+p
+t
+​
+(
+s
+t
+)
+,
+1
+−
+p
+t
+​
+(
+s
+t
+)
+}
+=
+1
+2
+−
+1
+2
+​
+|
+2
+​
+p
+t
+​
+(
+s
+t
+)
+−
+1
+|
+.
+\min\{p_{t}(s_{t}),1-p_{t}(s_{</p>
+
+<p>t})\}=\frac{1}{2}-\frac{1}{2}|2p_{t}(s_{t})-1|.
+(18)
+Taking expectation over
+S
+t
+∣
+x
+S_{t}\mid x
+gives
+𝔼
+​
+[
+Var
+​
+(
+R
+∣
+S
+t
+)
+∣
+x
+]
+≤
+1
+2
+−
+1
+2
+​
+𝔼
+​
+[
+|
+2
+​
+p
+t
+​
+(
+S
+t
+)
+−
+1
+|
+∣
+x
+]
+.
+\mathbb{E}\!\left[\mathrm{Var}(R\mid S_{t})\mid x\right]\leq\frac{1}{2}-\frac{1}{2}\mathbb{E}\!\left[|2p_{t}(S_{t})-1|\mid x\right].
+(19)
+We now rewrite the absolute-value term. Since
+2
+​
+p
+t
+​
+(
+s
+t
+)
+−
+1
+=
+Pr
+⁡
+(
+R
+=
+1
+∣
+S
+t
+=
+s
+t
+)
+−
+Pr
+⁡
+(
+R
+=
+0
+∣
+S
+t
+=
+s
+t
+)
+,
+2p_{t}(s_{t})-1=\Pr(R=1\mid S_{t}=s_{t})-\Pr(R=0\mid S_{t}=s_{t}),
+we have
+𝔼
+​
+[
+|
+2
+​
+p
+t
+​
+(
+S
+t
+)
+−
+1
+|
+∣
+x
+]
+\displaystyle\mathbb{E}\!\left[|2p_{t}(S_{t})-1|\mid x\right]
+=
+∑
+s
+t
+Pr
+⁡
+(
+s
+t
+∣
+x
+)
+​
+|
+Pr
+⁡
+(
+R
+=
+1
+∣
+s
+t
+)
+−
+Pr
+⁡
+(
+R
+=
+0
+∣
+s
+t
+)
+|
+\displaystyle=\sum_{s_{t}}\Pr(s_{t}\mid x)\left|\Pr(R=1\mid s_{t})-\Pr(R=0\mid s_{t})\right|
+=
+∑
+s
+t
+|
+Pr
+⁡
+(
+s
+t
+,
+R
+=
+1
+∣
+x
+)
+−
+Pr
+⁡
+(
+s
+t
+,
+R
+=
+0
+∣
+x
+)
+|
+.
+\displaystyle=\sum_{s_{t}}\left|\Pr(s_{t},R=1\mid x)-\Pr(s_{t},R=0\mid x)\right|.
+(20)
+Substituting Eq. (
+20
+) into
+Eq. (
+19
+) yields
+𝔼
+​
+[
+Var
+​
+(
+R
+∣
+S
+t
+)
+∣
+x
+]
+≤
+1
+2
+−
+1
+2
+​
+‖
+Pr
+⁡
+(
+S
+t
+,
+R
+=
+1
+∣
+x
+)
+−
+Pr
+⁡
+(
+S
+t
+,
+R
+=
+0
+∣
+x
+)
+‖
+1
+.
+\mathbb{E}\!\left[\mathrm{Var}(R\mid S_{t})\mid x\right]\leq\frac{1}{2}-\frac{1}{2}\left\|\Pr(S_{t},R=1\mid x)-\Pr(S_{t},R=0\mid x)\right\|_{1}.
+(21)
+The state distribution in Eq. (
+21
+) is not directly
+convenient to estimate during training. We therefore map prefix states to their
+next-token predictive distributions under the old policy. Define
+ϕ
+t
+​
+(
+s
+t
+)
+≔
+Pr
+⁡
+(
+S
+t
+=
+s
+t
+,
+R
+=
+1
+∣
+x
+)
+−
+Pr</p>
+
+<p>⁡
+(
+S
+t
+=
+s
+t
+,
+R
+=
+0
+∣
+x
+)
+.
+\phi_{t}(s_{t})\coloneqq\Pr(S_{t}=s_{t},R=1\mid x)-\Pr(S_{t}=s_{t},R=0\mid x).
+(22)
+Because
+∑
+o
+t
+∈
+𝒱
+π
+θ
+old
+​
+(
+o
+t
+∣
+s
+t
+)
+=
+1
+\sum_{o_{t}\in\mathcal{V}}\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})=1
+,
+the triangle inequality gives
+∑
+s
+t
+|
+ϕ
+t
+​
+(
+s
+t
+)
+|
+\displaystyle\sum_{s_{t}}|\phi_{t}(s_{t})|
+=
+∑
+o
+t
+∈
+𝒱
+∑
+s
+t
+|
+ϕ
+t
+​
+(
+s
+t
+)
+|
+​
+π
+θ
+old
+​
+(
+o
+t
+∣
+s
+t
+)
+\displaystyle=\sum_{o_{t}\in\mathcal{V}}\sum_{s_{t}}|\phi_{t}(s_{t})|\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})
+≥
+∑
+o
+t
+∈
+𝒱
+|
+∑
+s
+t
+ϕ
+t
+(
+s
+t
+)
+π
+θ
+old
+(
+o
+t
+∣
+s
+t
+)
+|
+.
+\displaystyle\geq\sum_{o_{t}\in\mathcal{V}}\left|\sum_{s_{t}}\phi_{t}(s_{t})\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})\right|.
+(23)
+Combining Eq. (
+21
+) and
+Eq. (
+23
+) gives the looser but token-distribution-based
+upper bound
+𝔼
+[
+Var
+(
+R
+∣
+S
+t
+)
+∣
+x
+]
+≤
+1
+2
+−
+1
+2
+∑
+o
+t
+∈
+𝒱
+|
+∑
+s
+t
+ϕ
+t
+(
+s
+t
+)
+π
+θ
+old
+(
+o
+t
+∣
+s
+t
+)
+|
+.
+\mathbb{E}\!\left[\mathrm{Var}(R\mid S_{t})\mid x\right]\leq\frac{1}{2}-\frac{1}{2}\sum_{o_{t}\in\mathcal{V}}\left|\sum_{s_{t}}\phi_{t}(s_{t})\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})\right|.
+(24)
+Next define the state-averaged next-token distributions over successful and
+unsuccessful rollouts:
+π
+¯
+G
+(
+⋅
+∣
+t
+,
+x
+)
+≔
+𝔼
+[
+π
+θ
+old
+(
+⋅
+∣
+S
+t
+)
+∣
+x
+,
+R
+=
+1
+]
+,
+\bar{\pi}_{G}(\cdot\mid t,x)\coloneqq\mathbb{E}\!\left[\pi_{\theta_{\mathrm{old}}}(\cdot\mid S_{t})\mid x,R=1\right],
+π
+¯
+B
+(
+⋅
+∣
+t
+,
+x
+)
+≔
+𝔼
+[
+π
+θ
+old
+(
+⋅
+∣
+S
+t
+)
+∣
+x
+,
+R
+=
+0
+]
+.
+\bar{\pi}_{B}(\cdot\mid t,x)\coloneqq\mathbb{E}\!\left[\pi_{\theta_{\ma</p>
+
+<p>thrm{old}}}(\cdot\mid S_{t})\mid x,R=0\right].
+Using
+Pr
+⁡
+(
+S
+t
+=
+s
+t
+,
+R
+=
+r
+∣
+x
+)
+=
+Pr
+⁡
+(
+R
+=
+r
+∣
+x
+)
+​
+Pr
+⁡
+(
+S
+t
+=
+s
+t
+∣
+x
+,
+R
+=
+r
+)
+\Pr(S_{t}=s_{t},R=r\mid x)=\Pr(R=r\mid x)\Pr(S_{t}=s_{t}\mid x,R=r)
+,
+we obtain, for each token
+o
+t
+o_{t}
+,
+∑
+s
+t
+ϕ
+t
+​
+(
+s
+t
+)
+​
+π
+θ
+old
+​
+(
+o
+t
+∣
+s
+t
+)
+\displaystyle\sum_{s_{t}}\phi_{t}(s_{t})\pi_{\theta_{\mathrm{old}}}(o_{t}\mid s_{t})
+=
+p
+​
+(
+x
+)
+​
+π
+¯
+G
+​
+(
+o
+t
+∣
+t
+,
+x
+)
+−
+(
+1
+−
+p
+​
+(
+x
+)
+)
+​
+π
+¯
+B
+​
+(
+o
+t
+∣
+t
+,
+x
+)
+.
+\displaystyle=p(x)\bar{\pi}_{G}(o_{t}\mid t,x)-(1-p(x))\bar{\pi}_{B}(o_{t}\mid t,x).
+(25)
+Substituting Eq. (
+25
+) into
+Eq. (
+24
+), we define the reward-uncertainty proxy
+u
+t
+(
+x
+)
+≔
+1
+2
+−
+1
+2
+∥
+p
+(
+x
+)
+π
+¯
+G
+(
+⋅
+∣
+t
+,
+x
+)
+−
+(
+1
+−
+p
+(
+x
+)
+)
+π
+¯
+B
+(
+⋅
+∣
+t
+,
+x
+)
+∥
+1
+,
+u_{t}(x)\coloneqq\frac{1}{2}-\frac{1}{2}\left\|p(x)\bar{\pi}_{G}(\cdot\mid t,x)-(1-p(x))\bar{\pi}_{B}(\cdot\mid t,x)\right\|_{1},
+(26)
+which satisfies
+𝔼
+​
+[
+Var
+​
+(
+R
+∣
+S
+t
+)
+∣
+x
+]
+≤
+u
+t
+​
+(
+x
+)
+.
+\mathbb{E}\!\left[\mathrm{Var}(R\mid S_{t})\mid x\right]\leq u_{t}(x).
+(27)
+In practice,
+p
+​
+(
+x
+)
+p(x)
+,
+π
+¯
+G
+\bar{\pi}_{G}
+, and
+π
+¯
+B
+\bar{\pi}_{B}
+are estimated from
+the
+K
+K
+completions sampled for the same prompt. This yields the empirical
+quantity
+u
+^
+t
+​
+(
+x
+)
+\hat{u}_{t}(x)
+, which is used as the reward-uncertainty term in the
+cutoff-design objective.
+Appendix F
+Monotone Budget Design and PAV
+We design monotone inclusion probabilities
+ξ
+1
+:
+T
+\xi_{1:T}
+under an expected-update budget
+B
+B
+:
+min
+ξ
+1
+:
+T
+​
+∑
+t
+=
+1
+T
+w
+t
+ξ
+t
+s.t.
+∑
+t
+=
+1
+T
+ξ
+t
+=
+B
+,
+1
+≥
+ξ
+1
+≥
+⋯
+≥</p>
+
+<p>ξ
+T
+&gt;
+0
+,
+\min_{\xi_{1:T}}\;\sum_{t=1}^{T}\frac{w_{t}}{\xi_{t}}\quad\text{s.t.}\quad\sum_{t=1}^{T}\xi_{t}=B,\;1\geq\xi_{1}\geq\cdots\geq\xi_{T}&gt;0,
+(28)
+where
+w
+t
+≥
+0
+w_{t}\geq 0
+is the timestep weight and
+ξ
+t
+=
+Pr
+​
+(
+t
+≤
+H
+)
+\xi_{t}=\mathrm{Pr}(t\leq H)
+.
+Unconstrained solution (ignoring monotonicity).
+First ignore the monotonicity constraints and consider
+min
+ξ
+t
+&gt;
+0
+​
+∑
+t
+=
+1
+T
+w
+t
+ξ
+t
+s.t.
+∑
+t
+=
+1
+T
+ξ
+t
+=
+B
+.
+\min_{\xi_{t}&gt;0}\;\sum_{t=1}^{T}\frac{w_{t}}{\xi_{t}}\quad\text{s.t.}\quad\sum_{t=1}^{T}\xi_{t}=B.
+(29)
+The Lagrangian is
+ℒ
+​
+(
+ξ
+,
+λ
+)
+=
+∑
+t
+=
+1
+T
+w
+t
+ξ
+t
++
+λ
+​
+(
+∑
+t
+=
+1
+T
+ξ
+t
+−
+B
+)
+.
+\mathcal{L}(\xi,\lambda)=\sum_{t=1}^{T}\frac{w_{t}}{\xi_{t}}+\lambda\Big(\sum_{t=1}^{T}\xi_{t}-B\Big).
+For any
+t
+t
+with
+ξ
+t
+&gt;
+0
+\xi_{t}&gt;0
+, the stationarity condition gives
+∂
+ℒ
+∂
+ξ
+t
+=
+−
+w
+t
+ξ
+t
+2
++
+λ
+=
+0
+⟹
+ξ
+t
+=
+w
+t
+λ
+.
+\frac{\partial\mathcal{L}}{\partial\xi_{t}}=-\frac{w_{t}}{\xi_{t}^{2}}+\lambda=0\quad\Longrightarrow\quad\xi_{t}=\sqrt{\frac{w_{t}}{\lambda}}.
+Using the budget constraint,
+∑
+t
+=
+1
+T
+w
+t
+λ
+=
+B
+⟹
+1
+λ
+=
+B
+∑
+j
+=
+1
+T
+w
+j
+,
+\sum_{t=1}^{T}\sqrt{\frac{w_{t}}{\lambda}}=B\quad\Longrightarrow\quad\frac{1}{\sqrt{\lambda}}=\frac{B}{\sum_{j=1}^{T}\sqrt{w_{j}}},
+so the closed form is
+ξ
+t
+⋆
+=
+B
+⋅
+w
+t
+∑
+j
+=
+1
+T
+w
+j
+.
+\xi_{t}^{\star}=B\cdot\frac{\sqrt{w_{t}}}{\sum_{j=1}^{T}\sqrt{w_{j}}}.
+(30)
+(If one also enforces
+ξ
+t
+≤
+1
+\xi_{t}\leq 1
+, the KKT conditions imply a prefix of saturated coordinates
+ξ
+t
+=
+1
+\xi_{t}=1
+may occur; the same derivation applies to the remaining suffix with a re</p>
+
+<p>duced budget.)
+Blockwise form under monotonicity.
+Under the monotonicity constraint
+ξ
+1
+≥
+⋯
+≥
+ξ
+T
+\xi_{1}\geq\cdots\geq\xi_{T}
+, the KKT conditions imply that the optimal
+solution is piecewise constant over contiguous blocks.
+Let
+{
+[
+i
+m
+,
+j
+m
+]
+}
+m
+=
+1
+M
+\{[i_{m},j_{m}]\}_{m=1}^{M}
+be a partition of
+{
+1
+,
+…
+,
+T
+}
+\{1,\ldots,T\}
+into contiguous intervals, and define the
+block length
+L
+m
+≔
+j
+m
+−
+i
+m
++
+1
+L_{m}\coloneqq j_{m}-i_{m}+1
+and the aggregated weight
+W
+m
+≔
+∑
+t
+=
+i
+m
+j
+m
+w
+t
+W_{m}\coloneqq\sum_{t=i_{m}}^{j_{m}}w_{t}
+.
+Restricting to blockwise-constant variables
+ξ
+t
+=
+ξ
+m
+\xi_{t}=\xi_{m}
+for
+t
+∈
+[
+i
+m
+,
+j
+m
+]
+t\in[i_{m},j_{m}]
+yields the reduced program
+min
+ξ
+1
+:
+M
+​
+∑
+m
+=
+1
+M
+W
+m
+ξ
+m
+s.t.
+∑
+m
+=
+1
+M
+L
+m
+​
+ξ
+m
+=
+B
+,
+ξ
+1
+≥
+⋯
+≥
+ξ
+M
+&gt;
+0
+.
+\min_{\xi_{1:M}}\;\sum_{m=1}^{M}\frac{W_{m}}{\xi_{m}}\quad\text{s.t.}\quad\sum_{m=1}^{M}L_{m}\xi_{m}=B,\;\xi_{1}\geq\cdots\geq\xi_{M}&gt;0.
+(31)
+Closed form for a fixed partition.
+For a
+fixed
+block partition, temporarily drop the inter-block monotonicity in
+(
+31
+) and solve
+min
+ξ
+m
+&gt;
+0
+​
+∑
+m
+=
+1
+M
+W
+m
+ξ
+m
+s.t.
+∑
+m
+=
+1
+M
+L
+m
+​
+ξ
+m
+=
+B
+.
+\min_{\xi_{m}&gt;0}\;\sum_{m=1}^{M}\frac{W_{m}}{\xi_{m}}\quad\text{s.t.}\quad\sum_{m=1}^{M}L_{m}\xi_{m}=B.
+The Lagrangian is
+ℒ
+​
+(
+ξ
+,
+λ
+)
+=
+∑
+m
+=
+1
+M
+W
+m
+ξ
+m
++
+λ
+​
+(
+∑
+m
+=
+1
+M
+L
+m
+​
+ξ
+m
+−
+B
+)
+,
+\mathcal{L}(\xi,\lambda)=\sum_{m=1}^{M}\frac{W_{m}}{\xi_{m}}+\lambda\Big(\sum_{m=1}^{M}L_{m}\xi_{m}-B\Big),
+and stationarity gives
+−
+W
+m
+ξ
+m
+2
++
+λ
+​
+L
+m
+=
+0
+⟹
+ξ
+m
+=
+W
+m
+λ
+​
+L
+m
+.
+-\frac{W_{m}}{\xi_{m}^{2}}+\lambda L_{m}=0\qu</p>
+
+<p>ad\Longrightarrow\quad\xi_{m}=\sqrt{\frac{W_{m}}{\lambda L_{m}}}.
+Imposing the budget constraint,
+∑
+m
+=
+1
+M
+L
+m
+​
+W
+m
+λ
+=
+B
+⟹
+1
+λ
+=
+B
+∑
+j
+=
+1
+M
+L
+j
+​
+W
+j
+.
+\sum_{m=1}^{M}\sqrt{\frac{L_{m}W_{m}}{\lambda}}=B\quad\Longrightarrow\quad\frac{1}{\sqrt{\lambda}}=\frac{B}{\sum_{j=1}^{M}\sqrt{L_{j}W_{j}}}.
+Therefore the blockwise optimum for the fixed partition is
+ξ
+m
+⋆
+=
+B
+⋅
+W
+m
+/
+L
+m
+∑
+j
+=
+1
+M
+L
+j
+​
+W
+j
+=
+B
+⋅
+s
+m
+∑
+j
+=
+1
+M
+L
+j
+​
+s
+j
+,
+s
+m
+≔
+W
+m
+/
+L
+m
+.
+\xi_{m}^{\star}=B\cdot\frac{\sqrt{W_{m}/L_{m}}}{\sum_{j=1}^{M}\sqrt{L_{j}W_{j}}}=B\cdot\frac{s_{m}}{\sum_{j=1}^{M}L_{j}s_{j}},\qquad s_{m}\coloneqq\sqrt{W_{m}/L_{m}}.
+(32)
+When the block scores satisfy
+s
+1
+≥
+⋯
+≥
+s
+M
+s_{1}\geq\cdots\geq s_{M}
+, this solution already obeys the monotonicity
+constraint; otherwise, PAV merges adjacent violating blocks until the scores become nonincreasing,
+yielding the globally optimal monotone solution.
+Appendix G
+Text Generation Tasks with Continuous Rewards
+We evaluate PS-PPO and baselines on text generation tasks with continuous scalar rewards produced by learned reward models.
+We use Qwen2.5-3B-Instruct
+3
+3
+3
+https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+and Llama-3.1-8B-Instruct
+4
+4
+4
+https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+as base models.
+For Positive Generation, prompts are drawn from the IMDB dataset
+(Maas
+et al.
+,
+2011
+)
+and rewards are computed using lvwerra/gpt2-imdb
+5
+5
+5
+https://huggingface.co/lvwerra/gpt2-imdb
+.
+For Helpful Assistant, prompts are drawn from HH-RLHF
+(Bai
+et a</p>
+
+<p>l.
+,
+2022
+)
+and rewards are computed using weqweasdas/RM-Gemma-2B
+6
+6
+6
+https://huggingface.co/weqweasdas/RM-Gemma-2B
+.
+To reuse the same
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+estimator under continuous rewards, we stochastically convert the scalar reward
+r
+r
+into a binary variable only for
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+estimation.
+Specifically, we map
+r
+r
+to a Bernoulli probability via a sigmoid:
+p
+=
+σ
+​
+(
+r
+)
+=
+1
+1
++
+exp
+⁡
+(
+−
+r
+)
+,
+p=\sigma(r)=\frac{1}{1+\exp(-r)},
+and sample a binary label
+y
+~
+∼
+Bernoulli
+​
+(
+p
+)
+\tilde{y}\sim\mathrm{Bernoulli}(p)
+.
+We use
+y
+~
+∈
+{
+0
+,
+1
+}
+\tilde{y}\in\{0,1\}
+only inside
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+estimation, while the policy update still uses the original
+continuous reward
+r
+r
+.
+Table 7
+:
+Results on generation tasks measured by average reward.
+All values are averaged over three independent runs. (
+Bold
+: best,
+underlined
+: second best).
+Base model
+Method
+Helpful assistant
+Positive Generation
+Avg.
+Qwen2.5-3B-Instruct
+Base
+4.08
+±
+0.06
+4.08\pm 0.06
+5.74
+±
+0.08
+5.74\pm 0.08
+4.93
+±
+0.05
+4.93\pm 0.05
+GRPO
+5.29
+±
+0.08
+5.29\pm 0.08
+7.58
+±
+0.10
+¯
+\underline{7.58\pm 0.10}
+6.43
+±
+0.07
+6.43\pm 0.07
+Dr.GRPO
+5.61
+±
+0.09
+5.61\pm 0.09
+7.14
+±
+0.11
+7.14\pm 0.11
+6.35
+±
+0.08
+6.35\pm 0.08
+RLOO
+4.89
+±
+0.07
+4.89\pm 0.07
+7.00
+±
+0.09
+7.00\pm 0.09
+5.93
+±
+0.06
+5.93\pm 0.06
+DAPO
+6.18
+±
+0.07
+\mathbf{6.18\pm 0.07}
+7.97
+±
+0.08
+\mathbf{7.97\pm 0.08}
+7.07
+±
+0.06
+\mathbf{7.07\pm 0.06}
+DAPO (w/ forking tokens)
+5.95
+±
+0.08
+5.95\pm 0.08
+7.46
+±
+0.09
+7.46\pm 0.09
+6.71
+±
+0.07
+6.71\pm 0.07
+S-GRPO
+5.11
+±
+0.10
+5</p>
+
+<p>.11\pm 0.10
+6.73
+±
+0.12
+6.73\pm 0.12
+5.90
+±
+0.08
+5.90\pm 0.08
+PS-PPO (Ours)
+6.02
+±
+0.08
+¯
+\underline{6.02\pm 0.08}
+7.42
+±
+0.09
+7.42\pm 0.09
+6.72
+±
+0.07
+¯
+\underline{6.72\pm 0.07}
+Llama-3.1-8B-Instruct
+Base
+4.71
+±
+0.05
+4.71\pm 0.05
+6.44
+±
+0.06
+6.44\pm 0.06
+5.59
+±
+0.05
+5.59\pm 0.05
+GRPO
+6.36
+±
+0.07
+6.36\pm 0.07
+8.16
+±
+0.08
+8.16\pm 0.08
+7.26
+±
+0.07
+7.26\pm 0.07
+Dr.GRPO
+6.82
+±
+0.08
+6.82\pm 0.08
+8.75
+±
+0.07
+¯
+\underline{8.75\pm 0.07}
+7.79
+±
+0.06
+7.79\pm 0.06
+RLOO
+5.94
+±
+0.06
+5.94\pm 0.06
+7.71
+±
+0.09
+7.71\pm 0.09
+6.81
+±
+0.07
+6.81\pm 0.07
+DAPO
+7.12
+±
+0.06
+\mathbf{7.12\pm 0.06}
+9.13
+±
+0.05
+\mathbf{9.13\pm 0.05}
+8.13
+±
+0.04
+\mathbf{8.13\pm 0.04}
+DAPO (w/ forking tokens)
+6.90
+±
+0.07
+6.90\pm 0.07
+8.65
+±
+0.07
+8.65\pm 0.07
+7.86
+±
+0.05
+7.86\pm 0.05
+S-GRPO
+6.14
+±
+0.07
+6.14\pm 0.07
+7.99
+±
+0.08
+7.99\pm 0.08
+7.09
+±
+0.06
+7.09\pm 0.06
+PS-PPO (Ours)
+7.00
+±
+0.06
+¯
+\underline{7.00\pm 0.06}
+8.69
+±
+0.06
+8.69\pm 0.06
+7.85
+±
+0.05
+¯
+\underline{7.85\pm 0.05}
+Table 8
+:
+Efficiency–performance trade-off on continuous-reward text generation tasks.
+Total training time and peak GPU memory are reported together with average reward.
+All values are averaged over three independent runs.
+Base model
+Method
+Total training time
+Peak GPU memory
+Avg. reward
+Qwen2.5-3B-Instruct
+PS-PPO (Ours)
+3.2
+±
+0.1
+3.2\pm 0.1
+h
+42.8
+±
+0.7
+42.8\pm 0.7
+GB
+6.72
+±
+0.07
+6.72\pm 0.07
+S-GRPO
+6.7
+±
+0.1
+6.7\pm 0.1
+h
+68.9
+±
+0.9
+68.9\pm 0.9
+GB
+5.90
+±
+0.08
+5.90\pm 0.08
+DAPO
+7.3
+±
+0.1
+7.3\pm 0.1
+h
+73.8
+±
+1.0
+73.8\pm 1.0
+GB
+7.07
+±
+0.06
+7.07\pm 0.06</p>
+
+<p>Llama-3.1-8B-Instruct
+PS-PPO (Ours)
+4.4
+±
+0.1
+4.4\pm 0.1
+h
+45.7
+±
+0.9
+45.7\pm 0.9
+GB
+7.85
+±
+0.05
+7.85\pm 0.05
+S-GRPO
+8.1
+±
+0.2
+8.1\pm 0.2
+h
+72.6
+±
+1.0
+72.6\pm 1.0
+GB
+7.09
+±
+0.06
+7.09\pm 0.06
+DAPO
+11.3
+±
+0.2
+11.3\pm 0.2
+h
+77.9
+±
+1.1
+77.9\pm 1.1
+GB
+8.13
+±
+0.04
+8.13\pm 0.04
+Tables
+7
+and
+8
+show that PS-PPO maintains competitive reward performance on continuous-reward generation tasks while reducing total training time and peak GPU memory.
+These results suggest that PS-PPO is not limited to sparse binary rewards, since the stochastic truncation estimator preserves the corresponding full-sequence update in expectation under general terminal rewards.
+Appendix H
+Output-Head Score Norm as a
+Proxy for the Full Score Norm
+Figure 4
+:
+Token-wise correlation between the output-head score norm
+∥
+∇
+θ
+out
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+\|\nabla_{\theta_{\mathrm{out}}}\log\pi_{\theta}(o_{t}\mid s_{t})\|
+(x-axis) and the full score norm
+∥
+∇
+θ
+log
+π
+θ
+(
+o
+t
+∣
+s
+t
+)
+∥
+\|\nabla_{\theta}\log\pi_{\theta}(o_{t}\mid s_{t})\|
+(y-axis) on Qwen2.5-Math-7B (log–log scale).
+We plot tokens with numerically non-negligible score norms for visual clarity.
+The strong correlation supports using the output-head term as a lightweight proxy.
+Appendix I
+Implementation Details for Training
+Training setup.
+For mathematical reasoning experiments, we trained the 7B-scale models on 8 NVIDIA A100 GPUs.
+With this configuration, training on the MATH dataset took roughly 4 hours for the 7B models and 5 hours for the 8B models.
+All</p>
+
+<p>methods were implemented on top of the Hugging Face Open-R1 codebase.
+7
+7
+7
+https://github.com/huggingface/open-r1
+The project repository is available at
+https://github.com/doohwan383/PS-PPO
+.
+Hyperparameters.
+We used a per-device batch size of 16, truncating input prompts to 1024 tokens and generating up to 1024 tokens per rollout during training.
+The learning rate was set to
+5
+×
+10
+−
+5
+5\times 10^{-5}
+, and PPO clipping used
+ϵ
+=
+0.1
+\epsilon=0.1
+.
+We trained for up to 3 epochs and sampled 8 completions per prompt during rollout.
+Unless stated otherwise, we set the cutoff budget parameter B to 128 and compute
+u
+t
+​
+(
+x
+)
+u_{t}(x)
+using a top-
+k
+k
+approximation with
+k
+=
+16
+k=16
+.
+Reward and evaluation.
+We followed the Qwen-Math prompting template and used a binary accuracy reward: a completion receives reward 1 if its final answer exactly matches the ground-truth answer, and 0 otherwise.
+For evaluation across all benchmarks, we used a maximum sequence length of 4096 tokens and reported zero-shot pass@1 accuracy.
+Metrics were computed using
+Lighteval
+8
+8
+8
+https://github.com/huggingface/lighteval
+and the official Qwen2.5-Math evaluation code.
+9
+9
+9
+https://github.com/QwenLM/Qwen2.5-Math</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 人类反馈强化学习, 无评论家方法, 前缀采样, 近端策略优化, 计算高效</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
