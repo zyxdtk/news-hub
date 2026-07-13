@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最大化GRPO信号：面向困难推理问题的自适应... - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">最大化GRPO信号：面向困难推理问题的自适应...</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-08</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.07674" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Max Out GRPO Signal: Adaptive Trace Prefix Control for Hard Reasoning Problems</h4>
+            <p><strong>中文摘要：</strong> GRPO在模型最困难的问题上因组内零奖励方差而产生零梯度，浪费前沿样本。本文提出AdaPrefix-GRPO，将参考解前缀长度作为闭环反馈控制器，在训练中动态调整前缀长度，将成功率维持在信号最大的约50%处，最后退火到零使模型独立解题。在困难数学任务上，0.6B模型准确率提升2.1倍，同时轨迹长度减半。模型越小增益越大，且方法仅需数据准备和损失掩码，训练器保持不变。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>最大化GRPO信号：
+面向困难推理问题的自适应轨迹前缀控制</p>
+
+<p>Vladislav Beliaev
+独立研究者
+belyaev.vladislav.nw@gmail.com
+thinkdense.ai</p>
+
+<p>**摘要**</p>
+
+<p>Group Relative Policy Optimization（GRPO）在模型最困难的问题上会停滞不前：当一个组中没有任何 rollout 成功时，组内相对优势消失，该问题不产生梯度，浪费了我们最想学习的前沿样本。在参考解前面添加正确的前缀可以提高成功率，使前缀长度成为调节难度的连续旋钮。现有方法仅一次性设定该旋钮；AdaPrefix-GRPO 将其转化为反馈控制器：在训练过程中，它动态调整每个问题获得多少解的前缀，将成功率维持在约 50%——即 GRPO 梯度信号最大的位置——然后逐步完全撤除辅助，使部署的模型能够独立解决问题。在困难数学任务上，在匹配训练 FLOPs 的条件下，对于 0.6B 模型，它在训练分布的留出问题上将 GRPO 的准确率提高了一倍以上（2.1×），在 Qwen3-1.7B 上达到 1.6×，在 AIME 上达到 1.7×，同时将轨迹长度大致减半。该方法仅在数据准备中实现，加上对前缀 token 的损失掩码；训练器本身保持不变。模型越小，增益越大。</p>
+
+<p>## 1 引言</p>
+
+<p>![Figure 1: 在困难数学任务上，Qwen3-1.7B 的留出 pass@1（无前缀）与累积训练 FLOPs 的关系。两种方法花费相同的总训练预算（AdaPrefix-GRPO 的一次性校准和难度探测是摊销的预处理，不计入预算）。在预算内，原始 GRPO 以全长 rollout 完成一轮数据遍历，而 AdaPrefix-GRPO 完成约 2.1 轮更短的前缀 episode。曲线为 3 个种子的平均值，在留出分割的固定 250 题子集上评估；阴影带显示 95% 题目级 bootstrap 置信区间。GRPO 在耗尽已能部分解决的问题后进入平台期；AdaPrefix-GRPO 持续提取信号。](Figure 1)</p>
+
+<p>基于可验证奖励的强化学习已成为提升大语言模型（LLM）在数学和代码等任务上推理能力的标准工具 (Guo et al., 2025; Lambert et al., 2024)。建立在策略梯度方法 (Schulman et al., 2017; Ahmadian et al., 2024) 和 RLHF (Ouyang et al., 2022) 之上，主流方案是 on-policy 的：从当前策略中采样一组 G 个 rollout，用结果奖励对每个 rollout 评分，并使用组内相对优势进行更新，如 GRPO (Shao et al., 2024)。这一方案存在结构性盲区。在一个**困难**问题上——即模型几乎从不解决的问题——所有 G 个 rollout 都失败，每个奖励都相同，组内相对优势恰好为零，该问题的梯度贡献为零 (Yu et al., 2025; Zhang et al., 2025)。模型在该问题上消耗采样算力却什么也没学到。更糟糕的是，这些往往是我们最想学习的问题：位于模型能力前沿的问题。</p>
+
+<p>常见补救方法只是绕过而非修复这一问题。过采样和动态过滤（如 DAPO (Yu et al., 2025)）丢弃退化的全对/全错组，但无法在模型没有正确 rollout 的情况下制造一个。用参考轨迹（或拒绝采样版本，STaR/RAFT 风格 (Zelikman et al., 2022; Dong et al., 2023)）的监督微调来热启动 RL 可以注入能力，但会引发熵坍缩，损害后续探索 (Chu et al., 2025; Cui et al., 2025)。一个自然的想法是暂时降低困难问题的难度使其产生信号，然后移除辅助。如果我们在解的前面添加一个正确的**前缀**并要求模型完成它，条件成功率随前缀长度（经验上近乎单调地）上升：无前缀时模型几乎什么也解不了，前缀足够长时几乎什么都能解。因此前缀长度是**难度的连续调节盘**，对于大多数可达的成功率 k/G，存在一个能达到它的前缀长度。这一观察支撑了一系列并行工作 (Setlur et al., 2026; Qu et al., 2026; Huang et al., 2025)。</p>
+
+<p>本文解决的核心问题是**应该瞄准什么成功率，以及如何达到它**，即如何在困难问题上最大化 GRPO 信号。并行方法为每个问题固定一小组前缀长度，从基础模型一次性选择，使条件基础准确率&quot;合理&quot; (Setlur et al., 2026)。我们认为这由于两个原因浪费了大部分可用信号。第一，GRPO 信号并非仅仅非零就能最大化；先前工作确立了 RL 学习信号的**中间**最优 k/G（约 50%） (Bae et al., 2025; Gao et al., 2025)（第 4.1 节）。第二，达到给定 k/G 的前缀长度是逐样本且非平稳的：随着策略在训练中改善，相同前缀产生更高的 k/G，使问题漂移出有效区间。训练开始时固定的调度无法跟踪这一变化。</p>
+
+<p>我们提出 **AdaPrefix-GRPO**，将前缀长度视为**闭环控制器**。在训练过程中，我们测量实现的批次均值 k/G，并使用求根更新（割线法或二分搜索）调整单一全局基础前缀长度，朝向目标 k/G；每个样本通过静态的难度相关偏移从基础值偏移，所有前缀退火到零，使部署的策略在测试时永远看不到前缀。该方法仅需对 RL 训练器做最小改动：前缀作为助手消息在数据管道中注入，前缀上的梯度被掩码，奖励在完整补全上计算。我们在所有方法中保持总训练算力（FLOPs）固定，因此改进不能归因于额外训练算力；一次性校准是逐模型预处理步骤，在同一模型和数据上的所有运行中摊销，不计入训练预算。</p>
+
+<p>**贡献。**</p>
+
+<p>- 我们将前缀长度构建为 GRPO 成功率 k/G 的**闭环控制器**，将不可控可观测量转化为被跟踪的设定点（全局闭环加逐样本难度偏移；第 4 节）。
+- 我们采用已确立的中间（≈50%）求解率设定点用于 RL 信号 (Bae et al., 2025; Gao et al., 2025)，并通过前缀长度使其在整个批次中可达（第 4.1 节）。
+- 我们提出 AdaPrefix-GRPO：冷启动初始化、带逐样本难度偏移的基础前缀全局闭环自适应以及退火到零，纯粹在标准 GRPO 训练器之上的数据准备中实现（第 4.2 节）。
+- 在匹配训练 FLOPs 的困难数学任务上，AdaPrefix-GRPO 相比原始 GRPO 和固定前缀基线提升了 pass@1 且未坍缩 pass@16，增益随模型缩小而增大（第 5 节）。</p>
+
+<p>## 2 相关工作</p>
+
+<p>**组内相对 RL 中的死区。** GRPO (Shao et al., 2024) 及其变体通过在一组 rollout 内中心化奖励来估计优势。当一个问题被组内全部（或无）rollout 解决时，中心化优势坍缩为零，该问题不产生梯度，即&quot;学习悬崖&quot; (Zhang et al., 2025)，DAPO 的动态过滤绕过了这一问题 (Yu et al., 2025)。经典探索补救方法（熵奖励、更宽松的裁剪、pass@k 目标）不能解决此问题且可能破坏优化稳定性 (Qu et al., 2026)。</p>
+
+<p>**前缀和提示引导的 RL。** 最接近的是 PrefixRL (Setlur et al., 2026)：它以 off-policy 正确轨迹的前缀为条件进行 on-policy RL（拒绝采样以&quot;复用&quot;先前算力），掩码前缀上的梯度，并报告从前缀到无前缀问题的反向泛化，但它为每个问题固定少量前缀长度，从基础准确率一次性选择。POPE (Qu et al., 2026) 使用产生非零奖励的**最小**前缀；Prefix-RFT (Huang et al., 2025) 在余弦调度上退火单一**全局**前缀；Scaf-/Hint-GRPO (Zhang et al., 2025; Huang et al., 2025) 提供分级提示内提示；R3 (Xi et al., 2024) 沿演示向后滑动 RL 起始状态，即前缀位置上的反向课程。这些方法将辅助视为固定或全局启发式。我们额外表明，带来增益的是闭环控制而非前缀本身（第 5.3 节）。Off-policy 方法如 LUFFY (Yan et al., 2025) 和 ReLIFT (Ma et al., 2025) 将演示用作训练目标；与 PrefixRL 一样，我们保持 on-policy 并仅使用解来种子化探索。</p>
+
+<p>**难度课程。** 按难度排序数据是经典做法 (Bengio et al., 2009; Kumar et al., 2010)，近期 RL 工作筛选中间成功率 (Bae et al., 2025; Gao et al., 2025)。我们不是选择已经处于正确难度的问题，而是将每个问题移向目标并随时间跟踪它。</p>
+
+<p>## 3 预备知识：GRPO 与死区</p>
+
+<p>对于带有参考解的问题 x 和验证器 r(x,y)∈{0,1}，GRPO 采样一组 G 个 rollout y₁,…,y_G ∼ π_θ(·|x)，并形成组内相对优势：</p>
+
+<p>A_i = r(x, y_i) - (1/G) Σ_{j=1}^{G} r(x, y_j)    (1)</p>
+
+<p>我们使用这种**未归一化**的中心化优势（不除以组标准差）。这一选择对第 4.1 节很重要：标准差归一化**不**移动设定点（正梯度总量仍在 k/G=0.5 处达峰），但它会膨胀稀有正确 rollout 的**逐样本**优势，其缩放为 √((1-p)/p)，在 p→0 时发散。未归一化形式保持良好行为的 p(1-p) 缩放，没有这种不稳定性。未归一化优势在近期实践中也与标准差归一化变体具有竞争力 (Liu et al., 2025)，因此这一偏离不会削弱基线。令 k=Σ_i r(x,y_i) 为正确 rollout 数量，经验成功率为 k/G。如果 k=0（或 k=G），所有 A_i=0，x 的梯度贡献消失。我们将 pass@G≈0 的问题集合称为**死区**：在恰好零成功概率下，无论多少采样都无法提取信号，在有限采样下接近零的比率产生可忽略的信号。在我们的困难分割上这是常见情况：原始 GRPO 在 pass@16 下仅解决约 35% 的问题，在训练部分留下大量死区；受控前缀将其中很大一部分转化为可学习问题。</p>
+
+<p>**前缀作为难度调节盘。** 给定 x 的参考解 z=(z₁,…,z_L)，比率为 ρ∈[0,1] 的**前缀**为 z_{1:⌈ρL⌉}，作为部分答案前置于提示，模型必须继续。条件成功率 κ(ρ)=𝔼[r(x,y) | y∼π(·|x, z_{1:ρL})] 在经验上对 ρ 近似单调（图 2a），其中 κ(0) 为无条件比率，κ(1)→1；较长的、部分偏离分布的前缀偶尔无法提供帮助，我们报告了这一违规率（第 5.4 节）。我们不要求严格单调性：括号（二分搜索）更新只需 κ 在 [ρ⁻, ρ⁺] 内穿过 τ 一次，并容忍局部非单调性，且在割线步条件不良时作为后备。对于任何可达目标 τ∈(κ(0),1)，存在 ρ⋆ 使 κ(ρ⋆)=τ；对于简单问题 κ(0)&gt;τ 已经成立，控制器直接设 ρ=0。前缀 token 上的梯度被掩码；奖励在完整（前缀+生成）序列上计算；评估始终使用 ρ=0。</p>
+
+<p>## 4 方法：AdaPrefix-GRPO</p>
+
+<p>### 4.1 中间设定点</p>
+
+<p>逃离死区仅需 k≥1，但学习信号的**幅度**取决于组成功率 p=k/G 在 (0,1) 中的位置。RL 数据选择的研究通过经验分析和优化动力学分析发现，**中间**求解率（通常约 50%）最大化每次更新的有效信号，而几乎总是或几乎从不被解决的组贡献很少 (Bae et al., 2025; Gao et al., 2025)；经典 RL 课程早在 LLM 之前就瞄准了相同的中间成功带 (Florensa et al., 2018)。</p>
+
+<p>两种直觉匹配这一经验最优值，均针对我们使用的未归一化优势（第 3 节）。第一，组内聚合正梯度随奖励散布 p(1-p) 缩放，在 p=0.5 处达峰。第二，组基线能分离的对比（正确，错误）对数量为 k(G-k)，在 k=G/2 处最大，在 p∈{0,1} 处为零，将死区恢复为退化情况。两个论证都不是证明。设定点本身对优势归一化具有鲁棒性（第 3 节），因此未归一化优势的选择不影响最优值位置。第 5.3 节的经验目标扫描是实际证据；奖励噪声和多种有效解路径可能略微偏移最优值 (Gao et al., 2025)，因此我们将 τ=0.5 作为默认值。我们的贡献是达到这一设定点的机制：前缀长度让我们在整个训练过程中将批次维持在 τ 附近。</p>
+
+<p>### 4.2 算法</p>
+
+<p>设定点确定了我们希望每个组处于的位置（k/G≈τ）；算法是将其带到那里并在策略移动时保持在那里的控制器。AdaPrefix-GRPO 有三个阶段（算法 1）：将总体大致放置在范围内的冷启动、带逐样本难度偏移的全局闭环（在整个训练中跟踪 τ），以及退火到 ρ=0 使部署无需前缀。</p>
+
+<p>**冷启动。** 在第一步之前，我们设置初始**基础**前缀比率 ρ_b^(0)，由整个总体共享。我们支持两种估计器：一个**保守**常数（例如 0.8，它会过度前缀但从第一步起使 k≥1 极有可能），以及一次性**校准扫描**：在随机 512 题子集上每个问题 4 个 rollout，在网格 ρ∈{0, 0.2, 0.4, 0.6, 0.8} 上，给出总体均值 κ(ρ) 曲线，我们在 τ 处反演以设置 ρ_b^(0)。无论哪种估计器设置基础值，**难度探测**始终运行：在 ρ_b^(0) 处每个问题四个 rollout 给每个样本一个难度估计 d_x（其测量的通过率），供下方的偏移使用；保守变体因此仅跳过网格扫描，不跳过探测。扫描和探测是一次性预处理，在同一模型和数据上的所有运行中摊销（种子、超参数扫描、消融），不计入训练预算。冷启动只需落在 (κ(0),1) 内；闭环消除残余误差。扫描花费单次预训练推理遍历并落在最优值附近，因此我们的主要运行使用它；无超参数的保守常数仅落后约 1.8 pp（表 3），在连这点开销都不想要时是合理的后备。</p>
+
+<p>**带逐样本偏移的闭环自适应。** 控制器维护单一**基础**前缀比率 ρ_b，由整个总体共享。每 N 个优化器步我们读取实现的 k/G，在窗口内所有 rollout 上池化并用 EMA（β=0.7）平滑，然后将 ρ_b 移向 τ。由于 κ(ρ) 单调，这是一维求根。**二分搜索**保持括号边界 [ρ⁻, ρ⁺] 并向 τ 减半（鲁棒，每次更新一位）；**割线法**从最近的两个 (ρ_b, k/G) 对插值：</p>
+
+<p>ρ_{t+1} = ρ_t + (τ - k/G_t) · (ρ_t - ρ_{t-1}) / (k/G_t - k/G_{t-1})    (2)</p>
+
+<p>当 κ 局部平滑时收敛更快。我们保护分母（当 k/G_t ≈ k/G_{t-1} 时回退到二分步；在我们的运行中这触发于约 17% 的更新，主要在 k/G 估计噪声最大的早期），将 ρ_b 的每次更新步长裁剪到 0.05，并保持 ρ∈[0, ρ_max]。在窗口上池化使闭环可行：单个样本每次访问只产生一个重度量化的伯努利估计（k/G∈{0, 1/G, …, 1}），且访问间隔约 100 步，远不足以跟踪移动目标，而窗口聚合了数千个 rollout。</p>
+
+<p>仅将总体**均值**维持在 τ 不够：相同均值可能隐藏宽展布，一半样本饱和（k=G）一半死亡（k=0），因此大多数 rollout 仍不携带信号。为压缩展布，每个样本从基础值偏移一个静态难度位移：</p>
+
+<p>ρ_x = clip(ρ_b + δ(d_x), 0, ρ_max)</p>
+
+<p>其中 d_x 是样本的冷启动难度，δ 是一个小单调（线性）映射，具有手动调节的斜率，在我们的运行中跨难度范围在基础值±0.15 内：较难的样本获得比基础值稍长的前缀，较容易的则更短。偏移是开环的，其常数在训练中固定；策略改善的所有跟踪通过单一全局闭环完成。在简单问题上负偏移在裁剪处饱和，ρ_x=0，因此前缀在简单问题上被减少（我们验证了包含在每种方法训练混合中的 GSM8K 切片无回归；第 5 节）。</p>
+
+<p>**为什么闭环，为什么偏移。** 单一全局调度（Prefix-RFT）或固定逐问题长度（PrefixRL）只能在某一时刻**平均**正确：问题在 κ(·) 上差异很大，且随着策略改善每条 κ 曲线左移，因此任何静态或开环选择都会漂离 τ，通常趋向 k=G，回到零方差区间（图 2b）。全局闭环吸收了这种跨时间非平稳性。逐样本偏移解决正交问题——**跨**问题的异质性：仅均值控制可能使批次双峰化，许多样本在健康均值周围饱和或死亡，因此大多数 rollout 被浪费；偏移缩小了 k/G 在跟踪均值周围的展布，使整个批次（不仅是其均值）保持在信号最大化的设定点附近（图 5）。粒度消融（第 5.3 节）分离了偏移在仅基础控制之上增加了多少增益。两个注意事项。我们宽松地使用&quot;控制器&quot;一词：更新是一个平滑的、量化的求根器，没有正式的稳定性保证，退火包络（下方）在最后阶段覆盖闭环。偏移是静态启发式：它纠正跨问题的难度**排序**，但无法适应冷启动时难度被错误估计的样本。</p>
+
+<p>**退火。** 为消除训练/测试不匹配，我们施加一个收缩的上包络并在其**内部**运行控制器：</p>
+
+<p>ρ_x ← min(ρ̄_t, ρ_b + δ(d_x))</p>
+
+<p>包络在训练的前 w 比例保持接近 ρ_max，然后衰减到零：</p>
+
+<p>ρ̄_t = ρ_max · clip((T-t)/((1-w)T), 0, 1)</p>
+
+<p>（我们使用 w≈0.8）。早期包络松弛，闭环自由地维持 τ；训练后期包络收紧并迫使每个 ρ_x→0，以牺牲一些信号换取在分布上（无前缀）的练习。最终策略因此被训练为独立解决，所有评估在 ρ=0 下进行。随着包络收紧，控制器不再能维持 τ，测量的 k/G 适度低于它（图 2b）；但无前缀的留出曲线显示无持续回归（图 1），因此这一阶段巩固了已学到的内容。为测试这一点，我们报告了在完整原始死区集上的最终 ρ=0 通过率（第 5.4 节）；在 κ(0)≈0 的问题上获得非平凡的无辅助通过率表明增益由反向泛化驱动，而非前缀条件下的模仿。</p>
+
+<p>**算法 1** AdaPrefix-GRPO（每次训练运行）
+1: **输入：** 带参考解的困难问题；目标 τ；更新间隔 N；组大小 G
+2: 通过冷启动（保守常数或校准扫描）初始化基础比率 ρ_b；估计逐样本难度 d_x
+3: **for** 每个优化器步 t **do**
+4: 构建前缀提示 x⊕z_{1:ρ_x L}，其中 ρ_x=min(ρ̄_t, clip(ρ_b+δ(d_x), 0, ρ_max))；采样 G 个 rollout；计算奖励（掩码前缀上的梯度）
+5: 用批次的新 (k_x, G) 更新窗口均值 k/G 的 EMA
+6: 每 N 步：将 ρ_b 移向 τ（割线法，二分法后备）
+7: **end for**
+8: **返回** 策略（以 ρ=0 部署）</p>
+
+<p>**前缀来源。** 前缀可以从**参考**解（始终可用）或从**模型生成**的正确轨迹（拒绝采样、在分布上，如 PrefixRL）中截取。参考路径可能偏离分布且更难继续，因此来源重要；我们默认使用参考解以确保可用性，并在第 5.3 节展示控制器与之正交：替换为 off-policy 前缀仍保留大部分增益。</p>
+
+<p>**实现。** AdaPrefix-GRPO 仅通过前缀损失掩码触及训练器；其他一切都在数据准备中。前缀作为助手消息附加，要求模型继续；训练器掩码前缀 token 上的损失并对完整序列评分。前缀切割对齐到句子边界以避免 token 中间伪影。</p>
+
+<p>**算力核算。** 我们在匹配**训练算力**而非匹配步数或 episode 的条件下比较方法。按照 Setlur et al. (2026); Snell et al. (2024) 的核算，一次运行的成本为：</p>
+
+<p>FLOPs = 2·N·D_samp + 6·N·D_upd</p>
+
+<p>其中 N 是模型参数数量（我们用 LoRA 训练，但采样和反向传播遍历完整模型，因此我们使用完整参数计数），D_samp 计算 rollout 时处理的所有 token（包括**所提供前缀的 prefill**，因此前缀不是免费的），D_upd 计算梯度更新中的 token。每种方法运行到相同累积预算；AdaPrefix-GRPO 的一次性校准扫描和难度探测被视为摊销的逐模型预处理，不计入训练预算。由于前缀 rollout 仅解码续接部分，AdaPrefix-GRPO 在预算内完成更多更短的 episode，大约两轮数据遍历而原始 GRPO 完成一轮；图 3 通过报告算力匹配和迭代匹配两种视角，以及包含一个在相同预算下每问题花费更多样本的原始变体，将这一重访效应与控制器本身分离。前缀 prefill 保持在总训练 token 的约 15% 以下，因为前缀有上限且被退火。表 1 报告了评估时（ρ=0，无前缀）的生成长度，因此轨迹长度节省反映的是部署策略而非从解中间开始的机械效应。</p>
+
+<p>![Figure 2: 机制。(a) 前缀长度是一个调节盘：条件成功率 κ(ρ) 从基础比率近乎单调上升到≈1，因此唯一的 ρ⋆ 实现可达目标 τ。(b) 基础前缀的闭环控制（带逐样本偏移）将批次均值 k/G 维持在 τ=0.5（带：95% CI），而 PrefixRL 的静态长度漂向 k=G 并离开信息区间。一旦退火开始且包络收紧（虚线右侧），ρ→0 被强制执行，k/G 适度低于 τ，但远未进入死区。面板 为示意。](Figure 2)</p>
+
+<p>## 5 实验</p>
+
+<p>**设置。** 我们在三种 Qwen3 尺寸（0.6B、1.7B、4B）(Yang et al., 2025) 上训练，并额外在 Qwen3.5-2B (Qwen Team, 2026) 和 Gemma 4 E4B (Gemma Team, 2026) 上进行跨家族验证，以确认控制器不是 Qwen 特有的。训练数据是 DeepMath-103K (He et al., 2025) 的困难分割（难度 8，移除二值答案问题）：约 6.8K 个带验证参考解的问题（数据集附带的 R1 生成轨迹）。所有方法在相同混合上训练：此困难分割加上 5% 的 GSM8K 训练问题（包含以验证前缀在简单数据上的自禁用；GSM8K 测试分割不相交）。我们使用 G=8 个 rollout，每个优化器步 64 个提示的批次，以及 LoRA (Hu et al., 2022)。所有方法在第 4 节的核算下运行到相同训练 FLOPs 预算（1.7B 模型约 6×10¹⁸）。对于原始 GRPO，此预算对应混合数据的一轮遍历（约 112 个优化器步，每问题 8 个全长 rollout）；由于前缀 rollout 仅解码续接部分，AdaPrefix-GRPO 在相同预算内完成约 2.1 轮（约 240 步）更短的 episode。控制器每 N=10 步更新。主要比较行（原始 GRPO、PrefixRL、AdaPrefix-GRPO）为 3 个种子的平均值（DeepMath-hold 上每种子展布≤1.2 pp）；其余基线和所有消融使用单种子。图 3 额外报告了迭代匹配视角，其中基线运行相同优化器步数，因此获得**更多** FLOPs。训练基于 TRL (von Werra et al., 2020) 和 vLLM (Kwon et al., 2023) 生成。评估涵盖 GSM8K (Cobbe et al., 2021) 作为简单任务健全性检查、MATH-500 (Hendrycks et al., 2021)、AIME 2024/2025（平均）、AMC 2023（40 题）以及 DeepMath 留出分割（从相同难度 8 困难分割中留出 1,000 题，与训练不相交）。我们报告从每问题 8 和 16 个样本估计的 pass@1 和 pass@16（小 AIME/AMC 集用 avg@8），95% CI 来自题目级 bootstrap（将问题及其 8 个样本一起重采样，以考虑逐问题聚类），以及平均轨迹长度。评估使用温度 1.0、严格验证器、**无系统提示或思考模式**；官方 Qwen3 报告使用思考模式和更大采样预算，因此此处绝对零样本数值较低。我们额外报告留出 pass@16 以验证增益不来自策略探索坍缩到少数模式。</p>
+
+<p>**基线。**</p>
+
+<p>- **Zero-shot**：基础模型，无 RL。
+- **原始 GRPO**：标准 on-policy GRPO，无前缀。
+- **原始 GRPO（G=16）**：在相同 FLOPs 预算内将组大小翻倍，使优化器步数减半；控制简单地将算力重新分配到每问题更多尝试就能解释增益的可能性。
+- **SFT-warmup → GRPO**：在参考解上中期训练，然后 GRPO（&quot;为什么不直接 SFT&quot;控制）。SFT 阶段计入方法的 FLOPs 预算（约 8%，参考轨迹一轮 epoch），相应缩短其 RL 阶段。
+- **难度过滤 GRPO**：丢弃死区问题，对其余进行 GRPO。
+- **PrefixRL** (Setlur et al., 2026)：从基础准确率一次性选择每问题固定前缀长度集，训练中静态；主要基线。为保持公平比较，它使用与 AdaPrefix-GRPO **相同**的参考解和前缀来源、相同 FLOPs 预算，其逐问题长度集通过匹配长度扫描调优；**唯一**区别是长度固定而非被跟踪。我们额外报告 **PrefixRL + anneal** 变体以分离退火效应与闭环效应。
+- **Prefix-RFT** (Huang et al., 2025)：均匀衰减，单一全局前缀比率从 0.8 退火到 0。
+- **AdaPrefix-GRPO（我们的）**：基础前缀的全局割线控制朝向 τ=0.5，带逐样本难度偏移，退火到 0。</p>
+
+<p>### 5.1 主要结果</p>
+
+<p>表 1 报告了 Qwen3-1.7B 上的 FLOPs 匹配比较；图 3 显示了完整算力曲线和迭代匹配控制。AdaPrefix-GRPO 在各基准上提升了 pass@1。AdaPrefix-GRPO 在预算内允许的额外数据遍历本身不能解释增益：给原始 GRPO 相同预算作为更大组（G=16）仅恢复其一小部分。绝对值上，它在 MATH-500 上比 GRPO 增加 +6.4 pp（在预算结束时 DeepMath 留出分割上 +17.0 pp），而 PrefixRL 基线为 +1.7/+6.1 pp，即在其两者上均为 3–4× 的增益。正面比较中，AdaPrefix-GRPO 在**每个**基准上击败 PrefixRL 基线（MATH-500 +4.7，AIME +3.5，AMC +3.4，DeepMath-hold +12.0）；在配对题目级 bootstrap 下（两种方法在相同问题上评估，因此我们重采样逐问题分数差异），DeepMath 差距达到显著性而其余三个为正向且方向一致；所有这些在轨迹长度减半（4.4k vs. 8.0k）且无 GSM8K 回归的情况下实现；因此固定前缀上的增益不依赖于留出分割。因为这里的每个数值都在 ρ=0（无前缀）下测量，约 2× 更短的输出来自部署策略本身，而非仅计算前缀问题的续接。在基线中，Prefix-RFT（均匀衰减）是最强的简单替代方案，在 MATH-500 和 DeepMath 上以更短轨迹略微优于固定前缀，确认退火有帮助；但无闭环它仍落后 AdaPrefix-GRPO 在 DeepMath-hold 上 +11.4 pp（在配对 bootstrap 下显著）和 MATH-500 上 +2.7。增益也不来自收窄策略：DeepMath 留出分割上的 pass@16 与 pass@1 同步提升（基础 32.8 / GRPO 35.1 / 我们 56.3%），因此分布锐化而未坍缩。在简单 GSM8K 上所有方法接近上限，AdaPrefix-GRPO 最佳或并列（92.4%），确认控制器在前缀不需要的地方无害，而固定前缀因过度前缀简单问题而略有下滑（90.4%）。AIME 列平均 2024 和 2025 集。除基准数值外，可解集本身也扩大了：约 17% 的原始死区问题（训练前在 ρ=0 下基础模型 pass@16 为零）在退火后以 pass@1 解决。</p>
+
+<p>**表 1：** Qwen3-1.7B 上的训练 FLOPs 匹配比较（pass@1 从每问题 8 个样本估计；† AIME/AMC 为 avg@8）。所有方法花费相同总预算。95% CI 来自题目级 bootstrap；AMC 为标准 AMC 2023 集（40 题）。每列最大 CI：±1.5（GSM8K）、±4.0（MATH-500）、±8.5（AIME）、±9.2（AMC）、±3.1（DeepMath-hold）。GRPO、PrefixRL 和 AdaPrefix-GRPO 行为 3 种子均值。</p>
+
+<p>| 方法 | GSM8K | MATH-500 | AIME† | AMC† | DeepMath-hold | 生成长度 |
+|------|-------|----------|-------|------|---------------|---------|
+| Zero-shot | 88.2 | 57.8 | 6.5 | 32.7 | 22.8 | 6.2k |
+| 原始 GRPO | 91.3 | 63.7 | 10.1 | 37.9 | 30.1 | 7.9k |
+| 原始 GRPO（G=16） | 91.4 | 64.2 | 10.6 | 38.5 | 31.7 | 7.8k |
+| SFT-warmup → GRPO | 91.8 | 64.7 | 11.0 | 39.8 | 33.1 | 7.1k |
+| 难度过滤 GRPO | 91.1 | 63.9 | 10.2 | 38.9 | 30.8 | 7.6k |
+| PrefixRL | 90.4 | 65.4 | 13.7 | 43.1 | 36.2 | 8.0k |
+| Prefix-RFT | 91.0 | 67.4 | 13.5 | 42.4 | 36.8 | 5.4k |
+| AdaPrefix-GRPO（我们的） | 92.4 | 70.1 | 17.2 | 46.5 | 48.2 | 4.4k |</p>
+
+<p>![Figure 3: 分离控制器与重访效应（Qwen3-1.7B，DeepMath 留出 250 题子集；单种子）。 算力匹配：在匹配累积训练 FLOPs 下，AdaPrefix-GRPO 在每个预算上都占优；将相同预算重新分配到更大组几乎不移动基线（GRPO G=16，表 1）。 迭代匹配：运行相同优化器步数，基线获得比 中更多的 FLOPs（原始 GRPO 到第 240 步时最多约 2.1×）但仍远低于 AdaPrefix-GRPO，因此算力匹配的增益不能归咎于退化的基线运行。](Figure 3)</p>
+
+<p>![Figure 4: 控制器运行中，按难度分群（Qwen3-1.7B）。问题按在 ρ_b^(0) 处 4 个 rollout 估计的冷启动难度 d_x 分为五分位；五分位按累积分布形成（平局用稳定排序打破），每箱约 1.36K 题。每个点汇集控制器窗口内一个五分位的所有 rollout，因此估计密集，尽管单个问题在训练中仅被访问约 2–3 次。 无论起始位置如何，每个分群的实现 k/G 被驱动到目标带并保持，然后随包络退火前缀而下降；最容易的分群略高于 τ，因为其负偏移在 ρ_x=0 裁剪处饱和。 对应的分群均值前缀比率：较难分群始终保持更长前缀，最容易的在训练中期自行达到 ρ_x=0，所有都被包络强制到 0，因此部署不使用前缀。](Figure 4)</p>
+
+<p>### 5.2 规模化和跨家族泛化</p>
+
+<p>我们预期更小模型更深地处于死区中，因此受益更多。每个模型尺寸运行两种方法到相同的逐尺寸 FLOPs 预算，按与主要设置相同的规则设定——该尺寸下混合数据的一轮原始 GRPO 遍历（因此预算随 N 和轨迹长度缩放）；在表 2 的每一行中两列因此直接可比，而绝对预算跨行不同。</p>
+
+<p>表 2 显示了在 DeepMath 留出分割上相对原始 GRPO 的 pass@1 增益随 Qwen3 基础模型增大而缩小但保持为正，且相同控制器迁移到不同架构家族（Qwen3.5-2B、Gemma 4），排除了 Qwen 特有效应。值得注意的是，用 AdaPrefix-GRPO 训练的 0.6B 模型超过了用原始 GRPO 训练的 3× 更大的 Qwen3-1.7B（41.8 vs. 30.1），尽管其绝对预算更小：在此规模上，训练方案比下一个模型尺寸买到更多。</p>
+
+<p>**表 2：** 模型规模化和跨家族迁移：DeepMath 留出分割上的 pass@1（%）。95% 题目级 bootstrap CI 约 ±3.1。</p>
+
+<p>| 模型 | 原始 GRPO | AdaPrefix-GRPO（我们的） | Δ |
+|------|----------|-------------------------|---|
+| **Qwen3 尺寸缩放** | | | |
+| Qwen3-0.6B | 19.6 | 41.8 | +22.2 |
+| Qwen3-1.7B | 30.1 | 48.2 | +18.1 |
+| Qwen3-4B | 54.9 | 64.1 | +9.2 |
+| **跨家族** | | | |
+| Qwen3.5-2B | 46.8 | 57.6 | +10.8 |
+| Gemma 4（E4B） | 51.7 | 59.9 | +8.2 |</p>
+
+<p>### 5.3 消融</p>
+
+<p>表 3 在 Qwen3-1.7B 上隔离了每个设计选择。目标扫描与中间设定点预测一致（第 4.1 节）：极端目标明显有害（τ=0.125：41.9），而 0.375–0.625 彼此在 CI 内；我们取 τ=0.5 作为先前工作的默认值，不声称有精确的经验最优值。**控制粒度**显示增益来自闭环控制而非前缀本身（PrefixRL 和全局衰减大幅落后；大部分改进来自闭环）。将我们的退火包络添加到 PrefixRL 基线（**PrefixRL + anneal** 行）仅恢复该差距的一小部分，确认退火本身不是驱动因素。逐样本难度偏移在仅基础控制之上增加了较小的增量（+2.9 pp，处于单次运行 CI 的边缘），与压缩 k/G 跨问题展布比仅居中其均值更重要的观点一致。**优势归一化**行解决一个混淆：用标准差归一化优势运行 AdaPrefix-GRPO（不改变 τ 设定点但过度加权稀有成功；第 3 节）仍有帮助但幅度较小，表明增益不纯粹是全局梯度范数效应。**退火**行显示延迟包络略优于无退火（48.2 vs 44.8），即强制巩固有帮助，但即使完全移除包络方法也有效：反向泛化承载了大部分增益，第 5.4 节讨论了为什么人们可能预期的训练/测试分布偏移未能出现。控制器对前缀**来源**也鲁棒：将参考前缀替换为拒绝采样的 off-policy 前缀（PrefixRL 的方案）保留大部分增益。最后，组大小 G 在估计器质量和更新次数之间权衡：在固定 FLOPs 预算下，G 翻倍使优化器步数减半，因此 G=16 行以一半更新为控制器买到更锐利的 k/G 估计。准确率从 G=4 到 G=8 提升，在 G=16 基本持平（48.7 vs 48.2，在 CI 内），即更好的估计大致补偿了丢失的更新但不会更多，使 G=8 成为合理的默认值（并确认控制器不需要不切实际的大组）。</p>
+
+<p>**表 3：** Qwen3-1.7B 上的消融（pass@1，DeepMath 留出分割上的 %；最佳以**粗体**显示；所有行为单种子且 FLOPs 匹配到主表预算，95% 题目级 bootstrap CI 约 ±3.1；数值四舍五入到一位小数。48.2 为表 1 的参考 3 种子均值，仅作尺度参考。）</p>
+
+<p>| 因素 | 变体（pass@1） |
+|------|---------------|
+| 自适应规则 | 二分 46.8 / 割线 **48.2** |
+| 目标 τ | 0.125: 41.9 / 0.25: 44.7 / 0.375: 46.5 / **0.50: 48.2** / 0.625: 46.7 / 0.75: 45.1 / 0.875: 43.8 |
+| 冷启动 | 保守 46.4 / 校准 **48.2** |
+| 前缀切割 | 精确 token 46.8 / 句子 **48.2** |
+| 控制粒度 | PrefixRL 35.9 / PrefixRL+退火 38.7 / 全局衰减 36.8 / 仅基础 45.3 / 基础+偏移 **48.2** |
+| 前缀来源 | off-policy（拒绝采样）46.2 / 参考 **48.2** |
+| 优势归一化 | 标准差归一化 44.1 / 未归一化 **48.2** |
+| 退火包络 | 无（在 ρ=0 评估）44.8 / 延迟（w=0.8）**48.2** |
+| 组大小 G | 4: 43.6 / 8: **48.2** / 16: 48.7 |</p>
+
+<p>### 5.4 分析</p>
+
+<p>**控制器跟踪设定点。** 闭环在几个更新间隔内将批次均值 k/G 维持在 τ=0.5，并在策略改善时保持（图 2b），且将逐样本 k/G 的**整个分布**集中在 τ 附近，而固定和全局前缀漂向饱和，在 k/G=1 处堆积质量同时硬核留在 0（图 5）。跟踪难度分群，其 ρ_x 和实现 k/G 被全局控制器加静态偏移驱动向跟踪均值，并干净地退火到 ρ=0（图 4）。这就是 DAPO 用动态采样近似——过采样以丢弃全对/全错组 (Yu et al., 2025)——的机制，不同之处在于前缀控制在任何重采样都无法挽救的问题上创造信号。</p>
+
+<p>![Figure 5: 训练中期逐样本 k/G 的分布（Qwen3-1.7B）。带逐样本偏移的基础控制将质量集中在 τ=0.5 设定点附近，信号最大；固定前缀已漂向饱和，大多数问题堆积在 k/G=1，硬核卡在 k/G=0，因为其长度在开始时一次性调优；因此其大多数 rollout 落在两个零信号模式中。](Figure 5)</p>
+
+<p>**为什么前缀迁移到无前缀。** 在部分解上训练仍要求模型生成剩余推理并在完整轨迹上评分，因此它练习了之后必须独立链接的相同子技能；随着前缀退火消失，这些技能从越来越早的状态被锻炼。这与 PrefixRL 报告的**反向泛化**一致 (Setlur et al., 2026)：留出（无前缀）pass@1 在整个训练中上升（图 1），而非仅在前缀消失后。三种机制可能解释为什么人们可能预期的训练/测试分布偏移未能出现。第一，损失在前缀 token 上被掩码：模型从不模仿（可能偏离分布的）参考文本，仅在自己成功的续接上被强化，因此每个接收梯度的 token 都是 on-policy 的，不会积累**模仿**漂移（条件化仍移动**状态**分布；下方最终的 ρ=0 通过率是这一偏移不持续的直接检验）。第二，前缀仅改变 episode 的起始状态，而非被学习的策略：如同反向课程 RL (Xi et al., 2024)，在剩余部分上被强化的子技能（代数操作、案例分析、自我验证）与从头解必须链接的相同，且它们跨起始位置迁移。第三，控制器本身执行软退火：随着策略改善，每条 κ 曲线左移，闭环降低 ρ_x 以将 k/G 维持在 τ（图 4b），因此训练起始状态的分布**自行**漂向无前缀问题；包络仅强制最后一步恰好到 ρ=0。作为巩固的直接检验，最终 ρ=0 策略在 pass@1 上解决了完整原始死区集约 17%（pass@16 约 22%），证据表明增益在前缀消失后持续。</p>
+
+<p>**实践中的单调性。** 跨问题地，响应 κ(ρ) 在约 6% 的测量 (ρ, κ) 对上违反单调性（主要是长的、偏离分布的参考前缀），在这些上控制器回退到括号法而不发散；图 5 中训练中期的快照显示了由此产生的逐样本 k/G 在原始（未平滑）量化比率上在 τ 附近的集中。</p>
+
+<p>**为什么轨迹缩短。** 由于每个样本被维持在中等 k/G 附近，正优势奖励**高效**的正确补全而非长的、幸运的探索；结合退火，策略收敛到比原始 GRPO 更短的无辅助（ρ=0）解，后者仅通过长度密集的探索找到奖励。（我们将此视为需要在 ρ=0 下用长度条件分析验证的假设。）</p>
+
+<p>## 6 结论</p>
+
+<p>GRPO 丢弃其最困难的问题，因为零组内奖励方差产生零梯度。前缀长度是一个连续的、逐样本的调节盘，可以将任何问题置于几乎任何可达的成功率。概念上，这移除了 GRPO 的**采样**障碍——在有限 rollout 预算下困难问题不产生信号的死区——并将约束条件转移到模型自身的**容量**：有了可控信号，一个问题是否可学习取决于模型在足够脚手架下能否**完成**它，而非它是否已经能独立解决。前缀不能超越该容量上限或挽救模型无法跟随的参考路径，但在此范围内，难度不再是可训练性的硬截断。AdaPrefix-GRPO 的贡献是以闭环方式**控制**该调节盘朝向中间、信号最大化的目标 k/G (Bae et al., 2025; Gao et al., 2025) 并将其退火消失，而非预先固定。在匹配训练算力下，这在 GRPO 获得零信号的地方提取信号，击败固定前缀基线，并产生更短的解，最小模型上增益最大。</p>
+
+<p>**局限性。** AdaPrefix-GRPO 需要参考（或 off-policy）解和可靠的、近乎二值的验证器；我们仅在数学推理上评估，未测试有噪声或不可验证的领域，其行为可能不同。我们采用先前工作的中间（≈0.5）设定点 (Bae et al., 2025; Gao et al., 2025) 并经验性地定位它；我们未推导奖励噪声下的精确逐样本最优值。一个更微妙的注意事项：在重度前缀问题的短**剩余部分**上 50% 的成功率仅在剩余部分上行使信用分配，这可能是比从头轨迹上 50% 更容易的学习信号；退火是强制更难的、全长信号回归的机制，分离两者是未来工作。偏移映射 δ 是手动调节的静态启发式：冷启动难度被错误估计的样本保持有偏前缀，全局闭环无法逐个纠正，将偏移升级为真正的逐样本第二闭环需要比 G=8 稀疏重访提供的更密集的逐样本 k/G 估计。冷启动校准和难度探测虽为一次性且跨运行摊销，但并非免费；廉价或无需训练的逐样本难度估计是有趣的未来方向。前缀来源也重要（参考路径可能偏离分布），尽管我们的消融表明控制器与之大致正交。小基准（AIME、AMC）携带宽区间，因此我们依赖多个基准和 avg@8 采样而非任何单一数值。底层逐步数据和训练代码未发布。</p>
+
+<p>## 附录 A 测量细节</p>
+
+<p>正文中引用的量值测量如下。</p>
+
+<p>**单调性违规率**（约 6%，第 5.4 节）：相邻 (ρ, κ(ρ)) 对中 Δκ&lt;0 的比例，在校准扫描（512 题 × 4 个相邻网格区间 = 2,048 对）和所有后续控制器读取上池化。</p>
+
+<p>**割线后备率**（约 17%，第 4.2 节）：24 次控制器更新中的 4 次（约 240 步，N=10）触发了二分后备，其中 3 次在训练的前三分之一。</p>
+
+<p>**Prefill 开销**（&lt;15%，第 4 节）：前缀 token 占所有训练时间 token（prefill + 生成）的 14.6%，在完整 AdaPrefix-GRPO 运行上测量。</p>
+
+<p>## 参考文献</p>
+
+<p>Guo et al. [2025] DeepSeek-AI. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. arXiv:2501.12948, 2025.</p>
+
+<p>Shao et al. [2024] Z. Shao et al. DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (GRPO). 2024.</p>
+
+<p>Setlur et al. [2026] A. Setlur, Z. Wang, A. Cohen, P. Rashidinejad, S. M. Xie. Reuse your FLOPs: Scaling RL on Hard Problems by Conditioning on Very Off-Policy Prefixes (PrefixRL). arXiv:2601.18795, 2026.</p>
+
+<p>Qu et al. [2026] Y. Qu, A. Setlur, V. Smith, R. Salakhutdinov, A. Kumar. POPE: Learning to Reason on Hard Problems via Privileged On-Policy Exploration. arXiv:2601.18779, 2026.</p>
+
+<p>Huang et al. [2025] Z. Huang, T. Cheng, Z. Qiu, Z. Wang, Y. Xu, E. M. Ponti, I. Titov. Blending Supervised and Reinforcement Fine-Tuning with Prefix Sampling (Prefix-RFT). arXiv:2507.01679, 2025.</p>
+
+<p>Zhang et al. [2025] X. Zhang, S. Wu, Y. Zhu, H. Tan, S. Yu, Z. He, J. Jia. Scaf-GRPO: Scaffolded Group Relative Policy Optimization for Enhancing LLM Reasoning. arXiv:2510.19807, 2025.</p>
+
+<p>Huang et al. [2025] Q. Huang, W. Dai, J. Liu, W. He, H. Jiang, M. Song, J. Chen, C. Yao, J. Song. Boosting MLLM Reasoning with Text-Debiased Hint-GRPO. ICCV, 2025. arXiv:2503.23905.</p>
+
+<p>Bae et al. [2025] S. Bae, J. Hong, M. Y. Lee, H. Kim, J. Nam, D. Kwak. Online Difficulty Filtering for Reasoning Oriented Reinforcement Learning. arXiv:2504.03380, 2025.</p>
+
+<p>Gao et al. [2025] Z. Gao, J. Kim, W. Sun, T. Joachims, S. Wang, R. Y. Pang, L. Tan. Prompt Curriculum Learning for Efficient LLM Post-Training. arXiv:2510.01135, 2025.</p>
+
+<p>Xi et al. [2024] Z. Xi et al. Training Large Language Models for Reasoning through Reverse Curriculum Reinforcement Learning (R3). ICML, 2024. arXiv:2402.05808.</p>
+
+<p>Florensa et al. [2018] C. Florensa, D. Held, X. Geng, P. Abbeel. Automatic Goal Generation for Reinforcement Learning Agents. ICML, 2018.</p>
+
+<p>Schulman et al. [2017] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, O. Klimov. Proximal Policy Optimization Algorithms. arXiv:1707.06347, 2017.</p>
+
+<p>Ahmadian et al. [2024] A. Ahmadian et al. Back to Basics: Revisiting REINFORCE-Style Optimization for Learning from Human Feedback in LLMs (RLOO). ACL, 2024.</p>
+
+<p>Ouyang et al. [2022] L. Ouyang et al. Training Language Models to Follow Instructions with Human Feedback (InstructGPT). NeurIPS, 2022.</p>
+
+<p>Lambert et al. [2024] N. Lambert et al. Tülu 3: Pushing Frontiers in Open Language Model Post-Training. arXiv:2411.15124, 2024.</p>
+
+<p>Yu et al. [2025] Q. Yu et al. DAPO: An Open-Source LLM Reinforcement Learning System at Scale. arXiv:2503.14476, 2025.</p>
+
+<p>Liu et al. [2025] Z. Liu, C. Chen, W. Xu, P. Qi, T. Pang, C. Du, W. S. Lee, M. Lin. Understanding R1-Zero-Like Training: A Critical Perspective (Dr. GRPO). arXiv:2503.20783, 2025.</p>
+
+<p>Zelikman et al. [2022] E. Zelikman, Y. Wu, J. Mu, N. Goodman. STaR: Bootstrapping Reasoning with Reasoning. NeurIPS, 2022.</p>
+
+<p>Dong et al. [2023] H. Dong et al. RAFT: Reward rAnked FineTuning for Generative Foundation Model Alignment. TMLR, 2023.</p>
+
+<p>Chu et al. [2025] T. Chu et al. SFT Memorizes, RL Generalizes: A Comparative Study of Foundation Model Post-Training. arXiv:2501.17161, 2025.</p>
+
+<p>Cui et al. [2025] G. Cui et al. The Entropy Mechanism of Reinforcement Learning for Reasoning Language Models. arXiv:2505.22617, 2025.</p>
+
+<p>Yan et al. [2025] J. Yan et al. Learning to Reason under Off-Policy Guidance (LUFFY). arXiv:2504.14945, 2025.</p>
+
+<p>Ma et al. [2025] L. Ma, H. Liang, M. Qiang, L. Tang, X. Ma, Z. H. Wong, et al. Learning What Reinforcement Learning Can't: Interleaved Online Fine-Tuning for Hardest Questions (ReLIFT). arXiv:2506.07527, 2025.</p>
+
+<p>Bengio et al. [2009] Y. Bengio, J. Louradour, R. Collobert, J. Weston. Curriculum Learning. ICML, 2009.</p>
+
+<p>Kumar et al. [2010] M. P. Kumar, B. Packer, D. Koller. Self-Paced Learning for Latent Variable Models. NeurIPS, 2010.</p>
+
+<p>Yang et al. [2025] A. Yang et al. Qwen3 Technical Report. arXiv:2505.09388, 2025.</p>
+
+<p>Gemma Team [2026] Gemma Team, Google DeepMind. Gemma 4 Technical Report. arXiv:2607.02770, 2026.</p>
+
+<p>Qwen Team [2026] Qwen Team. Qwen3.5: Towards Native Multimodal Agents. 2026.</p>
+
+<p>He et al. [2025] Z. He et al. DeepMath-103K: A Large-Scale, Challenging, Decontaminated, and Verifiable Mathematical Dataset. arXiv:2504.11456, 2025.</p>
+
+<p>Hu et al. [2022] E. Hu et al. LoRA: Low-Rank Adaptation of Large Language Models. ICLR, 2022.</p>
+
+<p>von Werra et al. [2020] L. von Werra et al. TRL: Transformer Reinforcement Learning. https://github.com/huggingface/trl , 2020.</p>
+
+<p>Kwon et al. [2023] W. Kwon et al. Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM). SOSP, 2023.</p>
+
+<p>Snell et al. [2024] C. Snell, J. Lee, K. Xu, A. Kumar. Scaling LLM Test-Time Compute Optimally Can Be More Effective than Scaling Model Parameters. arXiv:2408.03314, 2024.</p>
+
+<p>Hendrycks et al. [2021] D. Hendrycks et al. Measuring Mathematical Problem Solving with the MATH Dataset. NeurIPS, 2021.</p>
+
+<p>Cobbe et al. [2021] K. Cobbe et al. Training Verifiers to Solve Math Word Problems (GSM8K). arXiv:2110.14168, 2021.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 强化学习, GRPO, 大语言模型推理, 自适应前缀控制, 数学推理</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

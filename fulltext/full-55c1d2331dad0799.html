@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选择性时间步加权与基于优势的重放：高效扩散模... - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">选择性时间步加权与基于优势的重放：高效扩散模...</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-08</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.07693" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Selective Timestep Weighting and Advantage-Based Replay for Sample-Efficient Diffusion RLHF</h4>
+            <p><strong>中文摘要：</strong> 本文针对扩散模型RLHF中反馈效率低的问题，提出两种互补策略：逐时间步加权和基于优势的轨迹重放。作者发现扩散轨迹中奖励信息分布不均匀，通过理论分析将时间步加权与PPO最优收敛性质联系起来，并使用潜在变化平方作为实用近似。同时引入难例挖掘机制优先复用高优势轨迹。实验表明该方法在5个奖励函数上实现2-6倍样本效率提升，且保持对新颖提示的泛化能力。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>选择性时间步加权与基于优势的重放用于样本高效的扩散RLHF
+Eric Zhu
+卡内基梅隆大学
+ezhu3@andrew.cmu.edu
+Abhinav Shrivastava
+马里兰大学帕克分校
+abhinav2@umd.edu
+Soumik Mukhopadhyay
+马里兰大学帕克分校
+soumik@umd.edu</p>
+
+<p># 摘要</p>
+
+<p>基于人类反馈的强化学习（RLHF）已成为将生成模型与人类偏好对齐的强大范式。然而，将RLHF应用于扩散模型仍然存在反馈效率极低的问题，因为现有方法通常需要大量的人类或奖励模型评估。这一局限性降低了扩散RLHF在反馈是主要瓶颈的现实场景中的实用性。在本文中，我们提出了两种互补策略，在保持对未见提示的泛化能力的同时，大幅提升扩散RLHF的反馈效率。我们的关键观察是：扩散轨迹中的奖励信息分布不均匀——并非所有去噪时间步或轨迹对奖励信号的学习贡献相同。通过在优化过程中强调信息量大的时间步和轨迹，我们获得了更有效的梯度更新。首先，我们引入了一种逐时间步加权方案，在策略优化过程中对去噪步骤进行重新加权。我们从理论上将这种加权与近端策略优化（PPO）的最优收敛性质联系起来，并通过经验近似得到相应的加权趋势。其次，我们引入了一种重放机制，优先选择信息量大的轨迹，使模型能够复用过去的样本，而非反复查询新的奖励。这两种策略共同显著提升了扩散RLHF的反馈效率。在相同的超参数设置下，与广泛使用的扩散RLHF基线方法相比，我们的方法在样本效率上实现了高达6倍的提升。</p>
+
+<p># 1 引言</p>
+
+<p>扩散模型[41]已成为高质量图像生成的主导框架。然而，由于它们被训练来重现训练数据的分布，因此并不天然地反映人类偏好。最近的工作[2, 8]通过基于人类反馈的强化学习（RLHF）[6]来解决这一局限性，该方法使用来自人类或奖励模型的标量反馈来微调扩散模型，以显式地优化偏好对齐。</p>
+
+<p>**图1**：我们的方法包含两部分。在逐时间步加权中，我们考虑去噪轨迹中每个转换步骤的相对重要性。在历史难例挖掘部分，我们查看具有高优势的先前轨迹，并在训练中重复这些轨迹。</p>
+
+<p>**图2**：基线方法（下曲线）与使用我们方法的同一基线方法（上曲线）的对比图。如上所示，与基线相比，用我们的方法增强现有RLHF框架实现了显著的样本效率提升。</p>
+
+<p>扩散模型中RLHF的一个主要挑战是信用分配问题：即确定扩散过程中哪些中间时间步实际上对最终奖励做出了贡献。由于人类反馈仅在最终图像上给出，DDPO[2]等方法简单地将相同的损失分配给每个时间步。这种设置忽略了去噪过程的结构以及不同时间步如何在不同粒度级别上编辑图像[25]。因此，模型在不考虑去噪轨迹非均匀性质的情况下均匀地优化转换，导致训练效率低下。</p>
+
+<p>先前的工作试图通过对比从相同初始噪声生成的成对去噪轨迹来解决这一问题[14, 52]。在这些方法中，轨迹在指定的分支时间步之前保持相同，之后发散。虽然对比两条共享初始噪声的轨迹可以突出它们发散时间步的效果，但该方法并未对比序列中的其他时间步。较早的步骤保持相同因此不提供信息，而较晚的步骤仍然继承相同的均匀优势，使得更广泛的信用分配问题未得到解决。此外，这些方法需要每个起始噪声进行多次奖励评估，降低了样本效率并增加了计算成本。</p>
+
+<p>在本文中，我们论证了扩散轨迹中的奖励信息在时间步和轨迹之间本质上是不均匀分布的。某些去噪步骤和轨迹比其他步骤和轨迹贡献了更多的学习信号。为了利用这一观察，我们提出了两种互补策略来强调信息量大的训练数据。</p>
+
+<p>首先，我们引入了一种逐时间步加权方案，在优化过程中选择性地对去噪步骤进行重新加权。我们通过分析群体相对策略优化（GRPO）与近端策略优化（PPO）之间的关系来为这种加权提供理论动机，表明每个时间步理想情况下应与TD误差PPO优势的方差成正比进行加权。虽然这一量在训练过程中难以高效估计，但我们分析了其行为，并使用基于逐时间步潜在变化平方幅度的简单启发式来近似其趋势。从经验上看，这种加权提高了训练样本效率。</p>
+
+<p>其次，我们引入了一种受机器人强化学习中常用重放缓冲区启发的轨迹重放机制[34, 1, 22]。我们不再丢弃先前采样的轨迹，而是在训练过程中复用信息量大的轨迹。从优先重放缓冲区[34]中汲取灵感，我们发现对具有最大优势[40]的轨迹进行难例挖掘能提供最高效的学习。通过强调信息量大的轨迹，模型可以在不反复采样新轨迹和奖励评估的情况下持续改进。</p>
+
+<p>总体而言，我们的方法在保持简单且与现有扩散RLHF流程兼容的同时，将基线方法的效率提高了2-6倍。</p>
+
+<p>总结来说，我们的主要贡献包括：</p>
+
+<p>- 一种计算上可行且数学上有动机的逐时间步加权方案，缓解了扩散RLHF中的信用分配问题。
+- 一种重放缓冲区机制，在训练过程中检索信息量大的历史轨迹，减少了对重复奖励查询的需求。
+- 一种简单的即插即用方法，可无缝集成到现有扩散RLHF流程中，无需架构更改。
+- 大量实验展示了在多种奖励函数上的一致性增益，突出了我们方法的通用性。</p>
+
+<p># 2 相关工作</p>
+
+<p>## 2.1 重放缓冲区</p>
+
+<p>重放缓冲区存储策略先前的环境交互以供训练使用。它是DDPG[20]、Soft-Actor Critic[9]和Deep Q-Networks[24]等离策略方法的标准配置，但在PPO[37]和TRPO[36]等在策略方法或当前RLHF方法中并不常见，因为这些方法依赖于从最新权重中采样以保持在分布内。</p>
+
+<p>存在许多重放缓冲区变体。后见之明经验重放[1]用新目标重新标记失败轨迹以合成成功轨迹。其他方法在特定标准下优先选择转换。[34]的方法按高时间差（TD）误差进行采样，作为网络在给定点的训练不足程度的代理，而基于能量的后见之明[54]优先选择高动能轨迹。[22]提出了由扩散模型生成的合成轨迹，[47]展示了检索可以增强机器人模仿学习。最后，[19]使用累积TD误差对先前的PPO轨迹进行难例挖掘。</p>
+
+<p>## 2.2 RLHF</p>
+
+<p>RLHF已成为对齐大型语言模型（LLM）的核心范式。现代RLHF由[27]引入，他们通过监督微调、奖励建模和强化学习的三步流程将其扩展到预训练LLM。后续方法如群体相对策略优化[38]完全移除了奖励模型，转而使用群体归一化优势，而[39]表明GRPO比监督微调更能防止灾难性遗忘。基于偏好的方法如[31]让人类对一个样本相对于另一个样本进行排名，而非给出数值奖励。最近，[4]在计算段级奖励之前对LLM的token流进行分段，[29]将GRPO与提示难例挖掘相结合。</p>
+
+<p>RLHF也在机器人领域进行了探索：[16, 45]在基于偏好的机器人轨迹评估上训练策略，[51]在预训练的轨迹扩散模型上使用奖励引导的进化搜索，[32]微调预训练的模仿学习扩散策略如扩散策略[5]。</p>
+
+<p>## 2.3 扩散RLHF</p>
+
+<p>RLHF在将扩散模型与人类偏好对齐方面也很有效。扩散RLHF始于DPOK和DDPO[8, 2]，它们将RL应用于扩散模型并优于奖励加权回归（RWR）[28]。后续方法如B2-DiffuRL[14]和Branch-GRPO[18]从共享输入噪声分支以锐化轨迹之间的对比，另一条工作线表明GRPO可以应用于流匹配和扩散[21, 50, 55, 18]。与GRPO相比，基于偏好的方法[52, 3, 44]让人类在生成的图像对之间进行选择，而非分配数值奖励，并在此反馈上进行训练。扩散RLHF已被证明在视频扩散[30]和2步扩散[17]设置中有效。</p>
+
+<p>相比之下，一些方法[7, 23, 48]假设奖励是可微的（例如分类器或VLM）并直接通过它进行反向传播，而其他方法则定位奖励重要性的空间区域[15, 48]。工作SIPO[53]在非数值成对偏好反馈下重新加权轨迹时间步以实现更稳定的训练，而最近的工作TempFlow[10]探索了流匹配而非DDPM风格模型中的时间步加权，但没有进行难例挖掘。此外，他们在单个奖励函数上进行评估，而我们在5个奖励函数上的评估表明他们的加权方案不如我们的。</p>
+
+<p># 3 预备知识</p>
+
+<p>## 3.1 马尔可夫决策过程</p>
+
+<p>形式上，MDP[43]可以表示为元组 $(S, A, P, R, \gamma)$，其中 $S$ 是状态空间，$A$ 是动作空间，$P(s'|s,a)$ 是从当前状态 $s$ 和动作 $a$ 到新状态 $s'$ 的概率转移函数，$R(s,a)$ 是奖励函数，$\gamma$ 是折扣因子。在每个时间步 $t$，智能体可以访问状态 $s$ 并选择动作 $a$。结果是新状态 $s'$ 从 $\mathcal{P}(s'|s,a)$ 中采样，以及奖励 $R(s,a)$。</p>
+
+<p>强化学习的目标是最大化衰减奖励的总和，形式化表示为：</p>
+
+<p>$$J(\pi)=\mathbb{E}_{\tau\sim p_{\pi}}\left[\sum_{i=0}^{n}\gamma^{i}R(s_{i},a_{i})\right]$$</p>
+
+<p>## 3.2 扩散模型</p>
+
+<p>对于给定的数据样本 $x_0 \in \mathbb{R}^d$，前向扩散过程在 $T$ 步中逐渐添加噪声以获得噪声轨迹 $(x_0, x_1, \ldots, x_T)$。数学上，前向过程可以定义为：</p>
+
+<p>$$q(x_t|x_{t-1})=\mathcal{N}(x_t; \sqrt{1-\beta_t}x_{t-1}; \beta_t I)$$</p>
+
+<p>其中 $\beta_t$ 是单调噪声调度。反向扩散过程由训练好的模型 $p_\theta$ 组成，其中 $p_\theta(x_{t-1}|x_t)$ 学习近似后验分布 $q(x_{t-1}|x_t, x_0)$，这也是一个具有单调方差调度 $\tilde{\beta}_t$ 的正态分布。</p>
+
+<p>在奖励反馈下，反向扩散过程可以解释为MDP，其中动作是扩散模型预测的噪声，状态是图像的潜在空间，转移函数是如DDIM[42]和DDPM[12]等采样器，输入当前潜在表示和预测噪声。</p>
+
+<p>## 3.3 PPO与扩散RLHF</p>
+
+<p>PPO[37]是经典强化学习中常用的方法。形式上，PPO使用以下损失函数：</p>
+
+<p>$$L_{\text{PPO}}=\min\big(A_t \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)}, \operatorname{clip}(\frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)}, 1-\epsilon, 1+\epsilon)A_t\big)$$</p>
+
+<p>其中 $A_t$ 是时间步 $t$ 的优势，$\epsilon$ 是防止过大权重偏移的裁剪值，$\pi_{\theta_{\text{old}}}(a|s)$ 是使用旧参数 $\theta_{\text{old}}$ 采取动作 $a$ 的概率，与当前参数 $\theta$ 相对。在经典机器人RL中，优势由TD误差给出：</p>
+
+<p>$$A_t = \gamma V(s_{t+1}) + R_{t+1} - V(s_t)$$</p>
+
+<p>其中 $V$ 是价值函数。在扩散RLHF的背景下，先前的方法不使用TD误差，而是计算均匀优势：</p>
+
+<p>$$A = \frac{r - r_{\text{mean}}}{\text{std}(r)}$$</p>
+
+<p>其中 $r$ 是轨迹末端的奖励，$r_{\text{mean}}$ 是一批样本中的平均奖励，$\text{std}(r)$ 是一批奖励的标准差。相同的优势值 $A$ 用于轨迹中的所有时间步。</p>
+
+<p>**图3**：预测的 $x_0$ 从步骤0到4、4到8等步骤的奖励变化。这可以作为不同时间步 $t$ 对最终奖励影响的代理。有趣的是，最终图像中的大部分细节由步骤12确定。</p>
+
+<p>**图4**：$\sigma_t = \sqrt{\text{Var}(A_t)}$ 的随机估计。</p>
+
+<p>**图5**：各种时间步加权方案。为了公平比较，所有时间步加权都归一化为均值为1。</p>
+
+<p># 4 方法</p>
+
+<p>**图6**：我们方法的概述。与DDPO相比，我们添加了一个时间步相关的权重来考虑去噪过程的不对称性质，并添加了一个重放缓冲区用于存储先前的轨迹并对重要轨迹进行难例挖掘。</p>
+
+<p>在现有的扩散RLHF流程中，信息量大的训练信号常常被无信息或低奖励的数据所掩盖。我们的方法在两个层面解决这一问题：（1）时间步级信用分配和（2）轨迹级数据选择。我们首先分析信用分配问题并推导出时间步相关的加权方案，然后引入基于重放的难例挖掘策略来优先选择信息量大的轨迹。</p>
+
+<p>首先，在时间步级别（第4.2节），我们尝试解决信用分配问题。虽然标准扩散RLHF方法对所有去噪步骤分配均匀信用，但我们引入了一种理论上动机驱动的加权方案的实用近似，将更大的重要性分配给对最终奖励贡献最大的扩散步骤（图1（左））。</p>
+
+<p>其次，在轨迹级别（第4.4节），我们引入了一种难例挖掘机制，选择性地复用具有高绝对优势的过去轨迹，确保在学习过程中强调最具信息量的经验（图1（右））。</p>
+
+<p>## 4.1 非均匀信用分配</p>
+
+<p>传统扩散RLHF使用GRPO数学计算单一优势 $A = \frac{R - R_{\text{mean}}}{\text{std}(R)}$。根据扩散RLHF方法的不同，$R_{\text{mean}}$ 和 $R_{\text{std}}$ 分别指群体或批次的均值和标准差。这个优势常数 $A$ 在其损失函数中均匀应用。每个时间步使用相同的常数：</p>
+
+<p>$$\mathcal{L}_{\text{ddpo}} = \sum_{t=1}^{n} -A \cdot \log(P_\theta(x_{t-1}|x_t, c))$$</p>
+
+<p>这个损失函数有问题，因为它没有考虑每个步骤对最终奖励的贡献程度。为了更好地理解信用分配问题，我们首先分析奖励如何沿扩散轨迹演变。</p>
+
+<p>### 4.1.1 案例研究</p>
+
+<p>让我们看看时间步 $t$ 处预测的干净图像 $\hat{x}_0(x_t)$ 对应的奖励，定义为 $R_t = R(\hat{x}_0(x_t))$，对于某个奖励函数 $R$。为简洁起见，我们将其记为 $R(x_t)$，因为 $\hat{x}_0$ 随 $x_t$ 平滑变化。考虑量 $\Delta R_t = R(x_{t+1}) - R(x_t)$。对于小的扩散更新 $x_{t+1} = x_t + h_t$，一阶泰勒级数展开给出 $R(x_{t+1}) \approx R(x_t) + h_t^\top \nabla R(x_t)$。对时间步 $t$ 求和在局部线性假设下产生望远镜分解 $R(x_T) - R(x_0) \approx \sum_t \Delta R(x_t)$。这提供了最终奖励在 $\Delta R_t$ 和初始奖励方面的近似分解。如果我们忽略初始奖励 $R(x_0)$（在随机初始噪声下应该平均到相同的量），$\Delta R_t$ 可以被视为时间步 $t$ 对最终奖励贡献的粗略代理。在图3中，我们观察到 $\Delta R_t$ 在不同时间步之间变化显著，表明去噪轨迹的不同部分对最终奖励信号的贡献不均等。我们强调 $\Delta R_t$ 不应直接用于信用分配，因为它只捕获即时奖励变化，没有考虑状态 $x_t$ 对未来去噪步骤的长期影响。</p>
+
+<p>### 4.1.2 优势方差比例加权作为自然结果</p>
+
+<p>受此观察的启发，我们接下来将扩散RLHF与PPO联系起来，以推导出有原则的时间步级信用分配方案。</p>
+
+<p>PPO和GRPO之间的一个关键区别是PPO基于TD误差进行逐时间步优势计算，从而减少了GRPO中出现的信用分配问题。我们推导出一个方程，从使用GRPO计算的单一最终优势重建PPO时间步级优势。我们证明PPO时间步优势与轨迹级优势 $A_{\text{final}}$ 成正比，对于某些时间步相关常数 $w(t)$。通过使用这些PPO优势值代替均匀GRPO优势，我们可以获得更好的收敛性。</p>
+
+<p>原始PPO使用TD误差优势：</p>
+
+<p>$$A_t = \gamma V(s_{t+1}) + R_{t+1} - V(s_t)$$</p>
+
+<p>其中 $A_t$ 是时间步级优势，$V$ 是来自强化学习的价值函数。</p>
+
+<p>为简化符号，我们假设20步扩散过程。令状态 $s_k = \{x_k, T_k\}$，其中 $T_k$ 是扩散时间步，$x_k$ 是噪声图像。考虑扩散轨迹 $(s_0, s_1, \ldots, s_{20})$，其中状态 $s_0$ 对应纯噪声，$s_{20}$ 对应最终图像，$s_k$ 对应中间潜在表示。考虑动作序列 $a_0, \ldots, a_{19}$。在RLHF场景中，只有来自 $s_{20}$ 的单一奖励，因此将最终奖励记为 $R_{\text{final}}$，所有中间奖励为0。最后，我们假设 $\gamma = 1$，这在RLHF中是典型的。</p>
+
+<p>对于 $t = 0, \ldots, 19$，我们的 $A_t$ 方程简化为：</p>
+
+<p>$$A_t = \gamma V(s_{t+1}) + R_{t+1} - V(s_t) = V(s_{t+1}) - V(s_t)$$</p>
+
+<p>我们有 $V(s_{20}) = R_{\text{final}}$。这给出：</p>
+
+<p>$$A_0 + A_1 + \ldots + A_{19}$$
+$$= [V(s_1) - V(s_0)] + [V(s_2) - V(s_1)] + \ldots + [V(s_{20}) - V(s_{19})]$$
+$$= V(s_{20}) - V(s_0) = R_{\text{final}} - V(s_0)$$</p>
+
+<p>由于 $s_0$ 是从 $\mathcal{N}(0, 1)$ 采样的纯噪声，由于现有采样器的高重采样噪声，从相同起始噪声可以产生非常多样化的去噪轨迹。因此，我们假设 $V(s_0) \approx \mathbb{E}_{s_0 \sim N(0,1)}(R_{\text{final}}) = R_{\text{mean}}$。因此：</p>
+
+<p>$$A_0 + \ldots + A_{19} = R_{\text{final}} - V(s_0) \approx R_{\text{final}} - R_{\text{mean}} = A_{\text{final}} \cdot \text{std}(R)$$</p>
+
+<p>在假设我们只知道最终优势 $A_{\text{final}}$ 而不知道其他信息的情况下，我们可以估计每个 $A_t$。</p>
+
+<p>我们有 $A_t = V(s_{t+1}) - V(s_t)$ 在所有轨迹上均值为零，因为：</p>
+
+<p>$$V(s_t) = \mathbb{E}_{s_{t+1}|s_t}[\gamma V(s_{t+1}) + R_t] = \mathbb{E}_{s_{t+1}|s_t}[V(s_{t+1})]$$</p>
+
+<p>$$\implies \mathbb{E}_{s_{t+1}|s_t}[A_t] = \mathbb{E}_{s_{t+1}|s_t}[V(s_{t+1}) - V(s_t)] = 0$$</p>
+
+<p>令 $\sigma_t$ 为 $A_t$ 在 $\pi$ 生成的轨迹分布上的标准差。我们进一步近似每个 $A_t$ 来自高斯分布 $\mathcal{N}(0, \sigma_t^2)$。</p>
+
+<p>我们想找到条件分布：</p>
+
+<p>$$P\!\left(A_k \mid \sum_{i=0}^{19} A_i = A_{\text{final}} \cdot \operatorname{std}(R)\right)$$</p>
+
+<p>这是线性约束下多元正态分布的条件分布。这给出分布：</p>
+
+<p>$$A_k \Big| \sum_{i=0}^{19} A_i = A_{\text{final}} \cdot \text{std(R)} \sim \mathcal{N}(\mu, \sigma^2)$$</p>
+
+<p>其中：</p>
+
+<p>$$\mu = \frac{\sigma_k^2 \, \text{std}(R)}{\sum_{i=0}^{n}\sigma_{i}^{2}} A_{\text{final}}, \quad \sigma^{2} = \sigma_{k}^{2}\!\left(1 - \frac{\sigma_{k}^{2}}{\sum_{i=0}^{n}\sigma_{i}^{2}}\right)$$</p>
+
+<p>有关此分布如何推导的更多细节请参见附录。因此，$A_k$ 的期望值/均值是 $A_{\text{final}}$ 乘以一个常数，该常数为：</p>
+
+<p>$$w(t) = \frac{\sigma_t^2 \cdot \text{std}(R)}{\sum_{i=0}^{n}\sigma_{i}^{2}}$$</p>
+
+<p>注意当 $\sigma_k$ 较大时 $w(t)$ 也较大，这发生在改变最终奖励最多的时间步。因此，如果我们将调度 $w(t)$ 与 $\sigma_t$ 正确对齐，我们就可以构建PPO时间步级优势 $A_t$ 的准确估计。在我们的公式中，$\sigma_t$ 不依赖于 $s_t$ 或 $a_t$，仅依赖于时间步 $t$。这允许我们对不同轨迹普遍使用相同的 $w(t)$。</p>
+
+<p>### 4.1.3 $\text{Var}(A_t)$ 的经验测量</p>
+
+<p>直观上，优势方差 $\text{Var}(A_t) = \sigma_t^2$ 应该在不同扩散时间步之间变化，因为前向过程添加的噪声具有时间步相关方差 $\beta_t$。在图4中，我们通过将轨迹部分去噪到时间步 $t$，然后分支为多个去噪轨迹并计算其最终奖励的方差来估计 $\sigma_t^2$。</p>
+
+<p>这在训练中是不可取的，因为需要大量分支才能准确计算方差。然而，这清楚地表明需要非均匀加权方案，并提供了预期加权趋势的初步指示。我们在这里看到单调递减的趋势（最后几步略有增加，可能是由于图像生成的随机性）。</p>
+
+<p>**图7**：我们的方法与默认RLHF方法与无训练之间的定性比较。括号中是微调期间使用的奖励查询数量。三元组内的所有图像使用相同的输入种子和噪声渲染。</p>
+
+<p>## 4.2 策略1：逐时间步加权</p>
+
+<p>之前，我们通过案例研究论证了使用非均匀加权方案的必要性。然后我们证明PPO时间步级优势可以在某些假设下从原始GRPO优势推导出来，并且它直接依赖于优势的方差。</p>
+
+<p>虽然这一推导提供了理论指导，但在训练过程中精确估计这些量是不切实际的。因此，我们寻求一种简单的、实用的加权方案来近似这种行为。</p>
+
+<p>我们在图5中实验了多种加权方案。</p>
+
+<p>对于这种单调递减加权方案，一个明显的选择是使用用于在采样过程中添加随机性的反向扩散标准差 $\sqrt{\tilde{\beta}_t}$。（最近的工作[10]尝试在Flow-GRPO SDE中使用类似的基于噪声标准差的加权策略。）</p>
+
+<p>我们还考虑将扩散模型的平均绝对潜在变化 $|z_t - z_{t-1}|$ 和均方潜在变化 $|z_t - z_{t-1}|^2$ 作为加权方案的其他选择，它们具有相同的单调性。这里，$z_t$ 是Stable Diffusion VAE潜在空间中的扩散状态。与之前的静态加权方案不同，最后一种方案是动态的，因为它依赖于潜在表示，而潜在表示又依赖于当前模型如何去噪。</p>
+
+<p>最后，我们还尝试了关于采样步骤的早期、中期和晚期聚焦的高斯加权方案。这些不是单调的，但可以指示应更多关注哪个采样步骤。</p>
+
+<p>我们用新的优势 $w(t) A_{\text{final}}$ 替换GRPO优势 $A_{\text{final}}$。我们的新损失为：</p>
+
+<p>$$\mathcal{L}_{\text{reweighted}} = \sum_{t=1}^{n} -A_{\text{final}} \cdot w(t) \cdot \log(P_\theta(x_{t-1}|x_t, c))$$</p>
+
+<p>其中 $w(t)$ 是仅依赖于转换时间步的标量。</p>
+
+<p>## 4.3 重放缓冲区</p>
+
+<p>到目前为止，我们专注于在时间步级别改进信用分配。我们现在解决第二个效率低下的来源：训练过程中如何复用轨迹。在经典机器人RL中，方法[24, 20, 9]经常使用重放缓冲区来存储先前epoch的先前轨迹。在训练过程中，从重放缓冲区中提取episode，与当前epoch的数据一起用于训练模型。这允许策略从比仅当前epoch轨迹更大的数据集中采样。重放缓冲区的一个扩展是优先重放缓冲区[34]，它重放具有高TD训练误差的转换，已被证明可以加速训练。</p>
+
+<p>与重放缓冲区相比，GRPO在当前epoch完成后丢弃扩散轨迹。虽然这种在线采样允许方法在由最新权重生成的轨迹上进行训练，但我们认为这仍然是高度样本低效的，存储先前的轨迹在提高样本效率方面更有效。</p>
+
+<p>在RLHF设置中无法获得TD误差，因为奖励仅在末端提供。这阻止了我们实现优先重放缓冲区。相反，我们实现了一个优先选择高绝对优势值的缓冲区。</p>
+
+<p>## 4.4 策略2：历史难例挖掘</p>
+
+<p>在此重放缓冲区公式的基础上，我们提出了一种难例挖掘策略，优先选择具有高绝对优势值的轨迹。</p>
+
+<p>我们的直觉是，具有高绝对优势的轨迹，无论是强正还是强负，都包含一个或多个显著改变奖励的时间步，使其成为高度信息化的训练数据。</p>
+
+<p>我们执行两种不同的轨迹重放方法：（1）轨迹级难例挖掘，我们在先前几个epoch中基于 $|A|$ 找到最高的 $k$ 条轨迹；（2）先前轨迹的随机采样。</p>
+
+<p>我们发现仅保留最近几个epoch的轨迹重放缓冲区是最有利的，因为从太久之前的epoch采样会导致分布外轨迹。</p>
+
+<p>总体而言，我们的方法结合了这两种策略：时间步级重新加权和轨迹级难例挖掘。两种策略都受到重新加权训练数据的想法的启发，以便在训练过程中强调更具信息量的样本。详见算法1。</p>
+
+<p>**图8**：使用相同种子训练的图像样本。对于每个奖励函数，有两个绿色框，一个对应我们的方法，一个对应他们的方法。这些框对应于DDPO和我们的方法达到相同奖励水平。我们在所有奖励变体中大约一半的步骤中获得相同数量的奖励。注意我们方法行中后面的图像对应于对特定奖励函数的过度优化，这是所有RLHF平台的常见现象。</p>
+
+<p>**算法1** 总体双策略算法</p>
+
+<p>初始化缓冲区 $D = \{\}$，预训练扩散模型 $\pi$</p>
+
+<p>**for** epoch = 1 **to** num_epochs **do**</p>
+
+<p>**for** i = 1 **to** n **do**</p>
+
+<p>采样轨迹 $\tau_i = (x_T, x_{T-1}, \ldots, x_0)$</p>
+
+<p>**end for**</p>
+
+<p>**for** i = 1 **to** n **do**</p>
+
+<p>使用等式(2)和轨迹 $\tau_i$ 计算加权损失 $L_{\text{reweighted}}$</p>
+
+<p>$\theta = \theta - \nabla_\theta L_{\text{reweighted}}$</p>
+
+<p>**end for**</p>
+
+<p>**if** $D$ 不为空 **then**</p>
+
+<p>从 $D$ 中检索前 $k$ 个样本</p>
+
+<p>使用所有前 $k$ 个样本计算 $L_{\text{reweighted}}$</p>
+
+<p>$\theta = \theta - \nabla_\theta L_{\text{reweighted}}$</p>
+
+<p>**end if**</p>
+
+<p>$D \leftarrow D \cup \{\tau_1, \ldots, \tau_n\}$</p>
+
+<p>$D \leftarrow \text{Remove\_Old\_Entries}(D)$  # 移除超过几个epoch的轨迹</p>
+
+<p>**end for**</p>
+
+<p># 5 实验</p>
+
+<p>**表1**：4k奖励查询下对新颖提示的泛化能力</p>
+
+<p>| | Aesthetic (↑) | Jpeg Comp (↑) | Jpeg Incomp (↑) | Image Reward (↑) | HPS v2 (↑) |
+|---|---|---|---|---|---|
+| 未训练 | 5.44 | -118.75 | 118.758 | 0.48 | 0.284 |
+| DDPO | 5.48 | -112.79 | 124.48 | 0.53 | 0.2888 |
+| DDPO + Ours | 5.66 | -44.25 | 233.28 | 0.71 | 0.3004 |</p>
+
+<p>**表2**：4k奖励查询下通过CLIP分数衡量的提示遵循度 (↑)</p>
+
+<p>| | Aesthetic | Jpeg Comp | Jpeg Incomp | Image Reward | HPS v2 |
+|---|---|---|---|---|---|
+| DDPO | 0.289 | 0.305 | 0.299 | 0.308 | 0.304 |
+| DDPO + Ours | 0.311 | 0.298 | 0.310 | 0.312 | 0.300 |</p>
+
+<p>由于我们的方法高度适用于现有扩散RLHF框架，我们选择将我们的方法与现有基线结合，以展示样本效率的显著提升。对于所有实验，我们使用与[2]相同的动物训练提示列表。我们使用秩为4的LoRA[13]权重矩阵，插入到RunwayML Stable Diffusion v1.5[33]中。对于我们的实验，我们测试了将我们的方法应用于DDPO[2]、DPOK[8]和B2-DiffuRL[14]。完整的超参数列表见附录。</p>
+
+<p>## 5.1 奖励函数</p>
+
+<p>我们在5个奖励函数上测试我们的方法。我们从DDPO[2]论文中选择3个奖励。我们还实验了HPS v2[46]和Image Reward[49]。</p>
+
+<p>我们测试的第一个奖励函数是JPEG可压缩性，它偏好压缩图像并青睐更容易压缩的更平滑纹理。</p>
+
+<p>相反，我们的第二个奖励函数是JPEG不可压缩性，它偏好具有多样纹理的高细节图像。</p>
+
+<p>第三，我们在[35]的Aesthetic Score分类器给出的奖励函数上进行测试，该分类器在人类美学偏好上训练。最后，HPS v2和Image Reward都通过在生成图像的美学和提示遵循人类反馈上训练来模拟人类偏好。</p>
+
+<p>## 5.2 样本效率</p>
+
+<p>在图12中，我们看到我们的修改能够在相同的奖励查询预算内实现比所有现有方法更高的奖励。为了公平比较，每个基线及其增强版本共享相同的超参数。训练图像的定性示例见图7和图8。</p>
+
+<p>**图9**：我们对现有扩散RLHF方法的增强性能。如图所示，我们的方法比单独使用该方法训练速度显著更快。所有结果在3次运行上取平均，并使用500个奖励查询的运行平均值进行平滑。</p>
+
+<p>**图10**：在DDPO上的消融研究，比较4种情况：默认DDPO、仅难例挖掘DDPO、仅加权时间步DDPO、以及加权时间步和难例挖掘DDPO。如图所示，对先前轨迹进行难例挖掘和重新加权时间步都显著提高了DDPO的性能。结果在3个种子上取平均。误差范围是3次运行的标准差。我们显示500个奖励的运行平均值。</p>
+
+<p>**图11**：各种加权方案的性能。我们观察到使用潜在变化平方在所有奖励上给出最佳结果。在某些奖励中，早期聚焦稍好，但在HPS v2和Image Reward中远不如其他方案。</p>
+
+<p>**图12**：不同检索方法的平均奖励。所有结果都使用时间步加权。对于所有方法，我们运行了3个种子以确保一致性。我们显示500个奖励的运行平均值。所有结果在3次运行上取平均。</p>
+
+<p>我们还展示了我们的方法能够以比现有方法更高的样本效率泛化到新颖提示。对于未见提示列表，我们向ChatGPT[26]请求不在提示数据集中的动物。如表5所示，我们发现我们的方法在相同的奖励查询预算下仍然比先前方法具有更好的泛化能力。</p>
+
+<p>## 5.3 消融实验</p>
+
+<p>由于我们同时进行逐时间步加权和历史难例挖掘，我们展示这两种方法各自独立地使扩散RLHF更加样本高效。我们考虑4种可能性：（1）既不进行难例挖掘也不进行时间步加权（基线），（2）进行难例挖掘但不进行时间步加权，（3）进行时间步加权但不进行难例挖掘，（4）同时进行时间步加权和难例挖掘。</p>
+
+<p>我们的结果表明，我们的每种技术都对微调方法的整体效率做出了显著贡献。见图12，其中对于所有奖励，同时使用难例挖掘和加权比仅使用一种更有效。</p>
+
+<p>## 5.4 时间步加权</p>
+
+<p>从经验上看，我们发现时间步加权持续提供最高效的样本结果，有时效率高达6倍。</p>
+
+<p>尽管我们的奖励函数关注图像的不同方面，但我们的时间步加权在所有情况下都提升了样本效率，如图12和图12所示。</p>
+
+<p>**时间步加权的选择。** 使用我们的高斯加权方案，我们发现更重地加权较早的时间步比加权中间时间步效果更好，而加权中间时间步又比加权较晚的时间步效果更好。这表明单调递减的加权方案更可取。作为参考，均匀（未加权）加权的样本效率介于中期和早期聚焦方法之间。</p>
+
+<p>在我们的实验中，在所有奖励函数上表现最一致的方案是均方潜在变化 $|z_t - z_{t-1}|^2$（见图12）。这甚至优于最近工作TempFlow[10]提出的DDIM采样标准差。我们相信这种方案效果良好，因为它为模型对潜在表示做出最大变化的时间步分配了更高的权重。通过在奖励对齐训练中优先考虑这些高变化时间步——而非使用固定系数——模型被更有效地引导向更好的奖励。</p>
+
+<p>## 5.5 历史难例挖掘</p>
+
+<p>我们将历史采样（随机选择样本）与难例挖掘进行比较。如图12所示，对于所有奖励函数，难例挖掘比简单地从先前epoch重新运行随机样本更有效。这验证了我们的假设，即大优势轨迹比其他轨迹更具信息量。</p>
+
+<p>## 5.6 CLIP分数</p>
+
+<p>除了测试样本效率外，我们还在微调模型上测试CLIP分数[11]以衡量提示-图像遵循度。CLIP分数衡量图像与其提示之间的嵌入相似度，作为图像如何忠实地反映文本的代理。我们使用训练提示生成了1k张图像并计算了平均CLIP分数，如表5所示。</p>
+
+<p>我们发现与基线DDPO相比，提示遵循度没有可见的退化。</p>
+
+<p>## 5.7 泛化分数</p>
+
+<p>遵循实验[2]，我们还测试泛化分数。对于我们的实验，我们首先基于奖励函数对给定数量的查询微调模型。之后，我们找到不在训练提示列表中的新提示列表，并测试我们的模型在这些场景中保持奖励高值的能力。如表5所示，我们发现我们的方法也能很好地泛化到其他提示。</p>
+
+<p># 6 结论</p>
+
+<p>在本文中，我们提供了一种简单但有效的方法来增强扩散RLHF的样本效率。我们的方法易于适应现有RLHF平台，并有可能在保持提示遵循度和泛化到新颖提示能力的同时，将训练速度提高多达6倍。我们的方法偏离了每个时间步对输出奖励影响相同的常见RLHF假设。我们的方法基于这样的直觉：在训练过程中，某些时间步和某些轨迹比其他更具信息量。未来的方向可以分析不同的调度器和 $\alpha$-调度如何影响训练样本效率，或将方法扩展到基于偏好的模型如D3PO[52]。</p>
+
+<p># 参考文献</p>
+
+<p>[1] M. Andrychowicz, F. Wolski, A. Ray, J. Schneider, R. Fong, P. Welinder, B. McGrew, J. Tobin, P. Abbeel, and W. Zaremba (2018). Hindsight experience replay. External Links: 1707.01495, Link. Cited by: §1, §2.1.</p>
+
+<p>[2] K. Black, M. Janner, Y. Du, I. Kostrikov, and S. Levine (2024). Training diffusion models with reinforcement learning. External Links: 2305.13301, Link. Cited by: §A.2, §1, §1, §2.3, §5.1, §5.7, §5.</p>
+
+<p>[3] M. Cai, S. Li, W. Li, X. Huang, H. Chen, J. Hu, and Y. Wang (2025). DSPO: direct semantic preference optimization for real-world image super-resolution. External Links: 2504.15176, Link. Cited by: §2.3.</p>
+
+<p>[4] Y. Chai, H. Sun, H. Fang, S. Wang, Y. Sun, and H. Wu (2025). MA-rlhf: reinforcement learning from human feedback with macro actions. External Links: 2410.02743, Link. Cited by: §2.2.</p>
+
+<p>[5] C. Chi, S. Feng, Y. Du, Z. Xu, E. Cousineau, B. Burchfiel, and S. Song (2023). Diffusion policy: visuomotor policy learning via action diffusion. In Proceedings of Robotics: Science and Systems (RSS). Cited by: §2.2.</p>
+
+<p>[6] P. Christiano, J. Leike, T. B. Brown, M. Martic, S. Legg, and D. Amodei (2023). Deep reinforcement learning from human preferences. External Links: 1706.03741, Link. Cited by: §1.</p>
+
+<p>[7] K. Clark, P. Vicol, K. Swersky, and D. J. Fleet (2024). Directly fine-tuning diffusion models on differentiable rewards. External Links: 2309.17400, Link. Cited by: §2.3.</p>
+
+<p>[8] Y. Fan, O. Watkins, Y. Du, H. Liu, M. Ryu, C. Boutilier, P. Abbeel, M. Ghavamzadeh, K. Lee, and K. Lee (2023). DPOK: reinforcement learning for fine-tuning text-to-image diffusion models. External Links: 2305.16381, Link. Cited by: §1, §2.3, §5.</p>
+
+<p>[9] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine (2018). Soft actor-critic: off-policy maximum entropy deep reinforcement learning with a stochastic actor. External Links: 1801.01290, Link. Cited by: §2.1, §4.3.</p>
+
+<p>[10] X. He, S. Fu, Y. Zhao, W. Li, J. Yang, D. Yin, F. Rao, and B. Zhang (2025). Tempflow-grpo: when timing matters for grpo in flow models. arXiv preprint arXiv:2508.04324. Cited by: §2.3, §4.2, §5.4.</p>
+
+<p>[11] J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, and Y. Choi (2022). CLIPScore: a reference-free evaluation metric for image captioning. External Links: 2104.08718, Link. Cited by: §5.6.</p>
+
+<p>[12] J. Ho, A. Jain, and P. Abbeel (2020). Denoising diffusion probabilistic models. External Links: 2006.11239, Link. Cited by: §3.2.</p>
+
+<p>[13] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and W. Chen (2021). LoRA: low-rank adaptation of large language models. External Links: 2106.09685, Link. Cited by: §5.</p>
+
+<p>[14] Z. Hu, F. Zhang, L. Chen, K. Kuang, J. Li, K. Gao, J. Xiao, X. Wang, and W. Zhu (2025). Towards better alignment: training diffusion models with reinforcement learning against sparse rewards. External Links: 2503.11240, Link. Cited by: §1, §2.3, §5.</p>
+
+<p>[15] Q. Huang, W. Dai, J. Liu, W. He, H. Jiang, M. Song, and J. Song (2025). PatchDPO: patch-level dpo for finetuning-free personalized image generation. External Links: 2412.03177, Link. Cited by: §2.3.</p>
+
+<p>[16] S. Huang, M. Levy, A. Gupta, D. Ekpo, R. Zheng, and A. Shrivastava (2025). TREND: tri-teaching for robust preference-based reinforcement learning with demonstrations. External Links: 2505.06079, Link. Cited by: §2.2.</p>
+
+<p>[17] Z. Jia, Y. Nan, H. Zhao, and G. Liu (2025). Reward fine-tuning two-step diffusion models via learning differentiable latent-space surrogate reward. External Links: 2411.15247, Link. Cited by: §2.3.</p>
+
+<p>[18] Y. Li, Y. Wang, Y. Zhu, Z. Zhao, M. Lu, Q. She, and S. Zhang (2025). BranchGRPO: stable and efficient grpo with structured branching in diffusion models. External Links: 2509.06040, Link. Cited by: §2.3.</p>
+
+<p>[19] X. Liang, Y. Ma, Y. Feng, and Z. Liu (2021). PTR-ppo: proximal policy optimization with prioritized trajectory replay. External Links: 2112.03798, Link. Cited by: §2.1.</p>
+
+<p>[20] T. P. Lillicrap, J. J. Hunt, A. Pritzel, N. Heess, T. Erez, Y. Tassa, D. Silver, and D. Wierstra (2015). Continuous control with deep reinforcement learning. arXiv preprint arXiv:1509.02971. Cited by: §2.1, §4.3.</p>
+
+<p>[21] J. Liu, G. Liu, J. Liang, Y. Li, J. Liu, X. Wang, P. Wan, D. Zhang, and W. Ouyang (2025). Flow-grpo: training flow matching models via online rl. External Links: 2505.05470, Link. Cited by: §2.3.</p>
+
+<p>[22] C. Lu, P. J. Ball, Y. W. Teh, and J. Parker-Holder (2023). Synthetic experience replay. External Links: 2303.06614, Link. Cited by: §1, §2.1.</p>
+
+<p>[23] G. Luo, J. Granskog, A. Holynski, and T. Darrell (2025). Dual-process image generation. External Links: 2506.01955, Link. Cited by: §2.3.</p>
+
+<p>[24] V. Mnih, K. Kavukcuoglu, D. Silver, A. Graves, I. Antonoglou, D. Wierstra, and M. Riedmiller (2013). Playing atari with deep reinforcement learning. External Links: 1312.5602, Link. Cited by: §2.1, §4.3.</p>
+
+<p>[25] S. Mukhopadhyay, M. Gwilliam, Y. Yamaguchi, V. Agarwal, N. Padmanabhan, A. Swaminathan, T. Zhou, J. Ohya, and A. Shrivastava (2024). Do text-free diffusion models learn discriminative visual representations? External Links: 2311.17921, Link. Cited by: §1.</p>
+
+<p>[26] OpenAI, J. Achiam, et al. (2024). GPT-4 technical report. External Links: 2303.08774, Link. Cited by: §5.2.</p>
+
+<p>[27] L. Ouyang, J. Wu, X. Jiang, D. Almeida, et al. (2022). Training language models to follow instructions with human feedback. arXiv preprint arXiv:2203.02155. Cited by: §2.2.</p>
+
+<p>[28] J. Peters and S. Schaal (2007). Reinforcement learning by reward-weighted regression for operational space control. In Proceedings of the 24th International Conference on Machine Learning, ICML '07, New York, NY, USA, pp. 745–750. External Links: ISBN 9781595937933, Link, Document. Cited by: §2.3.</p>
+
+<p>[29] B. Pikus, P. R. Tiwari, and B. Ye (2025). Hard examples are all you need: maximizing grpo post-training under annotation budgets. External Links: 2508.14094, Link. Cited by: §2.2.</p>
+
+<p>[30] M. Prabhudesai, R. Mendonca, Z. Qin, K. Fragkiadaki, and D. Pathak (2024). Video diffusion alignment via reward gradients. External Links: 2407.08737, Link. Cited by: §2.3.</p>
+
+<p>[31] R. Rafailov, A. Sharma, E. Mitchell, S. Ermon, C. D. Manning, and C. Finn (2024). Direct preference optimization: your language model is secretly a reward model. External Links: 2305.18290, Link. Cited by: §2.2.</p>
+
+<p>[32] A. Z. Ren, J. Lidard, L. L. Ankile, A. Simeonov, P. Agrawal, A. Majumdar, B. Burchfiel, H. Dai, and M. Simchowitz (2024). Diffusion policy policy optimization. External Links: 2409.00588, Link. Cited by: §2.2.</p>
+
+<p>[33] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer (2022). High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR). Cited by: §5.</p>
+
+<p>[34] T. Schaul, J. Quan, I. Antonoglou, and D. Silver (2016). Prioritized experience replay. External Links: 1511.05952, Link. Cited by: §1, §2.1, §4.3.</p>
+
+<p>[35] C. Schuhmann and R. Beaumont (2022). Laion-aesthetics. LAION. AI. Cited by: §5.1.</p>
+
+<p>[36] J. Schulman, S. Levine, P. Moritz, M. I. Jordan, and P. Abbeel (2017). Trust region policy optimization. External Links: 1502.05477, Link. Cited by: §2.1.</p>
+
+<p>[37] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov (2017). Proximal policy optimization algorithms. External Links: 1707.06347, Link. Cited by: §2.1, §3.3.</p>
+
+<p>[38] Z. Shao, P. Wang, Q. Zhu, R. Xu, J. Song, X. Bi, H. Zhang, M. Zhang, Y. K. Li, Y. Wu, and D. Guo (2024). DeepSeekMath: pushing the limits of mathematical reasoning in open language models. External Links: 2402.03300, Link. Cited by: §2.2.</p>
+
+<p>[39] I. Shenfeld, J. Pari, and P. Agrawal (2025). RL's razor: why online reinforcement learning forgets less. External Links: 2509.04259, Link. Cited by: §2.2.</p>
+
+<p>[40] A. Shrivastava, A. Gupta, and R. Girshick (2016). Training region-based object detectors with online hard example mining. External Links: 1604.03540, Link. Cited by: §1.</p>
+
+<p>[41] J. Sohl-Dickstein, E. A. Weiss, N. Maheswaranathan, and S. Ganguli (2015). Deep unsupervised learning using nonequilibrium thermodynamics. External Links: 1503.03585, Link. Cited by: §1.</p>
+
+<p>[42] J. Song, C. Meng, and S. Ermon (2022). Denoising diffusion implicit models. External Links: 2010.02502, Link. Cited by: §3.2.</p>
+
+<p>[43] R.S. Sutton and A.G. Barto (1998). Reinforcement learning: an introduction. IEEE Transactions on Neural Networks 9(5), pp. 1054–1054. External Links: Document. Cited by: §3.1.</p>
+
+<p>[44] B. Wallace, M. Dang, R. Rafailov, L. Zhou, A. Lou, S. Purushwalkam, S. Ermon, C. Xiong, S. Joty, and N. Naik (2023). Diffusion model alignment using direct preference optimization. External Links: 2311.12908, Link. Cited by: §2.3.</p>
+
+<p>[45] Y. Wang, Z. Sun, J. Zhang, Z. Xian, E. Biyik, D. Held, and Z. Erickson (2024). RL-vlm-f: reinforcement learning from vision language foundation model feedback. External Links: 2402.03681, Link. Cited by: §2.2.</p>
+
+<p>[46] X. Wu, Y. Hao, K. Sun, Y. Chen, F. Zhu, R. Zhao, and H. Li (2023). Human preference score v2: a solid benchmark for evaluating human preferences of text-to-image synthesis. arXiv preprint arXiv:2306.09341. Cited by: §5.1.</p>
+
+<p>[47] A. Xie, R. Chand, D. Sadigh, and J. Hejna (2025). Data retrieval with importance weights for few-shot imitation learning. External Links: 2509.01657, Link. Cited by: §2.1.</p>
+
+<p>[48] X. Xing, A. Saha, J. He, S. Hao, P. Vicol, M. Ryu, G. Li, S. Singla, S. Young, Y. Li, F. Yang, and D. Ramachandran (2025). Focus-n-fix: region-aware fine-tuning for text-to-image generation. External Links: 2501.06481, Link. Cited by: §2.3.</p>
+
+<p>[49] J. Xu, X. Liu, Y. Wu, Y. Tong, Q. Li, M. Ding, J. Tang, and Y. Dong (2023). Imagereward: learning and evaluating human preferences for text-to-image generation. Advances in Neural Information Processing Systems 36, pp. 15903–15935. Cited by: §5.1.</p>
+
+<p>[50] Z. Xue, J. Wu, Y. Gao, F. Kong, L. Zhu, M. Chen, Z. Liu, W. Liu, Q. Guo, W. Huang, and P. Luo (2025). DanceGRPO: unleashing grpo on visual generation. External Links: 2505.07818, Link. Cited by: §2.3.</p>
+
+<p>[51] B. Yang, H. Su, N. Gkanatsios, T. Ke, A. Jain, J. Schneider, and K. Fragkiadaki (2024). Diffusion-es: gradient-free planning with diffusion for autonomous driving and zero-shot instruction following. External Links: 2402.06559, Link. Cited by: §2.2.</p>
+
+<p>[52] K. Yang, J. Tao, J. Lyu, C. Ge, J. Chen, Q. Li, W. Shen, X. Zhu, and X. Li (2024). Using human feedback to fine-tune diffusion models without any reward model. External Links: 2311.13231, Link. Cited by: §A.1, §1, §2.3, §6.</p>
+
+<p>[53] X. Yang, Z. Tan, J. Wang, Z. Zhou, and H. Li (2025). SDPO: importance-sampled direct preference optimization for stable diffusion training. External Links: 2505.21893, Link. Cited by: §2.3.</p>
+
+<p>[54] R. Zhao and V. Tresp (2020). Energy-based hindsight experience prioritization. External Links: 1810.01363, Link. Cited by: §2.1.</p>
+
+<p>[55] Y. Zhou, P. Ling, J. Bu, Y. Wang, Y. Zang, J. Wang, L. Niu, and G. Zhai (2025). Fine-grained grpo for precise preference alignment in flow models. External Links: 2510.01982, Link. Cited by: §2.3.</p>
+
+<p># 附录A 附录</p>
+
+<p>## A.1 基线超参数</p>
+
+<p>我们选择使用与D3PO[52]论文中所有基线相同的超参数。唯一的区别是我们选择了较少的每epoch样本数，因为我们发现更频繁的采样能带来更好的性能。我们还从Adam改为AdamW，这与大多数扩散RLHF方法一致。在基线和基线+我们的方法之间，我们保持所有超参数相同。所有结果均使用4块RTX A5000 GPU或4块RTX A4000 GPU获得。完整的超参数列表见表3和表4。</p>
+
+<p>## A.2 提示列表</p>
+
+<p>我们使用与[2]相同的训练提示列表。动物列表如下：</p>
+
+<p>cat dog horse monkey rabbit zebra spider bird sheep deer cow goat lion tiger bear raccoon fox wolf lizard beetle ant butterfly fish shark whale dolphin squirrel mouse rat snake turtle frog chicken duck goose bee pig turkey fly llama camel bat gorilla hedgehog kangaroo</p>
+
+<p>对于泛化实验，我们使用以下由ChatGPT生成的动物列表：</p>
+
+<p>elephant giraffe hippopotamus rhinoceros leopard cheetah hyena bison moose elk reindeer antelope armadillo sloth otter beaver badger lynx bobcat cougar jaguar capybara porcupine platypus echidna koala wallaby wombat manatee walrus seal narwhal orca penguin albatross flamingo peacock owl eagle hawk parrot crocodile alligator chameleon salamander</p>
+
+<p>## A.3 与难例挖掘的比较</p>
+
+<p>使用难例挖掘时，尽管我们使用了较少的奖励调用，但我们对网络进行了更多的反向传播。因此，一个明显的问题可能是：使用难例挖掘是否有帮助仅仅因为梯度被反向传播的样本更多，还是难例挖掘因为选择了更重要的轨迹而有所帮助。</p>
+
+<p>在本节中，我们将难例挖掘与另外两种方法进行比较。首先，我们与简单地按我们进行的额外梯度步数比例增加学习率进行比较。其次，我们与从当前epoch随机重放条目进行比较。这两种设置分别对应于使用更快的学习率和更多的梯度调用，两者都是难例挖掘的替代方案。注意这与图12不同，在图12中我们比较的是从先前epoch随机检索而非仅从当前epoch。如图13所示，我们基于绝对优势的难例挖掘比增加学习率和从当前epoch重复样本都做得更好，表明难例挖掘的帮助不仅仅来自增加的样本。</p>
+
+<p>**图13**：难例挖掘与增加学习率和从当前epoch随机重放样本的比较。所有结果在3个种子上取平均。</p>
+
+<p>## A.4 $A_k$ 均值为 $\frac{\sigma_k^2 \cdot \text{std}(R)}{\sum_{i=1}^{n}\sigma_{i}^{2}} A_{\text{final}}$ 的证明</p>
+
+<p>我们想找到 $A_k$ 的概率分布，其中我们假设每个 $A_i$ 的均值为0，标准差为 $\sigma_i$，$i \in \{0, 1, 2, \ldots, n\}$。此外，我们有条件：对于给定常数 $C$，</p>
+
+<p>$$A_0 + A_1 + A_2 + \ldots + A_n = C$$</p>
+
+<p>为简化符号，假设 $k = 0$。证明可以轻松推广到其他 $k$ 值。</p>
+
+<p>令 $B = A_1 + A_2 + \ldots + A_n$。$B$ 的均值是 $A_1 + A_2, \ldots, A_n$ 均值之和，即0。$B$ 的方差是 $A_1 + A_2, \ldots, A_n$ 方差之和。这意味着 $\sigma_B^2 = \sigma_1^2 + \sigma_2^2 + \ldots + \sigma_n^2$。最后，高斯分布之和仍为高斯分布。因此，</p>
+
+<p>$$B = A_1 + A_2 + A_3 + \ldots + A_n \sim \mathcal{N}(0, \sigma_B^2)$$</p>
+
+<p>我们可以将问题重写为找到分布 $A_0 | A_0 + B = C$。对于给定值 $a$ 使得 $A_0 = a$，</p>
+
+<p>$$P(A_0 = a | A_0 + \ldots + A_n = C)$$
+$$= P(A_0 = a | A_0 + B = C)$$
+$$= P(A_0 = a \;\&amp;\; A_0 + B = C) / P(A_0 + B = C)$$
+$$= P(A_0 = a \;\&amp;\; B = C - a) / P(A_0 + B = C)$$
+$$\propto P(A_0 = a \;\&amp;\; B = C - a)$$
+$$= P(A_0 = a) P(B = C - a)$$
+$$= \frac{1}{\sqrt{2\pi\sigma_0^2}} \exp\left(-\frac{a^2}{2\sigma_0^2}\right) \cdot \frac{1}{\sqrt{2\pi\sigma_B^2}} \exp\left(-\frac{(C-a)^2}{2\sigma_B^2}\right)$$
+$$= \frac{1}{2\pi\sigma_0\sigma_B} \exp\left(-\frac{a^2}{2\sigma_0^2} - \frac{(C-a)^2}{2\sigma_B^2}\right)$$
+$$\propto \exp\left(-\frac{a^2}{2\sigma_0^2} - \frac{(C-a)^2}{2\sigma_B^2}\right)$$</p>
+
+<p>经过配方法化简后，最终结果是一个均值为</p>
+
+<p>$$\mu = C \frac{\sigma_0^2}{\sigma_0^2 + \sigma_B^2} = C \frac{\sigma_0^2}{\sigma_0^2 + \sigma_1^2 + \ldots + \sigma_n^2}$$</p>
+
+<p>方差为</p>
+
+<p>$$\frac{\sigma_0^2 \sigma_B^2}{\sigma_0^2 + \sigma_B^2} = \sigma_0^2 \left(1 - \frac{\sigma_0^2}{\sum_{i=0}^{n}\sigma_i^2}\right)$$</p>
+
+<p>的高斯分布。</p>
+
+<p>令 $C = \text{std}(R) A_{\text{final}}$，我们得到在 $A_0 + A_1 + \ldots + A_n = \text{std}(R) A_{\text{final}}$ 假设下 $A_0$ 的分布均值为</p>
+
+<p>$$\mu = \frac{\sigma_0^2}{\sigma_0^2 + \sigma_1^2 + \ldots + \sigma_n^2} \text{std}(R) A_{\text{final}}$$</p>
+
+<p>**表3**：所有实验的超参数</p>
+
+<p>| 名称 | 描述 | 值 |
+|---|---|---|
+| $lr$ | 学习率 | 3e-5 |
+| optimizer | 优化器类型 | AdamW |
+| $\xi$ | 优化器权重衰减 | 1e-4 |
+| $\epsilon$ | 梯度裁剪范数 | 1.0 |
+| $\beta_1$ | Adam的 $\beta_1$ | 0.9 |
+| $\beta_2$ | Adam的 $\beta_2$ | 0.999 |
+| $T$ | 推理总时间步 | 20 |
+| $n$ | 每GPU每epoch样本数 | 5 |
+| $\eta$ | DDIM采样器的eta参数 | 1.0 |
+| $G$ | 有效批次大小（所有GPU合计） | 4 |
+| $w$ | 无分类器引导权重 | 5.0 |
+| num_gpu | GPU数量 | 4 |</p>
+
+<p>**表4**：我们方法的额外超参数</p>
+
+<p>| 名称 | 描述 | 值 |
+|---|---|---|
+| $k$ | 每GPU从缓冲区检索的前k个样本 | 4 |
+| hist_size | 检索难例挖掘样本的先前epoch数 | 3 |
+| $w(t)$ | 逐时间步权重 | 潜在变化平方 |</p>
+
+<p>## A.5 更多图像样本</p>
+
+<p>在图14、15、16、17和18中，我们给出了DDPO与DDPO+我们方法的随机选择样本。我们在网格中使用30个随机种子生成30张图像，并使用微调后的权重进行去噪。</p>
+
+<p>**图14**：以下是在Aesthetic Score上6k奖励图像后的DDPO（左）与DDPO+我们方法（右）。Aesthetic score主要看重明亮的颜色、艺术价值和视角。</p>
+
+<p>**图15**：以上是在Jpeg Compression上3k奖励查询后的DDPO（左）与DDPO+我们方法（右）。注意对于此奖励，我们希望尽可能少的细节以减少Jpeg内存大小。因此，最高奖励的图像是细节最少的图像。</p>
+
+<p>**图16**：以上是在Jpeg Incompression上2k奖励图像后的DDPO（左）与DDPO+我们方法（右）。注意我们希望尽可能多的细节以增加Jpeg内存大小。因此，最高奖励的图像是细节最多的图像。</p>
+
+<p>**图17**：以上是在HPS V2上7k奖励图像后的DDPO（左）与DDPO+我们方法（右）。注意HPS V2被训练来模拟人类偏好。</p>
+
+<p>**图18**：以上是在Image Reward上9k奖励图像后的DDPO（左）与DDPO+我们方法（右）。注意Image Reward被训练来模拟人类对图像的偏好。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 扩散模型, 强化学习, 人类反馈对齐, 样本效率, 信用分配</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

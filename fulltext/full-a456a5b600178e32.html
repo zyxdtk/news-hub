@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PALS：大语言模型剪枝的百分位感知逐层稀疏性 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">PALS：大语言模型剪枝的百分位感知逐层稀疏性</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-08</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.07557" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：PALS: Percentile-Aware Layerwise Sparsity for LLM Pruning</h4>
+            <p><strong>中文摘要：</strong> 现有LLM一次性剪枝方法对所有层采用统一稀疏比例，忽略了层间重要性差异。本文提出PALS方法，基于激活幅值的第99百分位数评估各层重要性，并在目标稀疏度±5%范围内动态调整每层剪枝率（重要层少剪，冗余层多剪）。实验表明，在LLaMA-2-7B上，PALS将困惑度从12.92降至10.96，且无需微调、成本极低。研究还发现基于梯度的分配效果不如随机分配。该方法对LLaMA-3和Mistral架构收益...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>PALS: Percentile-Aware Layerwise Sparsity for LLM Pruning
+Yazdan Jamshidi
+Palo Alto Networks
+yjamshidi@paloaltonetworks.com
+&amp;Alexey Shvets
+Palo Alto Networks
+ashvets@paloaltonetworks.com
+Abstract
+One-shot pruning methods like Wanda and SparseGPT apply the same sparsity ratio to every layer of a transformer, ignoring known variation in layer importance. We propose PALS (Percentile-Aware Layerwise Sparsity), which adjusts per-layer sparsity based on the 99th percentile of activation magnitudes, bounded to
+±
+5
+%
+\pm 5\%
+around the target ratio. On LLaMA-2-7B at 50% sparsity, PALS achieves 10.96 WikiText-2 perplexity versus 12.92 for uniform Wanda (mean over 9 runs,
+p
+&lt;
+0.001
+p&lt;0.001
+). The benefit is architecture-dependent: LLaMA-3-8B shows marginal gains and Mistral-7B shows none. We also find that gradient-based allocation—the seemingly more principled approach—produces results worse than random, suggesting that gradient magnitude does not predict the impact of discrete weight removal. PALS adds negligible cost to the pruning pipeline and requires no fine-tuning.
+1
+Introduction
+Large language models routinely reach billions of parameters. A 7B-parameter model takes roughly 13 GB in half precision and processes billions of multiply-accumulate operations per token, which puts real-time inference out of reach on modest hardware. Post-training pruning offers a direct way to cut both memory and compute: remove a fraction of the weights and run inference on the sparser model, withou</p>
+
+<p>t retraining from scratch.
+Recent one-shot pruning methods have made this practical for LLMs. Wanda
+Sun
+et al.
+(
+2024
+)
+scores each weight by the product of its magnitude and the mean absolute activation flowing through it (
+|
+w
+i
+​
+j
+|
+⋅
+mean
+​
+(
+|
+a
+i
+|
+)
+|w_{ij}|\cdot\text{mean}(|a_{i}|)
+), then drops the lowest-scoring fraction. SparseGPT
+Frantar and Alistarh (
+2023
+)
+solves a heavier problem—layer-wise sparse regression with approximate Hessian information—but in practice lands at similar perplexity on most benchmarks. Both methods have become standard baselines.
+One thing both share is that they enforce
+uniform
+sparsity: if the target is 50%, every one of the 32 layers in LLaMA-2 is pruned to exactly 50%. This sits poorly with what we know about transformer layers. Attention heads vary widely in importance
+Voita
+et al.
+(
+2019
+); Michel
+et al.
+(
+2019
+)
+. Early layers tend to build generic representations; middle layers are often more redundant; late layers specialize for the output vocabulary. Pruning all of them equally seems like it should leave performance on the table—and it does.
+We propose PALS (Percentile-Aware Layerwise Sparsity), which adjusts the sparsity ratio for each layer based on activation statistics gathered from a small calibration set. The idea is direct: compute the 99th percentile of activation magnitudes for each layer, normalize these scores, and use them to shift each layer’s sparsity target up or down. Layers with large activation outliers—a sign</p>
+
+<p>of important information flow—get pruned less; layers with uniformly small activations get pruned more. A
+±
+5
+%
+\pm 5\%
+band around the target prevents any single layer from being starved or overstuffed. The procedure slots into Wanda’s pipeline with almost no extra cost, since Wanda already collects the activations.
+Before settling on activations, we tried the seemingly more natural approach of using gradient magnitudes to estimate layer importance. This failed decisively. Gradient-based allocation produced 47 perplexity on LLaMA-2-7B, compared to 24 for
+random
+allocation and 11 for our activation-based scheme. We believe gradients reflect optimization dynamics—how much the loss would change under an infinitesimal perturbation—rather than the actual impact of removing a large fraction of weights. But the scale of the failure was not something we anticipated.
+On LLaMA-2-7B at 50% sparsity, PALS brings WikiText-2 perplexity from 12.92 down to 10.96, averaged over nine independent runs with different random seeds (Welch’s
+t
+​
+(
+14
+)
+=
+8.1
+t(14)=8.1
+,
+p
+&lt;
+0.001
+p&lt;0.001
+). The picture is less clear on other architectures. LLaMA-3-8B benefits marginally (10.45 vs. 10.48), and Mistral-7B does not benefit at all (6.31 either way). We think this reflects how uniformly these newer models distribute computation across layers—when all layers are similarly important, non-uniform allocation has nothing to exploit. We present ablation studies covering the percentile choice, adaptation str</p>
+
+<p>ength, and bound width, along with downstream evaluation on four benchmarks and practical speedup measurements.
+2
+Related Work
+2.1
+One-Shot Pruning for LLMs
+Magnitude pruning
+Han
+et al.
+(
+2015
+)
+—removing weights with the smallest absolute values—is the oldest and simplest approach but ignores activation patterns, which limits it on modern LLMs. SparseGPT
+Frantar and Alistarh (
+2023
+)
+improved on this substantially by formulating each layer’s pruning as a sparse reconstruction problem, using an approximate inverse Hessian to choose which weights to remove and how to adjust the survivors. Wanda
+Sun
+et al.
+(
+2024
+)
+showed that a much simpler scoring rule—
+|
+w
+|
+⋅
+mean
+​
+(
+|
+a
+|
+)
+|w|\cdot\text{mean}(|a|)
+, with no weight update—matches SparseGPT in most settings. Both methods use the same sparsity ratio for every layer. PALS keeps Wanda’s scoring but varies the fraction of weights removed per layer.
+2.2
+Structured Pruning
+An orthogonal line of work removes entire structural units for hardware-friendly sparsity. LLM-Pruner
+Ma
+et al.
+(
+2023
+)
+uses first-order Taylor expansion to score and remove attention heads and MLP neurons. SliceGPT
+Ashkboos
+et al.
+(
+2024
+)
+projects weight matrices into a lower-rank space and deletes entire rows and columns. Sheared LLaMA
+Zhang
+et al.
+(
+2024
+)
+combines structured pruning with continued pre-training. These approaches deliver better hardware utilization than unstructured pruning but typically require some form of fine-tuning. PALS stays within</p>
+
+<p>the unstructured, one-shot setting.
+2.3
+Non-Uniform Layer Treatment
+The idea that different layers should be treated differently is not new. NISP
+Yu
+et al.
+(
+2018
+)
+propagates importance scores between layers for vision models, but was designed for networks orders of magnitude smaller than current LLMs. For large language models, most work on non-uniform treatment has focused on depth pruning—removing entire transformer blocks
+Kurtic
+et al.
+(
+2022
+)
+—rather than adjusting within-layer sparsity ratios. To our knowledge, PALS is the first to report clear gains from varying per-layer sparsity in one-shot LLM pruning, and the first to document the failure of gradient-based allocation in this setting.
+2.4
+Activation Outliers in Transformers
+Dettmers et al.
+Dettmers
+et al.
+(
+2022
+)
+showed that large language models develop activation outliers—individual features with magnitudes 10–100
+×
+\times
+larger than the rest—concentrated in specific dimensions and layers. These outliers are essential for model quality: zeroing them out causes sharp accuracy drops. Our use of the 99th percentile as a layer importance signal connects directly to this observation. Layers with more extreme outliers are presumably processing more critical information, and PALS assigns them lower sparsity. This also explains why the 99th percentile outperforms the mean as an importance metric: the mean averages out exactly the outliers that matter.
+3
+Method
+Given a pretrained model with
+L
+L
+transformer layers and a</p>
+
+<p>target sparsity
+s
+target
+s_{\text{target}}
+(e.g., 0.50 for 50% weight removal), PALS adjusts the per-layer sparsity based on activation statistics, then prunes each layer independently using Wanda’s scoring.
+3.1
+Layer Importance from Activation Percentiles
+For each layer
+l
+l
+, we collect activations
+A
+(
+l
+)
+∈
+ℝ
+n
+×
+d
+A^{(l)}\in\mathbb{R}^{n\times d}
+on
+n
+n
+calibration tokens across
+d
+d
+hidden dimensions. The layer importance score is the 99th percentile of the absolute activations:
+I
+(
+l
+)
+=
+Percentile
+​
+(
+|
+A
+(
+l
+)
+|
+,
+99
+)
+I^{(l)}=\text{Percentile}\bigl(|A^{(l)}|,\;99\bigr)
+(1)
+The 99th percentile targets the outlier activations that Dettmers et al.
+Dettmers
+et al.
+(
+2022
+)
+identified as critical, while being less noisy than the maximum. To make scores comparable across layers, we standardize:
+I
+^
+(
+l
+)
+=
+I
+(
+l
+)
+−
+I
+¯
+σ
+I
+\hat{I}^{(l)}=\frac{I^{(l)}-\bar{I}}{\sigma_{I}}
+(2)
+where
+I
+¯
+=
+1
+L
+​
+∑
+l
+=
+1
+L
+I
+(
+l
+)
+\bar{I}=\frac{1}{L}\sum_{l=1}^{L}I^{(l)}
+and
+σ
+I
+\sigma_{I}
+is the standard deviation of the raw scores.
+3.2
+Sparsity Allocation with Conservative Bounds
+The normalized importance
+I
+^
+(
+l
+)
+\hat{I}^{(l)}
+determines how much each layer deviates from the global target:
+s
+(
+l
+)
+=
+clip
+​
+(
+s
+target
++
+α
+⋅
+I
+^
+(
+l
+)
+,
+s
+min
+,
+s
+max
+)
+s^{(l)}=\text{clip}\!\left(s_{\text{target}}+\alpha\cdot\hat{I}^{(l)},\;\;s_{\text{min}},\;s_{\text{max}}\right)
+(3)
+where
+α
+\alpha
+controls adaptation strength. The clip enforces:
+s
+min
+=
+s
+target
+−
+0.05
+,
+s
+max
+=
+s
+target
++
+0.05
+s_{\text{min</p>
+
+<p>}}=s_{\text{target}}-0.05,\qquad s_{\text{max}}=s_{\text{target}}+0.05
+(4)
+The
+±
+5
+%
+\pm 5\%
+bounds are important. In preliminary experiments, wider bounds (
+±
+20
+%
+\pm 20\%
+) caused sharp degradation because heavily pruned layers created information bottlenecks—the rest of the network could not compensate for the lost capacity. Conservative bounds trade off some potential gain for robustness.
+3.3
+Weight Scoring and Pruning
+After determining
+s
+(
+l
+)
+s^{(l)}
+, we score and prune weights using Wanda’s criterion:
+score
+​
+(
+w
+i
+​
+j
+(
+l
+)
+)
+=
+|
+w
+i
+​
+j
+(
+l
+)
+|
+⋅
+mean
+n
+​
+(
+|
+a
+n
+​
+i
+(
+l
+)
+|
+)
+\text{score}(w_{ij}^{(l)})=|w_{ij}^{(l)}|\cdot\text{mean}_{n}\!\left(|a_{ni}^{(l)}|\right)
+(5)
+For each layer
+l
+l
+, the bottom
+s
+(
+l
+)
+×
+100
+%
+s^{(l)}\times 100\%
+of weights by score are removed. No weight updates, no fine-tuning.
+3.4
+Complete Procedure
+Algorithm
+1
+summarizes the pipeline. Steps 1–5 take negligible time compared to Wanda’s scoring in steps 6–9, and the activation collection is shared with Wanda—so the only overhead is the percentile computation and sparsity reallocation.
+Algorithm 1
+PALS: Activation-Based Layer-Adaptive Pruning
+0:
+Pretrained model
+f
+f
+with
+L
+L
+layers, calibration data
+𝒟
+\mathcal{D}
+, target sparsity
+s
+target
+s_{\text{target}}
+, strength
+α
+=
+0.05
+\alpha{=}0.05
+1:
+Collect activations
+A
+(
+l
+)
+A^{(l)}
+for each layer
+l
+l
+on
+𝒟
+\mathcal{D}
+2:
+for
+l
+=
+1
+l=1
+to
+L
+L
+do
+3:
+I
+(
+l
+)
+←
+Percentile
+​
+(
+|
+A
+(
+l
+)
+|
+,
+99
+)
+I^{(l)}\leftarrow\text{Percentile}(|A^{(l)}|,99)
+4:
+en</p>
+
+<p>d
+for
+5:
+Standardize:
+I
+^
+(
+l
+)
+←
+(
+I
+(
+l
+)
+−
+I
+¯
+)
+/
+σ
+I
+\hat{I}^{(l)}\leftarrow(I^{(l)}-\bar{I})/\sigma_{I}
+for all
+l
+l
+6:
+for
+l
+=
+1
+l=1
+to
+L
+L
+do
+7:
+s
+(
+l
+)
+←
+clip
+​
+(
+s
+target
++
+α
+⋅
+I
+^
+(
+l
+)
+,
+s
+min
+,
+s
+max
+)
+s^{(l)}\leftarrow\text{clip}(s_{\text{target}}+\alpha\cdot\hat{I}^{(l)},\;s_{\text{min}},\;s_{\text{max}})
+8:
+Score weights:
+score
+i
+​
+j
+=
+|
+w
+i
+​
+j
+(
+l
+)
+|
+⋅
+mean
+n
+​
+(
+|
+a
+n
+​
+i
+(
+l
+)
+|
+)
+\text{score}_{ij}=|w_{ij}^{(l)}|\cdot\text{mean}_{n}(|a_{ni}^{(l)}|)
+9:
+Remove the bottom
+s
+(
+l
+)
+×
+100
+%
+s^{(l)}\times 100\%
+of weights by score
+10:
+end
+for
+11:
+return
+Pruned model
+4
+Experimental Setup
+Models.
+We evaluate on three architectures: LLaMA-2-7B (6.7B parameters, 32 layers), LLaMA-3-8B (8B parameters, 32 layers), and Mistral-7B (7.3B parameters, 32 layers). These cover two generations of the LLaMA family plus an independent architecture with grouped-query attention and sliding window attention.
+Evaluation.
+Perplexity is measured on the WikiText-2
+Merity
+et al.
+(
+2016
+)
+test set using 2048-token sequences. For downstream evaluation, we report zero-shot accuracy on BoolQ
+Clark
+et al.
+(
+2019
+)
+, PIQA
+Bisk
+et al.
+(
+2020
+)
+, HellaSwag
+Zellers
+et al.
+(
+2019
+)
+, and MMLU, using the
+lm-evaluation-harness
+framework
+Gao
+et al.
+(
+2021
+)
+.
+Calibration.
+All methods that require calibration data use 128 samples of 2048 tokens drawn from C4. Using C4 rather than WikiText-2 avoids data leakage into the perplexity evaluation.
+Baselines.
+We compare against: (1)
+Magnitude
+—remove weight</p>
+
+<p>s with smallest
+|
+w
+|
+|w|
+, no calibration needed; (2)
+Wanda
+Sun
+et al.
+(
+2024
+)
+—activation-aware scoring with uniform per-layer sparsity; (3)
+SparseGPT
+Frantar and Alistarh (
+2023
+)
+—Hessian-based layer-wise optimization; and (4)
+PALS-Gradient
+—our allocation formula but substituting gradient norms
+‖
+∇
+W
+(
+l
+)
+ℒ
+‖
+F
+\|\nabla_{W^{(l)}}\mathcal{L}\|_{F}
+for activation percentiles.
+Runs and seeds.
+For the primary LLaMA-2-7B evaluation, we run PALS nine times and Wanda eight times with different random seeds controlling weight tie-breaking. This provides variance estimates and allows a two-sample test. Other configurations use single runs.
+Implementation.
+All experiments use PyTorch with HuggingFace Transformers on NVIDIA A100 80GB GPUs. PALS uses
+α
+=
+0.05
+\alpha=0.05
+and the 99th percentile, with
+±
+5
+%
+\pm 5\%
+bounds. All pruning is one-shot with no fine-tuning or weight updates.
+5
+Results
+5.1
+Main Comparison on LLaMA-2-7B
+Table
+1
+presents the primary result on LLaMA-2-7B at 50% unstructured sparsity.
+Table 1:
+WikiText-2 perplexity on LLaMA-2-7B at 50% sparsity. Mean
+±
+\pm
+std over
+N
+N
+runs.
+Method
+N
+N
+Perplexity
+Δ
+\Delta
+vs. Wanda
+Dense (no pruning)
+–
+5.33
+–
+Magnitude
+1
+43.05
+−
+-
+233%
+SparseGPT
+1
+13.45
++
++
+4.0%
+Wanda (uniform)
+8
+12.92
+±
+\pm
+0.40
+baseline
+PALS-Gradient
+1
+45.23
+−
+-
+250%
+PALS (ours)
+9
+10.96
+±
+0.59
+\mathbf{10.96\pm 0.59}
++
+15.2
+%
+\mathbf{+15.2\%}
+PALS achieves 10.96 perplexity, down from Wanda’s 12.92—a reduction of 1.96 points. The standard deviation across nine</p>
+
+<p>runs is 0.59 and Wanda’s across eight runs is 0.40, so the distributions barely overlap. A Welch’s t-test gives
+t
+​
+(
+14
+)
+=
+8.1
+t(14)=8.1
+,
+p
+&lt;
+0.001
+p&lt;0.001
+.
+1
+1
+1
+Degrees of freedom computed via the Welch-Satterthwaite approximation:
+df
+=
+(
+0.59
+2
+/
+9
++
+0.40
+2
+/
+8
+)
+2
+/
+(
+0.59
+4
+/
+9
+2
+⋅
+8
+−
+1
++
+0.40
+4
+/
+8
+2
+⋅
+7
+−
+1
+)
+≈
+14
+\text{df}=(0.59^{2}/9+0.40^{2}/8)^{2}/(0.59^{4}/9^{2}\cdot 8^{-1}+0.40^{4}/8^{2}\cdot 7^{-1})\approx 14
+.
+SparseGPT lands at 13.45, slightly worse than Wanda despite being more computationally expensive. Both gradient-based methods—magnitude pruning (43.05) and PALS-Gradient (45.23)—fail badly, which we return to in Section
+6.5
+.
+Figure
+1
+shows the comparison visually.
+Figure 1:
+WikiText-2 perplexity at 50% sparsity on LLaMA-2-7B. Error bars:
+±
+1
+\pm 1
+std for PALS (
+N
+=
+9
+N{=}9
+).
+5.2
+Cross-Model Results
+Table
+2
+extends the evaluation to LLaMA-3-8B and Mistral-7B.
+Table 2:
+Cross-model results at 50% sparsity (WikiText-2 perplexity).
+Model
+Dense
+Wanda
+PALS
+Improv.
+LLaMA-2-7B
+5.33
+12.92
+±
+\pm
+0.40
+10.96
+±
+0.59
+\mathbf{10.96}\pm 0.59
+15.2%
+LLaMA-3-8B
+5.46
+10.48
+10.45
+±
+0.21
+\mathbf{10.45}\pm 0.21
+0.3%
+Mistral-7B
+4.74
+6.31
+6.31
+0.0%
+The pattern is clear: PALS helps LLaMA-2 substantially but does little for the other two. Mistral-7B is the most pruning-friendly model in absolute terms (6.31 at 50% sparsity, only 33% above its dense baseline of 4.74), but PALS offers no improvement over uniform allocation. LLaMA-3-8B falls between the two, with a negligible</p>
+
+<p>0.03 perplexity reduction.
+We think this reflects architectural differences. LLaMA-2, the oldest model here, may have more uneven layer importance—some layers carrying redundant information, others being critical bottlenecks—which creates room for non-uniform allocation. Mistral’s grouped-query attention and sliding window mechanism may distribute computation more uniformly. LLaMA-3, while using standard multi-head attention, was trained on substantially more data than LLaMA-2, which may have a similar equalizing effect. We discuss this further in Section
+7.2
+.
+5.3
+Downstream Task Performance
+Perplexity measures language modeling quality, but deployment applications care about task accuracy. Table
+3
+reports zero-shot accuracy on four benchmarks.
+Table 3:
+Zero-shot accuracy (%) at 50% sparsity on LLaMA-2-7B.
+Method
+BoolQ
+PIQA
+HellaSwag
+MMLU
+Avg
+Dense
+77.2
+79.1
+76.5
+45.2
+69.5
+Magnitude
+62.2
+63.7
+61.6
+36.4
+56.0
+Wanda
+70.8
+72.6
+70.2
+41.5
+63.8
+PALS
+72.0
+73.8
+71.4
+42.2
+64.8
+PALS retains 93.3% of the dense model’s average accuracy, compared to 91.7% for Wanda. The 1.0-point average gain is spread across all four tasks rather than concentrated in one, which gives some confidence that the perplexity improvement translates to broadly better representations.
+That said, the downstream gaps are modest. On MMLU, PALS gets 42.2 versus Wanda’s 41.5—a difference smaller than what you would see from changing the prompt template. Downstream benchmarks at this scale may lack the sensitivity to r</p>
+
+<p>esolve the kind of gains PALS provides.
+5.4
+Efficiency
+Table
+4
+reports deployment metrics on an A100 GPU with batch size 1 and sequence length 512.
+Table 4:
+Inference efficiency on LLaMA-2-7B at 50% sparsity (A100, batch 1, seq. len. 512).
+PPL
+Throughput
+Memory
+Model Size
+(tok/s)
+(GB)
+(GB)
+Dense
+5.33
+25.3
+13.2
+13.2
+PALS
+10.96
+35.8
+12.0
+6.6
+Ratio
+–
+1.41
+×
+\times
+1.10
+×
+\times
+2.00
+×
+\times
+The 50% sparsity halves the stored model size from 13.2 GB to 6.6 GB. Throughput improves by 1.41
+×
+\times
+using sparse matrix kernels, while peak memory drops modestly (1.10
+×
+\times
+) because activation memory is unchanged. These efficiency numbers are the same for PALS and uniform Wanda—they come from the sparsity level, not the allocation strategy. PALS gets better perplexity at the same sparsity budget.
+5.5
+Performance Across Sparsity Levels
+Figure
+2
+shows WikiText-2 perplexity across sparsity levels from 30% to 70%.
+Figure 2:
+WikiText-2 perplexity across sparsity levels on LLaMA-2-7B.
+PALS outperforms uniform Wanda at every sparsity level tested, with the gap widening at higher sparsity. This makes sense: at 30%, every layer has ample capacity regardless of allocation. At 70%, capacity is scarce, and putting it where it counts matters more.
+6
+Analysis
+6.1
+Learned Sparsity Patterns
+Figure
+3
+shows the per-layer sparsity budgets PALS assigns across our three models.
+Figure 3:
+Per-layer sparsity assigned by PALS at 50% target. Layer 0 is closest to the input embedding.
+All three models sho</p>
+
+<p>w a roughly U-shaped pattern: early layers (0–8) and late layers (21–31) get sparsity below 50%, while middle layers (9–20) get sparsity above 50%. The range stays within the
+±
+5
+%
+\pm 5\%
+bounds by construction, so every layer falls between 45% and 55%.
+This aligns with what is known about transformer layer function. Early layers build position-aware representations from token embeddings; late layers project into the output vocabulary. Both are hard to replace with fewer weights. Middle layers, in this view, carry more redundancy—perhaps because multiple middle layers learn overlapping representations and can absorb each other’s losses.
+One caveat: the pattern similarity across models is partly mechanical. Because PALS normalizes importance scores and clips to
+±
+5
+%
+\pm 5\%
+, the output will look roughly U-shaped for any model whose early and late layers have larger activation outliers than the middle. Whether the cross-model similarity reflects deep architectural invariants or just the shape imposed by normalization and clipping is hard to disentangle.
+6.2
+Effect of Adaptation Strength
+α
+\alpha
+Table
+5
+shows how
+α
+\alpha
+affects perplexity on LLaMA-2-7B. These are single runs (except
+α
+=
+0.05
+\alpha=0.05
+, which is the 9-run mean), so differences within the run-to-run noise band (
+∼
+\sim
+0.6 PPL) should not be over-interpreted.
+Table 5:
+Ablation on
+α
+\alpha
+(LLaMA-2-7B, 50% sparsity, single runs except
+α
+=
+0.05
+\alpha{=}0.05
+).
+α
+\alpha
+Effective Range
+Perplexity
+0.00
+50.0%</p>
+
+<p>±
+\pm
+0.0%
+12.92  (= Wanda)
+0.01
+50.0%
+±
+\pm
+1.0%
+14.23
+0.03
+50.0%
+±
+\pm
+3.0%
+11.57
+0.05
+50.0%
+±
+\pm
+5.0%
+10.96
+0.07
+50.0%
+±
+\pm
+5.0%
+10.12  (clipped)
+0.10
+50.0%
+±
+\pm
+5.0%
+10.18  (clipped)
+0.15
+50.0%
+±
+\pm
+5.0%
+10.21  (clipped)
+There is an interesting detail here. For
+α
+≥
+0.07
+\alpha\geq 0.07
+, the bounds become active—many layers are clipped to exactly 45% or 55%—and the results cluster tightly around 10.1–10.2. These single-run numbers are slightly better than our chosen
+α
+=
+0.05
+\alpha=0.05
+(10.96), but the difference of
+∼
+\sim
+0.8 PPL is within the run-to-run variance (std = 0.59 over the 9-run evaluation at
+α
+=
+0.05
+\alpha=0.05
+). A single lucky seed at
+α
+=
+0.07
+\alpha=0.07
+could easily account for the gap.
+We use
+α
+=
+0.05
+\alpha=0.05
+because it represents the transition point: below it, the allocation is too timid; above it, the bounds do most of the work and the specific value of
+α
+\alpha
+stops mattering. The data is consistent with the interpretation that a coarser binary allocation (every layer at either 45% or 55%) works roughly as well as the smooth allocation PALS provides, though confirming this would require multi-run evaluation at each
+α
+\alpha
+value.
+The
+α
+=
+0.01
+\alpha=0.01
+entry (14.23 PPL) is worse than uniform Wanda (12.92)—a very small amount of adaptation apparently hurting. We suspect this is seed noise in a single run, not a real effect. Without multi-run data at each
+α
+\alpha
+, we cannot say whether this non-monotonicity is genuine.
+6.3
+Effect of Bo</p>
+
+<p>und Width
+Table 6:
+Ablation on sparsity bounds (LLaMA-2-7B,
+α
+=
+0.05
+\alpha{=}0.05
+, single runs).
+Bounds
+Actual Range
+Perplexity
+±
+\pm
+0% (= uniform)
+50.0%
+12.92
+±
+\pm
+5%
+45–55%
+10.96
+±
+\pm
+10%
+40–60%
+12.37
+±
+\pm
+15%
+35–65%
+18.92
+±
+\pm
+20%
+30–70%
+31.58
+Unbounded
+12–88%
+67.21
+Table
+6
+is the cleanest result in our ablations. Performance degrades sharply once the bounds exceed
+±
+10
+%
+\pm 10\%
+, and unbounded allocation (12–88% range) is catastrophic. At
+±
+20
+%
+\pm 20\%
+, the most aggressively pruned layers hit 70% sparsity, and the information loss there apparently cannot be compensated by gently pruned layers elsewhere. The failure mode is consistent with an information bottleneck: if even one layer loses too much capacity, the entire network suffers because every token passes through every layer sequentially.
+The
+±
+5
+%
+\pm 5\%
+setting sits in a good spot. Tighter bounds (closer to uniform) leave performance on the table; wider bounds risk bottlenecks. Whether
+±
+5
+%
+\pm 5\%
+is universally best or happens to suit these three models is an open question.
+6.4
+Choice of Activation Percentile
+Table 7:
+Ablation on percentile choice (LLaMA-2-7B, single runs).
+Statistic
+Captures
+Perplexity
+Mean
+Average activation level
+13.78
+90th percentile
+High activations
+11.42
+95th percentile
+Near-outliers
+10.67
+99th percentile
+Outliers
+10.96
+99.5th percentile
+Extreme outliers
+10.11
+Max
+Single largest activation
+10.34
+The mean is a poor importance signal (13.78 PPL, worse than uniform Wanda), confir</p>
+
+<p>ming that outlier activations, not average activation level, drive layer importance for pruning. Beyond the 90th percentile, all choices perform within a reasonable range.
+A careful reader will notice that the 99th percentile (10.96) is not the best in this table: both the 95th (10.67) and 99.5th (10.11) give lower perplexity. Since these are single runs and the run-to-run variance at
+α
+=
+0.05
+\alpha=0.05
+is 0.59, the differences are not statistically distinguishable. We chose the 99th percentile before running this ablation, based on its connection to the outlier phenomenon
+Dettmers
+et al.
+(
+2022
+)
+, and kept it rather than cherry-picking after the fact. The ablation validates that tail-focused statistics work well as a class, but does not strongly favor any specific percentile within that class.
+6.5
+Gradient-Based Allocation Fails
+Table 8:
+Layer importance metrics for sparsity allocation (LLaMA-2-7B, 50% sparsity).
+Importance Metric
+Perplexity
+Gradient norm
+‖
+∇
+W
+(
+l
+)
+ℒ
+‖
+F
+\|\nabla_{W^{(l)}}\mathcal{L}\|_{F}
+47.32
+First-order Taylor
+∑
+i
+​
+j
+|
+g
+i
+​
+j
+​
+w
+i
+​
+j
+|
+\sum_{ij}|g_{ij}w_{ij}|
+38.61
+Random allocation
+24.37
+Uniform (= Wanda)
+12.92
+Activation 99th percentile (= PALS)
+10.96
+Table
+8
+is, in our view, the most striking result in this paper. Gradient-based importance metrics—which have a long history of success in pruning smaller networks
+LeCun
+et al.
+(
+1989
+)
+—produce allocations that are worse than
+random
+. Gradient norm gives 47.32 PPL; first-order Taylor expansion (</p>
+
+<p>∑
+|
+g
+i
+​
+j
+​
+w
+i
+​
+j
+|
+\sum|g_{ij}w_{ij}|
+) does better at 38.61 but is still far worse than random at 24.37.
+To be clear about what “random allocation” means here: each layer gets a sparsity ratio drawn uniformly from
+[
+s
+target
+−
+0.05
+,
+s
+target
++
+0.05
+]
+[s_{\text{target}}-0.05,\;s_{\text{target}}+0.05]
+, with no information about layer importance. It beats both gradient methods by a wide margin.
+Why do gradients fail? Two possibilities, both speculative:
+Convergence confound.
+In a pretrained model, gradient magnitude reflects how much the loss would change under a small parameter perturbation at the current state. A layer with small gradients may have converged—its weights are near a local optimum—not because it is unimportant, but because it has finished learning. Gradient-based allocation would over-prune such layers.
+Discrete–continuous mismatch.
+Pruning removes a large, discrete fraction of weights. Gradients measure infinitesimal, continuous sensitivity. At 50% sparsity, the “perturbation” is far from infinitesimal. An analogy: knowing which way a hill slopes tells you nothing about what happens if you remove half the terrain.
+Neither explanation is fully satisfying, and we consider this an open problem. What we can say is that for sparsity allocation in pretrained LLMs, activation statistics are a substantially better signal than gradients.
+6.6
+Calibration Stability
+PALS relies on activation statistics from 128 calibration samples. A natural concern is whether the</p>
+
+<p>importance scores are stable across different calibration draws.
+We did not run a formal calibration sensitivity experiment, but can offer indirect evidence. The 99th percentile is computed over roughly
+128
+×
+2048
+≈
+262
+128\times 2048\approx 262
+K tokens per layer. Extreme order statistics converge quickly with sample size, so this should be quite stable. Wanda itself depends on the same calibration data (via mean activation magnitudes), and Sun et al.
+Sun
+et al.
+(
+2024
+)
+reported that Wanda’s results are stable across calibration subsets. Since PALS uses a different summary statistic of the same underlying data, similar stability is plausible, though a proper calibration bootstrap is worth doing in future work.
+Our nine-run evaluation uses the same calibration set but different random seeds for tie-breaking. The resulting std of 0.59 bounds the contribution of tie-breaking noise. Calibration noise would be an additional source of variance, but we expect it to be smaller based on the order-statistic convergence argument above.
+7
+Discussion
+7.1
+Why Activations Work
+The success of activation-based importance connects to the growing literature on activation outliers
+Dettmers
+et al.
+(
+2022
+)
+. Large language models develop features with activation magnitudes far exceeding the typical range, concentrated in specific layers. These outliers are essential for model function: quantization schemes that fail to preserve them degrade sharply.
+PALS identifies layers with large outliers (v</p>
+
+<p>ia the 99th percentile) and assigns them lower sparsity. This is consistent with the hypothesis that outlier-containing layers process critical information that the model has learned to route through specific pathways. The connection also predicts that any importance metric sensitive to the tail of the activation distribution should work—and indeed, the 90th through max percentile all outperform the mean (Table
+7
+).
+7.2
+Architecture Dependence
+The large improvement on LLaMA-2 (15%) versus zero on Mistral is worth understanding. Three hypotheses:
+Training data volume.
+LLaMA-2-7B was trained on 2T tokens; LLaMA-3-8B on roughly 15T tokens. More training may produce more uniform layer utilization, shrinking the gap between layers that PALS exploits.
+Architecture.
+Mistral uses grouped-query attention and sliding window attention, changing how information flows across layers. GQA shares key-value heads across query heads, which could spread computation more uniformly. Sliding window limits each layer’s receptive field, potentially forcing later layers to build more independent representations.
+Model maturity.
+Newer models may simply be better trained, with fewer “wasted” layers. If LLaMA-2 has layers that learned redundant features due to suboptimal training dynamics, non-uniform allocation helps because those layers genuinely have less to contribute.
+We cannot distinguish between these with our current experiments. The practical upshot: if you run PALS and the sparsity pattern loo</p>
+
+<p>ks nearly flat (all layers close to 50%), the model probably will not benefit, and uniform allocation is fine.
+7.3
+Limitations
+Unstructured sparsity.
+The throughput gains in Table
+4
+require sparse matrix kernels or hardware support (e.g., NVIDIA’s 2:4 structured sparsity). Without these, unstructured sparsity does not translate to wall-clock speedup. Extending PALS to N:M or block sparsity patterns is a natural next step.
+Single perplexity dataset.
+Our primary metric is WikiText-2 perplexity. We verify on four downstream tasks, but all evaluations are in English and focus on standard NLP benchmarks. Performance on code generation, long-context reasoning, or multilingual tasks is unknown.
+No fine-tuning.
+We evaluate one-shot pruning only. Combining PALS allocation with a brief fine-tuning step would likely improve results, but adds cost and complexity we wanted to avoid here.
+Model scale.
+All experiments are on 7–8B parameter models. Whether the gains hold at 13B, 70B, or larger is untested. Larger models might have more layer heterogeneity (favoring PALS) or less (if scaling distributes capacity more uniformly).
+8
+Conclusion
+PALS adjusts per-layer sparsity in one-shot LLM pruning using activation percentiles, reducing LLaMA-2-7B perplexity from 12.92 to 10.96 at 50% sparsity with negligible extra cost. The benefit depends on the model—it is absent for Mistral-7B—and likely reflects how uniformly the architecture distributes information across layers.
+The gradient failure find</p>
+
+<p>ing is, to us, the more interesting result. Gradient-based importance metrics produce sparsity allocations worse than random, which suggests that the relationship between gradient magnitude and discrete pruning impact is weaker than commonly assumed for pretrained LLMs. Understanding why—and whether this extends to other compression settings—seems like a productive direction for future work.
+Acknowledgments
+We thank the authors of Wanda and SparseGPT for open-sourcing their implementations. Experiments were conducted on NVIDIA A100 GPUs.
+References
+S. Ashkboos, M. L. Croci, M. G. d. Nascimento, T. Hoefler, and J. Hensman (2024)
+SliceGPT: compress large language models by deleting rows and columns
+.
+arXiv preprint arXiv:2401.15024
+.
+Cited by:
+§2.2
+.
+Y. Bisk, R. Zellers, J. Gao, Y. Choi,
+et al.
+(2020)
+PIQA: reasoning about physical commonsense in natural language
+.
+In
+Proceedings of the AAAI Conference on Artificial Intelligence
+,
+Vol.
+34
+,
+pp. 7432–7439
+.
+Cited by:
+§4
+.
+C. Clark, K. Lee, M. Chang, T. Kwiatkowski, M. Collins, and K. Toutanova (2019)
+BoolQ: exploring the surprising difficulty of natural yes/no questions
+.
+arXiv preprint arXiv:1905.10044
+.
+Cited by:
+§4
+.
+T. Dettmers, M. Lewis, Y. Belkada, and L. Zettlemoyer (2022)
+GPT3.int8(): 8-bit matrix multiplication for transformers at scale
+.
+Advances in Neural Information Processing Systems
+35
+,
+pp. 30318–30332
+.
+Cited by:
+§2.4
+,
+§3.1
+,
+§6.4
+,
+§7.1
+.
+E. Frantar and D. Alistarh (2023)
+SparseGPT: massive language models can</p>
+
+<p>be accurately pruned in one-shot
+.
+arXiv preprint arXiv:2301.00774
+.
+Cited by:
+§1
+,
+§2.1
+,
+§4
+.
+L. Gao, J. Tow, S. Biderman, S. Black, A. DiPofi, C. Foster, L. Golding, J. Hsu, K. McDonell, N. Muennighoff,
+et al.
+(2021)
+A framework for few-shot language model evaluation
+.
+Cited by:
+§4
+.
+S. Han, J. Pool, J. Tran, and W. Dally (2015)
+Learning both weights and connections for efficient neural network
+.
+In
+Advances in neural information processing systems
+,
+pp. 1135–1143
+.
+Cited by:
+§2.1
+.
+E. Kurtic, D. Campos, T. Nguyen, E. Frantar, M. Kurtz, B. Fineran, M. Goin, and D. Alistarh (2022)
+Optimal brain compression: a framework for accurate post-training quantization and pruning
+.
+Advances in Neural Information Processing Systems
+35
+,
+pp. 4475–4488
+.
+Cited by:
+§2.3
+.
+Y. LeCun, J. Denker, and S. Solla (1989)
+Optimal brain damage
+.
+In
+Advances in neural information processing systems
+,
+pp. 598–605
+.
+Cited by:
+§6.5
+.
+X. Ma, G. Fang, and X. Wang (2023)
+LLM-pruner: on the structural pruning of large language models
+.
+Advances in Neural Information Processing Systems
+36
+.
+Cited by:
+§2.2
+.
+S. Merity, C. Xiong, J. Bradbury, and R. Socher (2016)
+Pointer sentinel mixture models
+.
+arXiv preprint arXiv:1609.07843
+.
+Cited by:
+§4
+.
+P. Michel, O. Levy, and G. Neubig (2019)
+Are sixteen heads really better than one?
+.
+Advances in neural information processing systems
+32
+.
+Cited by:
+§1
+.
+M. Sun, Z. Liu, A. Bair, and J. Z. Kolter (2024)
+A simple and effective pruning approach for large language models</p>
+
+<p>.
+arXiv preprint arXiv:2306.11695
+.
+Cited by:
+§1
+,
+§2.1
+,
+§4
+,
+§6.6
+.
+E. Voita, D. Talbot, F. Moiseev, R. Sennrich, and I. Titov (2019)
+Analyzing multi-head self-attention: specialized heads do the heavy lifting, the rest can be pruned
+.
+arXiv preprint arXiv:1905.09418
+.
+Cited by:
+§1
+.
+R. Yu, A. Li, C. Chen, J. Lai, V. I. Morariu, X. Han, M. Gao, C. Lin, and L. S. Davis (2018)
+NISP: pruning networks using neuron importance score propagation
+.
+In
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition
+,
+pp. 9194–9203
+.
+Cited by:
+§2.3
+.
+R. Zellers, A. Holtzman, Y. Bisk, A. Farhadi, and Y. Choi (2019)
+HellaSwag: can a machine really finish your sentence?
+.
+In
+Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics
+,
+pp. 4791–4800
+.
+Cited by:
+§4
+.
+M. Zhang, T. Gao, A. Chen, J. Herzig, and L. Zettlemoyer (2024)
+Sheared llama: accelerating language model pre-training via structured pruning
+.
+arXiv preprint arXiv:2310.06694
+.
+Cited by:
+§2.2
+.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
