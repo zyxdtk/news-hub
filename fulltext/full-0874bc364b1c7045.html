@@ -1,0 +1,10716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLORR：简单高效的训练中低秩正则化 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">SLORR：简单高效的训练中低秩正则化</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-09</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.08754" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：SLORR: Simple and Efficient In-Training Low-Rank Regularization</h4>
+            <p><strong>中文摘要：</strong> 现有神经网络低秩压缩方法常需昂贵的SVD计算、改变架构或依赖缓存。为此，本文提出SLORR：一种简单、无状态且保留架构的训练中低秩正则化框架。它包含基于Hoyer稀疏度和核范数的两种变体，利用GPU友好的极分解近似直接正则化原始权重矩阵，完全避免SVD计算。在ImageNet和LLM预训练上的实验表明，SLORR在提升模型压缩能力的同时能良好保持性能，且训练开销极低（视觉任务<8%，LLM<1%）...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>SLORR: Simple and Efficient In-Training Low-Rank Regularization
+David González-Martínez
+1,2,3,4
+Shiwei Liu
+1,3,4
+1
+Max Planck Institute for Intelligent Systems
+2
+University of Tübingen
+3
+ELLIS Institute Tübingen
+4
+Tübingen AI Center
+david.martinez@tuebingen.mpg.de
+sliu@tue.ellis.eu
+Abstract
+Low-rank factorization is widely used to compress neural networks, but modern models are often not naturally amenable to aggressive factorization without significant accuracy loss. Existing training-time low-rank regularizers can improve compressibility, but they often require SVDs of large weight matrices, modify the model architecture (introducing additional trainable parameters), or rely on stateful cached quantities. To address these limitations, we introduce SLORR, a simple, stateless, and architecture-preserving framework for in-training low-rank regularization, instantiated with two main variants based on the Hoyer sparsity metric and the nuclear norm. SLORR directly regularizes the original weight matrices using GPU-friendly approximations for the forward and backward passes of the regularizers, for which we provide approximation guarantees. We first evaluate SLORR on ImageNet-1K across short-horizon continued training of ResNet-50, ViT-B/16, and ViT-L/16, and pretraining of ResNet-18, where SLORR induces compressibility while introducing less than 8% training overhead. We further evaluate SLORR-Hoyer in LLM pretraining at 135M and 560M scales: SLORR-trained compressed models prese</p>
+
+<p>rve performance substantially better than unregularized models while adding less than 1% average training overhead.
+1
+Introduction
+Low-rank factorization is a widely used approach for reducing the computational and memory costs of neural networks: a dense weight matrix is replaced by a product of smaller factors, yielding cheaper inference when the retained rank is sufficiently small
+[
+4
+,
+10
+,
+24
+,
+6
+]
+. However, compression quality depends on the spectral properties of weight matrices: discarding meaningful spectral directions can degrade model performance. Thus, while moderate post-training compression is generally possible, modern models are often not naturally amenable to aggressive factorization without significant accuracy loss.
+This motivates training-time methods that encourage low-rank structure before compression. A natural formulation is to encourage sparsity in the singular values of weight matrices, concentrating spectra into fewer dominant directions. Although direct spectral regularization can be effective
+[
+2
+,
+55
+]
+, large singular value decompositions (SVDs) are needed at every training iteration, which is prohibitively expensive for modern training pipelines.
+Several ways of avoiding SVDs have been proposed
+[
+56
+,
+1
+,
+15
+]
+; however, these generally introduce new limitations that hinder practicality. For example, some works replace layers with factorized parameterizations, changing the architecture
+[
+1
+,
+56
+]
+, but this generally increases the number of tr</p>
+
+<p>ainable parameters and alters optimization dynamics. A further class of methods maintains cached spectral quantities that are only periodically updated
+[
+15
+]
+, reducing but not eliminating SVD cost, and introducing statefulness and additional hyperparameters.
+Our proposed method, SLORR, addresses these limitations. In particular, SLORR operates directly on the original weight matrices without altering the architecture, is SVD-free and efficient, and does not maintain any cached quantities, providing a versatile framework. The key idea is simple: we approximate the spectral quantities needed for the regularizer forward and backward passes using GPU-efficient polar factor approximations. We explore two main variants: SLORR-Hoyer and SLORR-Nuc, which respectively correspond to the squared Hoyer sparsity metric
+[
+23
+]
+and the nuclear norm, two common low-rank penalties. For both variants, the resulting approximations admit guarantees for the regularizer values and their gradients (
+Proposition
+˜
+3.1
+). A summary of directly relevant related works appears in
+Table
+˜
+1
+, with a more extensive discussion in
+Section
+˜
+2
+.
+Table 1
+:
+Comparison of different low-rank-inducing regularizers
+. Detailed discussion in
+Section
+˜
+2
+.
+Method
+Changes arch.
+SVD
+Efficiency &amp; scalability
+Stateful
+Prior target rank
+SVD-based
+[
+2
+]
+No
+Yes
+Poor
+No
+No
+Factorize + reg.
+[
+56
+]
+Yes
+No
+Good
+No
+No
+LoRITa
+[
+1
+]
+Yes
+No
+Good
+No
+No
+Q3R
+[
+15
+]
+No
+Periodic
+Moderate
+Yes
+Yes
+SLORR (ours)
+No
+No
+Good
+No
+No
+Empirical</p>
+
+<p>ly, we evaluate SLORR across vision and language-modeling settings. On ImageNet-1K
+[
+9
+]
+, we study short-horizon continued training of ResNet-50
+[
+20
+]
+, ViT-B/16, and ViT-L/16
+[
+12
+]
+, as well as ResNet-18 pretraining
+[
+20
+]
+. Across these settings, SLORR improves post-training compressibility over unregularized training while adding less than 8% training overhead. We further evaluate SLORR-Hoyer on LLM pretraining at the 135M and 560M scales, where SLORR-trained models preserve performance substantially better after compression than unregularized models, with less than 1% average training overhead.
+Overall, our contributions are as follows. First, we introduce an SVD-free framework for low-rank-inducing regularization using GPU-friendly approximations. Second, we show how this framework can be used to regularize the spectra of the original weight matrices without architectural changes, cached spectral quantities, or a pre-specified target rank. Third, we demonstrate across vision and language-modeling experiments that SLORR improves post-training low-rank compressibility with small training overhead.
+2
+Background and Related Work
+Various factorization approaches have been extensively studied over time
+[
+10
+,
+24
+,
+4
+]
+. In this work, we focus on factorization schemes that separate a single matrix multiplication into two sequential ones:
+f
+​
+(
+𝑿
+;
+𝑾
+)
+=
+𝑿
+​
+𝑾
+≈
+f
+^
+​
+(
+𝑿
+;
+𝑾
+0
+,
+𝑾
+1
+)
+=
+(
+𝑿
+​
+𝑾
+0
+)
+​
+𝑾
+1
+,
+f({\bm{X}};{\bm{W}})={\bm{X}}{\bm{W}}\approx\hat{f}({\bm{X}};{\bm{W}}</p>
+
+<p>_{0},{\bm{W}}_{1})=({\bm{X}}{\bm{W}}_{0}){\bm{W}}_{1},
+where
+𝑿
+∈
+ℝ
+B
+×
+D
+i
+{\bm{X}}\in\mathbb{R}^{B\times D_{i}}
+is the input,
+𝑾
+∈
+ℝ
+D
+i
+×
+D
+o
+{\bm{W}}\in\mathbb{R}^{D_{i}\times D_{o}}
+the weight of the original layer
+f
+f
+, and
+𝑾
+0
+∈
+ℝ
+D
+i
+×
+P
+{\bm{W}}_{0}\in\mathbb{R}^{D_{i}\times P}
+and
+𝑾
+1
+∈
+ℝ
+P
+×
+D
+o
+{\bm{W}}_{1}\in\mathbb{R}^{P\times D_{o}}
+are the weights of the new approximate layer
+f
+^
+\hat{f}
+. With sufficiently small
+P
+P
+, we can achieve inference speedups and memory reduction. In particular, we focus on those that employ the SVD of weight matrices
+[
+25
+,
+4
+]
+, which is optimal in weight space according to the Eckart–Young–Mirsky theorem
+[
+16
+]
+. In particular, the factors can be obtained from the SVD of
+𝑾
+{\bm{W}}
+:
+𝑾
+0
+=
+𝑼
+:
+,
+:
+P
+​
+𝚺
+:
+P
+,
+:
+P
+1
+/
+2
+,
+𝑾
+1
+=
+𝚺
+:
+P
+,
+:
+P
+1
+/
+2
+​
+𝑽
+:
+,
+:
+P
+⊤
+.
+{\bm{W}}_{0}={\bm{U}}_{:,:P}{\bm{\Sigma}}_{:P,:P}^{1/2},\qquad{\bm{W}}_{1}={\bm{\Sigma}}_{:P,:P}^{1/2}{\bm{V}}_{:,:P}^{\top}.
+In convolutional neural networks (CNNs)
+[
+31
+]
+, SVD-based factorization can be performed by reshaping parameter tensors into matrices and subsequently decomposing them (normally called channel-wise decomposition)
+[
+56
+,
+1
+]
+; we follow this approach throughout this work. Other recent works, such as activation-aware methods
+[
+45
+,
+52
+,
+51
+,
+6
+,
+58
+]
+, introduce different ways of computing factors that can lead to better overall accuracy.
+2.1
+Inducing Low-Rank Parameters
+Since compressing layers by SVD truncation essentially amounts to truncating their s</p>
+
+<p>ingular values, the accuracy degradation incurred is directly related to their spectral properties: a desirable property is that the layer weight is (approximately) low-rank. Hence, an intuitive approach to obtaining more compressible layers is to regularize the model to gradually decrease the (approximate) rank of its weight matrices during training. One can roughly think of the rank minimization objective as a sparsity objective on the singular values of the parameters, i.e.,
+ℒ
+=
+ℒ
+task
++
+λ
+​
+∑
+i
+rank
+⁡
+(
+𝑾
+i
+)
+=
+ℒ
+task
++
+λ
+​
+∑
+i
+‖
+𝝈
+​
+(
+𝑾
+i
+)
+‖
+0
+,
+\mathcal{L}=\mathcal{L}_{\mathrm{task}}+\lambda\sum_{i}\operatorname{rank}({\bm{W}}^{i})=\mathcal{L}_{\mathrm{task}}+\lambda\sum_{i}\|\bm{\sigma}({\bm{W}}^{i})\|_{0},
+where
+𝝈
+\bm{\sigma}
+denotes the singular values of
+𝑾
+i
+{\bm{W}}^{i}
+. This objective is considered to be intractable
+[
+13
+]
+. Prior work has addressed this by using proxy objectives, such as minimizing the nuclear norm
+[
+2
+,
+55
+]
+; however, this generally requires computing the SVDs of each weight at each training step, which is computationally prohibitive for larger models. Several solutions have been proposed.
+Some approaches rely on modifying the architecture. For example,
+Yang
+et al.
+[
+56
+]
+obtain the SVD
+𝑼
+,
+𝑽
+,
+𝝈
+{\bm{U}},{\bm{V}},\bm{\sigma}
+of each layer and substitute each layer with a factorized form (retaining all singular values). The authors then incentivize
+𝝈
+\bm{\sigma}
+to be sparse through the Hoyer sparsity metric
+[
+23
+]
+(they also explore the
+ℓ
+1</p>
+
+<p>\ell_{1}
+norm, akin to nuclear-norm regularization). An additional regularizer is required to keep
+𝑼
+{\bm{U}}
+and
+𝑽
+{\bm{V}}
+orthogonal and maintain general SVD semantics, making it less practical. A recent approach, named LoRITa
+[
+1
+]
+, reparametrizes each layer weight
+𝑾
+{\bm{W}}
+with an ordered product
+∏
+i
+N
+𝑾
+i
+=
+𝑾
+\prod_{i}^{N}{\bm{W}}_{i}={\bm{W}}
+and penalizes the Frobenius norm of each
+𝑾
+i
+{\bm{W}}_{i}
+, which can be shown to work as a proxy for the nuclear norm minimization objective of the overall
+∏
+i
+N
+𝑾
+i
+\prod_{i}^{N}{\bm{W}}_{i}
+. A similar approach was proposed in
+Kliegl
+et al.
+[
+30
+]
+for depth-2 decompositions. These approaches generally increase the number of trainable parameters and can alter optimization dynamics.
+Another line of work reuses computed factors instead of recomputing them at every iteration. For example, the recent Q3R
+[
+15
+]
+uses a surrogate objective that can be approximated with periodic SVDs
+1
+1
+1
+Their main experiments are run with a refresh period of 5 iterations, which is expensive. In our main Q3R experiments, we also use 5; however, we found that using a larger period (which is less expensive) can also work well (
+Appendix
+F
+). The main concern is scalability. As one uses larger models, maintaining a low cost with Q3R requires enlarging the refresh period. It is expected that, with a sufficiently large refresh period, its effectiveness will be reduced.
+. However, it is stateful (as it needs to store the temporary factors until they are</p>
+
+<p>recomputed). It also requires specifying a target rank in advance, making hyperparameter tuning challenging.
+Other approaches for approximate computations exist:
+Li
+et al.
+[
+33
+]
+propose randomized differentiable surrogates for generalized low-rank regularization, applying them to tasks including matrix completion, video foreground/background separation, and denoising. While the method is SVD-free in theory, it is still impractical, requiring backpropagation through long chains of matrix multiplications. Moreover, its practical implementation
+2
+2
+2
+https://github.com/naiqili/EDLRR
+still requires a (smaller) SVD and matrix inverse. This makes it infeasible for weight regularization, even at moderate scales.
+Qin
+et al.
+[
+44
+]
+propose a method to make models amenable to activation-aware methods (in particular, SVD-LLM
+[
+52
+]
+), but it is focused on very short-horizon post-training, while we focus on longer training periods (from continued training to pretraining).
+Relatedly, low-rank induction can also happen (either explicitly or implicitly) at the optimizer level. For example,
+Zimmer
+et al.
+[
+61
+]
+use a Frank–Wolfe-based optimizer to promote low rank in weight matrices using partial SVDs.
+Dolatabadi
+et al.
+[
+11
+]
+find that, surprisingly, Muon-trained LLMs are more compressible and that truncated Muon updates can further improve compressibility. Here, we restrict our focus to explicit regularization techniques, typically formulated either as additional loss terms or as decoupl</p>
+
+<p>ed penalties applied outside the primary gradient update, analogous to decoupled weight decay
+[
+38
+]
+. In
+Table
+˜
+1
+, we compare relevant direct low-rank regularization methods. Our proposed approach is simpler: it operates on the original model, is SVD-free and efficient in practice, and is stateless.
+Lastly, a related area, but fundamentally different in nature, is that of low-rank training, where the rank is generally pre-defined before training, and a low-rank architecture is directly trained. Different variants, such as full-rank warmup or combinations with sparse training, and aspects like initialization, have been investigated over time
+[
+35
+,
+28
+,
+27
+,
+53
+,
+19
+,
+32
+]
+.
+3
+Our Framework
+For a weight matrix
+𝑾
+∈
+ℝ
+I
+×
+O
+{\bm{W}}\in\mathbb{R}^{I\times O}
+, we use
+𝑼
+∈
+ℝ
+I
+×
+R
+,
+𝚺
+∈
+ℝ
+R
+×
+R
+,
+𝑽
+∈
+ℝ
+O
+×
+R
+{\bm{U}}\in\mathbb{R}^{I\times R},{\bm{\Sigma}}\in\mathbb{R}^{R\times R},{\bm{V}}\in\mathbb{R}^{O\times R}
+to denote its thin SVD factors (
+𝑾
+=
+𝑼
+​
+𝚺
+​
+𝑽
+⊤
+{\bm{W}}={\bm{U}}{\bm{\Sigma}}{\bm{V}}^{\top}
+), where
+R
+=
+rank
+⁡
+(
+𝑾
+)
+≤
+min
+⁡
+(
+O
+,
+I
+)
+R=\operatorname{rank}({\bm{W}})\leq\min(O,I)
+. Additionally, we use
+𝝈
+\bm{\sigma}
+to denote the vector of singular values (
+𝝈
+=
+diag
+⁡
+(
+𝚺
+)
+\bm{\sigma}=\operatorname{diag}({\bm{\Sigma}})
+). Since the SVD is not unique, when mentioning it or any factor, we implicitly refer to an arbitrary valid choice.
+We view the problem from the perspective of inducing sparsity in singular values. We adopt (1) the
+ℓ
+1
+\ell_{1}
+norm of singular valu</p>
+
+<p>es, i.e., the nuclear norm, and (2) the squared
+ℓ
+1
+/
+ℓ
+2
+\ell_{1}/\ell_{2}
+-ratio (the nonsquared version is also known as the unnormalized Hoyer metric
+[
+23
+]
+) of singular values, which is effective as a sparsity-inducing regularizer
+[
+57
+]
+(the nonsquared version has also been shown to work well in factorization-based low-rank regularization
+[
+56
+]
+). We have:
+ℒ
+hoyer
+=
+∑
+i
+‖
+𝝈
+i
+‖
+1
+2
+/
+‖
+𝝈
+i
+‖
+2
+2
+=
+∑
+i
+‖
+𝑾
+i
+‖
+∗
+2
+/
+‖
+𝑾
+i
+‖
+F
+2
+,
+ℒ
+nuc
+=
+∑
+i
+‖
+𝑾
+i
+‖
+∗
+,
+\mathcal{L}_{\mathrm{hoyer}}=\sum_{i}\|\bm{\sigma}^{i}\|^{2}_{1}/\|\bm{\sigma}^{i}\|^{2}_{2}=\sum_{i}\|{\bm{W}}^{i}\|^{2}_{*}/\|{\bm{W}}^{i}\|^{2}_{F},\quad\mathcal{L}_{\mathrm{nuc}}=\sum_{i}\|{\bm{W}}^{i}\|_{*},
+where
+i
+i
+denotes the layer index. From now on, we will omit layer indices for brevity.
+We optimize these regularizers together with the task loss. Strictly speaking, the regularizers are not differentiable everywhere. We use the natural backpropagation rule, which corresponds to the minimum-Frobenius-norm element of the Clarke generalized gradient (see
+Appendix
+˜
+A
+for the derivations). We use gradient notation for simplicity. We have that:
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+=
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+​
+(
+1
+‖
+𝑾
+‖
+F
+​
+𝑼
+​
+𝑽
+⊤
+−
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝑾
+)
+,
+∇
+ℒ
+nuc
+​
+(
+𝑾
+)
+=
+𝑼
+​
+𝑽
+⊤
+.
+\nabla{\mathcal{L}_{\mathrm{hoyer}}}({{\bm{W}}})=2\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}}\left(\frac{1}{\|{\bm{W}}\|_{F}}{\bm{U}}{\bm{V}}^{\top}-\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}{\bm{W}}\right),\quad\nabla{\mathcal{L}_{\mathrm{nuc}}}({{\bm{W}</p>
+
+<p>}})={\bm{U}}{\bm{V}}^{\top}.
+(1)
+Listing 1:
+Example PyTorch implementation of SLORR-Hoyer.
+⬇
+class
+LowRankRegularizer
+(
+torch
+.
+autograd
+.
+Function
+):
+@staticmethod
+def
+forward
+(
+ctx
+,
+W
+,
+eps
+,
+steps
+=6):
+frob
+=
+torch
+.
+linalg
+.
+norm
+(
+W
+,
+ord
+=
+&quot;fro&quot;
+)
++
+eps
+UV
+=
+polar_express
+(
+W
+,
+steps
+=
+steps
+)
+nuc
+=
+torch
+.
+sum
+(
+W
+*
+UV
+)
+reg
+=
+nuc
+/
+frob
+ctx
+.
+save_for_backward
+(
+W
+,
+UV
+,
+frob
+,
+nuc
+,
+reg
+)
+return
+reg
+**
+2
+@staticmethod
+def
+backward
+(
+ctx
+,
+grad_output
+):
+W
+,
+UV
+,
+frob
+,
+nuc
+,
+reg
+=
+ctx
+.
+saved_tensors
+G
+=
+(
+UV
+/
+frob
+)
+-
+(
+nuc
+/
+(
+frob
+**3))
+*
+W
+return
+grad_output
+*
+2
+*
+reg
+*
+G
+,
+None
+,
+None
+Both gradients have terms that are generally computed through SVDs, which is prohibitively expensive to do at every iteration. Fortunately, one can (through iterative methods) approximate every term needed in
+Equation
+˜
+1
+. The resulting approximations have provable convergence guarantees (
+Proposition
+˜
+3.1
+).
+Computing the polar factor.
+Notice that we do not need to compute the factors of
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+separately; we only need their product
+3
+3
+3
+Note that we are using the left and right singular vectors corresponding to the nonzero singular values of the matrix. This quantity is unique for a given matrix
+[
+34
+]
+.
+, which is generally known as the generalized polar factor (we use “polar factor” for short) of
+𝑾
+{\bm{W}}
+. It can be computed efficiently on GPUs using iterative methods (e.g.,
+[
+21
+]
+; a similar approach is used in the Muon optimizer
+[
+26
+]
+to obt</p>
+
+<p>ain polar factors of gradients). In particular, we use the recent Polar Express
+[
+3
+]
+, which approximates the polar factor iteratively, to efficiently compute an approximation of
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+.
+Polar Express depends on several hyperparameters, including the number of iterations
+T
+T
+, most of which we set to their recommended values. It first normalizes the matrix so that its largest singular value is at most 1. This is achieved by dividing by the Frobenius norm, i.e., it uses
+𝑾
+/
+(
+‖
+𝑾
+‖
+F
++
+ε
+)
+{\bm{W}}/(\|{\bm{W}}\|_{F}+\varepsilon)
+4
+4
+4
+In
+LABEL:lst:lowrank_reg
+, normalization is performed inside the Polar Express function.
+. Moreover, it also needs a lower bound estimate of the smallest nonzero singular value of the normalized matrix,
+ℓ
+\ell
+, which we set to
+10
+−
+3
+10^{-3}
+following their recommendations. We provide a more detailed discussion of our usage of the Polar Express in
+Section
+˜
+D.1
+.
+Computing the nuclear and Frobenius norms.
+After we have (an approximation of)
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+, we can compute an estimate of the nuclear norm with elementwise multiplications and a summation. In particular, it holds that (for any exact
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+)
+sum
+⁡
+(
+𝑾
+⊙
+𝑼
+​
+𝑽
+⊤
+)
+=
+tr
+⁡
+(
+𝑾
+⊤
+​
+𝑼
+​
+𝑽
+⊤
+)
+=
+tr
+⁡
+(
+𝑽
+​
+𝚺
+​
+𝑼
+⊤
+​
+𝑼
+​
+𝑽
+⊤
+)
+=
+tr
+⁡
+(
+𝚺
+)
+=
+‖
+𝑾
+‖
+∗
+,
+\displaystyle\operatorname{sum}({\bm{W}}\odot{\bm{U}}{\bm{V}}^{\top})=\operatorname{tr}({\bm{W}}^{\top}{\bm{U}}{\bm{V}}^{\top})=\operatorname{tr}({\bm{V}}{\bm{\Sigma}}{\bm{U</p>
+
+<p>}}^{\top}{\bm{U}}{\bm{V}}^{\top})=\operatorname{tr}({\bm{\Sigma}})=\|{\bm{W}}\|_{*},
+where
+⊙
+\odot
+denotes elementwise multiplication, and the intermediate steps follow from the cyclic property of the trace operator. The Frobenius norm is simply
+‖
+𝑾
+‖
+F
+=
+∑
+i
+,
+j
+𝑾
+i
+,
+j
+2
+\|{\bm{W}}\|_{F}=\sqrt{\sum_{i,j}{\bm{W}}^{2}_{i,j}}
+.
+Combining everything.
+We now have all the elements needed to compute approximate values and approximate backpropagation rules for both variants, which can be implemented, for example, as a custom PyTorch function. Forward and backward computations of SLORR-Hoyer are summarized in
+LABEL:lst:lowrank_reg
+5
+5
+5
+As shown in
+LABEL:lst:lowrank_reg
+, in practice, we stabilize the forward and backward expressions separately (another option is to use a stabilized forward expression and derive the exact backward expression from it) by substituting
+‖
+𝑾
+‖
+F
+↦
+‖
+𝑾
+‖
+F
++
+ε
+\|{\bm{W}}\|_{F}\mapsto\|{\bm{W}}\|_{F}+\varepsilon
+. This is done to avoid a possible division by zero.
+; SLORR-Nuc admits a similar implementation. Note that we do not backpropagate through the Polar Express iterations. Instead, the approximate polar factor is used in place of the
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+term that appears in the regularizer values and in the gradient rules in
+Equation
+˜
+1
+. During training, we compute the task loss and regularization loss, weighted by the regularization strength
+λ
+\lambda
+, and use gradient-based optimization as usual
+6
+6
+6
+The autograd-based implementatio</p>
+
+<p>n is generally easy to integrate into existing codebases. However, in practice, for PyTorch-based implementations, one can save memory by following the approach in
+Section
+D.3
+. This approach is used for our vision experiments.
+. In the case of Adam
+[
+29
+]
+, one can also use a decoupled low-rank regularization term, similar to Q3R
+[
+15
+]
+; see
+Algorithm
+˜
+1
+.
+Computational cost.
+In terms of matrix multiplication FLOPs (the main cost), each iteration of Polar Express (with our exact settings) with a matrix of shape
+(
+M
+,
+N
+)
+(M,N)
+uses
+4
+​
+P
+2
+​
+Q
++
+2
+​
+P
+3
+4P^{2}Q+2P^{3}
+FLOPs, where
+P
+=
+min
+⁡
+{
+M
+,
+N
+}
+P=\min\{M,N\}
+and
+Q
+=
+max
+⁡
+{
+M
+,
+N
+}
+Q=\max\{M,N\}
+, and we generally use 6 iterations. For convolutional layers, we reshape kernels into matrices (details in
+Section
+˜
+E.1
+); in which case we get
+M
+=
+C
+o
+M=C_{o}
+and
+N
+=
+C
+i
+​
+K
+w
+​
+K
+h
+N=C_{i}K_{w}K_{h}
+, denoting the output and input channels, as well as the width and height of the convolutional kernel, respectively. We discuss practical SLORR overhead measures in
+Section
+˜
+4.1.1
+and
+Section
+˜
+4.2
+, where we find that it generally remains below or around 8% in our ImageNet-scale settings and 1% in LLM pretraining at the 135M and 560M scales, whereas SVD remains prohibitively expensive.
+Approximation guarantees.
+We remark that the computed forward and backward passes of both variants are approximate in practice. Polar Express has worst-case approximation guarantees, which can be used to provide guarantees on the values and g</p>
+
+<p>radients of both SLORR variants (
+Proposition
+˜
+3.1
+). We provide further discussion of this result and its proof in
+Appendix
+˜
+C
+.
+Proposition 3.1
+(Approximation guarantees)
+.
+Let
+𝐖
+≠
+𝟎
+{\bm{W}}\neq\bm{0}
+have thin SVD
+𝐖
+=
+𝐔
+​
+𝚺
+​
+𝐕
+⊤
+{\bm{W}}={\bm{U}}{\bm{\Sigma}}{\bm{V}}^{\top}
+, and assume the nonzero singular values of a normalized version of
+𝐖
+{\bm{W}}
+lie in
+[
+ℓ
+,
+1
+]
+[\ell,1]
+. Let
+𝐏
+^
+\widehat{{\bm{P}}}
+denote the Polar Express approximation of the polar factor
+𝐔
+​
+𝐕
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+after
+T
+T
+steps, and define
+δ
+=
+|
+1
+−
+ℓ
+2
+|
+(
+q
++
+1
+)
+T
+\delta=\left|1-\ell^{2}\right|^{(q+1)^{T}}
+, where
+d
+=
+2
+​
+q
++
+1
+d=2q+1
+is the Polar Express polynomial degree. Additionally, let
+n
+^
+:=
+tr
+⁡
+(
+𝐖
+⊤
+​
+𝐏
+^
+)
+\hat{n}:=\operatorname{tr}({\bm{W}}^{\top}\widehat{{\bm{P}}})
+denote the approximate nuclear norm estimate, and let
+n
+:=
+‖
+𝐖
+‖
+∗
+n:=\|{\bm{W}}\|_{*}
+and
+f
+:=
+‖
+𝐖
+‖
+F
+f:=\|{\bm{W}}\|_{F}
+. Moreover, let
+𝐑
+{\bm{R}}
+denote the exact SLORR-Hoyer gradient and
+𝐑
+^
+\widehat{{\bm{R}}}
+its approximation. Then
+|
+n
+^
+−
+n
+|
+n
+\displaystyle\frac{|\hat{n}-n|}{n}
+≤
+δ
+,
+‖
+𝑷
+^
+−
+𝑼
+​
+𝑽
+⊤
+‖
+2
+≤
+δ
+\displaystyle\leq\delta,\quad\|\widehat{{\bm{P}}}-{\bm{U}}{\bm{V}}^{\top}\|_{2}\leq\delta
+(SLORR-Nuc)
+,
+\displaystyle\text{(SLORR-Nuc)},
+|
+n
+^
+2
+/
+f
+2
+−
+n
+2
+/
+f
+2
+|
+n
+2
+/
+f
+2
+\displaystyle\frac{|\hat{n}^{2}/f^{2}-n^{2}/f^{2}|}{n^{2}/f^{2}}
+≤
+δ
+​
+(
+2
++
+δ
+)
+,
+‖
+𝑹
+−
+𝑹
+^
+‖
+2
+≤
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+(
+n
+f
+2
++
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+)
+\displaystyle\leq\delta(2+\delta),\quad\|{\bm{R}}-\widehat{{\bm{R}}}\|_{2}\l</p>
+
+<p>eq 2\delta(2+\delta)\left(\frac{n}{f^{2}}+\frac{n^{2}}{f^{4}}\|{\bm{W}}\|_{2}\right)
+(SLORR-Hoyer)
+.
+\displaystyle\text{(SLORR-Hoyer)}.
+In particular, errors vanish as
+T
+→
+∞
+T\to\infty
+.
+Practical remarks.
+The singular value range in
+Proposition
+˜
+3.1
+is a theoretical assumption on the normalized matrix, inherited from the Polar Express analysis in
+Amsel
+et al.
+[
+3
+]
+. In practice, Polar Express treats
+ℓ
+\ell
+as an approximate lower bound parameter; the authors report that inaccurate guesses are typically not severe. Therefore, the displayed worst case bound should be interpreted as applying to normalized nonzero singular values lying in
+[
+ℓ
+,
+1
+]
+[\ell,1]
+, while our choice
+ℓ
+=
+10
+−
+3
+\ell=10^{-3}
+follows their recommended value. We also emphasize that this is a worst case bound in an idealized setting. In practice, a smaller number of iterations works well even when the bound is not tight, and floating point error and implementation details may introduce additional approximation error. We follow the practical implementation choices of
+Amsel
+et al.
+[
+3
+]
+, including their recommended parameter settings and numerical stabilizations. Further discussion is provided in
+Section
+˜
+D.1
+and
+Appendix
+˜
+C
+.
+3.1
+Understanding SLORR-Hoyer
+Our analysis is performed in an exact regularizer-only gradient descent setting. In this section,
+η
+&gt;
+0
+\eta&gt;0
+denotes the step size of the regularizer-only update, with the training-time regularization strength absorbed into it. Additional comments an</p>
+
+<p>d proofs appear in
+Appendix
+˜
+B
+. We let
+𝑾
+=
+𝑼
+​
+diag
+⁡
+(
+𝝈
+)
+​
+𝑽
+⊤
+{\bm{W}}={\bm{U}}\operatorname{diag}{(\bm{\sigma})}{\bm{V}}^{\top}
+be a weight matrix and its thin SVD. Additionally, let
+𝑾
++
+{\bm{W}}^{+}
+be the weight matrix after a regularizer-only gradient step from
+𝑾
+{\bm{W}}
+, and define
+𝝈
++
+\bm{\sigma}^{+}
+,
+𝑼
++
+{\bm{U}}^{+}
+, and
+𝑽
++
+{\bm{V}}^{+}
+as its thin SVD. We assume ordered singular values in decreasing order (
+𝝈
+1
+≥
+⋯
+≥
+𝝈
+r
+&gt;
+0
+\bm{\sigma}_{1}\geq\cdots\geq\bm{\sigma}_{r}&gt;0
+) and
+𝑾
+≠
+𝟎
+{\bm{W}}\neq\mathbf{0}
+. We first remark that SLORR-Hoyer is scale-invariant (in the same way that the original version for vector sparsity is
+[
+23
+,
+57
+]
+).
+7
+7
+7
+This is easy to see:
+‖
+α
+​
+𝑾
+‖
+∗
+2
+/
+‖
+α
+​
+𝑾
+‖
+F
+2
+=
+α
+2
+​
+‖
+𝑾
+‖
+∗
+2
+/
+α
+2
+​
+‖
+𝑾
+‖
+F
+2
+=
+‖
+𝑾
+‖
+∗
+2
+/
+‖
+𝑾
+‖
+F
+2
+\|\alpha{\bm{W}}\|_{*}^{2}/\|\alpha{\bm{W}}\|_{F}^{2}=\alpha^{2}\|{\bm{W}}\|_{*}^{2}/\alpha^{2}\|{\bm{W}}\|_{F}^{2}=\|{\bm{W}}\|_{*}^{2}/\|{\bm{W}}\|_{F}^{2}
+.
+Intuitively, this means it aims to redistribute the spectral energy rather than grow or shrink it. Note, however, that in a practical discretized optimization setting, the overall norm of the weight tends to increase (note that the gradient is orthogonal to the weight matrix):
+‖
+𝑾
+−
+η
+​
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+‖
+F
+2
+\displaystyle\|{\bm{W}}-\eta\nabla\mathcal{L}_{\mathrm{hoyer}}({\bm{W}})\|_{F}^{2}
+=
+‖
+𝑾
+‖
+F
+2
+−
+2
+​
+η
+​
+⟨
+𝑾
+,
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+⟩
+F
++
+η
+2
+​
+‖
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+‖
+F
+2
+≥
+‖
+𝑾
+‖
+F
+2
+.
+\displaystyle=\|{\bm{W}}\|_{F}^{2}-2\eta\left\langle{\bm{W}},\na</p>
+
+<p>bla\mathcal{L}_{\mathrm{hoyer}}({\bm{W}})\right\rangle_{F}+\eta^{2}\|\nabla\mathcal{L}_{\mathrm{hoyer}}({\bm{W}})\|_{F}^{2}\geq\|{\bm{W}}\|_{F}^{2}.
+In preliminary experiments, we tried a norm-correction step that did not seem to help in practice.
+Proposition 3.2
+(SLORR-Hoyer shrinkage and growth of singular values)
+.
+For a sufficiently small regularizer-only gradient step, it holds that
+𝝈
+i
++
+⋄
+𝝈
+i
+⇔
+𝝈
+i
+⋄
+‖
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+∗
+,
+for
+⋄
+∈
+{
+&lt;
+,
+&gt;
+,
+=
+}
+.
+\bm{\sigma}^{+}_{i}\diamond\bm{\sigma}_{i}\iff\bm{\sigma}_{i}\diamond\frac{\|{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{*}},\quad\text{for $\diamond\in\{&lt;,&gt;,=\}$.}
+Proposition
+˜
+3.2
+suggests that SLORR-Hoyer enlarges “large” singular values and shrinks “small” ones, where “large” and “small” are determined by the dynamic quantity
+‖
+𝑾
+‖
+F
+2
+/
+‖
+𝑾
+‖
+∗
+\|{\bm{W}}\|_{F}^{2}/\|{\bm{W}}\|_{*}
+, which varies as the weights evolve. Intuitively, this concentrates the spectrum onto the already large singular values. In turn, under certain assumptions, it induces low-rank compressibility (
+Proposition
+˜
+3.3
+).
+Proposition 3.3
+(Sufficiently small steps of SLORR-Hoyer induce compressibility)
+.
+Let
+τ
+=
+‖
+𝐖
+‖
+F
+2
+/
+‖
+𝐖
+‖
+∗
+\tau=\|{\bm{W}}\|_{F}^{2}/\|{\bm{W}}\|_{*}
+. For a sufficiently small regularizer-only gradient step, if
+𝛔
+k
+&gt;
+τ
+\bm{\sigma}_{k}&gt;\tau
+, then
+‖
+𝑼
+:
+,
+:
+k
++
+​
+diag
+⁡
+(
+𝝈
+:
+k
++
+)
+​
+𝑽
+:
+,
+:
+k
++
+⊤
+−
+𝑾
++
+‖
+F
+2
+‖
+𝑾
++
+‖
+F
+2
+&lt;
+‖
+𝑼
+:
+,
+:
+k
+​
+diag
+⁡
+(
+𝝈
+:
+k
+)
+​
+𝑽
+:
+,
+:
+k
+⊤
+−
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+F
+2
+.
+\frac{\|{\bm{U}}^{+}_{:,:k}\operatorname{diag}(\bm{</p>
+
+<p>\sigma}_{:k}^{+}){\bm{V}}_{:,:k}^{+\top}-{\bm{W}}^{+}\|_{F}^{2}}{\|{\bm{W}}^{+}\|_{F}^{2}}&lt;\frac{\|{\bm{U}}_{:,:k}\operatorname{diag}(\bm{\sigma}_{:k}){\bm{V}}_{:,:k}^{\top}-{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{F}^{2}}.
+4
+Experiments
+Our goal is to evaluate the effectiveness of SLORR in inducing compressibility during training. Our experiments cover two main domains: image classification on ImageNet-1K
+[
+9
+]
+, including both continued training from a checkpoint and pretraining, and LLM pretraining. Our general pipeline consists of first training regularized and unregularized models, and then compressing them and assessing their retained performance. Unless stated otherwise, regularization and compression are applied to all linear and convolutional layers, except for the first and last layers; for transformers, this corresponds to the layers inside the transformer blocks. In our experiments, SLORR-Hoyer-D denotes the decoupled variant, following
+Section
+˜
+D.2
+.
+Our code is available at
+https://github.com/davidgonmar/SLORR
+.
+4.1
+Image Classification Experiments
+We first evaluate SLORR on ImageNet-1K classification. We cover two settings: pretraining and continued training, across four architectures. We compare against recent baselines, which have largely focused on the image classification domain. In total, we perform more than 150 runs across settings.
+Baselines and comparisons.
+We compare SLORR against Q3R
+[
+15
+]
+and LoRITa
+[
+1
+]
+. These baselines are used because: (1) they are</p>
+
+<p>the most recent relevant methods, to the best of our knowledge, and (2) they allow us to compare different objectives, whereas factorization-based approaches
+[
+56
+]
+generally have similar objectives to ours but optimize them after altering the architecture.
+For Q3R, following their experiments, the regularization term is added to the gradients in a decoupled form. We sweep over both the regularization strength and their so-called “target rank”, fixing its refresh interval to 5 (following their main experiments). We note, however, that in an ablation, we found that higher (and cheaper) refresh intervals can also work well in the continued training setting (see
+Table
+˜
+10
+for overhead measurements and
+Appendix
+˜
+F
+for the Q3R ablation). While the authors of Q3R recommend smaller regularization strengths for their settings (
+λ
+∈
+[
+0.001
+,
+0.01
+]
+\lambda\in[0.001,0.01]
+), we found in our initial experiments that higher values provided substantially better performance. For LoRITa, we follow the approach described in their paper; however, we use a more efficient and practical implementation (their original implementation significantly increases runtime and memory costs). We also adapt it to allow initialization from a trained checkpoint, which is necessary for our continued training setting. We fix
+N
+=
+2
+N=2
+and vary the regularization strength. For SLORR, we use 6 Polar Express steps (following their recommended setup, which we found to work well; an ablation is presented in
+Secti</p>
+
+<p>on
+˜
+D.1
+) and sweep over the regularization strength
+λ
+\lambda
+. We also include an unregularized baseline following the same training recipe. Details are given in
+Appendix
+˜
+E
+. While LoRITa (fixing
+N
+=
+2
+N=2
+) and SLORR have one hyperparameter, Q3R has two that play a strong role together, which makes tuning significantly more difficult. Details regarding selection, which mainly followed a best-effort manual approach, as well as the final configurations, can be found in
+Appendix
+˜
+E
+and
+Appendix
+˜
+G
+, respectively.
+Figure 1
+:
+Accuracy–compression curves of regularized ResNet-50, ViT-B/16, ViT-L/16, and ResNet-18 models on ImageNet-1K.
+The y-axis reports ImageNet-1K validation top-1 accuracy of the compressed model, and the x-axis reports either the retained parameter ratio or the retained FLOPs ratio, as indicated in each panel. Factorization is performed using the energy and uniform rank-selection criteria (see
+Section
+˜
+4
+for details). Faint curves indicate different hyperparameter selections, while highlighted curves indicate Pareto frontiers. For uniform compression, the parameter and FLOPs ratios are equal up to a small shift, so separate FLOPs ratio panels are omitted.
+Compression.
+After training, we perform compression using two different approaches. The first is uniform compression, in which every layer retains (approximately) a uniform ratio of parameters and FLOPs across layers. Separately, we perform energy-based truncation, in which a retention threshold
+ρ
+\rho</p>
+
+<p>is used to compress each layer to the minimum rank such that the weight relative squared Frobenius approximation error is at most
+1
+−
+ρ
+1-\rho
+. Details are given in
+Appendix
+˜
+E
+.
+ImageNet-1K continued training.
+We perform continued training on ViT-B/16
+[
+12
+]
+and ResNet-50
+[
+20
+]
+using pretrained checkpoints on the ImageNet-1K dataset
+[
+9
+]
+. We train for 30 epochs and compare against Q3R and LoRITa. We use the AdamW optimizer
+[
+38
+]
+, a batch size of 1024, cosine learning rate decay, and linear warmup. For ViT-B/16, we use base learning rates of
+10
+−
+5
+10^{-5}
+and
+5
+×
+10
+−
+5
+5\times 10^{-5}
+; for ResNet-50, we use a base learning rate of
+5
+×
+10
+−
+5
+5\times 10^{-5}
+. We also use the standard data augmentation protocol for each model. The exact training details and motivation for these hyperparameters are provided in
+Appendix
+˜
+E
+.
+The base learning rates are chosen to be sufficiently small so that an unregularized baseline maintains its pretrained performance. However, we found that Q3R did not perform well on ViT-B/16 with the smaller learning rate, so we also conducted experiments using the larger learning rate. We additionally perform continued training on ViT-L/16
+[
+12
+]
+, comparing SLORR with LoRITa and an unregularized baseline. Unless otherwise noted, we use the same settings as in the ViT-B/16 experiments, with a learning rate of
+10
+−
+5
+10^{-5}
+. We use a batch size of 896 because LoRITa caused out-of-memory errors at a batch size of 1024. To provide a matched comp</p>
+
+<p>arison, we also use a batch size of 896 for SLORR.
+For SLORR, we used both the SLORR-Nuc and SLORR-Hoyer variants. For ResNets, we also include the SLORR-Hoyer-D variant, which applies regularization in a decoupled way (see
+Section
+˜
+D.2
+). For ViT-B/16, we tried it preliminarily, but it did not seem to help, so we did not continue exploring it. We did not explore the decoupled variant for SLORR-Nuc.
+ImageNet-1K pretraining.
+Additionally, we pretrain ResNet-18 for 110 epochs on ImageNet-1K (the rest of the settings are similar to ResNet-50, but we use a base learning rate of
+10
+−
+3
+10^{-3}
+). We compare against Q3R and LoRITa and conduct experiments with SLORR-Nuc, SLORR-Hoyer and SLORR-Hoyer-D.
+Figure 2
+:
+Time and memory overhead of different regularizers across ViT model scales.
+Runtime (left) and peak memory (right) are normalized to unregularized training. For Q3R, the number in parentheses denotes the SVD refresh interval. The inset shows a zoomed view of the normalized-runtime curves near ViT-H scale.
+Model
+Method
+Time
+Mem. (GB)
+ViT-B/16
+SLORR
+×
+1.037
+\times 1.037
++
+0.34
++0.34
+LoRITa
+×
+1.007
+\times 1.007
++
+0.57
++0.57
+Q3R(5)
+×
+1.656
+\times 1.656
++
+1.14
++1.14
+Q3R(50)
+×
+1.106
+\times 1.106
++
+1.14
++1.14
+Q3R(300)
+×
+1.055
+\times 1.055
++
+1.14
++1.14
+ResNet-50
+SLORR
+×
+1.048
+\times 1.048
++
+0.09
++0.09
+LoRITa
+×
+1.005
+\times 1.005
++
+0.13
++0.13
+Q3R(5)
+×
+1.222
+\times 1.222
++
+0.31
++0.31
+Q3R(50)
+×
+1.062
+\times 1.062
++
+0.31
++0.31
+Q3R(300)
+×
+1.049
+\times 1.049
++
+0.31
++0.31
+ViT-L/16
+SLORR
+×</p>
+
+<p>1.055
+\times 1.055
++
+1.21
++1.21
+LoRITa
+×
+1.010
+\times 1.010
++
+2.02
++2.02
+Q3R(5)
+×
+3.059
+\times 3.059
++
+4.05
++4.05
+Q3R(50)
+×
+1.301
+\times 1.301
++
+4.04
++4.04
+Q3R(300)
+×
+1.139
+\times 1.139
++
+4.04
++4.04
+Table 2:
+Training overhead in our runs.
+We report normalized time vs. unregularized training and increase in peak GPU memory. For Q3R, the number in parentheses denotes the SVD refresh interval. All methods achieve near-zero overhead on ResNet-18.
+Compression results.
+We report results for the different settings in
+Figure
+˜
+1
+. The accuracy–compression Pareto frontier is highlighted, with fainter lines showing trajectories for each hyperparameter configuration. In general, for all methods, there appears to be an accuracy/compressibility tradeoff. Under our settings, we find that at least one variant of SLORR generally performs close to Q3R, sometimes surpassing it. LoRITa is relatively weak in most of our continued training settings, though it is more effective in the ResNet-18 pretraining setting. Note that, in some circumstances, some runs of different methods underperform the baseline in terms of compressibility (in particular, Q3R seems not to perform well on the ViT-B/16 runs with smaller learning rates; see
+Appendix
+˜
+G
+in
+Appendix
+˜
+G
+). Interestingly, each exact setting appears to favor different methods, including different SLORR variants, suggesting that there might not be a single one-size-fits-all objective.
+4.1.1
+Training Overhead for Classification Models
+Overhead i</p>
+
+<p>n our training runs.
+We measure the overhead in a controlled environment (full details and measurements can be found in
+Appendix
+˜
+H
+). In
+Table
+˜
+2
+, we report the overhead of different methods
+8
+8
+8
+We remark that, in general, the training overhead is related to different factors. For example, a slow data-loading pipeline might mask a large overhead. Moreover, smaller batch sizes will generally suffer from higher relative overhead, as the regularization time is fixed. Similarly, implementation specifics can slightly alter the exact results.
+. We find that SLORR consistently maintains a small training overhead of less than 8% on average
+9
+9
+9
+Our implementation of the decoupled variant has a slightly larger overhead. For the default variant, overhead is less than 6% on average
+. Furthermore, in these experiments, SLORR consistently achieves the smallest memory overhead. Although we use a refresh period of 5 in our Q3R experiments, which is expensive, we also note that larger periods, significantly cheaper than what
+Ghosh
+et al.
+[
+15
+]
+used in their main experiments, appear to work well in the settings we tried (as discussed earlier); these timings are included in the table for transparency.
+Scaling up: overhead across different ViT scales.
+We evaluate how regularization overhead scales on modern hardware by measuring the relative time and memory costs on B200 GPUs from ViT-T through ViT-H scale (
+Figure
+˜
+2
+). This reveals a key scaling tradeoff: while Q3R with large periods</p>
+
+<p>can be efficient, larger refresh periods are needed to maintain efficiency as model size increases. While large refresh periods work in our settings, we expect sufficiently infrequent refreshes to eventually reduce regularization quality. Although we do not reach that “saturation point” in our scales, this is an important aspect to take into account in terms of scalability.
+10
+10
+10
+While Q3R relies on exact SVDs, it might be an interesting avenue for future work to try approximate SVDs, which might improve scalability.
+4.2
+LLM Pretraining
+We now study regularized LLM pretraining using SLORR-Hoyer. In particular, we train standard Llama-like
+[
+50
+]
+transformer models on FineWeb-Edu
+[
+43
+]
+, using the AdamW optimizer and distributed data parallelism (DDP), following standard practice. Exact training details are provided in
+Appendix
+˜
+I
+. Our main models are trained on approximately 20 training tokens per parameter, following the compute-optimal scaling rule of
+Hoffmann
+et al.
+[
+22
+]
+. We train 135M and 560M models using both unregularized standard pretraining and SLORR-Hoyer for different regularization strengths
+λ
+\lambda
+. We find that, across both scales, SLORR incurs less than 1% training overhead on average; see
+Appendix
+˜
+L
+for concrete details.
+After training, we compress models using both plain SVD and the recent SVD-LLM
+[
+52
+]
+, which uses activation statistics to compute a whitening transformation before compressing each layer, generally enabling stronger compressio</p>
+
+<p>n
+11
+11
+11
+We use a slightly modified version. Details are provided in
+Appendix
+I
+.
+. Plain SVD is known to be impractical for LLMs, as degradation is significant even at very small compression ratios
+[
+52
+]
+. After compression, we evaluate the models. For both scales, we report validation perplexity on a held-out FineWeb-Edu set of approximately 2M tokens. For the 560M model, we additionally report zero-shot downstream task accuracy using the
+lm-evaluation-harness
+library
+[
+14
+]
+. Downstream tasks include ARC-Easy and ARC-Challenge
+[
+7
+]
+, HellaSwag
+[
+59
+]
+, LAMBADA
+[
+41
+]
+, OpenBookQA
+[
+39
+]
+, and PIQA
+[
+5
+]
+.
+Figure 3
+:
+LLM compression results with SLORR-Hoyer regularization.
+Colors indicate the SLORR-Hoyer regularization strength
+λ
+\lambda
+used during pretraining.
+λ
+=
+0
+\lambda=0
+corresponds to the unregularized baseline.
+Top row:
+FineWeb-Edu validation perplexity for Llama 135M and Llama 560M after compression with either plain SVD or SVD-LLM whitening, as indicated in each panel title. Perplexity values are clipped at 150 for visibility; full tabular results are reported in
+Appendix
+˜
+K
+.
+Middle row:
+Downstream zero-shot accuracy for Llama 560M compressed with plain SVD.
+Bottom row:
+Downstream zero-shot accuracy for Llama
+560M compressed with SVD-LLM whitening.
+Compression results.
+Results for the 135M and 560M models are presented in
+Figure
+˜
+3
+. The reported parameter ratios are computed over the transformer blocks. In particular, embeddings and the final layer are no</p>
+
+<p>t compressed, following common practice in this area. We find that SLORR-Hoyer improves compressibility under both plain SVD and SVD-LLM compression. Plain SVD is particularly brittle for LLMs, as perplexity degrades sharply even when only a small fraction of block parameters is removed. Although SLORR-trained models have slightly higher uncompressed perplexity, they outperform unregularized models after mild compression, e.g., 10% parameter removal, corresponding to a retained parameter ratio of 0.9. The gap widens significantly at lower parameter count ratios.
+For the 560M model, we observe similar trends in downstream task performance. While the unregularized model quickly suffers from significant degradation, regularized models maintain substantially higher downstream performance in general, even at higher compression ratios, at the cost of a slight hit in uncompressed performance on some tasks.
+Longer training.
+As noted above, our main models are trained to the compute-optimal token budget
+[
+22
+]
+. We also train 135M models for longer, specifically for 4 and 8 times the compute-optimal token budget, to explore whether the gains transfer to longer training. We find that, as models are trained for longer, they become less compressible in our setting, both under unregularized and regularized training. However, regularized models remain more compressible. These results are shown in
+Appendix
+˜
+J
+, with tabular values in
+Appendix
+˜
+K
+.
+Visualizing the effect of SLORR on weight</p>
+
+<p>spectra.
+SLORR promotes low rank with the objective of making models amenable to factorization. Naturally, this is directly reflected in the visual properties of weight spectra, where stronger regularization induces faster singular value decay. We include plots for all Llama 135M layers in the appendix (
+Figure
+˜
+5
+), where the spectral concentration effect is apparent. Perhaps surprisingly, there are visible spectral differences in the embedding matrix, but not in the final linear layer. Since the embedding layer was not regularized, this indicates that modifying the spectra of regularized layers can affect other parts of the model.
+5
+Discussion
+Limitations.
+Weight low-rank regularization may not be effective in every setting. In exploratory experiments, we found that fine-tuning LLMs with low-rank regularization while preserving general capabilities was challenging, suggesting that the data and training setup are important, as one might expect. Additionally, there is generally a tradeoff between final accuracy and compressibility, and excessive regularization can cause training instabilities, particularly for the Hoyer variant. Moreover, although our experiments are significantly more extensive than those of prior work (more than 150 runs on ImageNet-1K), the performance of regularizers can vary depending on the training setting and hyperparameters. Similarly, we did not explore every SLORR variant in every setting. Therefore, although we provide a broad best-effort compar</p>
+
+<p>ison, our results should not be interpreted as a definitive ranking of all methods. Finally, our theory, while informative, relies on specific assumptions that may not hold in every practical case.
+Future work.
+One promising direction is to combine regularization with complementary techniques, such as periodic truncation, similar to
+Xu
+et al.
+[
+55
+]
+, or multiple rounds of retraining and compression. Regularization strength schedules, as in
+Dolatabadi
+et al.
+[
+11
+]
+, would likely also yield better results. Moreover, the need for orthogonalization in optimization has sparked research into more effective polar-function approximations, e.g.,
+[
+60
+]
+, which could be applied to SLORR. Finally, we believe our work could motivate broader research beyond the scope of this paper. Although the main application of this work is to directly regularize weights, the versatility of SLORR may open new avenues in settings where one cannot rely on architectural modifications or the validity of cached quantities. For example, low-rank regularization of activations via the nuclear norm has been shown to enhance generalization
+[
+48
+]
+; while that work uses SVDs, an efficient version could potentially be computed using our approach. Similarly, although nontrivial, it would be interesting to extend low-rank regularization to encourage activations to lie in a subspace, enabling better use of activation-aware factorization methods. More broadly, an accessible way to regularize rank may motivate work o</p>
+
+<p>n broader applications of rank regularization beyond those studied here, including settings where encouraging a higher rank may be beneficial.
+Conclusion.
+We have introduced SLORR, a framework for directly regularizing weight matrices to be low rank. The idea is simple yet highly versatile: it does not require SVDs, remains efficient, operates directly on the matrix being regularized, and is stateless. Our experiments on ImageNet-1K image classification and LLM pretraining show that this regularizer is effective at producing more compressible models while maintaining training efficiency. More broadly, although we focused on weight compression, we are excited about the avenues that this versatility may open in other use cases.
+Acknowledgments and Disclosure of Funding
+We would like to thank Keyu Wang, Philipp Nazari, and Neeratyoy Mallik for helpful discussions and feedback on this work.
+References
+[1]
+I. Alkhouri, X. Zhang, and R. Wang
+(2024)
+Structure-preserving network compression via low-rank induced training through linear layers composition
+.
+Transactions on Machine Learning Research
+.
+Note:
+External Links:
+ISSN 2835-8856
+,
+Link
+Cited by:
+§E.2.1
+,
+§E.2.1
+,
+§E.2.1
+,
+§E.2.1
+,
+Table 1
+,
+§1
+,
+§2.1
+,
+§2
+,
+§4.1
+.
+[2]
+J. M. Alvarez and M. Salzmann
+(2017)
+Compression-aware training of deep networks
+.
+In
+Proceedings of the 31st International Conference on Neural Information Processing Systems
+,
+NIPS’17
+,
+Red Hook, NY, USA
+,
+pp. 856–867
+.
+External Links:
+ISBN 9781510860964
+Cited b</p>
+
+<p>y:
+§E.4
+,
+Table 1
+,
+§1
+,
+§2.1
+.
+[3]
+N. Amsel, D. Persson, C. Musco, and R. M. Gower
+(2026)
+The polar express: optimal matrix sign methods and their application to the muon algorithm
+.
+In
+The Fourteenth International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+Appendix C
+,
+Appendix C
+,
+Appendix C
+,
+Appendix C
+,
+§D.1
+,
+§3
+,
+§3
+.
+[4]
+M. Ben Noach and Y. Goldberg
+(2020-12)
+Compressing pre-trained language models by matrix decomposition
+.
+In
+Proceedings of the 1st Conference of the Asia-Pacific Chapter of the Association for Computational Linguistics and the 10th International Joint Conference on Natural Language Processing
+,
+K. Wong, K. Knight, and H. Wu (Eds.)
+,
+Suzhou, China
+,
+pp. 884–889
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§1
+,
+§2
+,
+§2
+.
+[5]
+Y. Bisk, R. Zellers, R. L. Bras, J. Gao, and Y. Choi
+(2019)
+PIQA: reasoning about physical commonsense in natural language
+.
+External Links:
+1911.11641
+,
+Link
+Cited by:
+§I.2
+,
+§4.2
+.
+[6]
+P. Chen, H. Yu, I. Dhillon, and C. Hsieh
+(2021)
+DRONE: data-aware low-rank compression for large nlp models
+.
+In
+Advances in Neural Information Processing Systems
+,
+M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. W. Vaughan (Eds.)
+,
+Vol.
+34
+,
+pp. 29321–29334
+.
+External Links:
+Link
+Cited by:
+§1
+,
+§2
+.
+[7]
+P. Clark, I. Cowhey, O. Etzioni, T. Khot, A. Sabharwal, C. Schoenick, and O. Tafjord
+(2018)
+Think you have solved question answering? try arc, the ai2 reasoning challenge
+.
+External Links:
+1803.05457
+,
+Link
+Ci</p>
+
+<p>ted by:
+§I.2
+,
+§4.2
+.
+[8]
+F. H. Clarke
+(1990)
+Optimization and nonsmooth analysis
+.
+edition
+,
+Society for Industrial and Applied Mathematics
+,
+.
+External Links:
+Document
+,
+Link
+,
+https://epubs.siam.org/doi/pdf/10.1137/1.9781611971309
+Cited by:
+Appendix A
+,
+Appendix A
+,
+Appendix A
+,
+Appendix A
+,
+Appendix A
+,
+Appendix A
+.
+[9]
+J. Deng, W. Dong, R. Socher, L. Li, K. Li, and L. Fei-Fei
+(2009)
+ImageNet: a large-scale hierarchical image database
+.
+In
+2009 IEEE Conference on Computer Vision and Pattern Recognition
+,
+Vol.
+,
+pp. 248–255
+.
+External Links:
+Document
+Cited by:
+§1
+,
+§4.1
+,
+§4
+.
+[10]
+E. Denton, W. Zaremba, J. Bruna, Y. LeCun, and R. Fergus
+(2014)
+Exploiting linear structure within convolutional networks for efficient evaluation
+.
+In
+Proceedings of the 28th International Conference on Neural Information Processing Systems - Volume 1
+,
+NIPS’14
+,
+Cambridge, MA, USA
+,
+pp. 1269–1277
+.
+Cited by:
+§1
+,
+§2
+.
+[11]
+H. M. Dolatabadi, T. Ajanthan, S. Ramasinghe, C. P. H. Koneputugodage, S. Siriwardhana, V. Shevchenko, K. Pajak, J. Snewin, G. Avraham, and A. Long
+(2026)
+NuMuon: nuclear-norm-constrained muon for compressible llm training
+.
+External Links:
+2603.03597
+,
+Link
+Cited by:
+§2.1
+,
+§5
+.
+[12]
+A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly, J. Uszkoreit, and N. Houlsby
+(2021)
+An image is worth 16x16 words: transformers for image recognition at scale
+.
+In
+International Conference on Learning Representati</p>
+
+<p>ons
+,
+External Links:
+Link
+Cited by:
+§1
+,
+§4.1
+,
+§4.1
+.
+[13]
+M. Fazel, H. Hindi, and S. Boyd
+(2004)
+Rank minimization and applications in system theory
+.
+In
+Proceedings of the 2004 American Control Conference
+,
+Vol.
+4
+,
+pp. 3273–3278 vol.4
+.
+External Links:
+Document
+Cited by:
+§2.1
+.
+[14]
+L. Gao, J. Tow, B. Abbasi, S. Biderman, S. Black, A. DiPofi, C. Foster, L. Golding, J. Hsu, A. Le Noac’h, H. Li, K. McDonell, N. Muennighoff, C. Ociepa, J. Phang, L. Reynolds, H. Schoelkopf, A. Skowron, L. Sutawika, E. Tang, A. Thite, B. Wang, K. Wang, and A. Zou
+(2024-07)
+The language model evaluation harness
+.
+Zenodo
+.
+External Links:
+Document
+,
+Link
+Cited by:
+§I.2
+,
+§4.2
+.
+[15]
+I. Ghosh, E. Nguyen, and C. Kümmerle
+(2025)
+Q3R: quadratic reweighted rank regularizer for effective low-rank training
+.
+In
+The Thirty-ninth Annual Conference on Neural Information Processing Systems
+,
+External Links:
+Link
+Cited by:
+§E.2.1
+,
+Table 1
+,
+§1
+,
+§2.1
+,
+§3
+,
+§4.1
+,
+§4.1.1
+.
+[16]
+G. H. Golub and C. F. Van Loan
+(2013)
+Matrix computations - 4th edition
+.
+edition
+,
+Johns Hopkins University Press
+,
+Philadelphia, PA
+.
+External Links:
+Document
+,
+Link
+,
+https://epubs.siam.org/doi/pdf/10.1137/1.9781421407944
+Cited by:
+§2
+.
+[17]
+D. González-Martínez
+(2025)
+BALF: budgeted activation-aware low-rank factorization for fine-tuning-free model compression
+.
+External Links:
+2509.25136
+,
+Link
+Cited by:
+§E.4
+,
+§I.1
+.
+[18]
+P. Goyal, P. Dollár, R. Girshick, P. Noordhuis, L. Wesolowski, A. Kyrola, A. Tulloch, Y. Jia, and K. He
+(</p>
+
+<p>2018)
+Accurate, large minibatch sgd: training imagenet in 1 hour
+.
+External Links:
+1706.02677
+,
+Link
+Cited by:
+§E.3
+.
+[19]
+A. Han, J. Li, W. Huang, M. Hong, A. Takeda, P. Jawanpuria, and B. Mishra
+(2024)
+SLTrain: a sparse plus low rank approach for parameter and memory efficient pretraining
+.
+In
+The Thirty-eighth Annual Conference on Neural Information Processing Systems
+,
+External Links:
+Link
+Cited by:
+§2.1
+.
+[20]
+K. He, X. Zhang, S. Ren, and J. Sun
+(2016)
+Deep residual learning for image recognition
+.
+In
+2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)
+,
+Vol.
+,
+pp. 770–778
+.
+External Links:
+Document
+Cited by:
+§1
+,
+§4.1
+.
+[21]
+N. J. Higham
+(1994)
+The matrix sign decomposition and its relation to the polar decomposition
+.
+Linear Algebra and its Applications
+212-213
+,
+pp. 3–20
+.
+External Links:
+ISSN 0024-3795
+,
+Document
+,
+Link
+Cited by:
+§3
+.
+[22]
+J. Hoffmann, S. Borgeaud, A. Mensch, E. Buchatskaya, T. Cai, E. Rutherford, D. de Las Casas, L. A. Hendricks, J. Welbl, A. Clark, T. Hennigan, E. Noland, K. Millican, G. van den Driessche, B. Damoc, A. Guy, S. Osindero, K. Simonyan, E. Elsen, J. W. Rae, O. Vinyals, and L. Sifre
+(2022)
+Training compute-optimal large language models
+.
+External Links:
+2203.15556
+,
+Link
+Cited by:
+Appendix J
+,
+Appendix I
+,
+§4.2
+,
+§4.2
+.
+[23]
+P. O. Hoyer
+(2004-12)
+Non-negative matrix factorization with sparseness constraints
+.
+J. Mach. Learn. Res.
+5
+,
+pp. 1457–1469
+.
+External Links:
+ISSN 1532-4435
+Cited by:
+§1
+,
+§2.1
+,
+§3.1
+,
+§3
+.
+[24]</p>
+
+<p>M. Jaderberg, A. Vedaldi, and A. Zisserman
+(2014)
+Speeding up convolutional neural networks with low rank expansions
+.
+In
+Proceedings of the British Machine Vision Conference
+,
+External Links:
+Document
+Cited by:
+§1
+,
+§2
+.
+[25]
+A. K. Jaiswal, Y. Wang, L. Yin, S. Liu, R. Chen, J. Zhao, A. Grama, Y. Tian, and Z. Wang
+(2025)
+From low rank gradient subspace stabilization to low-rank weights: observations, theories, and applications
+.
+In
+Forty-second International Conference on Machine Learning
+,
+External Links:
+Link
+Cited by:
+§2
+.
+[26]
+K. Jordan, Y. Jin, V. Boza, J. You, F. Cesista, L. Newhouse, and J. Bernstein
+(2024)
+Muon: an optimizer for hidden layers in neural networks
+.
+External Links:
+Link
+Cited by:
+§3
+.
+[27]
+S. R. Kamalakara, A. Locatelli, B. Venkitesh, J. Ba, Y. Gal, and A. N. Gomez
+(2022)
+Exploring low rank training of deep neural networks
+.
+External Links:
+2209.13569
+,
+Link
+Cited by:
+§2.1
+.
+[28]
+M. Khodak, N. A. Tenenholtz, L. Mackey, and N. Fusi
+(2021)
+Initialization and regularization of factorized neural layers
+.
+In
+International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§E.2.1
+,
+§2.1
+.
+[29]
+D. P. Kingma and J. Ba
+(2017)
+Adam: a method for stochastic optimization
+.
+External Links:
+1412.6980
+,
+Link
+Cited by:
+§3
+.
+[30]
+M. Kliegl, S. Goyal, K. Zhao, K. Srinet, and M. Shoeybi
+(2018)
+Trace norm regularization and faster inference for embedded speech recognition rnns
+.
+External Links:
+1710.09026
+,
+Link
+Cited by:
+§2.1
+.
+[31]
+Y. LeCun, L. Botto</p>
+
+<p>u, Y. Bengio, and P. Haffner
+(1998)
+Gradient-based learning applied to document recognition
+.
+Proc. IEEE
+86
+,
+pp. 2278–2324
+.
+External Links:
+Link
+Cited by:
+§2
+.
+[32]
+J. Li, L. Yin, L. Shen, J. Xu, L. Xu, T. Huang, W. Wang, S. Liu, and X. Wang
+(2025)
+LOST: low-rank and sparse pre-training for large language models
+.
+External Links:
+2508.02668
+,
+Link
+Cited by:
+§2.1
+.
+[33]
+N. Li, Y. Xie, P. Liu, T. Dai, Y. Jiang, and S. Xia
+(2025-08)
+Efficient differentiable approximation of generalized low-rank regularization
+.
+In
+Proceedings of the Thirty-Fourth International Joint Conference on
+Artificial Intelligence, IJCAI-25
+,
+J. Kwok (Ed.)
+,
+pp. 5616–5624
+.
+Note:
+Main Track
+External Links:
+Document
+,
+Link
+Cited by:
+§2.1
+.
+[34]
+W. Li and W. Sun
+(2002)
+Perturbation bounds of unitary and subunitary polar factors
+.
+SIAM Journal on Matrix Analysis and Applications
+23
+(
+4
+),
+pp. 1183–1193
+.
+External Links:
+Document
+,
+Link
+,
+https://doi.org/10.1137/S0895479801394623
+Cited by:
+footnote 3
+.
+[35]
+V. Lialin, N. Shivagunde, S. Muckatira, and A. Rumshisky
+(2023)
+ReLoRA: high-rank training through low-rank updates
+.
+External Links:
+2307.05695
+,
+Link
+Cited by:
+§2.1
+.
+[36]
+L. Liebenwein, A. Maalouf, D. Feldman, and D. Rus
+(2021)
+Compressing neural networks: towards determining the optimal layer-wise decomposition
+.
+In
+Advances in Neural Information Processing Systems
+,
+A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan (Eds.)
+,
+External Links:
+Link
+Cited by:
+§E.4
+.
+[37]
+I. Loshchilov and F. Hutter</p>
+
+<p>(2017)
+SGDR: stochastic gradient descent with warm restarts
+.
+In
+International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§E.3
+.
+[38]
+I. Loshchilov and F. Hutter
+(2019)
+Decoupled weight decay regularization
+.
+In
+International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§D.2
+,
+§E.2.2
+,
+§2.1
+,
+§4.1
+.
+[39]
+T. Mihaylov, P. Clark, T. Khot, and A. Sabharwal
+(2018-October-November)
+Can a suit of armor conduct electricity? a new dataset for open book question answering
+.
+In
+Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing
+,
+E. Riloff, D. Chiang, J. Hockenmaier, and J. Tsujii (Eds.)
+,
+Brussels, Belgium
+,
+pp. 2381–2391
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§I.2
+,
+§4.2
+.
+[40]
+T. OLMo, P. Walsh, L. Soldaini, D. Groeneveld, K. Lo, S. Arora, A. Bhagia, Y. Gu, S. Huang, M. Jordan, N. Lambert, D. Schwenk, O. Tafjord, T. Anderson, D. Atkinson, F. Brahman, C. Clark, P. Dasigi, N. Dziri, M. Guerquin, H. Ivison, P. W. Koh, J. Liu, S. Malik, W. Merrill, L. J. V. Miranda, J. Morrison, T. Murray, C. Nam, V. Pyatkin, A. Rangapur, M. Schmitz, S. Skjonsberg, D. Wadden, C. Wilhelm, M. Wilson, L. Zettlemoyer, A. Farhadi, N. A. Smith, and H. Hajishirzi
+(2024)
+2 olmo 2 furious
+.
+External Links:
+2501.00656
+,
+Link
+Cited by:
+Appendix I
+.
+[41]
+D. Paperno, G. Kruszewski, A. Lazaridou, N. Q. Pham, R. Bernardi, S. Pezzelle, M. Baroni, G. Boleda, and R. Fernández
+(2016-08)
+The LAMBADA dataset: word prediction requ</p>
+
+<p>iring a broad discourse context
+.
+In
+Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)
+,
+K. Erk and N. A. Smith (Eds.)
+,
+Berlin, Germany
+,
+pp. 1525–1534
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§I.2
+,
+§4.2
+.
+[42]
+A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, T. Killeen, Z. Lin, N. Gimelshein, L. Antiga, A. Desmaison, A. Köpf, E. Yang, Z. DeVito, M. Raison, A. Tejani, S. Chilamkurthy, B. Steiner, L. Fang, J. Bai, and S. Chintala
+(2019)
+PyTorch: an imperative style, high-performance deep learning library
+.
+External Links:
+1912.01703
+,
+Link
+Cited by:
+Appendix D
+.
+[43]
+G. Penedo, H. Kydlíček, L. B. Allal, A. Lozhkov, M. Mitchell, C. Raffel, L. V. Werra, and T. Wolf
+(2024)
+The fineweb datasets: decanting the web for the finest text data at scale
+.
+External Links:
+2406.17557
+,
+Link
+Cited by:
+Appendix I
+,
+§4.2
+.
+[44]
+H. Qin, S. Sharma, A. Abbasi, C. Thrash, and S. Kolouri
+(2025)
+Low-rank prehab: preparing neural networks for svd compression
+.
+External Links:
+2512.01980
+,
+Link
+Cited by:
+§2.1
+.
+[45]
+W. Qinsi, J. Ke, M. Tomizuka, K. Keutzer, and C. Xu
+(2025)
+Dobi-SVD: differentiable SVD for LLM compression and some new perspectives
+.
+In
+The Thirteenth International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§2
+.
+[46]
+C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena, Y. Zhou, W. Li, and P. J. Liu
+(2020)
+Exploring the limits of transfer learning with a unified t</p>
+
+<p>ext-to-text transformer
+.
+Journal of Machine Learning Research
+21
+(
+140
+),
+pp. 1–67
+.
+External Links:
+Link
+Cited by:
+Appendix I
+.
+[47]
+K. Sakaguchi, R. L. Bras, C. Bhagavatula, and Y. Choi
+(2019)
+WinoGrande: an adversarial winograd schema challenge at scale
+.
+External Links:
+1907.10641
+,
+Link
+Cited by:
+§I.2
+.
+[48]
+Z. Shi, Y. Ming, Y. Fan, F. Sala, and Y. Liang
+(2024)
+Domain generalization via nuclear norm regularization
+.
+In
+Conference on Parsimony and Learning (Proceedings Track)
+,
+External Links:
+Link
+Cited by:
+§5
+.
+[49]
+TorchVision maintainers and contributors
+(2016-11)
+TorchVision: PyTorch’s Computer Vision library
+.
+External Links:
+Link
+Cited by:
+§E.3
+.
+[50]
+H. Touvron, T. Lavril, G. Izacard, X. Martinet, M. Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro, F. Azhar, A. Rodriguez, A. Joulin, E. Grave, and G. Lample
+(2023)
+LLaMA: open and efficient foundation language models
+.
+External Links:
+2302.13971
+,
+Link
+Cited by:
+Appendix I
+,
+§4.2
+.
+[51]
+X. Wang, S. Alam, Z. Wan, H. Shen, and M. Zhang
+(2025-04)
+SVD-LLM v2: optimizing singular value truncation for large language model compression
+.
+In
+Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)
+,
+L. Chiruzzo, A. Ritter, and L. Wang (Eds.)
+,
+Albuquerque, New Mexico
+,
+pp. 4287–4296
+.
+External Links:
+Link
+,
+Document
+,
+ISBN 979-8-89176-189-6
+Cited by:
+§2
+.
+[52]
+X. Wang, Y. Zheng, Z. Wan, and M. Zhang
+(2</p>
+
+<p>025)
+SVD-LLM: truncation-aware singular value decomposition for large language model compression
+.
+In
+The Thirteenth International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§I.1
+,
+§2.1
+,
+§2
+,
+§4.2
+.
+[53]
+X. Wei, S. Moalla, R. Pascanu, and C. Gulcehre
+(2024)
+Building on efficient foundations: effective training of LLMs with structured feedforward layers
+.
+In
+The Thirty-eighth Annual Conference on Neural Information Processing Systems
+,
+External Links:
+Link
+Cited by:
+§2.1
+.
+[54]
+R. Wightman
+(2019)
+PyTorch Image Models
+.
+External Links:
+Document
+,
+Link
+Cited by:
+Appendix E
+.
+[55]
+Y. Xu, Y. Li, S. Zhang, W. Wen, B. Wang, Y. Qi, Y. Chen, W. Lin, and H. Xiong
+(2020)
+TRP: trained rank pruning for efficient deep neural networks
+.
+CoRR
+abs/2004.14566
+.
+External Links:
+Link
+,
+2004.14566
+Cited by:
+§1
+,
+§2.1
+,
+§5
+.
+[56]
+H. Yang, M. Tang, W. Wen, F. Yan, D. Hu, A. Li, H. Li, and Y. Chen
+(2020)
+Learning low-rank deep neural networks via singular vector orthogonality regularization and singular value sparsification
+.
+CoRR
+abs/2004.09031
+.
+External Links:
+Link
+,
+2004.09031
+Cited by:
+Table 1
+,
+§1
+,
+§2.1
+,
+§2
+,
+§3
+,
+§4.1
+.
+[57]
+H. Yang, W. Wen, and H. Li
+(2020)
+DeepHoyer: learning sparser neural network with differentiable scale-invariant sparsity measures
+.
+In
+International Conference on Learning Representations
+,
+External Links:
+Link
+Cited by:
+§E.4
+,
+§3.1
+,
+§3
+.
+[58]
+Z. Yuan, Y. Shang, Y. Song, D. Yang, Q. Wu, Y. Yan, and G. Sun
+(2025)
+ASVD: activation-aware sin</p>
+
+<p>gular value decomposition for compressing large language models
+.
+External Links:
+2312.05821
+,
+Link
+Cited by:
+§2
+.
+[59]
+R. Zellers, A. Holtzman, Y. Bisk, A. Farhadi, and Y. Choi
+(2019-07)
+HellaSwag: can a machine really finish your sentence?
+.
+In
+Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics
+,
+A. Korhonen, D. Traum, and L. Màrquez (Eds.)
+,
+Florence, Italy
+,
+pp. 4791–4800
+.
+External Links:
+Link
+,
+Document
+Cited by:
+§I.2
+,
+§4.2
+.
+[60]
+J. Zhang, N. Amsel, B. Chen, and T. Dao
+(2026)
+Gram newton-schulz
+.
+External Links:
+Link
+Cited by:
+§5
+.
+[61]
+M. Zimmer, C. Spiegel, and S. Pokutta
+(2024)
+Compression-aware training of neural networks using frank-wolfe
+.
+External Links:
+2205.11921
+,
+Link
+Cited by:
+§2.1
+.
+Appendix A
+Backpropagating Through the Regularizers
+As noted before, the SLORR regularizers are not differentiable everywhere. In practice, one can informally use “natural” backpropagation rules. We note that, for SLORR-Hoyer, the computed rule simply corresponds to backpropagating through the whole expression (and, when backpropagating through the nuclear norm, using the generalized polar factor). These correspond to minimum-norm choices in the generalized gradient of the corresponding functions, in the sense of Clarke
+[
+8
+, Chapter 2]
+, which we denote by
+∂
+f
+​
+(
+𝑾
+)
+.
+\partial f({\bm{W}}).
+Throughout this section, when
+𝑼
+{\bm{U}}
+and
+𝑽
+{\bm{V}}
+appear, they refer to the thin SVD of
+𝑾
+{\bm{W}}
+, as in the rest of the paper. We also assume</p>
+
+<p>𝑾
+≠
+𝟎
+{\bm{W}}\neq\bm{0}
+, so that
+‖
+𝑾
+‖
+F
+&gt;
+0
+\|{\bm{W}}\|_{F}&gt;0
+.
+First, note that both
+‖
+𝑾
+‖
+∗
+\|{\bm{W}}\|_{*}
+and
+‖
+𝑾
+‖
+F
+\|{\bm{W}}\|_{F}
+are locally Lipschitz. Moreover,
+‖
+𝑾
+‖
+F
+2
+\|{\bm{W}}\|_{F}^{2}
+is continuously differentiable, with
+∇
+‖
+𝑾
+‖
+F
+2
+=
+2
+​
+𝑾
+.
+\nabla\|{\bm{W}}\|_{F}^{2}=2{\bm{W}}.
+By
+[
+8
+, Proposition 2.2.4]
+, this implies
+∂
+‖
+𝑾
+‖
+F
+2
+=
+{
+2
+​
+𝑾
+}
+.
+\partial\|{\bm{W}}\|_{F}^{2}=\{2{\bm{W}}\}.
+We use Clarke’s notion of regularity
+[
+8
+, Definition 2.3.4]
+. Continuously differentiable functions and convex functions are regular
+[
+8
+, Proposition 2.3.6]
+. Therefore,
+‖
+𝑾
+‖
+F
+2
+\|{\bm{W}}\|_{F}^{2}
+,
+‖
+𝑾
+‖
+∗
+\|{\bm{W}}\|_{*}
+, and
+‖
+𝑾
+‖
+∗
+2
+\|{\bm{W}}\|_{*}^{2}
+are regular.
+The nuclear norm is convex. Hence, by
+[
+8
+, Proposition 2.2.7]
+, its Clarke generalized gradient coincides with the subdifferential from convex analysis.
+Generalized gradient of SLORR-Nuc.
+The SLORR-Nuc regularizer is the nuclear norm,
+ℒ
+nuc
+​
+(
+𝑾
+)
+=
+‖
+𝑾
+‖
+∗
+.
+\mathcal{L}_{\operatorname{nuc}}({\bm{W}})=\|{\bm{W}}\|_{*}.
+Let
+𝑾
+=
+𝑼
+​
+𝚺
+​
+𝑽
+⊤
+{\bm{W}}={\bm{U}}{\bm{\Sigma}}{\bm{V}}^{\top}
+be the thin SVD of
+𝑾
+{\bm{W}}
+. The generalized gradient is
+∂
+‖
+𝑾
+‖
+∗
+=
+{
+𝑼
+​
+𝑽
+⊤
++
+𝑸
+:
+𝑼
+⊤
+​
+𝑸
+=
+𝟎
+,
+𝑸
+​
+𝑽
+=
+𝟎
+,
+‖
+𝑸
+‖
+2
+≤
+1
+}
+.
+\partial\|{\bm{W}}\|_{*}=\left\{{\bm{U}}{\bm{V}}^{\top}+{\bm{Q}}:{\bm{U}}^{\top}{\bm{Q}}=\bm{0},{\bm{Q}}{\bm{V}}=\bm{0},\|{\bm{Q}}\|_{2}\leq 1\right\}.
+Since
+𝑸
+{\bm{Q}}
+is Frobenius-orthogonal to
+𝑼
+​
+𝑽
+⊤
+{\bm{U}}{\bm{V}}^{\top}
+, the minimum-norm element is obtained by taking
+𝑸
+=
+0</p>
+
+<p>{\bm{Q}}=\textbf{0}
+. Thus, the backpropagation choice is
+∇
+ℒ
+nuc
+​
+(
+𝑾
+)
+=
+𝑼
+​
+𝑽
+⊤
+∈
+∂
+ℒ
+nuc
+​
+(
+𝑾
+)
+.
+\nabla\mathcal{L}_{\operatorname{nuc}}({\bm{W}})={\bm{U}}{\bm{V}}^{\top}\in\partial\mathcal{L}_{\operatorname{nuc}}({\bm{W}}).
+Generalized gradient of SLORR-Hoyer.
+The Hoyer-type SLORR regularizer is not convex. It can be written as
+ℒ
+hoyer
+​
+(
+𝑾
+)
+=
+a
+​
+(
+𝑾
+)
+b
+​
+(
+𝑾
+)
+,
+\mathcal{L}_{\operatorname{hoyer}}({\bm{W}})=\frac{a({\bm{W}})}{b({\bm{W}})},
+where
+a
+​
+(
+𝑾
+)
+=
+‖
+𝑾
+‖
+∗
+2
+,
+b
+​
+(
+𝑾
+)
+=
+‖
+𝑾
+‖
+F
+2
+.
+a({\bm{W}})=\|{\bm{W}}\|_{*}^{2},\qquad b({\bm{W}})=\|{\bm{W}}\|_{F}^{2}.
+Since
+𝑾
+≠
+𝟎
+{\bm{W}}\neq\bm{0}
+, we have
+a
+​
+(
+𝑾
+)
+&gt;
+0
+a({\bm{W}})&gt;0
+and
+b
+​
+(
+𝑾
+)
+&gt;
+0
+b({\bm{W}})&gt;0
+.
+Moreover, since
+‖
+𝑾
+‖
+∗
+2
+\|{\bm{W}}\|_{*}^{2}
+is convex (and locally Lipschitz), its generalized gradient corresponds to the convex subdifferential
+[
+8
+, Proposition 2.2.7]
+:
+∂
+a
+​
+(
+𝑾
+)
+=
+2
+​
+‖
+𝑾
+‖
+∗
+​
+∂
+‖
+𝑾
+‖
+∗
+.
+\partial a({\bm{W}})=2\|{\bm{W}}\|_{*}\partial\|{\bm{W}}\|_{*}.
+Also,
+∇
+b
+​
+(
+𝑾
+)
+=
+2
+​
+𝑾
+.
+\nabla b({\bm{W}})=2{\bm{W}}.
+By the quotient rule for generalized gradients
+[
+8
+, Proposition 2.3.14]
+,
+∂
+[
+a
+​
+(
+𝑾
+)
+b
+​
+(
+𝑾
+)
+]
+=
+b
+​
+(
+𝑾
+)
+​
+∂
+a
+​
+(
+𝑾
+)
+−
+a
+​
+(
+𝑾
+)
+​
+∇
+b
+​
+(
+𝑾
+)
+b
+​
+(
+𝑾
+)
+2
+.
+\partial\left[\frac{a({\bm{W}})}{b({\bm{W}})}\right]=\frac{b({\bm{W}})\partial a({\bm{W}})-a({\bm{W}})\nabla b({\bm{W}})}{b({\bm{W}})^{2}}.
+Note that equality holds because
+a
+a
+and
+−
+b
+-b
+are regular, and because
+a
+​
+(
+𝑾
+)
+&gt;
+0
+a({\bm{W}})&gt;0
+and
+b
+​
+(
+𝑾
+)
+&gt;
+0
+b({\bm{W}})&gt;0
+.
+Substituting, we obtain
+∂
+ℒ
+hoyer</p>
+
+<p>​
+(
+𝑾
+)
+=
+{
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+2
+​
+(
+𝑼
+​
+𝑽
+⊤
++
+𝑸
+)
+−
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+​
+𝑾
+:
+𝑼
+⊤
+​
+𝑸
+=
+𝟎
+,
+𝑸
+​
+𝑽
+=
+𝟎
+,
+‖
+𝑸
+‖
+2
+≤
+1
+}
+.
+\partial\mathcal{L}_{\operatorname{hoyer}}({\bm{W}})=\left\{2\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{2}}\left({\bm{U}}{\bm{V}}^{\top}+{\bm{Q}}\right)-2\frac{\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}{\bm{W}}:{\bm{U}}^{\top}{\bm{Q}}=\bm{0},\,{\bm{Q}}{\bm{V}}=\bm{0},\,\|{\bm{Q}}\|_{2}\leq 1\right\}.
+The
+𝑸
+{\bm{Q}}
+term is again orthogonal to the remaining terms. Hence, the minimum-norm element is again obtained by taking
+𝑸
+=
+𝟎
+{\bm{Q}}=\bm{0}
+. Thus, the backpropagation choice is
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+=
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+2
+​
+𝑼
+​
+𝑽
+⊤
+−
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+​
+𝑾
+∈
+∂
+ℒ
+hoyer
+​
+(
+𝑾
+)
+.
+\nabla\mathcal{L}_{\operatorname{hoyer}}({\bm{W}})=2\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{2}}{\bm{U}}{\bm{V}}^{\top}-2\frac{\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}{\bm{W}}\in\partial\mathcal{L}_{\operatorname{hoyer}}({\bm{W}}).
+Equivalently,
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+=
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+​
+(
+1
+‖
+𝑾
+‖
+F
+​
+𝑼
+​
+𝑽
+⊤
+−
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝑾
+)
+.
+\nabla\mathcal{L}_{\operatorname{hoyer}}({\bm{W}})=2\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}}\left(\frac{1}{\|{\bm{W}}\|_{F}}{\bm{U}}{\bm{V}}^{\top}-\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}{\bm{W}}\right).
+We then use these expressions when backpropagating through the regularizers. We remark that, intuitively, these correspond to backpropagating individually through the composition of functions in PyTorch, and setting the gradient o</p>
+
+<p>f the nuclear norm to the generalized polar factor. We use this specific choice because it is the one that is generally (approximately) computed by polynomial approximations such as Polar Express.
+Appendix B
+Analysis of SLORR-Hoyer
+Here, we provide proofs and additional discussion of the results shown in
+Section
+˜
+3.1
+. We restate the results for the convenience of the reader.
+We remark, following
+Section
+˜
+3.1
+, that our analysis is performed in a regularizer-only gradient descent setting.
+η
+&gt;
+0
+\eta&gt;0
+denotes the step size of the regularizer-only update, with the training-time regularization strength absorbed into it. We let
+𝑾
+=
+𝑼
+​
+diag
+⁡
+(
+𝝈
+)
+​
+𝑽
+⊤
+{\bm{W}}={\bm{U}}\operatorname{diag}{(\bm{\sigma})}{\bm{V}}^{\top}
+be a weight matrix and its thin SVD, with singular values
+𝝈
+\bm{\sigma}
+. Additionally, let
+𝑾
++
+{\bm{W}}^{+}
+be the weight matrix after a gradient step from
+𝑾
+{\bm{W}}
+, and define
+𝝈
++
+\bm{\sigma}^{+}
+,
+𝑼
++
+{\bm{U}}^{+}
+, and
+𝑽
++
+{\bm{V}}^{+}
+as its thin SVD. We assume ordered singular values in decreasing order (
+𝝈
+1
+≥
+⋯
+≥
+𝝈
+r
+&gt;
+0
+\bm{\sigma}_{1}\geq\cdots\geq\bm{\sigma}_{r}&gt;0
+) and
+𝑾
+≠
+𝟎
+{\bm{W}}\neq\mathbf{0}
+.
+See
+3.2
+Proof.
+Define
+C
+=
+2
+​
+‖
+𝑾
+‖
+∗
+/
+‖
+𝑾
+‖
+F
+C=2\|{\bm{W}}\|_{*}/\|{\bm{W}}\|_{F}
+for brevity. First, write our gradient update as
+𝑾
++
+\displaystyle{\bm{W}}^{+}
+=
+𝑾
+−
+η
+​
+∇
+ℒ
+hoyer
+​
+(
+𝑾
+)
+\displaystyle={\bm{W}}-\eta\nabla\mathcal{L}_{\mathrm{hoyer}}({\bm{W}})
+=
+𝑾
+−
+η
+​
+[
+C
+‖
+𝑾
+‖
+F
+​
+𝑼
+​
+𝑽
+⊤
+−
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝑾
+]
+\displaystyle={\bm{W}}-\eta</p>
+
+<p>\left[\frac{C}{\|{\bm{W}}\|_{F}}{\bm{U}}{\bm{V}}^{\top}-\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}{\bm{W}}\right]
+=
+𝑼
+​
+𝚺
+​
+𝑽
+⊤
+−
+η
+​
+C
+‖
+𝑾
+‖
+F
+​
+𝑼
+​
+𝑽
+⊤
++
+η
+​
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝑼
+​
+𝚺
+​
+𝑽
+⊤
+\displaystyle={\bm{U}}{\bm{\Sigma}}{\bm{V}}^{\top}-\eta\frac{C}{\|{\bm{W}}\|_{F}}{\bm{U}}{\bm{V}}^{\top}+\eta\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}{\bm{U}}{\bm{\Sigma}}{\bm{V}}^{\top}
+=
+𝑼
+​
+[
+𝚺
+−
+η
+​
+C
+‖
+𝑾
+‖
+F
+​
+𝑰
++
+η
+​
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝚺
+]
+​
+𝑽
+⊤
+.
+\displaystyle={\bm{U}}\left[{\bm{\Sigma}}-\eta\frac{C}{\|{\bm{W}}\|_{F}}{\bm{I}}+\eta\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}{\bm{\Sigma}}\right]{\bm{V}}^{\top}.
+Since the matrix in the “sandwich” is diagonal (as it is a sum of two diagonal matrices), we can conclude that, for small enough updates such that no inner term becomes negative,
+𝝈
+i
++
+=
+𝝈
+i
+−
+η
+​
+C
+‖
+𝑾
+‖
+F
++
+η
+​
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝝈
+i
+.
+\bm{\sigma}^{+}_{i}=\bm{\sigma}_{i}-\eta\frac{C}{\|{\bm{W}}\|_{F}}+\eta\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}\bm{\sigma}_{i}.
+Moreover, note that the order of singular values is preserved.
+Now,
+𝝈
+i
++
+⋄
+𝝈
+i
+\displaystyle\bm{\sigma}^{+}_{i}\diamond\bm{\sigma}_{i}
+⇔
+𝝈
+i
+−
+η
+​
+C
+‖
+𝑾
+‖
+F
++
+η
+​
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝝈
+i
+⋄
+𝝈
+i
+\displaystyle\iff\bm{\sigma}_{i}-\eta\frac{C}{\|{\bm{W}}\|_{F}}+\eta\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}\bm{\sigma}_{i}\diamond\bm{\sigma}_{i}
+⇔
+−
+η
+​
+C
+‖
+𝑾
+‖
+F
++
+η
+​
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝝈
+i
+⋄
+0
+\displaystyle\iff-\eta\frac{C}{\|{\bm{W}}\|_{F}}+\eta\frac{C\|{\bm{W}}\|_{*}}{\|{\bm</p>
+
+<p>{W}}\|_{F}^{3}}\bm{\sigma}_{i}\diamond 0
+⇔
+−
+C
+‖
+𝑾
+‖
+F
++
+C
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝝈
+i
+⋄
+0
+(
+η
+&gt;
+0
+)
+\displaystyle\iff-\frac{C}{\|{\bm{W}}\|_{F}}+\frac{C\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}\bm{\sigma}_{i}\diamond 0\quad(\eta&gt;0)
+⇔
+−
+1
+‖
+𝑾
+‖
+F
++
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+3
+​
+𝝈
+i
+⋄
+0
+(
+C
+&gt;
+0
+)
+\displaystyle\iff-\frac{1}{\|{\bm{W}}\|_{F}}+\frac{\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{3}}\bm{\sigma}_{i}\diamond 0\quad(C&gt;0)
+⇔
+−
+‖
+𝑾
+‖
+F
+2
++
+‖
+𝑾
+‖
+∗
+​
+𝝈
+i
+⋄
+0
+\displaystyle\iff-\|{\bm{W}}\|_{F}^{2}+\|{\bm{W}}\|_{*}\bm{\sigma}_{i}\diamond 0
+⇔
+‖
+𝑾
+‖
+∗
+​
+𝝈
+i
+⋄
+‖
+𝑾
+‖
+F
+2
+\displaystyle\iff\|{\bm{W}}\|_{*}\bm{\sigma}_{i}\diamond\|{\bm{W}}\|_{F}^{2}
+⇔
+𝝈
+i
+⋄
+‖
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+∗
+,
+\displaystyle\iff\bm{\sigma}_{i}\diamond\frac{\|{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{*}},
+for
+⋄
+∈
+{
+&lt;
+,
+&gt;
+,
+=
+}
+\diamond\in\{&lt;,&gt;,=\}
+.
+This concludes the proof.
+∎
+See
+3.3
+Proof.
+For brevity, define
+ε
+=
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+.
+\varepsilon=\eta\frac{2\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}.
+Note that (see the proof of
+Proposition
+˜
+3.2
+)
+𝝈
+i
++
+=
+𝝈
+i
+−
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+2
++
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+​
+𝝈
+i
+.
+\bm{\sigma}_{i}^{+}=\bm{\sigma}_{i}-\eta\frac{2\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{2}}+\eta\frac{2\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}\bm{\sigma}_{i}.
+Then
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+2
+=
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+⋅
+‖
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+∗
+=
+ε
+​
+τ
+.
+\eta\frac{2\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{2}}=\eta\frac{2\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}\cdot\frac{\|{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{*}}=\varepsilon\tau</p>
+
+<p>.
+Therefore,
+𝝈
+i
++
+\displaystyle\bm{\sigma}_{i}^{+}
+=
+𝝈
+i
+−
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+‖
+𝑾
+‖
+F
+2
++
+η
+​
+2
+​
+‖
+𝑾
+‖
+∗
+2
+‖
+𝑾
+‖
+F
+4
+​
+𝝈
+i
+\displaystyle=\bm{\sigma}_{i}-\eta\frac{2\|{\bm{W}}\|_{*}}{\|{\bm{W}}\|_{F}^{2}}+\eta\frac{2\|{\bm{W}}\|_{*}^{2}}{\|{\bm{W}}\|_{F}^{4}}\bm{\sigma}_{i}
+=
+𝝈
+i
+−
+ε
+​
+τ
++
+ε
+​
+𝝈
+i
+\displaystyle=\bm{\sigma}_{i}-\varepsilon\tau+\varepsilon\bm{\sigma}_{i}
+=
+𝝈
+i
++
+ε
+​
+(
+𝝈
+i
+−
+τ
+)
+.
+\displaystyle=\bm{\sigma}_{i}+\varepsilon(\bm{\sigma}_{i}-\tau).
+For convenience, now define
+A
++
+\displaystyle A^{+}
+=
+∑
+i
+≤
+k
+(
+𝝈
+i
++
+ε
+​
+(
+𝝈
+i
+−
+τ
+)
+)
+2
+=
+∑
+i
+≤
+k
+[
+𝝈
+i
+2
++
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+\displaystyle=\sum_{i\leq k}\left(\bm{\sigma}_{i}+\varepsilon(\bm{\sigma}_{i}-\tau)\right)^{2}=\sum_{i\leq k}\left[\bm{\sigma}_{i}^{2}+2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]
+=
+∑
+i
+≤
+k
+𝝈
+i
+2
+⏟
+A
++
+∑
+i
+≤
+k
+[
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+=
+A
++
+∑
+i
+≤
+k
+[
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+,
+\displaystyle=\underbrace{\sum_{i\leq k}\bm{\sigma}_{i}^{2}}_{A}+\sum_{i\leq k}\left[2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]=A+\sum_{i\leq k}\left[2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right],
+B
++
+\displaystyle B^{+}
+=
+∑
+i
+&gt;
+k
+(
+𝝈
+i
++
+ε
+​
+(
+𝝈
+i
+−
+τ
+)
+)
+2
+=
+∑
+i
+&gt;
+k
+[
+𝝈
+i
+2
++
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+\displaystyle=\sum_{i&gt;k}\left(\bm{\sigma}_{i}+\varepsilon</p>
+
+<p>(\bm{\sigma}_{i}-\tau)\right)^{2}=\sum_{i&gt;k}\left[\bm{\sigma}_{i}^{2}+2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]
+=
+∑
+i
+&gt;
+k
+𝝈
+i
+2
+⏟
+B
++
+∑
+i
+&gt;
+k
+[
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+=
+B
++
+∑
+i
+&gt;
+k
+[
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+.
+\displaystyle=\underbrace{\sum_{i&gt;k}\bm{\sigma}_{i}^{2}}_{B}+\sum_{i&gt;k}\left[2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]=B+\sum_{i&gt;k}\left[2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right].
+The
+A
+A
+term.
+Note that for the
+A
+A
+term,
+(
+𝝈
+i
+−
+τ
+)
+&gt;
+0
+,
+(\bm{\sigma}_{i}-\tau)&gt;0,
+as required in the statement of this result. Hence,
+A
++
+−
+A
+=
+ε
+​
+a
+1
++
+ε
+2
+​
+a
+2
+A^{+}-A=\varepsilon a_{1}+\varepsilon^{2}a_{2}
+(as every other term is nonnegative), where
+a
+1
+,
+a
+2
+&gt;
+0
+a_{1},a_{2}&gt;0
+.
+The
+A
++
+B
+A+B
+term.
+We will show that, for sufficiently small
+ε
+\varepsilon
+, the
+A
++
+B
+A+B
+increases less than
+A
+A
+. First note
+∑
+i
+2
+​
+ε
+​
+𝝈
+i
+​
+(
+𝝈
+i
+−
+τ
+)
+=
+2
+​
+ε
+​
+(
+∑
+i
+𝝈
+i
+2
+−
+τ
+​
+∑
+i
+𝝈
+i
+)
+=
+2
+​
+ε
+​
+(
+∑
+i
+𝝈
+i
+2
+−
+‖
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+∗
+​
+∑
+i
+𝝈
+i
+)
+=
+0
+.
+\sum_{i}2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)=2\varepsilon\left(\sum_{i}\bm{\sigma}_{i}^{2}-\tau\sum_{i}\bm{\sigma}_{i}\right)=2\varepsilon\left(\sum_{i}\bm{\sigma}_{i}^{2}-\frac{\|{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{*}}\sum_{i}\bm{\sigma}_{i}\right)=0.
+Now,
+A
++
++
+B
++
+−
+(
+A
++
+B
+)
+\displaystyle A^{+}+B^{+}-(A+B)
+=
+∑
+i
+[
+2
+​
+ε
+​
+𝝈</p>
+
+<p>i
+​
+(
+𝝈
+i
+−
+τ
+)
++
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+=
+∑
+i
+[
+ε
+2
+​
+(
+𝝈
+i
+−
+τ
+)
+2
+]
+=
+b
+​
+ε
+2
+,
+\displaystyle=\sum_{i}\left[2\varepsilon\bm{\sigma}_{i}(\bm{\sigma}_{i}-\tau)+\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]=\sum_{i}\left[\varepsilon^{2}(\bm{\sigma}_{i}-\tau)^{2}\right]=b\varepsilon^{2},
+with
+b
+&gt;
+0
+b&gt;0
+.
+As the
+A
+A
+term has a strictly positive linear term in
+ε
+\varepsilon
+, while the
+total increment is only quadratic, taking
+ε
+\varepsilon
+small enough gives
+A
++
+−
+A
+&gt;
+(
+A
++
++
+B
++
+)
+−
+(
+A
++
+B
+)
+.
+A^{+}-A&gt;(A^{+}+B^{+})-(A+B).
+Also note that
+A
++
+−
+A
+&gt;
+0
+A^{+}-A&gt;0
+. Hence,
+A
++
+A
++
++
+B
++
+&gt;
+A
+A
++
+B
+.
+\frac{A^{+}}{A^{+}+B^{+}}&gt;\frac{A}{A+B}.
+Final step.
+Now, separate the sums
+∑
+i
+≤
+k
+(
+𝝈
+i
++
+)
+2
+∑
+i
+(
+𝝈
+i
++
+)
+2
+\displaystyle\frac{\sum_{i\leq k}(\bm{\sigma}_{i}^{+})^{2}}{\sum_{i}(\bm{\sigma}_{i}^{+})^{2}}
+=
+∑
+i
+≤
+k
+(
+𝝈
+i
++
+)
+2
+∑
+i
+≤
+k
+(
+𝝈
+i
++
+)
+2
++
+∑
+i
+&gt;
+k
+(
+𝝈
+i
++
+)
+2
+=
+A
++
+A
++
++
+B
++
+,
+\displaystyle=\frac{\sum_{i\leq k}(\bm{\sigma}_{i}^{+})^{2}}{\sum_{i\leq k}(\bm{\sigma}_{i}^{+})^{2}+\sum_{i&gt;k}(\bm{\sigma}_{i}^{+})^{2}}=\frac{A^{+}}{A^{+}+B^{+}},
+∑
+i
+≤
+k
+𝝈
+i
+2
+∑
+i
+𝝈
+i
+2
+\displaystyle\frac{\sum_{i\leq k}\bm{\sigma}_{i}^{2}}{\sum_{i}\bm{\sigma}_{i}^{2}}
+=
+∑
+i
+≤
+k
+𝝈
+i
+2
+∑
+i
+≤
+k
+𝝈
+i
+2
++
+∑
+i
+&gt;
+k
+𝝈
+i
+2
+=
+A
+A
++
+B
+.
+\displaystyle=\frac{\sum_{i\leq k}\bm{\sigma}_{i}^{2}}{\sum_{i\leq k}\bm{\sigma}_{i}^{2}+\sum_{i&gt;k}\bm{\sigma}_{i}^{2}}=\frac{A}{A+B}.
+Finally, it follows that
+1
+−
+‖
+𝑼
+:
+,
+:
+k
++
+​
+diag
+⁡
+(
+𝝈
+:
+k
++
+)
+​
+𝑽
+:
+,
+:
+k
++
+⊤
+−
+𝑾
++
+‖
+F
+2
+‖
+𝑾
++
+‖
+F
+2
+=
+∑
+i
+≤
+k
+(
+𝝈
+i
++
+)
+2
+∑
+i
+(
+𝝈
+i
++
+)
+2
+&gt;</p>
+
+<p>∑
+i
+≤
+k
+𝝈
+i
+2
+∑
+i
+𝝈
+i
+2
+=
+1
+−
+‖
+𝑼
+:
+,
+:
+k
+​
+diag
+⁡
+(
+𝝈
+:
+k
+)
+​
+𝑽
+:
+,
+:
+k
+⊤
+−
+𝑾
+‖
+F
+2
+‖
+𝑾
+‖
+F
+2
+.
+1-\frac{\|{\bm{U}}^{+}_{:,:k}\operatorname{diag}(\bm{\sigma}_{:k}^{+}){\bm{V}}_{:,:k}^{+\top}-{\bm{W}}^{+}\|_{F}^{2}}{\|{\bm{W}}^{+}\|_{F}^{2}}=\frac{\sum_{i\leq k}(\bm{\sigma}_{i}^{+})^{2}}{\sum_{i}(\bm{\sigma}_{i}^{+})^{2}}&gt;\frac{\sum_{i\leq k}\bm{\sigma}_{i}^{2}}{\sum_{i}\bm{\sigma}_{i}^{2}}=1-\frac{\|{\bm{U}}_{:,:k}\operatorname{diag}(\bm{\sigma}_{:k}){\bm{V}}_{:,:k}^{\top}-{\bm{W}}\|_{F}^{2}}{\|{\bm{W}}\|_{F}^{2}}.
+The result follows from subtracting 1 and swapping sides.
+∎
+Appendix C
+Approximation Error Guarantees
+We restate the result for the convenience of the reader.
+See
+3.1
+Proof.
+Given
+𝑾
+{\bm{W}}
+, by assumption, a normalized version
+𝑴
+{\bm{M}}
+satisfies
+𝝈
+​
+(
+𝑴
+)
+⊆
+[
+ℓ
+,
+1
+]
+\bm{\sigma}({\bm{M}})\subseteq[\ell,1]
+(where only the nonzero singular values are taken into account). By Theorem 3.3 of
+Amsel
+et al.
+[
+3
+]
+,
+‖
+𝑷
+^
+−
+𝑼
+​
+𝑽
+⊤
+‖
+2
+≤
+|
+1
+−
+ℓ
+2
+|
+(
+q
++
+1
+)
+T
+,
+\left\|\widehat{{\bm{P}}}-{\bm{U}}{\bm{V}}^{\top}\right\|_{2}\leq\left|1-\ell^{2}\right|^{(q+1)^{T}},
+where
+T
+T
+is the number of Polar Express steps (6 in our main experiments) and
+d
+=
+2
+​
+q
++
+1
+d=2q+1
+is the degree of the Polar Express polynomial (5 in our experiments). We can now extend it to the approximation of the nuclear norm. In particular, fix the PE parameters and let
+δ
+=
+|
+1
+−
+ℓ
+2
+|
+(
+q
++
+1
+)
+T
+\delta=\left|1-\ell^{2}\right|^{(q+1)^{T}}
+.
+First, we have
+|
+n
+^
+−
+n
+|
+\displaystyle\left|\hat{n}-n\right|</p>
+
+<p>=
+|
+tr
+⁡
+(
+𝑾
+⊤
+​
+(
+𝑷
+^
+−
+𝑼
+​
+𝑽
+⊤
+)
+)
+|
+\displaystyle=\left|\operatorname{tr}\!\left({\bm{W}}^{\top}(\widehat{{\bm{P}}}-{\bm{U}}{\bm{V}}^{\top})\right)\right|
+≤
+‖
+𝑾
+‖
+∗
+​
+‖
+𝑷
+^
+−
+𝑼
+​
+𝑽
+⊤
+‖
+2
+\displaystyle\leq\left\|{\bm{W}}\right\|_{*}\,\left\|\widehat{{\bm{P}}}-{\bm{U}}{\bm{V}}^{\top}\right\|_{2}
+≤
+δ
+​
+‖
+𝑾
+‖
+∗
+.
+\displaystyle\leq\delta\left\|{\bm{W}}\right\|_{*}.
+Therefore,
+|
+n
+^
+−
+n
+|
+n
+≤
+δ
+.
+\frac{\left|\hat{n}-n\right|}{n}\leq\delta.
+Similarly, we can bound the error in the SLORR-Hoyer value. Using
+|
+n
+^
+|
+≤
+n
++
+|
+n
+^
+−
+n
+|
+≤
+(
+1
++
+δ
+)
+​
+n
+,
+\left|\hat{n}\right|\leq n+\left|\hat{n}-n\right|\leq(1+\delta)n,
+we obtain
+|
+n
+^
+2
+−
+n
+2
+|
+\displaystyle\left|\hat{n}^{2}-n^{2}\right|
+=
+|
+n
+^
+−
+n
+|
+​
+|
+n
+^
++
+n
+|
+\displaystyle=\left|\hat{n}-n\right|\,\left|\hat{n}+n\right|
+≤
+|
+n
+^
+−
+n
+|
+​
+(
+|
+n
+^
+|
++
+n
+)
+\displaystyle\leq\left|\hat{n}-n\right|\,\left(\left|\hat{n}\right|+n\right)
+≤
+δ
+​
+n
+​
+(
+(
+1
++
+δ
+)
+​
+n
++
+n
+)
+\displaystyle\leq\delta n\left((1+\delta)n+n\right)
+=
+n
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+.
+\displaystyle=n^{2}\delta(2+\delta).
+Therefore, we get (dividing by
+n
+2
+n^{2}
+)
+|
+n
+^
+2
+−
+n
+2
+|
+n
+2
+≤
+δ
+​
+(
+2
++
+δ
+)
+,
+\frac{\left|\hat{n}^{2}-n^{2}\right|}{n^{2}}\leq\delta(2+\delta),
+or equivalently,
+|
+n
+^
+2
+/
+f
+2
+−
+n
+2
+/
+f
+2
+|
+n
+2
+/
+f
+2
+≤
+δ
+​
+(
+2
++
+δ
+)
+.
+\frac{\left|\hat{n}^{2}/f^{2}-n^{2}/f^{2}\right|}{n^{2}/f^{2}}\leq\delta(2+\delta).
+Now, we can bound the error on the SLORR-Hoyer gradient. Recall that (for the exact polar factor):
+𝑹
+=
+2
+​
+n
+f
+​
+(
+1
+f
+​
+𝑼
+​
+𝑽
+⊤
+−
+n
+f
+3
+​
+𝑾
+)
+,
+{\bm{R}}=2\frac{n}{f}</p>
+
+<p>\left(\frac{1}{f}{\bm{U}}{\bm{V}}^{\top}-\frac{n}{f^{3}}{\bm{W}}\right),
+and note that its Polar Express approximation is
+𝑹
+^
+=
+2
+​
+n
+^
+f
+​
+(
+1
+f
+​
+𝑷
+^
+−
+n
+^
+f
+3
+​
+𝑾
+)
+.
+\widehat{{\bm{R}}}=2\frac{\hat{n}}{f}\left(\frac{1}{f}\widehat{{\bm{P}}}-\frac{\hat{n}}{f^{3}}{\bm{W}}\right).
+We have
+‖
+𝑹
+−
+𝑹
+^
+‖
+2
+\displaystyle\left\|{\bm{R}}-\widehat{\bm{R}}\right\|_{2}
+=
+‖
+2
+​
+n
+f
+​
+(
+1
+f
+​
+𝑼
+​
+𝑽
+⊤
+−
+n
+f
+3
+​
+𝑾
+)
+−
+2
+​
+n
+^
+f
+​
+(
+1
+f
+​
+𝑷
+^
+−
+n
+^
+f
+3
+​
+𝑾
+)
+‖
+2
+\displaystyle=\left\|2\frac{n}{f}\left(\frac{1}{f}{\bm{U}}{\bm{V}}^{\top}-\frac{n}{f^{3}}{\bm{W}}\right)-2\frac{\hat{n}}{f}\left(\frac{1}{f}\widehat{{\bm{P}}}-\frac{\hat{n}}{f^{3}}{\bm{W}}\right)\right\|_{2}
+=
+‖
+2
+​
+n
+f
+2
+​
+𝑼
+​
+𝑽
+⊤
+−
+2
+​
+n
+2
+f
+4
+​
+𝑾
+−
+2
+​
+n
+^
+f
+2
+​
+𝑷
+^
++
+2
+​
+n
+^
+2
+f
+4
+​
+𝑾
+‖
+2
+\displaystyle=\left\|\frac{2n}{f^{2}}{\bm{U}}{\bm{V}}^{\top}-\frac{2n^{2}}{f^{4}}{\bm{W}}-\frac{2\hat{n}}{f^{2}}\widehat{{\bm{P}}}+\frac{2\hat{n}^{2}}{f^{4}}{\bm{W}}\right\|_{2}
+≤
+‖
+2
+​
+n
+f
+2
+​
+𝑼
+​
+𝑽
+⊤
+−
+2
+​
+n
+^
+f
+2
+​
+𝑼
+​
+𝑽
+⊤
+‖
+2
++
+‖
+2
+​
+n
+^
+f
+2
+​
+𝑼
+​
+𝑽
+⊤
+−
+2
+​
+n
+^
+f
+2
+​
+𝑷
+^
+‖
+2
++
+‖
+−
+2
+​
+n
+2
+f
+4
+​
+𝑾
++
+2
+​
+n
+^
+2
+f
+4
+​
+𝑾
+‖
+2
+\displaystyle\leq\left\|\frac{2n}{f^{2}}{\bm{U}}{\bm{V}}^{\top}-\frac{2\hat{n}}{f^{2}}{\bm{U}}{\bm{V}}^{\top}\right\|_{2}+\left\|\frac{2\hat{n}}{f^{2}}{\bm{U}}{\bm{V}}^{\top}-\frac{2\hat{n}}{f^{2}}\widehat{{\bm{P}}}\right\|_{2}+\left\|-\frac{2n^{2}}{f^{4}}{\bm{W}}+\frac{2\hat{n}^{2}}{f^{4}}{\bm{W}}\right\|_{2}
+≤
+δ
+​
+2
+​
+n
+f
+2
++
+2
+​
+|
+n
+^
+|
+f
+2
+​
+δ
++
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+≤
+2
+​
+δ
+​
+(
+n
++
+|
+n
+^
+|
+)
+f
+2
++
+2
+​
+δ
+​</p>
+
+<p>(
+2
++
+δ
+)
+​
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+.
+\displaystyle\leq\delta\frac{2n}{f^{2}}+\frac{2\left|\hat{n}\right|}{f^{2}}\delta+\frac{2\delta(2+\delta)n^{2}}{f^{4}}\left\|{\bm{W}}\right\|_{2}\leq\frac{2\delta(n+\left|\hat{n}\right|)}{f^{2}}+\frac{2\delta(2+\delta)n^{2}}{f^{4}}\left\|{\bm{W}}\right\|_{2}.
+Now, to get rid of
+n
+^
+\hat{n}
+, note that
+|
+n
+^
+|
+≤
+n
++
+|
+n
+^
+−
+n
+|
+≤
+(
+1
++
+δ
+)
+​
+n
+.
+\left|\hat{n}\right|\leq n+\left|\hat{n}-n\right|\leq(1+\delta)n.
+Hence,
+‖
+𝑹
+−
+𝑹
+^
+‖
+2
+\displaystyle\left\|{\bm{R}}-\widehat{\bm{R}}\right\|_{2}
+≤
+2
+​
+δ
+​
+(
+n
++
+(
+1
++
+δ
+)
+​
+n
+)
+f
+2
++
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+\displaystyle\leq\frac{2\delta(n+(1+\delta)n)}{f^{2}}+\frac{2\delta(2+\delta)n^{2}}{f^{4}}\left\|{\bm{W}}\right\|_{2}
+=
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+n
+f
+2
++
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+\displaystyle=\frac{2\delta(2+\delta)n}{f^{2}}+\frac{2\delta(2+\delta)n^{2}}{f^{4}}\left\|{\bm{W}}\right\|_{2}
+=
+2
+​
+δ
+​
+(
+2
++
+δ
+)
+​
+(
+n
+f
+2
++
+n
+2
+f
+4
+​
+‖
+𝑾
+‖
+2
+)
+.
+\displaystyle=2\delta(2+\delta)\left(\frac{n}{f^{2}}+\frac{n^{2}}{f^{4}}\left\|{\bm{W}}\right\|_{2}\right).
+In particular, as
+T
+→
+∞
+T\to\infty
+, the error tends to 0, as expected.
+∎
+Remark about zero singular values.
+The Polar Express guarantee we use only concerns the nonzero singular subspace, corresponding to the generalized polar factor (i.e., using the thin SVD) used throughout this paper. Exact zero singular values are therefore excluded from the result. In exact arithmetic, the Polar Express updates do not create components in this zer</p>
+
+<p>o singular subspace, since the scalar polynomial maps used in their iteration satisfy
+p
+​
+(
+0
+)
+=
+0
+p(0)=0
+. Thus, zero singular values remain zero under the idealized iteration, and hence our approximation guarantee concerns only the nonzero singular values.
+Remark about normalization and the lower bound parameter.
+The singular value range
+[
+ℓ
+,
+1
+]
+[\ell,1]
+is inherited from the analysis in
+Amsel
+et al.
+[
+3
+]
+. For a nonzero matrix
+𝑾
+{\bm{W}}
+, we apply Polar Express to the normalized matrix
+𝑾
+~
+=
+𝑾
+‖
+𝑾
+‖
+F
++
+ε
+.
+\widetilde{{\bm{W}}}=\frac{{\bm{W}}}{\|{\bm{W}}\|_{F}+\varepsilon}.
+This positive rescaling leaves the polar factor unchanged and ensures that the largest singular value of
+𝑾
+~
+\widetilde{{\bm{W}}}
+is at most one. However, it does not by itself guarantee that every nonzero singular value is at least
+ℓ
+\ell
+. The parameter
+ℓ
+\ell
+should therefore be interpreted as the lower bound parameter used by Polar Express. If the actual smallest nonzero normalized singular value is below
+ℓ
+\ell
+, the displayed worst-case bound does not apply literally to that singular direction. We note that
+Amsel
+et al.
+[
+3
+]
+mention that inaccurate lower bound guesses are typically not severe in practice.
+Remark about practical considerations.
+The guarantee above is a worst-case bound for the idealized Polar Express iteration and should not be read as a tight estimate of the implemented approximation error. In our experiments, we use a small number of Polar Express iterations together with t</p>
+
+<p>he practical adaptations of
+Amsel
+et al.
+[
+3
+]
+. These choices slightly deviate from the idealized theorem, and floating point arithmetic can introduce additional error. Empirically, this setting works well in our experiments; see
+Section
+˜
+D.1
+for an ablation and implementation details.
+Appendix D
+General Experimental and Implementation Details
+The code used to produce our experimental results is available at
+https://github.com/davidgonmar/SLORR
+. It includes the implementation of our method and baselines, as well as the scripts, hyperparameters, and configurations used for our experiments. Our code for both the vision and LLM experiments is based on the PyTorch framework
+[
+42
+]
+.
+D.1
+On our Use of Polar Express
+Polar Express has several tunable knobs. The first is the lower bound on singular values,
+ℓ
+\ell
+, along with the degree and number of iterations. Following Implementation 1 in
+Amsel
+et al.
+[
+3
+]
+, we set
+ℓ
+=
+10
+−
+3
+\ell=10^{-3}
+and the degree to
+d
+=
+5
+d=5
+. They note that choosing
+ℓ
+\ell
+too small can delay convergence for smaller singular values, but that inaccurate guesses are typically not severe in practice. We found these values to work well in our experiments. We use
+bfloat16
+, as recommended.
+An important hyperparameter of Polar Express is the number of iterations. The authors recommend 5 or 6 iterations. Throughout our experiments, we used 6 Polar Express iterations, which add minimal overhead. In early experiments, we found that this quantity worked well. H</p>
+
+<p>ere, we explicitly ablate the number of iterations. Following our ViT-B/16 experiments, we fix
+λ
+=
+0.002
+\lambda=0.002
+and repeat our uniform compressibility experiments using runs with
+{
+1
+,
+2
+,
+4
+,
+6
+,
+8
+,
+10
+}
+\{1,2,4,6,8,10\}
+Polar Express iterations. Results are presented in
+Table
+˜
+3
+. In this setting, after 6 iterations, results across compression ratios change little, suggesting diminishing returns from additional Polar Express iterations in this setting.
+Table 3
+:
+Effect of Polar Express iterations (ViT-B/16).
+We repeat the main ViT-B/16 SLORR-Hoyer experiment with
+λ
+=
+0.002
+\lambda=0.002
+while varying only the number of Polar Express iterations. Columns denote retained parameter ratios, and entries are ImageNet-1K top-1 accuracy.
+Steps
+21%
+31%
+41%
+51%
+60%
+70%
+80%
+90%
+Full
+1
+0.1
+0.1
+0.6
+14.4
+49.0
+67.9
+77.1
+81.0
+84.9
+2
+0.1
+0.1
+0.2
+0.3
+1.6
+32.3
+63.7
+72.6
+83.4
+4
+0.1
+0.1
+0.1
+0.2
+3.8
+18.6
+82.6
+83.3
+83.7
+6
+0.1
+0.1
+6.6
+66.2
+79.5
+81.1
+81.5
+81.7
+81.7
+8
+0.1
+0.1
+5.2
+67.7
+79.5
+80.9
+81.3
+81.5
+81.6
+10
+0.1
+0.1
+7.0
+68.9
+79.4
+80.9
+81.2
+81.4
+81.5
+D.2
+Implementation Details for the Decoupled Variant
+Algorithm
+˜
+1
+details how the gradient of the SLORR regularizer can be applied in a decoupled form. This follows the rationale of AdamW
+[
+38
+]
+, where weight decay is applied based on the pre-update weights. SLORR-Hoyer-D follows this approach, but note that this approach can also be applied to SLORR-Nuc. Note that, in practice, the regularizer value (not only the gradient) can also be comp</p>
+
+<p>uted (at the same time as the gradient) and, for example, logged.
+Algorithm 1
+Decoupled SLORR update
+1:
+Weight set
+𝒲
+\mathcal{W}
+, regularized weight set
+𝒲
+reg
+⊆
+𝒲
+\mathcal{W}_{\mathrm{reg}}\subseteq\mathcal{W}
+, learning rate
+η
+\eta
+, regularization strength
+λ
+\lambda
+2:
+Task gradients
+∇
+𝒲
+ℒ
+task
+\nabla_{\mathcal{W}}\mathcal{L}_{\mathrm{task}}
+3:
+for all
+𝑾
+∈
+𝒲
+∖
+𝒲
+reg
+{\bm{W}}\in\mathcal{W}\setminus\mathcal{W}_{\mathrm{reg}}
+do
+4:
+if
+∇
+𝑾
+ℒ
+task
+\nabla_{{\bm{W}}}\mathcal{L}_{\mathrm{task}}
+exists
+then
+5:
+Apply AdamW update to
+𝑾
+{\bm{W}}
+using
+∇
+𝑾
+ℒ
+task
+\nabla_{{\bm{W}}}\mathcal{L}_{\mathrm{task}}
+6:
+end
+if
+7:
+end
+for
+8:
+for all
+𝑾
+∈
+𝒲
+reg
+{\bm{W}}\in\mathcal{W}_{\mathrm{reg}}
+do
+9:
+𝑮
+^
+SLORR
+pre
+←
+𝑮
+^
+SLORR
+​
+(
+𝑾
+)
+\widehat{{\bm{G}}}_{\mathrm{SLORR}}^{\mathrm{pre}}\leftarrow\widehat{{\bm{G}}}_{\mathrm{SLORR}}({\bm{W}})
+10:
+if
+∇
+𝑾
+ℒ
+task
+\nabla_{{\bm{W}}}\mathcal{L}_{\mathrm{task}}
+exists
+then
+11:
+Apply AdamW update to
+𝑾
+{\bm{W}}
+using
+∇
+𝑾
+ℒ
+task
+\nabla_{{\bm{W}}}\mathcal{L}_{\mathrm{task}}
+12:
+end
+if
+13:
+𝑾
+←
+𝑾
+−
+η
+​
+λ
+​
+𝑮
+^
+SLORR
+pre
+{\bm{W}}\leftarrow{\bm{W}}-\eta\lambda\widehat{{\bm{G}}}_{\mathrm{SLORR}}^{\mathrm{pre}}
+⊳
+\triangleright
+uses the pre-update SLORR gradient
+14:
+end
+for
+D.3
+Implementation Details for the Memory-Efficient Variant
+Algorithm
+˜
+2
+details a more memory-efficient approach for PyTorch environments. When implemented as a loss function (i.e., not in decoupled form, as detailed in
+Section
+˜
+D.2
+), using an autograd function is easy to implement. However,</p>
+
+<p>if one computes each layer-wise loss, sums them, and then backpropagates, PyTorch keeps intermediate values for all layers. This can consume additional memory proportional to the total size of the regularized layers. Again, this can be applied to both SLORR-Nuc and SLORR-Hoyer. Similar to
+Section
+˜
+D.2
+, the regularizer value can also be computed at the same time, if needed.
+Algorithm 2
+Iterative memory-efficient SLORR implementation
+1:
+Regularized weight set
+𝒲
+reg
+\mathcal{W}_{\mathrm{reg}}
+, regularization strength
+λ
+\lambda
+2:
+for all
+𝑾
+∈
+𝒲
+reg
+{\bm{W}}\in\mathcal{W}_{\mathrm{reg}}
+do
+3:
+Compute
+𝑮
+^
+SLORR
+​
+(
+𝑾
+)
+\widehat{{\bm{G}}}_{\mathrm{SLORR}}({\bm{W}})
+from the current value of
+𝑾
+{\bm{W}}
+4:
+if
+𝑾
+.
+grad
+{\bm{W}}.\mathrm{grad}
+exists
+then
+5:
+𝑾
+.
+grad
+←
+𝑾
+.
+grad
++
+λ
+​
+𝑮
+^
+SLORR
+​
+(
+𝑾
+)
+{\bm{W}}.\mathrm{grad}\leftarrow{\bm{W}}.\mathrm{grad}+\lambda\widehat{{\bm{G}}}_{\mathrm{SLORR}}({\bm{W}})
+6:
+else
+7:
+𝑾
+.
+grad
+←
+λ
+​
+𝑮
+^
+SLORR
+​
+(
+𝑾
+)
+{\bm{W}}.\mathrm{grad}\leftarrow\lambda\widehat{{\bm{G}}}_{\mathrm{SLORR}}({\bm{W}})
+8:
+end
+if
+9:
+end
+for
+Appendix E
+Vision Experimental and Implementation Details
+For the vision experiments, we use standard ImageNet training pipelines built on the model implementations provided by
+timm
+[
+54
+]
+.
+E.1
+Interpreting Convolutional Layers
+For factorization and regularization, we interpret each convolutional kernel as a matrix by reshaping
+𝑾
+∈
+ℝ
+C
+o
+×
+C
+i
+×
+H
+k
+×
+W
+k
+{\bm{\mathsfit{W}}}\in\mathbb{R}^{C_{o}\times C_{i}\times H_{k}\times W_{k}}
+as</p>
+
+<p>reshape
+⁡
+(
+𝑾
+;
+(
+C
+o
+,
+−
+1
+)
+)
+\operatorname{reshape}({\bm{\mathsfit{W}}};(C_{o},-1))
+. A low-rank factorization under this interpretation corresponds to replacing the original convolution with two sequential convolutions. This is the standard channel-wise decomposition used in prior low-rank factorization work, including LoRITa.
+E.2
+Implementation Details for Baselines
+E.2.1
+LoRITa
+We implement LoRITa largely as described in
+Alkhouri
+et al.
+[
+1
+]
+, with a few adaptations. We fix
+N
+=
+2
+N=2
+, where
+N
+N
+denotes the number of factorized layers used to replace each original layer. Since we initialize from pretrained checkpoints, we choose the factors so that the initial network is functionally equivalent to the original model. Specifically, for a weight matrix
+𝑾
+{\bm{W}}
+, we compute its thin SVD and initialize
+𝑾
+0
+=
+𝑼
+​
+𝚺
+1
+/
+2
+,
+𝑾
+1
+=
+𝚺
+1
+/
+2
+​
+𝑽
+⊤
+.
+{\bm{W}}_{0}={\bm{U}}{\bm{\Sigma}}^{1/2},\qquad{\bm{W}}_{1}={\bm{\Sigma}}^{1/2}{\bm{V}}^{\top}.
+This corresponds to the “spectral initialization” of
+Khodak
+et al.
+[
+28
+]
+in the case where all singular values are preserved.
+For ResNet-18 pretraining, we first initialize each corresponding dense layer using the same random initializer as in the dense baseline. We then compute its factorization and initialize the LoRITa factors using the spectral initialization above. This matches the initial function of the dense baseline while using LoRITa’s factorized parameterization, allowing us to control for initialization effects.
+Following</p>
+
+<p>Ghosh
+et al.
+[
+15
+]
+and
+Alkhouri
+et al.
+[
+1
+]
+, we implement the LoRITa regularizer through the optimizer’s weight decay term. The value reported for LoRITa in the result tables is this coefficient. As we use AdamW, it is applied in a decoupled way. Parameters that are not replaced by LoRITa factors use the default weight decay for the corresponding experiment, while normalization parameters and biases are not decayed. This keeps the LoRITa penalty separate from the ordinary optimizer weight decay used for the rest of the model.
+For convolutional layers, we follow the construction described in
+Alkhouri
+et al.
+[
+1
+]
+, which coincides with the general interpretation of convolutional layers discussed in
+Section
+˜
+E.1
+.
+We make one implementation modification to improve memory efficiency, which allows us to run LoRITa on larger models. In the original sequential implementation
+12
+12
+12
+https://github.com/XitongSystem/LoRITa
+, LoRITa replaces a layer by a sequence of factorized layers. With
+N
+=
+2
+N=2
+, this introduces an additional intermediate activation and can substantially increase memory use at realistic batch sizes. Even when memory is sufficient, the sequential implementation can remain computationally expensive; see the LoRITa authors’ comments at
+https://openreview.net/forum?id=1KCrVMJoJ9
+.
+We describe the modification for a linear layer without bias; the convolutional case follows the same matrix interpretation as in
+Section
+˜
+E.1
+. Let the original layer be parameterize</p>
+
+<p>d by
+𝑾
+∈
+ℝ
+I
+×
+O
+{\bm{W}}\in\mathbb{R}^{I\times O}
+, and let
+R
+=
+min
+⁡
+{
+I
+,
+O
+}
+R=\min\{I,O\}
+. LoRITa replaces this layer with two trainable matrices,
+𝑾
+0
+∈
+ℝ
+I
+×
+R
+,
+𝑾
+1
+∈
+ℝ
+R
+×
+O
+.
+{\bm{W}}_{0}\in\mathbb{R}^{I\times R},\qquad{\bm{W}}_{1}\in\mathbb{R}^{R\times O}.
+For an input
+𝑿
+∈
+ℝ
+B
+×
+I
+{\bm{X}}\in\mathbb{R}^{B\times I}
+, with batch and token dimensions folded into a single effective batch dimension, the original computation is
+𝒀
+=
+𝑿
+​
+𝑾
+,
+{\bm{Y}}={\bm{X}}{\bm{W}},
+while the sequential LoRITa implementation computes
+𝒀
+=
+(
+𝑿
+​
+𝑾
+0
+)
+​
+𝑾
+1
+.
+{\bm{Y}}=({\bm{X}}{\bm{W}}_{0}){\bm{W}}_{1}.
+Instead, in each forward pass we first merge the factors and then apply the merged matrix:
+𝒀
+=
+𝑿
+​
+(
+𝑾
+0
+​
+𝑾
+1
+)
+.
+{\bm{Y}}={\bm{X}}({\bm{W}}_{0}{\bm{W}}_{1}).
+This avoids storing the intermediate activation
+𝑿
+​
+𝑾
+0
+{\bm{X}}{\bm{W}}_{0}
+and reduces LoRITa’s overhead to effectively zero in our experiments. The merged computation defines the same function of
+𝑾
+0
+{\bm{W}}_{0}
+and
+𝑾
+1
+{\bm{W}}_{1}
+as the sequential implementation, so the forward pass and gradients are equivalent up to floating point differences.
+Moreover, the original LoRITa implementation uses
+R
+=
+I
+R=I
+. We use
+R
+=
+min
+⁡
+{
+I
+,
+O
+}
+R=\min\{I,O\}
+, which is the natural full-rank dimension for the matrix factorization above and enables the checkpoint-preserving initialization described here. The main theoretical results supporting LoRITa still apply (see Section 4.3 of
+Alkhouri
+et al.
+[
+1
+]
+).
+We restrict LoRITa to
+N
+=
+2
+N=2
+. E</p>
+
+<p>xtending the initialization to
+N
+&gt;
+2
+N&gt;2
+would require choosing how to split the singular values across more than two factors, introducing an additional experimental choice. Since the LoRITa paper reports only marginal ImageNet ResNet gains from
+N
+=
+3
+N=3
+, including for ResNet-18, we keep
+N
+=
+2
+N=2
+throughout and leave larger
+N
+N
+as a limitation of our study.
+E.2.2
+Q3R
+Following the authors’ recommended setup, we use their AdamQ3R optimizer. AdamQ3R combines Adam-style optimization with the Q3R regularizer, applying the regularization effect in a decoupled form motivated by AdamW
+[
+38
+]
+. We copied the optimizer and regularizer implementation from the authors’ official codebase
+13
+13
+13
+https://github.com/ThatE10/Q3R
+and left the linear-layer path unchanged, except that we added support for decoupled weight decay to match our AdamW baselines.
+We use a refresh interval of 5 for all main experiments, unless noted otherwise, following the setting used by the Q3R authors in their main experiments. We also found that larger, cheaper refresh intervals can work well in some settings; see
+Appendix
+˜
+F
+.
+The original implementation does not support convolutional layers. We extend it to convolutions by interpreting convolutional layers as matrices, as described in
+Section
+˜
+E.1
+. This extension only inserts the necessary reshape operations and leaves other parts of the code untouched.
+When we refer to Q3R’s “target rank”, we mean the value passed to the AdamQ3R optimizer. This value c</p>
+
+<p>an be a ratio between 0 and 1 rather than an absolute rank.
+E.3
+Training Details and Hyperparameters
+We first describe the general training setup and then list specific hyperparameters for each model.
+Regularization and factorization are applied to layers in their native parameterization. In particular, the
+timm
+ViT implementations use fused QKV layers, and we regularize and factorize these fused matrices without splitting them. This follows LoRITa’s ViT implementation. Q3R’s experiments split QKV layers, but we note this is an experimental choice rather than a mechanism inherent to the method (we remark that, in any case, this choice must be consistent across all methods). Hence, for simplicity, we use the default fused QKV implementation. We did not explore split QKV layers.
+We keep non-regularizer hyperparameters fixed across methods whenever possible. For LoRITa, the factor weight decay is part of the method and is varied as its regularization strength. For Q3R, our AdamQ3R implementation supports the same decoupled weight decay used by the AdamW baselines and SLORR runs. Across methods, ordinary weight decay is applied only to weight matrices; normalization parameters and biases are not decayed.
+For continued training experiments, we choose learning rates so that an unregularized baseline largely preserves the accuracy of the pretrained checkpoint. On ViT-B/16, Q3R tended to perform poorly with the smaller learning rate, so we tested a larger one. LoRITa also improved sl</p>
+
+<p>ightly in that setting, so we include both learning rates. We did not explore this higher-learning-rate setting for other models or for ResNet-18 pretraining (for ResNet-18, the learning rate was again chosen based on unregularized performance).
+We remark that even though our sweeps are significantly more extensive than those of prior work, differences in training configurations might benefit different techniques. Accordingly, our comparisons should be interpreted as a broad best-effort study under mostly matched training recipes rather than as an exhaustive sweep, as mentioned in
+Section
+˜
+5
+.
+All runs use
+bfloat16
+automatic mixed precision (weights are stored in
+float32
+).
+Checkpoints.
+For runs starting from checkpoints, we use the default ones on
+timm
+, except for ResNet-50 for which we use the TorchVision
+[
+49
+]
+checkpoint, which is the most common one.
+Hyperparameters for ViT-B/16.
+For ViT-B/16, we use learning rates of
+1
+×
+10
+−
+5
+1\times 10^{-5}
+and
+5
+×
+10
+−
+5
+5\times 10^{-5}
+, a batch size of 1024, a weight decay of 0.1, and a cosine schedule with 1 epoch of linear warmup
+[
+18
+,
+37
+]
+with an initial factor of
+10
+−
+3
+10^{-3}
+, followed by decay to 0.1 times the original learning rate. We use standard ViT-B/16 augmentation through the
+timm
+library. We detail the augmentation parameters in
+Table
+˜
+4
+.
+Hyperparameters for ViT-L/16.
+We use the same setup as for ViT-B/16, but with a batch size of 896. With a batch size of 1024, LoRITa produced out-of-memory errors, even with</p>
+
+<p>our optimizations. We therefore use a batch size of 896 for all methods in this setting to ensure comparable conditions. We only used a learning rate of
+1
+×
+10
+−
+5
+1\times 10^{-5}
+.
+Hyperparameters for ResNet-50.
+For ResNet-50, we use a learning rate of
+5
+×
+10
+−
+5
+5\times 10^{-5}
+. We use the same scheduler as in the ViT experiments, a batch size of 1024, and a weight decay of 0.01. We apply standard data augmentation, consisting of random resizing and cropping, followed by horizontal flipping with probability 0.5, and normalization using the standard ImageNet-1K mean and standard deviation.
+Hyperparameters for ResNet-18 (training from scratch).
+We use a learning rate of
+10
+−
+3
+10^{-3}
+and train for 110 epochs. The rest is the same as for ResNet-50.
+All vision experiments use A100 GPUs, except ViT-L/16 ones, where we use B200 GPUs.
+Method hyperparameter selection.
+Method-specific hyperparameters were selected through exploratory runs and manual coarse-to-fine tuning. SLORR and LoRITa each have a single main regularization coefficient, whereas Q3R has two interacting hyperparameters, excluding the refresh interval, making exhaustive grid search impractical. For Q3R, we found that values larger than the authors’ recommended range of
+[
+0.001
+,
+0.01
+]
+[0.001,0.01]
+worked substantially better in our settings.
+For all methods, stronger regularization generally improved compressibility but could reduce uncompressed accuracy or cause training collapse. Conversely, too little regular</p>
+
+<p>ization had little effect on compressibility. Runs were discarded only when they collapsed or produced unusable uncompressed accuracy, not based on post-compression performance. All included configurations are listed in
+Appendix
+˜
+G
+.
+E.4
+Factorization Details
+Our factorization implementation is adapted from the BALF
+[
+17
+]
+repository. For every model, we factorize all layers except the first and last, typically the classifier. As mentioned in the main text, we perform experiments with both uniform truncation and energy truncation. We describe both below; our implementation is included in our code.
+Uniform truncation.
+Given a target retention ratio
+c
+∈
+(
+0
+,
+1
+]
+c\in(0,1]
+, with
+c
+=
+1
+c=1
+denoting no compression, each eligible layer is truncated to approximately retain a fraction
+c
+c
+of its original parameters. Under our matrix interpretation, the same rank choice also gives approximately the same retained FLOPs fraction for both linear and convolutional layers. Thus, uniform truncation applies the same compression ratio across eligible layers, although different layers might still retain different absolute numbers of parameters and FLOPs.
+Energy truncation.
+Given a single matrix, the retained energy metric when keeping up to rank
+P
+P
+is defined as
+E
+​
+(
+P
+)
+=
+∑
+i
+=
+1
+P
+𝝈
+i
+2
+∑
+i
+=
+1
+R
+𝝈
+i
+2
+=
+1
+−
+‖
+𝑾
+−
+𝑾
+^
+‖
+F
+2
+‖
+𝑾
+‖
+F
+2
+,
+E(P)=\frac{\sum_{i=1}^{P}\bm{\sigma}_{i}^{2}}{\sum_{i=1}^{R}\bm{\sigma}_{i}^{2}}=1-\frac{\|{\bm{W}}-\widehat{{\bm{W}}}\|_{F}^{2}}{\|{\bm{W}}\|_{F}^{2}},</p>
+
+<p>where
+R
+=
+min
+⁡
+{
+M
+,
+N
+}
+R=\min\{M,N\}
+,
+M
+M
+and
+N
+N
+are the dimensions of
+𝑾
+{\bm{W}}
+, and
+𝑾
+^
+\widehat{{\bm{W}}}
+denotes the reconstruction of the compressed matrix. Similar formulations are used in
+Alvarez and Salzmann [
+2
+], Yang
+et al.
+[
+57
+], Liebenwein
+et al.
+[
+36
+]
+.
+Given a fixed retained energy threshold
+ρ
+\rho
+, the energy criterion selects a per-layer rank
+P
+∗
+=
+min
+⁡
+{
+P
+:
+E
+​
+(
+P
+)
+≥
+ρ
+}
+,
+P^{*}=\min\{P:E(P)\geq\rho\},
+i.e., the lowest rank that maintains a relative squared error of at most
+1
+−
+ρ
+1-\rho
+. In particular, for each model, we sweep
+{
+0.7
+,
+0.75
+,
+0.8
+,
+0.85
+,
+0.9
+,
+0.925
+,
+0.95
+,
+0.975
+,
+0.99
+,
+0.995
+,
+0.999
+,
+0.9995
+,
+0.9999
+,
+0.99995
+,
+0.99996
+,
+0.99997
+,
+0.99998
+,
+0.99999
+}
+\{0.7,\allowbreak 0.75,\allowbreak 0.8,\allowbreak 0.85,\allowbreak 0.9,\allowbreak 0.925,\allowbreak 0.95,\allowbreak 0.975,\allowbreak 0.99,\allowbreak 0.995,\allowbreak 0.999,\allowbreak 0.9995,\allowbreak 0.9999,\allowbreak 0.99995,\allowbreak 0.99996,\allowbreak 0.99997,\allowbreak 0.99998,\allowbreak 0.99999\}
+.
+Table 4
+:
+Training augmentation for the ViT-B runs.
+Component
+Parameter
+Value
+create_transform
+input_size
+(3, 224, 224)
+is_training
+True
+color_jitter
+0.3
+auto_augment
+&quot;rand-m9-mstd0.5-inc1&quot;
+interpolation
+&quot;bicubic&quot;
+re_prob
+0.25
+re_mode
+&quot;pixel&quot;
+re_count
+1
+mean
+(0.5, 0.5, 0.5)
+std
+(0.5, 0.5, 0.5)
+Mixup
+mixup_alpha
+0.8
+cutmix_alpha
+1.0
+prob
+1.0
+switch_prob
+0.5
+mode
+&quot;batch&quot;
+label_smoothing
+0.1
+num_classes
+1000
+Appendix F
+Q3R Refresh Period Ablation
+Throughout our exp</p>
+
+<p>eriments, we use a refresh period of 5 for Q3R, following their main experiments. Sweeping the period in addition to the target rank and regularization strength would have been impractical, so we use their recommended configuration.
+However, for completeness, we also swept the refresh interval over a small number of runs to probe whether one could use a larger period, which is more efficient, and what the corresponding accuracy tradeoff would be. We limit ourselves to ViT-B/16.
+Results are presented in
+Table
+˜
+5
+. Q3R appears to be surprisingly robust in the cases we tested. Note, however, that this might differ in other models, scales, or training horizons.
+Table 5
+:
+Q3R refresh interval ablation on ViT-B/16.
+ImageNet-1K top-1 accuracy under uniform retained parameter ratios and different configurations.
+Setting
+Interval
+21%
+31%
+41%
+51%
+60%
+70%
+80%
+90%
+Full
+λ
+=
+8.0
+\lambda=8.0
+target rank 0.05
+learning rate
+5
+×
+10
+−
+5
+5\times 10^{-5}
+5
+29.6
+75.2
+76.0
+76.1
+76.2
+76.3
+76.3
+76.3
+76.3
+20
+34.8
+75.2
+75.8
+76.1
+76.3
+76.4
+76.4
+76.4
+76.4
+50
+33.3
+75.1
+75.8
+76.1
+76.3
+76.3
+76.3
+76.4
+76.4
+100
+32.9
+75.0
+75.8
+76.0
+76.2
+76.2
+76.3
+76.3
+76.3
+300
+44.4
+74.8
+75.5
+75.8
+75.9
+76.0
+76.0
+76.0
+76.0
+λ
+=
+3.0
+\lambda=3.0
+target rank 0.15
+learning rate
+5
+×
+10
+−
+5
+5\times 10^{-5}
+5
+0.1
+0.2
+21.2
+71.9
+80.7
+82.5
+82.7
+82.8
+82.8
+20
+0.1
+0.2
+19.3
+72.0
+80.7
+82.5
+82.7
+82.8
+82.8
+50
+0.1
+0.1
+20.1
+72.2
+80.8
+82.5
+82.8
+82.8
+82.9
+100
+0.1
+0.2
+18.7
+72.0
+80.8
+82.6
+82.8
+82.8
+82.9
+300
+0.1
+0.2
+22.1
+72.2
+80.6
+82.6
+82.7
+82.8
+82.9
+λ</p>
+
+<p>=
+5.0
+\lambda=5.0
+target rank 0.10
+learning rate
+1
+×
+10
+−
+5
+1\times 10^{-5}
+5
+0.1
+0.1
+0.1
+9.4
+53.5
+73.0
+77.3
+78.7
+81.0
+20
+0.1
+0.1
+0.1
+10.0
+53.5
+73.0
+77.3
+78.7
+81.1
+50
+0.1
+0.1
+0.1
+8.7
+54.1
+72.8
+77.2
+78.7
+81.0
+100
+0.1
+0.1
+0.2
+9.1
+47.5
+72.6
+77.4
+78.7
+81.1
+300
+0.1
+0.1
+0.1
+8.6
+48.8
+70.9
+77.2
+78.5
+81.0
+Appendix G
+Additional Vision Model Results
+Here, we report the complete uniform compression results for the vision models. Results are shown for ViT-B/16 in
+Appendix
+˜
+G
+, ResNet-50 in
+Appendix
+˜
+G
+, ViT-L/16 in
+Appendix
+˜
+G
+, and ResNet-18 in
+Appendix
+˜
+G
+.
+For each table, the different columns indicate the retention ratio (and Full indicates the uncompressed model). Top results are bolded, and second-top results are underlined. For the ViT-B/16 table, where we swept learning rates,
+⋄
+\diamond
+is used for
+10
+−
+5
+10^{-5}
+, and
+†
+\dagger
+for
+5
+×
+10
+−
+5
+5\times 10^{-5}
+.
+Notation.
+For Q3R, the first argument denotes its regularization strength, and the second its target rank. For LoRITa, its only argument denotes the regularization strength (in the form of weight decay). For all SLORR variants, the only argument denotes regularization strength.
+Table 6:
+Complete uniform compression results for ViT-L/16 continued training.
+Method
+10%
+20%
+30%
+40%
+50%
+60%
+70%
+80%
+90%
+95%
+Full
+Baseline
+0.2
+0.6
+7.5
+38.9
+63.5
+75.2
+80.6
+83.2
+84.4
+84.8
+85.8
+LoRITa(0.0001)
+0.1
+0.7
+12.5
+45.8
+67.2
+76.9
+81.3
+83.5
+84.5
+84.9
+85.5
+LoRITa(0.001)
+0.1
+0.7
+12.5
+45.8
+67.2
+76.9
+81.3
+83.5
+84.5
+84.9
+85.5
+LoRITa(0.01)
+0.1
+0.</p>
+
+<p>7
+12.7
+44.9
+66.8
+76.9
+81.2
+83.4
+84.5
+84.8
+85.5
+LoRITa(0.05)
+0.1
+0.7
+11.5
+44.6
+66.7
+76.8
+81.2
+83.4
+84.4
+84.8
+85.5
+LoRITa(0.3)
+0.2
+0.4
+7.5
+38.8
+63.9
+75.8
+80.7
+83.0
+84.3
+84.5
+85.5
+Lo</p>
+
+<p>we conduct 10 short benchmark runs on the same hardware as in the main experiments. For each run, we first perform 10 warmup training steps and then measure time and peak memory over 300 training steps under the same setup as in our training runs. The measurement takes every part of training into account: data loading and augmentation, transfer to the device, training steps, regularization, etc. In the case of Q3R, this includes periodic SVDs. This does not include, for example, evaluation or checkpointing. Each benchmark run repeats this for all methods, including the unregularized baseline. We also tried using autotuning during the Polar Express compilation step, but this always yielded worse performance, so we do not use it.
+For SLORR, we also vary the number of Polar Express steps; for Q3R, we vary the refresh interval and the target rank.
+For each run, we compute the normalized time as the time taken with a given method or regularizer divided by the time taken with no regularizer in the same run. More precisely, if
+T
+m
+,
+i
+T_{m,i}
+is the time taken by method
+m
+m
+in run
+i
+i
+, measured over the 300 timed training steps, and
+T
+base
+,
+i
+T_{\mathrm{base},i}
+is the corresponding time for the unregularized baseline, then
+NormTime
+m
+,
+i
+=
+T
+m
+,
+i
+T
+base
+,
+i
+.
+\mathrm{NormTime}_{m,i}=\frac{T_{m,i}}{T_{\mathrm{base},i}}.
+Thus, a normalized time of
+×
+1.037
+\times 1.037
+means that the method takes
+3.7
+%
+3.7\%
+more time than unregularized training in that setting. Normalized memory</p>
+
+<p>is measured similarly, using peak memory instead of time. We show the means and standard deviations of both the normalized and raw measurements in
+Table
+˜
+10
+.
+Table 10
+:
+Training overhead.
+Average wall-clock time and peak memory per 300 optimization steps. Means and standard deviations over 10 jobs for each method are reported.
+Model
+Method
+Time/300 steps (s)
+Peak Mem (GB)
+Norm. Time
+Norm. Mem
+ViT-B/16
+Baseline
+258.975
+±
+\pm
+6.500
+71.584
+±
+\pm
+0.001
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer (steps=6)
+268.447
+±
+\pm
+6.470
+71.923
+±
+\pm
+0.000
+×
+1.037
+±
+0.003
+\times 1.037\pm 0.003
+×
+1.005
+±
+0.000
+\times 1.005\pm 0.000
+SLORR-Hoyer (steps=8)
+271.520
+±
+\pm
+6.112
+71.926
+±
+\pm
+0.000
+×
+1.049
+±
+0.004
+\times 1.049\pm 0.004
+×
+1.005
+±
+0.000
+\times 1.005\pm 0.000
+SLORR-Hoyer (steps=10)
+274.345
+±
+\pm
+6.506
+71.924
+±
+\pm
+0.001
+×
+1.059
+±
+0.003
+\times 1.059\pm 0.003
+×
+1.005
+±
+0.000
+\times 1.005\pm 0.000
+SLORR-Hoyer-D (steps=6)
+274.687
+±
+\pm
+6.255
+71.582
+±
+\pm
+0.002
+×
+1.061
+±
+0.003
+\times 1.061\pm 0.003
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=8)
+277.429
+±
+\pm
+6.678
+71.582
+±
+\pm
+0.002
+×
+1.071
+±
+0.003
+\times 1.071\pm 0.003
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=10)
+280.014
+±
+\pm
+6.140
+71.582
+±
+\pm
+0.002
+×
+1.081
+±
+0.005
+\times 1.081\pm 0.005
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+LoRITa
+260.670
+±
+\pm
+6.372
+72.153
+±
+\pm
+0.001
+×
+1.007
+±
+0.002
+\times 1.007\pm 0.002
+×
+1.008
+±
+0.000
+\times 1.008\pm 0.000
+Q3R (interval=5,</p>
+
+<p>rank=0.01)
+426.005
+±
+\pm
+6.311
+72.729
+±
+\pm
+0.001
+×
+1.645
+±
+0.016
+\times 1.645\pm 0.016
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=5, rank=0.05)
+426.984
+±
+\pm
+6.009
+72.728
+±
+\pm
+0.002
+×
+1.649
+±
+0.019
+\times 1.649\pm 0.019
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=5, rank=0.1)
+428.857
+±
+\pm
+6.109
+72.729
+±
+\pm
+0.001
+×
+1.656
+±
+0.018
+\times 1.656\pm 0.018
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=5, rank=0.15)
+431.551
+±
+\pm
+6.355
+72.727
+±
+\pm
+0.002
+×
+1.667
+±
+0.018
+\times 1.667\pm 0.018
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=20, rank=0.1)
+310.177
+±
+\pm
+6.220
+72.728
+±
+\pm
+0.002
+×
+1.198
+±
+0.006
+\times 1.198\pm 0.006
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=50, rank=0.1)
+286.478
+±
+\pm
+6.248
+72.726
+±
+\pm
+0.001
+×
+1.106
+±
+0.004
+\times 1.106\pm 0.004
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=100, rank=0.1)
+278.859
+±
+\pm
+6.291
+72.725
+±
+\pm
+0.001
+×
+1.077
+±
+0.004
+\times 1.077\pm 0.004
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+Q3R (interval=300, rank=0.1)
+273.238
+±
+\pm
+6.271
+72.724
+±
+\pm
+0.001
+×
+1.055
+±
+0.003
+\times 1.055\pm 0.003
+×
+1.016
+±
+0.000
+\times 1.016\pm 0.000
+ResNet-50
+Baseline
+238.173
+±
+\pm
+5.457
+46.221
+±
+\pm
+0.001
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer (steps=6)
+249.511
+±
+\pm
+5.716
+46.316
+±
+\pm
+0.002
+×
+1.048
+±
+0.003
+\times 1.048\pm 0.003
+×
+1.002
+±
+0.000
+\times 1.002\pm 0.000
+SLORR-Hoyer (steps=8)
+252.558
+±
+\pm
+5.616
+46.315
+±
+\pm
+0.001
+×
+1.060
+±
+0.002
+\times 1.060\pm 0.002
+×</p>
+
+<p>1.002
+±
+0.000
+\times 1.002\pm 0.000
+SLORR-Hoyer (steps=10)
+256.021
+±
+\pm
+5.647
+46.315
+±
+\pm
+0.001
+×
+1.075
+±
+0.004
+\times 1.075\pm 0.004
+×
+1.002
+±
+0.000
+\times 1.002\pm 0.000
+SLORR-Hoyer-D (steps=6)
+256.658
+±
+\pm
+5.717
+46.221
+±
+\pm
+0.001
+×
+1.078
+±
+0.004
+\times 1.078\pm 0.004
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=8)
+260.724
+±
+\pm
+5.618
+46.221
+±
+\pm
+0.001
+×
+1.095
+±
+0.006
+\times 1.095\pm 0.006
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=10)
+264.580
+±
+\pm
+6.477
+46.222
+±
+\pm
+0.001
+×
+1.111
+±
+0.016
+\times 1.111\pm 0.016
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+LoRITa
+239.302
+±
+\pm
+5.506
+46.350
+±
+\pm
+0.001
+×
+1.005
+±
+0.006
+\times 1.005\pm 0.006
+×
+1.003
+±
+0.000
+\times 1.003\pm 0.000
+Q3R (interval=5, rank=0.01)
+291.274
+±
+\pm
+5.665
+46.532
+±
+\pm
+0.003
+×
+1.223
+±
+0.007
+\times 1.223\pm 0.007
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=5, rank=0.05)
+291.162
+±
+\pm
+5.735
+46.533
+±
+\pm
+0.002
+×
+1.223
+±
+0.008
+\times 1.223\pm 0.008
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=5, rank=0.1)
+290.995
+±
+\pm
+5.594
+46.531
+±
+\pm
+0.002
+×
+1.222
+±
+0.006
+\times 1.222\pm 0.006
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=5, rank=0.15)
+290.084
+±
+\pm
+5.973
+46.531
+±
+\pm
+0.001
+×
+1.218
+±
+0.012
+\times 1.218\pm 0.012
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=20, rank=0.1)
+258.970
+±
+\pm
+5.592
+46.530
+±
+\pm
+0.002
+×
+1.087
+±
+0.002
+\times 1.087\pm 0.002
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=50, rank=0.1)
+253.010
+±
+\pm
+5.494
+46.530
+±
+\pm
+0.002
+×
+1.0</p>
+
+<p>62
+±
+0.002
+\times 1.062\pm 0.002
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=100, rank=0.1)
+251.038
+±
+\pm
+5.510
+46.529
+±
+\pm
+0.001
+×
+1.054
+±
+0.006
+\times 1.054\pm 0.006
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+Q3R (interval=300, rank=0.1)
+249.735
+±
+\pm
+5.463
+46.527
+±
+\pm
+0.001
+×
+1.049
+±
+0.005
+\times 1.049\pm 0.005
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+ViT-L/16
+Baseline
+192.797
+±
+\pm
+1.644
+164.376
+±
+\pm
+0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer (steps=6)
+203.345
+±
+\pm
+1.227
+165.582
+±
+\pm
+0.001
+×
+1.055
+±
+0.003
+\times 1.055\pm 0.003
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+SLORR-Hoyer (steps=8)
+205.978
+±
+\pm
+1.196
+165.583
+±
+\pm
+0.001
+×
+1.068
+±
+0.004
+\times 1.068\pm 0.004
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+SLORR-Hoyer (steps=10)
+208.406
+±
+\pm
+1.064
+165.582
+±
+\pm
+0.001
+×
+1.081
+±
+0.005
+\times 1.081\pm 0.005
+×
+1.007
+±
+0.000
+\times 1.007\pm 0.000
+SLORR-Hoyer-D (steps=6)
+207.288
+±
+\pm
+1.125
+164.375
+±
+\pm
+0.001
+×
+1.075
+±
+0.004
+\times 1.075\pm 0.004
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=8)
+210.050
+±
+\pm
+1.210
+164.375
+±
+\pm
+0.001
+×
+1.090
+±
+0.004
+\times 1.090\pm 0.004
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=10)
+212.514
+±
+\pm
+1.081
+164.375
+±
+\pm
+0.001
+×
+1.102
+±
+0.004
+\times 1.102\pm 0.004
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+LoRITa
+194.632
+±
+\pm
+1.502
+166.391
+±
+\pm
+0.000
+×
+1.010
+±
+0.001
+\times 1.010\pm 0.001
+×
+1.012
+±
+0.000
+\times 1.012\pm 0.000
+Q3R (interval=5, rank=0.01)
+580.708
+±
+\pm
+1.323</p>
+
+<p>168.420
+±
+\pm
+0.001
+×
+3.012
+±
+0.023
+\times 3.012\pm 0.023
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=5, rank=0.05)
+585.406
+±
+\pm
+1.353
+168.422
+±
+\pm
+0.001
+×
+3.037
+±
+0.022
+\times 3.037\pm 0.022
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=5, rank=0.1)
+589.815
+±
+\pm
+1.282
+168.421
+±
+\pm
+0.002
+×
+3.059
+±
+0.023
+\times 3.059\pm 0.023
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=5, rank=0.15)
+594.638
+±
+\pm
+1.470
+168.421
+±
+\pm
+0.001
+×
+3.084
+±
+0.022
+\times 3.084\pm 0.022
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=20, rank=0.1)
+307.126
+±
+\pm
+1.312
+168.419
+±
+\pm
+0.001
+×
+1.593
+±
+0.007
+\times 1.593\pm 0.007
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=50, rank=0.1)
+250.827
+±
+\pm
+1.454
+168.418
+±
+\pm
+0.002
+×
+1.301
+±
+0.004
+\times 1.301\pm 0.004
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=100, rank=0.1)
+232.288
+±
+\pm
+1.213
+168.416
+±
+\pm
+0.000
+×
+1.205
+±
+0.006
+\times 1.205\pm 0.006
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+Q3R (interval=300, rank=0.1)
+219.497
+±
+\pm
+1.362
+168.415
+±
+\pm
+0.002
+×
+1.139
+±
+0.003
+\times 1.139\pm 0.003
+×
+1.025
+±
+0.000
+\times 1.025\pm 0.000
+ResNet-18
+Baseline
+169.288
+±
+\pm
+7.488
+13.146
+±
+\pm
+0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer (steps=6)
+169.822
+±
+\pm
+6.864
+13.192
+±
+\pm
+0.000
+×
+1.003
+±
+0.022
+\times 1.003\pm 0.022
+×
+1.003
+±
+0.000
+\times 1.003\pm 0.000
+SLORR-Hoyer (steps=8)
+171.127
+±
+\pm
+8.464
+13.191
+±
+\pm
+0.000
+×
+1.011
+±
+0.025
+\times 1.011\pm 0.025
+×
+1.003
+±
+0.000
+\times 1.</p>
+
+<p>003\pm 0.000
+SLORR-Hoyer (steps=10)
+169.576
+±
+\pm
+6.405
+13.191
+±
+\pm
+0.000
+×
+1.002
+±
+0.027
+\times 1.002\pm 0.027
+×
+1.003
+±
+0.000
+\times 1.003\pm 0.000
+SLORR-Hoyer-D (steps=6)
+168.660
+±
+\pm
+5.460
+13.144
+±
+\pm
+0.000
+×
+0.997
+±
+0.028
+\times 0.997\pm 0.028
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=8)
+170.404
+±
+\pm
+9.644
+13.144
+±
+\pm
+0.000
+×
+1.006
+±
+0.022
+\times 1.006\pm 0.022
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+SLORR-Hoyer-D (steps=10)
+170.196
+±
+\pm
+8.941
+13.144
+±
+\pm
+0.000
+×
+1.005
+±
+0.031
+\times 1.005\pm 0.031
+×
+1.000
+±
+0.000
+\times 1.000\pm 0.000
+LoRITa
+167.907
+±
+\pm
+4.230
+13.191
+±
+\pm
+0.000
+×
+0.993
+±
+0.032
+\times 0.993\pm 0.032
+×
+1.003
+±
+0.000
+\times 1.003\pm 0.000
+Q3R (interval=5, rank=0.01)
+174.902
+±
+\pm
+16.476
+13.288
+±
+\pm
+0.001
+×
+1.031
+±
+0.051
+\times 1.031\pm 0.051
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=5, rank=0.05)
+170.511
+±
+\pm
+9.189
+13.289
+±
+\pm
+0.001
+×
+1.008
+±
+0.047
+\times 1.008\pm 0.047
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=5, rank=0.1)
+169.531
+±
+\pm
+5.638
+13.289
+±
+\pm
+0.000
+×
+1.002
+±
+0.022
+\times 1.002\pm 0.022
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=5, rank=0.15)
+170.471
+±
+\pm
+6.208
+13.288
+±
+\pm
+0.000
+×
+1.008
+±
+0.032
+\times 1.008\pm 0.032
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=20, rank=0.1)
+171.572
+±
+\pm
+9.018
+13.289
+±
+\pm
+0.000
+×
+1.014
+±
+0.038
+\times 1.014\pm 0.038
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=50, rank=0.1)
+170.862
+±
+\pm
+7.709
+13.288
+±
+\pm
+0.001
+×
+1.010
+±
+0.026
+\times 1.01</p>
+
+<p>0\pm 0.026
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=100, rank=0.1)
+171.271
+±
+\pm
+8.197
+13.288
+±
+\pm
+0.000
+×
+1.012
+±
+0.034
+\times 1.012\pm 0.034
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+Q3R (interval=300, rank=0.1)
+170.911
+±
+\pm
+7.846
+13.288
+±
+\pm
+0.000
+×
+1.010
+±
+0.038
+\times 1.010\pm 0.038
+×
+1.011
+±
+0.000
+\times 1.011\pm 0.000
+H.1
+Scaling Up with Vision Transformers
+To support our scalability claims, we also measure overhead at different ViT scales. In addition to standard configurations (ViT-T/B/L/H), we include interpolated variants to obtain a smooth overhead curve across model sizes. We use the same settings as in our ViT overhead measurements, but vary the batch size so that all regularizers fit into a B200 GPU, with a maximum of 1024. These models span from the ViT-T scale (on the order of 6M parameters) to ViT-H (over 0.6B parameters). We detail the configurations used in
+Table
+˜
+11
+. We then measure overhead following the protocol described in
+Appendix
+˜
+H
+: normalized time is computed by dividing the measured time of each method by the measured time of the corresponding unregularized run under the same model and benchmark setup, and normalized memory is computed analogously using peak memory. Results are shown in
+Figure
+˜
+2
+. For Q3R, the target rank is fixed to
+0.1
+0.1
+, and different refresh intervals are shown for completeness.
+Table 11:
+Vision Transformer (ViT) model configurations and parameter counts used in our overhead measurements.
+Model
+Patch Size
+E</p>
+
+<p>mbed Dim
+Depth
+# Heads
+MLP Ratio
+Batch Size
+Params (M)
+vit_ti
+16
+192
+12
+3
+4.0
+1024
+5.72
+vit_256
+16
+256
+12
+4
+4.0
+1024
+9.98
+vit_s
+16
+384
+12
+6
+4.0
+1024
+22.05
+vit_512
+16
+512
+12
+8
+4.0
+1024
+38.84
+vit_b
+16
+768
+12
+12
+4.0
+1024
+86.57
+vit_b24
+16
+768
+24
+12
+4.0
+1024
+171.62
+vit_960_24
+16
+960
+24
+12
+4.0
+1024
+267.61
+vit_l
+16
+1024
+24
+16
+4.0
+896
+304.33
+vit_1152_28
+16
+1152
+28
+16
+4.0
+720
+448.60
+vit_h
+16
+1280
+32
+16
+4.0
+512
+632.20
+Appendix I
+LLM Pretraining Experimental and Implementation Details
+Implementation.
+For our LLM pretraining experiments, we use the OLMo
+[
+40
+]
+codebase
+14
+14
+14
+https://github.com/allenai/olmo
+. For all training experiments, which use multiple GPUs, we use distributed data parallelism (DDP). Aside from adding the SLORR regularizer and benchmarking utilities, the main codebase remains mostly unchanged. SLORR is implemented as an additional loss term, similar to
+LABEL:lst:lowrank_reg
+. To distribute its computational cost, we partition the regularized layers across DDP ranks, so that each rank computes SLORR only for its assigned subset.
+This does not introduce any extra communication. Instead, SLORR reuses the gradient synchronization already performed by DDP. Since DDP averages gradients across ranks during its standard all-reduce, each rank scales its locally computed SLORR gradients by the world size before synchronization. After the DDP all-reduce, every regularized parameter therefore receives exactly the gradient it would have obtained if the full SLORR regularizer h</p>
+
+<p>ad been computed redundantly on every rank. In this way, the computational overhead of SLORR is divided across GPUs without any additional communication cost.
+Experimental details.
+We use a Llama-like architecture
+[
+50
+]
+and the T5 tokenizer
+[
+46
+]
+, available at
+https://huggingface.co/google-t5/t5-base
+. The results reported use the original
+OLMoLLamaBlock
+, which computes attention manually. We note, however, that for the overhead measurements in
+Appendix
+˜
+L
+, we also include results for fused attention implementations to provide a practical overhead estimate. We use the AdamW optimizer with learning rate
+10
+−
+3
+10^{-3}
+,
+β
+1
+=
+0.9
+\beta_{1}=0.9
+,
+β
+2
+=
+0.95
+\beta_{2}=0.95
+, and weight decay set to
+0.1
+0.1
+. Gradients are clipped using a maximum global norm of 1.0. We use a cosine scheduler with 10% of the training steps dedicated to a linear warmup from 0 to the base learning rate, which is then decayed to 10% of the base learning rate. We chose these settings based on common practice for standard training and did not try other settings.
+Training is performed on a subsample of the FineWeb-Edu
+[
+43
+]
+100BT sample
+15
+15
+15
+https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu/viewer/sample-100BT
+; evaluation and calibration sets (for SVD-LLM) are also selected from this sample but are not included in the training set.
+We summarize the size configurations used in
+Table
+˜
+12
+. All models use a global batch size of 512 and a sequence length of 1024. The 135M and 560M rows</p>
+
+<p>correspond to compute-optimal training budgets. The multipliers indicate the amount of data on which the model was trained relative to compute optimality
+[
+22
+]
+. The 135M models and their overtrained versions were trained on 4 H100 GPUs, while the 560M models were trained on 8 H100 GPUs.
+We regularize (and factorize after training) every linear layer inside transformer blocks (we exclude the embedding matrix and the final projection layer).
+Table 12:
+LLM model configurations and training budgets. All models use a global batch size of 512 and sequence length 1024.
+Model
+Hidden
+Intermediate
+Heads
+Layers
+Training steps
+135M
+768
+2048
+12
+12
+5,200
+135M
+×
+\times
+4
+768
+2048
+12
+12
+20,600
+135M
+×
+\times
+8
+768
+2048
+12
+12
+41,200
+560M
+1280
+3456
+20
+24
+21,400
+As in our vision experiments, all runs use a default seed. For transparency, we note that the 135M
+×
+\times
+8 Llama run with regularization strength
+10
+−
+5
+10^{-5}
+encountered a numerical explosion and terminated before completion. We monitored different metrics and did not observe preceding indicators of instability. We believe the crash may have been due to the particular trajectory taken by the model under this seed and hyperparameter setting, rather than due to the regularizer itself. We therefore reran this configuration with another seed and report the completed rerun.
+Method hyperparameters.
+The range of hyperparameters was not exhaustively explored and was mainly based on early experimentation. With the chosen hyperparameters,</p>
+
+<p>training was mostly stable. Among the completed runs, the
+×
+8
+\times 8
+run with the highest regularization strength reported (see
+Appendix
+˜
+J
+) had a loss spike early in training. This can also destabilize compression, as can be seen in
+Table
+˜
+17
+.
+I.1
+Compression
+For compression, we adapt the SVD-LLM
+[
+52
+]
+codebase
+16
+16
+16
+https://github.com/AIoT-MLSys-Lab/SVD-LLM
+to support OLMo checkpoints and the FineWeb dataset. We substantially simplified the codebase to specialize it for our setting, and also added support for plain SVD compression. For SVD-LLM, we use 256 samples of sequence length 1024 (same as in the training procedure) of held-out FineWeb-Edu data.
+For activation-aware (whitened) truncation as used in SVD-LLM, we observe that regularized models often yield rank-deficient activations, meaning that their second-moment matrices are singular. SVD-LLM uses Cholesky-based whitening, which does not support rank-deficient matrices; in practice, this is addressed by adding diagonal shift. We instead modify the codebase to use BALF-like whitening
+[
+17
+]
+, which admits rank-deficient activations in closed form. We did not observe notable end-to-end gains from this modification, though.
+I.2
+Evaluation
+After training and compressing each model, we evaluate them according to standard practice. For perplexity, we report results on a held-out set of approximately 2M tokens. For downstream evaluations, we use the
+lm-evaluation-harness
+library
+[
+14
+]
+throughout and report zero-s</p>
+
+<p>hot metrics. When available, we use
+acc_norm
+; otherwise, we use the
+acc
+field.
+Tasks.
+We evaluate on ARC-Easy and ARC-Challenge
+[
+7
+]
+, HellaSwag
+[
+59
+]
+, LAMBADA
+[
+41
+]
+, OpenBookQA
+[
+39
+]
+, and PIQA
+[
+5
+]
+. We also initially explored WinoGrande
+[
+47
+]
+, but accuracy appeared to be mostly random in all cases, so we did not end up using it.
+Appendix J
+Beyond Compute-Optimal LLM Pretraining
+Here, we report results for 135M models trained for
+4
+×
+4\times
+and
+8
+×
+8\times
+the compute-optimal token budget
+[
+22
+]
+. As noted in the main text, we find that the compressibility of all models, including regularized and unregularized ones, appears to be reduced as they ingest more data. However, in all cases, regularized models are still more compressible.
+Figure 4:
+Llama models trained for
+4
+×
+4\times
+and
+8
+×
+8\times
+the compute-optimal token budget. Perplexity values are clipped to 150, as in our main text figures. For complete tabular results, see
+Appendix
+˜
+K
+.
+Appendix K
+Complete LLM Results
+In this section, we include tabular results for the LLM figures in the main text. We include one table for perplexity and, for the 560M variants, one table for each downstream task. Each row corresponds to a regularization parameter
+λ
+\lambda
+, including the unregularized baseline
+λ
+=
+0
+\lambda=0
+. The columns denote the retained parameter ratio in the transformer blocks.
+K.1
+Llama 135M Results
+Table 13:
+Llama 135M – Plain SVD – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.6</p>
+
+<p>00
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+148924.22
+96542.02
+94756.84
+48167.34
+6204.80
+745.65
+120.20
+43.56
+30.31
+20.03
+λ
+=
+0.000005
+\lambda=0.000005
+82613.87
+89934.46
+121806.95
+10169.25
+620.10
+62.31
+30.94
+24.71
+22.56
+20.29
+λ
+=
+0.00001
+\lambda=0.00001
+244959.88
+126294.20
+17418.12
+2114.17
+101.18
+31.82
+24.55
+22.72
+21.73
+20.79
+λ
+=
+0.00005
+\lambda=0.00005
+19597.55
+4195.52
+144.97
+30.38
+25.98
+24.73
+24.17
+23.85
+23.68
+23.51
+Table 14:
+Llama 135M – SVD-LLM (whitened) – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+1860.53
+508.60
+185.68
+90.66
+52.75
+36.50
+29.00
+25.01
+22.86
+20.03
+λ
+=
+0.000005
+\lambda=0.000005
+4931.33
+659.68
+158.93
+66.69
+38.35
+28.79
+24.71
+22.65
+21.52
+20.29
+λ
+=
+0.00001
+\lambda=0.00001
+4820.77
+586.07
+125.66
+51.09
+31.66
+25.63
+23.13
+21.93
+21.33
+20.79
+λ
+=
+0.00005
+\lambda=0.00005
+1855.93
+123.38
+38.59
+27.87
+25.40
+24.45
+24.00
+23.77
+23.64
+23.51
+Table 15:
+Llama 135M
+×
+4
+\times 4
+– Plain SVD – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+256446.09
+163660.19
+38166.82
+15480.69
+9899.26
+2142.90
+410.64
+102.25
+45.71
+16.69
+λ
+=
+0.000005
+\lambda=0.000005
+120145.84
+70002.43
+173048.14
+26394.15
+664.70
+86.99
+38.58
+25.66
+20.70
+16.98
+λ
+=
+0.00001
+\lambda=0.00001
+481274.56
+260275.45
+547987.81
+12598.17
+181.30
+43.16
+25.81
+20.62
+18.68
+17.29
+λ
+=
+0.00005
+\lambda=0.00005
+31923.13
+9960.79
+1046.29
+379.80
+131.44
+50.42
+30.91
+24.03
+21.29
+17.63
+Table 16:</p>
+
+<p>Llama 135M
+×
+4
+\times 4
+– SVD-LLM (whitened) – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+33472.52
+4275.64
+704.20
+183.61
+87.98
+51.24
+33.59
+25.79
+21.79
+16.69
+λ
+=
+0.000005
+\lambda=0.000005
+10243.44
+1826.38
+385.01
+109.28
+47.59
+31.06
+24.29
+20.58
+18.64
+16.98
+λ
+=
+0.00001
+\lambda=0.00001
+6497.80
+1064.54
+181.37
+68.22
+35.97
+25.45
+21.04
+19.05
+18.13
+17.29
+λ
+=
+0.00005
+\lambda=0.00005
+5202.02
+1210.30
+241.95
+83.69
+44.83
+33.21
+28.31
+25.47
+23.85
+17.63
+Table 17:
+Llama 135M
+×
+8
+\times 8
+– Plain SVD – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+458317.91
+145537.27
+46363.39
+91373.03
+175450.86
+96216.00
+15849.05
+1432.41
+176.94
+15.85
+λ
+=
+0.000005
+\lambda=0.000005
+61717.04
+24633.72
+83167.53
+59771.51
+21030.25
+391.34
+64.09
+32.02
+22.94
+16.06
+λ
+=
+0.00001
+\lambda=0.00001
+146102.70
+133060.38
+37594.02
+2437.90
+573.78
+110.50
+45.29
+27.67
+21.48
+16.17
+λ
+=
+0.00005
+\lambda=0.00005
+30970.36
+35753.34
+21145.99
+10263.97
+6197.59
+1838.47
+590.69
+169.88
+51.43
+18.67
+Table 18:
+Llama 135M
+×
+8
+\times 8
+– SVD-LLM (whitened) – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+9130.10
+5885.35
+781.80
+223.97
+106.42
+60.41
+39.07
+28.43
+22.96
+15.85
+λ
+=
+0.000005
+\lambda=0.000005
+11983.68
+2819.26
+587.96
+178.03
+69.14
+38.42
+27.14
+21.92
+19.04
+16.06
+λ
+=
+0.00001
+\lambda=0.00001
+5442.37
+1502.64
+328.19
+109.19
+48.44
+30.83
+23</p>
+
+<p>.87
+20.34
+18.45
+16.17
+λ
+=
+0.00005
+\lambda=0.00005
+3653.86
+457.59
+151.60
+79.93
+50.61
+36.68
+29.26
+24.77
+22.12
+18.67
+K.2
+Llama 560M Results
+Table 19:
+Llama 560M – Plain SVD – ARC-Challenge
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+27.39
+25.68
+23.72
+25.34
+24.49
+28.58
+29.52
+31.14
+30.63
+30.55
+λ
+=
+0.000005
+\lambda=0.000005
+26.28
+26.19
+23.55
+27.90
+28.33
+29.44
+29.27
+29.35
+30.12
+29.69
+λ
+=
+0.00001
+\lambda=0.00001
+26.37
+24.23
+26.02
+27.30
+27.39
+28.24
+28.50
+28.07
+28.67
+28.33
+Table 20:
+Llama 560M – Plain SVD – ARC-Easy
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+26.09
+25.72
+26.14
+28.79
+34.64
+42.21
+47.52
+52.78
+54.08
+56.82
+λ
+=
+0.000005
+\lambda=0.000005
+26.43
+26.22
+39.02
+50.08
+52.40
+53.41
+54.04
+54.12
+54.38
+54.55
+λ
+=
+0.00001
+\lambda=0.00001
+24.92
+27.61
+45.50
+49.45
+52.02
+52.78
+52.95
+53.32
+53.49
+53.54
+Table 21:
+Llama 560M – Plain SVD – HellaSwag
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+26.16
+26.26
+26.39
+26.80
+30.80
+35.87
+40.84
+42.88
+43.93
+44.32
+λ
+=
+0.000005
+\lambda=0.000005
+25.70
+26.44
+31.60
+37.18
+39.74
+40.63
+41.31
+41.85
+42.02
+42.45
+λ
+=
+0.00001
+\lambda=0.00001
+26.21
+26.50
+34.22
+37.00
+38.74
+39.69
+40.15
+40.32
+40.47
+40.71
+Table 22:
+Llama 560M – Plain SVD – LAMBADA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+0.00
+0.00
+0.00
+0.37
+3.28
+16.51
+26.14
+31.19
+33.67
+36.43
+λ
+=
+0.000005
+\lambda=0.00</p>
+
+<p>0005
+0.00
+0.00
+9.37
+23.91
+30.39
+34.14
+35.09
+35.07
+34.80
+35.94
+λ
+=
+0.00001
+\lambda=0.00001
+0.00
+0.02
+22.69
+29.40
+31.96
+33.13
+33.48
+32.58
+32.78
+33.40
+Table 23:
+Llama 560M – Plain SVD – OpenBookQA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+28.20
+25.40
+23.00
+25.60
+27.60
+33.60
+35.80
+37.20
+35.20
+34.80
+λ
+=
+0.000005
+\lambda=0.000005
+29.00
+26.60
+27.80
+31.00
+33.80
+34.00
+35.00
+34.40
+34.60
+34.40
+λ
+=
+0.00001
+\lambda=0.00001
+26.20
+24.60
+31.20
+31.20
+32.20
+33.20
+34.20
+34.80
+34.60
+35.20
+Table 24:
+Llama 560M – Plain SVD – PIQA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+50.54
+50.16
+50.54
+53.54
+56.64
+60.07
+64.15
+66.43
+68.12
+69.04
+λ
+=
+0.000005
+\lambda=0.000005
+50.05
+48.20
+58.16
+62.79
+65.18
+66.49
+67.52
+67.85
+67.79
+68.23
+λ
+=
+0.00001
+\lambda=0.00001
+49.40
+51.74
+61.32
+64.09
+65.72
+65.89
+66.54
+67.03
+66.97
+66.92
+Table 25:
+Llama 560M – Plain SVD – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+21391.07
+40587.82
+21837.16
+30551.34
+581.20
+55.90
+28.62
+20.61
+17.10
+12.61
+λ
+=
+0.000005
+\lambda=0.000005
+42353.88
+14071.56
+93.47
+24.59
+17.41
+15.06
+14.11
+13.71
+13.54
+13.38
+λ
+=
+0.00001
+\lambda=0.00001
+72488.98
+2113.69
+31.16
+19.55
+16.39
+15.05
+14.43
+14.15
+13.97
+13.76
+Table 26:
+Llama 560M – SVD-LLM (whitened) – ARC-Challenge
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+25.17
+23.38
+23.21
+23.72</p>
+
+<p>24.91
+25.34
+28.07
+27.56
+28.33
+30.55
+λ
+=
+0.000005
+\lambda=0.000005
+25.68
+23.55
+24.74
+27.47
+27.82
+28.33
+29.01
+29.61
+29.78
+29.69
+λ
+=
+0.00001
+\lambda=0.00001
+23.46
+22.27
+27.39
+27.39
+27.22
+28.07
+28.33
+28.50
+28.50
+28.33
+Table 27:
+Llama 560M – SVD-LLM (whitened) – ARC-Easy
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+25.25
+27.36
+31.65
+35.52
+42.34
+47.39
+51.35
+54.08
+55.60
+56.82
+λ
+=
+0.000005
+\lambda=0.000005
+25.88
+31.99
+41.25
+50.08
+50.97
+53.16
+53.83
+54.17
+54.59
+54.55
+λ
+=
+0.00001
+\lambda=0.00001
+27.69
+37.67
+46.42
+49.96
+52.10
+52.82
+53.62
+53.24
+53.28
+53.54
+Table 28:
+Llama 560M – SVD-LLM (whitened) – HellaSwag
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+25.65
+26.16
+27.06
+29.72
+33.40
+36.82
+39.28
+41.12
+42.32
+44.32
+λ
+=
+0.000005
+\lambda=0.000005
+25.35
+27.64
+32.36
+36.63
+38.54
+40.49
+41.30
+41.59
+41.92
+42.45
+λ
+=
+0.00001
+\lambda=0.00001
+25.85
+28.91
+33.84
+36.73
+38.17
+39.11
+39.75
+40.19
+40.43
+40.71
+Table 29:
+Llama 560M – SVD-LLM (whitened) – LAMBADA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+0.00
+0.00
+0.62
+4.95
+13.86
+20.98
+25.67
+28.59
+31.85
+36.43
+λ
+=
+0.000005
+\lambda=0.000005
+0.06
+3.36
+21.42
+29.05
+32.84
+35.16
+35.44
+35.30
+35.30
+35.94
+λ
+=
+0.00001
+\lambda=0.00001
+0.00
+4.99
+22.34
+28.76
+29.58
+31.79
+32.56
+32.85
+33.28
+33.40
+Table 30:
+Llama 560M – SVD-LLM (whitened) – OpenBookQA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg</p>
+
+<p>. (
+λ
+=
+0
+\lambda=0
+)
+29.60
+28.60
+25.60
+27.20
+27.40
+31.60
+33.00
+34.60
+34.60
+34.80
+λ
+=
+0.000005
+\lambda=0.000005
+25.80
+26.80
+28.20
+30.60
+34.40
+34.20
+33.80
+34.60
+34.80
+34.40
+λ
+=
+0.00001
+\lambda=0.00001
+27.20
+24.40
+29.60
+31.80
+31.00
+33.00
+33.80
+34.40
+34.00
+35.20
+Table 31:
+Llama 560M – SVD-LLM (whitened) – PIQA
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+50.49
+50.82
+52.83
+54.79
+59.96
+63.28
+65.40
+66.38
+67.46
+69.04
+λ
+=
+0.000005
+\lambda=0.000005
+50.54
+54.30
+60.01
+63.87
+65.61
+67.03
+66.81
+67.63
+68.01
+68.23
+λ
+=
+0.00001
+\lambda=0.00001
+50.38
+55.77
+61.64
+63.93
+64.64
+66.27
+66.59
+66.59
+66.92
+66.92
+Table 32:
+Llama 560M – SVD-LLM (whitened) – FineWeb-Edu perplexity
+λ
+\lambda
+0.100
+0.200
+0.300
+0.400
+0.500
+0.600
+0.700
+0.800
+0.900
+1.000
+Unreg. (
+λ
+=
+0
+\lambda=0
+)
+89505.28
+7759.18
+475.48
+82.92
+36.62
+23.30
+18.17
+15.68
+14.33
+12.61
+λ
+=
+0.000005
+\lambda=0.000005
+9702.74
+187.39
+35.58
+20.72
+16.35
+14.67
+13.97
+13.65
+13.52
+13.38
+λ
+=
+0.00001
+\lambda=0.00001
+1080.51
+76.44
+25.46
+18.30
+15.93
+14.87
+14.37
+14.10
+13.93
+13.76
+Appendix L
+Overhead on LLM training
+As noted before, our main results use the original OLMo Llama-like implementation, which uses
+OLMoLlamaBlock
+and computes attention manually. To provide a more realistic benchmark, we also measure overhead under several implementation choices. Specifically, we benchmark
+OLMoLlamaBlock
+, which uses separate Q, K, and V projections, with both manual attention and fused attention; we add the fused attention</p>
+
+<p>variant by modifying the block. We also benchmark
+OLMoSequentialBlock
+, which uses a single shared QKV projection and only uses fused attention. Here, fused attention refers to
+torch.nn.functional.scaled_dot_product_attention
+.
+For each model/configuration, we run four matched pairs of jobs. Each pair consists of two independent training runs with identical model size, attention implementation, block type, microbatch size, data, and benchmark window. One baseline is run without regularization and one run with regularization. Within a pair, the two runs are performed on the exact same node, as we observed slight overall performance variations per node. For these, we use autotuning in the Polar Express compilation step, which we observed to yield slight gains in terms of overhead (unlike in the vision benchmarks).
+Each individual run measures the wall-clock time for steps 101–700. The 135M experiments use 4 H100 GPUs, and the 560M experiments use 8 H100 GPUs, following our main experiments.
+We aggregate results by first computing the overhead for each matched pair,
+100
+×
+(
+T
+reg
+,
+i
+T
+base
+,
+i
+−
+1
+)
+,
+100\times\left(\frac{T_{\mathrm{reg},i}}{T_{\mathrm{base},i}}-1\right),
+where
+T
+reg
+,
+i
+T_{\mathrm{reg},i}
+and
+T
+base
+,
+i
+T_{\mathrm{base},i}
+are the 600-step wall times for pair
+i
+i
+. We report the mean and standard deviation of these paired overheads. Seconds and tokens/sec are reported as arithmetic means over the corresponding baseline or regularized runs. Peak memory is comp</p>
+
+<p>uted similarly, and was stable across runs. The reported quantities are per device, and the peak memory is taken as the maximum over all GPUs.
+Results are shown in
+Table
+˜
+33
+. MBS denotes the microbatch size per GPU. Note that, for the sake of fairness, it is adjusted for fused attention runs because each sequence consumes less memory. On average, overhead remains below 1% across the different settings, although individual runs can slightly exceed 1%. Peak memory overhead is negligible in these benchmarks.
+Table 33
+:
+LLM overhead benchmark summary.
+Size
+Attention
+Block
+MBS
+Reg.
+Seconds
+Tokens/sec
+Overhead
+Peak mem. (GB)
+135M
+Manual
+Llama
+32
+no
+735.031
+106,992.99
+0.000%
+58.890
+135M
+Manual
+Llama
+32
+yes
+738.614
+106,474.08
+0.487%
+±
+\pm
+0.042%
+59.010
+135M
+SDPA
+Llama
+64
+no
+355.179
+221,418.77
+0.000%
+56.810
+135M
+SDPA
+Llama
+64
+yes
+358.113
+219,606.97
+0.826%
+±
+\pm
+0.275%
+56.930
+135M
+SDPA
+Sequential
+64
+no
+345.173
+227,837.61
+0.000%
+56.780
+135M
+SDPA
+Sequential
+64
+yes
+347.225
+226,491.57
+0.594%
+±
+\pm
+0.122%
+56.930
+560M
+Manual
+Llama
+12
+no
+1,267.318
+31,027.41
+0.000%
+72.880
+560M
+Manual
+Llama
+12
+yes
+1,276.090
+30,814.13
+0.692%
+±
+\pm
+0.003%
+72.890
+560M
+SDPA
+Llama
+24
+no
+616.515
+63,780.88
+0.000%
+61.010
+560M
+SDPA
+Llama
+24
+yes
+622.627
+63,154.74
+0.991%
+±
+\pm
+0.014%
+61.020
+560M
+SDPA
+Sequential
+24
+no
+596.743
+65,894.00
+0.000%
+61.030
+560M
+SDPA
+Sequential
+24
+yes
+602.191
+65,297.77
+0.913%
+±
+\pm
+0.079%
+61.040
+Appendix M
+All Llama 135M Singular Values
+Figure 5
+:
+Singular value spectra for all layers of Llama 1</p>
+
+<p>35M。不同的曲线对应于不同的
+λ
+\lambda
+值。正如正文所述，只有 Transformer 块内部的层进行了正则化，但为了完整性，我们也包含了权重嵌入和最终投影层。
+LLM 使用披露
+在这项工作中，我们以有限的辅助角色使用了 LLM 工具。具体而言，除了人工搜索外，它们还帮助识别了潜在的相关工作。所有引用的文献均由作者挑选并阅读；LLM 主要协助搜索。我们还使用 LLM 来讨论我们的研究想法，建议可能的证明步骤，检查现有技术论证的表述，支持代码开发，以及校对或帮助润色部分写作。所有呈现的结果均由作者检查和验证。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

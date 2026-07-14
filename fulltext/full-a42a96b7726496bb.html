@@ -1,0 +1,4731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习矩阵李群上分布式因子图优化的自适应求解器 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">学习矩阵李群上分布式因子图优化的自适应求解器</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-07-09</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2607.08735" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Learning Adaptive Solvers for Distributed Factor Graph Optimization on Matrix Lie Groups</h4>
+            <p><strong>中文摘要：</strong> 针对现有分布式因子图优化求解器依赖手动调参且局限于刚体位姿图的问题，本文提出学习增强框架DeepCORD。该框架将黎曼优化器展开为可微迭代，通过自监督反馈策略根据优化阶段和通信状态动态调整求解器参数，实现了在矩阵李群上的自适应分布式优化，并支持同步与异步通信。在真实世界的SE(3)位姿图优化和SL(4)射影子图对齐实验中，DeepCORD在绝大多数基准测试上优于现有基线，取得了更低的目标值。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>\NAT@set@cites
+Learning Adaptive Solvers for Distributed Factor Graph Optimization on Matrix Lie Groups
+Jaeho Shin
+University of Michigan
+Maani Ghaffari
+University of Michigan
+Yulun Tian
+University of Michigan
+Abstract
+Modern robotic perception increasingly involves large-scale geometric optimization problems distributed across multiple robots or sessions. However, existing distributed solvers often depend on brittle hand tuning and primarily target rigid body pose graphs. To address this, we present DeepCORD, a learning-augmented framework for distributed factor graph optimization on general matrix Lie groups. By unfolding a parallel and accelerated Riemannian optimizer into differentiable iterations, DeepCORD learns a self-supervised feedback policy that dynamically adapts solver parameters according to the optimization phase and communication status. The resulting method enables adaptive distributed optimization over matrix Lie groups under both synchronous and asynchronous communication regimes. Extensive experiments on real-world
+SE
+\mathrm{SE}
+(3) pose graph optimization and
+SL
+\mathrm{SL}
+(4) projective submap alignment show that our method achieves lower objective values than existing distributed baselines on most benchmarks across realistic operating scenarios.
+Figure 1:
+DeepCORD aligns feed-forward SLAM submaps from four robots through distributed
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+optimization, recovering a globally consistent map over a custom dataset spanning approximatel</p>
+
+<p>y 100 m.
+1
+Introduction
+Modern robotic perception backends increasingly require solving large-scale geometric optimization problems, where many noisy measurements must be fused into a globally consistent spatial estimate.
+Factor graphs
+[
+11
+,
+7
+]
+provide a common abstraction for these problems and support optimization over different matrix Lie groups, including rigid motions for pose graph SLAM
+[
+41
+]
+, similarity transforms for monocular reconstruction
+[
+48
+]
+, and 3D homographies for recent systems based on geometric foundation models
+[
+30
+,
+29
+]
+.
+While centralized nonlinear solvers remain powerful when full graph access is available, many multi-robot, multi-device, and multi-session systems naturally produce factor graphs that are partitioned across robots or devices
+[
+25
+,
+53
+,
+24
+]
+. In such settings, optimization must respect data locality, limited bandwidth, and potentially asynchronous communication.
+Recent distributed solvers address this deployment setting by decomposing the backend across robots or graph partitions.
+Methods based on distributed optimization
+[
+51
+,
+16
+,
+32
+,
+45
+]
+and probabilistic message passing
+[
+35
+,
+34
+,
+28
+]
+demonstrate that optimization can be achieved via local computation with periodic or asynchronous communication.
+Nevertheless, the practical performance of these solvers is currently highly sensitive to manually selected solver parameters, such as step sizes, penalty parameters, damping coefficients, and restart rules.
+Such sensitivity mak</p>
+
+<p>es deployment brittle as tuned parameter settings fail to transfer across graph topology, noise level, or communication regime.
+Further, existing distributed solvers predominantly focus on rigid body SE(3) pose graphs, while recent perception systems increasingly involve optimization over broader matrix Lie groups.
+Contributions.
+Inspired by learning-to-optimize (L2O) frameworks
+[
+8
+]
+, we propose DeepCORD, a learning-augmented framework for distributed factor graph optimization on matrix Lie groups.
+DeepCORD builds on CORD
+[
+45
+]
+, a state-of-the-art distributed solver based on second-order Riemannian dynamics, and unfolds its iterations into a differentiable computation graph. Rather than learning black-box state updates, DeepCORD learns a local feedback policy that predicts adaptive solver parameters from local optimization context.
+The resulting learned update preserves the distributed structure while adapting its dynamics across problem instances, optimization stages, and communication regimes.
+In summary,
+•
+We present
+DeepCORD
+, a learning-augmented distributed optimizer on matrix Lie groups.
+•
+We design a self-supervised approach to train DeepCORD via deep unfolding, by minimizing unrolled objectives without relying on supervision from optimal solutions.
+•
+We evaluate DeepCORD on an extensive collection of real-world pose graph optimization (PGO) and projective submap alignment problems.
+DeepCORD outperforms hand-tuned baselines across communication regimes, achieving</p>
+
+<p>the best results on 21 out of 26 PGO benchmarks and all three projective alignment datasets.
+2
+Related Work
+Factor Graph Optimization.
+Factor graphs support optimization over different matrix Lie groups, including rotation averaging
+[
+46
+,
+12
+]
+, pose graph optimization (PGO)
+[
+41
+]
+, and scale-drift correction with similarity transforms
+[
+48
+]
+.
+Recently, VGGT-SLAM
+[
+30
+,
+29
+]
+uses the special linear group
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+to represent projective transformations in homogeneous coordinates for aligning feed-forward SLAM submaps under projective ambiguity.
+The standard approach to factor graph optimization uses centralized nonlinear least-squares solvers
+[
+10
+,
+1
+,
+23
+]
+.
+Recently,
+distributed solvers
+have gained increasing attention.
+DC2-PGO
+[
+52
+]
+solves distributed PGO via a sparse semidefinite relaxation.
+Other methods improve scalability or robustness through accelerated
+majorization minimization
+[
+16
+,
+17
+]
+, asynchronous parallel
+gradient descent
+[
+51
+]
+,
+on-manifold consensus ADMM
+[
+32
+,
+31
+]
+,
+and overlapping domain decomposition
+[
+47
+]
+. A complementary class of solvers is based on Gaussian belief propagation (GBP), with applications to distributed localization and sensor calibration
+[
+35
+,
+34
+,
+28
+]
+. Despite the progress, the practical performance of existing distributed solvers depends heavily on parameter tuning. DeepCORD addresses this challenge through a learned policy, enhancing empirical robustness while preserving the principled geometric updates fr</p>
+
+<p>自底层求解器。
+学习优化（Learning to optimize, L2O）是一种优化框架，它利用</p>
+
+<p>现代SLAM和3D重建系统
+[
+11
+,
+7
+]
+.
+形式上，设
+G
+⊆
+GL
+​
+(
+n
+)
+G\subseteq\mathrm{GL}(n)
+为具有李代数
+𝔤
+\mathfrak{g}
+的矩阵李群。
+设
+𝒢
+=
+(
+𝒱
+,
+ℰ
+)
+\mathcal{G}=(\mathcal{V},\mathcal{E})
+表示一个连通因子图，其中每个节点
+u
+∈
+𝒱
+u\in\mathcal{V}
+表示一个优化变量
+X
+u
+∈
+G
+X_{u}\in G
+。
+每条边
+(
+u
+,
+v
+)
+∈
+ℰ
+(u,v)\in</p>
+
+<p>(measurement) set
+ℰ
+=
+ℰ
+1
+⊎
+…
+⊎
+ℰ
+N
+\mathcal{E}=\mathcal{E}_{1}\uplus\ldots\uplus\mathcal{E}_{N}
+, by arbitrarily assigning each inter-robot edge to one of the incident robots; see Fig.
+2
+.
+Given the edge partitioning, each robot has a corresponding local cost defined by summing all edge costs it owns,
+𝒞
+i
+​
+(
+X
+)
+≔
+∑
+(
+u
+,
+v
+)
+∈
+ℰ
+i
+c
+u
+​
+v
+​
+(
+X
+u
+​
+Z
+u
+​
+v
+,
+X
+v
+)
+.
+\mathcal{C}^{i}(X)\coloneq\sum_{(u,v)\in\mathcal{E}_{i}}c_{uv}(X_{u}Z_{uv},X_{v}).
+(2)
+Figure 3:
+Distributed PGO solved by the proposed method. Each color denotes a different robot.
+The overall cost in (
+1
+) is the sum of all local costs. Importantly, for each robot
+i
+i
+to evaluate
+𝒞
+i
+\mathcal{C}^{i}
+, it only needs access to its own nodes
+X
+i
+X^{i}
+and a subset of boundary nodes from neighboring robots.
+In this work, we study the following two important instantiations of the optimization problem in (
+1
+).
+Pose Graph Optimization (PGO) over
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+.
+State-of-the-art multi-robot SLAM systems use PGO to correct
+accumulated odometry drift and improve global consistency of trajectory estimation
+[
+25
+,
+53
+,
+24
+]
+; see Fig.
+3
+. In PGO, each node variable
+X
+u
+X_{u}
+models a robot pose in the global frame as an element of the rigid body motion group
+SE
+​
+(
+3
+)
+=
+{
+[
+R
+,
+t
+;
+𝟎
+⊤
+,
+1
+]
+∈
+ℝ
+4
+×
+4
+∣
+R
+∈
+SO
+​
+(
+3
+)
+,
+t
+∈
+ℝ
+3
+}
+\mathrm{SE}(3)=\{[R,t;\mathbf{0}^{\top},1]\in\mathbb{R}^{4\times 4}\mid R\in\mathrm{SO}(3),\ t\in\mathbb{R}^{3}\}
+.
+The associated Lie algebra
+𝔰
+​
+𝔢
+​
+(
+3
+)
+=
+{
+[
+Ω
+,
+ρ
+;
+𝟎
+⊤
+,
+0</p>
+
+<p>]
+∈
+ℝ
+4
+×
+4
+∣
+Ω
+∈
+𝔰
+​
+𝔬
+​
+(
+3
+)
+,
+ρ
+∈
+ℝ
+3
+}
+\mathfrak{se}(3)=\{[\Omega,\rho;\mathbf{0}^{\top},0]\in\mathbb{R}^{4\times 4}\mid\Omega\in\mathfrak{so}(3),\rho\in\mathbb{R}^{3}\}
+is 6-dimensional.
+Following
+[
+41
+,
+16
+,
+52
+,
+47
+,
+45
+]
+, we define the edge cost using the squared chordal distance
+c
+u
+​
+v
+=
+‖
+X
+u
+​
+Z
+u
+​
+v
+−
+X
+v
+‖
+Ω
+u
+​
+v
+2
+c_{uv}=\left\|X_{u}Z_{uv}-X_{v}\right\|^{2}_{\Omega_{uv}}
+where the weighted norm is defined as
+‖
+A
+‖
+Ω
+2
+≔
+tr
+​
+(
+A
+​
+Ω
+​
+A
+⊤
+)
+\|A\|_{\Omega}^{2}\coloneq\mathrm{tr}\left(A\Omega A^{\top}\right)
+.
+Ω
+=
+blkdiag
+​
+(
+ω
+R
+​
+I
+3
+,
+ω
+t
+)
+\Omega=\mathrm{blkdiag}(\omega_{R}I_{3},\omega_{t})
+is the precision matrix with scalar weights
+ω
+R
+,
+ω
+t
+&gt;
+0
+\omega_{R},\omega_{t}&gt;0
+for rotation and translation, respectively.
+Projective Submap Alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+.
+Recent geometric foundation models such as
+[
+54
+]
+directly output 3D reconstruction from uncalibrated images.
+To improve global reconstruction, state-of-the-art SLAM systems
+[
+30
+,
+29
+]
+perform submap-level projective alignment.
+In this problem, each node variable
+X
+u
+X_{u}
+represents a 3D homography that maps local poses and points in a submap to a global reference frame, and is modeled as an element of the special linear group
+SL
+​
+(
+4
+)
+=
+{
+X
+∈
+ℝ
+4
+×
+4
+∣
+det
+(
+X
+)
+=
+1
+}
+\mathrm{SL}(4)=\{X\in\mathbb{R}^{4\times 4}\mid\det(X)=1\}
+to account for projective ambiguity. The associated Lie algebra
+𝔰
+​
+𝔩
+​
+(
+4
+)
+=
+{
+A
+∈
+ℝ
+4
+×
+4
+∣
+tr
+​
+(
+A
+)
+=
+0
+}
+\mathfrak{sl}(4)=\{A\in\mathbb{R}^{4\times 4</p>
+
+<p>}\mid\mathrm{tr}(A)=0\}
+is 15-dimensional.
+Following VGGT-SLAM
+[
+30
+,
+29
+]
+,
+we define the alignment error using the geodesic residual
+c
+u
+​
+v
+=
+‖
+log
+⁡
+(
+Z
+u
+​
+v
+−
+1
+​
+X
+u
+−
+1
+​
+X
+v
+)
+‖
+Ω
+u
+​
+v
+2
+,
+c_{uv}=\left\|\log\!\left(Z_{uv}^{-1}X_{u}^{-1}X_{v}\right)\right\|^{2}_{\Omega_{uv}},
+where
+log
+:
+SL
+​
+(
+4
+)
+→
+𝔰
+​
+𝔩
+​
+(
+4
+)
+\log:\mathrm{SL}(4)\rightarrow\mathfrak{sl}(4)
+denotes the logarithm mapping.
+The weighted norm is defined as
+‖
+A
+‖
+Ω
+2
+≔
+ψ
+​
+(
+A
+)
+⊤
+​
+Ω
+​
+ψ
+​
+(
+A
+)
+\|A\|_{\Omega}^{2}\coloneq\psi(A)^{\top}\Omega\psi(A)
+where
+ψ
+​
+(
+A
+)
+∈
+ℝ
+15
+\psi(A)\in\mathbb{R}^{15}
+denotes the coordinate representation of
+A
+A
+in a fixed basis of
+𝔰
+​
+𝔩
+​
+(
+4
+)
+\mathfrak{sl}(4)
+and
+Ω
+=
+ω
+​
+I
+15
+\Omega=\omega I_{15}
+is the precision matrix with positive scalar weight
+ω
+\omega
+.
+4
+Proposed Method
+DeepCORD arises from unfolding the iterations of CORD
+[
+45
+]
+, a state-of-the-art distributed solver, to a learning-augmented framework.
+In the following, we will review necessary background, discuss the neural network architecture,
+and then present the self-supervised training approach.
+Details about the network architecture, feature definitions, and training setup are deferred to the Appendix.
+Background: CORD
+[
+45
+]
+.
+CORD applies the Euler–Poincaré equation
+[
+5
+]
+to solve distributed optimization over general matrix Lie groups
+G
+G
+.
+For each node in the factor graph
+X
+u
+∈
+G
+X_{u}\in G
+, let
+ξ
+u
+≔
+(
+X
+u
+−
+1
+​
+X
+˙
+u
+)
+∈
+𝔤
+\xi_{u}\coloneqq(X_{u}^{-1}\dot{X}_{u})\in\mathfrak{g}
+denote its body velo</p>
+
+<p>city.
+In addition, let
+ξ
+∈
+𝔤
+|
+𝒱
+|
+\xi\in\mathfrak{g}^{|\mathcal{V}|}
+denote the stacked body velocity over all variables in the factor graph.
+CORD formulates a continuous time system that governs the evolution of the optimization variables,
+M
+​
+ξ
+˙
+=
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+−
+D
+​
+ξ
++
+ad
+ξ
+∗
+​
+(
+M
+​
+ξ
+)
+−
+M
+˙
+​
+ξ
+.
+M\dot{\xi}=-\operatorname{grad}_{X}\mathcal{C}(X)-D\xi+\text{ad}^{*}_{\xi}(M\xi)-\dot{M}{\xi}.
+(3)
+Above,
+M
+​
+ξ
+M\xi
+is a momentum term,
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+-\operatorname{grad}_{X}\mathcal{C}(X)
+is the body-trivialized negative gradient of the cost function that serves as the potential energy,
+−
+D
+​
+ξ
+-D\xi
+is a damping term, and
+ad
+ξ
+∗
+⁡
+(
+M
+​
+ξ
+)
+\operatorname{ad}^{*}_{\xi}(M\xi)
+is the co-adjoint term that accounts for Lie-group geometry. The
+M
+˙
+​
+ξ
+\dot{M}\xi
+term accounts for possibly time-varying mass matrix
+M
+M
+.
+In
+[
+45
+]
+, it is shown that with suitable choices of algorithm parameters, solving (
+3
+) recovers a local minimizer to the optimization problem.
+In practice, CORD solves (
+3
+) via a distributed integration scheme in which
+M
+=
+blkdiag
+⁡
+(
+M
+1
+,
+…
+,
+M
+N
+)
+M=\operatorname{blkdiag}(M^{1},\ldots,M^{N})
+and
+D
+=
+blkdiag
+⁡
+(
+D
+1
+,
+…
+,
+D
+N
+)
+D=\operatorname{blkdiag}(D^{1},\ldots,D^{N})
+are block-diagonal matrices. Specifically, CORD chooses
+M
+i
+=
+m
+​
+H
+i
+M^{i}=mH^{i}
+and
+D
+i
+=
+d
+​
+H
+i
+D^{i}=dH^{i}
+, where
+m
+,
+d
+&gt;
+0
+m,d&gt;0
+are scalar parameters constant across all robots and iterations, and
+H
+i
+H^{i}
+is the diagonal block of the Gauss-Newton Hessian approxima</p>
+
+<p>tion corresponding to robot
+i
+i
+.
+This design natually decomposes the integration across robots:
+at every discretized iteration
+k
+k
+, each robot
+i
+i
+computes the following update in parallel,
+ξ
+˙
+k
+i
+=
+(
+m
+​
+H
+k
+i
+)
+−
+1
+​
+(
+−
+grad
+X
+k
+i
+⁡
+𝒞
+​
+(
+X
+k
+)
+−
+d
+​
+H
+k
+i
+​
+ξ
+k
+i
++
+ad
+ξ
+k
+i
+∗
+⁡
+(
+m
+​
+H
+k
+i
+​
+ξ
+k
+i
+)
+−
+m
+​
+H
+˙
+k
+i
+​
+ξ
+k
+i
+)
+,
+\displaystyle\dot{\xi}^{i}_{k}=(mH^{i}_{k})^{-1}\big(-\operatorname{grad}_{X_{k}^{i}}\mathcal{C}(X_{k})-dH^{i}_{k}\xi^{i}_{k}+\operatorname{ad}^{*}_{\xi^{i}_{k}}(mH^{i}_{k}\xi^{i}_{k})-m\dot{H}^{i}_{k}\xi^{i}_{k}\big),
+(4)
+ξ
+k
++
+1
+i
+=
+ξ
+k
+i
++
+ξ
+˙
+k
+i
+​
+Δ
+​
+t
+,
+X
+k
++
+1
+i
+=
+X
+k
+i
+​
+exp
+⁡
+(
+ξ
+k
++
+1
+i
+​
+Δ
+​
+t
+)
+.
+\displaystyle\xi^{i}_{k+1}=\xi^{i}_{k}+\dot{\xi}^{i}_{k}\Delta t,\quad X^{i}_{k+1}=X^{i}_{k}\exp\!\left(\xi^{i}_{k+1}\Delta t\right).
+(5)
+Eq.
+4
+solves the local acceleration term
+ξ
+˙
+k
+i
+\dot{\xi}^{i}_{k}
+according to (
+3
+), and (
+5
+) applies a semi-implicit Euler step to update the body velocity and the variable using a step size
+Δ
+​
+t
+&gt;
+0
+\Delta t&gt;0
+.
+DeepCORD: Learning Adaptive Parameters via Local Feedback Policy.
+In practice, the performance of CORD depends strongly on the manually tuned mass
+m
+m
+, damping
+d
+d
+, and step size
+Δ
+​
+t
+\Delta t
+parameters.
+Our central insight is to replace manual tuning with an adaptive local feedback policy
+π
+θ
+\pi_{\theta}
+as shown in Fig.
+4
+. The weights
+θ
+\theta
+are shared across all robots and problem instances, enabling generalization across graph sizes, topologies, and communication regimes.
+At every i</p>
+
+<p>teration
+k
+k
+, each robot
+i
+i
+applies this shared policy to local information to adjust its own parameters,
+m
+k
+i
+,
+d
+k
+i
+,
+Δ
+​
+t
+k
+i
+=
+π
+θ
+​
+(
+𝒢
+k
+i
+)
+,
+m^{i}_{k},\ d^{i}_{k},\ \Delta t^{i}_{k}=\pi_{\theta}(\mathcal{G}^{i}_{k}),
+(6)
+and uses these updated parameters in the next iteration according to (
+4
+)-(
+5
+).
+The input to the policy is a local
+augmented graph
+𝒢
+k
+i
+\mathcal{G}^{i}_{k}
+that encodes optimization context.
+Specifically,
+𝒢
+k
+i
+\mathcal{G}^{i}_{k}
+extends the robot’s own subgraph by two hops to include the most recently received boundary nodes from neighboring robots; see Fig.
+2
+.
+We attach compact node-, edge-, and graph-level attributes to
+𝒢
+k
+i
+\mathcal{G}^{i}_{k}
+.
+Specifically, node attributes contain body velocity
+ξ
+k
+\xi_{k}
+, local gradient
+g
+k
+g_{k}
+, random-walk structural encoding (RWSE)
+[
+15
+]
+, and a communication feature
+c
+k
+c_{k}
+capturing delay statistics.
+Edge attributes contain edge residual
+r
+k
+r_{k}
+, precision vector
+ω
+\omega
+, and a robot-level global context vector
+f
+k
+f_{k}
+from previous iteration.
+Graph-level attributes contain intra-robot residual norm
+r
+¯
+intra
+,
+k
+\bar{r}_{\text{intra},k}
+, the inter-robot residual norm
+r
+¯
+inter
+,
+k
+\bar{r}_{\text{inter},k}
+, the robot gradient norm
+g
+¯
+k
+\bar{g}_{k}
+, and the previous update norm
+|
+ξ
+k
+​
+Δ
+​
+t
+k
+|
+|\xi_{k}\Delta t_{k}|
+.
+The exact attribute definitions are provided in the Appendix.
+At every iteration, the policy
+π
+θ
+\pi_{\theta}
+processes the graph attributes using a graph encoder</p>
+
+<p>followed by a MLP parameter head.
+Node and edge attributes are first embedded by small MLPs and then processed by GPS layers
+[
+39
+]
+.
+The results are pooled and concatenated with graph-level attributes before being passed to the parameter head to predict
+m
+k
+i
+m^{i}_{k}
+,
+d
+k
+i
+d^{i}_{k}
+, and
+Δ
+​
+t
+k
+i
+\Delta t^{i}_{k}
+.
+Notably, DeepCORD retains the communication efficiency of CORD and each iteration uses a single round of communication.
+Figure 4:
+Proposed architecture of the adaptive local feedback policy
+π
+θ
+\pi_{\theta}
+in DeepCORD.
+Self-Supervised Learning via Deep Unfolding.
+We train the policy
+π
+θ
+\pi_{\theta}
+in a self-supervised manner by
+minimizing the cost function evaluated along the unrolled iterates.
+Let
+𝒮
+=
+{
+ζ
+j
+}
+j
+=
+1
+H
+\mathcal{S}=\{\zeta_{j}\}_{j=1}^{H}
+denote a set of
+H
+H
+training problem instances.
+For each problem
+ζ
+j
+\zeta_{j}
+, let
+X
+k
+≡
+X
+k
+​
+(
+ζ
+j
+;
+θ
+)
+X_{k}\equiv X_{k}(\zeta_{j};\theta)
+denote the unrolled solution after
+k
+k
+DeepCORD iterations where we drop the problem index
+j
+j
+to simplify notation.
+For each robot
+i
+i
+, we normalize its local cost by intra-robot edge count,
+𝒞
+¯
+i
+​
+(
+X
+k
+)
+=
+𝒞
+i
+​
+(
+X
+k
+)
+/
+(
+|
+ℰ
+intra
+i
+|
++
+ϵ
+)
+\bar{\mathcal{C}}^{i}(X_{k})=\mathcal{C}^{i}(X_{k})/(|\mathcal{E}_{\mathrm{intra}}^{i}|+\epsilon)
+which we find to improve training performance.
+In addition, we introduce two regularization terms.
+First, the
+monotonicity
+term
+B
+k
+i
+≔
+max
+⁡
+(
+0
+,
+𝒞
+¯
+i
+​
+(
+X
+k
+)
+−
+𝒞
+¯
+i
+​
+(
+X
+k
+−
+1
+)
+)
+B^{i}_{k}\coloneq\max(0,\bar{\math</p>
+
+<p>cal{C}}^{i}(X_{k})-\bar{\mathcal{C}}^{i}(X_{k-1}))
+penalizes cost increase for consecutive iterations.
+Second, motivated by the observation in
+[
+45
+]
+, the
+damping
+term
+D
+k
+i
+≔
+max
+⁡
+{
+0
+,
+d
+k
+i
+−
+d
+k
+−
+1
+i
+​
+exp
+⁡
+[
+−
+β
+/
+(
+t
+k
+−
+1
+i
++
+τ
+)
+]
+}
+D^{i}_{k}\coloneq\max\{0,\,d^{i}_{k}-d_{k-1}^{i}\exp[-\beta/(t^{i}_{k-1}+\tau)]\}
+encourages decaying damping coefficient
+d
+d
+where
+β
+,
+τ
+\beta,\tau
+are constants and
+t
+k
+−
+1
+i
+t^{i}_{k-1}
+is the cumulative integration time.
+The loss for each problem
+ζ
+j
+\zeta_{j}
+averages the normalized cost over all robots along
+K
+=
+50
+K=50
+unrolled iterations together with the regularization terms,
+ℒ
+(
+j
+)
+≔
+1
+N
+j
+​
+K
+​
+∑
+k
+=
+1
+K
+∑
+i
+=
+1
+N
+j
+[
+𝒞
+¯
+i
+​
+(
+X
+k
+)
++
+λ
+b
+​
+B
+k
+i
++
+λ
+d
+​
+D
+k
+i
+]
+,
+\mathcal{L}^{(j)}\;\coloneq\;\frac{1}{N_{j}K}\sum_{k=1}^{K}\sum_{i=1}^{N_{j}}\Big[\,\bar{\mathcal{C}}^{\,i}(X_{k})\;+\;\lambda_{b}\,B^{\,i}_{k}\;+\;\lambda_{d}\,D^{\,i}_{k}\,\Big],
+(7)
+where
+N
+j
+N_{j}
+is the number of robots in problem
+j
+j
+.
+The overall training loss is the average over all training problems
+ℒ
+≔
+∑
+j
+=
+1
+H
+ℒ
+(
+j
+)
+/
+H
+\mathcal{L}\coloneq\sum_{j=1}^{H}\mathcal{L}^{(j)}/H
+.
+During training, recall from (
+4
+) that each DeepCORD iteration requires inverting the local Hessian
+H
+k
+i
+H^{i}_{k}
+.
+For numerical efficiency, we implement sparse preconditioned conjugate gradient and backpropagate through the linear solve via implicit differentiation as in
+[
+44
+]
+.
+For training stability, we additionally unroll a simplified ODE that
+omits the co-adjoint and ti</p>
+
+<p>me-dependent mass terms from Eq. (
+4
+). We provide an additional discussion of the simplified dynamics in the Appendx.
+Training Setup.
+We train a separate DeepCORD model for
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+and
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+optimization.
+To enable generalization, we utilize a mixture of 1,000 synthetic multi-robot pose graphs spanning five topologies (
+grid
+,
+sphere
+,
+torus
+,
+helix
+,
+random walk
+) and 1,440 real-trajectory sequences from public datasets
+[
+33
+,
+2
+,
+53
+,
+6
+,
+40
+]
+. Across the training instances, the number of robots ranges from 2 to 8, with each graph comprising approximately 350–500 poses. For projective submap alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+, we utilize the same graph setup as in PGO but generate relative measurements following the VGGT-SLAM 2.0
+[
+29
+]
+measurement model.
+Details about data curation and training configuration are discussed in the Appendix.
+5
+Experiments
+In this section, we validate DeepCORD on standard PGO over
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+and projective submap alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+. Our experiments demonstrate that DeepCORD achieves the best cost on 11 out of 13 synchronous instances and 10 out of 13 asynchronous instances, and predicts adaptive parameters that generalize to larger datasets and longer optimization iterations.
+Experiment Setup.
+To test generalization, all problems in the experiments are not seen during training.
+For PGO, we evaluate on standard benchmarks
+[
+16
+,
+45
+]
+and the real-world multi-ro</p>
+
+<p>bot S3E dataset
+[
+18
+]
+; see Fig.
+3
+.
+For projective submap alignment, we use three TUM RGB-D sequences
+[
+49
+]
+:
+fr1/room
+,
+fr2/desk
+, and
+fr3/household
+, denoted as
+TUM1
+,
+TUM2
+, and
+TUM3
+.
+In addition, we collect a larger custom real-world dataset shown in Fig.
+1
+.
+Each sequence is divided into four subsequences with overlapping fields of view.
+We first run VGGT-SLAM
+[
+30
+]
+on each subsequence to obtain local subgraphs, and then construct inter-session loop closures using the loop closure module of
+[
+30
+]
+.
+Experiments are conducted under both synchronous and asynchronous communication.
+For asynchronous communication,
+we follow
+[
+45
+]
+and simulate random inter-robot packet delay between 0 and 10 steps and random packet drop rate of
+10
+%
+10\%
+.
+For the asynchronous setting, we perform 10 Monte Carlo runs for each method and report the mean value.
+Metrics and Baselines.
+We report the cost values achieved by all methods as the main performance metric. Additional evaluation metrics regarding accuracy and efficiency are reported in the Appendix. Reference costs are obtained by the global solver SE-Sync
+[
+41
+]
+for PGO and GTSAM
+[
+10
+]
+for projective submap alignment.
+For synchronous PGO, we compare against AMM-PGO
+[
+16
+]
+, CORD
+[
+45
+]
+, and ROBO
+[
+47
+]
+. ROBO uses an overlap parameter of one, which means the method has access to 2-hop neighborhood information as in the proposed approach. Unless mentioned otherwise, all hyperparameters for the baselines are set to default values.</p>
+
+<p>For asynchronous PGO, we compare against Distributed Jacobi (DJ) and CORD, where DJ employs a preconditioned gradient descent update rule with a robot-level block-diagonal Hessian as in
+[
+51
+]
+.
+For projective submap alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+, we focus on the same asynchronous settings with DJ and CORD as baselines.
+5.1
+Pose Graph Optimization over
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+We initialize all methods using the chordal initialization scheme as in
+[
+16
+,
+45
+]
+. Results using alternative initialization are presented in the Appendix.
+Table 1:
+Synchronous and asynchronous
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+results from chordal initialization after 100 distributed iterations. The best and second-best methods within each setting are highlighted in green and yellow, respectively.
+Dataset
+# Nodes
+# Edges
+Ref.
+Synchronous
+Asynchronous
+ROBO
+AMM
+CORD
+DeepCORD
+CORD
+DJ
+DeepCORD
+Sphere
+2500
+2500
+4949
+4949
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.689
+​
+e3
+1.689\mathrm{e}{3}
+1.692
+​
+e3
+1.692\mathrm{e}{3}
+1.689
+​
+e3
+1.689\mathrm{e}{3}
+Torus
+5000
+5000
+9048
+9048
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.424
+​
+e4
+2.424\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+Grid
+8000
+8000
+22236
+22236
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.432
+​
+e4
+8.432\mathrm{e}{</p>
+
+<p>4}
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.433
+​
+e4
+8.433\mathrm{e}{4}
+8.433
+​
+e4
+8.433\mathrm{e}{4}
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+Cubicle
+5750
+5750
+16869
+16869
+7.171
+​
+e2
+7.171\mathrm{e}{2}
+7.194
+​
+e2
+7.194\mathrm{e}{2}
+7.180
+​
+e2
+7.180\mathrm{e}{2}
+7.176
+​
+e2
+7.176\mathrm{e}{2}
+7.173
+​
+e2
+7.173\mathrm{e}{2}
+7.235
+​
+e2
+7.235\mathrm{e}{2}
+7.251
+​
+e2
+7.251\mathrm{e}{2}
+7.235
+​
+e2
+7.235\mathrm{e}{2}
+Rim
+10195
+10195
+29743
+29743
+5.461
+​
+e3
+5.461\mathrm{e}{3}
+5.513
+​
+e3
+5.513\mathrm{e}{3}
+5.482
+​
+e3
+5.482\mathrm{e}{3}
+5.475
+​
+e3
+5.475\mathrm{e}{3}
+5.471
+​
+e3
+5.471\mathrm{e}{3}
+5.736
+​
+e3
+5.736\mathrm{e}{3}
+5.785
+​
+e3
+5.785\mathrm{e}{3}
+5.751
+​
+e3
+5.751\mathrm{e}{3}
+Garage
+1661
+1661
+6275
+6275
+1.263
+​
+e0
+1.263\mathrm{e}{0}
+1.267
+​
+e0
+1.267\mathrm{e}{0}
+1.268
+​
+e0
+1.268\mathrm{e}{0}
+1.265
+​
+e0
+1.265\mathrm{e}{0}
+1.266
+​
+e0
+1.266\mathrm{e}{0}
+1.280
+​
+e0
+1.280\mathrm{e}{0}
+1.283
+​
+e0
+1.283\mathrm{e}{0}
+1.280
+​
+e0
+1.280\mathrm{e}{0}
+S3E CampusRoad1
+2348
+2348
+2675
+2675
+4.365
+​
+e4
+4.365\mathrm{e}{4}
+4.379
+​
+e4
+4.379\mathrm{e}{4}
+4.374
+​
+e4
+4.374\mathrm{e}{4}
+4.376
+​
+e4
+4.376\mathrm{e}{4}
+4.373
+​
+e4
+4.373\mathrm{e}{4}
+4.394
+​
+e4
+4.394\mathrm{e}{4}
+4.395
+​
+e4
+4.395\mathrm{e}{4}
+4.397
+​
+e4
+4.397\mathrm{e}{4}
+S3E CampusRoad2
+3336
+3336
+4212
+4212
+1.018
+​
+e5
+1.018\mathrm{e}{5}
+1.019
+​
+e5
+1.019\mathrm{e}{5}
+1.019
+​
+e5
+1.019\mathrm{e}{5}
+1.019
+​
+e5
+1.019\mathrm{e}{5}
+1.019
+​
+e5
+1.019\mathrm{e}{5}
+1.022
+​
+e5
+1.022\mathrm{e}{5}
+1.022
+​
+e5
+1.022\mat</p>
+
+<p>hrm{e}{5}
+1.022
+​
+e5
+1.022\mathrm{e}{5}
+S3E CampusRoad3
+2314
+2314
+3504
+3504
+1.530
+​
+e5
+1.530\mathrm{e}{5}
+1.767
+​
+e5
+1.767\mathrm{e}{5}
+1.675
+​
+e5
+1.675\mathrm{e}{5}
+1.693
+​
+e5
+1.693\mathrm{e}{5}
+1.696
+​
+e5
+1.696\mathrm{e}{5}
+2.136
+​
+e5
+2.136\mathrm{e}{5}
+2.145
+​
+e5
+2.145\mathrm{e}{5}
+2.143
+​
+e5
+2.143\mathrm{e}{5}
+S3E Dormitory1
+2194
+2194
+2304
+2304
+2.045
+​
+e4
+2.045\mathrm{e}{4}
+2.072
+​
+e4
+2.072\mathrm{e}{4}
+2.056
+​
+e4
+2.056\mathrm{e}{4}
+2.056
+​
+e4
+2.056\mathrm{e}{4}
+2.052
+​
+e4
+2.052\mathrm{e}{4}
+2.373
+​
+e4
+2.373\mathrm{e}{4}
+2.386
+​
+e4
+2.386\mathrm{e}{4}
+2.350
+​
+e4
+2.350\mathrm{e}{4}
+S3E Library1
+1801
+1801
+2049
+2049
+2.979
+​
+e4
+2.979\mathrm{e}{4}
+3.032
+​
+e4
+3.032\mathrm{e}{4}
+3.006
+​
+e4
+3.006\mathrm{e}{4}
+3.012
+​
+e4
+3.012\mathrm{e}{4}
+2.990
+​
+e4
+2.990\mathrm{e}{4}
+3.065
+​
+e4
+3.065\mathrm{e}{4}
+3.067
+​
+e4
+3.067\mathrm{e}{4}
+3.062
+​
+e4
+3.062\mathrm{e}{4}
+S3E Library2
+519
+519
+623
+623
+2.297
+​
+e4
+2.297\mathrm{e}{4}
+2.298
+​
+e4
+2.298\mathrm{e}{4}
+2.297
+​
+e4
+2.297\mathrm{e}{4}
+2.298
+​
+e4
+2.298\mathrm{e}{4}
+2.297
+​
+e4
+2.297\mathrm{e}{4}
+2.305
+​
+e4
+2.305\mathrm{e}{4}
+2.305
+​
+e4
+2.305\mathrm{e}{4}
+2.304
+​
+e4
+2.304\mathrm{e}{4}
+S3E Tunnel1
+607
+607
+835
+835
+9.300
+​
+e4
+9.300\mathrm{e}{4}
+9.301
+​
+e4
+9.301\mathrm{e}{4}
+9.301
+​
+e4
+9.301\mathrm{e}{4}
+9.301
+​
+e4
+9.301\mathrm{e}{4}
+9.301
+​
+e4
+9.301\mathrm{e}{4}
+9.302
+​
+e4
+9.302\mathrm{e}{4}
+9.302
+​
+e4
+9.302\mathrm{e}{4}
+9.302
+​
+e4
+9.302\mathrm{e}{4}
+Synchronous Communication.
+Tab.
+1
+reports the number of nodes and
+edges, reference cost, and the co</p>
+
+<p>每种方法在无通信延迟的100次同步迭代后达到的成本。
+在同步设置下，DeepCORD在13个数据集中的11个上实现了最佳或并列最佳的成本。尽管使用了相同的两跳邻居信息，但与DeepCORD相比，ROBO导致了更高的成本。这表明我们学习到的策略能更好地加速收敛并最小化目标残差。对于CORD，我们在标准基准数据集上使用原论文中报告的参数。对于S3E，我们对CORD进行了额外的调优，并使用最佳常数设置：
+d
+=
+4
+d=4
+，
+m
+=
+0.7
+m=0.7
+，以及
+Δ
+​
+t
+=
+0.7
+\Delta t=0.7
+。
+尽管DeepCORD使用与CORD相同的基础更新规则，但学习到的自适应模块能在不同的图拓扑和初始化条件下自动调整求解器参数，从而在各个数据集上取得了最佳的整体性能。Rim数据集进一步证明了DeepCORD在不同问题规模上的泛化能力：尽管仅在包含500个节点的图上进行训练，DeepCORD在包含超过10,000个节</p>
+
+<p>here DeepCORD achieves lower cost compared to CORD by leveraging the predicted adaptive parameters.
+Figure 5:
+Performance profiles of PGO over 500 iterations (
+Δ
+=
+0.01
+\Delta=0.01
+) under synchronous and asynchronous communication regimes.
+Performance Profiles.
+Following
+[
+16
+]
+, we also report the performance
+profile
+[
+14
+]
+, which visualizes the percentage of
+problems solved by a method as a function of iterations. Given a tolerance
+Δ
+\Delta
+, we define the solved threshold for each problem as
+𝒞
+Δ
+=
+𝒞
+∗
++
+Δ
+​
+(
+𝒞
+(
+0
+)
+−
+𝒞
+∗
+)
+\mathcal{C}_{\Delta}=\mathcal{C}^{*}+\Delta\left(\mathcal{C}^{(0)}-\mathcal{C}^{*}\right)
+,
+where
+𝒞
+(
+0
+)
+\mathcal{C}^{(0)}
+is the cost achieved by initial guess and
+𝒞
+∗
+\mathcal{C}^{*}
+is the reference optimal cost. At each iteration, a problem is considered solved by a
+method if its cost falls below
+𝒞
+Δ
+\mathcal{C}_{\Delta}
+. Fig.
+5
+reports the performance profiles with
+Δ
+=
+0.01
+\Delta=0.01
+after 500 iterations.
+The synchronous profile is computed over 13 benchmark sequences, while the asynchronous profile is computed over 130 runs from 10 Monte Carlo trials per sequence.
+Compared to synchronous setting, the asynchronous performance profile reports lower solved ratio due to the additional challenges introduced by communication.
+During the first 100 iterations, DeepCORD achieves the highest Area Under the Curve (AUC) compared to all baselines, demonstrating the value of the learned parameter adaptation.
+Over the longer horizon, DeepCORD demonstrates</p>
+
+<p>stable and competitive convergence across the entire 500 iterations, despite the fact that training only uses
+K
+=
+50
+K=50
+unrolled iterations.
+Figure 6:
+Evolution of the adaptive parameters (
+m
+,
+d
+,
+Δ
+​
+t
+m,d,\Delta t
+) predicted by DeepCORD over 100 iterations, illustrated across optimization phases and maximum delays.
+Analysis of Adaptive Parameters.
+To provide additional insights, we analyze the DeepCORD parameter predictions on the largest
+Rim
+dataset under varied maximum delays ranging from
+2
+2
+to
+10
+10
+iterations.
+The 100 iterations are equally divided into early, middle, and late stages to examine phase-specific behaviors.
+Fig.
+6
+reports the averaged parameters over 10 Monte Carlo trials per setting.
+Generally, increased delays cause the policy to use more conservative dynamics.
+Specifically, as delay increases, the policy used smaller mass (
+m
+m
+) and larger damping (
+d
+d
+) to suppress overshooting and oscillations in the early stage.
+In later stages, however, the policy gradually increases mass and decreases damping.
+This indicates that once the solution enters a stable basin, DeepCORD automatically shifts toward accelerated updates.
+The predicted step size
+Δ
+​
+t
+\Delta t
+exhibits more distinct dynamics.
+In the early stage, the optimization residuals are amplified by stale information, and the policy uses larger step sizes to reduce residuals.
+As the residual signal weakens, the policy conservatively reduces the step size as the delay increases.
+Finally, in the lat</p>
+
+<p>e stage, the policy increases the step size again to accelerate convergence.
+These results suggest that DeepCORD learns a coupled parameter schedule that flexibly unrolls the effective optimization dynamics according to both the optimization stage and the communication state.
+5.2
+Projective Submap Alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+Table 2:
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+projective alignment on TUM RGB-D sequences after 100 iterations. Best and second-best methods are highlighted in green and yellow, respectively.
+Dataset
+# Nodes
+# Edges
+Ref.
+DeepCORD
+DJ
+CORD
+TUM1
+249
+249
+270
+270
+0.876
+0.876
+2.304
+2.304
+3.822
+3.822
+3.342
+3.342
+TUM2
+103
+103
+111
+111
+0.120
+0.120
+0.777
+0.777
+1.821
+1.821
+1.594
+1.594
+TUM3
+89
+89
+91
+91
+0.066
+0.066
+1.392
+1.392
+2.314
+2.314
+1.717
+1.717
+In this section, we evaluate DeepCORD over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+projective submap alignment as in VGGT-SLAM
+[
+30
+]
+. As shown in Fig.
+1
+, DeepCORD successfully fuses local dense submaps reconstructed in each session into a globally consistent map under the same asynchronous communication protocol. We simulate a challenging multi-session setting where the factor graph is initialized by coarse alignment from a spanning tree, and inter-session transformations are perturbed with 0.2 rad rotation noise and 0.1 m translation noise. For the baselines, we use the same asynchronous parameter settings as in the PGO experiments.
+Table
+2
+reports the mean cost after 100 iterations over 10 Monte Carlo runs.
+Although a noticeable</p>
+
+<p>gap remains relative to the centralized GTSAM baseline due to the severe initial perturbations, DeepCORD significantly outperforms the CORD and DJ baselines.
+The results demonstrate that DeepCORD effectively generalizes to Lie groups beyond
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+.
+6
+Conclusion
+We presented DeepCORD, a learning-augmented framework for distributed factor graph optimization on matrix Lie groups. DeepCORD unfolds CORD into differentiable iterations and learns local feedback policies that adapt solver parameters including momentum, damping, and step size. Through self-supervised training, the resulting solver generalizes across problem instances, optimization stages, and communication conditions while preserving the structure of the underlying distributed geometric optimizer. Experiments on
+SE
+​
+(
+3
+)
+\mathrm{SE}(3)
+PGO and
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+projective alignment demonstrate that DeepCORD improves optimization quality and robustness over hand-tuned distributed baselines. These results suggest that learned adaptive dynamics provide a practical path toward scalable and robust distributed geometric optimization.
+7
+Limitations
+While DeepCORD outperforms existing distributed baselines, several limitations remain.
+First, it does not provide an asymptotic convergence guarantee. A natural direction is to impose explicit stability constraints, for example by restricting predicted parameters to admissible regions of the underlying dynamics as analyzed in
+[
+45
+]
+.
+Second, due to m</p>
+
+<p>emory limitations, the current training is restricted to 50 unrolled iterations and thus does not explicitly account for convergence over longer horizons.
+Improving the architecture design or training formulation to accelerate long horizon convergence is a valuable future direction.
+Third, DeepCORD can be overly conservative on some instances.
+For example, on
+CampusRoad3
+with synchronous communication, local gradient and residual features become small even though the global error is still large, causing the policy to predict small updates and enter a refinement regime prematurely.
+This suggests that the current local features do not fully capture proximity to global optimality.
+Future work could incorporate global feedback, such as features from a dual certificate matrix
+[
+52
+]
+, to distinguish small local gradients from global convergence.
+Acknowledgments
+M. Ghaffari was supported by AFOSR MURI FA9550-23-1-0400 and AFOSR YIP FA9550-25-1-0224.
+\c@NAT@ctr
+References
+Agarwal et al. [2023]
+Sameer Agarwal, Keir Mierle, and The Ceres Solver Team.
+Ceres Solver, October 2023.
+URL
+https://github.com/ceres-solver/ceres-solver
+.
+Albin et al. [2025]
+Doncey Albin, Miles Mena, Annika Thomas, Harel Biggie, Xuefei Sun, Dusty Woods, Steve McGuire, and Christoffer Heckman.
+CU-Multi: A dataset for multi-robot data association.
+arXiv preprint arXiv:2505.17576
+, 2025.
+Amos [2023]
+Brandon Amos.
+Tutorial on amortized optimization.
+Foundations and Trends in Machine Learning
+, 16(5):592–732, 2023.
+A</p>
+
+<p>ndrychowicz et al. [2016]
+Marcin Andrychowicz, Misha Denil, Sergio Gomez, Matthew W Hoffman, David Pfau, Tom Schaul, Brendan Shillingford, and Nando De Freitas.
+Learning to learn by gradient descent by gradient descent.
+Advances in neural information processing systems
+, 29, 2016.
+Bloch et al. [1996]
+Anthony Bloch, PS Krishnaprasad, Jerrold E Marsden, and Tudor S Ratiu.
+The euler-poincaré equations and double bracket dissipation.
+Communications in mathematical physics
+, 175(1):1–42, 1996.
+Carlevaris-Bianco et al. [2016]
+Nicholas Carlevaris-Bianco, Arash K Ushani, and Ryan M Eustice.
+University of michigan north campus long-term vision and lidar dataset.
+The International Journal of Robotics Research
+, 35(9):1023–1035, 2016.
+Carlone et al. [2025]
+Luca Carlone, Ayoung Kim, Timothy Barfoot, Daniel Cremers, and Frank Dellaert, editors.
+SLAM Handbook. From Localization and Mapping to Spatial Intelligence
+.
+Cambridge University Press, 2025.
+Chen et al. [2022]
+Tianlong Chen, Xiaohan Chen, Wuyang Chen, Howard Heaton, Jialin Liu, Zhangyang Wang, and Wotao Yin.
+Learning to optimize: A primer and a benchmark.
+Journal of Machine Learning Research
+, 23(189):1–59, 2022.
+Clark et al. [2018]
+Ronald Clark, Michael Bloesch, Jan Czarnowski, Stefan Leutenegger, and Andrew J Davison.
+Learning to solve nonlinear least squares for monocular stereo.
+In
+Proceedings of the European Conference on Computer Vision (ECCV)
+, pages 284–299, 2018.
+Dellaert and GTSAM Contributors [2022]
+Frank Dellaert and GTS</p>
+
+<p>AM Contributors.
+borglab/gtsam, May 2022.
+URL
+https://github.com/borglab/gtsam
+.
+Dellaert and Kaess [2017]
+Frank Dellaert and Michael Kaess.
+Factor graphs for robot perception.
+Foundations and Trends® in Robotics
+, 6(1-2):1–139, 2017.
+Dellaert et al. [2020]
+Frank Dellaert, David M Rosen, Jing Wu, Robert Mahony, and Luca Carlone.
+Shonan rotation averaging: Global optimality by surfing so (p) n.
+In
+European Conference on Computer Vision
+, pages 292–308. Springer, 2020.
+Doerks et al. [2025]
+Henri Doerks, Paul Häusner, Daniel Hernández Escobar, and Jens Sjölund.
+Learning to accelerate distributed admm using graph neural networks.
+arXiv preprint arXiv:2509.05288
+, 2025.
+Dolan and Moré [2002]
+Elizabeth D Dolan and Jorge J Moré.
+Benchmarking optimization software with performance profiles.
+Mathematical programming
+, 91(2):201–213, 2002.
+Dwivedi et al. [2021]
+Vijay Prakash Dwivedi, Anh Tuan Luu, Thomas Laurent, Yoshua Bengio, and Xavier Bresson.
+Graph neural networks with learnable structural and positional representations.
+arXiv preprint arXiv:2110.07875
+, 2021.
+Fan and Murphey [2024]
+Taosha Fan and Todd D. Murphey.
+Majorization Minimization Methods for Distributed Pose Graph Optimization.
+IEEE Trans. on Robotics
+, 40:22–42, 2024.
+ISSN 1941-0468.
+doi: 10.1109/TRO.2023.3324818.
+Fan et al. [2025]
+Taosha Fan, Joseph Ortiz, Ming Hsiao, Maurizio Monge, Jing Dong, Todd D Murphey, and Mustafa Mukadam.
+DABA: Decentralized and accelerated large-scale bundle adjustment.
+The International Jour</p>
+
+<p>nal of Robotics Research
+, 44(10-11):1892–1919, 2025.
+Feng et al. [2024]
+Dapeng Feng, Yuhua Qi, Shipeng Zhong, Zhiqiang Chen, Qiming Chen, Hongbo Chen, Jin Wu, and Jun Ma.
+S3E: A multi-robot multimodal dataset for collaborative slam.
+IEEE Robotics and Automation Letters
+, 9(12):11401–11408, 2024.
+Ghanta and Parasuraman [2025]
+Sai Krishna Ghanta and Ramviyas Parasuraman.
+Policies over poses: Reinforcement learning based distributed pose-graph optimization for multi-robot slam.
+arXiv preprint arXiv:2510.22740
+, 2025.
+Gregor and LeCun [2010]
+Karol Gregor and Yann LeCun.
+Learning fast approximations of sparse coding.
+In
+Proceedings of the 27th international conference on international conference on machine learning
+, pages 399–406, 2010.
+Ichnowski et al. [2021]
+Jeffrey Ichnowski, Paras Jain, Bartolomeo Stellato, Goran Banjac, Michael Luo, Francesco Borrelli, Joseph E Gonzalez, Ion Stoica, and Ken Goldberg.
+Accelerating quadratic optimization with reinforcement learning.
+Advances in Neural Information Processing Systems
+, 34:21043–21055, 2021.
+Kourtzanidis and Saeedi [2023]
+Nikolaos Kourtzanidis and Sajad Saeedi.
+Rl-pgo: Reinforcement learning-based planar pose-graph optimization.
+IEEE Control Systems Letters
+, 7:3777–3782, 2023.
+Kümmerle et al. [2011]
+Rainer Kümmerle, Giorgio Grisetti, Hauke Strasdat, Kurt Konolige, and Wolfram Burgard.
+g2o: A general framework for graph optimization.
+In
+2011 IEEE international conference on robotics and automation
+, pages 3607–3613. IEEE, 2011.</p>
+
+<p>Lajoie and Beltrame [2024]
+Pierre-Yves Lajoie and Giovanni Beltrame.
+Swarm-SLAM : Sparse Decentralized Collaborative Simultaneous Localization and Mapping Framework for Multi-Robot Systems.
+IEEE Robotics and Automation Letters
+, 9(1):475–482, January 2024.
+ISSN 2377-3766, 2377-3774.
+doi: 10.1109/LRA.2023.3333742.
+Lajoie et al. [2020]
+Pierre-Yves Lajoie, Benjamin Ramtoula, Yun Chang, Luca Carlone, and Giovanni Beltrame.
+DOOR-SLAM: Distributed, Online, and Outlier Resilient SLAM for Robotic Teams.
+IEEE Robotics and Automation Letters
+, 5(2):1656–1663, April 2020.
+ISSN 2377-3766.
+doi: 10.1109/LRA.2020.2967681.
+Li and Malik [2016]
+Ke Li and Jitendra Malik.
+Learning to optimize.
+arXiv preprint arXiv:1606.01885
+, 2016.
+Li and Ling [2021]
+Xinyi Li and Haibin Ling.
+Pogo-net: Pose graph optimization with graph neural networks.
+In
+Proceedings of the IEEE/CVF international conference on computer vision
+, pages 5895–5905, 2021.
+Liu and Chli [2025]
+Xiangyu Liu and Margarita Chli.
+Distributed pose graph optimization via contractive belief sharing.
+IEEE Robotics and Automation Letters
+, 11(1):538–545, 2025.
+Maggio and Carlone [2026]
+Dominic Maggio and Luca Carlone.
+VGGT-SLAM 2.0: Real-time dense feed-forward scene reconstruction.
+Robotics: Science and Systems
+, 2026.
+Maggio et al. [2025]
+Dominic Maggio, Hyungtae Lim, and Luca Carlone.
+VGGT-SLAM: Dense rgb slam optimized on the sl (4) manifold.
+Advances in Neural Information Processing Systems
+, 38, 2025.
+McGann and Kaess [2024]
+D. McGann an</p>
+
+<p>d M. Kaess.
+iMESA: Incremental distributed optimization for collaborative simultaneous localization and mapping.
+In
+Proc. Robotics: Science and Systems (RSS)
+, Delft, NL, 2024.
+McGann et al. [2024]
+Daniel McGann, Kyle Lassak, and Michael Kaess.
+Asynchronous Distributed Smoothing and Mapping via On-Manifold Consensus ADMM.
+In
+IEEE Int. Conf. on Robotics and Automation
+, pages 4577–4583, 2024.
+McGann et al. [2025]
+Daniel McGann, Easton R Potokar, and Michael Kaess.
+COSMO-Bench: A benchmark for collaborative slam optimization.
+arXiv preprint arXiv:2508.16731
+, 2025.
+Murai et al. [2024a]
+Riku Murai, Ignacio Alzugaray, Paul HJ Kelly, and Andrew J Davison.
+Distributed simultaneous localisation and auto-calibration using gaussian belief propagation.
+IEEE Robotics and Automation Letters
+, 9(3):2136–2143, 2024a.
+Murai et al. [2024b]
+Riku Murai, Joseph Ortiz, Sajad Saeedi, Paul H. J. Kelly, and Andrew J. Davison.
+A Robot Web for Distributed Many-Device Localization.
+IEEE Trans. on Robotics
+, 40:121–138, 2024b.
+ISSN 1941-0468.
+doi: 10.1109/TRO.2023.3324127.
+Noah and Shlezinger [2024]
+Yoav Noah and Nir Shlezinger.
+Distributed learn-to-optimize: Limited communications optimization over networks via deep unfolded distributed admm.
+IEEE Transactions on Mobile Computing
+, 24(4):3012–3024, 2024.
+Oshin et al. [2026]
+Alex Oshin, Rahul Vodeb Ghosh, Augustinos D. Saravanos, and Evangelos A. Theodorou.
+Deep flexqp: Accelerated nonlinear programming via deep unfolding.
+In
+International Conference o</p>
+
+<p>n Learning Representations
+, 2026.
+Purkait et al. [2020]
+Pulak Purkait, Tat-Jun Chin, and Ian Reid.
+Neurora: Neural robust rotation averaging.
+In
+European conference on computer vision
+, pages 137–154. Springer, 2020.
+Rampášek et al. [2022]
+Ladislav Rampášek, Michael Galkin, Vijay Prakash Dwivedi, Anh Tuan Luu, Guy Wolf, and Dominique Beaini.
+Recipe for a general, powerful, scalable graph transformer.
+Advances in Neural Information Processing Systems
+, 35:14501–14515, 2022.
+Reinke et al. [2022]
+Andrzej Reinke, Matteo Palieri, Benjamin Morrell, Yun Chang, Kamak Ebadi, Luca Carlone, and Ali-Akbar Agha-Mohammadi.
+Locus 2.0: Robust and computationally efficient lidar odometry for real-time 3d mapping.
+IEEE Robotics and Automation Letters
+, 7(4):9043–9050, 2022.
+Rosen et al. [2019]
+David M Rosen, Luca Carlone, Afonso S Bandeira, and John J Leonard.
+SE-Sync: A certifiably correct algorithm for synchronization over the special Euclidean group.
+The Int. Journal of Robotics Research
+, 38(2-3):95–125, 2019.
+doi: 10.1177/0278364918784361.
+Sambharya and Stellato [2024]
+Rajiv Sambharya and Bartolomeo Stellato.
+Learning algorithm hyperparameters for fast parametric convex optimization.
+arXiv preprint arXiv:2411.15717
+, 2024.
+Sambharya et al. [2023]
+Rajiv Sambharya, Georgina Hall, Brandon Amos, and Bartolomeo Stellato.
+End-to-end learning to warm-start for real-time quadratic optimization.
+In
+Learning for dynamics and control conference
+, pages 220–234. PMLR, 2023.
+Saravanos et al. [2025]
+A</p>
+
+<p>ugustinos Saravanos, Hunter Kuperman, Alex Oshin, Arshiya Taj Abdul, Vincent Pacelli, and Evangelos Theodorou.
+Deep distributed optimization for large-scale quadratic programming.
+In
+International Conference on Learning Representations
+, volume 2025, pages 93580–93619, 2025.
+Shin et al. [2026]
+Jaeho Shin, Maani Ghaffari, and Yulun Tian.
+Distributed pose graph optimization via continuous riemannian dynamics.
+In
+Robotics: Science and Systems
+, 2026.
+Singer [2011]
+Amit Singer.
+Angular synchronization by eigenvectors and semidefinite programming.
+Applied and computational harmonic analysis
+, 30(1):20–36, 2011.
+Sonawalla et al. [2026]
+Aneesa Sonawalla, Yulun Tian, and Jonathan P. How.
+Overlapping domain decomposition for distributed pose graph optimization.
+arXiv preprint arXiv:2603.03499
+, 2026.
+Strasdat et al. [2010]
+Hauke Strasdat, J Montiel, Andrew J Davison, et al.
+Scale drift-aware large scale monocular slam.
+Robotics: science and Systems VI
+, 2(3):7, 2010.
+Sturm et al. [2012]
+Jürgen Sturm, Nikolas Engelhard, Felix Endres, Wolfram Burgard, and Daniel Cremers.
+A benchmark for the evaluation of rgb-d slam systems.
+In
+2012 IEEE/RSJ international conference on intelligent robots and systems
+, pages 573–580. IEEE, 2012.
+Thorpe et al. [2020]
+Joshua Thorpe, Ruwan Tennakoon, and Alireza Bab-Hadiashar.
+Rotation averaging with attention graph neural networks.
+arXiv preprint arXiv:2010.06773
+, 2020.
+Tian et al. [2020]
+Yulun Tian, Alec Koppel, Amrit Singh Bedi, and Jonathan P. How.
+Asyn</p>
+
+<p>chronous and Parallel Distributed Pose Graph Optimization.
+IEEE Robotics and Automation Letters
+, 5(4):5819–5826, October 2020.
+ISSN 2377-3766.
+doi: 10.1109/LRA.2020.3010216.
+Tian et al. [2021]
+Yulun Tian, Kasra Khosoussi, David M. Rosen, and Jonathan P. How.
+Distributed Certifiably Correct Pose-Graph Optimization.
+IEEE Trans. on Robotics
+, 37(6):2137–2156, December 2021.
+ISSN 1941-0468.
+doi: 10.1109/TRO.2021.3072346.
+Tian et al. [2022]
+Yulun Tian, Yun Chang, Fernando Herrera Arias, Carlos Nieto-Granda, Jonathan P How, and Luca Carlone.
+Kimera-multi: Robust, distributed, dense metric-semantic slam for multi-robot systems.
+IEEE Transactions on Robotics
+, 38(4), 2022.
+Wang et al. [2025]
+Jianyuan Wang, Minghao Chen, Nikita Karaev, Andrea Vedaldi, Christian Rupprecht, and David Novotny.
+Vggt: Visual geometry grounded transformer.
+In
+Proceedings of the Computer Vision and Pattern Recognition Conference
+, pages 5294–5306, 2025.
+Learning Adaptive Solvers for Distributed Factor Graph Optimization on Matrix Lie Groups
+Appendix
+Appendix A
+Additional Results
+A.1
+Additional Results for Pose Graph Optimization
+Figure 7:
+Fused maps from DeepCORD on
+CampusRoad1
+(left),
+Dormitory1
+(middle), and
+Library1
+(right) after PGO. Each color denotes a different robot.
+This section presents the reconstructed point cloud maps from three representative sequences of the S3E dataset
+[
+1
+]
+as additional qualitative results for DeepCORD. As shown in Fig.
+7
+, the submaps obtained from different robots are al</p>
+
+<p>igned to recover the global map of each sequence, consistent with the global map provided in
+[
+1
+]
+.
+A.2
+Additional Results for Projective Submap Alignment
+Figure 8:
+Fused maps from DeepCORD on TUM1 (left), TUM2 (middle), and TUM3 (right) after projective submap alignment over
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+. Each colored trajectory denotes a different session.
+Table 3:
+Evaluation of
+SL
+​
+(
+4
+)
+\mathrm{SL}(4)
+reconstruction over 10 runs on TUM RGB-D sequences under asynchronous communication. We report accuracy, completion, and Chamfer distance with standard deviations. Best and second-best methods are highlighted in green and yellow, respectively.
+Dataset
+Accuracy
+Completion
+Chamfer
+CORD
+DJ
+DeepCORD
+CORD
+DJ
+DeepCORD
+CORD
+DJ
+DeepCORD
+TUM1
+0.047
+±
+0.009
+0.047\,{\scriptstyle\pm 0.009}
+0.047
+±
+0.010
+0.047\,{\scriptstyle\pm 0.010}
+0.045
+±
+0.011
+0.045\,{\scriptstyle\pm 0.011}
+0.043
+±
+0.008
+0.043\,{\scriptstyle\pm 0.008}
+0.043
+±
+0.009
+0.043\,{\scriptstyle\pm 0.009}
+0.042
+±
+0.009
+0.042\,{\scriptstyle\pm 0.009}
+0.045
+±
+0.008
+0.045\,{\scriptstyle\pm 0.008}
+0.045
+±
+0.009
+0.045\,{\scriptstyle\pm 0.009}
+0.043
+±
+0.010
+0.043\,{\scriptstyle\pm 0.010}
+TUM2
+0.052
+±
+0.012
+0.052\,{\scriptstyle\pm 0.012}
+0.051
+±
+0.011
+0.051\,{\scriptstyle\pm 0.011}
+0.053
+±
+0.008
+0.053\,{\scriptstyle\pm 0.008}
+0.050
+±
+0.013
+0.050\,{\scriptstyle\pm 0.013}
+0.049
+±
+0.012
+0.049\,{\scriptstyle\pm 0.012}
+0.052
+±
+0.010
+0.052\,{\scriptstyle\pm 0.010}
+0.051
+±
+0.013
+0.051\,{\scriptstyle\pm 0.013}
+0.050
+±
+0.011
+0.050\,{\scriptst</p>
+
+<p>yle\pm 0.011}
+0.052
+±
+0.009
+0.052\,{\scriptstyle\pm 0.009}
+TUM3
+0.053
+±
+0.006
+0.053\,{\scriptstyle\pm 0.006}
+0.053
+±
+0.007
+0.053\,{\scriptstyle\pm 0.007}
+0.045
+±
+0.009
+0.045\,{\scriptstyle\pm 0.009}
+0.050
+±
+0.006
+0.050\,{\scriptstyle\pm 0.006}
+0.050
+±
+0.008
+0.050\,{\scriptstyle\pm 0.008}
+0.045
+±
+0.010
+0.045\,{\scriptstyle\pm 0.010}
+0.052
+±
+0.006
+0.052\,{\scriptstyle\pm 0.006}
+0.052
+±
+0.008
+0.052\,{\scriptstyle\pm 0.008}
+0.045
+±
+0.009
+0.045\,{\scriptstyle\pm 0.009}
+This section reports additional qualiative results and reconstruction evaluation on
+the
+TUM1
+,
+TUM2
+, and
+TUM3
+sequences. Fig.
+8
+shows the dense
+RGB-colored maps obtained after 100 asynchronous iterations on each dataset.
+As shown, the maps reconstructed from individual sessions are seamlessly
+aligned into a single global map. In addition, we evaluate the reconstructed maps against the maps obtained from
+the centralized GTSAM solution using accuracy, completion, and Chamfer distance.
+As reported in Tab.
+3
+, DeepCORD
+achieves the best results on the
+TUM1
+and
+TUM3
+sequences, showing
+that the improvement in the optimization objective also results
+in improved downstream map quality.
+A.3
+Robustness to Initialization Perturbations
+Figure 9:
+Optimality gap comparison on the
+Rim
+dataset under varying initial perturbations. Dots represent the mean over 10 independent runs, and the shaded areas indicate the standard deviation.
+This section further evaluates the robustness of DeepCORD under varying initialization quality. Star</p>
+
+<p>ting from the chordal initialization on the
+Rim
+PGO dataset, we perturb the initial estimate with paired random translation and rotation noise
+(
+σ
+​
+m
+,
+σ
+​
+rad
+)
+(\sigma\,\mathrm{m},\sigma\,\mathrm{rad})
+, where
+σ
+∈
+{
+0.02
+,
+0.04
+,
+0.06
+,
+0.08
+,
+0.10
+}
+\sigma\in\{0.02,0.04,0.06,0.08,0.10\}
+,
+and compare CORD and DeepCORD after 100 iterations. For each noise level, the results are averaged over 10 independent Monte Carlo runs. Fig.
+9
+reports the resulting optimality gap for each perturbation level. As the perturbation increases, the optimality gap of CORD grows rapidly, indicating that its fixed, hand-tuned parameters are highly sensitive to poor initialization. In contrast, DeepCORD maintains near-optimal convergence across all perturbation levels by adaptively tuning its solver parameters according to the optimization state.
+These results indicate that DeepCORD is substantially less sensitive to initialization perturbations and suggest a wider empirical basin of attraction compared to CORD.
+A.4
+PGO Benchmark Results under Coarse Alignment Initialization
+Table 4:
+SE(3) PGO final cost results from coarse initialization after 100 iterations under synchronous and asynchronous communication. Best and second-best methods are highlighted in green and yellow, respectively. Diverging cases are denoted as hyphen (—).
+Dataset
+Sync Final Cost
+Async Final Cost
+ROBO
+AMM-PGO
+CORD
+DeepCORD
+CORD
+DJ
+DeepCORD
+Sphere
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+1.688
+​
+e3
+1.688\</p>
+
+<p>mathrm{e}{3}
+1.687
+​
+e3
+1.687\mathrm{e}{3}
+2.043
+​
+e3
+2.043\mathrm{e}{3}
+1.765
+​
+e3
+1.765\mathrm{e}{3}
+1.742
+​
+e3
+1.742\mathrm{e}{3}
+环面
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.426
+​
+e4
+2.426\mathrm{e}{4}
+2.423
+​
+e4
+2.423\mathrm{e}{4}
+2.654
+​
+e4
+2.654\mathrm{e}{4}
+2.484
+​
+e4
+2.484\mathrm{e}{4}
+2.452
+​
+e4
+2.452\mathrm{e}{4}
+网格
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.432
+​
+e4
+8.432\mathrm{e}{4}
+8.456
+​
+e4
+8.456\mathrm{e}{4}
+8.432
+​</p>
+
+<p>e5
+1.614\mathrm{e}{5}
+1.597
+​
+e5
+1.597\mathrm{e}{5}
+1.793
+​
+e5
+1.793\mathrm{e}{5}
+1.839
+​
+e5
+1.839\mathrm{e}{5}
+1.796
+​
+e5
+1.796\mathrm{e}{5}
+S3E Dormitory1
+2.052
+​
+e4
+2.052\mathrm{e}{4}
+2.051
+​
+e4
+2.051\mathrm{e}{4}
+2.052
+​
+e4
+2.052\mathrm{e}{4}
+2.047
+​
+e4
+2.047\mathrm{e}{4}
+–
+2.415
+​
+e4
+2.415\mathrm{e}{4}
+2.495
+​
+e4
+2.495\mathrm{e}{4}
+S3E Library1
+3.014
+​
+e4
+3.014\mathrm{e}{4}
+2.995
+​
+e4
+2.995\mathrm{e}{4}
+3.024
+​
+e4
+3.024\mathrm{e}{4}
+2.987
+​
+e4
+2.987\mathrm{e}{4}
+3.154
+​
+e4
+3.154\mathrm{e}{4}
+3.213
+​
+e4
+3.213\mathrm{e}{4}
+3.109
+​
+e4
+3.109\mathrm{e}{4}
+S3E Library2
+2.299
+​
+e4
+2.299\mathrm{e}{4}
+2.298
+​
+e4
+2.298\mathrm{e}{4}
+2.304
+​
+e4
+2.304\mathrm{e}{4}
+2.298
+​
+e4
+2.298\mathrm{e}{4}
+2.379
+​
+e4
+2.379\mathrm{e}{4}
+2.394
+​
+e4
+2.394\mathrm{e}{4}
+2.324
+​
+e4
+2.324\mathrm{e}{4}
+S3E Tunnel1
+9.614
+​
+e4
+9.614\mathrm{e}{4}
+9.518
+​
+e4
+9.518\mathrm{e}{4}
+9.644
+​
+e4
+9.644\mathrm{e}{4}
+9.514
+​
+e4
+9.514\mathrm{e}{4}
+1.111
+​
+e5
+1.111\mathrm{e}{5}
+1.158
+​
+e5
+1.158\mathrm{e}{5}
+1.166
+​
+e5
+1.166\mathrm{e}{5}
+To evaluate the robustness of DeepCORD under another initialization scheme, we also report the final cost after 100 iterations using coarse alignment initialization as in
+[
+2
+]
+. In this setting, we first optimize each robot’s individual pose graph and then initialize the multi-robot pose graph using a robot-level spanning tree. Tab.
+4
+shows that DeepCORD achieves the best performance on
+20
+20
+out of
+26
+26
+sequences, comparable to the result of chordal initialization. Notably, CORD uses</p>
+
+<p>the same parameters as in the chordal initialization experiments but diverges on
+CampusRoad1
+,
+CampusRoad2
+, and
+Dormitory1
+in the asynchronous setting, which indicates that a fixed parameter setting fails to adapt to dataset-dependent optimization landscapes. In contrast, DeepCORD consistently reduces the cost by dynamically adjusting its parameters according to the optimization and communication status.
+A.5
+Runtime Analysis
+Table 5:
+Per-iteration runtime under asynchronous communication. We report the mean runtime per iteration in milliseconds (ms) after 100 iterations. The fastest and second-fastest methods are highlighted in green and yellow, respectively.
+Dataset
+CORD
+DJ
+DeepCORD
+Sphere
+37
+37
+5
+5
+40
+40
+Torus
+68
+68
+11
+11
+65
+65
+Grid
+207
+207
+36
+36
+205
+205
+Cubicle
+197
+197
+31
+31
+172
+172
+Rim
+228
+228
+43
+43
+233
+233
+Garage
+307
+307
+52
+52
+99
+99
+S3E CampusRoad1
+74
+74
+10
+10
+42
+42
+S3E CampusRoad2
+159
+159
+24
+24
+76
+76
+S3E CampusRoad3
+171
+171
+26
+26
+79
+79
+S3E Dormitory1
+43
+43
+6
+6
+30
+30
+S3E Library1
+58
+58
+8
+8
+37
+37
+S3E Library2
+24
+24
+4
+4
+21
+21
+S3E Tunnel1
+39
+39
+6
+6
+27
+27
+To quantify the practical overhead, we report the average per-iteration runtime for the asynchronous PGO experiments. We restrict our comparison to CORD and DJ, as the other baselines are implemented in C++. As shown in Tab.
+5
+, DJ yields the lowest runtime since it requires only the computation of the Hessian inverse, whereas CORD and DeepCORD necessitate additional matrix operations associated with integration.
+For DeepC</p>
+
+<p>ORD, the majority of the runtime is consumed by the neural network inference and solving the linear equations involving the Hessian. However, compared to CORD, the efficiency gain achieved by employing a sparse PCG solver more than offsets the additional neural network overhead, leading to faster runtimes across most datasets. Specifically, on the S3E datasets where the pose graph is partitioned among only three robots, CORD’s runtime increases due to the dense Cholesky decomposition of large local systems, whereas DeepCORD avoids this direct factorization by employing the sparse PCG solver.
+Appendix B
+Network Architecture Details
+This section provides additional implementation details of the DeepCORD policy network.
+Recall from Fig.
+4
+that at iteration
+k
+k
+, robot
+i
+i
+constructs an augmented graph
+𝒢
+k
+i
+=
+(
+𝒱
+k
+i
+,
+ℰ
+k
+i
+)
+\mathcal{G}^{i}_{k}=(\mathcal{V}^{i}_{k},\mathcal{E}^{i}_{k})
+using its local variables and the states received from neighboring robots. The policy takes node, edge, and graph-level attributes from
+𝒢
+k
+i
+\mathcal{G}^{i}_{k}
+as input and predicts the adaptive CORD parameters for robot
+i
+i
+.
+B.1
+Model Inputs
+Edge Attributes.
+For each edge
+(
+u
+,
+v
+)
+∈
+ℰ
+k
+i
+(u,v)\in\mathcal{E}^{i}_{k}
+, we use the current chordal residual, the measurement precision, and the previous graph-level context as edge features. The chordal residual is computed from
+E
+k
+u
+​
+v
+=
+X
+k
+u
+​
+Z
+u
+​
+v
+−
+X
+k
+v
+∈
+ℝ
+4
+×
+4
+,
+E^{uv}_{k}=X^{u}_{k}Z^{uv}-X^{v}_{k}\in\mathbb{R}^{4\times 4},
+where
+X
+k</p>
+
+<p>u
+X^{u}_{k}
+and
+X
+k
+v
+X^{v}_{k}
+are the current pose estimates and
+Z
+u
+​
+v
+Z^{uv}
+is the relative pose measurement. We vectorize the rotational block of
+E
+k
+u
+​
+v
+E^{uv}_{k}
+and concatenate it with the translational block, resulting in a 12-dimensional residual vector. This residual is scaled by two scalar precision weights, corresponding to the rotational and translational parts. Finally, we concatenate this vector with the two scalar weights and the previous graph-level context vector of dimension
+h
+h
+, yielding the
+(
+14
++
+h
+)
+(14+h)
+-dimensional vector.
+Node Attributes.
+For each node
+u
+∈
+𝒱
+k
+i
+u\in\mathcal{V}^{i}_{k}
+, we construct a node attribute vector comprising the current body velocity, the body-trivialized local gradient, and a scalar communication feature.
+Note that both the body velocity and the gradient are
+6
+6
+-dimensional vectors in the Lie algebra
+𝔰
+​
+𝔢
+​
+(
+3
+)
+\mathfrak{se}(3)
+.
+The communication feature
+c
+k
+u
+c^{u}_{k}
+is defined according to the communication status of node
+u
+u
+:
+c
+k
+u
+=
+{
+0
+,
+if
+​
+u
+​
+is a local node in robot
+i
+’s own trajectory
+,
+1
+,
+if
+​
+u
+​
+is received from a neighbor robot
+j
+under synchronous comm.
+,
+q
+​
+Δ
+​
+t
+k
+−
+q
+j
+,
+if
+​
+u
+​
+is received from neighbor
+​
+j
+​
+under asynchronous comm.
+,
+c^{u}_{k}=\begin{cases}0,&amp;\text{if }u\text{ is a local node in robot $i$'s own trajectory},\\
+1,&amp;\text{if }u\text{ is received from a neighbor robot $j$ under synchronous comm.},\\
+q\,\Delta t^{j}_{k-q},&amp;\text{if }u\text{ is received from neighbor }j\t</p>
+
+<p>ext{ under asynchronous comm.},\end{cases}
+where
+q
+q
+denotes the communication delay in iterations and
+Δ
+​
+t
+k
+−
+q
+j
+\Delta t^{j}_{k-q}
+is the step size included in the delayed packet from robot
+j
+j
+.
+In the asynchronous case, this feature provides a scalar estimate of the temporal staleness of the received node state.
+Consequently, the total node attribute dimension is
+6
++
+6
++
+1
+=
+13
+6+6+1=13
+.
+Graph-level Attributes.
+In addition to node and edge attributes, we compute four scalar graph-level statistics that summarize the current optimization state of robot
+i
+i
+. These are the root-mean-square (RMS) weighted residual over intra-robot edges, the RMS weighted residual over inter-robot edges, the RMS local gradient magnitude over local nodes, and the RMS update magnitude over local nodes, yielding the
+4
+4
+-dimensional vector.
+B.2
+Feature Embedding
+All raw node, edge, and graph-level attributes are transformed using
+symlog
+\operatorname{symlog}
+to reduce the effect of large input magnitudes. The transformed features are then embedded into a latent space of dimension
+h
+=
+128
+h=128
+. The
+13
+13
+-dimensional node attribute is linearly projected into the latent space using an MLP. We also add an
+8
+8
+-dimensional random-walk structural encoding
+[
+3
+]
+to each node embedding, which provides local topological information of the augmented graph. The
+(
+14
++
+h
+)
+(14+h)
+-dimensional edge attribute is also mapped to the latent space using a two-layer MLP and the graph-level attributes are sep</p>
+
+<p>arately processed by another two-layer MLP.
+B.3
+GPS Backbone
+The embedded graph is processed by a stack of four GPS layers
+[
+4
+]
+. Each GPS layer combines local message passing with global multi-head attention, allowing the policy to use both local graph connectivity and long-range information over the augmented graph. We use 8 attention heads and hidden dimension 128 throughout the GPS backbone.
+The reader is referred to
+[
+4
+]
+for detailed descriptions of the GPS architecture.
+B.4
+Parameter Prediction Head
+After the final GPS layer, the node and edge embeddings are mean-pooled over
+𝒱
+k
+i
+\mathcal{V}^{i}_{k}
+and
+ℰ
+k
+i
+\mathcal{E}^{i}_{k}
+, respectively. These pooled embeddings are then concatenated with the processed graph-level features to form the input for the parameter head of robot
+i
+i
+at iteration
+k
+k
+. This parameter-head MLP yields three unconstrained scalar outputs,
+o
+m
+,
+k
+i
+o^{i}_{m,k}
+,
+o
+d
+,
+k
+i
+o^{i}_{d,k}
+, and
+o
+Δ
+​
+t
+,
+k
+i
+o^{i}_{\Delta t,k}
+, which correspond to the raw predictions for the mass, damping, and step-size parameters. We map these raw outputs to valid ranges by
+m
+k
+i
+=
+softplus
+⁡
+(
+o
+m
+,
+k
+i
+)
++
+10
+−
+2
+,
+d
+k
+i
+=
+softplus
+⁡
+(
+o
+d
+,
+k
+i
+)
++
+10
+−
+2
+,
+Δ
+​
+t
+k
+i
+=
+σ
+​
+(
+o
+Δ
+​
+t
+,
+k
+i
+)
+.
+m^{i}_{k}=\operatorname{softplus}(o^{i}_{m,k})+10^{-2},\quad d^{i}_{k}=\operatorname{softplus}(o^{i}_{d,k})+10^{-2},\quad\Delta t^{i}_{k}=\sigma(o^{i}_{\Delta t,k}).
+Appendix C
+Training Details
+C.1
+Training Data Curation
+For the synthetic graphs, each instance is part</p>
+
+<p>itioned into
+4
+4
+distinct subgraphs, resulting in exactly
+125
+125
+poses per robot. Full trajectories from the NCLT dataset are segmented into
+3
+3
+to
+5
+5
+subgraphs. Real-trajectory graphs are rescaled and downsampled to keep the total graph size close to
+500
+500
+poses. If the total number of keyframes
+N
+raw
+N_{\mathrm{raw}}
+is already within the range
+[
+450
+,
+550
+]
+[450,550]
+, no rescaling is applied. Otherwise, we choose a downsampling stride
+s
+=
+⌈
+N
+raw
+/
+500
+⌉
+s=\lceil N_{\mathrm{raw}}/500\rceil
+, uniformly scale the trajectory translations by
+1
+/
+s
+1/s
+, and keep every
+s
+s
+-th keyframe within each continuous segment while preserving the final keyframe of the segment. The scale factor is lower-bounded by
+0.05
+0.05
+for very long trajectories. This keeps the graph size close to
+500
+500
+poses while preventing downsampling from artificially increasing the relative motion scale between consecutive keyframes.
+To prevent optimization graphs from being dominated by overly dense duplicate loop closures, we apply a randomized sampling strategy. For real-trajectory graphs, loop closure edges are sampled between pose pairs whose ground-truth distance is below
+5
+​
+m
+5\,\mathrm{m}
+, with an acceptance probability of
+40
+%
+40\%
+. For synthetic
+grid
+and
+helix
+graphs, nearby candidates are defined by a
+1.4
+​
+m
+1.4\,\mathrm{m}
+distance threshold; intra-robot loop closures are accepted with a probability of
+20
+%
+20\%
+, while inter-robot bridge edges are accepted with a
+30
+%
+30\%
+probability. F</p>
+
+<p>or synthetic
+torus
+,
+sphere
+, and
+random walk
+graphs, the nearby threshold is sampled uniformly from
+6.5
+6.5
+to
+7.5
+​
+m
+7.5\,\mathrm{m}
+, capping the density at a maximum of
+15
+15
+intra-robot loop closures per robot and
+3
+3
+inter-robot bridge edges per robot pair.
+All relative edge measurements are corrupted with zero-mean Gaussian noise whose
+standard deviation is proportional to the relative motion magnitude. For an edge
+with relative translation length
+d
+d
+, the translation noise standard deviation
+is set to
+0.05
+​
+d
+​
+m
+0.05d\,\mathrm{m}
+, and the rotation noise standard deviation is
+set to
+0.02
+​
+d
+​
+rad
+0.02d\,\mathrm{rad}
+. The precision weights are then computed from the
+corresponding inverse variances. The initial node states are further perturbed
+with Gaussian noise using a standard deviation of
+0.5
+​
+m
+0.5\,\mathrm{m}
+for
+translation and
+0.2
+​
+rad
+0.2\,\mathrm{rad}
+for rotation.
+C.2
+Training Hyperparameters
+The model is trained using the Adam optimizer with a constant learning rate of
+5
+×
+10
+−
+5
+5\times 10^{-5}
+and a batch size of
+16
+16
+. Training is early-stopped if the validation loss fails to decrease for
+3
+3
+consecutive epochs. Tab.
+6
+further reports additional hyperparameters for training loss, which include regularization weights and damping decaying schedule.
+Table 6:
+Training hyperparameters for training loss.
+Hyperparameter
+Symbol
+Value
+Monotonicity regularization weight
+λ
+b
+\lambda_{b}
+1.0
+1.0
+Damping regularization weight
+λ
+d
+\lambda_{d}
+5.0
+5.0
+Damping</p>
+
+<p>decay rate
+β
+\beta
+0.5
+0.5
+Damping decay offset
+τ
+\tau
+5.0
+5.0
+C.3
+Implicit Differentiation of PCG Solver
+Unfolding CORD iterations requires backpropagation through the linear
+solver involving the local Hessian in (
+4
+). Naively
+backpropagating through all PCG inner iterations incurs a prohibitive memory
+footprint. Instead, we compute analytical gradients using implicit differentiation. The following result is analogous to prior work, e.g.,
+[
+5
+]
+, and is presented here for completeness.
+At every iteration, DeepCORD unrolls the following simplified ODE
+M
+​
+ξ
+˙
+=
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+−
+D
+​
+ξ
+.
+M\dot{\xi}=-\operatorname{grad}_{X}\mathcal{C}(X)-D\xi.
+(8)
+Denoting right-hand side of (
+8
+) as a vector
+b
+b
+,
+we consider solving a general linear system
+M
+​
+z
+=
+b
+Mz=b
+using PCG, where
+M
+M
+is symmetric positive-definite.
+In DeepCORD,
+M
+M
+is computed from the Levenberg Marquardt approximation of the local Hessian, and hence is symmetric positive-definite by construction.
+The following result establishes the analytical gradients required for deep unfolding.
+Theorem 1 (Implicit Differentiation of
+M
+​
+z
+=
+b
+Mz=b
+).
+Let
+z
+∗
+∈
+ℝ
+N
+z^{\ast}\in\mathbb{R}^{N}
+be the unique solution to the linear system
+M
+​
+z
+∗
+=
+b
+Mz^{\ast}=b
+, where
+M
+∈
+ℝ
+N
+×
+N
+M\in\mathbb{R}^{N\times N}
+is symmetric positive-definite. Given the backward gradient
+g
+z
+:=
+∇
+z
+∗
+ℒ
+g_{z}:=\nabla_{z^{\ast}}\mathcal{L}
+with respect to a loss function
+ℒ
+\mathcal{L}
+, let
+v
+∈
+ℝ
+N
+v\in\mathbb{R}^{N}
+be the solution to
+M
+​
+v
+=
+g
+z
+Mv=g</p>
+
+<p>_{z}
+. Then, the analytical gradients of
+ℒ
+\mathcal{L}
+with respect to
+b
+b
+and
+M
+M
+are:
+∇
+b
+ℒ
+=
+v
+,
+∇
+M
+ℒ
+=
+−
+1
+2
+​
+(
+v
+​
+(
+z
+∗
+)
+⊤
++
+z
+∗
+​
+v
+⊤
+)
+.
+\nabla_{b}\mathcal{L}=v,\qquad\nabla_{M}\mathcal{L}=-\frac{1}{2}\left(v(z^{\ast})^{\top}+z^{\ast}v^{\top}\right).
+(9)
+Proof.
+Differentiating the forward relation
+M
+​
+z
+∗
+−
+b
+=
+0
+Mz^{\ast}-b=0
+yields
+M
+​
+d
+​
+z
+∗
++
+d
+​
+M
+​
+z
+∗
+−
+d
+​
+b
+=
+0
+M\,dz^{\ast}+dM\,z^{\ast}-db=0
+. Solving for
+d
+​
+z
+∗
+dz^{\ast}
+gives:
+d
+​
+z
+∗
+=
+M
+−
+1
+​
+(
+d
+​
+b
+−
+d
+​
+M
+​
+z
+∗
+)
+.
+dz^{\ast}=M^{-1}(db-dM\,z^{\ast}).
+(10)
+The total differential of the loss
+ℒ
+\mathcal{L}
+is then expanded as:
+d
+​
+ℒ
+=
+g
+z
+⊤
+​
+d
+​
+z
+∗
+=
+g
+z
+⊤
+​
+M
+−
+1
+​
+d
+​
+b
+−
+g
+z
+⊤
+​
+M
+−
+1
+​
+d
+​
+M
+​
+z
+∗
+.
+d\mathcal{L}=g_{z}^{\top}dz^{\ast}=g_{z}^{\top}M^{-1}db-g_{z}^{\top}M^{-1}dM\,z^{\ast}.
+(11)
+Defining
+v
+v
+via
+M
+​
+v
+=
+g
+z
+Mv=g_{z}
+, we substitute
+v
+⊤
+=
+g
+z
+⊤
+​
+M
+−
+1
+v^{\top}=g_{z}^{\top}M^{-1}
+to obtain:
+d
+​
+ℒ
+=
+v
+⊤
+​
+d
+​
+b
+−
+v
+⊤
+​
+d
+​
+M
+​
+z
+∗
+.
+d\mathcal{L}=v^{\top}db-v^{\top}dM\,z^{\ast}.
+(12)
+Using the trace identity
+v
+⊤
+​
+d
+​
+M
+​
+z
+∗
+=
+tr
+⁡
+(
+z
+∗
+​
+v
+⊤
+​
+d
+​
+M
+)
+v^{\top}dM\,z^{\ast}=\operatorname{tr}(z^{\ast}v^{\top}dM)
+and accounting for the symmetric structure of
+M
+M
+(i.e.,
+d
+​
+M
+=
+d
+​
+M
+⊤
+dM=dM^{\top}
+), this simplifies to:
+d
+​
+ℒ
+=
+v
+⊤
+​
+d
+​
+b
+−
+tr
+⁡
+(
+1
+2
+​
+(
+z
+∗
+​
+v
+⊤
++
+v
+​
+(
+z
+∗
+)
+⊤
+)
+​
+d
+​
+M
+)
+.
+d\mathcal{L}=v^{\top}db-\operatorname{tr}\left(\frac{1}{2}\left(z^{\ast}v^{\top}+v(z^{\ast})^{\top}\right)dM\right).
+(13)
+Identifying the coefficients of
+d
+​
+b
+db
+and
+d
+​
+M
+dM
+directly yields the</p>
+
+<p>results.
+■
+\blacksquare
+Appendix D
+Energy Dissipation of the Simplified Dynamics
+This section justifies our use of the simplified CORD dynamics during training.
+Specifically, we will show that the simplified dynamics also
+preserves the energy dissipation property in the original CORD paper
+[
+6
+]
+.
+Recall that the full CORD dynamics includes the co-adjoint and time-varying
+mass terms,
+M
+​
+ξ
+˙
+=
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+−
+D
+​
+ξ
++
+ad
+ξ
+∗
+⁡
+(
+M
+​
+ξ
+)
+−
+M
+˙
+​
+ξ
+.
+M\dot{\xi}=-\operatorname{grad}_{X}\mathcal{C}(X)-D\xi+\operatorname{ad}^{*}_{\xi}(M\xi)-\dot{M}\xi.
+Instead, we use a simplified ODE that omits the co-adjoint and
+time-dependent mass terms:
+M
+​
+ξ
+˙
+=
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+−
+D
+​
+ξ
+M\dot{\xi}=-\operatorname{grad}_{X}\mathcal{C}(X)-D\xi
+(14)
+where
+M
+≻
+0
+M\succ 0
+and
+D
+⪰
+0
+D\succeq 0
+are assumed to be constant.
+We define the total energy as
+E
+​
+(
+X
+,
+ξ
+)
+=
+𝒞
+​
+(
+X
+)
++
+1
+2
+​
+⟨
+ξ
+,
+M
+​
+ξ
+⟩
+.
+E(X,\xi)=\mathcal{C}(X)+\frac{1}{2}\langle\xi,M\xi\rangle.
+The first term is the optimization objective as potential energy, and
+the second term is the kinetic energy induced by the mass matrix
+M
+M
+. Since
+the gradient is body-trivialized, the time derivative of the objective along
+the trajectory satisfies
+d
+d
+​
+t
+​
+𝒞
+​
+(
+X
+​
+(
+t
+)
+)
+=
+⟨
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+,
+ξ
+⟩
+.
+\frac{d}{dt}\mathcal{C}(X(t))=\left\langle\operatorname{grad}_{X}\mathcal{C}(X),\xi\right\rangle.
+Furthermore, by chain rule, the kinetic energy derivative is
+d
+d
+​
+t
+​
+(
+1
+2
+​
+⟨
+ξ
+,
+M
+​
+ξ
+⟩
+)
+=
+⟨
+M
+​
+ξ
+˙
+,
+ξ
+⟩
+.
+\frac{d}{dt}\left(\f</p>
+
+<p>rac{1}{2}\langle\xi,M\xi\rangle\right)=\langle M\dot{\xi},\xi\rangle.
+Substituting Eq. (
+14
+) gives
+E
+˙
+\displaystyle\dot{E}
+=
+⟨
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+,
+ξ
+⟩
++
+⟨
+M
+​
+ξ
+˙
+,
+ξ
+⟩
+\displaystyle=\left\langle\operatorname{grad}_{X}\mathcal{C}(X),\xi\right\rangle+\langle M\dot{\xi},\xi\rangle
+=
+⟨
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+,
+ξ
+⟩
++
+⟨
+−
+grad
+X
+⁡
+𝒞
+​
+(
+X
+)
+−
+D
+​
+ξ
+,
+ξ
+⟩
+\displaystyle=\left\langle\operatorname{grad}_{X}\mathcal{C}(X),\xi\right\rangle+\left\langle-\operatorname{grad}_{X}\mathcal{C}(X)-D\xi,\xi\right\rangle
+=
+−
+⟨
+ξ
+,
+D
+​
+ξ
+⟩
+≤
+0
+.
+\displaystyle=-\langle\xi,D\xi\rangle\leq 0.
+Thus, the continuous-time simplified dynamics retains the same qualitative
+energy dissipation behavior as CORD and converges to the set of first-order
+critical points.
+\c@NAT@ctr
+References
+Feng et al. [2024]
+Dapeng Feng, Yuhua Qi, Shipeng Zhong, Zhiqiang Chen, Qiming Chen, Hongbo Chen, Jin Wu, and Jun Ma.
+S3E: A multi-robot multimodal dataset for collaborative slam.
+IEEE Robotics and Automation Letters
+, 9(12):11401–11408, 2024.
+Tian et al. [2022]
+Yulun Tian, Yun Chang, Fernando Herrera Arias, Carlos Nieto-Granda, Jonathan P How, and Luca Carlone.
+Kimera-multi: Robust, distributed, dense metric-semantic slam for multi-robot systems.
+IEEE Transactions on Robotics
+, 38(4), 2022.
+Dwivedi et al. [2021]
+Vijay Prakash Dwivedi, Anh Tuan Luu, Thomas Laurent, Yoshua Bengio, and Xavier Bresson.
+Graph neural networks with learnable structural and positional representations.
+arXiv preprint arXiv:2110.07875
+, 2021.
+Rampášek</p>
+
+<p>等人 [2022]
+Ladislav Rampášek, Michael Galkin, Vijay Prakash Dwivedi, Anh Tuan Luu, Guy Wolf, 和 Dominique Beaini.
+通用、强大、可扩展的图变换器配方。
+神经信息处理</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 未分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
