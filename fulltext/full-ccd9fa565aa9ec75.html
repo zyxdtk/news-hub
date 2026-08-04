@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,325 +183,363 @@
         </div>
         
         <div class="fulltext-content">
-<p># 面向长时序时空视频定位</p>
-
-<p>Xin Gu  
-Bing Fan  
-Jiali Yao  
-Zhipeng Zhang  
-Yan Huang  
-Cheng Han  
-Heng Fan  
-Libo Zhang  
-†  
-同等指导与通讯作者</p>
-
-<p>## 摘要  
-在真实场景中，视频时长可达数分钟甚至数小时，而现有时空视频定位（STVG）研究主要聚焦于从数十秒（通常不足1分钟）的短视频中定位目标，严重制约其应用。本文探索**长时序STVG**（LF-STVG），旨在从长时视频中定位目标。LF-STVG中，长视频具有更长的时间跨度和更多无关信息，使现有短时STVG方法（需一次性处理全部帧）面临挑战。为此，我们提出一种新型**自回归Transformer架构**（ART-STVG），将视频视为流式输入并逐帧处理，天然适配长视频。为捕获时空上下文，ART-STVG引入空间与时间记忆库，并设计简单高效的**记忆选择策略**，仅保留与当前帧定位最相关的信息，显著提升性能。此外，不同于现有方法并行化空间与时间定位，我们提出一种新型**级联式时空设计**，在定位过程中将空间解码器输出传递至时间解码器，利用更细粒度目标信息辅助复杂长视频中的时间定位，进一步提升效果。在新扩展的LF-STVG数据集上，ART-STVG大幅超越现有SOTA方法；在传统短时STVG任务中亦具竞争力。代码将开源。</p>
-
-<p>## 1 引言  
-时空视频定位（STVG）旨在根据自由文本查询，在未剪辑视频中定位目标在**空间**与**时间**上的位置\[STGRN\]。作为多模态任务，其需精准理解视频时空内容并建立与文本查询的关联。STVG在多模态视频理解中具关键作用，近年备受关注\[STGRN, STCAT, su2021stvgbert, hcstvg, TubeDETR, zhang2020object, csdvl, cgstvg, wasim2024videogrounding, gu2025knowing\]。</p>
-
-<p>图1：现有STVG方法（如\[TubeDETR, cgstvg, STCAT, csdvl, wasim2024videogrounding, gu2025knowing\]）一次性处理全视频以生成完整预测（a），与ART-STVG逐帧处理、更适配LF-STVG长视频（b）的对比。</p>
-
-<p>尽管进展显著，现有研究仍集中于定位**短时视频**（数十秒）中的目标。例如，主流基准HCSTVG-v1/-v2\[hcstvg\]与VidSTG\[STGRN\]的平均视频时长分别为20秒与35秒。然而，在视频检索、视觉监控等实际应用中，视频往往长达数分钟甚至数小时，导致当前研究（聚焦短时视频定位）与实际需求（长时视频定位）间存在显著**鸿沟**。为弥合此 gap，本文探索**长时序STVG**（LF-STVG），即给定文本查询，从**长时视频**中定位目标。</p>
-
+<h1>面向长时序时空视频定位</h1>
+<p>Xin Gu<br />
+Bing Fan<br />
+Jiali Yao<br />
+Zhipeng Zhang<br />
+Yan Huang<br />
+Cheng Han<br />
+Heng Fan<br />
+Libo Zhang<br />
+†<br />
+同等指导与通讯作者  </p>
+<h2>摘要</h2>
+<p>在真实场景中，视频时长可达数分钟甚至数小时，而现有时空视频定位（STVG）研究主要聚焦于从数十秒（通常不足1分钟）的短视频中定位目标，严重制约其应用。本文探索<strong>长时序STVG</strong>（LF-STVG），旨在从长时视频中定位目标。LF-STVG中，长视频具有更长的时间跨度和更多无关信息，使现有短时STVG方法（需一次性处理全部帧）面临挑战。为此，我们提出一种新型<strong>自回归Transformer架构</strong>（ART-STVG），将视频视为流式输入并逐帧处理，天然适配长视频。为捕获时空上下文，ART-STVG引入空间与时间记忆库，并设计简单高效的<strong>记忆选择策略</strong>，仅保留与当前帧定位最相关的信息，显著提升性能。此外，不同于现有方法并行化空间与时间定位，我们提出一种新型<strong>级联式时空设计</strong>，在定位过程中将空间解码器输出传递至时间解码器，利用更细粒度目标信息辅助复杂长视频中的时间定位，进一步提升效果。在新扩展的LF-STVG数据集上，ART-STVG大幅超越现有SOTA方法；在传统短时STVG任务中亦具竞争力。代码将开源。</p>
+<h2>1 引言</h2>
+<p>时空视频定位（STVG）旨在根据自由文本查询，在未剪辑视频中定位目标在<strong>空间</strong>与<strong>时间</strong>上的位置[STGRN]。作为多模态任务，其需精准理解视频时空内容并建立与文本查询的关联。STVG在多模态视频理解中具关键作用，近年备受关注[STGRN, STCAT, su2021stvgbert, hcstvg, TubeDETR, zhang2020object, csdvl, cgstvg, wasim2024videogrounding, gu2025knowing]。</p>
+<p>图1：现有STVG方法（如[TubeDETR, cgstvg, STCAT, csdvl, wasim2024videogrounding, gu2025knowing]）一次性处理全视频以生成完整预测（a），与ART-STVG逐帧处理、更适配LF-STVG长视频（b）的对比。</p>
+<p>尽管进展显著，现有研究仍集中于定位<strong>短时视频</strong>（数十秒）中的目标。例如，主流基准HCSTVG-v1/-v2[hcstvg]与VidSTG[STGRN]的平均视频时长分别为20秒与35秒。然而，在视频检索、视觉监控等实际应用中，视频往往长达数分钟甚至数小时，导致当前研究（聚焦短时视频定位）与实际需求（长时视频定位）间存在显著<strong>鸿沟</strong>。为弥合此 gap，本文探索<strong>长时序STVG</strong>（LF-STVG），即给定文本查询，从<strong>长时视频</strong>中定位目标。</p>
 <p>图2：在分钟级视频数据集上的对比。现有STVG方法在长序列中严重失效，而ART-STVG显著超越。视频越长，ART-STVG优势越明显。</p>
-
-<p>为定位目标，现有STVG方法（如\[wasim2024videogrounding, STCAT, csdvl, TubeDETR, cgstvg, gu2025knowing\]）均**一次性处理全部帧**（见图1(a)），旨在利用全局视频上下文。这些方法在短时STVG（SF-STVG）上表现优异。但随着视频变长，新挑战涌现，引出关键问题：**现有SF-STVG模型的“全帧并行处理”策略是否仍适用于LF-STVG？**  
-我们的回答是：**否定**！  
+<p>为定位目标，现有STVG方法（如[wasim2024videogrounding, STCAT, csdvl, TubeDETR, cgstvg, gu2025knowing]）均<strong>一次性处理全部帧</strong>（见图1(a)），旨在利用全局视频上下文。这些方法在短时STVG（SF-STVG）上表现优异。但随着视频变长，新挑战涌现，引出关键问题：<strong>现有SF-STVG模型的“全帧并行处理”策略是否仍适用于LF-STVG？</strong><br />
+我们的回答是：<strong>否定</strong>！<br />
 在LF-STVG中，长视频带来两大挑战：（1）更长时间跨度显著增加时空定位复杂度；（2）大量无关信息要求模型从冗余内容中精准识别目标事件。一次性处理全帧易导致长时依赖建模困难、无关信息干扰严重（见图2），且因需同时处理所有帧，GPU显存需求高，造成计算瓶颈。</p>
-
-<p>针对上述挑战，我们提出新型**自回归Transformer方法**ART-STVG用于LF-STVG。其将视频视为流式输入，逐帧处理（见图1(b)）。为捕获关键时空上下文，ART-STVG为时空解码器分别维护空间与时间记忆库，存储视频中的重要信息。鉴于不同时间点的记忆重要性各异，我们设计**记忆选择策略**，动态筛选最相关信息供解码器使用，有效提升性能。相比需全视频输入的现有方法，ART-STVG逐帧输入预测，天然支持长视频处理并缓解计算瓶颈。此外，不同于并行化时空定位，我们提出新型**级联式时空设计**，将空间解码器输出传递至时间解码器，利用细粒度空间定位信息辅助复杂时间定位，进一步提升效果。据我们所知，本文是**首个**探索LF-STVG问题的工作，ART-STVG是**首个**尝试解决LF-STVG的框架。</p>
-
-<p>为验证ART-STVG在长时视频定位中的有效性，我们扩展了短时基准HCSTVG-v2\[hcstvg\]的验证集（选择HCSTVG-v2扩展因其提供原始视频源）。具体地，我们将平均视频时长从20秒扩展至1/3/5分钟，分别记为LF-STVG-1min/3min/5min。我们在长时与短时STVG上进行大量实验。结果表明：ART-STVG在LF-STVG上全面超越现有方法，达到新SOTA；在SF-STVG上亦具竞争力。</p>
-
-<p>**本文贡献总结如下：**  
-♠ 提出LF-STVG问题，设计新型记忆增强自回归Transformer框架ART-STVG；  
-♥ 提出记忆选择策略，动态筛选关键时空上下文以增强定位；  
-♣ 提出级联式时空解码器设计，充分利用空间定位信息辅助时间定位；  
+<p>针对上述挑战，我们提出新型<strong>自回归Transformer方法</strong>ART-STVG用于LF-STVG。其将视频视为流式输入，逐帧处理（见图1(b)）。为捕获关键时空上下文，ART-STVG为时空解码器分别维护空间与时间记忆库，存储视频中的重要信息。鉴于不同时间点的记忆重要性各异，我们设计<strong>记忆选择策略</strong>，动态筛选最相关信息供解码器使用，有效提升性能。相比需全视频输入的现有方法，ART-STVG逐帧输入预测，天然支持长视频处理并缓解计算瓶颈。此外，不同于并行化时空定位，我们提出新型<strong>级联式时空设计</strong>，将空间解码器输出传递至时间解码器，利用细粒度空间定位信息辅助复杂时间定位，进一步提升效果。据我们所知，本文是<strong>首个</strong>探索LF-STVG问题的工作，ART-STVG是<strong>首个</strong>尝试解决LF-STVG的框架。</p>
+<p>为验证ART-STVG在长时视频定位中的有效性，我们扩展了短时基准HCSTVG-v2[hcstvg]的验证集（选择HCSTVG-v2扩展因其提供原始视频源）。具体地，我们将平均视频时长从20秒扩展至1/3/5分钟，分别记为LF-STVG-1min/3min/5min。我们在长时与短时STVG上进行大量实验。结果表明：ART-STVG在LF-STVG上全面超越现有方法，达到新SOTA；在SF-STVG上亦具竞争力。</p>
+<p><strong>本文贡献总结如下：</strong><br />
+♠ 提出LF-STVG问题，设计新型记忆增强自回归Transformer框架ART-STVG；<br />
+♥ 提出记忆选择策略，动态筛选关键时空上下文以增强定位；<br />
+♣ 提出级联式时空解码器设计，充分利用空间定位信息辅助时间定位；<br />
 ♠ 在长时与短时基准上的大量实验证明ART-STVG性能卓越。</p>
-
-<p>## 2 相关工作</p>
-
-<p>### 时空视频定位  
-STVG旨在定位与文本查询对应的视频tube。早期方法（如\[2d-tan, pcc, mmn, STGRN, su2021stvgbert\]）多为两阶段：先用预训练检测器\[faster\]生成候选框，再基于文本筛选。此类方法受限于检测器性能。近期方法（如\[STCAT, csdvl, talal2023video, cgstvg, gu2025knowing\]）受DETR\[dert\]启发，提出单阶段框架直接生成tube，性能优于两阶段模型。但二者均聚焦SF-STVG，一次性处理全视频。</p>
-
+<h2>2 相关工作</h2>
+<h3>时空视频定位</h3>
+<p>STVG旨在定位与文本查询对应的视频tube。早期方法（如[2d-tan, pcc, mmn, STGRN, su2021stvgbert]）多为两阶段：先用预训练检测器[faster]生成候选框，再基于文本筛选。此类方法受限于检测器性能。近期方法（如[STCAT, csdvl, talal2023video, cgstvg, gu2025knowing]）受DETR[dert]启发，提出单阶段框架直接生成tube，性能优于两阶段模型。但二者均聚焦SF-STVG，一次性处理全视频。</p>
 <p>与现有方法不同，ART-STVG专为LF-STVG设计：将视频视为流式输入，以自回归方式逐帧处理，并为该流式框架定制记忆选择策略以增强定位。</p>
-
-<p>### 长时视频理解  
-动作检测（如\[varol2017long, Cheng2022TALLFormer\]）、视频字幕（如\[li2022long, islam2024video\]）、视频问答（如\[song2024moviechat, maaz2023video, cheng2024videollama, he2024ma\]）等任务中，长时视频理解备受关注。其核心挑战是长时序依赖建模计算开销大。早期方法（如\[donahue2015long, wu2021towards, girdhar2017actionvlad, hussein2019timeception\]）基于预提特征建模，不联合训练主干网络。近期工作（如\[wu2019adaframe, bai2023qwen, zhang2024long\]）提出高效策略并行处理更多帧；另一些（如\[wu2022memvit, he2024ma, qian2025streaming, wang2024videollamb, fan2019heterogeneous\]）构建轻量Transformer并集成记忆库。与这些工作不同，我们聚焦LF-STVG。**特别地**，不同于视频问答\[song2024moviechat, he2024ma\]中全局视频上下文记忆，ART-STVG的记忆为**文本引导的空间实例**与**事件边界时间线索**，专为LF-STVG设计。记忆选择方面，我们以文本为引导合并空间记忆，以事件边界线索合并时间记忆，而\[song2024moviechat, he2024ma\]无此类机制。</p>
-
-<p>### 自回归架构  
-自回归模型在各领域广泛应用。早期包括RNN\[medsker2001recurrent\]、LSTM\[graves2012long, hochreiter1997long\]、GRU\[chung2014empirical\]。近期自回归Transformer（如\[vaswani2017attention, katharopoulos2020transformers, touvron2023llama, liu2024visual, ren2024timechat, lin2023video\]）通过自注意力机制实现串行计算与长程依赖建模。与前述方法不同，本文提出用于LF-STVG的自回归Transformer架构。</p>
-
-<p>## 3 提出方法</p>
-
-<p>### 概述  
-我们提出ART-STVG：一种用于LF-STVG的记忆增强自回归Transformer。如图3所示，框架始于多模态编码器（3.1节）提取并融合视听与文本特征；随后级联式时空解码器执行自回归解码以逐帧定位目标（3.2节）。具体地，记忆增强空间解码器（3.3节）捕获目标空间位置，记忆增强时间解码器（3.4节）学习时间位置。</p>
-
+<h3>长时视频理解</h3>
+<p>动作检测（如[varol2017long, Cheng2022TALLFormer]）、视频字幕（如[li2022long, islam2024video]）、视频问答（如[song2024moviechat, maaz2023video, cheng2024videollama, he2024ma]）等任务中，长时视频理解备受关注。其核心挑战是长时序依赖建模计算开销大。早期方法（如[donahue2015long, wu2021towards, girdhar2017actionvlad, hussein2019timeception]）基于预提特征建模，不联合训练主干网络。近期工作（如[wu2019adaframe, bai2023qwen, zhang2024long]）提出高效策略并行处理更多帧；另一些（如[wu2022memvit, he2024ma, qian2025streaming, wang2024videollamb, fan2019heterogeneous]）构建轻量Transformer并集成记忆库。与这些工作不同，我们聚焦LF-STVG。<strong>特别地</strong>，不同于视频问答[song2024moviechat, he2024ma]中全局视频上下文记忆，ART-STVG的记忆为<strong>文本引导的空间实例</strong>与<strong>事件边界时间线索</strong>，专为LF-STVG设计。记忆选择方面，我们以文本为引导合并空间记忆，以事件边界线索合并时间记忆，而[song2024moviechat, he2024ma]无此类机制。</p>
+<h3>自回归架构</h3>
+<p>自回归模型在各领域广泛应用。早期包括RNN[medsker2001recurrent]、LSTM[graves2012long, hochreiter1997long]、GRU[chung2014empirical]。近期自回归Transformer（如[vaswani2017attention, katharopoulos2020transformers, touvron2023llama, liu2024visual, ren2024timechat, lin2023video]）通过自注意力机制实现串行计算与长程依赖建模。与前述方法不同，本文提出用于LF-STVG的自回归Transformer架构。</p>
+<h2>3 提出方法</h2>
+<h3>概述</h3>
+<p>我们提出ART-STVG：一种用于LF-STVG的记忆增强自回归Transformer。如图3所示，框架始于多模态编码器（3.1节）提取并融合视听与文本特征；随后级联式时空解码器执行自回归解码以逐帧定位目标（3.2节）。具体地，记忆增强空间解码器（3.3节）捕获目标空间位置，记忆增强时间解码器（3.4节）学习时间位置。</p>
 <p>因ART-STVG逐帧处理，以下以第i帧处理为例说明。</p>
-
 <p>图3：ART-STVG概览，含多模态编码器与级联式自回归解码器，实现逐帧目标定位。</p>
-
-<p>### 3.1 多模态编码器  
-给定第i帧视频与对应文本查询，多模态编码器生成多模态特征，送入自回归解码器定位。编码器含特征提取与融合两部分。</p>
-
-<p>**特征提取**：  
-对第i帧，分别提取其2D外观（ResNet-101\[resnet\]）与3D运动（VidSwin\[vidswin\]）特征以利用静态与动态线索。**注意**：VidSwin提取运动特征时，第(i-1)帧亦作为输入。第i帧外观特征记为\(f_{i}^{a}\in\mathbb{R}^{H\times W\times C_{a}}\)，运动特征为\(f_{i}^{m}\in\mathbb{R}^{H\times W\times C_{m}}\)。  
-对文本，先分词，再用RoBERTa\[roberta\]提取特征\(f^{t}\in\mathbb{R}^{N_{t}\times C_{t}}\)。</p>
-
-<p>**特征融合**：  
-融合外观\(f_{i}^{a}\)、运动\(f_{i}^{m}\)与文本\(f^{t}\)特征生成第i帧多模态特征。具体地，先投影至同维通道C，再拼接得\(f^{\prime}_{i}\)：  
-\[
-f^{\prime}_{i}=[\underbrace{f^{a}_{i_{1}},...,f^{a}_{i_{H\times W}}}_{\text{外观}},\underbrace{f^{m}_{i_{1}},...,f^{m}_{i_{H\times W}}}_{\text{运动}},\underbrace{f_{1}^{t},...,f_{N_{t}}^{t}}_{\text{文本}}]
-\]  
-随后，通过自注意力编码器\[vaswani2017attention\]（含N=6个块）进一步融合：  
-\[
-\tilde{f}_{i}=\mathtt{SelfAttEncoder}(f^{\prime}_{i}+\mathcal{E}_{pos}+\mathcal{E}_{typ})
-\]  
-最后，通过DeConcat操作分离得增强特征\(\tilde{f}_{i}^{a}, \tilde{f}_{i}^{m}, \tilde{f}_{i}^{t}\)供后续解码器使用。</p>
-
-<p>### 3.2 自回归解码与定位  
-ART-STVG通过自回归解码逐帧预测时空位置。如图3，解码过程含空间定位与时间定位两部分：前者预测目标空间位置，后者生成事件时间位置。为捕获时空上下文，空间与时间记忆库（含有效记忆选择策略）被引入定位过程，显著提升性能。**特别地**，不同于现有方法并行化时空定位，我们提出新型**级联式设计**（见图3解码部分），将空间定位输出传递至时间定位，利用细粒度目标线索辅助复杂长视频中的时间定位，进一步提升LF-STVG效果。</p>
-
-<p>**空间定位**：  
-在ART-STVG中，空间定位通过空间查询与多模态特征迭代交互实现。设第i帧初始空间查询为\(q_{i}^{0}\)，空间记忆库为\(\mathcal{B}^{s}_{i}\)。给定第i帧外观\(\tilde{f}^{a}_{i}\)与文本\(\tilde{f}^{t}_{i}\)特征，交互过程为：  
-\[
-q_{i}^{K},\mathcal{B}^{s}_{i+1}=\mathtt{MA\text{-}SpatialDecoder}(q_{i}^{0},\mathcal{B}^{s}_{i},[\tilde{f}^{a}_{i},\tilde{f}^{t}_{i}])
-\]  
-其中\(\mathtt{MA\text{-}SpatialDecoder}(\cdot)\)为含K个空间解码块的记忆增强空间解码器（3.3节）。空间记忆库\(\mathcal{B}^{s}_{i}\)含K个分区，对应K个解码块。\(q_{i}^{K}\)为K个解码块后的最终空间查询特征，\(\mathcal{B}^{s}_{i+1}\)为更新后的空间记忆库。随后，空间头（含MLP模块）预测目标框\(b_{i}\)：  
-\[
-b_{i}=\mathtt{SpatialHead}(q_{i}^{K})
-\]  
-其中\(b_{i}\in\mathbb{R}^{4}\)表示中心点、宽、高。</p>
-
-<p>**时间定位**：  
-类似地，时间定位通过时间查询与多模态特征交互实现。为利用细粒度空间目标信息辅助时间定位，我们设计级联架构。具体地，给定空间定位输出目标框\(b_{i}\)，先用RoI池化\[faster\]提取细粒度运动特征\(\bar{f}^{m}_{i}\in\mathbb{R}^{1\times 1\times\mathcal{C}}\)：  
-\[
-\bar{f}^{m}_{i}=\mathtt{RoI}(\tilde{f}^{m}_{i},b_{i})
-\]  
-相比\(\tilde{f}^{m}_{i}\)，\(\bar{f}^{m}_{i}\)更聚焦目标区域，利于定位。设第i帧初始时间查询为\(p_{i}^{0}\)，时间记忆库为\(\mathcal{B}^{t}_{i}\)。给定\(\bar{f}^{m}_{i}\)与\(\tilde{f}^{t}_{i}\)，时间查询交互为：  
-\[
-p_{i}^{K},\mathcal{B}^{t}_{i+1}=\mathtt{MA\text{-}TemporalDecoder}(p_{i}^{0},\mathcal{B}^{t}_{i},[\bar{f}^{m}_{i},\tilde{f}^{t}_{i}])
-\]  
-其中\(\mathtt{MA\text{-}TemporalDecoder}(\cdot)\)为含K个时间解码块的记忆增强时间解码器（3.4节）。时间记忆库\(\mathcal{B}^{t}_{i}\)亦含K个分区。\(p_{i}^{K}\)为最终时间查询特征，\(\mathcal{B}^{t}_{i+1}\)为更新后的时间记忆库。随后，时间头（MLP模块）预测时间位置：  
-\[
-h_{i}=\mathtt{TemporalHead}(p_{i}^{K})
-\]  
-其中\(h_{i}\in\mathbb{R}^{2}\)包含事件起始与结束概率\(h_{i}^{s}, h_{i}^{e}\)。  
+<h3>3.1 多模态编码器</h3>
+<p>给定第i帧视频与对应文本查询，多模态编码器生成多模态特征，送入自回归解码器定位。编码器含特征提取与融合两部分。</p>
+<p><strong>特征提取</strong>：<br />
+对第i帧，分别提取其2D外观（ResNet-101[resnet]）与3D运动（VidSwin[vidswin]）特征以利用静态与动态线索。<strong>注意</strong>：VidSwin提取运动特征时，第(i-1)帧亦作为输入。第i帧外观特征记为(f_{i}^{a}\in\mathbb{R}^{H\times W\times C_{a}})，运动特征为(f_{i}^{m}\in\mathbb{R}^{H\times W\times C_{m}})。<br />
+对文本，先分词，再用RoBERTa[roberta]提取特征(f^{t}\in\mathbb{R}^{N_{t}\times C_{t}})。</p>
+<p><strong>特征融合</strong>：<br />
+融合外观(f_{i}^{a})、运动(f_{i}^{m})与文本(f^{t})特征生成第i帧多模态特征。具体地，先投影至同维通道C，再拼接得(f^{\prime}<em>{i})：<br />
+[<br />
+f^{\prime}</em>{i}=[\underbrace{f^{a}<em>{i</em>{1}},...,f^{a}<em>{i</em>{H\times W}}}<em>{\text{外观}},\underbrace{f^{m}</em>{i_{1}},...,f^{m}<em>{i</em>{H\times W}}}<em>{\text{运动}},\underbrace{f</em>{1}^{t},...,f_{N_{t}}^{t}}<em>{\text{文本}}]<br />
+]<br />
+随后，通过自注意力编码器[vaswani2017attention]（含N=6个块）进一步融合：<br />
+[<br />
+\tilde{f}</em>{i}=\mathtt{SelfAttEncoder}(f^{\prime}<em>{i}+\mathcal{E}</em>{pos}+\mathcal{E}<em>{typ})<br />
+]<br />
+最后，通过DeConcat操作分离得增强特征(\tilde{f}</em>{i}^{a}, \tilde{f}<em>{i}^{m}, \tilde{f}</em>{i}^{t})供后续解码器使用。</p>
+<h3>3.2 自回归解码与定位</h3>
+<p>ART-STVG通过自回归解码逐帧预测时空位置。如图3，解码过程含空间定位与时间定位两部分：前者预测目标空间位置，后者生成事件时间位置。为捕获时空上下文，空间与时间记忆库（含有效记忆选择策略）被引入定位过程，显著提升性能。<strong>特别地</strong>，不同于现有方法并行化时空定位，我们提出新型<strong>级联式设计</strong>（见图3解码部分），将空间定位输出传递至时间定位，利用细粒度目标线索辅助复杂长视频中的时间定位，进一步提升LF-STVG效果。</p>
+<p><strong>空间定位</strong>：<br />
+在ART-STVG中，空间定位通过空间查询与多模态特征迭代交互实现。设第i帧初始空间查询为(q_{i}^{0})，空间记忆库为(\mathcal{B}^{s}<em>{i})。给定第i帧外观(\tilde{f}^{a}</em>{i})与文本(\tilde{f}^{t}<em>{i})特征，交互过程为：<br />
+[<br />
+q</em>{i}^{K},\mathcal{B}^{s}<em>{i+1}=\mathtt{MA\text{-}SpatialDecoder}(q</em>{i}^{0},\mathcal{B}^{s}<em>{i},[\tilde{f}^{a}</em>{i},\tilde{f}^{t}<em>{i}])<br />
+]<br />
+其中(\mathtt{MA\text{-}SpatialDecoder}(\cdot))为含K个空间解码块的记忆增强空间解码器（3.3节）。空间记忆库(\mathcal{B}^{s}</em>{i})含K个分区，对应K个解码块。(q_{i}^{K})为K个解码块后的最终空间查询特征，(\mathcal{B}^{s}<em>{i+1})为更新后的空间记忆库。随后，空间头（含MLP模块）预测目标框(b</em>{i})：<br />
+[<br />
+b_{i}=\mathtt{SpatialHead}(q_{i}^{K})<br />
+]<br />
+其中(b_{i}\in\mathbb{R}^{4})表示中心点、宽、高。</p>
+<p><strong>时间定位</strong>：<br />
+类似地，时间定位通过时间查询与多模态特征交互实现。为利用细粒度空间目标信息辅助时间定位，我们设计级联架构。具体地，给定空间定位输出目标框(b_{i})，先用RoI池化[faster]提取细粒度运动特征(\bar{f}^{m}<em>{i}\in\mathbb{R}^{1\times 1\times\mathcal{C}})：<br />
+[<br />
+\bar{f}^{m}</em>{i}=\mathtt{RoI}(\tilde{f}^{m}<em>{i},b</em>{i})<br />
+]<br />
+相比(\tilde{f}^{m}<em>{i})，(\bar{f}^{m}</em>{i})更聚焦目标区域，利于定位。设第i帧初始时间查询为(p_{i}^{0})，时间记忆库为(\mathcal{B}^{t}<em>{i})。给定(\bar{f}^{m}</em>{i})与(\tilde{f}^{t}<em>{i})，时间查询交互为：<br />
+[<br />
+p</em>{i}^{K},\mathcal{B}^{t}<em>{i+1}=\mathtt{MA\text{-}TemporalDecoder}(p</em>{i}^{0},\mathcal{B}^{t}<em>{i},[\bar{f}^{m}</em>{i},\tilde{f}^{t}<em>{i}])<br />
+]<br />
+其中(\mathtt{MA\text{-}TemporalDecoder}(\cdot))为含K个时间解码块的记忆增强时间解码器（3.4节）。时间记忆库(\mathcal{B}^{t}</em>{i})亦含K个分区。(p_{i}^{K})为最终时间查询特征，(\mathcal{B}^{t}<em>{i+1})为更新后的时间记忆库。随后，时间头（MLP模块）预测时间位置：<br />
+[<br />
+h</em>{i}=\mathtt{TemporalHead}(p_{i}^{K})<br />
+]<br />
+其中(h_{i}\in\mathbb{R}^{2})包含事件起始与结束概率(h_{i}^{s}, h_{i}^{e})。<br />
 通过逐帧执行空间与时间定位，并用当前帧信息更新记忆库，ART-STVG实现逐帧定位。</p>
-
 <p>图4：（a）记忆增强空间解码块架构；（b）时间解码块架构。</p>
-
-<p>### 3.3 记忆增强空间解码器  
-我们提出记忆增强空间解码器，以空间记忆库为引导，从多模态特征中学习目标空间位置。其含K个级联解码块（图4(a)），每块对应空间记忆库一个分区，含两个交叉注意力块\[vaswani2017attention\]。</p>
-
-<p>**空间记忆选择**：  
-因空间查询含关键目标信息，先将其插入第k个分区\(\mathcal{B}^{s}_{i,k}\)（同时更新\(\mathcal{B}^{s}_{i}\)至\(\mathcal{B}^{s}_{i+1}\)）。随后，从\(\mathcal{B}^{s}_{i+1,k}\)中为第k块选择记忆。**动机**：不同时间点的记忆对当前帧定位相关性不同，选择更相关记忆可提升查询学习。具体步骤：  
-1. 计算各空间记忆与文本特征的相似度；  
-2. 选取相似度最高的前\(N_s\)个记忆构成\(\mathcal{M}^{s}_{i,k}\)（图4(a)-左）。</p>
-
+<h3>3.3 记忆增强空间解码器</h3>
+<p>我们提出记忆增强空间解码器，以空间记忆库为引导，从多模态特征中学习目标空间位置。其含K个级联解码块（图4(a)），每块对应空间记忆库一个分区，含两个交叉注意力块[vaswani2017attention]。</p>
+<p><strong>空间记忆选择</strong>：<br />
+因空间查询含关键目标信息，先将其插入第k个分区(\mathcal{B}^{s}<em>{i,k})（同时更新(\mathcal{B}^{s}</em>{i})至(\mathcal{B}^{s}<em>{i+1})）。随后，从(\mathcal{B}^{s}</em>{i+1,k})中为第k块选择记忆。<strong>动机</strong>：不同时间点的记忆对当前帧定位相关性不同，选择更相关记忆可提升查询学习。具体步骤：<br />
+1. 计算各空间记忆与文本特征的相似度；<br />
+2. 选取相似度最高的前(N_s)个记忆构成(\mathcal{M}^{s}_{i,k})（图4(a)-左）。</p>
 <p>图5：有/无选择性空间记忆的注意力图对比。红框为待定位目标。可见选择性记忆帮助模型更聚焦目标区域。</p>
-
-<p>**记忆增强空间解码**：  
-解码时，将\(q_{i}^{k-1}\)送入第k块学习\(q_{i}^{k}\)。首先通过交叉注意力与选择性空间记忆交互：  
-\[
-\tilde{q}_{i}^{k-1}=\mathtt{CrossAtt}(q_{i}^{k-1},\mathcal{M}^{s}_{i,k})
-\]  
-其中\(\tilde{q}_{i}^{k-1}\)为第k块的记忆增强查询特征。随后，与外观\(f_{i}^{a}\)和文本\(f_{i}^{t}\)特征交互学习\(q_{i}^{k}\)：  
-\[
-q_{i}^{k}=\mathtt{CrossAtt}(\tilde{q}_{i}^{k-1},[\tilde{f}^{a}_{i},\tilde{f}^{t}_{i}])
-\]  
-K个解码块后生成空间查询特征\(q_{i}^{K}\)用于空间预测。</p>
-
-<p>### 3.4 记忆增强时间解码器  
-时间解码器利用时间记忆库学习目标时间位置，含K个解码块（图4(b)），每块对应一个时间记忆分区，含两个交叉注意力块。</p>
-
-<p>**时间记忆选择**：  
-时间查询\(p_{i}^{k-1}\)含时间事件信息，先插入第k分区\(\mathcal{B}^{t}_{i,k}\)（更新记忆库）。因长视频含多事件，选择与当前事件相关记忆有助于定位事件边界。受TextTiling\[hearst1997text\]启发，步骤如下：  
-1. 计算相邻帧记忆的相似度；  
+<p><strong>记忆增强空间解码</strong>：<br />
+解码时，将(q_{i}^{k-1})送入第k块学习(q_{i}^{k})。首先通过交叉注意力与选择性空间记忆交互：<br />
+[<br />
+\tilde{q}<em>{i}^{k-1}=\mathtt{CrossAtt}(q</em>{i}^{k-1},\mathcal{M}^{s}<em>{i,k})<br />
+]<br />
+其中(\tilde{q}</em>{i}^{k-1})为第k块的记忆增强查询特征。随后，与外观(f_{i}^{a})和文本(f_{i}^{t})特征交互学习(q_{i}^{k})：<br />
+[<br />
+q_{i}^{k}=\mathtt{CrossAtt}(\tilde{q}<em>{i}^{k-1},[\tilde{f}^{a}</em>{i},\tilde{f}^{t}<em>{i}])<br />
+]<br />
+K个解码块后生成空间查询特征(q</em>{i}^{K})用于空间预测。</p>
+<h3>3.4 记忆增强时间解码器</h3>
+<p>时间解码器利用时间记忆库学习目标时间位置，含K个解码块（图4(b)），每块对应一个时间记忆分区，含两个交叉注意力块。</p>
+<p><strong>时间记忆选择</strong>：<br />
+时间查询(p_{i}^{k-1})含时间事件信息，先插入第k分区(\mathcal{B}^{t}_{i,k})（更新记忆库）。因长视频含多事件，选择与当前事件相关记忆有助于定位事件边界。受TextTiling[hearst1997text]启发，步骤如下：<br />
+1. 计算相邻帧记忆的相似度；<br />
 2. 相似度低的点视为事件边界，仅选择与当前帧最近事件对应的记忆（图4(b)-右）。</p>
-
 <p>图6：选择性时间记忆示意图。中图：相邻记忆余弦相似度序列（绿色越深表示潜在事件边界）。上图：预测的起始/结束概率准确捕获目标事件。红框为文本查询对应真值。</p>
-
-<p>**记忆增强时间解码**：  
-解码时，将\(p_{i}^{k-1}\)送入第k块学习\(p_{i}^{k}\)。首先通过交叉注意力与选择性时间记忆交互：  
-\[
-\tilde{p}_{i}^{k-1}=\mathtt{CrossAtt}(p_{i}^{k-1},\mathcal{M}^{t}_{i,k})
-\]  
-随后，与运动\(\bar{f}^{m}_{i}\)和文本\(f_{i}^{t}\)特征交互：  
-\[
-p_{i}^{k}=\mathtt{CrossAtt}(\tilde{p}_{i}^{k-1},[\bar{f}^{m}_{i},\tilde{f}^{t}_{i}])
-\]  
-K个解码块后生成时间查询特征\(p_{i}^{K}\)用于时间预测。</p>
-
-<p>### 3.5 优化  
-给定含\(N_f\)帧的视频及文本查询，ART-STVG预测：（1）空间解码器输出目标框\(\mathcal{B}=\{b_{i}\}_{i=1}^{N_f}\)；（2）时间解码器输出起始时间\(\mathcal{H}_{s}=\{h_{i}^{s}\}_{i=1}^{N_f}\)与结束时间\(\mathcal{H}_{e}=\{h_{i}^{e}\}_{i=1}^{N_f}\)。训练时，给定真值\(\mathcal{B}^{*}, \mathcal{H}_{s}^{*}, \mathcal{H}_{e}^{*}\)，总损失为：  
-\[
-\mathcal{L}=\underbrace{\lambda_{k}(\mathcal{L}_{{\text{KL}}}(\mathcal{H}_{s}^{*},\mathcal{H}_{s})+\mathcal{L}_{{\text{KL}}}(\mathcal{H}_{e}^{*},\mathcal{H}_{e}))}_{\text{时间解码器损失}}+\underbrace{\lambda_{l}\mathcal{L}_{1}(\mathcal{B}^{*},\mathcal{B})+\lambda_{u}\mathcal{L}_{{\text{IoU}}}(\mathcal{B}^{*},\mathcal{B})}_{\text{空间解码器损失}}
-\]  
-其中\(\mathcal{L}_{{\text{KL}}}, \mathcal{L}_{1}, \mathcal{L}_{{\text{IoU}}}\)分别为KL散度、平滑L1与IoU损失；\(\lambda_k, \lambda_l, \lambda_u\)为平衡参数。</p>
-
-<p>## 4 实验</p>
-
-<p>### 实现细节  
-ART-STVG基于PyTorch\[paszke2019pytorch\]实现。外观特征用ResNet-101\[resnet\]，运动特征用VidSwin-tiny\[vidswin\]，文本特征用RoBERTa-base\[roberta\]。遵循\[cgstvg, STCAT, csdvl\]，用预训练MDETR\[mdetr\]初始化外观/文本主干与多模态融合模块。编码器/解码器隐藏维度\(C=256\)；外观通道\(C_a=2048\)，运动通道\(C_m=768\)，文本通道\(C_t=768\)。视频帧采样FPS=3.2，短边缩放至420；训练帧长\(N_f=64\)，文本序列长\(N_t=30\)。训练用Adam，预训练主干学习率\(1e-5\)，其他模块\(1e-4\)，运动主干冻结。\(\lambda_k=10, \lambda_l=5, \lambda_u=3\)。</p>
-
-<p>### 数据集  
-因无现成LF-STVG基准，我们扩展HCSTVG-v2\[hcstvg\]构建新数据集。**选择HCSTVG-v2扩展因其是唯一提供原始视频源的基准**。其含16,000视频-句子对（10,131训练/2,000验证/4,413测试），平均时长20秒，句子平均17.25词。测试集标注不公开，结果在验证集报告\[TubeDETR, csdvl, cgstvg\]。故仅扩展验证集至1/3/5分钟，记为LF-STVG-1min/3min/5min。扩展基于原始YouTube视频（非剪辑拼接），人工审核确保质量。**注意**：训练集未改动，ART-STVG与短时STVG方法用相同训练样本以公平比较。</p>
-
-<p>### 评估指标  
-遵循\[csdvl, STCAT, cgstvg\]，用m_tIoU、m_vIoU、vIoU@R评估。m_tIoU评估时间定位效果（平均tIoU）；m_vIoU评估空间定位效果（平均vIoU）；vIoU@R衡量vIoU超阈值R的样本比例。</p>
-
-<p>**表1：长时视频方法对比（最佳结果加粗）**  
-| LF-STVG-1min | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| TubeDETR | 32.5 | 20.8 | 25.7 | 8.7 |  
-| STCAT | 36.1 | 23.2 | 34.4 | 10.4 |  
-| CG-STVG | 37.2 | 24.3 | 32.6 | 10.9 |  
-| TA-STVG | 38.4 | 25.2 | 35.5 | 12.1 |  
-| Baseline (ours) | 30.1 | 19.7 | 25.5 | 8.3 |  
-| **ART-STVG (ours)** | **39.1** | **26.1** | **36.8** | **17.6** |  
-| Δ over Baseline | **+9.0** | **+6.4** | **+11.3** | **+9.3** |</p>
-
-<p>| LF-STVG-3min | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| TubeDETR | 13.6 | 6.4 | 7.2 | 2.9 |  
-| STCAT | 14.2 | 8.4 | 3.0 | 0.1 |  
-| CG-STVG | 14.2 | 8.7 | 3.2 | 0.3 |  
-| TA-STVG | 13.9 | 8.5 | 3.3 | 0.2 |  
-| Baseline (ours) | 16.2 | 10.7 | 10.5 | 4.5 |  
-| **ART-STVG (ours)** | **23.0** | **15.3** | **20.1** | **9.5** |  
-| Δ over Baseline | **+6.8** | **+4.6** | **+9.6** | **+5.0** |</p>
-
-<p>| LF-STVG-5min | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| TubeDETR | 7.8 | 3.9 | 0.7 | 0.1 |  
-| STCAT | 7.8 | 4.4 | 0.3 | 0.0 |  
-| CG-STVG | 8.1 | 4.7 | 0.3 | 0.0 |  
-| TA-STVG | 7.7 | 4.5 | 0.3 | 0.0 |  
-| Baseline (ours) | 9.2 | 5.3 | 4.5 | 1.1 |  
-| **ART-STVG (ours)** | **15.0** | **10.0** | **11.4** | **4.7** |  
-| Δ over Baseline | **+5.8** | **+4.7** | **+6.9** | **+3.6** |</p>
-
-<p>**表2：时间解码器中选择性时间记忆消融研究（TM: 时间记忆；TMS: 时间记忆选择）**  
-| TM | TMS | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|---|  
-| ❌ | ❌ | 16.7 | 11.1 | 11.9 | 4.7 |  
-| ✅ | ❌ | 9.6 | 6.2 | 4.7 | 1.5 |  
-| ✅ | ✅ | **23.0** | **15.3** | **20.1** | **9.5** |</p>
-
-<p>**表3：空间解码器中选择性空间记忆消融研究（SM: 空间记忆；SMS: 空间记忆选择）**  
-| SM | SMS | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|---|  
-| ❌ | ❌ | 21.3 | 13.9 | 16.4 | 8.0 |  
-| ✅ | ❌ | 22.1 | 14.2 | 17.0 | 9.0 |  
-| ✅ | ✅ | **23.0** | **15.3** | **20.1** | **9.5** |</p>
-
-<p>**表4：ART-STVG解码器设计消融研究**  
-| Design | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| 并行 | 21.5 | 13.9 | 17.3 | 8.2 |  
-| **级联** | **23.0** | **15.3** | **20.1** | **9.5** |</p>
-
-<p>**表5：选择性空间记忆数量\(N_s\)影响**  
-| \(N_s\) | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| 16 | 22.7 | 15.0 | 18.4 | 9.2 |  
-| **32** | **23.0** | **15.3** | **20.1** | **9.5** |  
-| 48 | 22.5 | 14.7 | 18.2 | 9.1 |</p>
-
-<p>### 4.1 长时STVG对比  
-我们在扩展的LF-STVG基准上对比不同方法（所有方法均仅在HCSTVG-v2训练集上训练以公平比较）。表1结果表明：ART-STVG在所有指标上显著超越现有STVG方法，证明其在长时视频定位中的优越性。具体地，ART-STVG相比TA-STVG在1/3/5分钟视频上m_tIoU/m_vIoU提升0.7%/0.9%、9.1%/6.8%、7.3%/5.5%。相比无记忆模块的基线（架构类似ART-STVG，详见**补充材料**），ART-STVG在三基准上m_tIoU/m_vIoU提升9.0%/6.4%、6.8%/4.6%、5.8%/4.7%，证明选择性记忆对LF-STVG的重要性。</p>
-
-<p>**表6：在HCSTVG-v2验证集上的LF-STVG对比（最佳结果加粗）**  
-| Methods | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| TubeDETR | 20.8 | 11.5 | 9.8 | 3.9 |  
-| STCAT | 21.0 | 12.2 | 7.4 | 0.6 |  
-| CG-STVG | 20.5 | 12.0 | 8.0 | 1.0 |  
-| TA-STVG | 20.7 | 11.8 | 7.7 | 0.5 |  
-| **ART-STVG (ours)** | **28.3** | **18.8** | **27.0** | **11.9** |</p>
-
-<p>**训练视频长度影响**：  
-为研究不同长度训练视频的影响，我们将HCSTVG-v2训练集扩展至40秒并训练各方法。表6显示：所有方法在40秒视频上表现优于20秒视频（对比表1 LF-STVG-3min），证明长视频训练可提升长时定位能力，但显著增加训练成本。**更重要的是**，ART-STVG仍全面领先，相比TA-STVG在m_tIoU/m_vIoU上提升7.6%/7.0%。</p>
-
-<p>### 4.2 短时STVG对比  
-**表7：在HCSTVG-v2验证集上的短时STVG对比（最佳结果加粗）**  
-| Methods | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |  
-|---|---|---|---|---|  
-| 2D-Tan | - | 30.4 | 50.4 | 18.8 |  
-| MMN | - | 30.3 | 49.0 | 25.6 |  
-| TubeDETR | 53.9 | 36.4 | 58.8 | 30.6 |  
-| STCAT | 56.6 | 36.9 | 60.3 | 33.6 |  
-| STVGFormer | 58.1 | 38.7 | 65.5 | 33.8 |  
-| CG-STVG | 60.0 | 39.5 | 64.5 | 36.3 |  
-| TA-STVG | 60.4 | 40.2 | 65.8 | 36.7 |  
-| Baseline (ours) | 46.2 | 29.9 | 45.0 | 21.1 |  
-| **ART-STVG (ours)** | **59.2** | **39.2** | **64.4** | **33.2** |</p>
-
+<p><strong>记忆增强时间解码</strong>：<br />
+解码时，将(p_{i}^{k-1})送入第k块学习(p_{i}^{k})。首先通过交叉注意力与选择性时间记忆交互：<br />
+[<br />
+\tilde{p}<em>{i}^{k-1}=\mathtt{CrossAtt}(p</em>{i}^{k-1},\mathcal{M}^{t}<em>{i,k})<br />
+]<br />
+随后，与运动(\bar{f}^{m}</em>{i})和文本(f_{i}^{t})特征交互：<br />
+[<br />
+p_{i}^{k}=\mathtt{CrossAtt}(\tilde{p}<em>{i}^{k-1},[\bar{f}^{m}</em>{i},\tilde{f}^{t}<em>{i}])<br />
+]<br />
+K个解码块后生成时间查询特征(p</em>{i}^{K})用于时间预测。</p>
+<h3>3.5 优化</h3>
+<p>给定含(N_f)帧的视频及文本查询，ART-STVG预测：（1）空间解码器输出目标框(\mathcal{B}={b_{i}}<em>{i=1}^{N_f})；（2）时间解码器输出起始时间(\mathcal{H}</em>{s}={h_{i}^{s}}<em>{i=1}^{N_f})与结束时间(\mathcal{H}</em>{e}={h_{i}^{e}}<em>{i=1}^{N_f})。训练时，给定真值(\mathcal{B}^{<em>}, \mathcal{H}_{s}^{</em>}, \mathcal{H}</em>{e}^{<em>})，总损失为：<br />
+[<br />
+\mathcal{L}=\underbrace{\lambda_{k}(\mathcal{L}<em>{{\text{KL}}}(\mathcal{H}</em>{s}^{</em>},\mathcal{H}<em>{s})+\mathcal{L}</em>{{\text{KL}}}(\mathcal{H}<em>{e}^{<em>},\mathcal{H}<em>{e}))}</em>{\text{时间解码器损失}}+\underbrace{\lambda_{l}\mathcal{L}_{1}(\mathcal{B}^{</em>},\mathcal{B})+\lambda</em>{u}\mathcal{L}<em>{{\text{IoU}}}(\mathcal{B}^{*},\mathcal{B})}</em>{\text{空间解码器损失}}<br />
+]<br />
+其中(\mathcal{L}<em>{{\text{KL}}}, \mathcal{L}</em>{1}, \mathcal{L}_{{\text{IoU}}})分别为KL散度、平滑L1与IoU损失；(\lambda_k, \lambda_l, \lambda_u)为平衡参数。</p>
+<h2>4 实验</h2>
+<h3>实现细节</h3>
+<p>ART-STVG基于PyTorch[paszke2019pytorch]实现。外观特征用ResNet-101[resnet]，运动特征用VidSwin-tiny[vidswin]，文本特征用RoBERTa-base[roberta]。遵循[cgstvg, STCAT, csdvl]，用预训练MDETR[mdetr]初始化外观/文本主干与多模态融合模块。编码器/解码器隐藏维度(C=256)；外观通道(C_a=2048)，运动通道(C_m=768)，文本通道(C_t=768)。视频帧采样FPS=3.2，短边缩放至420；训练帧长(N_f=64)，文本序列长(N_t=30)。训练用Adam，预训练主干学习率(1e-5)，其他模块(1e-4)，运动主干冻结。(\lambda_k=10, \lambda_l=5, \lambda_u=3)。</p>
+<h3>数据集</h3>
+<p>因无现成LF-STVG基准，我们扩展HCSTVG-v2[hcstvg]构建新数据集。<strong>选择HCSTVG-v2扩展因其是唯一提供原始视频源的基准</strong>。其含16,000视频-句子对（10,131训练/2,000验证/4,413测试），平均时长20秒，句子平均17.25词。测试集标注不公开，结果在验证集报告[TubeDETR, csdvl, cgstvg]。故仅扩展验证集至1/3/5分钟，记为LF-STVG-1min/3min/5min。扩展基于原始YouTube视频（非剪辑拼接），人工审核确保质量。<strong>注意</strong>：训练集未改动，ART-STVG与短时STVG方法用相同训练样本以公平比较。</p>
+<h3>评估指标</h3>
+<p>遵循[csdvl, STCAT, cgstvg]，用m_tIoU、m_vIoU、vIoU@R评估。m_tIoU评估时间定位效果（平均tIoU）；m_vIoU评估空间定位效果（平均vIoU）；vIoU@R衡量vIoU超阈值R的样本比例。</p>
+<p><strong>表1：长时视频方法对比（最佳结果加粗）</strong><br />
+| LF-STVG-1min | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|<br />
+| TubeDETR | 32.5 | 20.8 | 25.7 | 8.7 |<br />
+| STCAT | 36.1 | 23.2 | 34.4 | 10.4 |<br />
+| CG-STVG | 37.2 | 24.3 | 32.6 | 10.9 |<br />
+| TA-STVG | 38.4 | 25.2 | 35.5 | 12.1 |<br />
+| Baseline (ours) | 30.1 | 19.7 | 25.5 | 8.3 |<br />
+| <strong>ART-STVG (ours)</strong> | <strong>39.1</strong> | <strong>26.1</strong> | <strong>36.8</strong> | <strong>17.6</strong> |<br />
+| Δ over Baseline | <strong>+9.0</strong> | <strong>+6.4</strong> | <strong>+11.3</strong> | <strong>+9.3</strong> |  </p>
+<table>
+<thead>
+<tr>
+<th>LF-STVG-3min</th>
+<th>m_tIoU</th>
+<th>m_vIoU</th>
+<th>vIoU@0.3</th>
+<th>vIoU@0.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TubeDETR</td>
+<td>13.6</td>
+<td>6.4</td>
+<td>7.2</td>
+<td>2.9</td>
+</tr>
+<tr>
+<td>STCAT</td>
+<td>14.2</td>
+<td>8.4</td>
+<td>3.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>CG-STVG</td>
+<td>14.2</td>
+<td>8.7</td>
+<td>3.2</td>
+<td>0.3</td>
+</tr>
+<tr>
+<td>TA-STVG</td>
+<td>13.9</td>
+<td>8.5</td>
+<td>3.3</td>
+<td>0.2</td>
+</tr>
+<tr>
+<td>Baseline (ours)</td>
+<td>16.2</td>
+<td>10.7</td>
+<td>10.5</td>
+<td>4.5</td>
+</tr>
+<tr>
+<td><strong>ART-STVG (ours)</strong></td>
+<td><strong>23.0</strong></td>
+<td><strong>15.3</strong></td>
+<td><strong>20.1</strong></td>
+<td><strong>9.5</strong></td>
+</tr>
+<tr>
+<td>Δ over Baseline</td>
+<td><strong>+6.8</strong></td>
+<td><strong>+4.6</strong></td>
+<td><strong>+9.6</strong></td>
+<td><strong>+5.0</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>LF-STVG-5min</th>
+<th>m_tIoU</th>
+<th>m_vIoU</th>
+<th>vIoU@0.3</th>
+<th>vIoU@0.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TubeDETR</td>
+<td>7.8</td>
+<td>3.9</td>
+<td>0.7</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>STCAT</td>
+<td>7.8</td>
+<td>4.4</td>
+<td>0.3</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>CG-STVG</td>
+<td>8.1</td>
+<td>4.7</td>
+<td>0.3</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>TA-STVG</td>
+<td>7.7</td>
+<td>4.5</td>
+<td>0.3</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>Baseline (ours)</td>
+<td>9.2</td>
+<td>5.3</td>
+<td>4.5</td>
+<td>1.1</td>
+</tr>
+<tr>
+<td><strong>ART-STVG (ours)</strong></td>
+<td><strong>15.0</strong></td>
+<td><strong>10.0</strong></td>
+<td><strong>11.4</strong></td>
+<td><strong>4.7</strong></td>
+</tr>
+<tr>
+<td>Δ over Baseline</td>
+<td><strong>+5.8</strong></td>
+<td><strong>+4.7</strong></td>
+<td><strong>+6.9</strong></td>
+<td><strong>+3.6</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表2：时间解码器中选择性时间记忆消融研究（TM: 时间记忆；TMS: 时间记忆选择）</strong><br />
+| TM | TMS | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|---|<br />
+| ❌ | ❌ | 16.7 | 11.1 | 11.9 | 4.7 |<br />
+| ✅ | ❌ | 9.6 | 6.2 | 4.7 | 1.5 |<br />
+| ✅ | ✅ | <strong>23.0</strong> | <strong>15.3</strong> | <strong>20.1</strong> | <strong>9.5</strong> |  </p>
+<p><strong>表3：空间解码器中选择性空间记忆消融研究（SM: 空间记忆；SMS: 空间记忆选择）</strong><br />
+| SM | SMS | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|---|<br />
+| ❌ | ❌ | 21.3 | 13.9 | 16.4 | 8.0 |<br />
+| ✅ | ❌ | 22.1 | 14.2 | 17.0 | 9.0 |<br />
+| ✅ | ✅ | <strong>23.0</strong> | <strong>15.3</strong> | <strong>20.1</strong> | <strong>9.5</strong> |  </p>
+<p><strong>表4：ART-STVG解码器设计消融研究</strong><br />
+| Design | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|<br />
+| 并行 | 21.5 | 13.9 | 17.3 | 8.2 |<br />
+| <strong>级联</strong> | <strong>23.0</strong> | <strong>15.3</strong> | <strong>20.1</strong> | <strong>9.5</strong> |  </p>
+<p><strong>表5：选择性空间记忆数量(N_s)影响</strong><br />
+| (N_s) | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|<br />
+| 16 | 22.7 | 15.0 | 18.4 | 9.2 |<br />
+| <strong>32</strong> | <strong>23.0</strong> | <strong>15.3</strong> | <strong>20.1</strong> | <strong>9.5</strong> |<br />
+| 48 | 22.5 | 14.7 | 18.2 | 9.1 |  </p>
+<h3>4.1 长时STVG对比</h3>
+<p>我们在扩展的LF-STVG基准上对比不同方法（所有方法均仅在HCSTVG-v2训练集上训练以公平比较）。表1结果表明：ART-STVG在所有指标上显著超越现有STVG方法，证明其在长时视频定位中的优越性。具体地，ART-STVG相比TA-STVG在1/3/5分钟视频上m_tIoU/m_vIoU提升0.7%/0.9%、9.1%/6.8%、7.3%/5.5%。相比无记忆模块的基线（架构类似ART-STVG，详见<strong>补充材料</strong>），ART-STVG在三基准上m_tIoU/m_vIoU提升9.0%/6.4%、6.8%/4.6%、5.8%/4.7%，证明选择性记忆对LF-STVG的重要性。</p>
+<p><strong>表6：在HCSTVG-v2验证集上的LF-STVG对比（最佳结果加粗）</strong><br />
+| Methods | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|<br />
+| TubeDETR | 20.8 | 11.5 | 9.8 | 3.9 |<br />
+| STCAT | 21.0 | 12.2 | 7.4 | 0.6 |<br />
+| CG-STVG | 20.5 | 12.0 | 8.0 | 1.0 |<br />
+| TA-STVG | 20.7 | 11.8 | 7.7 | 0.5 |<br />
+| <strong>ART-STVG (ours)</strong> | <strong>28.3</strong> | <strong>18.8</strong> | <strong>27.0</strong> | <strong>11.9</strong> |  </p>
+<p><strong>训练视频长度影响</strong>：<br />
+为研究不同长度训练视频的影响，我们将HCSTVG-v2训练集扩展至40秒并训练各方法。表6显示：所有方法在40秒视频上表现优于20秒视频（对比表1 LF-STVG-3min），证明长视频训练可提升长时定位能力，但显著增加训练成本。<strong>更重要的是</strong>，ART-STVG仍全面领先，相比TA-STVG在m_tIoU/m_vIoU上提升7.6%/7.0%。</p>
+<h3>4.2 短时STVG对比</h3>
+<p><strong>表7：在HCSTVG-v2验证集上的短时STVG对比（最佳结果加粗）</strong><br />
+| Methods | m_tIoU | m_vIoU | vIoU@0.3 | vIoU@0.5 |<br />
+|---|---|---|---|---|<br />
+| 2D-Tan | - | 30.4 | 50.4 | 18.8 |<br />
+| MMN | - | 30.3 | 49.0 | 25.6 |<br />
+| TubeDETR | 53.9 | 36.4 | 58.8 | 30.6 |<br />
+| STCAT | 56.6 | 36.9 | 60.3 | 33.6 |<br />
+| STVGFormer | 58.1 | 38.7 | 65.5 | 33.8 |<br />
+| CG-STVG | 60.0 | 39.5 | 64.5 | 36.3 |<br />
+| TA-STVG | 60.4 | 40.2 | 65.8 | 36.7 |<br />
+| Baseline (ours) | 46.2 | 29.9 | 45.0 | 21.1 |<br />
+| <strong>ART-STVG (ours)</strong> | <strong>59.2</strong> | <strong>39.2</strong> | <strong>64.4</strong> | <strong>33.2</strong> |  </p>
 <p>在SF-STVG上（表7），ART-STVG表现具竞争力。现有方法用非自回归结构并行处理帧，专为短时视频设计。ART-STVG虽用自回归结构，仍超越多数方法，仅在m_tIoU/m_vIoU上略逊于最新SOTA TA-STVG（差1.2%/1.0%），且相比无记忆基线有明显提升。</p>
-
-<p>### 4.3 定性结果  
-在LF-STVG-3min上，我们展示ART-STVG与无记忆基线的定位结果对比（图10）。基线常在不同帧定位不一致目标（如第3、5例），而ART-STVG定位更一致准确，证明方法有效性。</p>
-
+<h3>4.3 定性结果</h3>
+<p>在LF-STVG-3min上，我们展示ART-STVG与无记忆基线的定位结果对比（图10）。基线常在不同帧定位不一致目标（如第3、5例），而ART-STVG定位更一致准确，证明方法有效性。</p>
 <p>图7：ART-STVG与基线定性对比。</p>
-
-<p>### 4.4 效率分析  
-**表8：单A100 GPU上的模型效率与复杂度对比**  
-| Methods | Trainable Params | Total Params | Inference Time | GPU Mem |  
-|---|---|---|---|---|  
-| TubeDETR | 185M | 185M | 0.23s | 22.1G |  
-| STCAT | 207M | 207M | 0.47s | 23.6G |  
-| CG-STVG | 203M | 231M | 0.71s | 25.9G |  
-| TA-STVG | 206M | 234M | 0.69s | 25.1G |  
-| **ART-STVG (ours)** | **207M** | **235M** | **1.09s** | **7.9G** |</p>
-
+<h3>4.4 效率分析</h3>
+<p><strong>表8：单A100 GPU上的模型效率与复杂度对比</strong><br />
+| Methods | Trainable Params | Total Params | Inference Time | GPU Mem |<br />
+|---|---|---|---|---|<br />
+| TubeDETR | 185M | 185M | 0.23s | 22.1G |<br />
+| STCAT | 207M | 207M | 0.47s | 23.6G |<br />
+| CG-STVG | 203M | 231M | 0.71s | 25.9G |<br />
+| TA-STVG | 206M | 234M | 0.69s | 25.1G |<br />
+| <strong>ART-STVG (ours)</strong> | <strong>207M</strong> | <strong>235M</strong> | <strong>1.09s</strong> | <strong>7.9G</strong> |  </p>
 <p>表8显示：ART-STVG模型规模与现有方法相当。虽因自回归处理，推理时间（64帧）较长（1.09s vs STCAT/CG-STVG/TA-STVG的0.47/0.71/0.69s），但GPU显存仅7.9G，远低于TA-STVG（25.1G）与CG-STVG（25.9G），更适配长视频处理。</p>
-
-<p>因篇幅限制，额外结果、分析与讨论见**补充材料**。</p>
-
-<p>## 5 结论  
-本文探索LF-STVG问题，提出新型自回归Transformer框架ART-STVG，有效处理长时视频。ART-STVG核心在于简单而有效的选择性记忆机制：将其应用于解码器以利用关键时空上下文信息，显著提升定位性能。此外，级联式时空解码器设计有效利用空间定位信息辅助时间定位。在LF-STVG基准上的大量实验证明：ART-STVG显著超越现有SOTA方法；在SF-STVG上亦具竞争力，体现方法通用性。我们希望本工作能激发更多LF-STVG研究。</p>
-
-<p>## 致谢  
-BF, YH, CH, HF未获本工作任何基金支持。</p>
-
-<p>## 补充材料  
-为更好理解本工作，补充材料含：  
-• **S1 基线设计**：介绍基线方法架构。  
-• **S2 失败案例分析**：讨论方法失败场景。  
-• **S3 定性结果**：展示更多LF-STVG定性结果及与基线对比。  
-• **S4 局限性与广泛影响**：讨论方法局限性与社会影响。</p>
-
-<p>图8：基线架构，含编码器与自回归解码器，**无**记忆及记忆相关模块。</p>
-
-<p>**S1 基线设计**  
-主文中提及的基线与ART-STVG架构相似，但**不含**（空间与时间）记忆及记忆相关模块，详细架构见图8。其含两核心组件：多模态编码器提取融合跨模态特征；级联空间与时间解码器执行自回归解码以逐步定位目标。该架构适合长视频处理，但因无记忆，性能劣于ART-STVG（见主文对比），证明记忆设计对提升LF-STVG性能的必要性与重要性。</p>
-
-<p>**S2 失败案例分析**  
+<p>因篇幅限制，额外结果、分析与讨论见<strong>补充材料</strong>。</p>
+<h2>5 结论</h2>
+<p>本文探索LF-STVG问题，提出新型自回归Transformer框架ART-STVG，有效处理长时视频。ART-STVG核心在于简单而有效的选择性记忆机制：将其应用于解码器以利用关键时空上下文信息，显著提升定位性能。此外，级联式时空解码器设计有效利用空间定位信息辅助时间定位。在LF-STVG基准上的大量实验证明：ART-STVG显著超越现有SOTA方法；在SF-STVG上亦具竞争力，体现方法通用性。我们希望本工作能激发更多LF-STVG研究。</p>
+<h2>致谢</h2>
+<p>BF, YH, CH, HF未获本工作任何基金支持。</p>
+<h2>补充材料</h2>
+<p>为更好理解本工作，补充材料含：<br />
+• <strong>S1 基线设计</strong>：介绍基线方法架构。<br />
+• <strong>S2 失败案例分析</strong>：讨论方法失败场景。<br />
+• <strong>S3 定性结果</strong>：展示更多LF-STVG定性结果及与基线对比。<br />
+• <strong>S4 局限性与广泛影响</strong>：讨论方法局限性与社会影响。</p>
+<p>图8：基线架构，含编码器与自回归解码器，<strong>无</strong>记忆及记忆相关模块。</p>
+<p><strong>S1 基线设计</strong><br />
+主文中提及的基线与ART-STVG架构相似，但<strong>不含</strong>（空间与时间）记忆及记忆相关模块，详细架构见图8。其含两核心组件：多模态编码器提取融合跨模态特征；级联空间与时间解码器执行自回归解码以逐步定位目标。该架构适合长视频处理，但因无记忆，性能劣于ART-STVG（见主文对比），证明记忆设计对提升LF-STVG性能的必要性与重要性。</p>
+<p><strong>S2 失败案例分析</strong><br />
 图9：失败案例。红框为ART-STVG结果，绿框为真值（GT）。</p>
-
-<p>尽管LF-STVG表现良好，方法在复杂场景下仍可能失败：  
-(i) **事件边界模糊**：长视频中事件边界检测对ART-STVG时间记忆选择至关重要。当边界模糊时，检测易出错，导致时间记忆选择不准，进而降低时间定位效果（如图9-top，目标事件起始时间模糊）；  
-(ii) **高干扰背景目标**：当视频含外观/动作与前景目标相似的背景目标时，方法易漂移至背景目标，导致空间定位失败（图9-middle，两人动作相似）；  
-(iii) **极短目标事件**：目标事件在长视频中持续时间极短时，大量冗余信息使定位困难（图9-bottom，事件仅3秒，视频长300秒）。未来将探索视频中细粒度目标与事件线索以改进。</p>
-
-<p>**S3 定性结果分析**  
+<p>尽管LF-STVG表现良好，方法在复杂场景下仍可能失败：<br />
+(i) <strong>事件边界模糊</strong>：长视频中事件边界检测对ART-STVG时间记忆选择至关重要。当边界模糊时，检测易出错，导致时间记忆选择不准，进而降低时间定位效果（如图9-top，目标事件起始时间模糊）；<br />
+(ii) <strong>高干扰背景目标</strong>：当视频含外观/动作与前景目标相似的背景目标时，方法易漂移至背景目标，导致空间定位失败（图9-middle，两人动作相似）；<br />
+(iii) <strong>极短目标事件</strong>：目标事件在长视频中持续时间极短时，大量冗余信息使定位困难（图9-bottom，事件仅3秒，视频长300秒）。未来将探索视频中细粒度目标与事件线索以改进。</p>
+<p><strong>S3 定性结果分析</strong><br />
 在LF-STVG-3min上，我们展示ART-STVG与无记忆基线的定位结果对比（图10）。基线常在不同帧定位不一致目标（如第3、5例），而ART-STVG定位更一致准确，证明方法有效性。</p>
-
 <p>图10：ART-STVG与基线定性对比。</p>
-
-<p>**S4 局限性与广泛影响**  
-**局限性讨论**：作为首个探索LF-STVG的工作，ART-STVG在长时视频上表现优异，显著超越现有STVG方法。但存在两点局限：  
-1. 尽管ART-STVG可处理长视频，但视频越长越复杂，性能可能下降。缓解方向是学习更具判别性的记忆系统以捕获细粒度目标信息（超出本文探索LF-STVG的目标，留待未来工作）；  
+<p><strong>S4 局限性与广泛影响</strong><br />
+<strong>局限性讨论</strong>：作为首个探索LF-STVG的工作，ART-STVG在长时视频上表现优异，显著超越现有STVG方法。但存在两点局限：<br />
+1. 尽管ART-STVG可处理长视频，但视频越长越复杂，性能可能下降。缓解方向是学习更具判别性的记忆系统以捕获细粒度目标信息（超出本文探索LF-STVG的目标，留待未来工作）；<br />
 2. 类似其他方法，无法实时运行，可能限制某些场景应用。未来将研究基于模型压缩与量化技术的轻量级LF-STVG架构。</p>
-
-<p>**广泛影响讨论**：ART-STVG旨在根据文本描述在未剪辑视频中定位目标。该技术应用广泛，包括基于内容的视频检索、视频内容审核、体育分析等。通过开发ART-STVG，我们期望其能为社会进步与技术发展做出积极贡献。</p>
-
-<p>## 参考文献  
-（略，原文未提供具体条目）</p>
+<p><strong>广泛影响讨论</strong>：ART-STVG旨在根据文本描述在未剪辑视频中定位目标。该技术应用广泛，包括基于内容的视频检索、视频内容审核、体育分析等。通过开发ART-STVG，我们期望其能为社会进步与技术发展做出积极贡献。</p>
+<h2>参考文献</h2>
+<p>（略，原文未提供具体条目）</p>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">

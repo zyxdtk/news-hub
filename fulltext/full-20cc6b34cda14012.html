@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,6620 +183,6576 @@
         </div>
         
         <div class="fulltext-content">
-<p>The Key to Going Linear: Analysis-Driven Transformer Linearization
-Anna Kuzina
-Qualcomm AI Research
-akuzina@qti.qualcomm.com
-&amp;Paul N. Whatmough
-Qualcomm AI Research
-pwhatmou@qti.qualcomm.com
-&amp;Babak Ehteshami Bejnordi
-Qualcomm AI Research
-behtesha@qti.qualcomm.com
-Qualcomm AI Research is an initiative of Qualcomm Technologies, Inc.
-(
-February 2026
-)
-Abstract
-The quadratic cost of causal self-attention severely bottlenecks long-context transformer inference. While numerous post hoc linearization pipelines exist, it is difficult to identify which components preserve model quality. This work isolates the effect of state update design in a strict frozen-backbone regime. We show that softmax relies on key-dependent, rank-1 orthogonal projections, elucidating why delta-style networks outperform purely gated accumulation. We identify a potential source of approximation errors and introduce structural interventions, specifically sink tokens, short convolutions, and fixed-budget cache routing, which reduces the remaining gap. We scale this linearization approach across LLaMA and Qwen models up to 32B parameters, outperforming prior post hoc baselines on MMLU and matching the long-context retrieval of complex adaptive-caching frameworks.
-1
-Introduction
+<p>The Key to Going Linear: Analysis-Driven Transformer Linearization<br />
+Anna Kuzina<br />
+Qualcomm AI Research<br />
+akuzina@qti.qualcomm.com<br />
+&amp;Paul N. Whatmough<br />
+Qualcomm AI Research<br />
+pwhatmou@qti.qualcomm.com<br />
+&amp;Babak Ehteshami Bejnordi<br />
+Qualcomm AI Research<br />
+behtesha@qti.qualcomm.com<br />
+Qualcomm AI Research is an initiative of Qualcomm Technologies, Inc.<br />
+(<br />
+February 2026<br />
+)<br />
+Abstract<br />
+The quadratic cost of causal self-attention severely bottlenecks long-context transformer inference. While numerous post hoc linearization pipelines exist, it is difficult to identify which components preserve model quality. This work isolates the effect of state update design in a strict frozen-backbone regime. We show that softmax relies on key-dependent, rank-1 orthogonal projections, elucidating why delta-style networks outperform purely gated accumulation. We identify a potential source of approximation errors and introduce structural interventions, specifically sink tokens, short convolutions, and fixed-budget cache routing, which reduces the remaining gap. We scale this linearization approach across LLaMA and Qwen models up to 32B parameters, outperforming prior post hoc baselines on MMLU and matching the long-context retrieval of complex adaptive-caching frameworks.<br />
+1<br />
+Introduction<br />
 Causal self-attention is the main obstacle to scaling pretrained transformers to longer contexts. Its quadratic compute and growing KV cache make inference increasingly expensive as sequence length grows. A particularly appealing solution</p>
-
-<p>is
-post hoc linearization
-: converting an existing full-attention model into a linear-time architecture without pretraining from scratch
-[
-26
-,
-8
-,
-11
-,
-12
-,
-20
-,
-13
-]
-.
-While recent approaches achieve this, they typically combine multiple interventions simultaneously, such as low-rank adaptation (LoRA), sliding-window attention (SWA), hybrid routing, and distillation. These confounding factors obscure a fundamental design question:
-which linear state update best approximates pretrained softmax attention?
-To answer this, we take an analysis-driven approach to transformer linearization. We isolate the approximation problem by studying attention replacement in a strict regime: the pretrained backbone remains entirely frozen. Only the newly introduced parameters of the replacement mechanism are trained. This setting isolates the capacity of the linear attention replacements.
-Within this controlled setting, we derive a first-order approximation connecting softmax attention to linear state updates. Our analysis proves that softmax naturally applies key-dependent, rank-1 orthogonal projections. Delta-style updates (like Gated Delta Networks) natively implement these corrections through rank-1 operators constructed from keys, suppressing components aligned with previous keys. Conversely, pure gated accumulation (like Gated Linear Attention) relies on key-independent decay, missing this vital geometric correction.
+<p>is<br />
+post hoc linearization<br />
+: converting an existing full-attention model into a linear-time architecture without pretraining from scratch<br />
+[<br />
+26<br />
+,<br />
+8<br />
+,<br />
+11<br />
+,<br />
+12<br />
+,<br />
+20<br />
+,<br />
+13<br />
+]<br />
+.<br />
+While recent approaches achieve this, they typically combine multiple interventions simultaneously, such as low-rank adaptation (LoRA), sliding-window attention (SWA), hybrid routing, and distillation. These confounding factors obscure a fundamental design question:<br />
+which linear state update best approximates pretrained softmax attention?<br />
+To answer this, we take an analysis-driven approach to transformer linearization. We isolate the approximation problem by studying attention replacement in a strict regime: the pretrained backbone remains entirely frozen. Only the newly introduced parameters of the replacement mechanism are trained. This setting isolates the capacity of the linear attention replacements.<br />
+Within this controlled setting, we derive a first-order approximation connecting softmax attention to linear state updates. Our analysis proves that softmax naturally applies key-dependent, rank-1 orthogonal projections. Delta-style updates (like Gated Delta Networks) natively implement these corrections through rank-1 operators constructed from keys, suppressing components aligned with previous keys. Conversely, pure gated accumulation (like Gated Linear Attention) relies on key-independent decay, missing this vital geometric correction.<br />
 We empirically validate these insights across LLaMA and Qwen backbone</p>
-
-<p>s. 我们首先在严格的冻结骨干设置下比较了归一化核化线性注意力 [ 27 ]、门控线性注意力 (GLA) [ 23 ] 和门控 Delta 网络 [ 19 ]。Delta 风格的更新始终提供最强的近似。在理论上识别出的近似差距的指导下，我们引入了实用的设计选择：不相交的滑动窗口路径、sink tokens 以及通过短卷积或 LoRA 进行的投影适应。我们发现这些组件弥补了线性机制的局限性，缩小了性能差距，并作为事后线性化的稳健默认设置。我们的主要贡献如下：
-• 我们在严格的冻结骨干设置下研究预训练语言模型的事后线性化，并实证比较了核化、门控和基于 delta 的线性注意力机制作为因果自注意力替代方案的表现。
-• 我们提供了一个一阶近似，证明基于 delta 的机制忠实地捕获了 softmax 注意力依赖于键的秩-1 动态，这与纯门控更新不同。
-• 我们实证展示了包括 SWA、sink tokens 和有限的 Q/K/V 适应（例如短卷积）在内的实用干预措施如何弥补近似差距。
+<p>s. 我们首先在严格的冻结骨干设置下比较了归一化核化线性注意力 [ 27 ]、门控线性注意力 (GLA) [ 23 ] 和门控 Delta 网络 [ 19 ]。Delta 风格的更新始终提供最强的近似。在理论上识别出的近似差距的指导下，我们引入了实用的设计选择：不相交的滑动窗口路径、sink tokens 以及通过短卷积或 LoRA 进行的投影适应。我们发现这些组件弥补了线性机制的局限性，缩小了性能差距，并作为事后线性化的稳健默认设置。我们的主要贡献如下：<br />
+• 我们在严格的冻结骨干设置下研究预训练语言模型的事后线性化，并实证比较了核化、门控和基于 delta 的线性注意力机制作为因果自注意力替代方案的表现。<br />
+• 我们提供了一个一阶近似，证明基于 delta 的机制忠实地捕获了 softmax 注意力依赖于键的秩-1 动态，这与纯门控更新不同。<br />
+• 我们实证展示了包括 SWA、sink tokens 和有限的 Q/K/V 适应（例如短卷积）在内的实用干预措施如何弥补近似差距。<br />
 • 我们在 MMLU 上优于先前的事后基线，匹配了复杂自适应令牌缓存框架的长上下文检索能力，并在所有下游任务中</p>
-
-<p>ross LLaMA and Qwen models up to 32B parameters.
-2
-Background and Related works
-Linear-Time Sequence Models.
-We build upon linear-time models that serve as primitives for transformer linearization. Early kernelized approaches, such as Performer
-[
-4
-]
-and later softmax-mimicking designs such as Hedgehog/Porcupine
-[
-27
-]
-develop feature-map based approximations to softmax attention, while recurrent and state-based models such as Gated Linear Attention (GLA)
-[
-23
-]
-, delta-rule linear transformers
-[
-24
-]
-, RetNet
-[
-16
-]
-, Longhorn
-[
-10
-]
-, Gated Delta Networks (GDN)
-[
-22
-]
-, Kimi Linear
-[
-19
-]
-, and transformer-SSM views of Mamba-style models
-[
-5
-,
-7
-]
-provide increasingly expressive state updates for long-context modeling. These works motivate the replacement mechanisms studied here, but they are typically introduced as standalone architectures or pretraining recipes rather than analyzed as drop-in substitutes for frozen pretrained attention blocks.
-Post-Hoc Linearization of Pretrained Transformers.
-Our work directly relates to post-hoc linearization, which converts full-attention transformers into subquadratic models for efficient inference. To recover the performance lost during this conversion, existing approaches frequently employ various structural interventions. These include intra-layer hybrid attention mechanisms, where Sliding Window Attention (SWA) is combined with the linear path to preserve essential local context, as seen in LoLCATs
-[
-26
-]
-and Liger
-[
-8
-]
+<p>ross LLaMA and Qwen models up to 32B parameters.<br />
+2<br />
+Background and Related works<br />
+Linear-Time Sequence Models.<br />
+We build upon linear-time models that serve as primitives for transformer linearization. Early kernelized approaches, such as Performer<br />
+[<br />
+4<br />
+]<br />
+and later softmax-mimicking designs such as Hedgehog/Porcupine<br />
+[<br />
+27<br />
+]<br />
+develop feature-map based approximations to softmax attention, while recurrent and state-based models such as Gated Linear Attention (GLA)<br />
+[<br />
+23<br />
+]<br />
+, delta-rule linear transformers<br />
+[<br />
+24<br />
+]<br />
+, RetNet<br />
+[<br />
+16<br />
+]<br />
+, Longhorn<br />
+[<br />
+10<br />
+]<br />
+, Gated Delta Networks (GDN)<br />
+[<br />
+22<br />
+]<br />
+, Kimi Linear<br />
+[<br />
+19<br />
+]<br />
+, and transformer-SSM views of Mamba-style models<br />
+[<br />
+5<br />
+,<br />
+7<br />
+]<br />
+provide increasingly expressive state updates for long-context modeling. These works motivate the replacement mechanisms studied here, but they are typically introduced as standalone architectures or pretraining recipes rather than analyzed as drop-in substitutes for frozen pretrained attention blocks.<br />
+Post-Hoc Linearization of Pretrained Transformers.<br />
+Our work directly relates to post-hoc linearization, which converts full-attention transformers into subquadratic models for efficient inference. To recover the performance lost during this conversion, existing approaches frequently employ various structural interventions. These include intra-layer hybrid attention mechanisms, where Sliding Window Attention (SWA) is combined with the linear path to preserve essential local context, as seen in LoLCATs<br />
+[<br />
+26<br />
+]<br />
+and Liger<br />
+[<br />
+8<br />
+]<br />
 . Some wo</p>
-
-<p>rks also rely on sparse caching strategies such as attention sinks and hybrid token selection in LoLA
-[
-11
-]
-, STILL
-[
-12
-]
-, and Lizard
-[
-20
-]
-, to maintain exact long-range retrieval. Other common components include adaptive distillation
-[
-15
-]
-, direct layerwise linearization
-[
-13
-]
-, and low-rank adaptation (LoRA) on the original Q, K, V projections
-[
-26
-,
-11
-]
-.
-While these interventions reduce the downstream performance gap, combining them obscures the approximation capacity of linear state updates. We therefore evaluate linear updates in a frozen‑backbone setting to isolate their limitations. After identifying these gaps both theoretically and empirically, we reintroduce SWA, sink tokens, short convolutions, and hybrid routing to assess their contribution.
-3
-Full Attention Approximation via Linear Mechanisms
-We study the problem of approximating pretrained causal self-attention using linear-time mechanisms while minimizing architectural changes and finetuning overhead.
-Consider a pretrained transformer with a causal attention block,
-our goal is to replace each attention block with a mechanism that has linear complexity with respect to the number of tokens, while preserving downstream task performance as much as possible.
-Figure 1
-:
-Attention replacement blocks evaluated in our strict frozen-backbone setting.
-Blue
-❅
-markers denote frozen pretrained parameters. The pretrained parameters including
-W
-q
-W_{q}
-,
-W
-k
-W_{k}
-,
-W
-v
-W_{v}
+<p>rks also rely on sparse caching strategies such as attention sinks and hybrid token selection in LoLA<br />
+[<br />
+11<br />
+]<br />
+, STILL<br />
+[<br />
+12<br />
+]<br />
+, and Lizard<br />
+[<br />
+20<br />
+]<br />
+, to maintain exact long-range retrieval. Other common components include adaptive distillation<br />
+[<br />
+15<br />
+]<br />
+, direct layerwise linearization<br />
+[<br />
+13<br />
+]<br />
+, and low-rank adaptation (LoRA) on the original Q, K, V projections<br />
+[<br />
+26<br />
+,<br />
+11<br />
+]<br />
+.<br />
+While these interventions reduce the downstream performance gap, combining them obscures the approximation capacity of linear state updates. We therefore evaluate linear updates in a frozen‑backbone setting to isolate their limitations. After identifying these gaps both theoretically and empirically, we reintroduce SWA, sink tokens, short convolutions, and hybrid routing to assess their contribution.<br />
+3<br />
+Full Attention Approximation via Linear Mechanisms<br />
+We study the problem of approximating pretrained causal self-attention using linear-time mechanisms while minimizing architectural changes and finetuning overhead.<br />
+Consider a pretrained transformer with a causal attention block,<br />
+our goal is to replace each attention block with a mechanism that has linear complexity with respect to the number of tokens, while preserving downstream task performance as much as possible.<br />
+Figure 1<br />
+:<br />
+Attention replacement blocks evaluated in our strict frozen-backbone setting.<br />
+Blue<br />
+❅<br />
+markers denote frozen pretrained parameters. The pretrained parameters including<br />
+W<br />
+q<br />
+W_{q}<br />
+,<br />
+W<br />
+k<br />
+W_{k}<br />
+,<br />
+W<br />
+v<br />
+W_{v}<br />
 , and RMSNorm parameters are kept frozen,</p>
-
-<p>while only the newly introduced mechanism-specific parameters are trained. (a) Standard Softmax. (b) Hedgehog
-[
-27
-]
-replaces the softmax kernel with learned feature maps
-φ
-\varphi
-. (c) GLA
-[
-23
-]
-introduces an input-dependent decay
-α
-i
-\alpha_{i}
-. (d) GDN
-[
-19
-]
-applies a key-dependent rank-1 delta update via
-β
-i
-\beta_{i}
-.
-σ
-\sigma
-denotes sigmoid function.
-3.1
-Overview of Linear Attention Mechanisms
-We consider two families of linear mechanisms used for attention replacement:
-normalized kernel attention
-and
-state-based unnormalized attention
-. In Figure
-1
-we present as overview of the linear attention mechanism we use for linearization of the Softmax Attention.
-Recall that Softmax Attention can be written as
-y
-t
-=
-∑
-i
-≤
-t
-exp
-⁡
-(
-q
-t
-⊤
-​
-k
-i
-/
-d
-)
-∑
-j
-≤
-t
-exp
-⁡
-(
-q
-t
-⊤
-​
-k
-j
-/
-d
-)
-​
-v
-i
-.
-y_{t}=\sum_{i\leq t}\frac{\exp(q_{t}^{\top}k_{i}/\sqrt{d})}{\sum_{j\leq t}\exp(q_{t}^{\top}k_{j}/\sqrt{d})}\,v_{i}.
-(1)
-The exponential kernel
-exp
-⁡
-(
-q
-⊤
-​
-k
-)
-\exp(q^{\top}k)
-can be viewed as a similarity function
-𝒦
-​
-(
-q
-,
-k
-)
-\mathcal{K}(q,k)
-, motivating kernel-based approximations.
-3.1.1
-Kernelized Linear Attention
-Following prior work on kernelized linear attention, we approximate the softmax
-kernel using feature maps
-ϕ
-:
-ℝ
-d
-→
-ℝ
-d
-′
-\phi:\mathbb{R}^{d}\to\mathbb{R}^{d^{\prime}}
-such that
-exp
-⁡
-(
-q
-⊤
-​
-k
-)
-≈
-ϕ
-​
-(
-q
-)
-⊤
-​
-ϕ
-​
-(
-k
-)
-.
-\exp(q^{\top}k)\approx\phi(q)^{\top}\phi(k).
-Substituting this into attention yields
-y
-t
-=
-ϕ
-​
-(
-q
-t
-)
-⊤
-​
-S
-t
-ϕ
-​
-(
-q
-t
-)
-⊤
-​
-Z
-t
-,
-S
-t
-=
-∑
-i
-≤
+<p>while only the newly introduced mechanism-specific parameters are trained. (a) Standard Softmax. (b) Hedgehog<br />
+[<br />
+27<br />
+]<br />
+replaces the softmax kernel with learned feature maps<br />
+φ<br />
+\varphi<br />
+. (c) GLA<br />
+[<br />
+23<br />
+]<br />
+introduces an input-dependent decay<br />
+α<br />
+i<br />
+\alpha_{i}<br />
+. (d) GDN<br />
+[<br />
+19<br />
+]<br />
+applies a key-dependent rank-1 delta update via<br />
+β<br />
+i<br />
+\beta_{i}<br />
+.<br />
+σ<br />
+\sigma<br />
+denotes sigmoid function.<br />
+3.1<br />
+Overview of Linear Attention Mechanisms<br />
+We consider two families of linear mechanisms used for attention replacement:<br />
+normalized kernel attention<br />
+and<br />
+state-based unnormalized attention<br />
+. In Figure<br />
+1<br />
+we present as overview of the linear attention mechanism we use for linearization of the Softmax Attention.<br />
+Recall that Softmax Attention can be written as<br />
+y<br />
+t<br />
+=<br />
+∑<br />
+i<br />
+≤<br />
+t<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+/<br />
+d<br />
+)<br />
+∑<br />
+j<br />
+≤<br />
+t<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+j<br />
+/<br />
+d<br />
+)<br />
+​<br />
+v<br />
+i<br />
+.<br />
+y_{t}=\sum_{i\leq t}\frac{\exp(q_{t}^{\top}k_{i}/\sqrt{d})}{\sum_{j\leq t}\exp(q_{t}^{\top}k_{j}/\sqrt{d})}\,v_{i}.<br />
+(1)<br />
+The exponential kernel<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+⊤<br />
+​<br />
+k<br />
+)<br />
+\exp(q^{\top}k)<br />
+can be viewed as a similarity function<br />
+𝒦<br />
+​<br />
+(<br />
+q<br />
+,<br />
+k<br />
+)<br />
+\mathcal{K}(q,k)<br />
+, motivating kernel-based approximations.<br />
+3.1.1<br />
+Kernelized Linear Attention<br />
+Following prior work on kernelized linear attention, we approximate the softmax<br />
+kernel using feature maps<br />
+ϕ<br />
+:<br />
+ℝ<br />
+d<br />
+→<br />
+ℝ<br />
+d<br />
+′<br />
+\phi:\mathbb{R}^{d}\to\mathbb{R}^{d^{\prime}}<br />
+such that<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+⊤<br />
+​<br />
+k<br />
+)<br />
+≈<br />
+ϕ<br />
+​<br />
+(<br />
+q<br />
+)<br />
+⊤<br />
+​<br />
+ϕ<br />
+​<br />
+(<br />
+k<br />
+)<br />
+.<br />
+\exp(q^{\top}k)\approx\phi(q)^{\top}\phi(k).<br />
+Substituting this into attention yields<br />
+y<br />
+t<br />
+=<br />
+ϕ<br />
+​<br />
+(<br />
+q<br />
+t<br />
+)<br />
+⊤<br />
+​<br />
+S<br />
+t<br />
+ϕ<br />
+​<br />
+(<br />
+q<br />
+t<br />
+)<br />
+⊤<br />
+​<br />
+Z<br />
+t<br />
+,<br />
+S<br />
+t<br />
+=<br />
+∑<br />
+i<br />
+≤<br />
 t</p>
-
-<p>ϕ
-​
-(
-k
-i
-)
-​
-v
-i
-⊤
-,
-Z
-t
-=
-∑
-i
-≤
-t
-ϕ
-​
-(
-k
-i
-)
-,
-\displaystyle y_{t}=\frac{\phi(q_{t})^{\top}S_{t}}{\phi(q_{t})^{\top}Z_{t}},\qquad S_{t}=\sum_{i\leq t}\phi(k_{i})v_{i}^{\top},\qquad Z_{t}=\sum_{i\leq t}\phi(k_{i}),
-(2)
-This form
-explicitly normalizes
-attention weights. The denominator
-Z
-t
-Z_{t}
-acts as a running partition function shared across values.
-Hedgehog.
-Following prior linearization works
-[
-26
-]
-, we consider Hedgehog
-[
-27
-]
-feature maps.
-ϕ
-​
-(
-x
-)
-=
-σ
-​
-(
-x
-​
-W
-)
-⊕
-σ
-​
-(
-−
-x
-​
-W
-)
-,
-\phi(x)=\sigma(xW)\oplus\sigma(-xW),
-(3)
-where
-x
-x
-is keys or queries vector,
-σ
-\sigma
-denotes softmax and
-⊕
-\oplus
-is a concatenation operator.
-3.1.2
-State-Based Linear Attention without Normalization (GLA, GDN)
-In contrast, Gated Linear Attention (GLA) and Gated DeltaNet (GDN) do not explicitly normalize attention weights. These methods maintain a recurrent
-state
-S
-t
-S_{t}
-such that
-y
-t
-=
-q
-t
-⊤
-​
-S
-t
-,
-S
-t
-=
-𝒰
-​
-(
-S
-t
-−
-1
-,
-k
-t
-,
-v
-t
-)
-,
-y_{t}=q_{t}^{\top}S_{t},\qquad S_{t}=\mathcal{U}(S_{t-1},k_{t},v_{t}),
-(4)
-where
-𝒰
-\mathcal{U}
-is a general form of a linear or affine update. However, by unrolling the recurrence, we can rewrite them in the same format. GLA
-[
-23
-]
-updates the state using
-S
-t
-=
-G
-t
-​
-S
-t
-−
-1
-+
-k
-t
-⊤
-​
-v
-t
-,
-S_{t}=G_{t}S_{t-1}+k_{t}^{\top}v_{t},
-(5)
-where the forget gate is usually chosen to be a diagonal input-dependent matrix
-G
-t
-=
-diag
-​
-(
-α
-t
-)
-G_{t}=\mathrm{diag}(\alpha_{t})
-.
-Gated Delta Net
-[
-22
-]
-augments gated linear attention with a delta rule
-[
-24
-]
-:
-S
+<p>ϕ<br />
+​<br />
+(<br />
+k<br />
+i<br />
+)<br />
+​<br />
+v<br />
+i<br />
+⊤<br />
+,<br />
+Z<br />
+t<br />
+=<br />
+∑<br />
+i<br />
+≤<br />
+t<br />
+ϕ<br />
+​<br />
+(<br />
+k<br />
+i<br />
+)<br />
+,<br />
+\displaystyle y_{t}=\frac{\phi(q_{t})^{\top}S_{t}}{\phi(q_{t})^{\top}Z_{t}},\qquad S_{t}=\sum_{i\leq t}\phi(k_{i})v_{i}^{\top},\qquad Z_{t}=\sum_{i\leq t}\phi(k_{i}),<br />
+(2)<br />
+This form<br />
+explicitly normalizes<br />
+attention weights. The denominator<br />
+Z<br />
+t<br />
+Z_{t}<br />
+acts as a running partition function shared across values.<br />
+Hedgehog.<br />
+Following prior linearization works<br />
+[<br />
+26<br />
+]<br />
+, we consider Hedgehog<br />
+[<br />
+27<br />
+]<br />
+feature maps.<br />
+ϕ<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+σ<br />
+​<br />
+(<br />
+x<br />
+​<br />
+W<br />
+)<br />
+⊕<br />
+σ<br />
+​<br />
+(<br />
+−<br />
+x<br />
+​<br />
+W<br />
+)<br />
+,<br />
+\phi(x)=\sigma(xW)\oplus\sigma(-xW),<br />
+(3)<br />
+where<br />
+x<br />
+x<br />
+is keys or queries vector,<br />
+σ<br />
+\sigma<br />
+denotes softmax and<br />
+⊕<br />
+\oplus<br />
+is a concatenation operator.<br />
+3.1.2<br />
+State-Based Linear Attention without Normalization (GLA, GDN)<br />
+In contrast, Gated Linear Attention (GLA) and Gated DeltaNet (GDN) do not explicitly normalize attention weights. These methods maintain a recurrent<br />
+state<br />
+S<br />
+t<br />
+S_{t}<br />
+such that<br />
+y<br />
+t<br />
+=<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+S<br />
+t<br />
+,<br />
+S<br />
+t<br />
+=<br />
+𝒰<br />
+​<br />
+(<br />
+S<br />
+t<br />
+−<br />
+1<br />
+,<br />
+k<br />
+t<br />
+,<br />
+v<br />
+t<br />
+)<br />
+,<br />
+y_{t}=q_{t}^{\top}S_{t},\qquad S_{t}=\mathcal{U}(S_{t-1},k_{t},v_{t}),<br />
+(4)<br />
+where<br />
+𝒰<br />
+\mathcal{U}<br />
+is a general form of a linear or affine update. However, by unrolling the recurrence, we can rewrite them in the same format. GLA<br />
+[<br />
+23<br />
+]<br />
+updates the state using<br />
+S<br />
+t<br />
+=<br />
+G<br />
+t<br />
+​<br />
+S<br />
+t<br />
+−<br />
+1<br />
++<br />
+k<br />
+t<br />
+⊤<br />
+​<br />
+v<br />
+t<br />
+,<br />
+S_{t}=G_{t}S_{t-1}+k_{t}^{\top}v_{t},<br />
+(5)<br />
+where the forget gate is usually chosen to be a diagonal input-dependent matrix<br />
+G<br />
+t<br />
+=<br />
+diag<br />
+​<br />
+(<br />
+α<br />
+t<br />
+)<br />
+G_{t}=\mathrm{diag}(\alpha_{t})<br />
+.<br />
+Gated Delta Net<br />
+[<br />
+22<br />
+]<br />
+augments gated linear attention with a delta rule<br />
+[<br />
+24<br />
+]<br />
+:<br />
+S<br />
 t</p>
-
-<p>=
-(
-I
-−
-β
-t
-​
-k
-t
-​
-k
-t
-⊤
-)
-​
-G
-t
-​
-S
-t
-−
-1
-+
-β
-t
-​
-k
-t
-⊤
-​
-v
-t
-,
-S_{t}=(I-\beta_{t}k_{t}k_{t}^{\top})G_{t}S_{t-1}+\beta_{t}k_{t}^{\top}v_{t},
-(6)
-where
-β
-t
-\beta_{t}
-is an input-dependent per-head scalar. Note that originally GDN used a per-head scalar gate instead of a diagonal matrix. Kimi Linear
-[
-19
-]
-extended it to the same form as GLA. Unless stated explicitly, we will refer to the Kimi version of GatedDeltaNet as GDN.
-3.2
-From Softmax to Delta Rules: A First-Order Approximation View
-Kernelized linear attention methods replace the softmax kernel with a factorized feature-map representation, yielding a computationally linear form that often serves as a faithful approximation to softmax attention
-[
-4
-,
-14
-]
-. In contrast, for state‑space linear attention variants such as GLA and Gated DeltaNet, it remains unclear whether their update rules correspond to softmax attention, despite strong empirical pre‑training performance. In this work, we derive a first‑order approximation to softmax attention and show that its structure aligns with Gated DeltaNet, supporting its suitability for linearization.
-To understand why delta-based mechanisms are a faithful approximation of
-attention, we analyze attention outputs as weighted sums of values.
-The attention output at time
-t
-t
-(before the output projection) can be written as a weighted sum of values
-y
-t
-=
-∑
-i
-≤
-t
-P
-t
-,
-i
-​
-v
-i
-,
-y_{t}=\sum_{i\leq t}P_{t,i}\,v_{i},
-where
-P
-t
-,
-i
-P_{t,i}
-are the causal attention weights.
+<p>=<br />
+(<br />
+I<br />
+−<br />
+β<br />
+t<br />
+​<br />
+k<br />
+t<br />
+​<br />
+k<br />
+t<br />
+⊤<br />
+)<br />
+​<br />
+G<br />
+t<br />
+​<br />
+S<br />
+t<br />
+−<br />
+1<br />
++<br />
+β<br />
+t<br />
+​<br />
+k<br />
+t<br />
+⊤<br />
+​<br />
+v<br />
+t<br />
+,<br />
+S_{t}=(I-\beta_{t}k_{t}k_{t}^{\top})G_{t}S_{t-1}+\beta_{t}k_{t}^{\top}v_{t},<br />
+(6)<br />
+where<br />
+β<br />
+t<br />
+\beta_{t}<br />
+is an input-dependent per-head scalar. Note that originally GDN used a per-head scalar gate instead of a diagonal matrix. Kimi Linear<br />
+[<br />
+19<br />
+]<br />
+extended it to the same form as GLA. Unless stated explicitly, we will refer to the Kimi version of GatedDeltaNet as GDN.<br />
+3.2<br />
+From Softmax to Delta Rules: A First-Order Approximation View<br />
+Kernelized linear attention methods replace the softmax kernel with a factorized feature-map representation, yielding a computationally linear form that often serves as a faithful approximation to softmax attention<br />
+[<br />
+4<br />
+,<br />
+14<br />
+]<br />
+. In contrast, for state‑space linear attention variants such as GLA and Gated DeltaNet, it remains unclear whether their update rules correspond to softmax attention, despite strong empirical pre‑training performance. In this work, we derive a first‑order approximation to softmax attention and show that its structure aligns with Gated DeltaNet, supporting its suitability for linearization.<br />
+To understand why delta-based mechanisms are a faithful approximation of<br />
+attention, we analyze attention outputs as weighted sums of values.<br />
+The attention output at time<br />
+t<br />
+t<br />
+(before the output projection) can be written as a weighted sum of values<br />
+y<br />
+t<br />
+=<br />
+∑<br />
+i<br />
+≤<br />
+t<br />
+P<br />
+t<br />
+,<br />
+i<br />
+​<br />
+v<br />
+i<br />
+,<br />
+y_{t}=\sum_{i\leq t}P_{t,i}\,v_{i},<br />
+where<br />
+P<br />
+t<br />
+,<br />
+i<br />
+P_{t,i}<br />
+are the causal attention weights.<br />
 For full softm</p>
-
-<p>ax attention, they take the following form:
-P
-i
-full
-=
-exp
-⁡
-(
-1
-d
-​
-q
-⊤
-​
-k
-i
-)
-∑
-j
-=
-1
-t
-exp
-⁡
-(
-1
-d
-​
-q
-⊤
-​
-k
-j
-)
-.
-P^{\mathrm{full}}_{i}=\frac{\exp\!\big(\frac{1}{\sqrt{d}}\,q^{\top}k_{i}\big)}{\sum_{j=1}^{t}\exp\!\big(\frac{1}{\sqrt{d}}\,q^{\top}k_{j}\big)}.
-(7)
-These weights are normalized, nonnegative, and depend jointly on the current
-query and all previous keys, inducing adaptive reweighting and implicit
-forgetting.
-Gated Linear Attention (GLA).
-GLA induces implicit weights
-P
-i
-GLA
-=
-q
-⊤
-​
-[
-∏
-j
-=
-i
-+
-1
-t
-diag
-​
-(
-α
-j
-)
-]
-​
-k
-i
-=
-q
-⊤
-​
-W
-i
-​
-k
-i
-,
-P^{\mathrm{GLA}}_{i}=q^{\top}\Bigl[\prod_{j=i+1}^{t}\mathrm{diag}(\alpha_{j})\Bigr]k_{i}=q^{\top}W_{i}k_{i},
-(8)
-The decay matrix
-W
-i
-W_{i}
-depends on recency, since is a product of vector-valued gates
-α
-j
-∈
-(
-0
-,
-1
-)
-d
-\alpha_{j}\in(0,1)^{d}
-, but is query- and key-independent.
-Gated DeltaNet (GDN).
-DeltaNet induces weights
-P
-i
-Δ
-=
-β
-i
-​
-q
-⊤
-​
-W
-i
-​
-(
-∏
-j
-=
-i
-+
-1
-t
-(
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-)
-)
-​
-k
-i
-,
-P^{\Delta}_{i}=\beta_{i}\,q^{\top}W_{i}\Bigl(\prod_{j=i+1}^{t}(I-\beta_{j}k_{j}k_{j}^{\top})\Bigr)k_{i},
-(9)
-Unlike GLA, the effective weights depend explicitly on previous keys via rank-1 operators.
-Each factor
-(
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-)
-(I-\beta_{j}k_{j}k_{j}^{\top})
-preserves components orthogonal to
-k
-j
-k_{j}
-while downweighting the rest.
-3.2.1
-Derivations
-We start from the softmax attention weights
-P
-i
-full
-P^{\mathrm{full}}_{i}
-and aim to approximate them with something of the form
-q
-⊤
-​
-A
-​
-k
-i
-q^{\top}Ak_{i}
+<p>ax attention, they take the following form:<br />
+P<br />
+i<br />
+full<br />
+=<br />
+exp<br />
+⁡<br />
+(<br />
+1<br />
+d<br />
+​<br />
+q<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+)<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+exp<br />
+⁡<br />
+(<br />
+1<br />
+d<br />
+​<br />
+q<br />
+⊤<br />
+​<br />
+k<br />
+j<br />
+)<br />
+.<br />
+P^{\mathrm{full}}<em>{i}=\frac{\exp!\big(\frac{1}{\sqrt{d}}\,q^{\top}k</em>{i}\big)}{\sum_{j=1}^{t}\exp!\big(\frac{1}{\sqrt{d}}\,q^{\top}k_{j}\big)}.<br />
+(7)<br />
+These weights are normalized, nonnegative, and depend jointly on the current<br />
+query and all previous keys, inducing adaptive reweighting and implicit<br />
+forgetting.<br />
+Gated Linear Attention (GLA).<br />
+GLA induces implicit weights<br />
+P<br />
+i<br />
+GLA<br />
+=<br />
+q<br />
+⊤<br />
+​<br />
+[<br />
+∏<br />
+j<br />
+=<br />
+i<br />
++<br />
+1<br />
+t<br />
+diag<br />
+​<br />
+(<br />
+α<br />
+j<br />
+)<br />
+]<br />
+​<br />
+k<br />
+i<br />
+=<br />
+q<br />
+⊤<br />
+​<br />
+W<br />
+i<br />
+​<br />
+k<br />
+i<br />
+,<br />
+P^{\mathrm{GLA}}<em>{i}=q^{\top}\Bigl[\prod</em>{j=i+1}^{t}\mathrm{diag}(\alpha_{j})\Bigr]k_{i}=q^{\top}W_{i}k_{i},<br />
+(8)<br />
+The decay matrix<br />
+W<br />
+i<br />
+W_{i}<br />
+depends on recency, since is a product of vector-valued gates<br />
+α<br />
+j<br />
+∈<br />
+(<br />
+0<br />
+,<br />
+1<br />
+)<br />
+d<br />
+\alpha_{j}\in(0,1)^{d}<br />
+, but is query- and key-independent.<br />
+Gated DeltaNet (GDN).<br />
+DeltaNet induces weights<br />
+P<br />
+i<br />
+Δ<br />
+=<br />
+β<br />
+i<br />
+​<br />
+q<br />
+⊤<br />
+​<br />
+W<br />
+i<br />
+​<br />
+(<br />
+∏<br />
+j<br />
+=<br />
+i<br />
++<br />
+1<br />
+t<br />
+(<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+)<br />
+)<br />
+​<br />
+k<br />
+i<br />
+,<br />
+P^{\Delta}<em>{i}=\beta</em>{i}\,q^{\top}W_{i}\Bigl(\prod_{j=i+1}^{t}(I-\beta_{j}k_{j}k_{j}^{\top})\Bigr)k_{i},<br />
+(9)<br />
+Unlike GLA, the effective weights depend explicitly on previous keys via rank-1 operators.<br />
+Each factor<br />
+(<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+)<br />
+(I-\beta_{j}k_{j}k_{j}^{\top})<br />
+preserves components orthogonal to<br />
+k<br />
+j<br />
+k_{j}<br />
+while downweighting the rest.<br />
+3.2.1<br />
+Derivations<br />
+We start from the softmax attention weights<br />
+P<br />
+i<br />
+full<br />
+P^{\mathrm{full}}<em>{i}<br />
+and aim to approximate them with something of the form<br />
+q<br />
+⊤<br />
+​<br />
+A<br />
+​<br />
+k<br />
+i<br />
+q^{\top}Ak</em>{i}<br />
 for some ma</p>
-
-<p>trix
-A
-A
-, linking it to linear attention.
-Lemma 1
-(First–order Taylor approximation of softmax)
-.
-Let
-p
-​
-(
-x
-)
-=
-softmax
-​
-(
-x
-)
-p(x)=\mathrm{softmax}(x)
-,
-x
-i
-=
-q
-t
-⊤
-​
-k
-i
-x_{i}=q_{t}^{\top}k_{i}
-, and
-x
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-x
-j
-.
-\bar{x}=\frac{1}{t}\sum_{j=1}^{t}x_{j}.
-Then for each index
-i
-i
-,
-p
-i
-​
-(
-x
-)
-=
-1
-t
-+
-1
-t
-​
-(
-x
-i
-−
-x
-¯
-)
-+
-ε
-i
-(
-1
-)
-​
-(
-x
-)
-,
-p_{i}(x)=\frac{1}{t}+\frac{1}{t}\bigl(x_{i}-\bar{x}\bigr)+\varepsilon_{i}^{(1)}(x),
-where the error term satisfies
-‖
-ε
-(
-1
-)
-​
-(
-x
-)
-‖
-∞
-≤
-1
-2
-​
-‖
-x
-‖
-2
-2
-.
-\|\varepsilon^{(1)}(x)\|_{\infty}\leq\frac{1}{2}\|x\|_{2}^{2}.
-See Appendix
-A.1
-for the proof.
-Substituting
-x
-i
-=
-q
-t
-⊤
-​
-k
-i
-/
-d
-x_{i}=q_{t}^{\top}k_{i}/\sqrt{d}
-gives
-p
-i
-​
-(
-x
-)
-≈
-1
-t
-+
-1
-t
-​
-d
-​
-q
-t
-⊤
-​
-(
-k
-i
-−
-k
-¯
-)
-.
-p_{i}(x)\approx\frac{1}{t}+\frac{1}{t\sqrt{d}}q_{t}^{\top}(k_{i}-\bar{k}).
-Lemma 2
-(Projection approximation)
-.
-Define the mean key and the projection matrix
-k
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-k
-j
-,
-Π
-k
-¯
-=
-k
-¯
-​
-k
-¯
-⊤
-‖
-k
-¯
-‖
-2
-.
-\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j},\qquad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{\|\bar{k}\|^{2}}.
-Assume all keys are normalized,
-‖
-k
-i
-‖
-=
-1
-for all
-​
-i
-\|k_{i}\|=1\quad\text{for all }i
-. Then
-k
-i
-−
-k
-¯
-=
-(
-I
-−
-Π
-k
-¯
-)
-​
-k
-i
-+
-r
-i
-,
-k_{i}-\bar{k}=(I-\Pi_{\bar{k}})k_{i}+r_{i},
-(10)
-where the residual satisfies
-‖
-r
-i
-‖
-≤
-|
-cos
-⁡
-(
-α
-i
-)
-−
-1
-|
-+
-|
-1
-−
-‖
-k
-¯
-‖
-|
-,
-\|r_{i}\|\leq|\cos(\alpha_{i})-1|+|1-\|\bar{k}\||,
-and
-α
-i
-\alpha_{i}
-is the angle between
-k
-i
-k_{i}
-and
-k
-¯
-\bar{k}
-.
-Here, we replace subtraction of the average with</p>
-
-<p>the projection orthogonal to the average key. This introduces an error that vanishes when keys are directionally aligned
-(
-α
-i
-=
-0
-\alpha_{i}=0
-) and concentrated around their mean
-(
-‖
-k
-¯
-‖
-≈
-1
-\|\bar{k}\|\approx 1
-). See App.
-A.2
-for the proof.
-Combining these two steps, we showed that
-P
-i
-full
-≈
-1
-t
-​
-d
-​
-q
-⊤
-​
-(
-I
-−
-Π
-k
-¯
-)
-​
-k
-i
-+
-1
-t
-P^{\mathrm{full}}_{i}\approx\frac{1}{t\sqrt{d}}q^{\top}(I-\Pi_{\bar{k}})k_{i}+\frac{1}{t}
-.
-Lemma 3
-(Rank–1 product approximation)
-.
-Let
-‖
-k
-j
-‖
-=
-1
-\|k_{j}\|=1
-and define
-M
-t
-=
-∏
-j
-=
-1
-t
-D
-j
-,
-where
-​
-D
-j
-=
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-,
-and
-​
-β
-j
-∈
-(
-0
-,
-1
-)
-,
-M_{t}=\prod_{j=1}^{t}D_{j},\quad\text{where }D_{j}=I-\beta_{j}k_{j}k_{j}^{\top},\text{ and }\beta_{j}\in(0,1),
-Then
-M
-t
-=
-I
-−
-∑
-j
-=
-1
-t
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-+
-E
-t
-,
-‖
-E
-t
-‖
-2
-≤
-C
-​
-t
-​
-(
-max
-j
-⁡
-β
-j
-)
-2
-.
-M_{t}=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}+E_{t},\qquad\|E_{t}\|_{2}\leq C\,t(\max_{j}\beta_{j})^{2}.
-If the vectors
-k
-j
-k_{j}
-are concentrated around their mean
-k
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-k
-j
-\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j}
-, then
-M
-t
-≈
-I
-−
-c
-​
-Π
-k
-¯
-,
-Π
-k
-¯
-=
-k
-¯
-​
-k
-¯
-⊤
-‖
-k
-¯
-‖
-2
-,
-M_{t}\approx I-c\,\Pi_{\bar{k}},\quad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{\|\bar{k}\|^{2}},
-for some scalar
-c
-≥
-0
-c\geq 0
-.
-See App.
-A.3
+<p>trix<br />
+A<br />
+A<br />
+, linking it to linear attention.<br />
+Lemma 1<br />
+(First–order Taylor approximation of softmax)<br />
+.<br />
+Let<br />
+p<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+softmax<br />
+​<br />
+(<br />
+x<br />
+)<br />
+p(x)=\mathrm{softmax}(x)<br />
+,<br />
+x<br />
+i<br />
+=<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+x_{i}=q_{t}^{\top}k_{i}<br />
+, and<br />
+x<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+x<br />
+j<br />
+.<br />
+\bar{x}=\frac{1}{t}\sum_{j=1}^{t}x_{j}.<br />
+Then for each index<br />
+i<br />
+i<br />
+,<br />
+p<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+1<br />
+t<br />
++<br />
+1<br />
+t<br />
+​<br />
+(<br />
+x<br />
+i<br />
+−<br />
+x<br />
+¯<br />
+)<br />
++<br />
+ε<br />
+i<br />
+(<br />
+1<br />
+)<br />
+​<br />
+(<br />
+x<br />
+)<br />
+,<br />
+p_{i}(x)=\frac{1}{t}+\frac{1}{t}\bigl(x_{i}-\bar{x}\bigr)+\varepsilon_{i}^{(1)}(x),<br />
+where the error term satisfies<br />
+‖<br />
+ε<br />
+(<br />
+1<br />
+)<br />
+​<br />
+(<br />
+x<br />
+)<br />
+‖<br />
+∞<br />
+≤<br />
+1<br />
+2<br />
+​<br />
+‖<br />
+x<br />
+‖<br />
+2<br />
+2<br />
+.<br />
+|\varepsilon^{(1)}(x)|<em>{\infty}\leq\frac{1}{2}|x|</em>{2}^{2}.<br />
+See Appendix<br />
+A.1<br />
+for the proof.<br />
+Substituting<br />
+x<br />
+i<br />
+=<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+/<br />
+d<br />
+x_{i}=q_{t}^{\top}k_{i}/\sqrt{d}<br />
+gives<br />
+p<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+≈<br />
+1<br />
+t<br />
++<br />
+1<br />
+t<br />
+​<br />
+d<br />
+​<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+(<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+)<br />
+.<br />
+p_{i}(x)\approx\frac{1}{t}+\frac{1}{t\sqrt{d}}q_{t}^{\top}(k_{i}-\bar{k}).<br />
+Lemma 2<br />
+(Projection approximation)<br />
+.<br />
+Define the mean key and the projection matrix<br />
+k<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+k<br />
+j<br />
+,<br />
+Π<br />
+k<br />
+¯<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+.<br />
+\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j},\qquad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{|\bar{k}|^{2}}.<br />
+Assume all keys are normalized,<br />
+‖<br />
+k<br />
+i<br />
+‖<br />
+=<br />
+1<br />
+for all<br />
+​<br />
+i<br />
+|k_{i}|=1\quad\text{for all }i<br />
+. Then<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+=<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+)<br />
+​<br />
+k<br />
+i<br />
++<br />
+r<br />
+i<br />
+,<br />
+k_{i}-\bar{k}=(I-\Pi_{\bar{k}})k_{i}+r_{i},<br />
+(10)<br />
+where the residual satisfies<br />
+‖<br />
+r<br />
+i<br />
+‖<br />
+≤<br />
+|<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+1<br />
+|<br />
++<br />
+|<br />
+1<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+|<br />
+,<br />
+|r_{i}|\leq|\cos(\alpha_{i})-1|+|1-|\bar{k}||,<br />
+and<br />
+α<br />
+i<br />
+\alpha_{i}<br />
+is the angle between<br />
+k<br />
+i<br />
+k_{i}<br />
+and<br />
+k<br />
+¯<br />
+\bar{k}<br />
+.<br />
+Here, we replace subtraction of the average with </p>
+<p>the projection orthogonal to the average key. This introduces an error that vanishes when keys are directionally aligned<br />
+(<br />
+α<br />
+i<br />
+=<br />
+0<br />
+\alpha_{i}=0<br />
+) and concentrated around their mean<br />
+(<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+≈<br />
+1<br />
+|\bar{k}|\approx 1<br />
+). See App.<br />
+A.2<br />
+for the proof.<br />
+Combining these two steps, we showed that<br />
+P<br />
+i<br />
+full<br />
+≈<br />
+1<br />
+t<br />
+​<br />
+d<br />
+​<br />
+q<br />
+⊤<br />
+​<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+)<br />
+​<br />
+k<br />
+i<br />
++<br />
+1<br />
+t<br />
+P^{\mathrm{full}}<em>{i}\approx\frac{1}{t\sqrt{d}}q^{\top}(I-\Pi</em>{\bar{k}})k_{i}+\frac{1}{t}<br />
+.<br />
+Lemma 3<br />
+(Rank–1 product approximation)<br />
+.<br />
+Let<br />
+‖<br />
+k<br />
+j<br />
+‖<br />
+=<br />
+1<br />
+|k_{j}|=1<br />
+and define<br />
+M<br />
+t<br />
+=<br />
+∏<br />
+j<br />
+=<br />
+1<br />
+t<br />
+D<br />
+j<br />
+,<br />
+where<br />
+​<br />
+D<br />
+j<br />
+=<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+,<br />
+and<br />
+​<br />
+β<br />
+j<br />
+∈<br />
+(<br />
+0<br />
+,<br />
+1<br />
+)<br />
+,<br />
+M_{t}=\prod_{j=1}^{t}D_{j},\quad\text{where }D_{j}=I-\beta_{j}k_{j}k_{j}^{\top},\text{ and }\beta_{j}\in(0,1),<br />
+Then<br />
+M<br />
+t<br />
+=<br />
+I<br />
+−<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
++<br />
+E<br />
+t<br />
+,<br />
+‖<br />
+E<br />
+t<br />
+‖<br />
+2<br />
+≤<br />
+C<br />
+​<br />
+t<br />
+​<br />
+(<br />
+max<br />
+j<br />
+⁡<br />
+β<br />
+j<br />
+)<br />
+2<br />
+.<br />
+M_{t}=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}+E_{t},\qquad|E_{t}|<em>{2}\leq C\,t(\max</em>{j}\beta_{j})^{2}.<br />
+If the vectors<br />
+k<br />
+j<br />
+k_{j}<br />
+are concentrated around their mean<br />
+k<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+k<br />
+j<br />
+\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j}<br />
+, then<br />
+M<br />
+t<br />
+≈<br />
+I<br />
+−<br />
+c<br />
+​<br />
+Π<br />
+k<br />
+¯<br />
+,<br />
+Π<br />
+k<br />
+¯<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+,<br />
+M_{t}\approx I-c\,\Pi_{\bar{k}},\quad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{|\bar{k}|^{2}},<br />
+for some scalar<br />
+c<br />
+≥<br />
+0<br />
+c\geq 0<br />
+.<br />
+See App.<br />
+A.3<br />
 for the proof. This final approximation steps allow us to replace a single projection to the direction orthogonal to the mean key with the sequence of projection that depend on all the keys. Combining it with the previous result, we obtain the following approxima</p>
-
-<p>tion to the full attention weights:
-P
-i
-full
-≈
-1
-t
-​
-d
-​
-q
-⊤
-​
-∏
-j
-(
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-)
-​
-k
-i
-+
-1
-t
-,
-P^{\mathrm{full}}_{i}\approx\frac{1}{t\sqrt{d}}q^{\top}\prod_{j}(I-\beta_{j}k_{j}k_{j}^{\top})k_{i}+\frac{1}{t},
-(11)
-which aligns with the linear attention weights we get when using delta rule (Eq.
-9
-).
-Note that while the Taylor expansion yields a constant bias
-1
-t
-\frac{1}{t}
-, practical GDN implementations do not have it, focusing entirely on capturing the dynamic, key-dependent variance. For large
-t
-t
-values, this becomes negligible; however, we expect it to lead to higher approximation error at the beginning of the sequence.
-3.2.2
-Gated Linear Attention with Key-Dependent Gate
-These approximations demonstrate that delta-based updates capture the first-order dynamics of softmax attention, while purely gated accumulation does not.
-However, we can potentially reduce the gap between the two linear kernels by introducing key‑dependent gating. Standard GLA attention (defined in Eq.
-8
-) computes a product of diagonal matrices, which only depends on the hidden states
-h
-j
-h_{j}
-through the gates
-α
-j
-=
-σ
-​
-(
-W
-g
-​
-h
-j
-)
-\alpha_{j}=\sigma(W^{g}h_{j})
-.
-To make GLA a better approximation of full attention, while preserving its hardware-efficient diagonal structure, we suggest using the following form:
-y
-t
-=
-∑
-i
-(
-q
-⊤
-​
-[
-∏
-j
-=
-i
-+
-1
-t
-diag
-⁡
-(
-α
-j
-)
-​
-(
-I
-−
-β
-j
-​
-Diag
-⁡
-(
-k
-j
-⊙
-k
-j
-)
-)
-]
-​
-k
-i
-)
-​
-v
-i
+<p>tion to the full attention weights:<br />
+P<br />
+i<br />
+full<br />
+≈<br />
+1<br />
+t<br />
+​<br />
+d<br />
+​<br />
+q<br />
+⊤<br />
+​<br />
+∏<br />
+j<br />
+(<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+)<br />
+​<br />
+k<br />
+i<br />
++<br />
+1<br />
+t<br />
+,<br />
+P^{\mathrm{full}}<em>{i}\approx\frac{1}{t\sqrt{d}}q^{\top}\prod</em>{j}(I-\beta_{j}k_{j}k_{j}^{\top})k_{i}+\frac{1}{t},<br />
+(11)<br />
+which aligns with the linear attention weights we get when using delta rule (Eq.<br />
+9<br />
+).<br />
+Note that while the Taylor expansion yields a constant bias<br />
+1<br />
+t<br />
+\frac{1}{t}<br />
+, practical GDN implementations do not have it, focusing entirely on capturing the dynamic, key-dependent variance. For large<br />
+t<br />
+t<br />
+values, this becomes negligible; however, we expect it to lead to higher approximation error at the beginning of the sequence.<br />
+3.2.2<br />
+Gated Linear Attention with Key-Dependent Gate<br />
+These approximations demonstrate that delta-based updates capture the first-order dynamics of softmax attention, while purely gated accumulation does not.<br />
+However, we can potentially reduce the gap between the two linear kernels by introducing key‑dependent gating. Standard GLA attention (defined in Eq.<br />
+8<br />
+) computes a product of diagonal matrices, which only depends on the hidden states<br />
+h<br />
+j<br />
+h_{j}<br />
+through the gates<br />
+α<br />
+j<br />
+=<br />
+σ<br />
+​<br />
+(<br />
+W<br />
+g<br />
+​<br />
+h<br />
+j<br />
+)<br />
+\alpha_{j}=\sigma(W^{g}h_{j})<br />
+.<br />
+To make GLA a better approximation of full attention, while preserving its hardware-efficient diagonal structure, we suggest using the following form:<br />
+y<br />
+t<br />
+=<br />
+∑<br />
+i<br />
+(<br />
+q<br />
+⊤<br />
+​<br />
+[<br />
+∏<br />
+j<br />
+=<br />
+i<br />
++<br />
+1<br />
+t<br />
+diag<br />
+⁡<br />
+(<br />
+α<br />
+j<br />
+)<br />
+​<br />
+(<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+Diag<br />
+⁡<br />
+(<br />
+k<br />
+j<br />
+⊙<br />
+k<br />
+j<br />
+)<br />
+)<br />
+]<br />
+​<br />
+k<br />
+i<br />
+)<br />
+​<br />
+v<br />
+i<br />
 y_{t}=\sum_{i}(q^{\top}\big[\prod_{j=i+1}^{t}\operatorname{diag}(\alpha_{j})</p>
-
-<p>\Big(I-\beta_{j}\,\operatorname{Diag}\big(k_{j}\odot k_{j}\big)\Big)\big]k_{i})v_{i}
-(12)
-where we use the same
-β
-j
-\beta_{j}
-as in GDN.
-We refer to this variant as
-kGLA
-(Key-Gated Linear Attention).
-While this diagonal approximation
-Diag
-⁡
-(
-k
-j
-⊙
-k
-j
-)
-\operatorname{Diag}(k_{j}\odot k_{j})
-is inherently less expressive than the exact rank-1 update
-k
-j
-​
-k
-j
-⊤
-k_{j}k_{j}^{\top}
-used in the delta rule, it may serve as a stronger structural prior for GLA models and allows us to leverage existing highly optimized GLA kernels.
-3.3
-Empirical Evaluation
-Setup.
-We start by evaluating linear blocks without additional components like SWA or LoRA. We replace all layers in our full-attention baselines (
-Llama3.1-8b
-and
-Qwen3-8b-Base
-) with corresponding linear blocks.
-We use the
-FLA
-1
-1
-1
-Flash Linear Attention
-[
-25
-]
-library for efficient GLA and GDN kernel implementations. For Hedgehog, we use
-FLA
-implementation of the feature maps
-ϕ
-\phi
-and implement its chunk-wise-parallel form for training and recurrent form for inference in
-pytorch
-. We freeze all parameters of the original model and train only the newly added parameters. We show the parametrization of the linear attention models as well as frozen and trainable parameters in Figure
-1
-. See App.
-C
-for the full list of hyperparameters and implementation details.
-We train the model end-to-end with the standard next-token prediction loss (cross-entropy) on the DCLM-Edu
-[
-9
-,
-1
-]
+<p>\Big(I-\beta_{j}\,\operatorname{Diag}\big(k_{j}\odot k_{j}\big)\Big)\big]k_{i})v_{i}<br />
+(12)<br />
+where we use the same<br />
+β<br />
+j<br />
+\beta_{j}<br />
+as in GDN.<br />
+We refer to this variant as<br />
+kGLA<br />
+(Key-Gated Linear Attention).<br />
+While this diagonal approximation<br />
+Diag<br />
+⁡<br />
+(<br />
+k<br />
+j<br />
+⊙<br />
+k<br />
+j<br />
+)<br />
+\operatorname{Diag}(k_{j}\odot k_{j})<br />
+is inherently less expressive than the exact rank-1 update<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+k_{j}k_{j}^{\top}<br />
+used in the delta rule, it may serve as a stronger structural prior for GLA models and allows us to leverage existing highly optimized GLA kernels.<br />
+3.3<br />
+Empirical Evaluation<br />
+Setup.<br />
+We start by evaluating linear blocks without additional components like SWA or LoRA. We replace all layers in our full-attention baselines (<br />
+Llama3.1-8b<br />
+and<br />
+Qwen3-8b-Base<br />
+) with corresponding linear blocks.<br />
+We use the<br />
+FLA<br />
+1<br />
+1<br />
+1<br />
+Flash Linear Attention<br />
+[<br />
+25<br />
+]<br />
+library for efficient GLA and GDN kernel implementations. For Hedgehog, we use<br />
+FLA<br />
+implementation of the feature maps<br />
+ϕ<br />
+\phi<br />
+and implement its chunk-wise-parallel form for training and recurrent form for inference in<br />
+pytorch<br />
+. We freeze all parameters of the original model and train only the newly added parameters. We show the parametrization of the linear attention models as well as frozen and trainable parameters in Figure<br />
+1<br />
+. See App.<br />
+C<br />
+for the full list of hyperparameters and implementation details.<br />
+We train the model end-to-end with the standard next-token prediction loss (cross-entropy) on the DCLM-Edu<br />
+[<br />
+9<br />
+,<br />
+1<br />
+]<br />
 dataset for 10M tokens. We pack sequences to 4096 toke</p>
-
-<p>ns and perform 2,500 training iterations, with batch size 1. Training GLA and GDN variants takes 1 hour on a single H100 GPU. Training Hedgehog takes approximately 8 hours, due to the absence of a Triton implementation.
-Note that this setting is intentionally stricter than most prior linear-attention work: we do not perform a distillation step, do not modify the original Q, K, V projections, and do not add sliding-window attention. This allows us to isolate the approximation properties of the linear mechanisms themselves.
-(a)
-Latency
-(b)
-MSE Per Layer
-(c)
-MSE per Token
-Figure 2
-:
-Comparison of linear attention variants for Llama3.1-8b linearization.
-(a)
-Per layer normalized MSE
-(b)
-Token index
-Figure 3
-:
-Key Concentration and Projection Residual for LLama3.1-8b
-Latency, Memory, and Approximation Error.
-Figure
-2
-(a) shows latency and memory as a function of context size. Linear attention yields substantial memory savings, enabling evaluation up to 32k tokens, whereas
-FA2
-runs out of memory in our setup. Latency gains are modest below
-∼
-\sim
-8k tokens, consistent with optimized quadratic kernels remaining competitive at short contexts.
-Figures
-2
-(b–c) report the layerwise and tokenwise normalized MSE between the frozen full-attention outputs and the linearized replacements. GDN consistently achieves lower MSE than other linear kernels. As predicted by our first-order analysis, error is largest early in the sequence: the softmax Taylor expansion includes a uniform bias term
-1
+<p>ns and perform 2,500 training iterations, with batch size 1. Training GLA and GDN variants takes 1 hour on a single H100 GPU. Training Hedgehog takes approximately 8 hours, due to the absence of a Triton implementation.<br />
+Note that this setting is intentionally stricter than most prior linear-attention work: we do not perform a distillation step, do not modify the original Q, K, V projections, and do not add sliding-window attention. This allows us to isolate the approximation properties of the linear mechanisms themselves.<br />
+(a)<br />
+Latency<br />
+(b)<br />
+MSE Per Layer<br />
+(c)<br />
+MSE per Token<br />
+Figure 2<br />
+:<br />
+Comparison of linear attention variants for Llama3.1-8b linearization.<br />
+(a)<br />
+Per layer normalized MSE<br />
+(b)<br />
+Token index<br />
+Figure 3<br />
+:<br />
+Key Concentration and Projection Residual for LLama3.1-8b<br />
+Latency, Memory, and Approximation Error.<br />
+Figure<br />
+2<br />
+(a) shows latency and memory as a function of context size. Linear attention yields substantial memory savings, enabling evaluation up to 32k tokens, whereas<br />
+FA2<br />
+runs out of memory in our setup. Latency gains are modest below<br />
+∼<br />
+\sim<br />
+8k tokens, consistent with optimized quadratic kernels remaining competitive at short contexts.<br />
+Figures<br />
+2<br />
+(b–c) report the layerwise and tokenwise normalized MSE between the frozen full-attention outputs and the linearized replacements. GDN consistently achieves lower MSE than other linear kernels. As predicted by our first-order analysis, error is largest early in the sequence: the softmax Taylor expansion includes a uniform bias term<br />
+1<br />
 /</p>
-
-<p>t
-1/t
-that standard GDN/GLA implementations omit, making the first few timesteps harder to match when
-t
-t
-is small.
-While this is not identical to the
-attention sink
-effect
-[
-21
-]
-, it reflects a related observation: decoder-only LMs often place disproportionately high attention mass on the first tokens, producing sharp prefix attention patterns that are difficult for linear mechanisms to approximate. We refer to these prefix positions as
-sink tokens
-throughout.
-Finally, Key-Gated Linear Attention (green) has lower MSE
-at initialization
-than GLA (orange), as shown by the dashed curves, but this gap largely disappears after training. This suggests lightweight fine-tuning mitigates the initialization advantage and that performance is ultimately capped by the diagonal gate structure. In contrast, the rank-1 update in GDN yields both better initialization and better final approximation. See App.
-B.1
-for full implementation details and Qwen3-8B results.
-Assumption Checks: Residuals and Key Concentration.
-We empirically evaluate the assumptions used in Sec.
-3.2
-in Fig.
-3
-for the Llama3.1-8B base model. See App.
-B.1
-for full implementation details and Qwen3-8B results.
-First, we report the
-projection residual
-(Lemma 2; Eq.
-10
-), which quantifies the error incurred when replacing mean subtraction
-(
-k
-~
-i
-−
-k
-¯
-t
-)
-(\tilde{k}_{i}-\bar{k}_{t})
-with orthogonal projection
-(
-I
-−
-Π
-k
-¯
-t
-)
-​
-k
-~
-i
-(I-\Pi_{\bar{k}_{t}})\tilde{k}_{i}
-. As shown in Fig.
-3
-(a), larger residuals correlate with</p>
-
-<p>higher approximation error (normalized MSE). Fig.
-3
-(b) further shows that residual is largest at the beginning of the sequence, consistent with early tokens being hardest to approximate.
-Second, we measure
-key concentration
-(Lemma 3) by computing the running mean of normalized keys and taking the cosine similarity between each key and the (normalized) running mean direction. Higher concentration corresponds to keys aligning with a dominant direction, the regime in which the rank-1 product in Lemma 3 behaves like a structured projection. We again observe a favorable trend: lower concentration is associated with higher MSE, and the first tokens exhibit the lowest concentration.
-Table 1
-:
-Downstream performance of the linearized models without SWA and fully fixed Q, K, V. Averaged over 3 random seeds. See App.
-B.1
-for detailed results.
-Llama3.1 8b
-Qwen3 8b
-Param
-CR
-MMLU
-Lambada
-Param
-CR
-MMLU
-Lambada
-\rowcolor
-lightgray
-Full Attention
-—
-73.98
-65.25
-74.79
-—
-73.73
-76.94
-70.95
-GLA
-4.3M
-61.81
-±
-\pm
-0.07
-27.13
-±
-\pm
-0.47
-28.26
-±
-\pm
-0.11
-4.7M
-52.04
-±
-\pm
-0.02
-24.50
-±
-\pm
-0.07
-11.29
-±
-\pm
-0.07
-kGLA
-8.5M
-62.60
-±
-\pm
-0.02
-27.37
-±
-\pm
-0.09
-27.49
-±
-\pm
-0.31
-9.6M
-52.76
-±
-\pm
-0.09
-25.23
-±
-\pm
-0.23
-11.33
-±
-\pm
-0.19
-GDN
-8.5M
-63.08
-±
-\pm
-0.09
-27.55
-±
-\pm
-0.36
-44.67
-±
-\pm
-0.26
-9.6M
-56.55
-±
-\pm
-0.12
-25.57
-±
-\pm
-0.23
-23.60
-±
-\pm
-0.33
-Hedgehog
-10.6M
-36.13
-±
-\pm
-0.02
-24.95
-±
-\pm
-0.03
-0.00
-±
-\pm
-0.00
-11.9M
-35.90
-±
-\pm
-0.06
-22.91
-±
-\pm
-0.01
-0.00
-±
-\pm
-0.00
-Gap with Full, %
-10.9
-37.7
-30.12
-17.18
+<p>t<br />
+1/t<br />
+that standard GDN/GLA implementations omit, making the first few timesteps harder to match when<br />
+t<br />
+t<br />
+is small.<br />
+While this is not identical to the<br />
+attention sink<br />
+effect<br />
+[<br />
+21<br />
+]<br />
+, it reflects a related observation: decoder-only LMs often place disproportionately high attention mass on the first tokens, producing sharp prefix attention patterns that are difficult for linear mechanisms to approximate. We refer to these prefix positions as<br />
+sink tokens<br />
+throughout.<br />
+Finally, Key-Gated Linear Attention (green) has lower MSE<br />
+at initialization<br />
+than GLA (orange), as shown by the dashed curves, but this gap largely disappears after training. This suggests lightweight fine-tuning mitigates the initialization advantage and that performance is ultimately capped by the diagonal gate structure. In contrast, the rank-1 update in GDN yields both better initialization and better final approximation. See App.<br />
+B.1<br />
+for full implementation details and Qwen3-8B results.<br />
+Assumption Checks: Residuals and Key Concentration.<br />
+We empirically evaluate the assumptions used in Sec.<br />
+3.2<br />
+in Fig.<br />
+3<br />
+for the Llama3.1-8B base model. See App.<br />
+B.1<br />
+for full implementation details and Qwen3-8B results.<br />
+First, we report the<br />
+projection residual<br />
+(Lemma 2; Eq.<br />
+10<br />
+), which quantifies the error incurred when replacing mean subtraction<br />
+(<br />
+k<br />
+~<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+t<br />
+)<br />
+(\tilde{k}<em>{i}-\bar{k}</em>{t})<br />
+with orthogonal projection<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+t<br />
+)<br />
+​<br />
+k<br />
+~<br />
+i<br />
+(I-\Pi_{\bar{k}<em>{t}})\tilde{k}</em>{i}<br />
+. As shown in Fig.<br />
+3<br />
+(a), larger residuals correlate with </p>
+<p>higher approximation error (normalized MSE). Fig.<br />
+3<br />
+(b) further shows that residual is largest at the beginning of the sequence, consistent with early tokens being hardest to approximate.<br />
+Second, we measure<br />
+key concentration<br />
+(Lemma 3) by computing the running mean of normalized keys and taking the cosine similarity between each key and the (normalized) running mean direction. Higher concentration corresponds to keys aligning with a dominant direction, the regime in which the rank-1 product in Lemma 3 behaves like a structured projection. We again observe a favorable trend: lower concentration is associated with higher MSE, and the first tokens exhibit the lowest concentration.<br />
+Table 1<br />
+:<br />
+Downstream performance of the linearized models without SWA and fully fixed Q, K, V. Averaged over 3 random seeds. See App.<br />
+B.1<br />
+for detailed results.<br />
+Llama3.1 8b<br />
+Qwen3 8b<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+\rowcolor<br />
+lightgray<br />
+Full Attention<br />
+—<br />
+73.98<br />
+65.25<br />
+74.79<br />
+—<br />
+73.73<br />
+76.94<br />
+70.95<br />
+GLA<br />
+4.3M<br />
+61.81<br />
+±<br />
+\pm<br />
+0.07<br />
+27.13<br />
+±<br />
+\pm<br />
+0.47<br />
+28.26<br />
+±<br />
+\pm<br />
+0.11<br />
+4.7M<br />
+52.04<br />
+±<br />
+\pm<br />
+0.02<br />
+24.50<br />
+±<br />
+\pm<br />
+0.07<br />
+11.29<br />
+±<br />
+\pm<br />
+0.07<br />
+kGLA<br />
+8.5M<br />
+62.60<br />
+±<br />
+\pm<br />
+0.02<br />
+27.37<br />
+±<br />
+\pm<br />
+0.09<br />
+27.49<br />
+±<br />
+\pm<br />
+0.31<br />
+9.6M<br />
+52.76<br />
+±<br />
+\pm<br />
+0.09<br />
+25.23<br />
+±<br />
+\pm<br />
+0.23<br />
+11.33<br />
+±<br />
+\pm<br />
+0.19<br />
+GDN<br />
+8.5M<br />
+63.08<br />
+±<br />
+\pm<br />
+0.09<br />
+27.55<br />
+±<br />
+\pm<br />
+0.36<br />
+44.67<br />
+±<br />
+\pm<br />
+0.26<br />
+9.6M<br />
+56.55<br />
+±<br />
+\pm<br />
+0.12<br />
+25.57<br />
+±<br />
+\pm<br />
+0.23<br />
+23.60<br />
+±<br />
+\pm<br />
+0.33<br />
+Hedgehog<br />
+10.6M<br />
+36.13<br />
+±<br />
+\pm<br />
+0.02<br />
+24.95<br />
+±<br />
+\pm<br />
+0.03<br />
+0.00<br />
+±<br />
+\pm<br />
+0.00<br />
+11.9M<br />
+35.90<br />
+±<br />
+\pm<br />
+0.06<br />
+22.91<br />
+±<br />
+\pm<br />
+0.01<br />
+0.00<br />
+±<br />
+\pm<br />
+0.00<br />
+Gap with Full, %<br />
+10.9<br />
+37.7<br />
+30.12<br />
+17.18<br />
 51.37</p>
-
-<p>47.35
-Downstream Evaluation.
-Table
-1
-reports zero-shot performance via LM-Eval
-[
-17
-]
-on five common reasoning benchmarks (CR): Physical Interaction QA (PIQA), ARC Easy, ARC Challenge, HellaSwag, WinoGrande. We also report 5-shot MMLU and Lambada (OpenAI) accuracy.
-Notably, the
-state-based
-mechanisms (GLA/kGLA/GDN) substantially outperform the
-kernelized
-Hedgehog replacement.
-This separation without state-space models aligns with our first-order view: delta-style updates natively implement key-dependent rank-1 corrections that match the geometry induced by softmax, whereas purely kernelized feature maps must learn an adequate similarity representation under tight adaptation constraints.
-To bridge the remaining gap, prior work typically introduces structural compensations like SWA
-[
-26
-,
-8
-]
-, and LoRA over projection layers. In the next sections, we reintroduce these components in a controlled manner to isolate which interventions most effectively compensate for the residual approximation errors observed in the pure replacement setting.
-4
-Improving Linear Attention Block Design
-Table 2
-:
-Downstream performance of the linearized models: SWA and Sink Token, averaged over 3 random seeds. See App.
-B.2
-for detailed results.
-Llama3.1 8b
-Qwen3 8b
-Param
-CR
-MMLU
-Lambada
-Param
-CR
-MMLU
-Lambada
-\rowcolor
-lightgray     Full Attention
-—
-73.98
-65.25
-74.79
-—
-73.73
-76.94
-70.95
-SWA
-GLA
-4.3M
-68.52
-±
-\pm
-0.07
-39.50
-±
-\pm
-0.60
-36.19
-±
-\pm
-0.14
-4.7M
-71.08
-±
-\pm
-0.01
-48.10
-±
-\pm
-0.51
-52.55
-±
-\pm
+<p>47.35<br />
+Downstream Evaluation.<br />
+Table<br />
+1<br />
+reports zero-shot performance via LM-Eval<br />
+[<br />
+17<br />
+]<br />
+on five common reasoning benchmarks (CR): Physical Interaction QA (PIQA), ARC Easy, ARC Challenge, HellaSwag, WinoGrande. We also report 5-shot MMLU and Lambada (OpenAI) accuracy.<br />
+Notably, the<br />
+state-based<br />
+mechanisms (GLA/kGLA/GDN) substantially outperform the<br />
+kernelized<br />
+Hedgehog replacement.<br />
+This separation without state-space models aligns with our first-order view: delta-style updates natively implement key-dependent rank-1 corrections that match the geometry induced by softmax, whereas purely kernelized feature maps must learn an adequate similarity representation under tight adaptation constraints.<br />
+To bridge the remaining gap, prior work typically introduces structural compensations like SWA<br />
+[<br />
+26<br />
+,<br />
+8<br />
+]<br />
+, and LoRA over projection layers. In the next sections, we reintroduce these components in a controlled manner to isolate which interventions most effectively compensate for the residual approximation errors observed in the pure replacement setting.<br />
+4<br />
+Improving Linear Attention Block Design<br />
+Table 2<br />
+:<br />
+Downstream performance of the linearized models: SWA and Sink Token, averaged over 3 random seeds. See App.<br />
+B.2<br />
+for detailed results.<br />
+Llama3.1 8b<br />
+Qwen3 8b<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+\rowcolor<br />
+lightgray     Full Attention<br />
+—<br />
+73.98<br />
+65.25<br />
+74.79<br />
+—<br />
+73.73<br />
+76.94<br />
+70.95<br />
+SWA<br />
+GLA<br />
+4.3M<br />
+68.52<br />
+±<br />
+\pm<br />
+0.07<br />
+39.50<br />
+±<br />
+\pm<br />
+0.60<br />
+36.19<br />
+±<br />
+\pm<br />
+0.14<br />
+4.7M<br />
+71.08<br />
+±<br />
+\pm<br />
+0.01<br />
+48.10<br />
+±<br />
+\pm<br />
+0.51<br />
+52.55<br />
+±<br />
+\pm<br />
 0</p>
-
-<p>.21
-kGLA
-8.5M
-68.36
-±
-\pm
-0.03
-37.63
-±
-\pm
-0.02
-36.86
-±
-\pm
-0.16
-9.6M
-71.13
-±
-\pm
-0.05
-48.86
-±
-\pm
-0.53
-53.30
-±
-\pm
-0.22
-GDN
-8.5M
-68.73
-±
-\pm
-0.03
-51.57
-±
-\pm
-0.77
-41.92
-±
-\pm
-0.22
-9.6M
-71.44
-±
-\pm
-0.07
-53.70
-±
-\pm
-0.20
-59.30
-±
-\pm
-0.13
-SWA
-+ Sink
-GLA
-4.3M
-73.07
-±
-\pm
-0.01
-44.25
-±
-\pm
-0.08
-59.31
-±
-\pm
-0.11
-4.7M
-73.10
-±
-\pm
-0.03
-67.40
-±
-\pm
-0.05
-56.50
-±
-\pm
-0.29
-kGLA
-8.5M
-73.05
-±
-\pm
-0.02
-43.28
-±
-\pm
-0.03
-59.57
-±
-\pm
-0.19
-9.6M
-73.08
-±
-\pm
-0.01
-67.70
-±
-\pm
-0.17
-57.05
-±
-\pm
-0.12
-GDN
-8.5M
-73.81
-±
-\pm
-0.00
-58.88
-±
-\pm
-0.14
-68.82
-±
-\pm
-0.13
-9.6M
-73.46
-±
-\pm
-0.01
-70.97
-±
-\pm
-0.18
-64.53
-±
-\pm
-0.04
-Gap with Full, %
-0.17
-6.37
-5.97
-0.27
-5.97
-6.42
-Adding Sliding Window Attention.
-Combining linear attention with sliding-window attention (SWA) has been shown to substantially improve downstream performance of linearized models
-[
-8
-,
-26
-,
-11
-,
-20
-]
-.
-Let
-w
-w
-be the sliding-window size and let
-y
-t
-swa
-y_{t}^{\text{swa}}
-denote the SWA output for token
-t
-t
-. In Liger-GLA
-[
-8
-]
-, the total output takes the form
-y
-t
-=
-0.5
-​
-q
-t
-​
-S
-t
-+
-0.5
-​
-y
-t
-swa
-y_{t}=0.5\,q_{t}S_{t}+0.5\,y_{t}^{\text{swa}}
-.
-Tokens inside the window (
-i
-∈
-[
-t
-−
-w
-,
-t
-]
-i\in[t-w,t]
-) contribute through both the linear and SWA paths, while tokens outside the window (
-i
-∈
-[
-1
-,
-t
-−
-w
-)
-i\in[1,t-w)
-) contribute only through the linear path.
-Instead, we use:
-y
-t
-=
-q
-t
-​
-S
-t
-−
-w
-+
-y
-t
-swa
-,
-y_{t}=q_{t}S_{t-w}+y_{t}^{\text{swa}},
-(13)
+<p>.21<br />
+kGLA<br />
+8.5M<br />
+68.36<br />
+±<br />
+\pm<br />
+0.03<br />
+37.63<br />
+±<br />
+\pm<br />
+0.02<br />
+36.86<br />
+±<br />
+\pm<br />
+0.16<br />
+9.6M<br />
+71.13<br />
+±<br />
+\pm<br />
+0.05<br />
+48.86<br />
+±<br />
+\pm<br />
+0.53<br />
+53.30<br />
+±<br />
+\pm<br />
+0.22<br />
+GDN<br />
+8.5M<br />
+68.73<br />
+±<br />
+\pm<br />
+0.03<br />
+51.57<br />
+±<br />
+\pm<br />
+0.77<br />
+41.92<br />
+±<br />
+\pm<br />
+0.22<br />
+9.6M<br />
+71.44<br />
+±<br />
+\pm<br />
+0.07<br />
+53.70<br />
+±<br />
+\pm<br />
+0.20<br />
+59.30<br />
+±<br />
+\pm<br />
+0.13<br />
+SWA<br />
++ Sink<br />
+GLA<br />
+4.3M<br />
+73.07<br />
+±<br />
+\pm<br />
+0.01<br />
+44.25<br />
+±<br />
+\pm<br />
+0.08<br />
+59.31<br />
+±<br />
+\pm<br />
+0.11<br />
+4.7M<br />
+73.10<br />
+±<br />
+\pm<br />
+0.03<br />
+67.40<br />
+±<br />
+\pm<br />
+0.05<br />
+56.50<br />
+±<br />
+\pm<br />
+0.29<br />
+kGLA<br />
+8.5M<br />
+73.05<br />
+±<br />
+\pm<br />
+0.02<br />
+43.28<br />
+±<br />
+\pm<br />
+0.03<br />
+59.57<br />
+±<br />
+\pm<br />
+0.19<br />
+9.6M<br />
+73.08<br />
+±<br />
+\pm<br />
+0.01<br />
+67.70<br />
+±<br />
+\pm<br />
+0.17<br />
+57.05<br />
+±<br />
+\pm<br />
+0.12<br />
+GDN<br />
+8.5M<br />
+73.81<br />
+±<br />
+\pm<br />
+0.00<br />
+58.88<br />
+±<br />
+\pm<br />
+0.14<br />
+68.82<br />
+±<br />
+\pm<br />
+0.13<br />
+9.6M<br />
+73.46<br />
+±<br />
+\pm<br />
+0.01<br />
+70.97<br />
+±<br />
+\pm<br />
+0.18<br />
+64.53<br />
+±<br />
+\pm<br />
+0.04<br />
+Gap with Full, %<br />
+0.17<br />
+6.37<br />
+5.97<br />
+0.27<br />
+5.97<br />
+6.42<br />
+Adding Sliding Window Attention.<br />
+Combining linear attention with sliding-window attention (SWA) has been shown to substantially improve downstream performance of linearized models<br />
+[<br />
+8<br />
+,<br />
+26<br />
+,<br />
+11<br />
+,<br />
+20<br />
+]<br />
+.<br />
+Let<br />
+w<br />
+w<br />
+be the sliding-window size and let<br />
+y<br />
+t<br />
+swa<br />
+y_{t}^{\text{swa}}<br />
+denote the SWA output for token<br />
+t<br />
+t<br />
+. In Liger-GLA<br />
+[<br />
+8<br />
+]<br />
+, the total output takes the form<br />
+y<br />
+t<br />
+=<br />
+0.5<br />
+​<br />
+q<br />
+t<br />
+​<br />
+S<br />
+t<br />
++<br />
+0.5<br />
+​<br />
+y<br />
+t<br />
+swa<br />
+y_{t}=0.5\,q_{t}S_{t}+0.5\,y_{t}^{\text{swa}}<br />
+.<br />
+Tokens inside the window (<br />
+i<br />
+∈<br />
+[<br />
+t<br />
+−<br />
+w<br />
+,<br />
+t<br />
+]<br />
+i\in[t-w,t]<br />
+) contribute through both the linear and SWA paths, while tokens outside the window (<br />
+i<br />
+∈<br />
+[<br />
+1<br />
+,<br />
+t<br />
+−<br />
+w<br />
+)<br />
+i\in[1,t-w)<br />
+) contribute only through the linear path.<br />
+Instead, we use:<br />
+y<br />
+t<br />
+=<br />
+q<br />
+t<br />
+​<br />
+S<br />
+t<br />
+−<br />
+w<br />
++<br />
+y<br />
+t<br />
+swa<br />
+,<br />
+y_{t}=q_{t}S_{t-w}+y_{t}^{\text{swa}},<br />
+(13)<br />
 so each token contributes either via the linear path or via SWA (no mixing weights). This is insp</p>
-
-<p>ired by LoLCaTs
-[
-26
-]
-. Since we use a simpler form of linear attention, we do not need to change the normalization constant, and we can compute both components independently using standard kernels:
-FA2
-2
-2
-2
-Flash Attention 2
-[
-6
-]
-for SWA and
-FLA
-for the LA part.
-Our analysis also shows that the first few tokens are the hardest to approximate with linear attention. We therefore split a fixed SWA budget between
-w
-w
-local-window tokens and
-s
-s
-sink tokens
-. Following
-[
-26
-]
-, we fix the budget to 64 tokens and use a 56-token sliding window with 8 sink tokens. The final output is:
-y
-t
-=
-q
-t
-​
-S
-s
-:
-t
-−
-w
-+
-y
-t
-swa
-,
-y
-t
-swa
-=
-∑
-i
-∈
-I
-exp
-⁡
-(
-q
-t
-⊤
-​
-k
-i
-/
-d
-)
-​
-v
-i
-∑
-i
-∈
-I
-exp
-⁡
-(
-q
-t
-⊤
-​
-k
-i
-/
-d
-)
-,
-I
-=
-{
-1
-,
-…
-,
-s
-,
-t
-−
-w
-,
-…
-,
-t
-}
-.
-\displaystyle y_{t}=q_{t}S_{s:t-w}+y_{t}^{\text{swa}},\quad y_{t}^{\text{swa}}=\frac{\sum_{i\in I}\exp(q_{t}^{\top}k_{i}/\sqrt{d})\,v_{i}}{\sum_{i\in I}\exp(q_{t}^{\top}k_{i}/\sqrt{d})},\quad\small{I=\{1,\dots,s,\,t-w,\dots,t\}.}
-(14)
-Note that
-y
-t
-swa
-y_{t}^{\text{swa}}
-can be computed efficiently with
-FA2
-, while the linear term can be computed with existing
-FLA
-kernels, enabling efficient training and inference.
-We report the result for three linear kernels and two backbone model in Table
-4
-. Consistent with the prior works, adding sliding window to the linear layer reduces the gap with the full attention that we observe in Table
-1
-. Furthermore, keeping the cache budget fixed to 64 tokens and allocating 8 of them to the sink instead of the</p>
-
-<p>sliding window, improved performance even further. This result is consistent across linear attention types and backbone architectures.
-Adapting Q/K/V.
-Performance can be improved further by allowing modifications to the original model’s Q, K, and V projections, for which we consider LoRA and short convolutions. We keep all hyperparameters fixed, except reducing the LoRA learning rate to
-5
-​
-e-
-​
-4
-5\text{e-}4
-due to training instability.
-We report results in Table
-3
-. We find that the gap between models with and without the delta rule almost disappears when we introduce short convolutions. A similar phenomenon was observed in
-[
-2
-]
-, where a GLA model trained from scratch was able to catch up with GDN after adding short convolutions. For most benchmarks, short convolutions outperform LoRA. However, this may be due to the lower learning rate noted above, and we hypothesize that LoRA could benefit from longer training (e.g., 20M tokens, as used in prior work
-[
-8
-,
-26
-]
-).
+<p>ired by LoLCaTs<br />
+[<br />
+26<br />
+]<br />
+. Since we use a simpler form of linear attention, we do not need to change the normalization constant, and we can compute both components independently using standard kernels:<br />
+FA2<br />
+2<br />
+2<br />
+2<br />
+Flash Attention 2<br />
+[<br />
+6<br />
+]<br />
+for SWA and<br />
+FLA<br />
+for the LA part.<br />
+Our analysis also shows that the first few tokens are the hardest to approximate with linear attention. We therefore split a fixed SWA budget between<br />
+w<br />
+w<br />
+local-window tokens and<br />
+s<br />
+s<br />
+sink tokens<br />
+. Following<br />
+[<br />
+26<br />
+]<br />
+, we fix the budget to 64 tokens and use a 56-token sliding window with 8 sink tokens. The final output is:<br />
+y<br />
+t<br />
+=<br />
+q<br />
+t<br />
+​<br />
+S<br />
+s<br />
+:<br />
+t<br />
+−<br />
+w<br />
++<br />
+y<br />
+t<br />
+swa<br />
+,<br />
+y<br />
+t<br />
+swa<br />
+=<br />
+∑<br />
+i<br />
+∈<br />
+I<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+/<br />
+d<br />
+)<br />
+​<br />
+v<br />
+i<br />
+∑<br />
+i<br />
+∈<br />
+I<br />
+exp<br />
+⁡<br />
+(<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+/<br />
+d<br />
+)<br />
+,<br />
+I<br />
+=<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+s<br />
+,<br />
+t<br />
+−<br />
+w<br />
+,<br />
+…<br />
+,<br />
+t<br />
+}<br />
+.<br />
+\displaystyle y_{t}=q_{t}S_{s:t-w}+y_{t}^{\text{swa}},\quad y_{t}^{\text{swa}}=\frac{\sum_{i\in I}\exp(q_{t}^{\top}k_{i}/\sqrt{d})\,v_{i}}{\sum_{i\in I}\exp(q_{t}^{\top}k_{i}/\sqrt{d})},\quad\small{I={1,\dots,s,\,t-w,\dots,t}.}<br />
+(14)<br />
+Note that<br />
+y<br />
+t<br />
+swa<br />
+y_{t}^{\text{swa}}<br />
+can be computed efficiently with<br />
+FA2<br />
+, while the linear term can be computed with existing<br />
+FLA<br />
+kernels, enabling efficient training and inference.<br />
+We report the result for three linear kernels and two backbone model in Table<br />
+4<br />
+. Consistent with the prior works, adding sliding window to the linear layer reduces the gap with the full attention that we observe in Table<br />
+1<br />
+. Furthermore, keeping the cache budget fixed to 64 tokens and allocating 8 of them to the sink instead of the </p>
+<p>sliding window, improved performance even further. This result is consistent across linear attention types and backbone architectures.<br />
+Adapting Q/K/V.<br />
+Performance can be improved further by allowing modifications to the original model’s Q, K, and V projections, for which we consider LoRA and short convolutions. We keep all hyperparameters fixed, except reducing the LoRA learning rate to<br />
+5<br />
+​<br />
+e-<br />
+​<br />
+4<br />
+5\text{e-}4<br />
+due to training instability.<br />
+We report results in Table<br />
+3<br />
+. We find that the gap between models with and without the delta rule almost disappears when we introduce short convolutions. A similar phenomenon was observed in<br />
+[<br />
+2<br />
+]<br />
+, where a GLA model trained from scratch was able to catch up with GDN after adding short convolutions. For most benchmarks, short convolutions outperform LoRA. However, this may be due to the lower learning rate noted above, and we hypothesize that LoRA could benefit from longer training (e.g., 20M tokens, as used in prior work<br />
+[<br />
+8<br />
+,<br />
+26<br />
+]<br />
+).<br />
 A risk of this setup is that the additional representational capacity introduced by short convolutions and LoRA increases the likelihood of forgetting or overfitting to the training data. This becomes evident when comparing MMLU accuracy, which is more knowledge-based, versus LAMBADA, which is context-based. MMLU accuracy benefits little from short convolutions or LoRA, and the accuracy gap between full and linear models remains around 6%. For LAMBADA, by contrast, the gap shrinks, indicating that additional c</p>
-
-<p>apacity helps the model handle context more effectively.
-Table 3
-:
-Downstream performance of the linearized models: LoRA or Short Convolution (SC), averaged over 3 random seeds. See App.
-B.3
-for detailed results.
-Llama3.1 8b
-Qwen3 8b
-Param
-CR
-MMLU
-Lambada
-Param
-CR
-MMLU
-Lambada
-\rowcolor
-lightgray
-Full Attention
-—
-73.98
-65.25
-74.79
-—
-73.73
-76.94
-70.95
-SC
-GLA
-6.1M
-73.82
-±
-\pm
-0.01
-59.13
-±
-\pm
-0.18
-68.70
-±
-\pm
-0.12
-6.9M
-73.52
-±
-\pm
-0.02
-70.58
-±
-\pm
-0.17
-64.20
-±
-\pm
-0.05
-kGLA
-10.3M
-73.80
-±
-\pm
-0.00
-59.02
-±
-\pm
-0.12
-68.65
-±
-\pm
-0.11
-11.6M
-73.51
-±
-\pm
-0.03
-70.75
-±
-\pm
-0.17
-64.20
-±
-\pm
-0.06
-GDN
-10.3M
-73.77
-±
-\pm
-0.02
-59.17
-±
-\pm
-0.17
-69.01
-±
-\pm
-0.03
-11.6M
-73.49
-±
-\pm
-0.00
-71.10
-±
-\pm
-0.13
-64.64
-±
-\pm
-0.12
-LoRA
-GLA
-11.1M
-71.71
-±
-\pm
-0.09
-50.10
-±
-\pm
-0.59
-67.51
-±
-\pm
-1.16
-12.5M
-74.67
-±
-\pm
-0.20
-65.99
-±
-\pm
-0.27
-66.65
-±
-\pm
-0.35
-kGLA
-15.3M
-71.65
-±
-\pm
-0.24
-49.95
-±
-\pm
-0.39
-67.79
-±
-\pm
-0.60
-17.3M
-74.97
-±
-\pm
-0.08
-66.29
-±
-\pm
-0.30
-65.48
-±
-\pm
-0.51
-GDN
-15.3M
-72.80
-±
-\pm
-0.25
-54.80
-±
-\pm
-2.79
-70.29
-±
-\pm
-1.96
-17.3M
-75.17
-±
-\pm
-0.21
-69.61
-±
-\pm
-0.19
-67.94
-±
-\pm
-0.77
-Gap with Full, %
-0.16
-6.08
-4.50
--1.44
-5.84
-3.01
-5
-Final Evaluation
-In the previous section, we established that GDN consistently outperforms other linear variants. While prior work shows SWA is essential for recovering performance, our analysis (Sec.
-3.2
+<p>apacity helps the model handle context more effectively.<br />
+Table 3<br />
+:<br />
+Downstream performance of the linearized models: LoRA or Short Convolution (SC), averaged over 3 random seeds. See App.<br />
+B.3<br />
+for detailed results.<br />
+Llama3.1 8b<br />
+Qwen3 8b<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+Param<br />
+CR<br />
+MMLU<br />
+Lambada<br />
+\rowcolor<br />
+lightgray<br />
+Full Attention<br />
+—<br />
+73.98<br />
+65.25<br />
+74.79<br />
+—<br />
+73.73<br />
+76.94<br />
+70.95<br />
+SC<br />
+GLA<br />
+6.1M<br />
+73.82<br />
+±<br />
+\pm<br />
+0.01<br />
+59.13<br />
+±<br />
+\pm<br />
+0.18<br />
+68.70<br />
+±<br />
+\pm<br />
+0.12<br />
+6.9M<br />
+73.52<br />
+±<br />
+\pm<br />
+0.02<br />
+70.58<br />
+±<br />
+\pm<br />
+0.17<br />
+64.20<br />
+±<br />
+\pm<br />
+0.05<br />
+kGLA<br />
+10.3M<br />
+73.80<br />
+±<br />
+\pm<br />
+0.00<br />
+59.02<br />
+±<br />
+\pm<br />
+0.12<br />
+68.65<br />
+±<br />
+\pm<br />
+0.11<br />
+11.6M<br />
+73.51<br />
+±<br />
+\pm<br />
+0.03<br />
+70.75<br />
+±<br />
+\pm<br />
+0.17<br />
+64.20<br />
+±<br />
+\pm<br />
+0.06<br />
+GDN<br />
+10.3M<br />
+73.77<br />
+±<br />
+\pm<br />
+0.02<br />
+59.17<br />
+±<br />
+\pm<br />
+0.17<br />
+69.01<br />
+±<br />
+\pm<br />
+0.03<br />
+11.6M<br />
+73.49<br />
+±<br />
+\pm<br />
+0.00<br />
+71.10<br />
+±<br />
+\pm<br />
+0.13<br />
+64.64<br />
+±<br />
+\pm<br />
+0.12<br />
+LoRA<br />
+GLA<br />
+11.1M<br />
+71.71<br />
+±<br />
+\pm<br />
+0.09<br />
+50.10<br />
+±<br />
+\pm<br />
+0.59<br />
+67.51<br />
+±<br />
+\pm<br />
+1.16<br />
+12.5M<br />
+74.67<br />
+±<br />
+\pm<br />
+0.20<br />
+65.99<br />
+±<br />
+\pm<br />
+0.27<br />
+66.65<br />
+±<br />
+\pm<br />
+0.35<br />
+kGLA<br />
+15.3M<br />
+71.65<br />
+±<br />
+\pm<br />
+0.24<br />
+49.95<br />
+±<br />
+\pm<br />
+0.39<br />
+67.79<br />
+±<br />
+\pm<br />
+0.60<br />
+17.3M<br />
+74.97<br />
+±<br />
+\pm<br />
+0.08<br />
+66.29<br />
+±<br />
+\pm<br />
+0.30<br />
+65.48<br />
+±<br />
+\pm<br />
+0.51<br />
+GDN<br />
+15.3M<br />
+72.80<br />
+±<br />
+\pm<br />
+0.25<br />
+54.80<br />
+±<br />
+\pm<br />
+2.79<br />
+70.29<br />
+±<br />
+\pm<br />
+1.96<br />
+17.3M<br />
+75.17<br />
+±<br />
+\pm<br />
+0.21<br />
+69.61<br />
+±<br />
+\pm<br />
+0.19<br />
+67.94<br />
+±<br />
+\pm<br />
+0.77<br />
+Gap with Full, %<br />
+0.16<br />
+6.08<br />
+4.50<br />
+-1.44<br />
+5.84<br />
+3.01<br />
+5<br />
+Final Evaluation<br />
+In the previous section, we established that GDN consistently outperforms other linear variants. While prior work shows SWA is essential for recovering performance, our analysis (Sec.<br />
+3.2<br />
 ) revealed that linear mechanisms fundamentally struggle to approximate the attention patterns of early sequence tokens. Finally, short convolutions are added to enhance repres</p>
-
-<p>entational capacity.
-We now evaluate this final setup further, comparing it to other linearization methods, adding long context benchmarks, other models sizes and testing its performance in hybrid setting.
-Common Reasoning.
-Table
-4
-reports our final results and compares against prior linearization methods. Under the same 64-token sliding-window budget used by prior work, our linearized model matches or exceeds the best existing linearization baselines on the common reasoning suite, while requiring substantially fewer additional training tokens. In particular, we outperform LoLCaT
-[
-26
-]
-and Liger-GLA
-[
-8
-]
-on 5-shot MMLU, yielding a noticeably smaller gap to the full-attention teacher. Finally, our approach is competitive with Llamba
-[
-3
-]
-on common reasoning despite Llamba relying on full-model finetuning over a much larger token budget (12B), highlighting the strength of delta-style updates plus minimal compensations in the post hoc setting.
-Several recent linearization works further improve performance by augmenting the caching strategy beyond a fixed 64-token sliding window, typically by retaining additional globally important tokens. Lizard
-[
-20
-]
-uses 128 cache tokens and 4 meta, while LoLA
-[
-11
-]
-and STILL
-[
-12
-]
-select additional 64 cache tokens with content-based criteria. These mechanisms are complementary to our approach: even without specialized selection, simply matching their total cache budget by enlarging the sliding window already yields stronger 5-shot MMLU</p>
-
-<p>(Table
-4
-). We expect that combining GDN-based linearization with content-aware token selection could further improve performance at a fixed budget.
-Table 4
-:
-LLama3.1-8b Linearization results comparison with previous works.
-Model
-Tok.
-(B)
-Cache Size
-Param.
-PIQA
-ARC-e
-ARC-c
-Hella.
-Wino.
-MMLU
-Avg.
-\rowcolor
-lightgray
-LLaMA 3.1 8B
--
-∞
-\infty
--
-79.05
-82.15
-54.78
-79.34
-74.59
-65.25
-72.52
-Linearized
-Llamba
-12
-0
-8B
-80.9
-82.5
-54.6
-77.6
-73.3
-60.0
-71.5
-LolCaT
-0.04
-64
-80.96
-82.37
-54.44
-79.07
-69.69
-54.88
-70.24
-Liger-GLA
-0.02
-64
-80.5
-81.8
-55.6
-75.4
-69.5
-46.9
-68.3
-Ours (GDN)
-0.01
-64
-10.3M
-79.07
-±
-\pm
-0.02
-81.97
-±
-\pm
-0.01
-54.92
-±
-\pm
-0.08
-78.79
-±
-\pm
-0.07
-74.11
-±
-\pm
-0.00
-59.17
-±
-\pm
-0.17
-71.34
-±
-\pm
-0.05
-Extended Cache budget
-Lizard
-0.04
-132
-82
-83.5
-56.7
-79.3
-71.7
-61.2
-74.6
-LoLa
-0.04
-128
-81.6
-82.5
-55.4
-79.8
-73.6
-57.6
-71.75
-STILL (concurrent)
-0.04
-NA
-81.3
-83.0
-56.7
-79.0
-73.4
-61.3
-72.5
-Ours (GDN)
-0.01
-128
-10.3M
-79.16
-±
-\pm
-0.00
-82.15
-±
-\pm
-0.00
-54.86
-±
-\pm
-0.00
-79.34
-±
-\pm
-0.00
-74.11
-±
-\pm
-0.00
-63.22
-±
-\pm
-0.13
-72.14
-±
-\pm
-0.02
-Long Context.
-To evaluate long-context capabilities, we use S-NIAH and an extended RULER benchmarks (App.
-9
-).
-Under the fair 128-window comparison, we outperform prior linearization baselines, and with a larger cache budget it becomes competitive with strong caching-based methods.
-Scalability.
+<p>entational capacity.<br />
+We now evaluate this final setup further, comparing it to other linearization methods, adding long context benchmarks, other models sizes and testing its performance in hybrid setting.<br />
+Common Reasoning.<br />
+Table<br />
+4<br />
+reports our final results and compares against prior linearization methods. Under the same 64-token sliding-window budget used by prior work, our linearized model matches or exceeds the best existing linearization baselines on the common reasoning suite, while requiring substantially fewer additional training tokens. In particular, we outperform LoLCaT<br />
+[<br />
+26<br />
+]<br />
+and Liger-GLA<br />
+[<br />
+8<br />
+]<br />
+on 5-shot MMLU, yielding a noticeably smaller gap to the full-attention teacher. Finally, our approach is competitive with Llamba<br />
+[<br />
+3<br />
+]<br />
+on common reasoning despite Llamba relying on full-model finetuning over a much larger token budget (12B), highlighting the strength of delta-style updates plus minimal compensations in the post hoc setting.<br />
+Several recent linearization works further improve performance by augmenting the caching strategy beyond a fixed 64-token sliding window, typically by retaining additional globally important tokens. Lizard<br />
+[<br />
+20<br />
+]<br />
+uses 128 cache tokens and 4 meta, while LoLA<br />
+[<br />
+11<br />
+]<br />
+and STILL<br />
+[<br />
+12<br />
+]<br />
+select additional 64 cache tokens with content-based criteria. These mechanisms are complementary to our approach: even without specialized selection, simply matching their total cache budget by enlarging the sliding window already yields stronger 5-shot MMLU </p>
+<p>(Table<br />
+4<br />
+). We expect that combining GDN-based linearization with content-aware token selection could further improve performance at a fixed budget.<br />
+Table 4<br />
+:<br />
+LLama3.1-8b Linearization results comparison with previous works.<br />
+Model<br />
+Tok.<br />
+(B)<br />
+Cache Size<br />
+Param.<br />
+PIQA<br />
+ARC-e<br />
+ARC-c<br />
+Hella.<br />
+Wino.<br />
+MMLU<br />
+Avg.<br />
+\rowcolor<br />
+lightgray<br />
+LLaMA 3.1 8B<br />
+-<br />
+∞<br />
+\infty<br />
+-<br />
+79.05<br />
+82.15<br />
+54.78<br />
+79.34<br />
+74.59<br />
+65.25<br />
+72.52<br />
+Linearized<br />
+Llamba<br />
+12<br />
+0<br />
+8B<br />
+80.9<br />
+82.5<br />
+54.6<br />
+77.6<br />
+73.3<br />
+60.0<br />
+71.5<br />
+LolCaT<br />
+0.04<br />
+64<br />
+80.96<br />
+82.37<br />
+54.44<br />
+79.07<br />
+69.69<br />
+54.88<br />
+70.24<br />
+Liger-GLA<br />
+0.02<br />
+64<br />
+80.5<br />
+81.8<br />
+55.6<br />
+75.4<br />
+69.5<br />
+46.9<br />
+68.3<br />
+Ours (GDN)<br />
+0.01<br />
+64<br />
+10.3M<br />
+79.07<br />
+±<br />
+\pm<br />
+0.02<br />
+81.97<br />
+±<br />
+\pm<br />
+0.01<br />
+54.92<br />
+±<br />
+\pm<br />
+0.08<br />
+78.79<br />
+±<br />
+\pm<br />
+0.07<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+59.17<br />
+±<br />
+\pm<br />
+0.17<br />
+71.34<br />
+±<br />
+\pm<br />
+0.05<br />
+Extended Cache budget<br />
+Lizard<br />
+0.04<br />
+132<br />
+82<br />
+83.5<br />
+56.7<br />
+79.3<br />
+71.7<br />
+61.2<br />
+74.6<br />
+LoLa<br />
+0.04<br />
+128<br />
+81.6<br />
+82.5<br />
+55.4<br />
+79.8<br />
+73.6<br />
+57.6<br />
+71.75<br />
+STILL (concurrent)<br />
+0.04<br />
+NA<br />
+81.3<br />
+83.0<br />
+56.7<br />
+79.0<br />
+73.4<br />
+61.3<br />
+72.5<br />
+Ours (GDN)<br />
+0.01<br />
+128<br />
+10.3M<br />
+79.16<br />
+±<br />
+\pm<br />
+0.00<br />
+82.15<br />
+±<br />
+\pm<br />
+0.00<br />
+54.86<br />
+±<br />
+\pm<br />
+0.00<br />
+79.34<br />
+±<br />
+\pm<br />
+0.00<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+63.22<br />
+±<br />
+\pm<br />
+0.13<br />
+72.14<br />
+±<br />
+\pm<br />
+0.02<br />
+Long Context.<br />
+To evaluate long-context capabilities, we use S-NIAH and an extended RULER benchmarks (App.<br />
+9<br />
+).<br />
+Under the fair 128-window comparison, we outperform prior linearization baselines, and with a larger cache budget it becomes competitive with strong caching-based methods.<br />
+Scalability.<br />
 To assess the scalability of the linearization approach to models of various sizes, we apply it to the full line of dense Qwen3 models from 0.6B to 32B parameters. We use Base</p>
-
-<p>models, except for the largest 32B version, for which only an instruction-tuned variant is available. The results in Figure
-4
-show that the linearized performance scales consistently with the original base model.
-Hybrid Model.
-We evaluate a hybrid setting where only a subset of layers retain full attention and the remaining layers are replaced with GDN (Fig.
-5
-). We select the retained full-attention layers either (i) uniformly across depth or (ii) using our hardness signals (key concentration and projection residual) to preferentially keep the hardest-to-linearize layers. We consider keeping 10% - 50% of layers; for LLaMA-3.1-8B (32 layers), this corresponds to retaining 3 - 16 full attention layers. When only a small fraction of layers is kept (10, 20%), the metrics-based selection improves Lambada accuracy compared to uniform selection (Fig.
-5
-), indicating that preserving a few hard layers is particularly beneficial for context-dependent evaluation.
-Figure 4
-:
-Downstream accuracies for linearized Qwen3 models of various sizes. See App.
-B.5
-for detailed results.
-Figure 5
-:
-Hybrid setting: keeping full attention for 10% to 50% layers .
-6
-Conclusion and Limitations
+<p>models, except for the largest 32B version, for which only an instruction-tuned variant is available. The results in Figure<br />
+4<br />
+show that the linearized performance scales consistently with the original base model.<br />
+Hybrid Model.<br />
+We evaluate a hybrid setting where only a subset of layers retain full attention and the remaining layers are replaced with GDN (Fig.<br />
+5<br />
+). We select the retained full-attention layers either (i) uniformly across depth or (ii) using our hardness signals (key concentration and projection residual) to preferentially keep the hardest-to-linearize layers. We consider keeping 10% - 50% of layers; for LLaMA-3.1-8B (32 layers), this corresponds to retaining 3 - 16 full attention layers. When only a small fraction of layers is kept (10, 20%), the metrics-based selection improves Lambada accuracy compared to uniform selection (Fig.<br />
+5<br />
+), indicating that preserving a few hard layers is particularly beneficial for context-dependent evaluation.<br />
+Figure 4<br />
+:<br />
+Downstream accuracies for linearized Qwen3 models of various sizes. See App.<br />
+B.5<br />
+for detailed results.<br />
+Figure 5<br />
+:<br />
+Hybrid setting: keeping full attention for 10% to 50% layers .<br />
+6<br />
+Conclusion and Limitations<br />
 We study post hoc transformer linearization starting from a strict regime, and progressively relax it to quantify the effect of additional components (SWA, a small “sink-token” budget, and Short Convolutions). In the strict setting, delta-style updates are the most performant replacement, aligning with our first-</p>
-
-<p>order view that softmax induces key-dependent rank-1 corrections. With the final recipe, we match full attention model on common reasoning benchmarks, outperform prior linearization baselines on MMLU, and match the long-context performance of complex adaptive-caching frameworks.
-Limitations:
-Our first-order theory relies on approximate assumptions that may not hold uniformly across layers or very short prefixes. We leave the extension of adaptive caching strategies to GDN linearization to future works.
-References
-[1]
-L. B. Allal, A. Lozhkov, E. Bakouch, G. M. Blázquez, G. Penedo, L. Tunstall, A. Marafioti, H. Kydlíček, A. P. Lajarín, V. Srivastav, J. Lochner, C. Fahlgren, X. Nguyen, C. Fourrier, B. Burtenshaw, H. Larcher, H. Zhao, C. Zakka, M. Morlon, C. Raffel, L. von Werra, and T. Wolf
-(2025)
-SmolLM2: when smol goes big – data-centric training of a small language model
-.
-External Links:
-2502.02737
-,
-Link
-Cited by:
-§3.3
-.
-[2]
-Z. Allen-Zhu
-(2025)
-Physics of language models: part 4.1, architecture design and the magic of canon layers
-.
-arXiv preprint arXiv:2512.17351
-.
-Cited by:
-§4
-.
-[3]
-A. Bick, T. Katsch, N. Sohoni, A. Desai, and A. Gu
-(2025)
-Llamba: scaling distilled recurrent models for efficient language processing
-.
-arXiv preprint arXiv:2502.14458
-.
-Cited by:
-§5
-.
-[4]
-K. Choromanski, V. Likhosherstov, D. Dohan, X. Song, A. Gane, T. Sarlos, P. Hawkins, J. Davis, A. Mohiuddin, L. Kaiser,
-et al.
-(2020)
-Rethinking attention with performers
-.
-arXiv preprint arXiv:2009.14794
+<p>order view that softmax induces key-dependent rank-1 corrections. With the final recipe, we match full attention model on common reasoning benchmarks, outperform prior linearization baselines on MMLU, and match the long-context performance of complex adaptive-caching frameworks.<br />
+Limitations:<br />
+Our first-order theory relies on approximate assumptions that may not hold uniformly across layers or very short prefixes. We leave the extension of adaptive caching strategies to GDN linearization to future works.<br />
+References<br />
+[1]<br />
+L. B. Allal, A. Lozhkov, E. Bakouch, G. M. Blázquez, G. Penedo, L. Tunstall, A. Marafioti, H. Kydlíček, A. P. Lajarín, V. Srivastav, J. Lochner, C. Fahlgren, X. Nguyen, C. Fourrier, B. Burtenshaw, H. Larcher, H. Zhao, C. Zakka, M. Morlon, C. Raffel, L. von Werra, and T. Wolf<br />
+(2025)<br />
+SmolLM2: when smol goes big – data-centric training of a small language model<br />
+.<br />
+External Links:<br />
+2502.02737<br />
+,<br />
+Link<br />
+Cited by:<br />
+§3.3<br />
+.<br />
+[2]<br />
+Z. Allen-Zhu<br />
+(2025)<br />
+Physics of language models: part 4.1, architecture design and the magic of canon layers<br />
+.<br />
+arXiv preprint arXiv:2512.17351<br />
+.<br />
+Cited by:<br />
+§4<br />
+.<br />
+[3]<br />
+A. Bick, T. Katsch, N. Sohoni, A. Desai, and A. Gu<br />
+(2025)<br />
+Llamba: scaling distilled recurrent models for efficient language processing<br />
+.<br />
+arXiv preprint arXiv:2502.14458<br />
+.<br />
+Cited by:<br />
+§5<br />
+.<br />
+[4]<br />
+K. Choromanski, V. Likhosherstov, D. Dohan, X. Song, A. Gane, T. Sarlos, P. Hawkins, J. Davis, A. Mohiuddin, L. Kaiser,<br />
+et al.<br />
+(2020)<br />
+Rethinking attention with performers<br />
+.<br />
+arXiv preprint arXiv:2009.14794<br />
 .</p>
-
-<p>Cited by:
-§2
-,
-§3.2
-.
-[5]
-T. Dao and A. Gu
-(2024)
-Transformers are ssms: generalized models and efficient algorithms through structured state space duality
-.
-arXiv preprint arXiv:2405.21060
-.
-Cited by:
-§2
-.
-[6]
-T. Dao
-(2023)
-Flashattention-2: faster attention with better parallelism and work partitioning
-.
-arXiv preprint arXiv:2307.08691
-.
-Cited by:
-footnote 2
-.
-[7]
-E. Egorov, H. Ackermann, M. Nagel, and H. Cai
-(2025)
-Myosotis: structured computation for attention like layer
-.
-arXiv preprint arXiv:2509.20503
-.
-Cited by:
-§2
-.
-[8]
-D. Lan, W. Sun, J. Hu, J. Du, and Y. Cheng
-(2025)
-Liger: linearizing large language models to gated recurrent structures
-.
-arXiv preprint arXiv:2503.01496
-.
-Cited by:
-§1
-,
-§2
-,
-§3.3
-,
-§4
-,
-§4
-,
-§5
-.
-[9]
-J. Li, A. Fang, G. Smyrnis, M. Ivgi, M. Jordan, S. Gadre, H. Bansal, E. Guha, S. Keh, K. Arora,
-et al.
-(2024)
-Datacomp-lm: in search of the next generation of training sets for language models
-.
-Advances in Neural Information Processing Systems
-37
-,
-pp. 14200–14282
-.
-Cited by:
-§3.3
-.
-[10]
-B. Liu, R. Wang, L. Wu, Y. Feng, P. Stone, and Q. Liu
-(2024)
-Longhorn: state space models are amortized online learners
-.
-arXiv preprint arXiv:2407.14207
-.
-Cited by:
-§2
-.
-[11]
-L. McDermott, R. W. Heath Jr, and R. Parhi
-(2025)
-Lola: low-rank linear attention with sparse caching
-.
-arXiv preprint arXiv:2505.23666
-.
-Cited by:
-§1
-,
-§2
-,
-§4
-,
-§5
-.
-[12]
-W. Meng, L. Huo, Y. Luo, J. Guan, J. Zhang, Y. Li, and Z. Zhang
-(2026)
+<p>Cited by:<br />
+§2<br />
+,<br />
+§3.2<br />
+.<br />
+[5]<br />
+T. Dao and A. Gu<br />
+(2024)<br />
+Transformers are ssms: generalized models and efficient algorithms through structured state space duality<br />
+.<br />
+arXiv preprint arXiv:2405.21060<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[6]<br />
+T. Dao<br />
+(2023)<br />
+Flashattention-2: faster attention with better parallelism and work partitioning<br />
+.<br />
+arXiv preprint arXiv:2307.08691<br />
+.<br />
+Cited by:<br />
+footnote 2<br />
+.<br />
+[7]<br />
+E. Egorov, H. Ackermann, M. Nagel, and H. Cai<br />
+(2025)<br />
+Myosotis: structured computation for attention like layer<br />
+.<br />
+arXiv preprint arXiv:2509.20503<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[8]<br />
+D. Lan, W. Sun, J. Hu, J. Du, and Y. Cheng<br />
+(2025)<br />
+Liger: linearizing large language models to gated recurrent structures<br />
+.<br />
+arXiv preprint arXiv:2503.01496<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.3<br />
+,<br />
+§4<br />
+,<br />
+§4<br />
+,<br />
+§5<br />
+.<br />
+[9]<br />
+J. Li, A. Fang, G. Smyrnis, M. Ivgi, M. Jordan, S. Gadre, H. Bansal, E. Guha, S. Keh, K. Arora,<br />
+et al.<br />
+(2024)<br />
+Datacomp-lm: in search of the next generation of training sets for language models<br />
+.<br />
+Advances in Neural Information Processing Systems<br />
+37<br />
+,<br />
+pp. 14200–14282<br />
+.<br />
+Cited by:<br />
+§3.3<br />
+.<br />
+[10]<br />
+B. Liu, R. Wang, L. Wu, Y. Feng, P. Stone, and Q. Liu<br />
+(2024)<br />
+Longhorn: state space models are amortized online learners<br />
+.<br />
+arXiv preprint arXiv:2407.14207<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[11]<br />
+L. McDermott, R. W. Heath Jr, and R. Parhi<br />
+(2025)<br />
+Lola: low-rank linear attention with sparse caching<br />
+.<br />
+arXiv preprint arXiv:2505.23666<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§4<br />
+,<br />
+§5<br />
+.<br />
+[12]<br />
+W. Meng, L. Huo, Y. Luo, J. Guan, J. Zhang, Y. Li, and Z. Zhang<br />
+(2026)<br />
 STILL: selecting tokens for intra-layer hybrid atte</p>
-
-<p>ntion to linearize llms
-.
-arXiv preprint arXiv:2602.02180
-.
-Cited by:
-§1
-,
-§2
-,
-§5
-.
-[13]
-J. Mercat, I. Vasiljevic, S. Keh, K. Arora, A. Dave, A. Gaidon, and T. Kollar
-(2024)
-Linearizing large language models
-.
-arXiv preprint arXiv:2405.06640
-.
-Cited by:
-§1
-,
-§2
-.
-[14]
-Z. Qin, W. Sun, H. Deng, D. Li, Y. Wei, B. Lv, J. Yan, L. Kong, and Y. Zhong
-(2022)
-Cosformer: rethinking softmax in attention
-.
-arXiv preprint arXiv:2202.08791
-.
-Cited by:
-§3.2
-.
-[15]
-Y. Ro, Z. Zhang, S. Kundu, Z. Wang, and A. Akella
-(2025)
-On-the-fly adaptive distillation of transformer to dual-state linear attention
-.
-arXiv preprint arXiv:2506.09316
-.
-Cited by:
-§2
-.
-[16]
-Y. Sun, L. Dong, S. Huang, S. Ma, Y. Xia, J. Xue, J. Wang, and F. Wei
-(2023)
-Retentive network: a successor to transformer for large language models
-.
-arXiv preprint arXiv:2307.08621
-.
-Cited by:
-§2
-.
-[17]
-L. Sutawika, H. Schoelkopf, L. Gao, B. Abbasi, S. Biderman, J. Tow, C. Lovering, J. Phang, A. Thite, T. Wang,
-et al.
-(2025)
-EleutherAI/lm-evaluation-harness: v0. 4.9
-.
-Zenodo
-.
-Cited by:
-§3.3
-.
-[18]
-R. Taori, I. Gulrajani, T. Zhang, Y. Dubois, X. Li, C. Guestrin, P. Liang, and T. B. Hashimoto
-(2023)
-Stanford alpaca: an instruction-following llama model
-.
-GitHub
-.
-Note:
-https://github.com/tatsu-lab/stanford_alpaca
-Cited by:
-§B.1
-.
-[19]
-K. Team, Y. Zhang, Z. Lin, X. Yao, J. Hu, F. Meng, C. Liu, X. Men, S. Yang, Z. Li,
-et al.
-(2025)
-Kimi linear: an expressive, efficient attention architecture
-.
-arXiv preprint arXiv:2510.26692
-.
-Cited by:
-§1
+<p>ntion to linearize llms<br />
+.<br />
+arXiv preprint arXiv:2602.02180<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§5<br />
+.<br />
+[13]<br />
+J. Mercat, I. Vasiljevic, S. Keh, K. Arora, A. Dave, A. Gaidon, and T. Kollar<br />
+(2024)<br />
+Linearizing large language models<br />
+.<br />
+arXiv preprint arXiv:2405.06640<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+.<br />
+[14]<br />
+Z. Qin, W. Sun, H. Deng, D. Li, Y. Wei, B. Lv, J. Yan, L. Kong, and Y. Zhong<br />
+(2022)<br />
+Cosformer: rethinking softmax in attention<br />
+.<br />
+arXiv preprint arXiv:2202.08791<br />
+.<br />
+Cited by:<br />
+§3.2<br />
+.<br />
+[15]<br />
+Y. Ro, Z. Zhang, S. Kundu, Z. Wang, and A. Akella<br />
+(2025)<br />
+On-the-fly adaptive distillation of transformer to dual-state linear attention<br />
+.<br />
+arXiv preprint arXiv:2506.09316<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[16]<br />
+Y. Sun, L. Dong, S. Huang, S. Ma, Y. Xia, J. Xue, J. Wang, and F. Wei<br />
+(2023)<br />
+Retentive network: a successor to transformer for large language models<br />
+.<br />
+arXiv preprint arXiv:2307.08621<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[17]<br />
+L. Sutawika, H. Schoelkopf, L. Gao, B. Abbasi, S. Biderman, J. Tow, C. Lovering, J. Phang, A. Thite, T. Wang,<br />
+et al.<br />
+(2025)<br />
+EleutherAI/lm-evaluation-harness: v0. 4.9<br />
+.<br />
+Zenodo<br />
+.<br />
+Cited by:<br />
+§3.3<br />
+.<br />
+[18]<br />
+R. Taori, I. Gulrajani, T. Zhang, Y. Dubois, X. Li, C. Guestrin, P. Liang, and T. B. Hashimoto<br />
+(2023)<br />
+Stanford alpaca: an instruction-following llama model<br />
+.<br />
+GitHub<br />
+.<br />
+Note:<br />
+https://github.com/tatsu-lab/stanford_alpaca<br />
+Cited by:<br />
+§B.1<br />
+.<br />
+[19]<br />
+K. Team, Y. Zhang, Z. Lin, X. Yao, J. Hu, F. Meng, C. Liu, X. Men, S. Yang, Z. Li,<br />
+et al.<br />
+(2025)<br />
+Kimi linear: an expressive, efficient attention architecture<br />
+.<br />
+arXiv preprint arXiv:2510.26692<br />
+.<br />
+Cited by:<br />
+§1<br />
 ,</p>
-
-<p>§2
-,
-Figure 1
-,
-Figure 1
-,
-§3.1.2
-.
-[20]
-C. Van Nguyen, R. Zhang, H. Deilamsalehy, P. Mathur, V. D. Lai, H. Wang, J. Subramanian, R. A. Rossi, T. Bui, N. Vlassis,
-et al.
-(2025)
-Lizard: an efficient linearization framework for large language models
-.
-arXiv preprint arXiv:2507.09025
-.
-Cited by:
-§1
-,
-§2
-,
-§4
-,
-§5
-.
-[21]
-G. Xiao, Y. Tian, B. Chen, S. Han, and M. Lewis
-(2023)
-Efficient streaming language models with attention sinks
-.
-arXiv preprint arXiv:2309.17453
-.
-Cited by:
-§3.3
-.
-[22]
-S. Yang, J. Kautz, and A. Hatamizadeh
-(2024)
-Gated delta networks: improving mamba2 with delta rule
-.
-arXiv preprint arXiv:2412.06464
-.
-Cited by:
-§2
-,
-§3.1.2
-.
-[23]
-S. Yang, B. Wang, Y. Shen, R. Panda, and Y. Kim
-(2023)
-Gated linear attention transformers with hardware-efficient training
-.
-arXiv preprint arXiv:2312.06635
-.
-Cited by:
-§1
-,
-§2
-,
-Figure 1
-,
-Figure 1
-,
-§3.1.2
-.
-[24]
-S. Yang, B. Wang, Y. Zhang, Y. Shen, and Y. Kim
-(2024)
-Parallelizing linear transformers with the delta rule over sequence length
-.
-Advances in neural information processing systems
-37
-,
-pp. 115491–115522
-.
-Cited by:
-§2
-,
-§3.1.2
-.
-[25]
-FLA: a triton-based library for hardware-efficient implementations of linear attention mechanism
-External Links:
-Link
-Cited by:
-footnote 1
-.
-[26]
-M. Zhang, S. Arora, R. Chalamala, A. Wu, B. Spector, A. Singhal, K. Ramesh, and C. Ré
-(2024)
-Lolcats: on low-rank linearizing of large language models
-.
-arXiv preprint arXiv:2410.10254
-.
-Cited by:
-§1
-,
-§2
-,
-§3.1.1
-,
-§3.3
-,
-§4
-,
-§4
-,
-§4
-,
-§4
-,
-§5
+<p>§2<br />
+,<br />
+Figure 1<br />
+,<br />
+Figure 1<br />
+,<br />
+§3.1.2<br />
+.<br />
+[20]<br />
+C. Van Nguyen, R. Zhang, H. Deilamsalehy, P. Mathur, V. D. Lai, H. Wang, J. Subramanian, R. A. Rossi, T. Bui, N. Vlassis,<br />
+et al.<br />
+(2025)<br />
+Lizard: an efficient linearization framework for large language models<br />
+.<br />
+arXiv preprint arXiv:2507.09025<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§4<br />
+,<br />
+§5<br />
+.<br />
+[21]<br />
+G. Xiao, Y. Tian, B. Chen, S. Han, and M. Lewis<br />
+(2023)<br />
+Efficient streaming language models with attention sinks<br />
+.<br />
+arXiv preprint arXiv:2309.17453<br />
+.<br />
+Cited by:<br />
+§3.3<br />
+.<br />
+[22]<br />
+S. Yang, J. Kautz, and A. Hatamizadeh<br />
+(2024)<br />
+Gated delta networks: improving mamba2 with delta rule<br />
+.<br />
+arXiv preprint arXiv:2412.06464<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1.2<br />
+.<br />
+[23]<br />
+S. Yang, B. Wang, Y. Shen, R. Panda, and Y. Kim<br />
+(2023)<br />
+Gated linear attention transformers with hardware-efficient training<br />
+.<br />
+arXiv preprint arXiv:2312.06635<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+Figure 1<br />
+,<br />
+Figure 1<br />
+,<br />
+§3.1.2<br />
+.<br />
+[24]<br />
+S. Yang, B. Wang, Y. Zhang, Y. Shen, and Y. Kim<br />
+(2024)<br />
+Parallelizing linear transformers with the delta rule over sequence length<br />
+.<br />
+Advances in neural information processing systems<br />
+37<br />
+,<br />
+pp. 115491–115522<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1.2<br />
+.<br />
+[25]<br />
+FLA: a triton-based library for hardware-efficient implementations of linear attention mechanism<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+footnote 1<br />
+.<br />
+[26]<br />
+M. Zhang, S. Arora, R. Chalamala, A. Wu, B. Spector, A. Singhal, K. Ramesh, and C. Ré<br />
+(2024)<br />
+Lolcats: on low-rank linearizing of large language models<br />
+.<br />
+arXiv preprint arXiv:2410.10254<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.1.1<br />
+,<br />
+§3.3<br />
+,<br />
+§4<br />
+,<br />
+§4<br />
+,<br />
+§4<br />
+,<br />
+§4<br />
+,<br />
+§5<br />
 .</p>
-
-<p>[27]
-M. Zhang, K. Bhatia, H. Kumbong, and C. Ré
-(2024)
-The hedgehog &amp; the porcupine: expressive linear attentions with softmax mimicry
-.
-arXiv preprint arXiv:2402.04347
-.
-Cited by:
-§1
-,
-§2
-,
-Figure 1
-,
-Figure 1
-,
-§3.1.1
-.
-Appendix A
-Proofs
-A.1
-Linear Approximation
-Lemma 4
-(First–order Taylor approximation of softmax)
-.
-Let
-p
-​
-(
-x
-)
-=
-softmax
-​
-(
-x
-)
-p(x)=\mathrm{softmax}(x)
-,
-x
-i
-=
-q
-t
-⊤
-​
-k
-i
-x_{i}=q_{t}^{\top}k_{i}
-, and
-x
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-x
-j
-.
-\bar{x}=\frac{1}{t}\sum_{j=1}^{t}x_{j}.
-Then for each index
-i
-i
-,
-p
-i
-​
-(
-x
-)
-=
-1
-t
-+
-1
-t
-​
-(
-x
-i
-−
-x
-¯
-)
-+
-ε
-i
-(
-1
-)
-​
-(
-x
-)
-,
-p_{i}(x)=\frac{1}{t}+\frac{1}{t}\bigl(x_{i}-\bar{x}\bigr)+\varepsilon_{i}^{(1)}(x),
-where the error term satisfies
-‖
-ε
-(
-1
-)
-​
-(
-x
-)
-‖
-∞
-≤
-1
-2
-​
-‖
-x
-‖
-2
-2
-.
-\|\varepsilon^{(1)}(x)\|_{\infty}\leq\frac{1}{2}\|x\|_{2}^{2}.
-Proof.
-The derivative of softmax is given by the Jacobian
-J
-i
-​
-j
-​
-(
-x
-)
-=
-p
-i
-​
-(
-x
-)
-​
-(
-δ
-i
-​
-j
-−
-p
-j
-​
-(
-x
-)
-)
-.
-J_{ij}(x)=p_{i}(x)(\delta_{ij}-p_{j}(x)).
-We evaluate softmax at the zero vector
-x
-=
-0
-x=0
-.
-At this point all entries are equal, so
-p
-i
-​
-(
-0
-)
-=
-1
-t
-.
-p_{i}(0)=\frac{1}{t}.
-Substituting into the Jacobian gives
-J
-i
-​
-j
-​
-(
-0
-)
-=
-1
-t
-​
-(
-δ
-i
-​
-j
-−
-1
-t
-)
-.
-J_{ij}(0)=\frac{1}{t}\left(\delta_{ij}-\frac{1}{t}\right).
-We apply the first–order Taylor expansion around
-x
-=
-0
-x=0
-:
-p
-​
-(
-x
-)
-=
-p
-​
-(
-0
-)
-+
-J
-​
-(
-0
-)
-​
-x
-+
-R
-​
-(
-x
-)
-,
-p(x)=p(0)+J(0)x+R(x),
-where
-R
-​
-(
-x
-)
-R(x)
-collects higher–order terms.
-Since
-p
-​
-(
-0
-)
-=
-1
-t
-​
-𝟏
-p(0)=\frac{1}{t}\mathbf{1}
-and
-J
-​
-(
-0
-)
-​
-x
-=
-1
-t
+<p>[27]<br />
+M. Zhang, K. Bhatia, H. Kumbong, and C. Ré<br />
+(2024)<br />
+The hedgehog &amp; the porcupine: expressive linear attentions with softmax mimicry<br />
+.<br />
+arXiv preprint arXiv:2402.04347<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+Figure 1<br />
+,<br />
+Figure 1<br />
+,<br />
+§3.1.1<br />
+.<br />
+Appendix A<br />
+Proofs<br />
+A.1<br />
+Linear Approximation<br />
+Lemma 4<br />
+(First–order Taylor approximation of softmax)<br />
+.<br />
+Let<br />
+p<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+softmax<br />
+​<br />
+(<br />
+x<br />
+)<br />
+p(x)=\mathrm{softmax}(x)<br />
+,<br />
+x<br />
+i<br />
+=<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+x_{i}=q_{t}^{\top}k_{i}<br />
+, and<br />
+x<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+x<br />
+j<br />
+.<br />
+\bar{x}=\frac{1}{t}\sum_{j=1}^{t}x_{j}.<br />
+Then for each index<br />
+i<br />
+i<br />
+,<br />
+p<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+1<br />
+t<br />
++<br />
+1<br />
+t<br />
+​<br />
+(<br />
+x<br />
+i<br />
+−<br />
+x<br />
+¯<br />
+)<br />
++<br />
+ε<br />
+i<br />
+(<br />
+1<br />
+)<br />
+​<br />
+(<br />
+x<br />
+)<br />
+,<br />
+p_{i}(x)=\frac{1}{t}+\frac{1}{t}\bigl(x_{i}-\bar{x}\bigr)+\varepsilon_{i}^{(1)}(x),<br />
+where the error term satisfies<br />
+‖<br />
+ε<br />
+(<br />
+1<br />
+)<br />
+​<br />
+(<br />
+x<br />
+)<br />
+‖<br />
+∞<br />
+≤<br />
+1<br />
+2<br />
+​<br />
+‖<br />
+x<br />
+‖<br />
+2<br />
+2<br />
+.<br />
+|\varepsilon^{(1)}(x)|<em>{\infty}\leq\frac{1}{2}|x|</em>{2}^{2}.<br />
+Proof.<br />
+The derivative of softmax is given by the Jacobian<br />
+J<br />
+i<br />
+​<br />
+j<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+p<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+​<br />
+(<br />
+δ<br />
+i<br />
+​<br />
+j<br />
+−<br />
+p<br />
+j<br />
+​<br />
+(<br />
+x<br />
+)<br />
+)<br />
+.<br />
+J_{ij}(x)=p_{i}(x)(\delta_{ij}-p_{j}(x)).<br />
+We evaluate softmax at the zero vector<br />
+x<br />
+=<br />
+0<br />
+x=0<br />
+.<br />
+At this point all entries are equal, so<br />
+p<br />
+i<br />
+​<br />
+(<br />
+0<br />
+)<br />
+=<br />
+1<br />
+t<br />
+.<br />
+p_{i}(0)=\frac{1}{t}.<br />
+Substituting into the Jacobian gives<br />
+J<br />
+i<br />
+​<br />
+j<br />
+​<br />
+(<br />
+0<br />
+)<br />
+=<br />
+1<br />
+t<br />
+​<br />
+(<br />
+δ<br />
+i<br />
+​<br />
+j<br />
+−<br />
+1<br />
+t<br />
+)<br />
+.<br />
+J_{ij}(0)=\frac{1}{t}\left(\delta_{ij}-\frac{1}{t}\right).<br />
+We apply the first–order Taylor expansion around<br />
+x<br />
+=<br />
+0<br />
+x=0<br />
+:<br />
+p<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+p<br />
+​<br />
+(<br />
+0<br />
+)<br />
++<br />
+J<br />
+​<br />
+(<br />
+0<br />
+)<br />
+​<br />
+x<br />
++<br />
+R<br />
+​<br />
+(<br />
+x<br />
+)<br />
+,<br />
+p(x)=p(0)+J(0)x+R(x),<br />
+where<br />
+R<br />
+​<br />
+(<br />
+x<br />
+)<br />
+R(x)<br />
+collects higher–order terms.<br />
+Since<br />
+p<br />
+​<br />
+(<br />
+0<br />
+)<br />
+=<br />
+1<br />
+t<br />
+​<br />
+𝟏<br />
+p(0)=\frac{1}{t}\mathbf{1}<br />
+and<br />
+J<br />
+​<br />
+(<br />
+0<br />
+)<br />
+​<br />
+x<br />
+=<br />
+1<br />
+t<br />
 ​</p>
-
-<p>(
-x
-−
-x
-¯
-​
-𝟏
-)
-,
-J(0)x=\frac{1}{t}\left(x-\bar{x}\mathbf{1}\right),
-we obtain
-p
-​
-(
-x
-)
-=
-1
-t
-​
-𝟏
-+
-1
-t
-​
-(
-x
-−
-x
-¯
-​
-𝟏
-)
-+
-R
-​
-(
-x
-)
-.
-p(x)=\frac{1}{t}\mathbf{1}+\frac{1}{t}\left(x-\bar{x}\mathbf{1}\right)+R(x).
-Because softmax is smooth, the remainder is bounded by
-‖
-R
-​
-(
-x
-)
-‖
-∞
-≤
-1
-2
-​
-‖
-x
-‖
-2
-2
-.
-\|R(x)\|_{\infty}\leq\frac{1}{2}\|x\|_{2}^{2}.
-∎
-Substituting
-x
-i
-=
-q
-t
-⊤
-​
-k
-i
-x_{i}=q_{t}^{\top}k_{i}
-gives
-p
-i
-​
-(
-x
-)
-≈
-1
-t
-+
-1
-t
-​
-q
-t
-⊤
-​
-(
-k
-i
-−
-k
-¯
-)
-.
-p_{i}(x)\approx\frac{1}{t}+\frac{1}{t}q_{t}^{\top}(k_{i}-\bar{k}).
-A.2
-Projection
-Lemma 5
-(Projection approximation of centering)
-.
-Define the mean key and the projection matrix
-k
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-k
-j
-,
-Π
-k
-¯
-=
-k
-¯
-​
-k
-¯
-⊤
-‖
-k
-¯
-‖
-2
-.
-\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j},\qquad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{\|\bar{k}\|^{2}}.
-Assume all keys are normalized
-‖
-k
-i
-‖
-=
-1
-for all
-​
-i
-\|k_{i}\|=1\quad\text{for all }i
-. Then
-k
-i
-−
-k
-¯
-=
-(
-I
-−
-Π
-k
-¯
-)
-​
-k
-i
-+
-r
-i
-,
-k_{i}-\bar{k}=(I-\Pi_{\bar{k}})k_{i}+r_{i},
-where the residual
-r
-i
-r_{i}
-satisfies
-‖
-r
-i
-‖
-≤
-|
-cos
-⁡
-(
-α
-i
-)
-−
-1
-|
-+
-|
-1
-−
-‖
-k
-¯
-‖
-|
-,
-\|r_{i}\|\leq|\cos(\alpha_{i})-1|+|1-\|\bar{k}\||,
-and
-α
-i
-\alpha_{i}
-is the angle between
-k
-i
-k_{i}
-and
-k
-¯
-\bar{k}
-.
-Proof.
-The matrix
-Π
-k
-¯
-\Pi_{\bar{k}}
-projects any vector onto the direction of
-k
-¯
-\bar{k}
-.
-Applying it to
-k
-i
-k_{i}
-gives
-Π
-k
-¯
-​
-k
-i
-=
-k
-¯
-​
-⟨
-k
-i
-,
-k
-¯
-⟩
-‖
-k
-¯
-‖
-2
-.
-\Pi_{\bar{k}}k_{i}=\bar{k}\frac{\langle k_{i},\bar{k}\rangle}{\|\bar{k}\|^{2}}.
+<p>(<br />
+x<br />
+−<br />
+x<br />
+¯<br />
+​<br />
+𝟏<br />
+)<br />
+,<br />
+J(0)x=\frac{1}{t}\left(x-\bar{x}\mathbf{1}\right),<br />
+we obtain<br />
+p<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+1<br />
+t<br />
+​<br />
+𝟏<br />
++<br />
+1<br />
+t<br />
+​<br />
+(<br />
+x<br />
+−<br />
+x<br />
+¯<br />
+​<br />
+𝟏<br />
+)<br />
++<br />
+R<br />
+​<br />
+(<br />
+x<br />
+)<br />
+.<br />
+p(x)=\frac{1}{t}\mathbf{1}+\frac{1}{t}\left(x-\bar{x}\mathbf{1}\right)+R(x).<br />
+Because softmax is smooth, the remainder is bounded by<br />
+‖<br />
+R<br />
+​<br />
+(<br />
+x<br />
+)<br />
+‖<br />
+∞<br />
+≤<br />
+1<br />
+2<br />
+​<br />
+‖<br />
+x<br />
+‖<br />
+2<br />
+2<br />
+.<br />
+|R(x)|<em>{\infty}\leq\frac{1}{2}|x|</em>{2}^{2}.<br />
+∎<br />
+Substituting<br />
+x<br />
+i<br />
+=<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+k<br />
+i<br />
+x_{i}=q_{t}^{\top}k_{i}<br />
+gives<br />
+p<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+≈<br />
+1<br />
+t<br />
++<br />
+1<br />
+t<br />
+​<br />
+q<br />
+t<br />
+⊤<br />
+​<br />
+(<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+)<br />
+.<br />
+p_{i}(x)\approx\frac{1}{t}+\frac{1}{t}q_{t}^{\top}(k_{i}-\bar{k}).<br />
+A.2<br />
+Projection<br />
+Lemma 5<br />
+(Projection approximation of centering)<br />
+.<br />
+Define the mean key and the projection matrix<br />
+k<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+k<br />
+j<br />
+,<br />
+Π<br />
+k<br />
+¯<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+.<br />
+\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j},\qquad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{|\bar{k}|^{2}}.<br />
+Assume all keys are normalized<br />
+‖<br />
+k<br />
+i<br />
+‖<br />
+=<br />
+1<br />
+for all<br />
+​<br />
+i<br />
+|k_{i}|=1\quad\text{for all }i<br />
+. Then<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+=<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+)<br />
+​<br />
+k<br />
+i<br />
++<br />
+r<br />
+i<br />
+,<br />
+k_{i}-\bar{k}=(I-\Pi_{\bar{k}})k_{i}+r_{i},<br />
+where the residual<br />
+r<br />
+i<br />
+r_{i}<br />
+satisfies<br />
+‖<br />
+r<br />
+i<br />
+‖<br />
+≤<br />
+|<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+1<br />
+|<br />
++<br />
+|<br />
+1<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+|<br />
+,<br />
+|r_{i}|\leq|\cos(\alpha_{i})-1|+|1-|\bar{k}||,<br />
+and<br />
+α<br />
+i<br />
+\alpha_{i}<br />
+is the angle between<br />
+k<br />
+i<br />
+k_{i}<br />
+and<br />
+k<br />
+¯<br />
+\bar{k}<br />
+.<br />
+Proof.<br />
+The matrix<br />
+Π<br />
+k<br />
+¯<br />
+\Pi_{\bar{k}}<br />
+projects any vector onto the direction of<br />
+k<br />
+¯<br />
+\bar{k}<br />
+.<br />
+Applying it to<br />
+k<br />
+i<br />
+k_{i}<br />
+gives<br />
+Π<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+i<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+⟨<br />
+k<br />
+i<br />
+,<br />
+k<br />
+¯<br />
+⟩<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+.<br />
+\Pi_{\bar{k}}k_{i}=\bar{k}\frac{\langle k_{i},\bar{k}\rangle}{|\bar{k}|^{2}}.<br />
 We define the residual as the difference between e</p>
-
-<p>xact centering and projection:
-r
-i
-=
-(
-k
-i
-−
-k
-¯
-)
-−
-(
-I
-−
-Π
-k
-¯
-)
-​
-k
-i
-=
-Π
-k
-¯
-​
-k
-i
-−
-k
-¯
-.
-r_{i}=(k_{i}-\bar{k})-(I-\Pi_{\bar{k}})k_{i}=\Pi_{\bar{k}}k_{i}-\bar{k}.
-Substituting the projection formula,
-r
-i
-=
-k
-¯
-​
-(
-⟨
-k
-i
-,
-k
-¯
-⟩
-‖
-k
-¯
-‖
-2
-−
-1
-)
-.
-r_{i}=\bar{k}\left(\frac{\langle k_{i},\bar{k}\rangle}{\|\bar{k}\|^{2}}-1\right).
-Because
-k
-i
-k_{i}
-is a unit vector, the inner product can be written as
-⟨
-k
-i
-,
-k
-¯
-⟩
-=
-‖
-k
-¯
-‖
-​
-cos
-⁡
-(
-α
-i
-)
-.
-\langle k_{i},\bar{k}\rangle=\|\bar{k}\|\cos(\alpha_{i}).
-Thus
-r
-i
-=
-k
-¯
-​
-(
-cos
-⁡
-(
-α
-i
-)
-‖
-k
-¯
-‖
-−
-1
-)
-.
-r_{i}=\bar{k}\left(\frac{\cos(\alpha_{i})}{\|\bar{k}\|}-1\right).
-Taking norms yields
-‖
-r
-i
-‖
-=
-|
-cos
-⁡
-(
-α
-i
-)
-−
-‖
-k
-¯
-‖
-|
-.
-\|r_{i}\|=\bigl|\cos(\alpha_{i})-\|\bar{k}\|\bigr|.
-Finally, we rewrite the difference as a sum:
-cos
-⁡
-(
-α
-i
-)
-−
-‖
-k
-¯
-‖
-=
-(
-cos
-⁡
-(
-α
-i
-)
-−
-1
-)
-+
-(
-1
-−
-‖
-k
-¯
-‖
-)
-.
-\cos(\alpha_{i})-\|\bar{k}\|=(\cos(\alpha_{i})-1)+(1-\|\bar{k}\|).
-Taking absolute values and using the triangular inequality
-|
-a
-+
-b
-|
-≤
-|
-a
-|
-+
-|
-b
-|
-,
-|a+b|\leq|a|+|b|,
-which holds for all real numbers
-a
-,
-b
-a,b
-, we obtain
-‖
-r
-i
-‖
-≤
-|
-cos
-⁡
-(
-α
-i
-)
-−
-1
-|
-+
-|
-1
-−
-‖
-k
-¯
-‖
-|
-.
-\|r_{i}\|\leq|\cos(\alpha_{i})-1|+|1-\|\bar{k}\||.
-∎
-A.3
-Rank-1 approximation
-Lemma 6
-(Rank–1 product approximation)
-.
-Let
-‖
-k
-j
-‖
-=
-1
-\|k_{j}\|=1
-and define
-D
-j
-=
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-,
-β
-j
-∈
-(
-0
-,
-1
-)
-,
-M
-t
-=
-∏
-j
-=
-1
-t
-D
-j
-.
-D_{j}=I-\beta_{j}k_{j}k_{j}^{\top},\qquad\beta_{j}\in(0,1),\qquad M_{t}=\prod_{j=1}^{t}D_{j}.
-Then
-M
-t
-=
-I
-−
-∑
-j
-=
-1
-t
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-+
-E
-t
-,
-‖
+<p>xact centering and projection:<br />
+r<br />
+i<br />
+=<br />
+(<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+)<br />
+−<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+)<br />
+​<br />
+k<br />
+i<br />
+=<br />
+Π<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+.<br />
+r_{i}=(k_{i}-\bar{k})-(I-\Pi_{\bar{k}})k_{i}=\Pi_{\bar{k}}k_{i}-\bar{k}.<br />
+Substituting the projection formula,<br />
+r<br />
+i<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+(<br />
+⟨<br />
+k<br />
+i<br />
+,<br />
+k<br />
+¯<br />
+⟩<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+−<br />
+1<br />
+)<br />
+.<br />
+r_{i}=\bar{k}\left(\frac{\langle k_{i},\bar{k}\rangle}{|\bar{k}|^{2}}-1\right).<br />
+Because<br />
+k<br />
+i<br />
+k_{i}<br />
+is a unit vector, the inner product can be written as<br />
+⟨<br />
+k<br />
+i<br />
+,<br />
+k<br />
+¯<br />
+⟩<br />
+=<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+​<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+.<br />
+\langle k_{i},\bar{k}\rangle=|\bar{k}|\cos(\alpha_{i}).<br />
+Thus<br />
+r<br />
+i<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+(<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+−<br />
+1<br />
+)<br />
+.<br />
+r_{i}=\bar{k}\left(\frac{\cos(\alpha_{i})}{|\bar{k}|}-1\right).<br />
+Taking norms yields<br />
+‖<br />
+r<br />
+i<br />
+‖<br />
+=<br />
+|<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+|<br />
+.<br />
+|r_{i}|=\bigl|\cos(\alpha_{i})-|\bar{k}|\bigr|.<br />
+Finally, we rewrite the difference as a sum:<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+=<br />
+(<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+1<br />
+)<br />
++<br />
+(<br />
+1<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+)<br />
+.<br />
+\cos(\alpha_{i})-|\bar{k}|=(\cos(\alpha_{i})-1)+(1-|\bar{k}|).<br />
+Taking absolute values and using the triangular inequality<br />
+|<br />
+a<br />
++<br />
+b<br />
+|<br />
+≤<br />
+|<br />
+a<br />
+|<br />
++<br />
+|<br />
+b<br />
+|<br />
+,<br />
+|a+b|\leq|a|+|b|,<br />
+which holds for all real numbers<br />
+a<br />
+,<br />
+b<br />
+a,b<br />
+, we obtain<br />
+‖<br />
+r<br />
+i<br />
+‖<br />
+≤<br />
+|<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+−<br />
+1<br />
+|<br />
++<br />
+|<br />
+1<br />
+−<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+|<br />
+.<br />
+|r_{i}|\leq|\cos(\alpha_{i})-1|+|1-|\bar{k}||.<br />
+∎<br />
+A.3<br />
+Rank-1 approximation<br />
+Lemma 6<br />
+(Rank–1 product approximation)<br />
+.<br />
+Let<br />
+‖<br />
+k<br />
+j<br />
+‖<br />
+=<br />
+1<br />
+|k_{j}|=1<br />
+and define<br />
+D<br />
+j<br />
+=<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+,<br />
+β<br />
+j<br />
+∈<br />
+(<br />
+0<br />
+,<br />
+1<br />
+)<br />
+,<br />
+M<br />
+t<br />
+=<br />
+∏<br />
+j<br />
+=<br />
+1<br />
+t<br />
+D<br />
+j<br />
+.<br />
+D_{j}=I-\beta_{j}k_{j}k_{j}^{\top},\qquad\beta_{j}\in(0,1),\qquad M_{t}=\prod_{j=1}^{t}D_{j}.<br />
+Then<br />
+M<br />
+t<br />
+=<br />
+I<br />
+−<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
++<br />
+E<br />
+t<br />
+,<br />
+‖<br />
 E</p>
-
-<p>t
-‖
-2
-≤
-C
-​
-t
-​
-(
-max
-j
-⁡
-β
-j
-)
-2
-.
-M_{t}=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}+E_{t},\qquad\|E_{t}\|_{2}\leq C\,t(\max_{j}\beta_{j})^{2}.
-如果向量
-k
-j
-k_{j}
-集中在其均值
-k
-¯
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-k
-j
-\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j}
-附近，那么
-M
-t
-≈
-I
-−
-c
-​
-Π
-k
-¯
-,
-Π
-k
-¯
-=
-k
-¯
-​
-k
-¯
-⊤
-‖
-k
-¯
-‖
-2
-,
-M_{t}\approx I-c\,\Pi_{\bar{k}},\quad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{\|\bar{k}\|^{2}},
-其中
-c
-≥
-0
-c\geq 0
-为某个标量。
-证明。
-我们将
-M
-t
-=
-∏
-j
-=
-1
-t
-(
-I
-−
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-)
-.
-M_{t}=\prod_{j=1}^{t}(I-\beta_{j}k_{j}k_{j}^{\top}).
-展开相乘得到
-M
-t
-\displaystyle M_{t}
-=
-I
-−
-∑
-j
-=
-1
-t
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-\displaystyle=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}
-+
-∑
-1
-≤
-j
-&lt;
-ℓ
-≤
-t
-β
-j
-​
-β
-ℓ
-​
-(
-k
-j
-​
-k
-j
-⊤
-)
-​
-(
-k
-ℓ
-​
-k
-ℓ
-⊤
-)
-+
-⋯
-.
-\displaystyle\quad+\sum_{1\leq j&lt;\ell\leq t}\beta_{j}\beta_{\ell}(k_{j}k_{j}^{\top})(k_{\ell}k_{\ell}^{\top})+\cdots.
-所有二阶及以上的项都归入
-E
-t
-E_{t}
-中。
-每个矩阵
-k
-j
-​
-k
-j
-⊤
-k_{j}k_{j}^{\top}
-满足
-‖
-k
-j
-​
-k
-j
-⊤
-‖
-2
-≤
-‖
-k
-j
-‖
-2
-=
-1
-.
-\|k_{j}k_{j}^{\top}\|_{2}\leq\|k_{j}\|^{2}=1.
-利用
-‖
-A
-​
-B
-‖
-2
-≤
-‖
-A
-‖
-2
-​
-‖
-B
-‖
-2
-,
-\|AB\|_{2}\leq\|A\|_{2}\|B\|_{2},
-每个
-m
-≥
-2
-m\geq 2
-阶的项都以
-(
-max
-j
-⁡
-β
-j
-)
-m
-(\max_{j}\beta_{j})^{m}
-为界。
-这样的项至多有
-O
-​
-(
-t
-m
-)
-O(t^{m})
-个，因此
-‖
-E
-t
-‖
-2
-≤
-C
-​
-∑
-m
-=
-2
-∞
-t
-​
-(
-max
-j
-⁡
-β
-j
-)
-m
-≤
-C
-​
-t
-​
-(
-max
-j
-⁡
-β
-j
-)
-2
-.
-\|E_{t}\|_{2}\leq C\sum_{m=2}^{\infty}t(\max_{j}\beta_{j})^{m}\leq C\,t(\max_{j}\beta_{j})^{2}.
+<p>t<br />
+‖<br />
+2<br />
+≤<br />
+C<br />
+​<br />
+t<br />
+​<br />
+(<br />
+max<br />
+j<br />
+⁡<br />
+β<br />
+j<br />
+)<br />
+2<br />
+.<br />
+M_{t}=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}+E_{t},\qquad|E_{t}|<em>{2}\leq C\,t(\max</em>{j}\beta_{j})^{2}.<br />
+如果向量<br />
+k<br />
+j<br />
+k_{j}<br />
+集中在其均值<br />
+k<br />
+¯<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+k<br />
+j<br />
+\bar{k}=\frac{1}{t}\sum_{j=1}^{t}k_{j}<br />
+附近，那么<br />
+M<br />
+t<br />
+≈<br />
+I<br />
+−<br />
+c<br />
+​<br />
+Π<br />
+k<br />
+¯<br />
+,<br />
+Π<br />
+k<br />
+¯<br />
+=<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+‖<br />
+k<br />
+¯<br />
+‖<br />
+2<br />
+,<br />
+M_{t}\approx I-c\,\Pi_{\bar{k}},\quad\Pi_{\bar{k}}=\frac{\bar{k}\bar{k}^{\top}}{|\bar{k}|^{2}},<br />
+其中<br />
+c<br />
+≥<br />
+0<br />
+c\geq 0<br />
+为某个标量。<br />
+证明。<br />
+我们将<br />
+M<br />
+t<br />
+=<br />
+∏<br />
+j<br />
+=<br />
+1<br />
+t<br />
+(<br />
+I<br />
+−<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+)<br />
+.<br />
+M_{t}=\prod_{j=1}^{t}(I-\beta_{j}k_{j}k_{j}^{\top}).<br />
+展开相乘得到<br />
+M<br />
+t<br />
+\displaystyle M_{t}<br />
+=<br />
+I<br />
+−<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+\displaystyle=I-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}<br />
++<br />
+∑<br />
+1<br />
+≤<br />
+j<br />
+&lt;<br />
+ℓ<br />
+≤<br />
+t<br />
+β<br />
+j<br />
+​<br />
+β<br />
+ℓ<br />
+​<br />
+(<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+)<br />
+​<br />
+(<br />
+k<br />
+ℓ<br />
+​<br />
+k<br />
+ℓ<br />
+⊤<br />
+)<br />
++<br />
+⋯<br />
+.<br />
+\displaystyle\quad+\sum_{1\leq j&lt;\ell\leq t}\beta_{j}\beta_{\ell}(k_{j}k_{j}^{\top})(k_{\ell}k_{\ell}^{\top})+\cdots.<br />
+所有二阶及以上的项都归入<br />
+E<br />
+t<br />
+E_{t}<br />
+中。<br />
+每个矩阵<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+k_{j}k_{j}^{\top}<br />
+满足<br />
+‖<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+‖<br />
+2<br />
+≤<br />
+‖<br />
+k<br />
+j<br />
+‖<br />
+2<br />
+=<br />
+1<br />
+.<br />
+|k_{j}k_{j}^{\top}|<em>{2}\leq|k</em>{j}|^{2}=1.<br />
+利用<br />
+‖<br />
+A<br />
+​<br />
+B<br />
+‖<br />
+2<br />
+≤<br />
+‖<br />
+A<br />
+‖<br />
+2<br />
+​<br />
+‖<br />
+B<br />
+‖<br />
+2<br />
+,<br />
+|AB|<em>{2}\leq|A|</em>{2}|B|<em>{2},<br />
+每个<br />
+m<br />
+≥<br />
+2<br />
+m\geq 2<br />
+阶的项都以<br />
+(<br />
+max<br />
+j<br />
+⁡<br />
+β<br />
+j<br />
+)<br />
+m<br />
+(\max</em>{j}\beta_{j})^{m}<br />
+为界。<br />
+这样的项至多有<br />
+O<br />
+​<br />
+(<br />
+t<br />
+m<br />
+)<br />
+O(t^{m})<br />
+个，因此<br />
+‖<br />
+E<br />
+t<br />
+‖<br />
+2<br />
+≤<br />
+C<br />
+​<br />
+∑<br />
+m<br />
+=<br />
+2<br />
+∞<br />
+t<br />
+​<br />
+(<br />
+max<br />
+j<br />
+⁡<br />
+β<br />
+j<br />
+)<br />
+m<br />
+≤<br />
+C<br />
+​<br />
+t<br />
+​<br />
+(<br />
+max<br />
+j<br />
+⁡<br />
+β<br />
+j<br />
+)<br />
+2<br />
+.<br />
+|E_{t}|<em>{2}\leq C\sum</em>{m=2}^{\infty}t(\max_{j}\beta_{j})^{m}\leq C\,t(\max_{j}\beta_{j})^{2}.<br />
 如果向</p>
-
-<p>ctors
-k
-j
-k_{j}
-are close in direction to their mean
-k
-¯
-\bar{k}
-, then
-k
-j
-​
-k
-j
-⊤
-≈
-cos
-2
-⁡
-(
-α
-j
-)
-​
-k
-¯
-​
-k
-¯
-⊤
-,
-k_{j}k_{j}^{\top}\approx\cos^{2}(\alpha_{j})\,\bar{k}\bar{k}^{\top},
-where
-α
-j
-\alpha_{j}
-is the angle between
-k
-j
-k_{j}
-and
-k
-¯
-\bar{k}
-.
-Thus,
-∑
-j
-=
-1
-t
-β
-j
-​
-k
-j
-​
-k
-j
-⊤
-≈
-(
-∑
-j
-=
-1
-t
-β
-j
-​
-cos
-2
-⁡
-(
-α
-j
-)
-)
-​
-k
-¯
-​
-k
-¯
-⊤
-.
-\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}\approx\left(\sum_{j=1}^{t}\beta_{j}\cos^{2}(\alpha_{j})\right)\bar{k}\bar{k}^{\top}.
-Defining
-c
-=
-∑
-j
-=
-1
-t
-β
-j
-​
-cos
-2
-⁡
-(
-α
-j
-)
-,
-c=\sum_{j=1}^{t}\beta_{j}\cos^{2}(\alpha_{j}),
-with
-c
-≥
-0
-c\geq 0
-, we obtain
-M
-t
-≈
-I
-−
-c
-​
-Π
-k
-¯
-.
-M_{t}\approx I-c\,\Pi_{\bar{k}}.
-∎
-Appendix B
-Detailed Results
-Here we report detailed accuracies for all the benchmarks and additional experimental evaluations.
-B.1
-Pure Linear Attention
-Table 5
-:
-Downstream performance of the linearized models without SWA and without LoRA. We report the accuracy on common reasoning benchmarks (PiQA, ARC-e, ARC-c, HellaSwag, WinoGrande), 5-shot MMLU and Lambada (OpenAI). For ARC-c and HellaSwag we use normalized accuracy. Results are averaged over 3 random seeds.
-Model
-Params.
-PIQA
-ARC-e
-ARC-c
-Hella.
-Wino.
-MMLU
-(5-shot)
-Lambada
-Avg.
-\rowcolor
-lightgray
-Llama 3.1 8b
-–
-79.05
-82.15
-54.78
-79.34
-74.59
-65.25
-74.79
-72.84
-GLA
-4.3M
-76.02
-±
-\pm
-0.17
-69.28
-±
-\pm
-0.34
-38.91
-±
-\pm
-0.18
-67.57
-±
-\pm
-0.09
-57.27
-±
-\pm
-0.13
-27.13
-±
-\pm
-0.47
-28.26
-±
-\pm
-0.11
-52.06
-±
-\pm
-0.03
-kGLA
-8.5M
-75.81
-±
-\pm
-0.02
-71.06
-±
-\pm
-0.17
-39.79
-±
-\pm
-0.41
-67.92
-±
-\pm
-0.01
+<p>ctors<br />
+k<br />
+j<br />
+k_{j}<br />
+are close in direction to their mean<br />
+k<br />
+¯<br />
+\bar{k}<br />
+, then<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+≈<br />
+cos<br />
+2<br />
+⁡<br />
+(<br />
+α<br />
+j<br />
+)<br />
+​<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+,<br />
+k_{j}k_{j}^{\top}\approx\cos^{2}(\alpha_{j})\,\bar{k}\bar{k}^{\top},<br />
+where<br />
+α<br />
+j<br />
+\alpha_{j}<br />
+is the angle between<br />
+k<br />
+j<br />
+k_{j}<br />
+and<br />
+k<br />
+¯<br />
+\bar{k}<br />
+.<br />
+Thus,<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+k<br />
+j<br />
+​<br />
+k<br />
+j<br />
+⊤<br />
+≈<br />
+(<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+cos<br />
+2<br />
+⁡<br />
+(<br />
+α<br />
+j<br />
+)<br />
+)<br />
+​<br />
+k<br />
+¯<br />
+​<br />
+k<br />
+¯<br />
+⊤<br />
+.<br />
+\sum_{j=1}^{t}\beta_{j}k_{j}k_{j}^{\top}\approx\left(\sum_{j=1}^{t}\beta_{j}\cos^{2}(\alpha_{j})\right)\bar{k}\bar{k}^{\top}.<br />
+Defining<br />
+c<br />
+=<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+β<br />
+j<br />
+​<br />
+cos<br />
+2<br />
+⁡<br />
+(<br />
+α<br />
+j<br />
+)<br />
+,<br />
+c=\sum_{j=1}^{t}\beta_{j}\cos^{2}(\alpha_{j}),<br />
+with<br />
+c<br />
+≥<br />
+0<br />
+c\geq 0<br />
+, we obtain<br />
+M<br />
+t<br />
+≈<br />
+I<br />
+−<br />
+c<br />
+​<br />
+Π<br />
+k<br />
+¯<br />
+.<br />
+M_{t}\approx I-c\,\Pi_{\bar{k}}.<br />
+∎<br />
+Appendix B<br />
+Detailed Results<br />
+Here we report detailed accuracies for all the benchmarks and additional experimental evaluations.<br />
+B.1<br />
+Pure Linear Attention<br />
+Table 5<br />
+:<br />
+Downstream performance of the linearized models without SWA and without LoRA. We report the accuracy on common reasoning benchmarks (PiQA, ARC-e, ARC-c, HellaSwag, WinoGrande), 5-shot MMLU and Lambada (OpenAI). For ARC-c and HellaSwag we use normalized accuracy. Results are averaged over 3 random seeds.<br />
+Model<br />
+Params.<br />
+PIQA<br />
+ARC-e<br />
+ARC-c<br />
+Hella.<br />
+Wino.<br />
+MMLU<br />
+(5-shot)<br />
+Lambada<br />
+Avg.<br />
+\rowcolor<br />
+lightgray<br />
+Llama 3.1 8b<br />
+–<br />
+79.05<br />
+82.15<br />
+54.78<br />
+79.34<br />
+74.59<br />
+65.25<br />
+74.79<br />
+72.84<br />
+GLA<br />
+4.3M<br />
+76.02<br />
+±<br />
+\pm<br />
+0.17<br />
+69.28<br />
+±<br />
+\pm<br />
+0.34<br />
+38.91<br />
+±<br />
+\pm<br />
+0.18<br />
+67.57<br />
+±<br />
+\pm<br />
+0.09<br />
+57.27<br />
+±<br />
+\pm<br />
+0.13<br />
+27.13<br />
+±<br />
+\pm<br />
+0.47<br />
+28.26<br />
+±<br />
+\pm<br />
+0.11<br />
+52.06<br />
+±<br />
+\pm<br />
+0.03<br />
+kGLA<br />
+8.5M<br />
+75.81<br />
+±<br />
+\pm<br />
+0.02<br />
+71.06<br />
+±<br />
+\pm<br />
+0.17<br />
+39.79<br />
+±<br />
+\pm<br />
+0.41<br />
+67.92<br />
+±<br />
+\pm<br />
+0.01<br />
 58</p>
-
-<p>.41
-±
-\pm
-0.44
-27.37
-±
-\pm
-0.09
-27.49
-±
-\pm
-0.31
-52.55
-±
-\pm
-0.04
-GDN
-8.5M
-76.30
-±
-\pm
-0.34
-70.81
-±
-\pm
-0.47
-39.36
-±
-\pm
-0.27
-70.75
-±
-\pm
-0.08
-58.17
-±
-\pm
-0.34
-27.55
-±
-\pm
-0.36
-44.67
-±
-\pm
-0.26
-55.37
-±
-\pm
-0.11
-Hedgehog
-10.6M
-51.83
-±
-\pm
-0.05
-26.28
-±
-\pm
-0.07
-25.97
-±
-\pm
-0.27
-25.39
-±
-\pm
-0.03
-51.17
-±
-\pm
-0.19
-24.95
-±
-\pm
-0.03
-0.00
-±
-\pm
-0.00
-29.37
-±
-\pm
-0.01
-\rowcolor
-lightgray
-Qwen3 8b
--
-79.16
-81.73
-56.14
-78.69
-72.93
-76.94
-70.95
-73.79
-GLA
-4.7M
-67.59
-±
-\pm
-0.31
-58.02
-±
-\pm
-0.05
-30.12
-±
-\pm
-0.38
-52.83
-±
-\pm
-0.19
-51.64
-±
-\pm
-0.37
-24.50
-±
-\pm
-0.07
-11.29
-±
-\pm
-0.07
-42.29
-±
-\pm
-0.01
-kGLA
-9.6M
-67.23
-±
-\pm
-0.07
-59.61
-±
-\pm
-0.31
-31.06
-±
-\pm
-0.05
-53.32
-±
-\pm
-0.06
-52.57
-±
-\pm
-0.09
-25.23
-±
-\pm
-0.23
-11.33
-±
-\pm
-0.19
-42.91
-±
-\pm
-0.08
-GDN
-9.6M
-68.53
-±
-\pm
-0.29
-64.79
-±
-\pm
-0.15
-35.52
-±
-\pm
-0.38
-59.64
-±
-\pm
-0.19
-54.28
-±
-\pm
-0.23
-25.57
-±
-\pm
-0.23
-23.60
-±
-\pm
-0.33
-47.42
-±
-\pm
-0.08
-Hedgehog
-11.9M
-52.79
-±
-\pm
-0.04
-26.52
-±
-\pm
-0.02
-24.63
-±
-\pm
-0.08
-25.88
-±
-\pm
-0.03
-49.67
-±
-\pm
-0.27
-22.91
-±
-\pm
-0.01
-0.00
-±
-\pm
-0.00
-28.91
-±
-\pm
-0.04
-延迟和内存
-所有延迟测量均在单张 NVIDIA H100 GPU 上以批大小 8 运行。对于 x 轴上的每个提示长度，我们 (i) 对提示进行前向传播，然后 (ii) 解码并计时生成 16 个新 token 的过程。我们报告这 16 个 token 的端到端延迟，以及运行期间分配的峰值 GPU 内存。我们将线性注意力变体与使用
-FlashAttention-2 (FA2)
-实现的全注意力基线进行对比。
+<p>.41<br />
+±<br />
+\pm<br />
+0.44<br />
+27.37<br />
+±<br />
+\pm<br />
+0.09<br />
+27.49<br />
+±<br />
+\pm<br />
+0.31<br />
+52.55<br />
+±<br />
+\pm<br />
+0.04<br />
+GDN<br />
+8.5M<br />
+76.30<br />
+±<br />
+\pm<br />
+0.34<br />
+70.81<br />
+±<br />
+\pm<br />
+0.47<br />
+39.36<br />
+±<br />
+\pm<br />
+0.27<br />
+70.75<br />
+±<br />
+\pm<br />
+0.08<br />
+58.17<br />
+±<br />
+\pm<br />
+0.34<br />
+27.55<br />
+±<br />
+\pm<br />
+0.36<br />
+44.67<br />
+±<br />
+\pm<br />
+0.26<br />
+55.37<br />
+±<br />
+\pm<br />
+0.11<br />
+Hedgehog<br />
+10.6M<br />
+51.83<br />
+±<br />
+\pm<br />
+0.05<br />
+26.28<br />
+±<br />
+\pm<br />
+0.07<br />
+25.97<br />
+±<br />
+\pm<br />
+0.27<br />
+25.39<br />
+±<br />
+\pm<br />
+0.03<br />
+51.17<br />
+±<br />
+\pm<br />
+0.19<br />
+24.95<br />
+±<br />
+\pm<br />
+0.03<br />
+0.00<br />
+±<br />
+\pm<br />
+0.00<br />
+29.37<br />
+±<br />
+\pm<br />
+0.01<br />
+\rowcolor<br />
+lightgray<br />
+Qwen3 8b<br />
+-<br />
+79.16<br />
+81.73<br />
+56.14<br />
+78.69<br />
+72.93<br />
+76.94<br />
+70.95<br />
+73.79<br />
+GLA<br />
+4.7M<br />
+67.59<br />
+±<br />
+\pm<br />
+0.31<br />
+58.02<br />
+±<br />
+\pm<br />
+0.05<br />
+30.12<br />
+±<br />
+\pm<br />
+0.38<br />
+52.83<br />
+±<br />
+\pm<br />
+0.19<br />
+51.64<br />
+±<br />
+\pm<br />
+0.37<br />
+24.50<br />
+±<br />
+\pm<br />
+0.07<br />
+11.29<br />
+±<br />
+\pm<br />
+0.07<br />
+42.29<br />
+±<br />
+\pm<br />
+0.01<br />
+kGLA<br />
+9.6M<br />
+67.23<br />
+±<br />
+\pm<br />
+0.07<br />
+59.61<br />
+±<br />
+\pm<br />
+0.31<br />
+31.06<br />
+±<br />
+\pm<br />
+0.05<br />
+53.32<br />
+±<br />
+\pm<br />
+0.06<br />
+52.57<br />
+±<br />
+\pm<br />
+0.09<br />
+25.23<br />
+±<br />
+\pm<br />
+0.23<br />
+11.33<br />
+±<br />
+\pm<br />
+0.19<br />
+42.91<br />
+±<br />
+\pm<br />
+0.08<br />
+GDN<br />
+9.6M<br />
+68.53<br />
+±<br />
+\pm<br />
+0.29<br />
+64.79<br />
+±<br />
+\pm<br />
+0.15<br />
+35.52<br />
+±<br />
+\pm<br />
+0.38<br />
+59.64<br />
+±<br />
+\pm<br />
+0.19<br />
+54.28<br />
+±<br />
+\pm<br />
+0.23<br />
+25.57<br />
+±<br />
+\pm<br />
+0.23<br />
+23.60<br />
+±<br />
+\pm<br />
+0.33<br />
+47.42<br />
+±<br />
+\pm<br />
+0.08<br />
+Hedgehog<br />
+11.9M<br />
+52.79<br />
+±<br />
+\pm<br />
+0.04<br />
+26.52<br />
+±<br />
+\pm<br />
+0.02<br />
+24.63<br />
+±<br />
+\pm<br />
+0.08<br />
+25.88<br />
+±<br />
+\pm<br />
+0.03<br />
+49.67<br />
+±<br />
+\pm<br />
+0.27<br />
+22.91<br />
+±<br />
+\pm<br />
+0.01<br />
+0.00<br />
+±<br />
+\pm<br />
+0.00<br />
+28.91<br />
+±<br />
+\pm<br />
+0.04<br />
+延迟和内存<br />
+所有延迟测量均在单张 NVIDIA H100 GPU 上以批大小 8 运行。对于 x 轴上的每个提示长度，我们 (i) 对提示进行前向传播，然后 (ii) 解码并计时生成 16 个新 token 的过程。我们报告这 16 个 token 的端到端延迟，以及运行期间分配的峰值 GPU 内存。我们将线性注意力变体与使用<br />
+FlashAttention-2 (FA2)<br />
+实现的全注意力基线进行对比。<br />
 近似误差</p>
-
-<p>We compute approximation error as the mean squared error (MSE) between the attention-block outputs of the frozen full-attention model and the outputs produced by the corresponding linearized replacement, evaluated on the same inputs. We use a random subset of 8,000 sequences from the Clean Alpaca
-[
-18
-]
-dataset to compute this metric (this can serve as a hold-out set, as we use DCLM-Edu to train the model). For each layer
-ℓ
-\ell
-, we compute
-MSE
-(
-ℓ
-)
-=
-1
-T
-​
-d
-​
-‖
-y
-full
-(
-ℓ
-)
-−
-y
-lin
-(
-ℓ
-)
-‖
-2
-2
-,
-nMSE
-(
-ℓ
-)
-=
-MSE
-(
-ℓ
-)
-Var
-​
-(
-y
-full
-(
-ℓ
-)
-)
-,
-\mathrm{MSE}^{(\ell)}=\frac{1}{Td}\left\|y^{(\ell)}_{\text{full}}-y^{(\ell)}_{\text{lin}}\right\|_{2}^{2},\quad\mathrm{nMSE}^{(\ell)}=\frac{\mathrm{MSE}^{(\ell)}}{\mathrm{Var}\!\left(y^{(\ell)}_{\text{full}}\right)},
-where
-y
-full
-(
-ℓ
-)
-,
-y
-lin
-(
-ℓ
-)
-∈
-ℝ
-T
-×
-d
-y^{(\ell)}_{\text{full}},y^{(\ell)}_{\text{lin}}\in\mathbb{R}^{T\times d}
-denote the attention-block outputs for a sequence of length
-T
-T
-, and
-Var
-​
-(
-⋅
-)
-\mathrm{Var}(\cdot)
-is the empirical variance of the full-attention activations at that layer.
-(a)
-Latency
-(b)
-MSE Per Layer
-(c)
-MSE per Token
-Figure 6
-:
-Comparison of linear attention variants for Qwen3-8b linearization.
-Assumption Checks: Projection Residuals and Key Concentration
-Our first-order analysis relies on two empirically checkable conditions:
-•
-keys are
-approximately concentrated
-around a common direction, and
-•
-subtracting the mean key is well-approximated by projecting orthogonally to that mean.
+<p>We compute approximation error as the mean squared error (MSE) between the attention-block outputs of the frozen full-attention model and the outputs produced by the corresponding linearized replacement, evaluated on the same inputs. We use a random subset of 8,000 sequences from the Clean Alpaca<br />
+[<br />
+18<br />
+]<br />
+dataset to compute this metric (this can serve as a hold-out set, as we use DCLM-Edu to train the model). For each layer<br />
+ℓ<br />
+\ell<br />
+, we compute<br />
+MSE<br />
+(<br />
+ℓ<br />
+)<br />
+=<br />
+1<br />
+T<br />
+​<br />
+d<br />
+​<br />
+‖<br />
+y<br />
+full<br />
+(<br />
+ℓ<br />
+)<br />
+−<br />
+y<br />
+lin<br />
+(<br />
+ℓ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+,<br />
+nMSE<br />
+(<br />
+ℓ<br />
+)<br />
+=<br />
+MSE<br />
+(<br />
+ℓ<br />
+)<br />
+Var<br />
+​<br />
+(<br />
+y<br />
+full<br />
+(<br />
+ℓ<br />
+)<br />
+)<br />
+,<br />
+\mathrm{MSE}^{(\ell)}=\frac{1}{Td}\left|y^{(\ell)}<em>{\text{full}}-y^{(\ell)}</em>{\text{lin}}\right|<em>{2}^{2},\quad\mathrm{nMSE}^{(\ell)}=\frac{\mathrm{MSE}^{(\ell)}}{\mathrm{Var}!\left(y^{(\ell)}</em>{\text{full}}\right)},<br />
+where<br />
+y<br />
+full<br />
+(<br />
+ℓ<br />
+)<br />
+,<br />
+y<br />
+lin<br />
+(<br />
+ℓ<br />
+)<br />
+∈<br />
+ℝ<br />
+T<br />
+×<br />
+d<br />
+y^{(\ell)}<em>{\text{full}},y^{(\ell)}</em>{\text{lin}}\in\mathbb{R}^{T\times d}<br />
+denote the attention-block outputs for a sequence of length<br />
+T<br />
+T<br />
+, and<br />
+Var<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\mathrm{Var}(\cdot)<br />
+is the empirical variance of the full-attention activations at that layer.<br />
+(a)<br />
+Latency<br />
+(b)<br />
+MSE Per Layer<br />
+(c)<br />
+MSE per Token<br />
+Figure 6<br />
+:<br />
+Comparison of linear attention variants for Qwen3-8b linearization.<br />
+Assumption Checks: Projection Residuals and Key Concentration<br />
+Our first-order analysis relies on two empirically checkable conditions:<br />
+•<br />
+keys are<br />
+approximately concentrated<br />
+around a common direction, and<br />
+•<br />
+subtracting the mean key is well-approximated by projecting orthogonally to that mean.<br />
 We evaluate thes</p>
-
-<p>e conditions via two diagnostics computed from the frozen full-attention model keys.
-Notation.
-Let
-k
-i
-(
-ℓ
-,
-h
-)
-∈
-ℝ
-d
-k^{(\ell,h)}_{i}\in\mathbb{R}^{d}
-denote the (RoPE-processed) key at layer
-ℓ
-\ell
-, head
-h
-h
-, and token position
-i
-i
-.
-Because Lem. 2–3 assume unit-norm keys, we use normalized keys
-k
-~
-i
-(
-ℓ
-,
-h
-)
-=
-k
-i
-(
-ℓ
-,
-h
-)
-‖
-k
-i
-(
-ℓ
-,
-h
-)
-‖
-2
-+
-ε
-,
-\tilde{k}^{(\ell,h)}_{i}\;=\;\frac{k^{(\ell,h)}_{i}}{\|k^{(\ell,h)}_{i}\|_{2}+\varepsilon},
-with a small
-ε
-&gt;
-0
-\varepsilon&gt;0
-for numerical stability.
-For a prefix of length
-t
-t
-, define the running mean key direction
-k
-¯
-t
-(
-ℓ
-,
-h
-)
-=
-1
-t
-​
-∑
-j
-=
-1
-t
-k
-~
-j
-(
-ℓ
-,
-h
-)
-.
-\bar{k}^{(\ell,h)}_{t}\;=\;\frac{1}{t}\sum_{j=1}^{t}\tilde{k}^{(\ell,h)}_{j}.
-Metric 1: Key Concentration
-We measure
-key concentration
-at token position
-t
-t
-as the cosine similarity between the key and its running mean direction:
-C
-t
-(
-ℓ
-,
-h
-)
-=
-cos
-⁡
-(
-k
-~
-t
-(
-ℓ
-,
-h
-)
-,
-k
-¯
-t
-(
-ℓ
-,
-h
-)
-)
-∈
-[
-−
-1
-,
-1
-]
-.
-C^{(\ell,h)}_{t}\;=\;\cos\bigl(\tilde{k}^{(\ell,h)}_{t},\bar{k}^{(\ell,h)}_{t}\bigr)\;\in\;[-1,1].
-When keys are strongly aligned ,
-k
-¯
-j
-(
-ℓ
-,
-h
-)
-\bar{k}^{(\ell,h)}_{j}
-becomes a stable direction and
-C
-t
-C_{t}
-stays close to 1; when keys are dispersed, and
-C
-t
-C_{t}
-decreases. This directly corresponds to the small angle to the mean regime used in Lemma 2–3 (via
-cos
-⁡
-(
-α
-i
-)
-\cos(\alpha_{i})
-).
-Metric 2: Projection residual.
-Lemma 2 replaces subtracting the mean key
-(
-k
-~
-i
-−
-k
-¯
-t
-)
-(\tilde{k}_{i}-\bar{k}_{t})
+<p>e conditions via two diagnostics computed from the frozen full-attention model keys.<br />
+Notation.<br />
+Let<br />
+k<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+∈<br />
+ℝ<br />
+d<br />
+k^{(\ell,h)}<em>{i}\in\mathbb{R}^{d}<br />
+denote the (RoPE-processed) key at layer<br />
+ℓ<br />
+\ell<br />
+, head<br />
+h<br />
+h<br />
+, and token position<br />
+i<br />
+i<br />
+.<br />
+Because Lem. 2–3 assume unit-norm keys, we use normalized keys<br />
+k<br />
+~<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+=<br />
+k<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+‖<br />
+k<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+‖<br />
+2<br />
++<br />
+ε<br />
+,<br />
+\tilde{k}^{(\ell,h)}</em>{i}\;=\;\frac{k^{(\ell,h)}<em>{i}}{|k^{(\ell,h)}</em>{i}|_{2}+\varepsilon},<br />
+with a small<br />
+ε</p>
+<blockquote>
+<p>0<br />
+\varepsilon&gt;0<br />
+for numerical stability.<br />
+For a prefix of length<br />
+t<br />
+t<br />
+, define the running mean key direction<br />
+k<br />
+¯<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+t<br />
+k<br />
+~<br />
+j<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+.<br />
+\bar{k}^{(\ell,h)}<em>{t}\;=\;\frac{1}{t}\sum</em>{j=1}^{t}\tilde{k}^{(\ell,h)}<em>{j}.<br />
+Metric 1: Key Concentration<br />
+We measure<br />
+key concentration<br />
+at token position<br />
+t<br />
+t<br />
+as the cosine similarity between the key and its running mean direction:<br />
+C<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+=<br />
+cos<br />
+⁡<br />
+(<br />
+k<br />
+~<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+,<br />
+k<br />
+¯<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+)<br />
+∈<br />
+[<br />
+−<br />
+1<br />
+,<br />
+1<br />
+]<br />
+.<br />
+C^{(\ell,h)}</em>{t}\;=\;\cos\bigl(\tilde{k}^{(\ell,h)}<em>{t},\bar{k}^{(\ell,h)}</em>{t}\bigr)\;\in\;[-1,1].<br />
+When keys are strongly aligned ,<br />
+k<br />
+¯<br />
+j<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+\bar{k}^{(\ell,h)}<em>{j}<br />
+becomes a stable direction and<br />
+C<br />
+t<br />
+C</em>{t}<br />
+stays close to 1; when keys are dispersed, and<br />
+C<br />
+t<br />
+C_{t}<br />
+decreases. This directly corresponds to the small angle to the mean regime used in Lemma 2–3 (via<br />
+cos<br />
+⁡<br />
+(<br />
+α<br />
+i<br />
+)<br />
+\cos(\alpha_{i})<br />
+).<br />
+Metric 2: Projection residual.<br />
+Lemma 2 replaces subtracting the mean key<br />
+(<br />
+k<br />
+~<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+t<br />
+)<br />
+(\tilde{k}<em>{i}-\bar{k}</em>{t})<br />
 with a projection orthogonal to the mean dire</p>
-
-<p>ction
-(
-I
-−
-Π
-k
-¯
-t
-)
-​
-k
-~
-i
-(I-\Pi_{\bar{k}_{t}})\tilde{k}_{i}
-, where
-Π
-k
-¯
-t
-=
-k
-¯
-t
-​
-k
-¯
-t
-⊤
-‖
-k
-¯
-t
-‖
-2
-2
-+
-ε
-.
-\Pi_{\bar{k}_{t}}\;=\;\frac{\bar{k}_{t}\bar{k}_{t}^{\top}}{\|\bar{k}_{t}\|_{2}^{2}+\varepsilon}.
-We quantify the quality of this approximation using the
-projection residual
-:
-R
-t
-(
-ℓ
-,
-h
-)
-=
-1
-t
-​
-∑
-i
-=
-1
-t
-‖
-(
-k
-~
-i
-(
-ℓ
-,
-h
-)
-−
-k
-¯
-t
-(
-ℓ
-,
-h
-)
-)
-−
-(
-I
-−
-Π
-k
-¯
-t
-(
-ℓ
-,
-h
-)
-)
-​
-k
-~
-i
-(
-ℓ
-,
-h
-)
-‖
-2
-.
-R^{(\ell,h)}_{t}\;=\;\frac{1}{t}\sum_{i=1}^{t}\left\|\,(\tilde{k}^{(\ell,h)}_{i}-\bar{k}^{(\ell,h)}_{t})-(I-\Pi_{\bar{k}^{(\ell,h)}_{t}})\tilde{k}^{(\ell,h)}_{i}\right\|_{2}.
-Equivalently, the inner term simplifies to
-Π
-k
-¯
-t
-​
-k
-~
-i
-−
-k
-¯
-t
-\Pi_{\bar{k}_{t}}\tilde{k}_{i}-\bar{k}_{t}
-, so the residual measures how well
-mean subtraction
-is captured by an
-orthogonal projection
-onto the complement of the mean-key direction.
-Smaller
-R
-t
-R_{t}
-indicates Lem. 2 is a good approximation for that prefix.
-For each evaluation sequence, we compute
-C
-t
-(
-ℓ
-,
-h
-)
-C^{(\ell,h)}_{t}
-and
-R
-t
-(
-ℓ
-,
-h
-)
-R^{(\ell,h)}_{t}
-for all token indices
-t
-t
-and all (layer, head) pairs, then average across sequences and across heads/layers:
-C
-t
-=
-𝔼
-seq
-,
-ℓ
-,
-h
-​
-[
-C
-t
-(
-ℓ
-,
-h
-)
-]
-,
-R
-t
-=
-𝔼
-seq
-,
-ℓ
-,
-h
-​
-[
-R
-t
-(
-ℓ
-,
-h
-)
-]
-.
-C_{t}=\mathbb{E}_{\text{seq},\ell,h}\bigl[C^{(\ell,h)}_{t}\bigr],\qquad R_{t}=\mathbb{E}_{\text{seq},\ell,h}\bigl[R^{(\ell,h)}_{t}\bigr].
-These produce the token-index curves shown in Fig.
-3
-,
-7
-(b).
+</blockquote>
+<p>ction<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+t<br />
+)<br />
+​<br />
+k<br />
+~<br />
+i<br />
+(I-\Pi_{\bar{k}<em>{t}})\tilde{k}</em>{i}<br />
+, where<br />
+Π<br />
+k<br />
+¯<br />
+t<br />
+=<br />
+k<br />
+¯<br />
+t<br />
+​<br />
+k<br />
+¯<br />
+t<br />
+⊤<br />
+‖<br />
+k<br />
+¯<br />
+t<br />
+‖<br />
+2<br />
+2<br />
++<br />
+ε<br />
+.<br />
+\Pi_{\bar{k}<em>{t}}\;=\;\frac{\bar{k}</em>{t}\bar{k}<em>{t}^{\top}}{|\bar{k}</em>{t}|<em>{2}^{2}+\varepsilon}.<br />
+We quantify the quality of this approximation using the<br />
+projection residual<br />
+:<br />
+R<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+=<br />
+1<br />
+t<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+1<br />
+t<br />
+‖<br />
+(<br />
+k<br />
+~<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+−<br />
+k<br />
+¯<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+)<br />
+−<br />
+(<br />
+I<br />
+−<br />
+Π<br />
+k<br />
+¯<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+)<br />
+​<br />
+k<br />
+~<br />
+i<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+‖<br />
+2<br />
+.<br />
+R^{(\ell,h)}</em>{t}\;=\;\frac{1}{t}\sum_{i=1}^{t}\left|\,(\tilde{k}^{(\ell,h)}<em>{i}-\bar{k}^{(\ell,h)}</em>{t})-(I-\Pi_{\bar{k}^{(\ell,h)}<em>{t}})\tilde{k}^{(\ell,h)}</em>{i}\right|<em>{2}.<br />
+Equivalently, the inner term simplifies to<br />
+Π<br />
+k<br />
+¯<br />
+t<br />
+​<br />
+k<br />
+~<br />
+i<br />
+−<br />
+k<br />
+¯<br />
+t<br />
+\Pi</em>{\bar{k}<em>{t}}\tilde{k}</em>{i}-\bar{k}<em>{t}<br />
+, so the residual measures how well<br />
+mean subtraction<br />
+is captured by an<br />
+orthogonal projection<br />
+onto the complement of the mean-key direction.<br />
+Smaller<br />
+R<br />
+t<br />
+R</em>{t}<br />
+indicates Lem. 2 is a good approximation for that prefix.<br />
+For each evaluation sequence, we compute<br />
+C<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+C^{(\ell,h)}<em>{t}<br />
+and<br />
+R<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+R^{(\ell,h)}</em>{t}<br />
+for all token indices<br />
+t<br />
+t<br />
+and all (layer, head) pairs, then average across sequences and across heads/layers:<br />
+C<br />
+t<br />
+=<br />
+𝔼<br />
+seq<br />
+,<br />
+ℓ<br />
+,<br />
+h<br />
+​<br />
+[<br />
+C<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+]<br />
+,<br />
+R<br />
+t<br />
+=<br />
+𝔼<br />
+seq<br />
+,<br />
+ℓ<br />
+,<br />
+h<br />
+​<br />
+[<br />
+R<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+]<br />
+.<br />
+C_{t}=\mathbb{E}<em>{\text{seq},\ell,h}\bigl[C^{(\ell,h)}</em>{t}\bigr],\qquad R_{t}=\mathbb{E}<em>{\text{seq},\ell,h}\bigl[R^{(\ell,h)}</em>{t}\bigr].<br />
+These produce the token-index curves shown in Fig.<br />
+3<br />
+,<br />
+7<br />
+(b).<br />
 To relate the assumptions to approximation quality, we additionally bin token po</p>
-
-<p>sitions by
-C
-t
-(
-ℓ
-,
-h
-)
-C^{(\ell,h)}_{t}
-(key concentration bins) or
-R
-t
-(
-ℓ
-,
-h
-)
-R^{(\ell,h)}_{t}
-(projection residual bins) and compute the corresponding normalized MSE within each bin, yielding the binned trends in Fig.
-3
-,
-7
-(a).
-(a)
-Per layer normalized MSE
-(b)
-Token index
-Figure 7
-:
-Key Concentration and Projection Residual for Qwen3-8b
-B.2
-SWA and Sink Tokens
-Table 6
-:
-Downstream performance of the linearized models with SWA and Sink Tokens. We report the accuracy on common reasoning benchmarks (PiQA, ARC-e, ARC-c, HellaSwag, WinoGrande), 5-shot MMLU and Lambada (OpenAI). For ARC-c and HellaSwag we use normalized accuracy. Results are averaged over 3 random seeds.
-Model
-Params.
-PIQA
-ARC-e
-ARC-c
-Hella.
-Wino.
-MMLU
-(5-shot)
-Lambada
-Avg.
-\rowcolor
-lightgray
-Llama 3.1 8b
-–
-79.05
-82.15
-54.78
-79.34
-74.59
-65.25
-74.79
-72.84
-SWA (56) + Sink (8)
-GLA
-4.3M
-78.94
-±
-\pm
-0.03
-81.94
-±
-\pm
-0.04
-54.81
-±
-\pm
-0.08
-75.55
-±
-\pm
-0.03
-74.11
-±
-\pm
-0.00
-44.25
-±
-\pm
-0.08
-59.31
-±
-\pm
-0.11
-66.99
-±
-\pm
-0.02
-kGLA
-8.5M
-78.98
-±
-\pm
-0.04
-81.93
-±
-\pm
-0.04
-54.58
-±
-\pm
-0.03
-75.63
-±
-\pm
-0.04
-74.11
-±
-\pm
-0.00
-43.28
-±
-\pm
-0.03
-59.57
-±
-\pm
-0.19
-66.87
-±
-\pm
-0.02
-GDN
-8.5M
-79.07
-±
-\pm
-0.04
-82.10
-±
-\pm
-0.01
-54.92
-±
-\pm
-0.03
-78.86
-±
-\pm
-0.03
-74.11
-±
-\pm
-0.00
-58.88
-±
-\pm
-0.14
-68.82
-±
-\pm
-0.13
-70.97
-±
-\pm
-0.03
-SWA (64)
-GLA
-4.3M
-77.64
-±
-\pm
-0.03
-81.12
-±
-\pm
-0.04
-53.36
-±
-\pm
-0.08
-55.92
-±
-\pm
-0.22
-74.59
-±
-\pm
-0.00
-39.50
-±
-\pm
-0.60
-36.19
-±
-\pm
-0.14
-59.76
-±
-\pm
-0.10
-kGLA
-8.5M
-77.53
-±
-\pm
-0.05
-81.00
-±
-\pm
-0.03
-53.24
-±
+<p>sitions by<br />
+C<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+C^{(\ell,h)}<em>{t}<br />
+(key concentration bins) or<br />
+R<br />
+t<br />
+(<br />
+ℓ<br />
+,<br />
+h<br />
+)<br />
+R^{(\ell,h)}</em>{t}<br />
+(projection residual bins) and compute the corresponding normalized MSE within each bin, yielding the binned trends in Fig.<br />
+3<br />
+,<br />
+7<br />
+(a).<br />
+(a)<br />
+Per layer normalized MSE<br />
+(b)<br />
+Token index<br />
+Figure 7<br />
+:<br />
+Key Concentration and Projection Residual for Qwen3-8b<br />
+B.2<br />
+SWA and Sink Tokens<br />
+Table 6<br />
+:<br />
+Downstream performance of the linearized models with SWA and Sink Tokens. We report the accuracy on common reasoning benchmarks (PiQA, ARC-e, ARC-c, HellaSwag, WinoGrande), 5-shot MMLU and Lambada (OpenAI). For ARC-c and HellaSwag we use normalized accuracy. Results are averaged over 3 random seeds.<br />
+Model<br />
+Params.<br />
+PIQA<br />
+ARC-e<br />
+ARC-c<br />
+Hella.<br />
+Wino.<br />
+MMLU<br />
+(5-shot)<br />
+Lambada<br />
+Avg.<br />
+\rowcolor<br />
+lightgray<br />
+Llama 3.1 8b<br />
+–<br />
+79.05<br />
+82.15<br />
+54.78<br />
+79.34<br />
+74.59<br />
+65.25<br />
+74.79<br />
+72.84<br />
+SWA (56) + Sink (8)<br />
+GLA<br />
+4.3M<br />
+78.94<br />
+±<br />
+\pm<br />
+0.03<br />
+81.94<br />
+±<br />
+\pm<br />
+0.04<br />
+54.81<br />
+±<br />
+\pm<br />
+0.08<br />
+75.55<br />
+±<br />
+\pm<br />
+0.03<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+44.25<br />
+±<br />
+\pm<br />
+0.08<br />
+59.31<br />
+±<br />
+\pm<br />
+0.11<br />
+66.99<br />
+±<br />
+\pm<br />
+0.02<br />
+kGLA<br />
+8.5M<br />
+78.98<br />
+±<br />
+\pm<br />
+0.04<br />
+81.93<br />
+±<br />
+\pm<br />
+0.04<br />
+54.58<br />
+±<br />
+\pm<br />
+0.03<br />
+75.63<br />
+±<br />
+\pm<br />
+0.04<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+43.28<br />
+±<br />
+\pm<br />
+0.03<br />
+59.57<br />
+±<br />
+\pm<br />
+0.19<br />
+66.87<br />
+±<br />
+\pm<br />
+0.02<br />
+GDN<br />
+8.5M<br />
+79.07<br />
+±<br />
+\pm<br />
+0.04<br />
+82.10<br />
+±<br />
+\pm<br />
+0.01<br />
+54.92<br />
+±<br />
+\pm<br />
+0.03<br />
+78.86<br />
+±<br />
+\pm<br />
+0.03<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+58.88<br />
+±<br />
+\pm<br />
+0.14<br />
+68.82<br />
+±<br />
+\pm<br />
+0.13<br />
+70.97<br />
+±<br />
+\pm<br />
+0.03<br />
+SWA (64)<br />
+GLA<br />
+4.3M<br />
+77.64<br />
+±<br />
+\pm<br />
+0.03<br />
+81.12<br />
+±<br />
+\pm<br />
+0.04<br />
+53.36<br />
+±<br />
+\pm<br />
+0.08<br />
+55.92<br />
+±<br />
+\pm<br />
+0.22<br />
+74.59<br />
+±<br />
+\pm<br />
+0.00<br />
+39.50<br />
+±<br />
+\pm<br />
+0.60<br />
+36.19<br />
+±<br />
+\pm<br />
+0.14<br />
+59.76<br />
+±<br />
+\pm<br />
+0.10<br />
+kGLA<br />
+8.5M<br />
+77.53<br />
+±<br />
+\pm<br />
+0.05<br />
+81.00<br />
+±<br />
+\pm<br />
+0.03<br />
+53.24<br />
+±<br />
 \p</p>
-
-<p>m
-0.05
-55.44
-±
-\pm
-0.10
-74.59
-±
-\pm
-0.00
-37.63
-±
-\pm
-0.02
-36.86
-±
-\pm
-0.16
-59.47
-±
-\pm
-0.04
-GDN
-8.5M
-78.06
-±
-\pm
-0.07
-80.98
-±
-\pm
-0.05
-53.58
-±
-\pm
-0.15
-56.44
-±
-\pm
-0.21
-74.59
-±
-\pm
-0.00
-51.57
-±
-\pm
-0.77
-41.92
-±
-\pm
-0.22
-62.45
-±
-\pm
-0.09
-\rowcolor
-lightgray
-Qwen3 8b
--
-79.16
-81.73
-56.14
-78.69
-72.93
-76.94
-70.95
-73.79
-SWA (56) + Sink (8)
-GLA
-4.9M
-79.16
-±
-\pm
-0.03
-82.07
-±
-\pm
-0.04
-56.34
-±
-\pm
-0.08
-75.94
-±
-\pm
-0.01
-71.98
-±
-\pm
-0.00
-67.40
-±
-\pm
-0.05
-56.50
-±
-\pm
-0.29
-69.91
-±
-\pm
-0.06
-kGLA
-9.6M
-79.14
-±
-\pm
-0.02
-81.99
-±
-\pm
-0.02
-56.14
-±
-\pm
-0.00
-76.15
-±
-\pm
-0.05
-71.98
-±
-\pm
-0.00
-67.70
-±
-\pm
-0.17
-57.05
-±
-\pm
-0.12
-70.02
-±
-\pm
-0.03
-GDN
-9.6M
-79.22
-±
-\pm
-0.05
-81.82
-±
-\pm
-0.02
-56.37
-±
-\pm
-0.03
-77.90
-±
-\pm
-0.03
-71.98
-±
-\pm
-0.00
-70.97
-±
-\pm
-0.18
-64.53
-±
-\pm
-0.04
-71.83
-±
-\pm
-0.03
-SWA (64)
-GLA
-4.9M
-78.75
-±
-\pm
-0.02
-81.09
-±
-\pm
-0.04
-55.66
-±
-\pm
-0.12
-66.99
-±
-\pm
-0.08
-72.93
-±
-\pm
-0.00
-48.10
-±
-\pm
-0.51
-52.55
-±
-\pm
-0.21
-65.15
-±
-\pm
-0.07
-kGLA
-9.6M
-78.87
-±
-\pm
-0.13
-81.20
-±
-\pm
-0.01
-55.55
-±
-\pm
-0.00
-67.10
-±
-\pm
-0.16
-72.93
-±
-\pm
-0.00
-48.86
-±
-\pm
-0.53
-53.30
-±
-\pm
-0.22
-65.40
-±
-\pm
-0.13
-GDN
-9.6M
-78.91
-±
-\pm
-0.02
-81.48
-±
-\pm
-0.06
-55.92
-±
-\pm
-0.15
-67.95
-±
-\pm
-0.18
-72.93
-±
-\pm
-0.00
-53.70
-±
-\pm
-0.20
-59.30
-±
-\pm
-0.13
-67.17
-±
-\pm
-0.07
-B.3
-Short Convolution and LoRA
-Table 7
-:
+<p>m<br />
+0.05<br />
+55.44<br />
+±<br />
+\pm<br />
+0.10<br />
+74.59<br />
+±<br />
+\pm<br />
+0.00<br />
+37.63<br />
+±<br />
+\pm<br />
+0.02<br />
+36.86<br />
+±<br />
+\pm<br />
+0.16<br />
+59.47<br />
+±<br />
+\pm<br />
+0.04<br />
+GDN<br />
+8.5M<br />
+78.06<br />
+±<br />
+\pm<br />
+0.07<br />
+80.98<br />
+±<br />
+\pm<br />
+0.05<br />
+53.58<br />
+±<br />
+\pm<br />
+0.15<br />
+56.44<br />
+±<br />
+\pm<br />
+0.21<br />
+74.59<br />
+±<br />
+\pm<br />
+0.00<br />
+51.57<br />
+±<br />
+\pm<br />
+0.77<br />
+41.92<br />
+±<br />
+\pm<br />
+0.22<br />
+62.45<br />
+±<br />
+\pm<br />
+0.09<br />
+\rowcolor<br />
+lightgray<br />
+Qwen3 8b<br />
+-<br />
+79.16<br />
+81.73<br />
+56.14<br />
+78.69<br />
+72.93<br />
+76.94<br />
+70.95<br />
+73.79<br />
+SWA (56) + Sink (8)<br />
+GLA<br />
+4.9M<br />
+79.16<br />
+±<br />
+\pm<br />
+0.03<br />
+82.07<br />
+±<br />
+\pm<br />
+0.04<br />
+56.34<br />
+±<br />
+\pm<br />
+0.08<br />
+75.94<br />
+±<br />
+\pm<br />
+0.01<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+67.40<br />
+±<br />
+\pm<br />
+0.05<br />
+56.50<br />
+±<br />
+\pm<br />
+0.29<br />
+69.91<br />
+±<br />
+\pm<br />
+0.06<br />
+kGLA<br />
+9.6M<br />
+79.14<br />
+±<br />
+\pm<br />
+0.02<br />
+81.99<br />
+±<br />
+\pm<br />
+0.02<br />
+56.14<br />
+±<br />
+\pm<br />
+0.00<br />
+76.15<br />
+±<br />
+\pm<br />
+0.05<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+67.70<br />
+±<br />
+\pm<br />
+0.17<br />
+57.05<br />
+±<br />
+\pm<br />
+0.12<br />
+70.02<br />
+±<br />
+\pm<br />
+0.03<br />
+GDN<br />
+9.6M<br />
+79.22<br />
+±<br />
+\pm<br />
+0.05<br />
+81.82<br />
+±<br />
+\pm<br />
+0.02<br />
+56.37<br />
+±<br />
+\pm<br />
+0.03<br />
+77.90<br />
+±<br />
+\pm<br />
+0.03<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+70.97<br />
+±<br />
+\pm<br />
+0.18<br />
+64.53<br />
+±<br />
+\pm<br />
+0.04<br />
+71.83<br />
+±<br />
+\pm<br />
+0.03<br />
+SWA (64)<br />
+GLA<br />
+4.9M<br />
+78.75<br />
+±<br />
+\pm<br />
+0.02<br />
+81.09<br />
+±<br />
+\pm<br />
+0.04<br />
+55.66<br />
+±<br />
+\pm<br />
+0.12<br />
+66.99<br />
+±<br />
+\pm<br />
+0.08<br />
+72.93<br />
+±<br />
+\pm<br />
+0.00<br />
+48.10<br />
+±<br />
+\pm<br />
+0.51<br />
+52.55<br />
+±<br />
+\pm<br />
+0.21<br />
+65.15<br />
+±<br />
+\pm<br />
+0.07<br />
+kGLA<br />
+9.6M<br />
+78.87<br />
+±<br />
+\pm<br />
+0.13<br />
+81.20<br />
+±<br />
+\pm<br />
+0.01<br />
+55.55<br />
+±<br />
+\pm<br />
+0.00<br />
+67.10<br />
+±<br />
+\pm<br />
+0.16<br />
+72.93<br />
+±<br />
+\pm<br />
+0.00<br />
+48.86<br />
+±<br />
+\pm<br />
+0.53<br />
+53.30<br />
+±<br />
+\pm<br />
+0.22<br />
+65.40<br />
+±<br />
+\pm<br />
+0.13<br />
+GDN<br />
+9.6M<br />
+78.91<br />
+±<br />
+\pm<br />
+0.02<br />
+81.48<br />
+±<br />
+\pm<br />
+0.06<br />
+55.92<br />
+±<br />
+\pm<br />
+0.15<br />
+67.95<br />
+±<br />
+\pm<br />
+0.18<br />
+72.93<br />
+±<br />
+\pm<br />
+0.00<br />
+53.70<br />
+±<br />
+\pm<br />
+0.20<br />
+59.30<br />
+±<br />
+\pm<br />
+0.13<br />
+67.17<br />
+±<br />
+\pm<br />
+0.07<br />
+B.3<br />
+Short Convolution and LoRA<br />
+Table 7<br />
+:<br />
 Downstream performance of the linearized models with SWA and modified projections. We report the accuracy on common reasoning benchmarks (PiQA, ARC-e, ARC-c, HellaSwag, WinoGrande), 5-shot MMLU and Lambada (OpenAI). For ARC-c and HellaSwag we</p>
-
-<p>use normalized accuracy. Results are averaged over 3 random seeds.
-Model
-Params.
-PIQA
-ARC-e
-ARC-c
-Hella.
-Wino.
-MMLU
-(5-shot)
-Lambada
-Avg.
-\rowcolor
-lightgray
-Llama 3.1 8b
-–
-79.05
-82.15
-54.78
-79.34
-74.59
-65.25
-74.79
-72.84
-Short Conv
-GLA
-6.1M
-79.11
-±
-\pm
-0.00
-81.99
-±
-\pm
-0.00
-54.95
-±
-\pm
-0.00
-78.93
-±
-\pm
-0.03
-74.11
-±
-\pm
-0.00
-59.13
-±
-\pm
-0.18
-68.70
-±
-\pm
-0.12
-70.99
-±
-\pm
-0.04
-kGLA
-10.3M
-79.11
-±
-\pm
-0.00
-81.99
-±
-\pm
-0.02
-54.92
-±
-\pm
-0.03
-78.87
-±
-\pm
-0.02
-74.11
-±
-\pm
-0.00
-59.02
-±
-\pm
-0.12
-68.65
-±
-\pm
-0.11
-70.95
-±
-\pm
-0.03
-GDN
-10.3M
-79.07
-±
-\pm
-0.02
-81.97
-±
-\pm
-0.01
-54.92
-±
-\pm
-0.08
-78.79
-±
-\pm
-0.07
-74.11
-±
-\pm
-0.00
-59.17
-±
-\pm
-0.17
-69.01
-±
-\pm
-0.03
-71.01
-±
-\pm
-0.04
-LoRA
-GLA
-11.1M
-78.87
-±
-\pm
-0.16
-79.55
-±
-\pm
-0.14
-51.25
-±
-\pm
-0.32
-76.93
-±
-\pm
-0.04
-71.93
-±
-\pm
-0.28
-50.10
-±
-\pm
-0.59
-67.51
-±
-\pm
-1.16
-68.02
-±
-\pm
-0.31
-kGLA
-15.3M
-79.00
-±
-\pm
-0.14
-79.92
-±
-\pm
-0.06
-51.62
-±
-\pm
-0.68
-76.84
-±
-\pm
-0.21
-70.88
-±
-\pm
-0.30
-49.95
-±
-\pm
-0.39
-67.79
-±
-\pm
-0.60
-68.00
-±
-\pm
-0.29
-GDN
-15.3M
-79.47
-±
-\pm
-0.29
-80.86
-±
-\pm
-0.34
-53.33
-±
-\pm
-0.58
-78.03
-±
-\pm
-0.31
-72.32
-±
-\pm
-0.09
-54.80
-±
-\pm
-2.79
-70.29
-±
-\pm
-1.96
-69.87
-±
-\pm
-0.85
-\rowcolor
-lightgray
-Qwen3 8b
--
-79.16
-81.73
-56.14
-78.69
-72.93
-76.94
-70.95
-73.79
-Short Conv
-GLA
-6.9M
-79.33
-±
-\pm
-0.03
-81.92
-±
-\pm
-0.04
-56.43
-±
-\pm
-0.12
-77.93
-±
-\pm
-0.07
-71.98
-±
-\pm
-0.00
-70.58
-±
-\pm
-0.17
-64.20
-±
-\pm
-0.05
-71.77
-±
-\pm
-0.04
-kGLA
-11.6M
-79.34
-±
-\pm
-0.02
-81.89
-±
-\pm
-0.04
-56.43
-±
-\pm
-0.03
-77.93
-±
-\pm
-0.08
-71.98
-±
-\pm
-0.00
-70.75
-±
-\pm
-0.17
-64.20
-±
-\pm
-0.05
-71.77
-±
-\pm
-0.04
+<p>use normalized accuracy. Results are averaged over 3 random seeds.<br />
+Model<br />
+Params.<br />
+PIQA<br />
+ARC-e<br />
+ARC-c<br />
+Hella.<br />
+Wino.<br />
+MMLU<br />
+(5-shot)<br />
+Lambada<br />
+Avg.<br />
+\rowcolor<br />
+lightgray<br />
+Llama 3.1 8b<br />
+–<br />
+79.05<br />
+82.15<br />
+54.78<br />
+79.34<br />
+74.59<br />
+65.25<br />
+74.79<br />
+72.84<br />
+Short Conv<br />
+GLA<br />
+6.1M<br />
+79.11<br />
+±<br />
+\pm<br />
+0.00<br />
+81.99<br />
+±<br />
+\pm<br />
+0.00<br />
+54.95<br />
+±<br />
+\pm<br />
+0.00<br />
+78.93<br />
+±<br />
+\pm<br />
+0.03<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+59.13<br />
+±<br />
+\pm<br />
+0.18<br />
+68.70<br />
+±<br />
+\pm<br />
+0.12<br />
+70.99<br />
+±<br />
+\pm<br />
+0.04<br />
+kGLA<br />
+10.3M<br />
+79.11<br />
+±<br />
+\pm<br />
+0.00<br />
+81.99<br />
+±<br />
+\pm<br />
+0.02<br />
+54.92<br />
+±<br />
+\pm<br />
+0.03<br />
+78.87<br />
+±<br />
+\pm<br />
+0.02<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+59.02<br />
+±<br />
+\pm<br />
+0.12<br />
+68.65<br />
+±<br />
+\pm<br />
+0.11<br />
+70.95<br />
+±<br />
+\pm<br />
+0.03<br />
+GDN<br />
+10.3M<br />
+79.07<br />
+±<br />
+\pm<br />
+0.02<br />
+81.97<br />
+±<br />
+\pm<br />
+0.01<br />
+54.92<br />
+±<br />
+\pm<br />
+0.08<br />
+78.79<br />
+±<br />
+\pm<br />
+0.07<br />
+74.11<br />
+±<br />
+\pm<br />
+0.00<br />
+59.17<br />
+±<br />
+\pm<br />
+0.17<br />
+69.01<br />
+±<br />
+\pm<br />
+0.03<br />
+71.01<br />
+±<br />
+\pm<br />
+0.04<br />
+LoRA<br />
+GLA<br />
+11.1M<br />
+78.87<br />
+±<br />
+\pm<br />
+0.16<br />
+79.55<br />
+±<br />
+\pm<br />
+0.14<br />
+51.25<br />
+±<br />
+\pm<br />
+0.32<br />
+76.93<br />
+±<br />
+\pm<br />
+0.04<br />
+71.93<br />
+±<br />
+\pm<br />
+0.28<br />
+50.10<br />
+±<br />
+\pm<br />
+0.59<br />
+67.51<br />
+±<br />
+\pm<br />
+1.16<br />
+68.02<br />
+±<br />
+\pm<br />
+0.31<br />
+kGLA<br />
+15.3M<br />
+79.00<br />
+±<br />
+\pm<br />
+0.14<br />
+79.92<br />
+±<br />
+\pm<br />
+0.06<br />
+51.62<br />
+±<br />
+\pm<br />
+0.68<br />
+76.84<br />
+±<br />
+\pm<br />
+0.21<br />
+70.88<br />
+±<br />
+\pm<br />
+0.30<br />
+49.95<br />
+±<br />
+\pm<br />
+0.39<br />
+67.79<br />
+±<br />
+\pm<br />
+0.60<br />
+68.00<br />
+±<br />
+\pm<br />
+0.29<br />
+GDN<br />
+15.3M<br />
+79.47<br />
+±<br />
+\pm<br />
+0.29<br />
+80.86<br />
+±<br />
+\pm<br />
+0.34<br />
+53.33<br />
+±<br />
+\pm<br />
+0.58<br />
+78.03<br />
+±<br />
+\pm<br />
+0.31<br />
+72.32<br />
+±<br />
+\pm<br />
+0.09<br />
+54.80<br />
+±<br />
+\pm<br />
+2.79<br />
+70.29<br />
+±<br />
+\pm<br />
+1.96<br />
+69.87<br />
+±<br />
+\pm<br />
+0.85<br />
+\rowcolor<br />
+lightgray<br />
+Qwen3 8b<br />
+-<br />
+79.16<br />
+81.73<br />
+56.14<br />
+78.69<br />
+72.93<br />
+76.94<br />
+70.95<br />
+73.79<br />
+Short Conv<br />
+GLA<br />
+6.9M<br />
+79.33<br />
+±<br />
+\pm<br />
+0.03<br />
+81.92<br />
+±<br />
+\pm<br />
+0.04<br />
+56.43<br />
+±<br />
+\pm<br />
+0.12<br />
+77.93<br />
+±<br />
+\pm<br />
+0.07<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+70.58<br />
+±<br />
+\pm<br />
+0.17<br />
+64.20<br />
+±<br />
+\pm<br />
+0.05<br />
+71.77<br />
+±<br />
+\pm<br />
+0.04<br />
+kGLA<br />
+11.6M<br />
+79.34<br />
+±<br />
+\pm<br />
+0.02<br />
+81.89<br />
+±<br />
+\pm<br />
+0.04<br />
+56.43<br />
+±<br />
+\pm<br />
+0.03<br />
+77.93<br />
+±<br />
+\pm<br />
+0.08<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+70.75<br />
+±<br />
+\pm<br />
+0.17<br />
+64.20<br />
+±<br />
+\pm<br />
+0.05<br />
+71.77<br />
+±<br />
+\pm<br />
+0.04<br />
 GDN</p>
-
-<p>11.6M
-79.29
-±
-\pm
-0.04
-81.86
-±
-\pm
-0.02
-56.48
-±
-\pm
-0.00
-77.84
-±
-\pm
-0.03
-71.98
-±
-\pm
-0.00
-71.10
-±
-\pm
-0.13
-64.64
-±
-\pm
-0.12
-71.88
-±
-\pm
-0.02
-LoRA
-GLA
-12.5M
-79.18
-±
-\pm
-0.21
-84.47
-±
-\pm
-0.06
-62.17
-±
-\pm
-0.59
-75.56
-±
-\pm
-0.04
-71.95
-±
-\pm
-0.17
-65.99
-±
-\pm
-0.27
-66.65
-±
-\pm
-0.35
-72.28
-±
-\pm
-0.15
-kGLA
-17.4M
-78.91
-±
-\pm
-0.17
-84.85
-±
-\pm
-0.11
-61.83
-±
-\pm
-0.27
-76.04
-±
-\pm
-0.02
-73.22
-±
-\pm
-0.15
-66.29
-±
-\pm
-0.30
-65.48
-±
-\pm
-0.51
-72.37
-±
-\pm
-0.14
-GDN
-17.3M
-79.27
-±
-\pm
-0.17
-84.39
-±
-\pm
-0.15
-62.29
-±
-\pm
-0.39
-76.56
-±
-\pm
-0.04
-73.35
-±
-\pm
-0.50
-69.61
-±
-\pm
-0.19
-67.94
-±
-\pm
-0.77
-73.34
-±
-\pm
-0.05
-B.4
-Long context Evaluation on Ruler Benchmark
-We evaluate long-context behavior on S-NIAH and an extended RULER benchmark at 4k context length (Tables
-8
-and
-9
-). Under the fairest comparison setting, prior linearization baselines that use the same 64-token local windowm, our GDN-based linearization substantially outperforms LoLCATs and Liger-GLA by a wide margin, consistently across both common reasoning (Table
-4
-) and long-context evaluation (Table
-9
-).
-At the same time, Table
-9
-shows a strong dependence on cache budget.
-The small-cache configuration (128 total tokens: 8 sink + 120 sliding) is not viable for retrieval-heavy subsets.
-Increasing the cache (e.g., 896 tokens) makes GDN competitive on average, but exposes a clear profile: strong on aggregation/QA-style tasks and weaker on tasks requiring multiple independent memory items in parallel (e.g., multi-query/multi-value retrieval and variable</p>
-
-<p>tracking).
-Since we use a fixed-budget cache (8 sink tokens plus a sliding window) and do not perform adaptive token selection at inference time, these results suggest an obvious next step: combining GDN with content-aware token retention to improve multi-item retrieval under a fixed cache budget.
-Table 8:
-S-NIAH accuracy at 4K context length at different cache token budgets.
-Model
-Task (4K)
-Cache Tokens
-128
-256
-512
-1024
-Sliding-Window Attention
-S-NIAH-1
-0
-0
-5.8
-–
-S-NIAH-2
-0
-0
-0
-–
-S-NIAH-3
-0
-0
-0
-–
-LoLCATs
-S-NIAH-1
-0
-2.2
-8.8
-–
-S-NIAH-2
-4.2
-8.2
-16.6
-–
-S-NIAH-3
-1.6
-2.2
-5.8
-–
-Liger-GLA
-S-NIAH-1
-0.2
-2.8
-0
-–
-S-NIAH-2
-1.0
-0.8
-0
-–
-S-NIAH-3
-0.8
-0.6
-0
-–
-STILL
-S-NIAH-1
-1.4
-10.6
-86.2
-89.0
-S-NIAH-2
-2.8
-9.4
-37.4
-69.8
-S-NIAH-3
-3.4
-3.4
-12.2
-19.4
-GDN (Ours)
-S-NIAH-1
-2.6
-6.0
-13.20
-26.2
-S-NIAH-2
-2.0
-5.0
-16.0
-34.2
-S-NIAH-3
-1.8
-4.2
-13.8
-28.4
-Table 9
-:
-Extended RULER benchmark at 4K context length.
-Model
-Cache Tokens
-MK
-MQ
-MV
-CWE
-FWE
-HQA
-SQA
-VT
-Avg
-Mamba-2
-0
-19.9
-49.1
-35.0
-32.9
-76.6
-31.8
-35.5
-76.5
-44.7
-LoLCATs
-896
-4.9
-3.3
-3.6
-3.0
-13.6
-14.2
-14.0
-0.7
-7.2
-Liger-GLA
-896
-0
-0
-0
-0.2
-0.7
-6.4
-9.1
-0
-2.1
-LoLA
-896
-19.5
-67.6
-65.0
-45.9
-51.3
-24.2
-53.9
-85.2
-45.2
-STILL
-896
-21.5
-52.2
-51.3
-36.7
-76.3
-32.2
-49.6
-63.7
-47.9
-Ours (GDN)
-128
-1.33
-±
-\pm
-0.00
-2.40
-±
-\pm
-0.03
-2.38
-±
-\pm
-0.04
-34.44
-±
-\pm
-3.39
-60.04
-±
-\pm
-2.37
-21.27
-±
-\pm
-0.18
-23.49
-±
-\pm
-0.36
-2.65
-±
-\pm
-0.04
-18.50
-±
-\pm
-0.55
-Ours (GDN)
-896
-25.36
-±
-\pm
-0.06
-22.62
-±
-\pm
-0.09
-25.38
-±
-\pm
-0.02
-80.49
-±
-\pm
-3.86
-81.67
-±
-\pm
-1.64
-38.60
-±
-\pm
-0.31
-68.37
-±
-\pm
-0.54
+<p>11.6M<br />
+79.29<br />
+±<br />
+\pm<br />
+0.04<br />
+81.86<br />
+±<br />
+\pm<br />
+0.02<br />
+56.48<br />
+±<br />
+\pm<br />
+0.00<br />
+77.84<br />
+±<br />
+\pm<br />
+0.03<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+71.10<br />
+±<br />
+\pm<br />
+0.13<br />
+64.64<br />
+±<br />
+\pm<br />
+0.12<br />
+71.88<br />
+±<br />
+\pm<br />
+0.02<br />
+LoRA<br />
+GLA<br />
+12.5M<br />
+79.18<br />
+±<br />
+\pm<br />
+0.21<br />
+84.47<br />
+±<br />
+\pm<br />
+0.06<br />
+62.17<br />
+±<br />
+\pm<br />
+0.59<br />
+75.56<br />
+±<br />
+\pm<br />
+0.04<br />
+71.95<br />
+±<br />
+\pm<br />
+0.17<br />
+65.99<br />
+±<br />
+\pm<br />
+0.27<br />
+66.65<br />
+±<br />
+\pm<br />
+0.35<br />
+72.28<br />
+±<br />
+\pm<br />
+0.15<br />
+kGLA<br />
+17.4M<br />
+78.91<br />
+±<br />
+\pm<br />
+0.17<br />
+84.85<br />
+±<br />
+\pm<br />
+0.11<br />
+61.83<br />
+±<br />
+\pm<br />
+0.27<br />
+76.04<br />
+±<br />
+\pm<br />
+0.02<br />
+73.22<br />
+±<br />
+\pm<br />
+0.15<br />
+66.29<br />
+±<br />
+\pm<br />
+0.30<br />
+65.48<br />
+±<br />
+\pm<br />
+0.51<br />
+72.37<br />
+±<br />
+\pm<br />
+0.14<br />
+GDN<br />
+17.3M<br />
+79.27<br />
+±<br />
+\pm<br />
+0.17<br />
+84.39<br />
+±<br />
+\pm<br />
+0.15<br />
+62.29<br />
+±<br />
+\pm<br />
+0.39<br />
+76.56<br />
+±<br />
+\pm<br />
+0.04<br />
+73.35<br />
+±<br />
+\pm<br />
+0.50<br />
+69.61<br />
+±<br />
+\pm<br />
+0.19<br />
+67.94<br />
+±<br />
+\pm<br />
+0.77<br />
+73.34<br />
+±<br />
+\pm<br />
+0.05<br />
+B.4<br />
+Long context Evaluation on Ruler Benchmark<br />
+We evaluate long-context behavior on S-NIAH and an extended RULER benchmark at 4k context length (Tables<br />
+8<br />
+and<br />
+9<br />
+). Under the fairest comparison setting, prior linearization baselines that use the same 64-token local windowm, our GDN-based linearization substantially outperforms LoLCATs and Liger-GLA by a wide margin, consistently across both common reasoning (Table<br />
+4<br />
+) and long-context evaluation (Table<br />
+9<br />
+).<br />
+At the same time, Table<br />
+9<br />
+shows a strong dependence on cache budget.<br />
+The small-cache configuration (128 total tokens: 8 sink + 120 sliding) is not viable for retrieval-heavy subsets.<br />
+Increasing the cache (e.g., 896 tokens) makes GDN competitive on average, but exposes a clear profile: strong on aggregation/QA-style tasks and weaker on tasks requiring multiple independent memory items in parallel (e.g., multi-query/multi-value retrieval and variable </p>
+<p>tracking).<br />
+Since we use a fixed-budget cache (8 sink tokens plus a sliding window) and do not perform adaptive token selection at inference time, these results suggest an obvious next step: combining GDN with content-aware token retention to improve multi-item retrieval under a fixed cache budget.<br />
+Table 8:<br />
+S-NIAH accuracy at 4K context length at different cache token budgets.<br />
+Model<br />
+Task (4K)<br />
+Cache Tokens<br />
+128<br />
+256<br />
+512<br />
+1024<br />
+Sliding-Window Attention<br />
+S-NIAH-1<br />
+0<br />
+0<br />
+5.8<br />
+–<br />
+S-NIAH-2<br />
+0<br />
+0<br />
+0<br />
+–<br />
+S-NIAH-3<br />
+0<br />
+0<br />
+0<br />
+–<br />
+LoLCATs<br />
+S-NIAH-1<br />
+0<br />
+2.2<br />
+8.8<br />
+–<br />
+S-NIAH-2<br />
+4.2<br />
+8.2<br />
+16.6<br />
+–<br />
+S-NIAH-3<br />
+1.6<br />
+2.2<br />
+5.8<br />
+–<br />
+Liger-GLA<br />
+S-NIAH-1<br />
+0.2<br />
+2.8<br />
+0<br />
+–<br />
+S-NIAH-2<br />
+1.0<br />
+0.8<br />
+0<br />
+–<br />
+S-NIAH-3<br />
+0.8<br />
+0.6<br />
+0<br />
+–<br />
+STILL<br />
+S-NIAH-1<br />
+1.4<br />
+10.6<br />
+86.2<br />
+89.0<br />
+S-NIAH-2<br />
+2.8<br />
+9.4<br />
+37.4<br />
+69.8<br />
+S-NIAH-3<br />
+3.4<br />
+3.4<br />
+12.2<br />
+19.4<br />
+GDN (Ours)<br />
+S-NIAH-1<br />
+2.6<br />
+6.0<br />
+13.20<br />
+26.2<br />
+S-NIAH-2<br />
+2.0<br />
+5.0<br />
+16.0<br />
+34.2<br />
+S-NIAH-3<br />
+1.8<br />
+4.2<br />
+13.8<br />
+28.4<br />
+Table 9<br />
+:<br />
+Extended RULER benchmark at 4K context length.<br />
+Model<br />
+Cache Tokens<br />
+MK<br />
+MQ<br />
+MV<br />
+CWE<br />
+FWE<br />
+HQA<br />
+SQA<br />
+VT<br />
+Avg<br />
+Mamba-2<br />
+0<br />
+19.9<br />
+49.1<br />
+35.0<br />
+32.9<br />
+76.6<br />
+31.8<br />
+35.5<br />
+76.5<br />
+44.7<br />
+LoLCATs<br />
+896<br />
+4.9<br />
+3.3<br />
+3.6<br />
+3.0<br />
+13.6<br />
+14.2<br />
+14.0<br />
+0.7<br />
+7.2<br />
+Liger-GLA<br />
+896<br />
+0<br />
+0<br />
+0<br />
+0.2<br />
+0.7<br />
+6.4<br />
+9.1<br />
+0<br />
+2.1<br />
+LoLA<br />
+896<br />
+19.5<br />
+67.6<br />
+65.0<br />
+45.9<br />
+51.3<br />
+24.2<br />
+53.9<br />
+85.2<br />
+45.2<br />
+STILL<br />
+896<br />
+21.5<br />
+52.2<br />
+51.3<br />
+36.7<br />
+76.3<br />
+32.2<br />
+49.6<br />
+63.7<br />
+47.9<br />
+Ours (GDN)<br />
+128<br />
+1.33<br />
+±<br />
+\pm<br />
+0.00<br />
+2.40<br />
+±<br />
+\pm<br />
+0.03<br />
+2.38<br />
+±<br />
+\pm<br />
+0.04<br />
+34.44<br />
+±<br />
+\pm<br />
+3.39<br />
+60.04<br />
+±<br />
+\pm<br />
+2.37<br />
+21.27<br />
+±<br />
+\pm<br />
+0.18<br />
+23.49<br />
+±<br />
+\pm<br />
+0.36<br />
+2.65<br />
+±<br />
+\pm<br />
+0.04<br />
+18.50<br />
+±<br />
+\pm<br />
+0.55<br />
+Ours (GDN)<br />
+896<br />
+25.36<br />
+±<br />
+\pm<br />
+0.06<br />
+22.62<br />
+±<br />
+\pm<br />
+0.09<br />
+25.38<br />
+±<br />
+\pm<br />
+0.02<br />
+80.49<br />
+±<br />
+\pm<br />
+3.86<br />
+81.67<br />
+±<br />
+\pm<br />
+1.64<br />
+38.60<br />
+±<br />
+\pm<br />
+0.31<br />
+68.37<br />
+±<br />
+\pm<br />
+0.54<br />
 37.6</p>
-
-<p>8
-±
-\pm
-0.56
-47.52
-±
-\pm
-0.66
-B.5
-Results for all Qwen models
-Table 10
-:
-Scaling result for all Qwen3 models.
-Model
-Attention
-PiQA
-ARC-e
-ARC-c
-HellaSwag
-WinoGrande
-MMLU
-Lambada
-Avg
-Qwen3-0.6b
-Full
-70.24
-65.74
-38.31
-53.69
-58.56
-52.48
-53.68
-56.10
-GDN
-69.89
-±
-\pm
-0.02
-65.64
-±
-\pm
-0.01
-38.25
-±
-\pm
-0.06
-52.53
-±
-\pm
-0.04
-57.93
-±
-\pm
-0.00
-47.22
-±
-\pm
-0.11
-47.77
-±
-\pm
-0.04
-54.18
-±
-\pm
-0.02
-Qwen3-1.7b
-Full
-75.90
-73.36
-45.05
-66.40
-64.40
-62.61
-63.23
-64.42
-GDN
-75.55
-±
-\pm
-0.02
-73.57
-±
-\pm
-0.00
-44.94
-±
-\pm
-0.03
-65.34
-±
-\pm
-0.04
-64.64
-±
-\pm
-0.00
-57.78
-±
-\pm
-0.11
-56.50
-±
-\pm
-0.11
-62.62
-±
-\pm
-0.01
-Qwen3-4b
-Full
-78.02
-79.21
-51.62
-73.67
-70.72
-72.98
-69.09
-70.76
-GDN
-78.27
-±
-\pm
-0.02
-78.98
-±
-\pm
-0.01
-51.96
-±
-\pm
-0.05
-72.81
-±
-\pm
-0.01
-70.48
-±
-\pm
-0.00
-67.52
-±
-\pm
-0.13
-62.68
-±
-\pm
-0.08
-68.96
-±
-\pm
-0.03
-Qwen3-8b
-Full
-79.16
-81.73
-56.14
-78.69
-72.93
-76.94
-70.95
-73.79
-GDN
-79.29
-±
-\pm
-0.04
-81.86
-±
-\pm
-0.02
-56.48
-±
-\pm
-0.00
-77.84
-±
-\pm
-0.03
-71.98
-±
-\pm
-0.00
-71.10
-±
-\pm
-0.13
-64.64
-±
-\pm
-0.12
-71.88
-±
-\pm
-0.02
-Qwen3-14b
-Full
-80.47
-83.33
-58.96
-81.27
-74.19
-80.46
-74.33
-76.14
-GDN
-80.36
-±
-\pm
-0.00
-83.36
-±
-\pm
-0.04
-59.36
-±
-\pm
-0.03
-80.73
-±
-\pm
-0.07
-74.35
-±
-\pm
-0.00
-74.63
-±
-\pm
-0.03
-67.93
-±
-\pm
-0.12
-74.39
-±
-\pm
-0.02
-Qwen3-32b
-Full
-81.01
-84.39
-60.84
-82.62
-72.93
-81.73
-66.97
-75.78
-GDN
-81.08
-±
-\pm
-0.05
-84.34
-±
-\pm
-0.02
-60.78
-±
-\pm
-0.03
-81.74
-±
-\pm
-0.03
-73.09
-±
-\pm
-0.00
-76.02
-±
-\pm
-0.17
-63.04
-±
-\pm
-0.17
-74.30
-±
-\pm
-0.01
-Appendix C
-Hyperparameters and Implementation Details
+<p>8<br />
+±<br />
+\pm<br />
+0.56<br />
+47.52<br />
+±<br />
+\pm<br />
+0.66<br />
+B.5<br />
+Results for all Qwen models<br />
+Table 10<br />
+:<br />
+Scaling result for all Qwen3 models.<br />
+Model<br />
+Attention<br />
+PiQA<br />
+ARC-e<br />
+ARC-c<br />
+HellaSwag<br />
+WinoGrande<br />
+MMLU<br />
+Lambada<br />
+Avg<br />
+Qwen3-0.6b<br />
+Full<br />
+70.24<br />
+65.74<br />
+38.31<br />
+53.69<br />
+58.56<br />
+52.48<br />
+53.68<br />
+56.10<br />
+GDN<br />
+69.89<br />
+±<br />
+\pm<br />
+0.02<br />
+65.64<br />
+±<br />
+\pm<br />
+0.01<br />
+38.25<br />
+±<br />
+\pm<br />
+0.06<br />
+52.53<br />
+±<br />
+\pm<br />
+0.04<br />
+57.93<br />
+±<br />
+\pm<br />
+0.00<br />
+47.22<br />
+±<br />
+\pm<br />
+0.11<br />
+47.77<br />
+±<br />
+\pm<br />
+0.04<br />
+54.18<br />
+±<br />
+\pm<br />
+0.02<br />
+Qwen3-1.7b<br />
+Full<br />
+75.90<br />
+73.36<br />
+45.05<br />
+66.40<br />
+64.40<br />
+62.61<br />
+63.23<br />
+64.42<br />
+GDN<br />
+75.55<br />
+±<br />
+\pm<br />
+0.02<br />
+73.57<br />
+±<br />
+\pm<br />
+0.00<br />
+44.94<br />
+±<br />
+\pm<br />
+0.03<br />
+65.34<br />
+±<br />
+\pm<br />
+0.04<br />
+64.64<br />
+±<br />
+\pm<br />
+0.00<br />
+57.78<br />
+±<br />
+\pm<br />
+0.11<br />
+56.50<br />
+±<br />
+\pm<br />
+0.11<br />
+62.62<br />
+±<br />
+\pm<br />
+0.01<br />
+Qwen3-4b<br />
+Full<br />
+78.02<br />
+79.21<br />
+51.62<br />
+73.67<br />
+70.72<br />
+72.98<br />
+69.09<br />
+70.76<br />
+GDN<br />
+78.27<br />
+±<br />
+\pm<br />
+0.02<br />
+78.98<br />
+±<br />
+\pm<br />
+0.01<br />
+51.96<br />
+±<br />
+\pm<br />
+0.05<br />
+72.81<br />
+±<br />
+\pm<br />
+0.01<br />
+70.48<br />
+±<br />
+\pm<br />
+0.00<br />
+67.52<br />
+±<br />
+\pm<br />
+0.13<br />
+62.68<br />
+±<br />
+\pm<br />
+0.08<br />
+68.96<br />
+±<br />
+\pm<br />
+0.03<br />
+Qwen3-8b<br />
+Full<br />
+79.16<br />
+81.73<br />
+56.14<br />
+78.69<br />
+72.93<br />
+76.94<br />
+70.95<br />
+73.79<br />
+GDN<br />
+79.29<br />
+±<br />
+\pm<br />
+0.04<br />
+81.86<br />
+±<br />
+\pm<br />
+0.02<br />
+56.48<br />
+±<br />
+\pm<br />
+0.00<br />
+77.84<br />
+±<br />
+\pm<br />
+0.03<br />
+71.98<br />
+±<br />
+\pm<br />
+0.00<br />
+71.10<br />
+±<br />
+\pm<br />
+0.13<br />
+64.64<br />
+±<br />
+\pm<br />
+0.12<br />
+71.88<br />
+±<br />
+\pm<br />
+0.02<br />
+Qwen3-14b<br />
+Full<br />
+80.47<br />
+83.33<br />
+58.96<br />
+81.27<br />
+74.19<br />
+80.46<br />
+74.33<br />
+76.14<br />
+GDN<br />
+80.36<br />
+±<br />
+\pm<br />
+0.00<br />
+83.36<br />
+±<br />
+\pm<br />
+0.04<br />
+59.36<br />
+±<br />
+\pm<br />
+0.03<br />
+80.73<br />
+±<br />
+\pm<br />
+0.07<br />
+74.35<br />
+±<br />
+\pm<br />
+0.00<br />
+74.63<br />
+±<br />
+\pm<br />
+0.03<br />
+67.93<br />
+±<br />
+\pm<br />
+0.12<br />
+74.39<br />
+±<br />
+\pm<br />
+0.02<br />
+Qwen3-32b<br />
+Full<br />
+81.01<br />
+84.39<br />
+60.84<br />
+82.62<br />
+72.93<br />
+81.73<br />
+66.97<br />
+75.78<br />
+GDN<br />
+81.08<br />
+±<br />
+\pm<br />
+0.05<br />
+84.34<br />
+±<br />
+\pm<br />
+0.02<br />
+60.78<br />
+±<br />
+\pm<br />
+0.03<br />
+81.74<br />
+±<br />
+\pm<br />
+0.03<br />
+73.09<br />
+±<br />
+\pm<br />
+0.00<br />
+76.02<br />
+±<br />
+\pm<br />
+0.17<br />
+63.04<br />
+±<br />
+\pm<br />
+0.17<br />
+74.30<br />
+±<br />
+\pm<br />
+0.01<br />
+Appendix C<br />
+Hyperparameters and Implementation Details<br />
 We fixed the experimental hyperparameter for al</p>
-
-<p>l the experiments. We did not run hyperparameter sweep and fix the same setting for all the base model. Our main motivation is that good approximation should not require extensive training and thus should not depend much on training hyperparameter.
-The only difference is that LoRa experiments use a smaller learning rate than other runs. We list these training details below in Table
-11
-. We run all the experiments with 3 random seed, fixing the seed to
-1, 2, 3
-.
-To make the implementation details clear, we also provide the shape of all the newly introduces tensors and mention any initialization that we use. It absent, default pytorch initialization is used. We use the following notations:
-•
-Hidden state:
-h
-h
-•
-Hidden state feature dimension:
-dim
-h
-\text{dim}_{h}
-•
-Head dimension:
-dim
-h
-​
-e
-​
-a
-​
-d
-\text{dim}_{{head}}
-•
-Number of query heads:
-head
-q
-\text{head}_{q}
-•
-Number of key and value heads:
-head
-k
-​
-v
-\text{head}_{kv}
-•
-Output dimension:
-dim
-o
-​
-u
-​
-t
-=
-dim
-h
-​
-e
-​
-a
-​
-d
-⋅
-head
-q
-\text{dim}_{out}=\text{dim}_{{head}}\cdot\text{head}_{q}
-FLA
-kernels assumes gates to be in Log scale for stability. Thus on practice we use
-LogSigmoid
-activation for the
-log
-⁡
-α
-\log\alpha
-. We use
-HedgehogFeatureMap
-from the
-FLA
-library to compute
-ϕ
-q
-\phi_{q}
-and
-ϕ
-k
-\phi_{k}
-projections. We use
-ShortConvolution
-from the
-FLA
-library to compute short convolutions. We apply them after RoPE and before
-L
-​
-2
-L2
-normalization. For LoRA we use
-PEFT
-library.
-Table 11
-:
+<p>l the experiments. We did not run hyperparameter sweep and fix the same setting for all the base model. Our main motivation is that good approximation should not require extensive training and thus should not depend much on training hyperparameter.<br />
+The only difference is that LoRa experiments use a smaller learning rate than other runs. We list these training details below in Table<br />
+11<br />
+. We run all the experiments with 3 random seed, fixing the seed to<br />
+1, 2, 3<br />
+.<br />
+To make the implementation details clear, we also provide the shape of all the newly introduces tensors and mention any initialization that we use. It absent, default pytorch initialization is used. We use the following notations:<br />
+•<br />
+Hidden state:<br />
+h<br />
+h<br />
+•<br />
+Hidden state feature dimension:<br />
+dim<br />
+h<br />
+\text{dim}<em>{h}<br />
+•<br />
+Head dimension:<br />
+dim<br />
+h<br />
+​<br />
+e<br />
+​<br />
+a<br />
+​<br />
+d<br />
+\text{dim}</em>{{head}}<br />
+•<br />
+Number of query heads:<br />
+head<br />
+q<br />
+\text{head}<em>{q}<br />
+•<br />
+Number of key and value heads:<br />
+head<br />
+k<br />
+​<br />
+v<br />
+\text{head}</em>{kv}<br />
+•<br />
+Output dimension:<br />
+dim<br />
+o<br />
+​<br />
+u<br />
+​<br />
+t<br />
+=<br />
+dim<br />
+h<br />
+​<br />
+e<br />
+​<br />
+a<br />
+​<br />
+d<br />
+⋅<br />
+head<br />
+q<br />
+\text{dim}<em>{out}=\text{dim}</em>{{head}}\cdot\text{head}<em>{q}<br />
+FLA<br />
+kernels assumes gates to be in Log scale for stability. Thus on practice we use<br />
+LogSigmoid<br />
+activation for the<br />
+log<br />
+⁡<br />
+α<br />
+\log\alpha<br />
+. We use<br />
+HedgehogFeatureMap<br />
+from the<br />
+FLA<br />
+library to compute<br />
+ϕ<br />
+q<br />
+\phi</em>{q}<br />
+and<br />
+ϕ<br />
+k<br />
+\phi_{k}<br />
+projections. We use<br />
+ShortConvolution<br />
+from the<br />
+FLA<br />
+library to compute short convolutions. We apply them after RoPE and before<br />
+L<br />
+​<br />
+2<br />
+L2<br />
+normalization. For LoRA we use<br />
+PEFT<br />
+library.<br />
+Table 11<br />
+:<br />
 All the hyperparameters used f</p>
-
-<p>or our experimnets.
-Hyperparameter
-Optimization
-learning rate
-2e-3
-learning rate (LoRA training)
-5e-4
-lr scheduler
-Cosine
-lr warmup
-linear
-lr warmup steps
-100
-optimizer
-AdamW
-weight decay
-0
-gradient clipping
-1
-training steps
-2500
-Training Data
-batch size
-1
-sequence len
-4096
-Dataset
-DCLM-Edu
-Architecture details: Pure Linear (Tables
-1
-,
-4
-)
-Gate projection
-y
-=
-h
-​
-W
-α
-r
-1
-​
-W
-α
-r
-2
-+
-b
-α
-y=hW_{\alpha}^{r_{1}}W_{\alpha}^{r_{2}}+b_{\alpha}
-W
-α
-r
-1
-∈
-ℝ
-dim
-h
-×
-16
-W_{\alpha}^{r_{1}}\in\mathbb{R}^{\text{dim}_{h}\times 16}
-,
-W
-α
-r
-2
-∈
-ℝ
-16
-×
-dim
-o
-​
-u
-​
-t
-W_{\alpha}^{r_{2}}\in\mathbb{R}^{16\times\text{dim}_{out}}
-Gate activation
-Sigmoid
-Gate Initialization
-b
-α
-=
-1
-b_{\alpha}=1
-Beta Projection
-y
-=
-h
-​
-W
-β
-+
-b
-β
-y=hW_{\beta}+b_{\beta}
-W
-β
-∈
-ℝ
-dim
-h
-×
-head
-q
-W_{\beta}\in\mathbb{R}^{\text{dim}_{h}\times\text{head}_{q}}
-Beta Activation
-Sigmoid
-Beta Initialization
-b
-β
-=
-−
-1
-b_{\beta}=-1
-Hedgehog features size
-ℝ
-dim
-h
-​
-e
-​
-a
-​
-d
-×
-dim
-h
-​
-e
-​
-a
-​
-d
-\mathbb{R}^{\text{dim}_{head}\times\text{dim}_{head}}
-Architecture details: Short Conv (Table
-3
-)
-kernel size
-8
-bias
-True
-activation
-None
-Architecture details: LoRA (Table
-3
-)
-Rank
-8
-α
-\alpha
-16
-Dropout
-0
-Target Modules
-k_proj, v_proj, q_proj, o_proj
-Appendix D
-Broader Impact
+<p>or our experimnets.<br />
+Hyperparameter<br />
+Optimization<br />
+learning rate<br />
+2e-3<br />
+learning rate (LoRA training)<br />
+5e-4<br />
+lr scheduler<br />
+Cosine<br />
+lr warmup<br />
+linear<br />
+lr warmup steps<br />
+100<br />
+optimizer<br />
+AdamW<br />
+weight decay<br />
+0<br />
+gradient clipping<br />
+1<br />
+training steps<br />
+2500<br />
+Training Data<br />
+batch size<br />
+1<br />
+sequence len<br />
+4096<br />
+Dataset<br />
+DCLM-Edu<br />
+Architecture details: Pure Linear (Tables<br />
+1<br />
+,<br />
+4<br />
+)<br />
+Gate projection<br />
+y<br />
+=<br />
+h<br />
+​<br />
+W<br />
+α<br />
+r<br />
+1<br />
+​<br />
+W<br />
+α<br />
+r<br />
+2<br />
++<br />
+b<br />
+α<br />
+y=hW_{\alpha}^{r_{1}}W_{\alpha}^{r_{2}}+b_{\alpha}<br />
+W<br />
+α<br />
+r<br />
+1<br />
+∈<br />
+ℝ<br />
+dim<br />
+h<br />
+×<br />
+16<br />
+W_{\alpha}^{r_{1}}\in\mathbb{R}^{\text{dim}<em>{h}\times 16}<br />
+,<br />
+W<br />
+α<br />
+r<br />
+2<br />
+∈<br />
+ℝ<br />
+16<br />
+×<br />
+dim<br />
+o<br />
+​<br />
+u<br />
+​<br />
+t<br />
+W</em>{\alpha}^{r_{2}}\in\mathbb{R}^{16\times\text{dim}<em>{out}}<br />
+Gate activation<br />
+Sigmoid<br />
+Gate Initialization<br />
+b<br />
+α<br />
+=<br />
+1<br />
+b</em>{\alpha}=1<br />
+Beta Projection<br />
+y<br />
+=<br />
+h<br />
+​<br />
+W<br />
+β<br />
++<br />
+b<br />
+β<br />
+y=hW_{\beta}+b_{\beta}<br />
+W<br />
+β<br />
+∈<br />
+ℝ<br />
+dim<br />
+h<br />
+×<br />
+head<br />
+q<br />
+W_{\beta}\in\mathbb{R}^{\text{dim}<em>{h}\times\text{head}</em>{q}}<br />
+Beta Activation<br />
+Sigmoid<br />
+Beta Initialization<br />
+b<br />
+β<br />
+=<br />
+−<br />
+1<br />
+b_{\beta}=-1<br />
+Hedgehog features size<br />
+ℝ<br />
+dim<br />
+h<br />
+​<br />
+e<br />
+​<br />
+a<br />
+​<br />
+d<br />
+×<br />
+dim<br />
+h<br />
+​<br />
+e<br />
+​<br />
+a<br />
+​<br />
+d<br />
+\mathbb{R}^{\text{dim}<em>{head}\times\text{dim}</em>{head}}<br />
+Architecture details: Short Conv (Table<br />
+3<br />
+)<br />
+kernel size<br />
+8<br />
+bias<br />
+True<br />
+activation<br />
+None<br />
+Architecture details: LoRA (Table<br />
+3<br />
+)<br />
+Rank<br />
+8<br />
+α<br />
+\alpha<br />
+16<br />
+Dropout<br />
+0<br />
+Target Modules<br />
+k_proj, v_proj, q_proj, o_proj<br />
+Appendix D<br />
+Broader Impact<br />
 Efficient long‑context inference can reduce serving cost and memory footprint, enabling broader access to long‑context capabilities. At the same time, cheaper inference can increase deployment scale and associated energy use. Our work does not introduce new training data o</p>
-
 <p>为超越底层骨干网络的新模型能力；它提供了一种旨在用于研究和部署环境的高效转换方案。</p>
         </div>
         

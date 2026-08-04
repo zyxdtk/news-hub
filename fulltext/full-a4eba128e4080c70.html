@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,345 +183,272 @@
         </div>
         
         <div class="fulltext-content">
-<p>Stream-CQSA：通过灵活的工作负载调度避免注意力计算中的内存溢出
-Yiming Bian  Joshua M. Akey
-普林斯顿大学
-路易斯-西格勒综合基因组学研究所
-普林斯顿，新泽西州 08540
+<p>Stream-CQSA：通过灵活的工作负载调度避免注意力计算中的内存溢出<br />
+Yiming Bian  Joshua M. Akey<br />
+普林斯顿大学<br />
+路易斯-西格勒综合基因组学研究所<br />
+普林斯顿，新泽西州 08540<br />
 {yimingb, jakey}@princeton.edu</p>
-
-<p>摘要
+<p>摘要<br />
 长上下文大语言模型的可扩展性从根本上受到精确自注意力二次内存成本的限制，这通常会导致现代硬件上出现内存不足（OOM）故障。现有方法将内存效率提高到接近线性复杂度，但同时假设完整的查询、键和值张量可以容纳在设备内存中。在这项工作中，我们通过引入 CQS Divide 消除了这一假设，这是一种源自循环仲裁集（CQS）理论的运算，它将注意力分解为一组独立的子序列计算，其重组结果与全序列注意力完全相同。利用这种分解，我们引入了 Stream-CQSA，这是一个内存自适应调度框架，它将注意力划分为适合任意内存预算的子问题。这将注意力从逻辑上的单一操作重塑为可调度任务的集合，实现了跨设备的灵活执行而无需设备间通信。实验证明了可预测的内存扩展性，并表明可以通过流式处理在单个 GPU 上执行十亿 token 序列的精确注意力，而无需更改注意力的底层数学定义或引入近似误差。</p>
-
-<p>1 引言
+<p>1 引言<br />
 现代大语言模型（LLM）的能力在很大程度上取决于其模型大小和上下文长度 [11]。最近的系统 [19, 6, 10, 24] 支持从数十万到一百万 token 的上下文窗口。尽管取得了这些进展，上下文长度仍然是一个根本的实际限制：模型在长输入上通常表现出性能下降，包括不一致性和增加的幻觉。扩展上下文长度的主要障碍是精确自注意力的二次内存成本 [21]。在各种系统瓶颈中，GPU 内存已成为扩展长上下文建模的主要约束，限制了训练和部署。</p>
-
 <p>大量先前的工作集中在提高注意力计算的内存效率上。具有 IO 感知能力的精确注意力方法，如 FlashAttention 系列 [7, 8]，通过优化内存访问模式和避免大型中间矩阵的物化来提高性能。与此同时，近似方法包括稀疏 [1, 25, 9]、低秩 [22]、核化 [13, 12, 5]、分块 [16, 4] 和全局-局部混合方法 [23]，通过放宽精确性来降低计算和内存复杂度。</p>
-
 <p>然而，甚至在注意力计算开始之前，就可能出现内存瓶颈。对于足够长的序列，仅仅物化 Q、K 和 V 张量就已经可能超过可用的 GPU 内存，使得甚至无法调用这些优化的注意力机制。这揭示了一个更根本的限制：现有方法很大程度上假设完整的 QKV 张量可以驻留在 GPU 内存中，这一假设在极长上下文场景下会失效。</p>
-
 <p>在这项工作中，我们提出了一种注意力的组合分解（CQS Divide）和一个利用这种分解的框架。具体来说，CQS Divide（图 1）是一种源自循环仲裁集（CQS）理论的运算，它将序列的注意力计算划分为多个互斥的子序列注意力计算，其重组与全序列注意力完全等价。这种分解可以递归应用，提供对计算的细粒度、内存自适应控制。基于此运算，我们引入了 Stream-CQSA，一个灵活的工作负载调度框架，它将注意力从逻辑上的单一操作转换为可调度任务的集合，以计算时间换取降低的峰值内存使用。这使得精确注意力能够在内存受限的硬件上扩展到更长的上下文，而无需架构更改或近似误差。</p>
-
 <p>图 1：CQS Divide</p>
-
-<p>2 流式循环仲裁集注意力
+<p>2 流式循环仲裁集注意力<br />
 注意力计算可以解释为一组 token 之间的所有成对交互。提出的 CQS Divide 将该集合划分为多个子集，使得在所有子集内计算的交互的并集完全覆盖完整的成对交互集合。关键挑战在于这些子集的构建，具体来说，就是保证完全覆盖的数量和组成。</p>
-
 <p>从基于集合的公式转换为基于序列的公式，假设我们旨在将序列划分为 c 个子序列，同时保留 token 交互的完全覆盖。我们首先将序列划分为 c 个块（索引从 0 到 c-1），产生 c(c-1)/2 个不同的块对。每个子序列通过选择 l 个块构建，贡献 l(l-1)/2 个块对。为了确保完全覆盖而没有冗余，我们要求 c × l(l-1)/2 = c(c-1)/2，因此 c = l(l-1)+1。因此，c 的有效值遵循序列 {1, 3, 7, 13, 21, …}，对应于 l = {1, 2, 3, 4, 5, …}。本质上，CQS Divide 将完全图（K_c）分解为 c 个较小的完全子图（K_l），使得 K_c 中的每条边恰好被覆盖一次，这对应于 Steiner 系统 S(2,l,c) [18]（当其存在时）。</p>
-
-<p>l=1, c=1 和 l=2, c=3 的情况是平凡的；因此，我们关注最小的非平凡情况 l=3, c=7。序列被划分为 7 个块 (C_0, …, C_6)，每个子序列 i 构建为：
-Seq_i = concat(C_{(0+i) mod 7}, C_{(1+i) mod 7}, C_{(3+i) mod 7})  (1)
+<p>l=1, c=1 和 l=2, c=3 的情况是平凡的；因此，我们关注最小的非平凡情况 l=3, c=7。序列被划分为 7 个块 (C_0, …, C_6)，每个子序列 i 构建为：<br />
+Seq_i = concat(C_{(0+i) mod 7}, C_{(1+i) mod 7}, C_{(3+i) mod 7})  (1)<br />
 对于 0 ≤ i ≤ 6。为简单起见，我们用块索引表示子序列。这种构建是循环的，基本模式 (0, 1, 3) 定义了第一个子序列。我们将此模式称为 c=7 的兴趣集（I）[2]。我们在 2.1 节中可视化了这种构建下的完全覆盖，关于 CQS 兴趣集的进一步讨论在附录 B 中给出。</p>
-
-<p>2.1 前向传播
-对于每个子序列 i，我们从全序列张量 Q、K 和 V 中收集 Q_i、K_i 和 V_i。然后 CQSA [3] 执行以下计算：
-R_i = α(Q_i K_i^⊤)    P_i = exp(R_i) ⊙ M_i    Num_i = P_i V_i    Den_i = row_sum(P_i)  (2)
+<p>2.1 前向传播<br />
+对于每个子序列 i，我们从全序列张量 Q、K 和 V 中收集 Q_i、K_i 和 V_i。然后 CQSA [3] 执行以下计算：<br />
+R_i = α(Q_i K_i^⊤)    P_i = exp(R_i) ⊙ M_i    Num_i = P_i V_i    Den_i = row_sum(P_i)  (2)<br />
 其中 α = 1/√D（D 是头维度），M_i 是 CQS 二进制掩码（在 2.3 节中介绍），Num_i 和 Den_i 对应于 softmax 计算的分子和分母。</p>
-
-<p>当所有子序列计算完成后，CQSA 在全 token 坐标中构建两个全局累加器，然后进行最终归一化。因此，
-Num = ∑_i scatter(Num_i)    Den = ∑_i scatter(Den_i)    O = Num ⊘ Den  (3)
+<p>当所有子序列计算完成后，CQSA 在全 token 坐标中构建两个全局累加器，然后进行最终归一化。因此，<br />
+Num = ∑_i scatter(Num_i)    Den = ∑_i scatter(Den_i)    O = Num ⊘ Den  (3)<br />
 其中 ⊘ 表示沿头维度（D）广播的逐 token 除法。</p>
-
 <p>前向传播总结在算法 1 中。我们还在图 2 中提供了 c=7 和 I=(0,1,3) 的逐步说明，明确验证了注意力矩阵 P 的完全覆盖。</p>
-
-<p>算法 1 CQSA 前向传播
-1: Q, K, V ∈ ℝ^{B×H×N×D}，块数 c，划分粒度 itr，兴趣集 I，缩放 α
-2: subseq_entries ← BuildSubseq(N, c, itr, I)
-3: Num ← 0_{B×H×N×D}
-4: Den ← 0_{B×H×N}
-5: for 每个子序列 i ∈ subseq_entries do
-6:     idx ← token_ids[i]
-7:     Q_i ← Gather(Q, idx), K_i ← Gather(K, idx), V_i ← Gather(V, idx)
-8:     M_i ← mask[i]
-9:     R_i ← α(Q_i K_i^⊤)
-10:    P_i ← exp(R_i) ⊙ M_i
-11:    Num_i ← P_i V_i
-12:    Den_i ← RowSum(P_i)
-13:    Num.IndexAdd(2, idx, Num_i)
-14:    Den.IndexAdd(2, idx, Den_i)
-15: end for
-16: O ← Num / Den.Unsqueeze(-1)
+<p>算法 1 CQSA 前向传播<br />
+1: Q, K, V ∈ ℝ^{B×H×N×D}，块数 c，划分粒度 itr，兴趣集 I，缩放 α<br />
+2: subseq_entries ← BuildSubseq(N, c, itr, I)<br />
+3: Num ← 0_{B×H×N×D}<br />
+4: Den ← 0_{B×H×N}<br />
+5: for 每个子序列 i ∈ subseq_entries do<br />
+6:     idx ← token_ids[i]<br />
+7:     Q_i ← Gather(Q, idx), K_i ← Gather(K, idx), V_i ← Gather(V, idx)<br />
+8:     M_i ← mask[i]<br />
+9:     R_i ← α(Q_i K_i^⊤)<br />
+10:    P_i ← exp(R_i) ⊙ M_i<br />
+11:    Num_i ← P_i V_i<br />
+12:    Den_i ← RowSum(P_i)<br />
+13:    Num.IndexAdd(2, idx, Num_i)<br />
+14:    Den.IndexAdd(2, idx, Den_i)<br />
+15: end for<br />
+16: O ← Num / Den.Unsqueeze(-1)<br />
 17: return O</p>
-
 <p>图 2：c=7 和 I=(0,1,3) 时的 CQSA 前向传播。在步骤 3 中，我们高亮显示了块对 (0,0)。它出现在子序列 0、4 和 6 中，但最终只应合并其中一个，其余的应被掩码掉以确保正确性。这就是为什么 CQS 掩码（M_i）是必要的。我们还提供了从全局视角的注意力矩阵覆盖，以显示所有块对都恰好被覆盖一次。另一个注意事项在步骤 5 中，虽然 Num_i 和 Den_i 以相同的方式累加，但它们的维度不同：dim(Num) = N×D 且 dim(Den) = N×1。</p>
-
-<p>2.2 反向传播
-反向传播遵循相同的分解。设 dO 为上游梯度，由于 O = Num ⊘ Den，我们有：
-dNum = dO ⊘ Den    dDen = -⟨dO, Num⟩_D / Den^2  (4)
+<p>2.2 反向传播<br />
+反向传播遵循相同的分解。设 dO 为上游梯度，由于 O = Num ⊘ Den，我们有：<br />
+dNum = dO ⊘ Den    dDen = -⟨dO, Num⟩_D / Den^2  (4)<br />
 其中 ⟨·,·⟩_D 表示头维度上的内积。</p>
-
-<p>使用相同的 (c, I) 构建，我们为每个子序列构建 dNum_i 和 dDen_i。梯度计算如下：
-dV_i = P_i^⊤ dNum_i    dP_i = dNum_i V_i^⊤ + dDen_i 1^⊤
-dR_i = dP_i ⊙ P_i    dQ_i = α dR_i K_i    dK_i = α dR_i^⊤ Q_i  (5)
-最后，dQ_i、dK_i、dV_i 被合并回全序列坐标，与前向传播相同。
-dQ = ∑_i scatter(dQ_i)    dK = ∑_i scatter(dK_i)    dV = ∑_i scatter(dV_i)  (6)
+<p>使用相同的 (c, I) 构建，我们为每个子序列构建 dNum_i 和 dDen_i。梯度计算如下：<br />
+dV_i = P_i^⊤ dNum_i    dP_i = dNum_i V_i^⊤ + dDen_i 1^⊤<br />
+dR_i = dP_i ⊙ P_i    dQ_i = α dR_i K_i    dK_i = α dR_i^⊤ Q_i  (5)<br />
+最后，dQ_i、dK_i、dV_i 被合并回全序列坐标，与前向传播相同。<br />
+dQ = ∑_i scatter(dQ_i)    dK = ∑_i scatter(dK_i)    dV = ∑_i scatter(dV_i)  (6)<br />
 反向传播在算法 2 中正式陈述，并在图 7 中为 c=7 和 I=(0,1,3) 提供了说明。通过链式法则的完整推导在附录 D 中提供。</p>
-
-<p>算法 2 CQSA 反向传播
-1: Q, K, V ∈ ℝ^{B×H×N×D}，上游 dO，subseq_entries，Num，Den，缩放 α
-2: dQ ← 0, dK ← 0, dV ← 0
-3: dNum ← dO / Den.Unsqueeze(-1)
-4: dDen ← -RowSum_D(dO ⊙ Num) / (Den ⊙ Den)
-5: for 每个子序列 i ∈ subseq_entries do
-6:     idx ← token_ids[i]
-7:     dNum_i ← Gather(dNum, idx), dDen_i ← Gather(dDen, idx)
-8:     dV_i ← P_i^⊤ dNum_i
-9:     dP_i ← dNum_i V_i^⊤ + dDen_i 1^⊤
-10:    dR_i ← dP_i ⊙ P_i
-11:    dQ_i ← α(dR_i K_i)
-12:    dK_i ← α(dR_i^⊤ Q_i)
-13:    dQ.IndexAdd(2, idx, dQ_i)
-14:    dK.IndexAdd(2, idx, dK_i)
-15:    dV.IndexAdd(2, idx, dV_i)
-16: end for
+<p>算法 2 CQSA 反向传播<br />
+1: Q, K, V ∈ ℝ^{B×H×N×D}，上游 dO，subseq_entries，Num，Den，缩放 α<br />
+2: dQ ← 0, dK ← 0, dV ← 0<br />
+3: dNum ← dO / Den.Unsqueeze(-1)<br />
+4: dDen ← -RowSum_D(dO ⊙ Num) / (Den ⊙ Den)<br />
+5: for 每个子序列 i ∈ subseq_entries do<br />
+6:     idx ← token_ids[i]<br />
+7:     dNum_i ← Gather(dNum, idx), dDen_i ← Gather(dDen, idx)<br />
+8:     dV_i ← P_i^⊤ dNum_i<br />
+9:     dP_i ← dNum_i V_i^⊤ + dDen_i 1^⊤<br />
+10:    dR_i ← dP_i ⊙ P_i<br />
+11:    dQ_i ← α(dR_i K_i)<br />
+12:    dK_i ← α(dR_i^⊤ Q_i)<br />
+13:    dQ.IndexAdd(2, idx, dQ_i)<br />
+14:    dK.IndexAdd(2, idx, dK_i)<br />
+15:    dV.IndexAdd(2, idx, dV_i)<br />
+16: end for<br />
 17: return dQ, dK, dV</p>
-
-<p>2.3 CQS 掩码
+<p>2.3 CQS 掩码<br />
 由 CQS Divide 构建的子序列表现出结构性重叠。虽然这种重叠对于确保所有 token 交互的完全覆盖是必不可少的，但它引入了冗余：由于每个块出现在 l 个子序列中，相应的块对区域内的交互被计算了 l 次。直接聚合这些结果将导致不正确的计算结果。为确保正确性，必须为每个子序列分配对整个注意力矩阵的预定义责任。冗余贡献必须被掩码掉，这就需要 CQS 掩码。重要的是，重叠仅发生在块级别的主对角线上，或块内交互，而不是在 token 级别。掩码规则很简单：子序列 i 仅负责对角线块对。例如，如果子序列 0 使用 I=(0,1,3) 构建，它包含对角线块对 (0,0)、(1,1) 和 (3,3)。其中，只保留 (0,0)，而 (1,1) 和 (3,3) 被掩码掉，因为它们分别分配给了子序列 1 和 3。</p>
-
 <p>当从迭代 itr 到 itr+1 迭代应用 CQS Divide 时，itr+1 处的子序列应用相同的主对角线掩码规则。此外，它们继承前一次迭代的主对角线掩码，导致结构化的非对角线掩码。图 3 说明了 N=49 个 token 的示例序列在迭代 1 和 2 时的 CQS 掩码。</p>
-
 <p>值得注意的是，这种受控重叠确保了子序列计算在掩码后是非冗余的，因此是完全独立的。此属性是 Stream-CQSA 中工作负载管理灵活性的核心，使子序列能够并行执行、跨多个设备分布，并在具有不同内存和计算能力的异构硬件上调度。此外，分解不限于固定的 c 选择。在每次迭代中可以使用不同的 c 值（表 3），从而实现对子序列长度的更精细控制，以最大化内存使用。</p>
-
 <p>图 3：N=49、c=7 和 I=(0,1,3) 时 R=QK^⊤ 上的 CQS 掩码。迭代 1 形成了 21 个 token 的子序列，并掩码了对角线冗余。迭代 2 进一步将每个子序列划分为更小的块（大小为 3），产生 9 个 token 的子序列，具有局部和继承掩码。仅显示了 Seq_{0, itr=1}，itr=1 处的其他子序列遵循相同的模式。</p>
-
-<p>2.4 工作负载调度
+<p>2.4 工作负载调度<br />
 由于每个子序列定义了一个独立的计算管道，注意力计算可以被视为处理子序列任务的集合（或队列）。通过迭代应用 CQS Divide，原始的大规模注意力问题被分解为许多较小的子计算，实现了内存使用和计算时间之间的权衡。这使得注意力能够扩展超越单个设备的内存限制。</p>
-
 <p>我们进行了一项前向传播的初步实验，以说明工作负载调度的影响。实验在具有 80 GiB 内存的 NVIDIA A100 GPU 上进行。我们设置序列长度 N=1M，头维度 D=128，批大小 B=1，头数 H=64，数据精度为 fp16。作为基线，我们使用 PyTorch (v2.11.0) 中带有 FlashAttention (FA) 后端的缩放点积注意力 (SDPA)。Stream-CQSA 使用修改后的 FA 内核。</p>
-
 <p>由于 N=1M 超出了 GPU 内存容量，我们通过测量从 100K 到 900K（步长为 50K）序列长度的峰值内存使用和执行时间来估计 SDPA 的内存和运行时间，其中在 900K 时发生 OOM。然后我们使用 numpy.polyfit() 拟合多项式模型来估计内存（degree=1）和运行时间（degree=2）。类似的过程用于建模 Stream-CQSA。结果显示在图 8 中。Stream-CQSA 实现了与 SDPA 相当的内存效率，但由于掩码生成、子序列收集、结果聚合和主机-设备数据传输等操作，会产生额外的运行时间开销。相比之下，SDPA 执行单次数据传输，然后在 GPU 上进行融合计算。</p>
-
 <p>使用拟合的模型，我们估计使用 SDPA 处理长度为 1M 的序列需要大约 92.53 GiB 的内存和 223.22 秒，这超出了 A100 GPU 的内存容量。相比之下，应用 itr=1 的 Stream-CQSA 产生 7 个长度为 1M×3/7≈428K 的子序列，每个需要 52.65 GiB 和 110.06 秒。应用 itr=2，有 49 个子序列（长度≈183K），每个需要 22.56 GiB 和 19.74 秒。应用 itr=3，有 343 个子序列（长度≈78K），每个仅需 4.13 GiB 和 4.13 秒。</p>
-
 <p>调度在同一迭代级别上构建的子序列，我们获得均匀调度。然而，CQS Divide 不需要均匀分解。例如，如图 4（右）所示，itr=1 处的一些子序列可以进一步划分为 itr=2 和 itr=3，而其他子序列保持不变。这实现了混合调度，其中不同大小的子序列共存。可以动态调度它们以最大化资源利用率，同时减少总体计算时间。更一般地，子序列计算可以跨设备灵活调度，以充分利用可用的内存和计算资源。</p>
-
 <p>图 4：使用均匀调度（左）和混合调度（右）的工作负载管理。相应的树结构在图 9 中。虚线表示内存限制（80 GiB）。</p>
-
-<p>2.5 OOM 护栏
+<p>2.5 OOM 护栏<br />
 Stream-CQSA 结合了护栏机制以防止执行期间的 GPU OOM 故障。该机制由两个参数控制：itr 和 n_cap。参数 itr 控制划分粒度，从而控制子序列长度和峰值内存占用。参数 n_cap 指定可以同时加载到 GPU 的最大子序列数。在执行期间，如果子序列计算触发 OOM 错误，则将出错的子序列从 GPU 内存中驱逐并返回到调度队列。然后将 n_cap 的值减一，以降低未来轮次的内存压力。如果即使 n_cap=1 仍然存在 OOM，则划分粒度增加到 itr=itr+1，从而产生内存需求更短的子序列。增加 itr 后，n_cap 重置为 1 以执行校准过程，该过程估计新子序列的内存占用并确定可用内存预算下的最大可行 n_cap。如果在校准步骤期间发生 OOM，则划分粒度进一步增加，直到找到可行的配置。</p>
-
-<p>3 实验
+<p>3 实验<br />
 所有实验均在具有 80 GiB 内存的单个 NVIDIA A100 GPU 上进行。除非另有说明，我们设置块数 c=7，兴趣集 I=(0,1,3)，头维度 D=128，批大小 B=1，头数 H=1，精度为 fp16。内存以 GiB（≈1.07×GB）报告，时间以秒为单位。我们在本节中采用均匀调度。</p>
-
-<p>3.1 注意力内核
+<p>3.1 注意力内核<br />
 Stream-CQSA 将注意力分解为独立的子序列计算，但不规定在每个子序列内如何计算注意力。我们将底层实现称为注意力内核（除非明确说明，否则不同于 CUDA 内核）。因此，Stream-CQSA 的整体性能，特别是运行时间，很大程度上取决于注意力内核的设计。在这里，我们评估前向传播中的两个代表性内核：CQSA 的朴素 Python 实现和 FlashAttention (FA) CUDA 内核。由于内核优化不是本工作的重点，我们不尝试完全优化内核设计。</p>
-
 <p>为了比较这两个内核，我们改变序列长度 N 并测量每个子序列的峰值内存使用和计算时间。结果显示在图 5 中。两种实现都表现出二次时间复杂度，而它们的空间复杂度不同：朴素实现在内存中是二次的，而 FA 内核实现了线性内存复杂度。因此，FA 内核的内存效率显著更高。</p>
-
 <p>这些结果强调，Stream-CQSA 的时间和内存复杂度继承自底层注意力内核。通常，内核可以是任何注意力变体，包括近似和分布式方法。为了与 Stream-CQSA 兼容，注意力内核必须接受 CQS 掩码，并在适用时返回 softmax 计算的分子和分母。</p>
-
 <p>图 5：朴素内核（左）和 FA 内核（右）的性能曲线</p>
-
-<p>3.2 前向和反向传播：从内存受限到内核受限
+<p>3.2 前向和反向传播：从内存受限到内核受限<br />
 由于 OOM 护栏机制，Stream-CQSA 避免了前向和反向传播中的内存不足故障。然而，在相同的划分粒度下，反向传播比前向传播需要更多的内存和计算量。当达到内存限制时，过量的内存需求通过更细的分解转化为额外的计算时间，导致反向传播的执行时间更长。</p>
-
 <p>这里的一个注意事项是，我们必须区分可以驻留在 GPU 上的子序列数和实际并行执行的子序列数。在实践中，这些可能不同。例如，我们实验中使用的 FA 内核针对单任务执行进行了优化以最大化吞吐量，因此我们在所有实验中 n_parallel = n_cap = 1。</p>
-
 <p>我们对前向传播的以下阶段进行分析：CQS 掩码（M_i）生成、Q_i, K_i, V_i 收集、主机到设备（H2D）传输、产生 Num_i, Den_i 的子序列计算、设备到主机（D2H）传输，以及最终聚合为 Num, Den 随后计算输出（O）。反向传播包括类似的阶段，并增加了梯度计算。特别是，我们忽略了 {Q, K, V, dO} 的随机张量生成时间，尽管当 N 很大时它们可能占用明显的时间。</p>
-
 <p>在完整的前向和反向传播中，我们将通信时间定义为 t_comm = t_{H2D fwd} + t_{D2H fwd} + t_{H2D bwd} + t_{D2H bwd}，核心计算时间为 t_core = t_{M_i gen fwd} + t_{compute fwd} + t_{merge fwd} + t_{dNum dDen gen bwd} + t_{compute bwd} + t_{merge bwd}，杂项时间为 t_mis = t_{wall-clock} - t_comm - t_core。杂项时间主要是收集时间和其他次要的运行时开销。</p>
-
 <p>图 6：前向和反向传播之间的内存和挂钟时间比较</p>
-
 <p>我们将 N 从 100K 变为 1M，增量为 100K，并测量前向和反向传播的峰值内存使用和平均每子序列运行时间（图 6）。在当前基于 FA 的实现下，对于相同的序列长度，反向传播需要大约 2 倍的内存和 2.5 倍的计算时间。</p>
-
 <p>总体而言，Stream-CQSA 将注意力执行从受内存限制的状态（计算受 GPU 容量限制）转变为受内核限制的状态（性能由底层注意力内核的效率决定）。在这种情况下，内核效率由三个因素定义：每子序列内存占用、每子序列执行时间以及 GPU 上的并行执行程度。</p>
-
-<p>3.3 扩展到 10 亿 token
+<p>3.3 扩展到 10 亿 token<br />
 在本实验中，我们通过在单个 A100 GPU 上模拟 10 亿 token 序列的前向和反向传播来评估 Stream-CQSA 的可扩展性。在划分粒度 itr=4 时，每个子序列包含大约 1B×(3/7)^4≈33.74M 个 token，这在反向传播期间超出了 GPU 内存容量。因此我们考虑更细的粒度 itr={5,6,7,8,9}，其中子序列总数为 n_total = c^{itr}。</p>
-
 <p>为了在不执行所有子序列的情况下估计完整工作负载，我们采用缩放评估策略。具体来说，我们设置序列长度为 N' = 1B×(3/7)^{itr'}，其中 itr'={4,5,6,7,8}，并执行单次 CQS Divide，每个配置产生 7 个子序列。我们测量这些子序列的挂钟时间（t_{7 fwd/bwd}），并外推估计完整 10 亿 token 工作负载所需的总 A100 GPU 小时数。结果总结在表 1 中。</p>
-
 <p>观察到的峰值内存使用量密切遵循拟合的线性模型：Mem_fwd(x) = 1.45×10^{-6}x + 8.42×10^{-2} 和 Mem_bwd(x) = 2.88×10^{-6}x + 1.36×10^{-2}，其中 x 表示（子）序列长度。内存扩展是高度可预测的：每次 CQS Divide 将内存占用减少 l/c = 3/7 ≈ 42.86%。</p>
-
 <p>类似地，计算时间与拟合的二次模型非常吻合：t_{seq fwd}(x) = 9.37×10^{-12}x^2 + 9.92×10^{-7}x - 3.51×10^{-2} 和 t_{seq bwd}(x) = 2.38×10^{-11}x^2 + 4.81×10^{-7}x + 8.84×10^{-2}。表 2 将挂钟时间细分为核心计算（t_core）、主机-设备通信（t_comm）和杂项开销（t_mis）。核心计算进一步分解以识别每个操作的执行位置（主机或设备）。我们观察到 GPU 计算约占总运行时间的 95%–99%，证明使用 t_7 作为估计总 GPU 小时数的代理是合理的，尽管存在次要的主机端开销。</p>
-
-<p>最后，我们分析了是否存在最小化总计算时间的最佳子序列长度 x*（或等效的划分粒度 itr*）。给定 x = N(l/c)^{itr} 和 n_total = c^{itr}，我们考虑目标：
-x* = arg min_x t_seq(x) n_total / n_parallel  (7)
-在当前 n_parallel=1 的 FA 内核实现下，并使用 c = l(l-1)+1 ≈ l^2，我们得到近似 n_total ≈ N^2/x^2。在前向传播中，唯一的临界点（x* ≈ 70,766）对应于全局最大值，这意味着总运行时间随着子序列长度超过该点而单调递减。因此，足够细的分解（例如，itr ≥ 12）减少了内存使用和总运行时间。相比之下，反向传播在此设置下相对于子序列长度表现出严格递减的运行时间。然而，在替代配置下（即 n_parallel = n_cap），可以出现全局最小值 x*，平衡计算时间和内存效率。详细分析在附录 C 中提供。</p>
-
-<p>表 1：10 亿 token 前向和反向传播的 A100 GPU 小时估计。t_{7_fwd/bwd} 表示在前向/反向传播中计算 7 个子序列的挂钟时间。
-| itr | N | n_total | Mem_fwd | t_{7 fwd} (s) | Est. t_fwd (h) | Mem_bwd | t_{7 bwd} (s) | Est. t_bwd (h) |
-|---|---|---|---|---|---|---|---|---|
-| 5 | 14.5M | 7^5 | 21.08 | 14,260 | 9,510 | 41.79 | 35,103 | 23,411 |
-| 6 | 6.20M | 7^6 | 9.09 | 2,600 | 12,138 | 17.93 | 6,442 | 30,075 |
-| 7 | 2.66M | 7^7 | 3.94 | 478 | 15,621 | 7.68 | 1,178 | 38,497 |
-| 8 | 1.14M | 7^8 | 1.75 | 91 | 20,817 | 3.32 | 221 | 50,556 |
+<p>最后，我们分析了是否存在最小化总计算时间的最佳子序列长度 x<em>（或等效的划分粒度 itr</em>）。给定 x = N(l/c)^{itr} 和 n_total = c^{itr}，我们考虑目标：<br />
+x<em> = arg min_x t_seq(x) n_total / n_parallel  (7)<br />
+在当前 n_parallel=1 的 FA 内核实现下，并使用 c = l(l-1)+1 ≈ l^2，我们得到近似 n_total ≈ N^2/x^2。在前向传播中，唯一的临界点（x</em> ≈ 70,766）对应于全局最大值，这意味着总运行时间随着子序列长度超过该点而单调递减。因此，足够细的分解（例如，itr ≥ 12）减少了内存使用和总运行时间。相比之下，反向传播在此设置下相对于子序列长度表现出严格递减的运行时间。然而，在替代配置下（即 n_parallel = n_cap），可以出现全局最小值 x*，平衡计算时间和内存效率。详细分析在附录 C 中提供。</p>
+<p>表 1：10 亿 token 前向和反向传播的 A100 GPU 小时估计。t_{7_fwd/bwd} 表示在前向/反向传播中计算 7 个子序列的挂钟时间。<br />
+| itr | N | n_total | Mem_fwd | t_{7 fwd} (s) | Est. t_fwd (h) | Mem_bwd | t_{7 bwd} (s) | Est. t_bwd (h) |<br />
+|---|---|---|---|---|---|---|---|---|<br />
+| 5 | 14.5M | 7^5 | 21.08 | 14,260 | 9,510 | 41.79 | 35,103 | 23,411 |<br />
+| 6 | 6.20M | 7^6 | 9.09 | 2,600 | 12,138 | 17.93 | 6,442 | 30,075 |<br />
+| 7 | 2.66M | 7^7 | 3.94 | 478 | 15,621 | 7.68 | 1,178 | 38,497 |<br />
+| 8 | 1.14M | 7^8 | 1.75 | 91 | 20,817 | 3.32 | 221 | 50,556 |<br />
 | 9 | 488K | 7^9 | 0.80 | 18 | 28,824 | 1.43 | 42 | 67,256 |</p>
-
-<p>4 局限性与未来工作
+<p>4 局限性与未来工作<br />
 决定 Stream-CQSA 整体性能的两个关键组件是：注意力内核和工作负载调度器。在当前实现中，基于 FA 的内核仅支持 n_parallel=1，这限制了并行执行并阻止了充分利用可用内存预算。因此，调度策略仍然相对朴素。此外，计算时间还有进一步优化的空间。目前，FA 内核被视为黑盒，返回归一化输出和 log-sum-exp 值，我们从中重建 Den_i = exp(softmax_lse) 和 Num_i = out ⊙ Den_i，引入了额外的开销。</p>
-
 <p>未来工作的一个关键方向是开发硬件感知的专用 CQSA 注意力内核，最有可能建立在 FlashAttention 之上，在保持线性内存复杂度的同时支持最大子序列并行性（即 n_parallel = n_cap）。这样的内核将能够充分利用硬件容量并解锁更有效的调度策略。特别是，随着子序列的真正并行执行，混合调度器可以动态分配较短的子序列以完全占用可用内存，从而提高整体吞吐量。</p>
-
 <p>另一个重要方向在于优化主机-设备通信。由于 Stream-CQSA 涉及主机和设备之间频繁的数据移动，有效的调度器应旨在最大化通信带宽利用率，重叠通信和计算，并最小化流水线空闲时间。这将实现流式执行模型，其中子序列计算在主机和设备之间连续流水线化。值得注意的是，在多设备设置中，可以完全避免设备间通信，因为子序列计算是独立的，不需要跨设备同步或数据交换。</p>
-
 <p>除了精确注意力，扩展 Stream-CQSA 以支持近似注意力内核是一个有前途的途径。这种扩展可以进一步提高时间和内存方面的可扩展性，使 Stream-CQSA 成为长序列注意力计算的更通用框架。最终，这项工作旨在将注意力计算与硬件内存约束解耦，从而在长文档理解、代码分析、时间序列预测和大规模科学模拟等广泛应用中实现可扩展的长上下文建模。</p>
-
 <p>总而言之，除了算法贡献之外，这项工作提出了一个系统级机会，将注意力暴露为独立、可能非均匀的任务集合，其重组与原始完整计算完全等价。至关重要的是，这种分解是内存自适应的，即对于任何给定的内存预算，工作负载都可以划分为适合可用资源的子序列计算。此属性自然与分布式和异构 AI 基础设施保持一致，实现了跨设备的动态调度，具有可调的内存-延迟权衡，并将注意力执行重新定义为任务并行数据流，以实现可扩展和资源高效的长上下文模型部署。</p>
-
-<p>参考文献
-[1] I. Beltagy, M. E. Peters, 和 A. Cohan (2020) Longformer: 长文档 Transformer. arXiv 预印本 arXiv:2004.05150. 引用自: §1.
-[2] Y. Bian 和 A. K. Somani (2021) 一种寻找具有全对属性的所有循环仲裁集的高效系统方法. 载于 2021 IEEE 国际大数据会议, 第 197–206 页. 引用自: 附录 B, §2.
-[3] Y. Bian 和 A. K. Somani (2025) CQS-attention: 为无限长序列扩展标准注意力计算. IEEE Access. 引用自: §2.1.
-[4] Y. Chen, S. Qian, H. Tang, X. Lai, Z. Liu, S. Han, 和 J. Jia (2023) Longlora: 长上下文大语言模型的高效微调. arXiv 预印本 arXiv:2309.12307. 引用自: §1.
-[5] K. Choromanski, V. Likhosherstov, D. Dohan, X. Song, A. Gane, T. Sarlos, P. Hawkins, J. Davis, A. Mohiuddin, L. Kaiser, 等 (2020) 用 Performer 重新思考注意力. arXiv 预印本 arXiv:2009.14794. 引用自: §1.
-[6] G. Comanici, E. Bieber, M. Schaekermann, I. Pasupat, N. Sachdeva, I. Dhillon, M. Blistein, O. Ram, D. Zhang, E. Rosen, 等 (2025) Gemini 2.5: 通过高级推理、多模态、长上下文和下一代代理能力推动前沿. arXiv 预印本 arXiv:2507.06261. 引用自: §1.
-[7] T. Dao, D. Fu, S. Ermon, A. Rudra, 和 C. Ré (2022) Flashattention: 具有 IO 感知的快速且内存高效的精确注意力. 神经信息处理系统进展 35, 第 16344–16359 页. 引用自: §1.
-[8] T. Dao (2023) Flashattention-2: 具有更好并行性和工作分区的更快注意力. arXiv 预印本 arXiv:2307.08691. 引用自: §1.
-[9] J. Ding, S. Ma, L. Dong, X. Zhang, S. Huang, W. Wang, N. Zheng, 和 F. Wei (2023) Longnet: 将 Transformer 扩展到 1,000,000,000 个 token. arXiv 预印本 arXiv:2307.02486. 引用自: §1.
-[10] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi, 等 (2025) Deepseek-r1: 通过强化学习激励 LLM 的推理能力. arXiv 预印本 arXiv:2501.12948. 引用自: §1.
-[11] J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown, B. Chess, R. Child, S. Gray, A. Radford, J. Wu, 和 D. Amodei (2020) 神经语言模型的缩放定律. arXiv 预印本 arXiv:2001.08361. 引用自: §1.
-[12] A. Katharopoulos, A. Vyas, N. Pappas, 和 F. Fleuret (2020) Transformer 是 RNN: 具有线性注意力的快速自回归 Transformer. 载于国际机器学习会议, 第 5156–5165 页. 引用自: §1.
-[13] N. Kitaev, Ł. Kaiser, 和 A. Levskaya (2020) Reformer: 高效的 Transformer. arXiv 预印本 arXiv:2001.04451. 引用自: §1.
-[14] C. W. Lam (1991) 寻找阶为 10 的有限射影平面. 美国数学月刊 98(4), 第 305–318 页. 引用自: 附录 B.
-[15] F. J. MacWilliams, N. J. Sloane, 和 J. G. Thompson (1973) 论阶为 10 的射影平面的存在性. 组合理论杂志, A 辑 14(1), 第 66–78 页. 引用自: 附录 B.
-[16] J. Qiu, H. Ma, O. Levy, W. Yih, S. Wang, 和 J. Tang (2020) 用于长文档理解的分块自注意力. 载于计算语言学协会发现: EMNLP 2020, 第 2555–2565 页. 引用自: §1.
-[17] J. Singer (1938) 有限射影几何中的一个定理及其在数论中的应用. 美国数学学会汇刊 43(3), 第 377–385 页. 引用自: 附录 B.
-[18] D. R. Stinson (2008) 组合设计: 构造与分析. ACM SIGACT 新闻 39(4), 第 17–21 页. 引用自: §2.
-[19] The claude 3 模型家族: opus, sonnet, haiku. 注: https://www-cdn.anthropic.com/de8ba9b01c9ab7cbabf5c33b80b7bbc618857627/Model_Card_Claude_3.pdf 引用自: §1.
-[20] J. H. Van Lint 和 R. M. Wilson (2001) 组合学课程. 剑桥大学出版社. 引用自: 附录 B, 附录 B.
-[21] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkowit, L. Jones, A. N. Gomez, Ł. Kaiser, 和 I. Polosukhin (2017) 注意力就是你所需要的. 神经信息处理系统进展 30. 引用自: §1.
-[22] S. Wang, B. Z. Li, M. Khabsa, H. Fang, 和 H. Ma (2020) Linformer: 具有线性复杂度的自注意力. arXiv 预印本 arXiv:2006.04768. 引用自: §1.
-[23] G. Xiao, Y. Tian, B. Chen, S. Han, 和 M. Lewis (2023) 具有注意力汇聚的高效流式语言模型. arXiv 预印本 arXiv:2309.17453. 引用自: §1.
-[24] A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, 等 (2025) Qwen3 技术报告. arXiv 预印本 arXiv:2505.09388. 引用自: §1.
+<p>参考文献<br />
+[1] I. Beltagy, M. E. Peters, 和 A. Cohan (2020) Longformer: 长文档 Transformer. arXiv 预印本 arXiv:2004.05150. 引用自: §1.<br />
+[2] Y. Bian 和 A. K. Somani (2021) 一种寻找具有全对属性的所有循环仲裁集的高效系统方法. 载于 2021 IEEE 国际大数据会议, 第 197–206 页. 引用自: 附录 B, §2.<br />
+[3] Y. Bian 和 A. K. Somani (2025) CQS-attention: 为无限长序列扩展标准注意力计算. IEEE Access. 引用自: §2.1.<br />
+[4] Y. Chen, S. Qian, H. Tang, X. Lai, Z. Liu, S. Han, 和 J. Jia (2023) Longlora: 长上下文大语言模型的高效微调. arXiv 预印本 arXiv:2309.12307. 引用自: §1.<br />
+[5] K. Choromanski, V. Likhosherstov, D. Dohan, X. Song, A. Gane, T. Sarlos, P. Hawkins, J. Davis, A. Mohiuddin, L. Kaiser, 等 (2020) 用 Performer 重新思考注意力. arXiv 预印本 arXiv:2009.14794. 引用自: §1.<br />
+[6] G. Comanici, E. Bieber, M. Schaekermann, I. Pasupat, N. Sachdeva, I. Dhillon, M. Blistein, O. Ram, D. Zhang, E. Rosen, 等 (2025) Gemini 2.5: 通过高级推理、多模态、长上下文和下一代代理能力推动前沿. arXiv 预印本 arXiv:2507.06261. 引用自: §1.<br />
+[7] T. Dao, D. Fu, S. Ermon, A. Rudra, 和 C. Ré (2022) Flashattention: 具有 IO 感知的快速且内存高效的精确注意力. 神经信息处理系统进展 35, 第 16344–16359 页. 引用自: §1.<br />
+[8] T. Dao (2023) Flashattention-2: 具有更好并行性和工作分区的更快注意力. arXiv 预印本 arXiv:2307.08691. 引用自: §1.<br />
+[9] J. Ding, S. Ma, L. Dong, X. Zhang, S. Huang, W. Wang, N. Zheng, 和 F. Wei (2023) Longnet: 将 Transformer 扩展到 1,000,000,000 个 token. arXiv 预印本 arXiv:2307.02486. 引用自: §1.<br />
+[10] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi, 等 (2025) Deepseek-r1: 通过强化学习激励 LLM 的推理能力. arXiv 预印本 arXiv:2501.12948. 引用自: §1.<br />
+[11] J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown, B. Chess, R. Child, S. Gray, A. Radford, J. Wu, 和 D. Amodei (2020) 神经语言模型的缩放定律. arXiv 预印本 arXiv:2001.08361. 引用自: §1.<br />
+[12] A. Katharopoulos, A. Vyas, N. Pappas, 和 F. Fleuret (2020) Transformer 是 RNN: 具有线性注意力的快速自回归 Transformer. 载于国际机器学习会议, 第 5156–5165 页. 引用自: §1.<br />
+[13] N. Kitaev, Ł. Kaiser, 和 A. Levskaya (2020) Reformer: 高效的 Transformer. arXiv 预印本 arXiv:2001.04451. 引用自: §1.<br />
+[14] C. W. Lam (1991) 寻找阶为 10 的有限射影平面. 美国数学月刊 98(4), 第 305–318 页. 引用自: 附录 B.<br />
+[15] F. J. MacWilliams, N. J. Sloane, 和 J. G. Thompson (1973) 论阶为 10 的射影平面的存在性. 组合理论杂志, A 辑 14(1), 第 66–78 页. 引用自: 附录 B.<br />
+[16] J. Qiu, H. Ma, O. Levy, W. Yih, S. Wang, 和 J. Tang (2020) 用于长文档理解的分块自注意力. 载于计算语言学协会发现: EMNLP 2020, 第 2555–2565 页. 引用自: §1.<br />
+[17] J. Singer (1938) 有限射影几何中的一个定理及其在数论中的应用. 美国数学学会汇刊 43(3), 第 377–385 页. 引用自: 附录 B.<br />
+[18] D. R. Stinson (2008) 组合设计: 构造与分析. ACM SIGACT 新闻 39(4), 第 17–21 页. 引用自: §2.<br />
+[19] The claude 3 模型家族: opus, sonnet, haiku. 注: https://www-cdn.anthropic.com/de8ba9b01c9ab7cbabf5c33b80b7bbc618857627/Model_Card_Claude_3.pdf 引用自: §1.<br />
+[20] J. H. Van Lint 和 R. M. Wilson (2001) 组合学课程. 剑桥大学出版社. 引用自: 附录 B, 附录 B.<br />
+[21] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkowit, L. Jones, A. N. Gomez, Ł. Kaiser, 和 I. Polosukhin (2017) 注意力就是你所需要的. 神经信息处理系统进展 30. 引用自: §1.<br />
+[22] S. Wang, B. Z. Li, M. Khabsa, H. Fang, 和 H. Ma (2020) Linformer: 具有线性复杂度的自注意力. arXiv 预印本 arXiv:2006.04768. 引用自: §1.<br />
+[23] G. Xiao, Y. Tian, B. Chen, S. Han, 和 M. Lewis (2023) 具有注意力汇聚的高效流式语言模型. arXiv 预印本 arXiv:2309.17453. 引用自: §1.<br />
+[24] A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, 等 (2025) Qwen3 技术报告. arXiv 预印本 arXiv:2505.09388. 引用自: §1.<br />
 [25] M. Zaheer, G. Guruganesh, K. A. Dubey, J. Ainslie, C. Alberti, S. Ontanon, P. Pham, A. Ravula, Q. Wang, L. Yang, 等 (2020) Big bird: 用于更长序列的 Transformer. 神经信息处理系统进展 33, 第 17283–17297 页. 引用自: §1.</p>
-
-<p>附录 A 补充材料
+<p>附录 A 补充材料<br />
 图 7：CQSA 反向传播。步骤 5 仅显示 Seq_0，因为所有子序列都相同。dNum ∈ ℝ^{N×D}，dDen ∈ ℝ^{N×1}</p>
-
-<p>算法 3 BuildSubseq(N, c, itr, I)
-1: 序列长度 N，块数 c，划分粒度 itr，兴趣集 I
-2: subseq_entries，其中每个条目具有 token_ids 和局部掩码 M_i
-3: subseq_entries ← [ ]
-4: for 每个仲裁元组 i = (q_1, …, q_{itr}) ∈ {0, …, c-1}^{itr} do
-5:     token_ids ← [0, 1, …, N-1]
-6:     label_history ← [ ], chunks_history ← [ ]
-7:     for t = 1 到 itr do
-8:         L ← |token_ids|
-9:         (starts, ends) ← BalancedChunkLayout(L, c)
-10:        chunks ← {(q_t + o) mod c | o ∈ I} (按 I 排序)
-11:        labels[ℓ] ← 局部索引 ℓ ∈ [0, L) 的块 id
-12:        gather_idx ← Concat([starts[u]:ends[u) ∀u ∈ chunks])
-13:        for s = 1 到 |label_history| do
-14:            label_history[s] ← label_history[s][gather_idx]
-15:        end for
-16:        将 labels[gather_idx] 追加到 label_history
-17:        token_ids ← token_ids[gather_idx]
-18:        将 (q_t, chunks) 追加到 chunks_history
-19:    end for
-20:    group_runs ← [ ]
-21:    for t = 1 到 itr do
-22:        (owner, chunks) ← chunks_history[t]
-23:        labels ← label_history[t]
-24:        for 每个 chunk ∈ chunks 且 chunk ≠ owner do
-25:            idx ← {ℓ | labels[ℓ] = chunk}
-26:            runs ← IndicesToRuns(idx)
-27:            if runs ≠ ∅ 则追加 runs 到 group_runs
-28:        end if
-29:    end for
-30: end for
-31: group_runs ← Unique(group_runs)
-32: M_i ← LocalMaskFromGroupRuns(|token_ids|, group_runs)
-33: 将 {quorum_idx = i, token_ids, mask = M_i} 追加到 subseq_entries
-34: end for
+<p>算法 3 BuildSubseq(N, c, itr, I)<br />
+1: 序列长度 N，块数 c，划分粒度 itr，兴趣集 I<br />
+2: subseq_entries，其中每个条目具有 token_ids 和局部掩码 M_i<br />
+3: subseq_entries ← [ ]<br />
+4: for 每个仲裁元组 i = (q_1, …, q_{itr}) ∈ {0, …, c-1}^{itr} do<br />
+5:     token_ids ← [0, 1, …, N-1]<br />
+6:     label_history ← [ ], chunks_history ← [ ]<br />
+7:     for t = 1 到 itr do<br />
+8:         L ← |token_ids|<br />
+9:         (starts, ends) ← BalancedChunkLayout(L, c)<br />
+10:        chunks ← {(q_t + o) mod c | o ∈ I} (按 I 排序)<br />
+11:        labels[ℓ] ← 局部索引 ℓ ∈ [0, L) 的块 id<br />
+12:        gather_idx ← Concat([starts[u]:ends[u) ∀u ∈ chunks])<br />
+13:        for s = 1 到 |label_history| do<br />
+14:            label_history[s] ← label_history[s][gather_idx]<br />
+15:        end for<br />
+16:        将 labels[gather_idx] 追加到 label_history<br />
+17:        token_ids ← token_ids[gather_idx]<br />
+18:        将 (q_t, chunks) 追加到 chunks_history<br />
+19:    end for<br />
+20:    group_runs ← [ ]<br />
+21:    for t = 1 到 itr do<br />
+22:        (owner, chunks) ← chunks_history[t]<br />
+23:        labels ← label_history[t]<br />
+24:        for 每个 chunk ∈ chunks 且 chunk ≠ owner do<br />
+25:            idx ← {ℓ | labels[ℓ] = chunk}<br />
+26:            runs ← IndicesToRuns(idx)<br />
+27:            if runs ≠ ∅ 则追加 runs 到 group_runs<br />
+28:        end if<br />
+29:    end for<br />
+30: end for<br />
+31: group_runs ← Unique(group_runs)<br />
+32: M_i ← LocalMaskFromGroupRuns(|token_ids|, group_runs)<br />
+33: 将 {quorum_idx = i, token_ids, mask = M_i} 追加到 subseq_entries<br />
+34: end for<br />
 35: return subseq_entries</p>
-
 <p>图 8：SDPA（基线）和 Stream-CQSA 的性能估计</p>
-
 <p>图 9：图 4 中均匀和混合调度方案的树结构。只有叶节点被计算以等价于根节点。中间灰色节点不需要计算。</p>
-
-<p>表 2：核心路径挂钟时间细分。通信时间 t_comm = t_{H2D fwd} + t_{D2H fwd} + t_{H2D bwd} + t_{D2H bwd}。杂项时间 t_mis = t_{wall-clock} - t_comm - t_core。t 的上标表示操作在主机 或设备 上执行。
-| itr | t^h_{M_i gen fwd} | t^d_{compute fwd} | t^h_{merge fwd} | t^h_{dNum dDen gen bwd} | t^d_{compute bwd} | t^h_{merge bwd} | t_comm | t_mis |
-|---|---|---|---|---|---|---|---|---|
-| 5 | 0.04% | 28.80% | 0.02% | 0.01% | 70.93% | 0.06% | 0.13% | 0.02% |
-| 6 | 0.09% | 28.53% | 0.05% | 0.03% | 70.81% | 0.14% | 0.31% | 0.05% |
-| 7 | 0.18% | 28.50% | 0.08% | 0.05% | 70.52% | 0.23% | 0.38% | 0.06% |
-| 8 | 0.39% | 28.15% | 0.18% | 0.12% | 69.53% | 0.52% | 0.96% | 0.14% |
+<p>表 2：核心路径挂钟时间细分。通信时间 t_comm = t_{H2D fwd} + t_{D2H fwd} + t_{H2D bwd} + t_{D2H bwd}。杂项时间 t_mis = t_{wall-clock} - t_comm - t_core。t 的上标表示操作在主机 或设备 上执行。<br />
+| itr | t^h_{M_i gen fwd} | t^d_{compute fwd} | t^h_{merge fwd} | t^h_{dNum dDen gen bwd} | t^d_{compute bwd} | t^h_{merge bwd} | t_comm | t_mis |<br />
+|---|---|---|---|---|---|---|---|---|<br />
+| 5 | 0.04% | 28.80% | 0.02% | 0.01% | 70.93% | 0.06% | 0.13% | 0.02% |<br />
+| 6 | 0.09% | 28.53% | 0.05% | 0.03% | 70.81% | 0.14% | 0.31% | 0.05% |<br />
+| 7 | 0.18% | 28.50% | 0.08% | 0.05% | 70.52% | 0.23% | 0.38% | 0.06% |<br />
+| 8 | 0.39% | 28.15% | 0.18% | 0.12% | 69.53% | 0.52% | 0.96% | 0.14% |<br />
 | 9 | 0.90% | 27.35% | 0.41% | 0.29% | 67.34% | 1.17% | 2.23% | 0.32% |</p>
-
-<p>附录 B CQS 兴趣集
+<p>附录 B CQS 兴趣集<br />
 兴趣集（I）是确保成对交互完全覆盖的关键。在表 3 中，我们列出了各种 l 值的示例兴趣集，并提供了使用 I=(0,1,3,9) 时 c=13 情况的完全覆盖视觉验证。</p>
-
 <p>兴趣集不是唯一的，它们成对出现 [2]。给定形式为 (0, 1, a_2, a_3, …, a_{l-1}) 的兴趣集，其配对兴趣集为 (0, 1, c+1-a_{l-1}, c+1-a_{l-2}, …, c+1-a_2)。例如，当 c=7 时，(0,1,3) 的配对兴趣集是 (0,1,5)。</p>
-
 <p>然而，兴趣集并不对所有 l 值都存在，例如表 3 中的 l=7 和 l=11。形式上，兴趣集对应于 λ=1 的 差集。 差集定义为 k 子集 D ⊆ G，其中 G 是阶为 v 的阿贝尔群，使得每个非零元素 g ∈ G 在差的多重集 (x-y : x, y ∈ D) 中恰好出现 λ 次 [20]。在我们的符号中，k=l 且 v=c。</p>
-
 <p>设 q=l-1，循环 (q^2+q+1, q+1, 1)-差集 的存在等价于存在阶为 q 且承认由长度为 q+1 的单个循环组成的循环自同构的射影平面 [20]。已知当 q 是素数幂时，这种差集通过 Singer 构造 [17] 存在。对于非素数幂的 q 值，存在性在很大程度上仍然未知，并且在某些情况下已被证明是不可能的。</p>
-
 <p>一个著名的例子是 Lam 问题，它询问是否存在阶为 10 的有限射影平面。基于早期的结构结果 [15]，这等价于确定 c=111 时是否存在大小为 l=11 的兴趣集。Lam 等人 [14] 通过穷举计算搜索以明确的否定答案解决了这个问题，该搜索涉及 1989 年 Cray-1 系统上的数百小时计算。</p>
-
-<p>表 3：更多 l 值的兴趣集
-| c | l | q | 素数幂 | I |
-|---|---|---|---|---|
-| 7 | 3 | 2 | 2^1 | (0,1,3) |
-| 13 | 4 | 3 | 3^1 | (0,1,3,9) |
-| 21 | 5 | 4 | 2^2 | (0,1,4,14,16) |
-| 31 | 6 | 5 | 5^1 | (0,1,3,8,12,18) |
-| 43 | 7 | 6 | NA | None |
-| 57 | 8 | 7 | 7^1 | (0,1,3,13,32,36,43,52) |
-| 73 | 9 | 8 | 2^3 | (0,1,3,7,15,31,36,54,63) |
-| 91 | 10 | 9 | 3^2 | (0,1,3,9,27,49,56,61,77,81) |
-| 111 | 11 | 10 | NA | None |
+<p>表 3：更多 l 值的兴趣集<br />
+| c | l | q | 素数幂 | I |<br />
+|---|---|---|---|---|<br />
+| 7 | 3 | 2 | 2^1 | (0,1,3) |<br />
+| 13 | 4 | 3 | 3^1 | (0,1,3,9) |<br />
+| 21 | 5 | 4 | 2^2 | (0,1,4,14,16) |<br />
+| 31 | 6 | 5 | 5^1 | (0,1,3,8,12,18) |<br />
+| 43 | 7 | 6 | NA | None |<br />
+| 57 | 8 | 7 | 7^1 | (0,1,3,13,32,36,43,52) |<br />
+| 73 | 9 | 8 | 2^3 | (0,1,3,7,15,31,36,54,63) |<br />
+| 91 | 10 | 9 | 3^2 | (0,1,3,9,27,49,56,61,77,81) |<br />
+| 111 | 11 | 10 | NA | None |<br />
 | 133 | 12 | 11 | 11^1 | (0,1,4,12,21,26,45,68,84,96,98,126) |</p>
-
 <p>图 10：c=13, I=(0,1,3,9) 的完全覆盖验证</p>
-
-<p>附录 C 最佳划分粒度分析
-我们的目标是找到最小化整个序列计算时间的最佳划分粒度（itr*）。因此，
-itr* = arg min_{itr} t_seq n_total / n_parallel  (8)
+<p>附录 C 最佳划分粒度分析<br />
+我们的目标是找到最小化整个序列计算时间的最佳划分粒度（itr<em>）。因此，<br />
+itr</em> = arg min_{itr} t_seq n_total / n_parallel  (8)<br />
 其中 t_seq(x) = Ax^2 + Bx + C，n_total = c^{itr}。</p>
-
-<p>当被授予相同的内存预算并假设注意力内核支持并行子序列计算时，为简单起见，我们假设 n_parallel = n_cap = Mem_max / Mem(x)。我们还假设内存复杂度是线性的，因此 Mem(x) = Dx + E。由于 x = N×(l/c)^{itr}，我们有 n_total = c^{itr} ≈ N^2/x^2 且
-x* = arg min_x 1/Mem_max × (Ax^2 + Bx + C) × N^2/x^2 × (Dx + E)  (9)
-设 f(x) = (Ax^2 + Bx + C)(Dx + E) / x^2  (10)
-对于我们实验的 A100 GPU，前向传播中 A=9.37×10^{-12}，B=9.92×10^{-7}，C=-3.51×10^{-2}，D=1.45×10^{-6}，E=8.42×10^{-2}，因此
-f(x) = 1.36×10^{-17}x + 3.26×10^{-8}/x - 2.96×10^{-3}/x^2 + 2.23×10^{-12}  (11)
-且 f'(x) = 1.36×10^{-17} - 3.26×10^{-8}/x^2 + 5.91×10^{-3}/x^3  (12)
+<p>当被授予相同的内存预算并假设注意力内核支持并行子序列计算时，为简单起见，我们假设 n_parallel = n_cap = Mem_max / Mem(x)。我们还假设内存复杂度是线性的，因此 Mem(x) = Dx + E。由于 x = N×(l/c)^{itr}，我们有 n_total = c^{itr} ≈ N^2/x^2 且<br />
+x* = arg min_x 1/Mem_max × (Ax^2 + Bx + C) × N^2/x^2 × (Dx + E)  (9)<br />
+设 f(x) = (Ax^2 + Bx + C)(Dx + E) / x^2  (10)<br />
+对于我们实验的 A100 GPU，前向传播中 A=9.37×10^{-12}，B=9.92×10^{-7}，C=-3.51×10^{-2}，D=1.45×10^{-6}，E=8.42×10^{-2}，因此<br />
+f(x) = 1.36×10^{-17}x + 3.26×10^{-8}/x - 2.96×10^{-3}/x^2 + 2.23×10^{-12}  (11)<br />
+且 f'(x) = 1.36×10^{-17} - 3.26×10^{-8}/x^2 + 5.91×10^{-3}/x^3  (12)<br />
 由于当 x &gt; 0 时 f'(x) &gt; 0，总体计算时间随子序列长度增加而增加，因此在相同的内存预算下，更大的划分粒度 itr 会减少总体计算时间。</p>
-
-<p>对于不支持子序列计算并行化的注意力内核，例如我们实验中的当前 FA 内核，我们固定 n_parallel=1，目标函数简化为：
-x* = arg min_x (Ax^2 + Bx + C) × N^2/x^2  (13)
-且 g(x) = (Ax^2 + Bx + C)/x^2 = 9.92×10^{-7}/x - 3.51×10^{-2}/x^2 + 9.37×10^{-12}  (14)
+<p>对于不支持子序列计算并行化的注意力内核，例如我们实验中的当前 FA 内核，我们固定 n_parallel=1，目标函数简化为：<br />
+x* = arg min_x (Ax^2 + Bx + C) × N^2/x^2  (13)<br />
+且 g(x) = (Ax^2 + Bx + C)/x^2 = 9.92×10^{-7}/x - 3.51×10^{-2}/x^2 + 9.37×10^{-12}  (14)<br />
 不幸的是，它唯一的临界点 x ≈ 70,766 在 x &gt; 0 时是全局最大值。当 N=1B 时，相应的 itr ≈ 11.28。换句话说，当 1 ≤ itr ≤ 11 时，总体计算时间随 itr 增加而增加，作为更少内存的权衡。然而，当 itr ≥ 12 时，总体计算时间开始随着更少的内存消耗而减少。</p>
-
-<p>反向传播的最佳划分粒度分析具有所有相同的公式，代入 f(x) 和 g(x) 的系数为 A=2.38×10^{-11}，B=4.81×10^{-7}，C=8.84×10^{-2}，D=2.88×10^{-6}，E=1.36×10^{-2}。f(x) 的全局最小值在 x* ≈ 65,894 时取得，相应的 itr* ≈ 11.36。另一方面，g(x) 在 x &gt; 0 上严格递减。</p>
-
+<p>反向传播的最佳划分粒度分析具有所有相同的公式，代入 f(x) 和 g(x) 的系数为 A=2.38×10^{-11}，B=4.81×10^{-7}，C=8.84×10^{-2}，D=2.88×10^{-6}，E=1.36×10^{-2}。f(x) 的全局最小值在 x<em> ≈ 65,894 时取得，相应的 itr</em> ≈ 11.36。另一方面，g(x) 在 x &gt; 0 上严格递减。</p>
 <p>总之，拥有最大化内存效率和最小化总体计算时间的最佳划分粒度的机会取决于注意力内核设计和执行计算的硬件。</p>
-
-<p>附录 D 反向传播中的链式法则推导
+<p>附录 D 反向传播中的链式法则推导<br />
 给定上游梯度 dO = ∂L/∂O，其中 L 是损失，目标是计算 dQ、dK 和 dV。</p>
-
-<p>对于子序列 i，前向传播生成：
-R_i = α(Q_i K_i^⊤)    P_i = exp(R_i) ⊙ M_i    Num_i = P_i V_i    Den_i = ∑_j (P_i)_{:,j}  (15)
+<p>对于子序列 i，前向传播生成：<br />
+R_i = α(Q_i K_i^⊤)    P_i = exp(R_i) ⊙ M_i    Num_i = P_i V_i    Den_i = ∑<em>j (P_i)</em>{:,j}  (15)<br />
 其中 M_i 是 CQS 掩码。</p>
-
-<p>全局合并生成：
-Num = ∑_{i∈S} scatter(O_i)    Den = ∑_{i∈S} scatter(S_i)    O = Num/Den  (16)
-所以我们有以下偏导数：
-∂O/∂Num = 1/Den    ∂O/∂Den = -Num/Den^2  (17)
-下面，我们明确写出维度，为简单起见省略批和头维度。从全局视角，我们有：
-dO[n,d] = ∂L/∂O[n,d]  (18)
-这里 dO[n,d] 是来自 dO ∈ ℝ^{N×D} 的标量。接下来，我们有：
-dNum[n,d] = ∂L/∂Num[n] = ∂L/∂O[n,d] × ∂O[n,d]/∂Num[n,d] = dO[n,d]/Den[n]  (19)
-dDen[n] = ∂L/∂Den[n] = ∂L/∂O[n,d] × ∂O[n,d]/∂Den[n] = ∑_d dO[n,d](-Num[n,d]/Den[n]^2) = -∑_d dO[n,d]Num[n,d]/Den[n]^2  (20)
-公式 19 和 20 的紧凑版本如下：
-dNum = dO/Den    dDen = -∑_d dO_d · Num_d / Den^2  (21)
+<p>全局合并生成：<br />
+Num = ∑<em>{i∈S} scatter(O_i)    Den = ∑</em>{i∈S} scatter(S_i)    O = Num/Den  (16)<br />
+所以我们有以下偏导数：<br />
+∂O/∂Num = 1/Den    ∂O/∂Den = -Num/Den^2  (17)<br />
+下面，我们明确写出维度，为简单起见省略批和头维度。从全局视角，我们有：<br />
+dO[n,d] = ∂L/∂O[n,d]  (18)<br />
+这里 dO[n,d] 是来自 dO ∈ ℝ^{N×D} 的标量。接下来，我们有：<br />
+dNum[n,d] = ∂L/∂Num[n] = ∂L/∂O[n,d] × ∂O[n,d]/∂Num[n,d] = dO[n,d]/Den[n]  (19)<br />
+dDen[n] = ∂L/∂Den[n] = ∂L/∂O[n,d] × ∂O[n,d]/∂Den[n] = ∑_d dO<a href="-Num[n,d]/Den[n]^2">n,d</a> = -∑_d dO[n,d]Num[n,d]/Den[n]^2  (20)<br />
+公式 19 和 20 的紧凑版本如下：<br />
+dNum = dO/Den    dDen = -∑_d dO_d · Num_d / Den^2  (21)<br />
 现在我们切换到子序列 i 的视角，设其长度为 L，我们从全局 dNum ∈ ℝ^{N×D} 和 dDen ∈ ℝ^N 中收集 L 个 token，因此 dNum_i ∈ ℝ^{L×D}，dDen_i ∈ ℝ^L。</p>
-
-<p>最后，我们有以下计算：
-dV_i[m,d] = ∑_l P_i[l,m] dNum_i[l,d]  (22)
-dP_i[l,m] = ∑_d dNum_i[l,d] V_i[m,d] + dDen_i[l]  (23)
-dR_i[l,m] = dP_i[l,m] · P_i[l,m]  (24)
-dQ_i[l,d] = α ∑_m dR_i[l,m] K_i[m,d]  (25)
-dK_i[l,d] = α ∑_l dR_i[l,m] K_i[l,d]  (26)
-公式 22 到 26 的紧凑版本如下：
-dV_i = P_i^⊤ dNum_i  (27)
-dP_i = dNum_i V_i^⊤ + dDen_i 1^⊤  (28)
-dR_i = dP_i ⊙ P_i  (29)
-dQ_i = α dR_i K_i  (30)
-dK_i = α dR_i^⊤ Q_i  (31)
+<p>最后，我们有以下计算：<br />
+dV_i[m,d] = ∑_l P_i[l,m] dNum_i[l,d]  (22)<br />
+dP_i[l,m] = ∑_d dNum_i[l,d] V_i[m,d] + dDen_i[l]  (23)<br />
+dR_i[l,m] = dP_i[l,m] · P_i[l,m]  (24)<br />
+dQ_i[l,d] = α ∑_m dR_i[l,m] K_i[m,d]  (25)<br />
+dK_i[l,d] = α ∑_l dR_i[l,m] K_i[l,d]  (26)<br />
+公式 22 到 26 的紧凑版本如下：<br />
+dV_i = P_i^⊤ dNum_i  (27)<br />
+dP_i = dNum_i V_i^⊤ + dDen_i 1^⊤  (28)<br />
+dR_i = dP_i ⊙ P_i  (29)<br />
+dQ_i = α dR_i K_i  (30)<br />
+dK_i = α dR_i^⊤ Q_i  (31)<br />
 最后一步是将所有 dQ_i, dK_i, dV_i ∈ ℝ^{L×D} 合并为 dQ, dK, dV ∈ ℝ^{N×D}。</p>
         </div>
         

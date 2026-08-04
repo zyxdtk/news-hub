@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,3419 +183,3419 @@
         </div>
         
         <div class="fulltext-content">
-<p>TiPToP: A Modular Open-Vocabulary Planning System for Robotic Manipulation
-William Shen
-1*
-,
-Nishanth Kumar
-1*
-,
-Sahit Chintalapudi
-1
-,
-Jie Wang
-2
-,
-Christopher Watson
-2
-,
-Edward Hu
-2
-,
-Jing Cao
-1
-,
-Dinesh Jayaraman
-2
-,
-Leslie Pack Kaelbling
-1
-,
-Tomás Lozano-Pérez
-1
-Abstract
-We present TiPToP, an extensible modular system that combines pretrained vision foundation models with an existing Task and Motion Planner (TAMP) to solve multi-step manipulation tasks directly from input RGB images and natural-language instructions.
-Our system aims to be simple and easy-to-use: it can be installed and run on a standard DROID setup in under one hour and adapted to new embodiments with minimal effort.
-We evaluate TiPToP — which requires zero robot data — over 28 tabletop manipulation tasks in simulation and the real world and find it matches or outperforms
-π
-0.5
-​
--DROID
-\pi_{0.5}\text{-DROID}
-, a vision-language-action (VLA) model fine-tuned on 350 hours of embodiment-specific demonstrations.
-TiPToP’s modular architecture enables us to analyze the system’s failure modes at the component level.
-We analyze results from an evaluation of 173 trials and identify directions for improvement.
-We release TiPToP open-source to further research on modular manipulation systems and tighter integration between learning and planning.
-Project website and code:
-tiptop-robot.github.io
-*
-*
-footnotetext:
-Equal contribution. Correspondence to
-{willshen,njk}@mit.edu
-I
-Introduction
-Figure 0
-:
-TiPToP System Overview.
-TiPToP takes a stereo RGB image pair and a natural language instruction
-ℒ
-\mathcal{L}
-as input and outputs robot joint trajectories with gripper commands. (a) The perception module constructs an object-centric 3D scene representation using learned depth estimation, grasp prediction, object detection, and segmentation. (b) The planning module uses GPU-parallelized TAMP (cuTAMP) to find feasible manipulation plans. (c) The execution module tracks the planned trajectory using a joint impedance controller.
-A longstanding goal of robotics research has been to build a manipulation system that “just works” out-of-the-box: one that can be deployed on arbitrary robots and perform tasks specified in natural language on arbitrary objects, without requiring object, environment, or embodiment-specific tuning.
-Vision-Language-Action (VLA) models such as
-π
-0.5
-\pi_{0.5}
-[
-45
-]
-and OpenVLA
-[
-30
-]
-offer an appealing input-output specification — natural language and camera images in, robot actions out — but require substantial training data and lack reliable cross-embodiment generality. On the other hand, Task and Motion Planning (TAMP)
-[
-27
-,
-19
-,
-12
-]
-offers a structured framework for multi-step manipulation, jointly reasoning over discrete action sequences and continuous geometric constraints. There has been substantial research demonstrating TAMP in the real world
-[
-51
-,
-21
-,
-12
-,
-48
-]
-, but these systems lack generality and have generally relied on implementations that are tightly coupled to specific hardware, perception, and control stacks, making them difficult to access and build upon.
-We introduce
-TiPToP
-(TiPToP is a Planner That just works on Pixels), a modular planning-based manipulation system built on recent advances in vision and language foundation models, learned grasp prediction, and GPU-accelerated TAMP.
-TiPToP accepts the same inputs as VLAs — natural language and camera images — but requires no data collection or training, instead leveraging pretrained foundation models for perception and GPU-accelerated TAMP for planning at inference time.
-Our primary contribution is a complete manipulation system that can be installed and deployed on supported
-1
-1
-1
-The embodiment must possess a camera, gripper, URDF, and trajectory tracking controller to be supported.
-robot embodiments in under one hour with only camera calibration. Its modular architecture allows individual components to be improved or replaced independently as better foundation models become available, and when failures occur, they can be traced to specific modules for targeted debugging.
-To validate TiPToP’s accessibility and generalizability, we sent our code to an external evaluation team not involved in its development. This team independently deployed TiPToP on the DROID hardware platform
-[
-29
-]
-and conducted a systematic comparison against
-π
-0.5
-​
--DROID
-\pi_{0.5}\text{-DROID}
-[
-7
-]
-, a state-of-the-art VLA fine-tuned on 350 hours of embodiment-specific demonstrations. We additionally performed similar comparisons on our own hardware and in simulation. Results show that TiPToP achieves comparable or better success rates across diverse tasks, and we find that the two systems fail in complementary ways. We provide a detailed failure analysis and use it to identify concrete directions for improving individual modules. We further demonstrate deployment on UR5e and Trossen WidowX AI robot arms to validate ease of deployment on new embodiments.
-We release TiPToP as open-source software, with support for both real-world deployments and development in simulation
-[
-41
-]
-, to provide an accessible foundation for future research into planning-based manipulation and to facilitate direct comparison and integration with end-to-end learned approaches.
-II
-Related Work
-Foundation Models for Perception.
-Recent advances in vision foundation models have enabled robots to perceive diverse objects and scenes without task-specific training data.
-Stereo depth estimation models
-[
-55
-,
-61
-,
-24
-]
-predict dense depth maps from RGB image pairs. Foundation models for grasp generation
-[
-39
-,
-53
-,
-63
-]
-predict 6-DoF grasp poses from point clouds. SAM
-[
-31
-]
-and SAM-2
-[
-46
-]
-provide promptable segmentation from bounding boxes or points, enabling precise object boundary delineation. VLMs
-[
-23
-,
-15
-,
-4
-,
-43
-]
-combine vision and language understanding to perform open-vocabulary object detection, visual reasoning, and language grounding, providing semantic scene understanding and enabling robots to interpret natural language instructions.
-SceneComplete
-[
-1
-]
-similarly composes perceptual foundation models to build 3D scene representations from 2D observations. TiPToP leverages this idea and integrates grasp generation and a VLM with a TAMP system to enable full manipulation planning.
-Vision-Language-Action Models.
-Building on vision-language foundation models, recent work has scaled end-to-end learning for robotic manipulation by training large models on diverse robot data. Many VLAs leverage VLM backbones to enable language-conditioned control
-[
-9
-,
-30
-,
-6
-,
-22
-]
-and demonstrate that transformer-based policies trained on large datasets (e.g., the Open X-Embodiment dataset
-[
-42
-]
-) can generalize across tasks and objects.
-π
-0
-\pi_{0}
-[
-7
-]
-introduced a flow-matching architecture, which was subsequently extended in
-π
-0.5
-\pi_{0.5}
-[
-45
-]
-via co-training on heterogeneous data sources to improve generalization. We compare against
-π
-0.5
-\pi_{0.5}
--DROID, a variant fine-tuned on 350 hours of DROID demonstrations.
-While these approaches can be applied across embodiments, show impressive generalization over scenes and objects, and can solve challenging tasks directly from pixels, they require substantial training data and are trained end-to-end, making it difficult to diagnose failures.
-By contrast, TiPToP’s modular architecture requires no embodiment-specific training and explicitly reasons about geometry and task structure.
-Task and Motion Planning.
-TAMP algorithms jointly solve discrete task planning and continuous motion planning problems
-[
-27
-,
-19
-]
-, enabling the satisfaction of constraints involving both high-level action sequencing and low-level geometric feasibility.
-Common approaches use sampling-based methods
-[
-20
-,
-21
-]
-or optimization
-[
-57
-,
-56
-]
-to identify the continuous values that satisfy the constraints.
-However, most TAMP systems require detailed object geometries, limiting their application primarily to environments in which the geometries are given
-a priori
-.
-The work most closely related to ours is by Curtis et al.
-[
-12
-]
-, who integrated learned perception modules for property and affordance estimation with PDDLStream
-[
-21
-]
-to enable long-horizon manipulation of unknown objects in the real world.
-Our system differs in several critical ways: first, we use cuTAMP
-[
-48
-]
-, a GPU-parallelized optimization-based TAMP algorithm, which provides significantly improved computational efficiency compared to sampling-based approaches like PDDLStream and search-then-sample bilevel planners
-[
-51
-,
-11
-]
-; second, we leverage much larger foundation models trained on significantly more data than the perception models used in previous work.
-Modular Robotic Planning Systems.
-Modular approaches to robot planning decompose manipulation into distinct components such as perception, high-level planning, and low-level control.
-Early symbolic systems like STRIPS
-[
-17
-]
-, applied to the Shakey robot
-[
-40
-]
-, demonstrated the power of symbolic plans but required detailed world models and controlled environments.
-More recently, neurosymbolic approaches use LLMs to sequence pre-trained skills
-[
-2
-,
-26
-]
-, generate robot programs
-[
-35
-,
-50
-]
-, construct 3D value maps
-[
-25
-]
-, or combine VLMs with manipulation skills
-[
-37
-]
-.
-Other work integrates learning with TAMP: LLM
-3
-[
-59
-]
-uses LLMs to propose task plans with motion failure reasoning, PRoC3S
-[
-13
-]
-combines LLMs with continuous constraint satisfaction, VLM-TAMP
-[
-62
-]
-feeds VLM-generated subgoals to a task and motion planner, and OWL-TAMP
-[
-33
-]
-uses a VLM to infer constraints passed to a TAMP system.
-Compared to LLM-based systems that sequence discrete skills, TiPToP jointly optimizes discrete task plans and continuous collision-free trajectories, which is important when constraints on continuous parameters impact the feasibility of skill sequences.
-III
-Problem Setting
-We consider language-conditioned manipulation: given a natural language instruction
-ℒ
-\mathcal{L}
-and a robot with known kinematics, produce actions that accomplish the task. At each timestep
-t
-t
-, the policy
-π
-\pi
-receives RGB observations
-𝐨
-t
-\mathbf{o}_{t}
-from one or more cameras, the current joint configuration
-q
-t
-q_{t}
-, and outputs an action
-a
-t
-a_{t}
-. That is,
-a
-t
-=
-π
-​
-(
-𝐨
-t
-,
-q
-t
-∣
-ℒ
-)
-a_{t}=\pi(\mathbf{o}_{t},\,q_{t}\mid\mathcal{L})
-.
-The two systems we compare instantiate this specification very differently:
-III-A
-π
-0.5
-\pi_{0.5}
--DROID
-π
-0.5
-\pi_{0.5}
--DROID runs at 15 Hz. At every timestep it observes
-𝐨
-t
-=
-(
-I
-t
-wrist
-,
-I
-t
-ext
-)
-\mathbf{o}_{t}=(I^{\text{wrist}}_{t},I^{\text{ext}}_{t})
-, monocular RGB images from the wrist camera and external camera, respectively, along with the current joint and gripper positions
-(
-q
-t
-,
-g
-t
-)
-(q_{t},g_{t})
-. It outputs chunks of 15 actions
-{
-a
-t
-}
-=
-(
-q
-˙
-t
-:
-t
-+
-15
-,
-g
-t
-:
-t
-+
-15
-)
-\{a_{t}\}=(\dot{q}_{t:t+15},g_{t:t+15})
-, where
-q
-˙
-\dot{q}
-is a joint velocity command and
-g
-∈
-{
-0
-,
-1
-}
-g\in\{0,1\}
-is the binary gripper action.
-III-B
-TiPToP
-TiPToP implements the policy using a
-planner
-: it observes the scene
-once
-at
-t
-=
-0
-t{=}0
-from a
-calibrated
-wrist camera at a capture pose, which we assume provides a good view of the workspace. The observation
-𝐨
-0
-=
-(
-I
-0
-left
-,
-I
-0
-right
-)
-\mathbf{o}_{0}=(I^{\text{left}}_{0},I^{\text{right}}_{0})
-is a stereo RGB image pair with known intrinsics
-K
-K
-, camera-to-end-effector extrinsics
-T
-cam
-ee
-T_{\text{cam}}^{\text{ee}}
-, and stereo baseline
-b
-b
-. From this single observation, it produces a complete timed trajectory
-a
-0
-=
-{
-(
-q
-t
-,
-q
-˙
-t
-,
-g
-t
-)
-}
-t
-=
-0
-T
-a_{0}=\{(q_{t},\dot{q}_{t},g_{t})\}_{t=0}^{T}
-, where
-q
-t
-q_{t}
-is a joint configuration,
-q
-˙
-t
-\dot{q}_{t}
-a joint velocity, and
-g
-t
-∈
-{
-0
-,
-1
-}
-g_{t}\in\{0,1\}
-a binary gripper action. This plan is then executed open-loop with no further visual observations.
-Modular Architecture.
-TiPToP is composed of three modules (Figure
-‣
-I
-):
-(1) the
-perception module
-(§
-IV
-) takes
-𝐨
-0
-\mathbf{o}_{0}
-and
-ℒ
-\mathcal{L}
-and constructs an object-centric 3D scene representation with per-object meshes, candidate grasps, and a symbolic goal
-𝒢
-\mathcal{G}
-;
-(2) the
-planning module
-(§
-V
-) uses cuTAMP
-[
-48
-]
-to search over plan skeletons and optimize continuous parameters (grasp poses, placement poses, collision-free trajectories) to find a feasible plan;
-and (3) the
-execution module
-(§
-VI
-) tracks the planned trajectory open-loop using a joint impedance controller.
-Illustrative Example.
-We illustrate TiPToP in the DROID setup (Franka FR3 with a ZED Mini stereo camera mounted on the wrist) in the following scenario: the robot is given the instruction
-“serve peanut butter crackers on each tray”
-and the scene in Figure
-‣
-I
-.
-This task requires identifying peanut butter crackers among visually similar snacks (Goldfish, Cheez-Its), requiring cultural understanding and visual knowledge to distinguish them.
-Additionally, a Sprite can obstructs all grasps on the left peanut butter cracker package, complicating depth estimation due to its reflective surface and requiring the robot to move the can out of the way before grasping the crackers.
-Figure 1
-:
-Perception Module.
-(a) Depth map predicted by FoundationStereo with sharp object boundaries. (b) Grasps predicted by M2T2 on the scene point cloud (colors correspond to grasp confidences). (c) Labeled object bounding boxes and symbolic goal
-𝒢
-\mathcal{G}
-predicted by Gemini (
-On
-​
-(
-a
-,
-b
-)
-\text{On}(a,b)
-specifies that object
-a
-a
-should be placed on object or surface
-b
-b
-).
-IV
-Perception Module
-The perception module takes the initial observation
-𝐨
-0
-\mathbf{o}_{0}
-, joint configuration
-q
-0
-q_{0}
-, and the language instruction
-ℒ
-\mathcal{L}
-as input to produce an object-centric 3D scene representation consisting of per-object meshes with candidate grasps, along with symbolic goal propositions that ground
-ℒ
-\mathcal{L}
-into the desired relations between objects. Two branches run in parallel: the
-3D Vision Branch
-(§
-IV-A
-) extracts scene geometry and grasps, while the
-Semantic Branch
-(§
-IV-B
-) identifies objects and grounds the task goal. Their outputs are then merged (§
-IV-C
-).
-IV-A
-3D Vision Branch
-Depth Estimation.
-We use FoundationStereo
-[
-61
-]
-, a foundation model for stereo depth estimation, to predict a dense depth map
-D
-D
-from the stereo RGB pair
-𝐨
-0
-=
-(
-I
-0
-left
-,
-I
-0
-right
-)
-\mathbf{o}_{0}=(I^{\text{left}}_{0},I^{\text{right}}_{0})
-from the wrist camera, the camera intrinsics
-K
-K
-, and stereo baseline
-b
-b
-.
-D
-D
-is aligned to the left image
-I
-0
-left
-I^{\text{left}}_{0}
-.
-We found that FoundationStereo produces cleaner depth maps than the ZED camera’s proprietary stereo matching, particularly on transparent, specular, and textureless surfaces (Figure
-1
-a).
-Unprojecting depth to 3D.
-We unproject the depth map
-D
-D
-into a 3D point cloud using the camera intrinsics
-K
-K
-, then transform the points to the world frame by composing the camera-to-end-effector extrinsics
-T
-cam
-ee
-T_{\text{cam}}^{\text{ee}}
-with the forward kinematics (FK) at the capture joint configuration
-q
-0
-q_{0}
-:
-𝐩
-world
-=
-T
-ee
-world
-​
-T
-cam
-ee
-​
-𝐩
-cam
-where
-​
-T
-ee
-world
-=
-FK
-​
-(
-q
-0
-)
-.
-\mathbf{p}^{\text{world}}=T_{\text{ee}}^{\text{world}}\,T_{\text{cam}}^{\text{ee}}\,\mathbf{p}^{\text{cam}}\quad\text{where}\ T_{\text{ee}}^{\text{world}}=\text{FK}(q_{0}).\vskip-2.5pt
-This produces a dense point cloud of the scene in the world frame
-𝐩
-world
-\mathbf{p}^{\text{world}}
-(Figure
-1
-b).
-Grasp Generation.
-We use M2T2
-[
-63
-]
-to predict ranked 6-DoF grasp poses from the full scene point cloud.
-Object-to-grasp association is performed in §
-IV-C
-using segmentation masks from the
-Semantic Branch
-(§
-IV-B
-).
-Because M2T2 reasons over the full scene, its predictions are informed by surrounding geometry, though they are not guaranteed to be collision-free.
-In our illustrative example, M2T2 generates candidate grasps on the trays, one cracker package, and the soda can (Figure
-1
-b).
-Note that some objects may not have predicted grasps; in such cases, we fall back to a heuristic 4-DoF grasp sampler in the
-planning module
-(§
-V
-).
-Having a large set of scene-level candidate grasps at this stage allows the planner to later select appropriate grasps based on task requirements and collision constraints.
-We also tried GraspGen
-[
-39
-]
-, but it requires segmented object point clouds and does not consider scene geometry for predicting grasps, requiring additional overhead for collision checking. We also considered AnyGrasp
-[
-16
-]
-, but its license application process complicates out-of-the-box deployment.
-IV-B
-Semantic Branch
-Object Detection and Goal Grounding.
-We query Gemini Robotics-ER 1.5
-[
-22
-]
-, a VLM, once to jointly extract: (1) labels and 2D bounding boxes for objects in the scene, and (2) a symbolic goal
-𝒢
-\mathcal{G}
-expressed as a conjunction of
-predicates
-(i.e., logical relations betweeen objects) over detected objects. We currently support one predicate,
-On
-​
-(
-a
-,
-b
-)
-\texttt{On}(a,b)
-, though we demonstrate defining additional predicates for new skills in §
-VII-D
-.
-The VLM leverages its common-sense reasoning and cultural knowledge to ground references in the instruction to specific objects and assign task-relevant labels.
-In our example with
-ℒ
-=
-\mathcal{L}=
-“serve peanut butter crackers on each tray”, the VLM correctly identifies that “peanut butter crackers” refers to the two Lance cracker packages among other snacks (Goldfish crackers, Cheez-It crackers, nuts), and reasons that “each tray” requires placing one package on each to produce
-𝒢
-\mathcal{G}
-(Figure
-1
-c).
-Object Segmentation.
-For each detected bounding box, we use SAM-2
-[
-46
-]
-to generate a pixel-level segmentation mask from
-I
-0
-left
-I^{\text{left}}_{0}
-.
-These masks are combined with the scene point cloud in §
-IV-C
-to extract per-object geometry and assign grasps to specific objects.
-IV-C
-Combining Outputs
-We combine scene-level geometry and candidate grasps from the
-3D Vision Branch
-with object identities and segmentation masks from the Semantic Branch into an object-centric 3D scene representation, producing per-object meshes with assigned grasps for the planning module.
-Table Detection.
-We apply RANSAC
-[
-18
-]
-to the scene point cloud
-𝐩
-world
-\mathbf{p}^{\text{world}}
-to fit the dominant planar surface, which we assume to be the table. This assumption could be relaxed by detecting multiple support surfaces (e.g., tables, floors, cabinets) via semantic segmentation or multi-plane fitting.
-Per-Object Mesh Reconstruction.
-We use the segmentation mask of each detected object to extract the corresponding points from
-𝐩
-world
-\mathbf{p}^{\text{world}}
-, project them downward along the
-z
-z
--axis to the object’s lowest observed point, and compute the convex hull to form a watertight mesh.
-We project to each object’s own lowest point rather than to the table, as objects may rest on each other.
-Since we observe from a single viewpoint, the convex hull typically over-approximates object geometry, which is preferable for collision checking.
-Grasp-to-Object Assignment.
-Each grasp predicted by M2T2 is assigned to the nearest object by querying its contact point against a KDTree
-[
-5
-]
-built from all object point clouds.
-Grasps whose nearest object point exceeds a distance threshold are discarded, as these typically arise from point cloud noise or partial observability.
-V
-Planning Module
-TiPToP uses cuTAMP
-[
-48
-]
-, a GPU-parallelized Task and Motion Planning algorithm, to search over discrete
-plan skeletons
-and optimize continuous parameters (grasp poses, placement poses, trajectories) to produce a full manipulation plan.
-cuTAMP operates primarily over pick-and-place primitives, though it can be extended to support additional primitives such as wiping (§
-VII-D
-).
-We chose cuTAMP for its fast solution times on a single GPU and its ease of installation, and made several extensions to improve its real-world deployability (Appendix
--A
-).
-Plan Skeleton Enumeration.
-Given the symbolic goal
-𝒢
-\mathcal{G}
-, cuTAMP uses a PDDL-style symbolic planner
-[
-38
-]
-to enumerate candidate plan skeletons — sequences of symbolic actions without committed continuous parameters. For example:
-[
-\displaystyle[
-MoveFree
-​
-(
-q
-0
-,
-?
-​
-q
-1
-,
-?
-​
-τ
-1
-)
-,
-Pick
-​
-(
-cracker
-,
-?
-​
-g
-,
-p
-0
-,
-?
-​
-q
-1
-)
-,
-\displaystyle{\texttt{MoveFree}}(q_{0},{?q_{1}},{?\tau_{1}}),\;{\texttt{Pick}}({\texttt{cracker}},{?g},p_{0},{?q_{1}}),
-MoveHolding
-​
-(
-cracker
-,
-?
-​
-g
-,
-?
-​
-q
-1
-,
-?
-​
-q
-2
-,
-?
-​
-τ
-2
-)
-,
-\displaystyle{\texttt{MoveHolding}}({\texttt{cracker}},{?g},{?q_{1}},{?q_{2}},{?\tau_{2}}),\;
-Place
-(
-cracker
-,
-?
-g
-,
-?
-p
-1
-,
-tray
-,
-?
-q
-2
-)
-]
-\displaystyle{\texttt{Place}}({\texttt{cracker}},{?g},{?p_{1}},{\texttt{tray}},{?q_{2}})]
-where
-?
-​
-g
-?g
-,
-?
-​
-p
-1
-?p_{1}
-,
-?
-​
-q
-i
-?q_{i}
-, and
-?
-​
-τ
-i
-?\tau_{i}
-are unbound continuous parameters (grasp pose, placement pose, robot configurations, and trajectories, respectively).
-The planner generates multiple skeletons that differ in action ordering and, crucially, may include auxiliary actions to move obstructing objects. In our example (Figure
-‣
-I
-), shorter skeletons pick and place the two cracker packages directly onto the trays, while longer skeletons additionally move the soda can out of the way before grasping the obstructed crackers.
-Particle Initialization.
-For each skeleton, cuTAMP initializes a large batch of candidate solutions, called
-particles
-, by sampling the continuous parameters left unbound by the skeleton: grasp poses (from M2T2 predictions or a heuristic top-down grasp sampler), placement poses on target surfaces, and robot configurations via inverse kinematics. For multi-step problems, these initial samples are generally infeasible as they may violate collision, stability, or kinematic constraints.
-Particle Optimization.
-cuTAMP then ranks skeletons by a heuristic over the feasibility of their initialized particles.
-For each skeleton, cuTAMP performs differentiable optimization over all particles simultaneously, refining placement poses and robot configurations to jointly satisfy collision avoidance, stable placement, and kinematic feasibility constraints. The optimization terminates once sufficient particles satisfy all constraints, moving to the next skeleton otherwise. In our example, skeletons that attempt to pick the left crackers package directly fail optimization because the soda can obstructs all feasible grasps. cuTAMP finds satisfying particles on a longer skeleton that first moves the soda can elsewhere on the table.
-Motion Planning.
-For each satisfying particle, cuTAMP invokes cuRobo
-[
-52
-]
-, a GPU-accelerated motion planner, to solve for the remaining trajectory parameters (
-?
-​
-τ
-i
-?\tau_{i}
-) as collision-free, time-parameterized trajectories. The final output is a manipulation plan
-{
-(
-q
-t
-,
-q
-˙
-t
-,
-g
-t
-)
-}
-t
-=
-0
-T
-\{(q_{t},\dot{q}_{t},g_{t})\}_{t=0}^{T}
-: joint positions, joint velocities, and gripper commands.
-VI
-Execution Module
-The execution module tracks a planned trajectory
-{
-(
-q
-t
-,
-q
-˙
-t
-,
-g
-t
-)
-}
-t
-=
-0
-T
-\{(q_{t},\dot{q}_{t},g_{t})\}_{t=0}^{T}
-on the robot. Accurately tracking trajectories is crucial, since the planner assumes consistency between the robot’s joint-space execution and the resulting scene configuration. Even sub-centimeter tracking errors can cause grasps or placements to fail.
-We implemented our own joint-space impedance controller for Franka arms (Appendix
--B
-), because existing open-source controllers, including DROID’s default Polymetis controller, were unable to track timed trajectories sufficiently precisely.
-TiPToP does not monitor execution or replan based on execution-time observations (i.e., it is open-loop with respect to visual observations).
-This succeeds when the world is static and trajectories are tracked accurately, but fails when objects move unexpectedly or grasps slip.
-VII
-Experiments
-Our experiments are designed to answer the following questions:
-•
-Q1.
-To what extent is TiPToP capable of satisfying manipulation tasks specified with open-ended language expressions and involving everyday objects, especially when compared to a state-of-the-art VLA?
-•
-Q2.
-How does TiPToP’s time taken for task success compare to a state-of-the-art VLA?
-•
-Q3.
-What are the primary failure modes of TiPToP?
-VII-A
-Experimental Setup
-TiPToP
-π
-0.5
-\pi_{0.5}
--DROID
-Scene
-SR
-TP
-SR
-TP
-Simple
-Cube
-→
-\to
-bowl (sim)
-5/10
-72.5%
-8/10
-90%
-Can
-→
-\to
-mug (sim)
-9/10
-97.5%
-2/10
-50%
-Banana
-→
-\to
-bin (sim)
-0/10
-70%
-9/10
-97.5%
-Marker
-→
-\to
-tray
-3/5
-80%
-5/5
-100%
-Crackers
-→
-\to
-tray
-†
-5/5
-100%
-3/5
-60%
-22/40
-84.0%
-27/40
-79.5%
-Distractor
-Meat can
-→
-\to
-sugar box (sim)
-5/10
-72.5%
-0/10
-5%
-Coffee capsules
-→
-\to
-plate
-4/5
-90%
-2/5
-58%
-Turkish figs
-→
-\to
-plate
-3/5
-64%
-2/5
-52%
-Cashews
-→
-\to
-plate
-0/5
-16%
-0/5
-12%
-Red cubes
-→
-\to
-plate
-1/5
-50%
-5/5
-92%
-Fish
-→
-\to
-box
-4/5
-80%
-0/5
-10%
-Crackers
-→
-\to
-tray (medium)
-†
-5/5
-100%
-3/5
-80%
-PB crackers
-→
-\to
-tray (hard)
-†
-5/5
-100%
-0/5
-20%
-27/45
-71.6%
-12/45
-41.1%
-Semantic
-Toy
-→
-\to
-matching plate
-4/5
-90%
-1/5
-62%
-Creeper
-→
-\to
-plate
-3/5
-70%
-0/5
-0%
-Largest toy
-→
-\to
-plate
-3/5
-70%
-0/5
-20%
-Red A
-→
-\to
-color pile
-5/5
-100%
-3/5
-80%
-Banana
-→
-\to
-box
-2/5
-40%
-0/5
-30%
-N block
-→
-\to
-indicated cup
-3/5
-80%
-2/5
-60%
-Sort blocks by color
-5/5
-100%
-0/5
-32%
-Banana
-→
-\to
-matching plate
-1/5
-20%
-4/5
-90%
-26/40
-71.3%
-10/40
-46.8%
-Multi-step
-Color cubes
-→
-\to
-bowl (sim)
-9/10
-94.6%
-0/10
-24.2%
-AirPods
-→
-\to
-cup
-1/5
-55%
-3/5
-75%
-Pack pods
-→
-\to
-tray
-†
-4/5
-80%
-1/5
-65.7%
-Pack pods
-→
-\to
-tray (obs.)
-†
-1/5
-67%
-0/5
-64%
-Aleve bottle
-→
-\to
-tray (obs.)
-†
-4/5
-80%
-2/5
-70%
-Three marbles
-→
-\to
-cup
-†
-2/5
-80%
-0/5
-6.7%
-Marbles + cable
-†
-2/5
-70%
-0/5
-60%
-23/40
-75.2%
-6/40
-52.2%
-Overall
-98/165
-74.6%
-55/165
-52.4%
-TABLE I:
-Per-scene performance comparison over 28 evaluation scenes.
-SR = Success Rate, TP = Task Progress. Best results are
-bolded
-. The row at the bottom of each category shows the aggregate SR (sum) and TP (mean);
-Overall
-aggregates across all scenes. Sim scenes use 10 trials; all others are real-world evaluations with 5 trials.
-†
-Evaluated by system designers; unmarked scenes evaluated by the external evaluation team.
-We tested TiPToP in 3 different settings: (i) in a simulation environment built using the IsaacSim
-[
-41
-]
-simulator, (ii) on a real-world DROID hardware setup, (iii) on a separate DROID hardware setup operated by an external evaluation team.
-Evaluation Protocol.
-Following an “in-the-wild” evaluation protocol inspired by
-Wang
-et al.
-[
-58
-]
-, we chose natural language goal expressions and objects that corresponded to tasks that both TiPToP and
-π
-0.5
-\pi_{0.5}
--DROID seemed capable of.
-Both systems received the same natural-language instruction and started from the same robot configuration.
-We ran
-5
-5
-tasks in simulation,
-8
-8
-tasks on the DROID setup used by TiPToP’s developers (top row Figure
-LABEL:fig:teaser
-), and
-15
-15
-tasks on the external DROID setup (middle row of Figure
-LABEL:fig:teaser
-).
-We ran 5 trials per task in the real world, and 10 trials per task in simulation.
-Our key measure was binary success rate averaged over trials, though we also report task progress, which is a more continuous measure that was defined using subgoals on a per-task basis (see Appendix
--C
-for details).
-VII-B
-Results and Analysis
-Table
-I
-shows the results of these experiments (Q1).
-We grouped the tasks from the evaluation into
-4
-4
-separate categories for the purposes of interpretation and analysis.
-The
-simple
-tasks are one-step pick-and-place tasks with no distractor objects.
-The
-distractor
-tasks are rearrangement tasks that feature a number of distractors and require identifying and manipulating only the relevant object(s).
-The
-semantic
-tasks feature complex natural language goal expressions that require semantic reasoning about the scene to identify the correct object(s) (e.g. “Pick up the largest toy and place onto the purple plate”).
-Finally, the
-multi-step
-tasks require executing many actions in sequence in settings where some physical reasoning is required to accomplish the task (e.g. constrained packing, moving an obstacle out of the way to reach a particular object, or moving an obstacle to make room for a placement).
-TiPToP is comparable to
-π
-0.5
-\pi_{0.5}
--DROID on simple tasks and outperforms on the others.
-On the five simple pick-and-place scenes, results are mixed: TiPToP achieves slightly higher task progress, while
-π
-0.5
-\pi_{0.5}
--DROID achieves a slightly higher overall success rate.
-As task complexity increases, however, a consistent performance gap emerges.
-On distractor tasks, TiPToP achieves a higher success rate on six of eight scenes and an overall success rate of 60%, while
-π
-0.5
-\pi_{0.5}
--DROID only achieves 26.7%.
-On semantic tasks, this gap is more pronounced: TiPToP achieves a higher success rate on seven of eight scenes, and
-π
-0.5
-\pi_{0.5}
--DROID scores 0/5 on four of them.
-We attribute this performance to TiPToP’s use of a large VLM to translate visual observations and natural language instructions into a symbolic goal
-𝒢
-\mathcal{G}
-. This explicit grounding step enables TiPToP to correctly identify task-relevant objects amid distractors and to interpret complex referring expressions (e.g., “largest toy,” “matching plate,” “sort by color”) that
-π
-0.5
-\pi_{0.5}
--DROID has no mechanism to reason about.
-On multi-step tasks, TiPToP achieves a higher success rate on six of seven scenes, with the largest difference in the simulated color cubes scene (9/10 vs. 0/10).
-This advantage stems from TAMP: cuTAMP decomposes multi-step goals into a sequence of feasible pick-and-place actions with collision-free motion plans, whereas
-π
-0.5
-\pi_{0.5}
--DROID must implicitly discover multi-step structure from the language command.
-Task progress scores tell a complementary story: even in scenes where TiPToP does not fully succeed, it often completes most subgoals (e.g., 72.5% task progress at 5/10 success rate on cube
-→
-\to
-bowl), indicating that failures tend to be isolated to a single step rather than wholesale inability to make progress.
-π
-0.5
-\pi_{0.5}
--DROID also achieves non-trivial task progress on many scenes where it ultimately fails, but TiPToP consistently achieves higher task progress, especially in both semantic and multi-step categories.
-Failure cases.
-The scenes where TiPToP performs relatively poorly, and where
-π
-0.5
-\pi_{0.5}
--DROID outperforms TiPToP reveal systematic limitations of TiPToP’s current implementation.
-First, TiPToP’s perception module approximates object meshes using convex hulls, which fails for objects with concave geometry. Bananas are the clearest example: in both banana
-→
-\to
-bin (sim) and banana
-→
-\to
-matching plate, the convex hull poorly represents the true shape, leading to grasp and placement failures. This accounts for two of the six scenes where
-π
-0.5
-\pi_{0.5}
--DROID achieves a higher success rate.
-Second, small objects such as cashews and AirPods are difficult to grasp reliably in a single attempt.
-π
-0.5
-\pi_{0.5}
--DROID benefits here from its closed-loop, reactive policy: when a grasp fails, it can re-attempt on the next control step, whereas TiPToP commits to a single open-loop trajectory and has no mechanism to retry.
-Third, objects can slip after an initially successful grasp. In the red cubes
-→
-\to
-plate scene, TiPToP frequently grasped the correct cube but lost it during transport, resulting in only 1/5 success despite 50% task progress.
-π
-0.5
-\pi_{0.5}
--DROID’s continuous visual feedback allows it to adjust its grip or re-grasp, achieving 5/5 on this task.
-These failure modes point to a common theme: TiPToP’s lack of reactivity while executing is a significant limitation.
-π
-0.5
-\pi_{0.5}
--DROID
-TiPToP
-Scene
-Time (s)
-Time (s)
-Plan (s)
-Simulation
-Cube
-→
-\to
-bowl
-27.4
-17.9
-9.7
-Can
-→
-\to
-mug
-41.0
-18.6
-9.2
-Real-World
-Crackers
-→
-\to
-tray (simple)
-32.2
-14.9
-7.0
-Crackers
-→
-\to
-tray (medium)
-45.2
-14.9
-7.3
-Pack pods
-→
-\to
-tray
-53.4
-47.0
-20.5
-Aleve bottle
-→
-\to
-tray (obs.)
-†
-31.2
-31.2
-16.4
-TABLE II:
-Completion time comparison
-. ‘Time’ reports average time-to-success over successful trials only. ‘Plan’ reports the time required for TiPToP to run the perception and planning module (included in ‘Time’).
-Execution time.
-Table
-II
-compares average time-to-success for both systems (Q2).
-TiPToP is faster than
-π
-0.5
-\pi_{0.5}
--DROID in five of six scenes, often by a substantial margin, and matches it on the remaining one.
-On single-step real-world tasks, TiPToP completes execution in around 15 seconds, roughly half the time of
-π
-0.5
-\pi_{0.5}
--DROID.
-The advantage is even larger on scenes where
-π
-0.5
-\pi_{0.5}
--DROID requires multiple grasp attempts (e.g., can
-→
-\to
-mug: 18.6s vs. 41.0s).
-This speed advantage stems from TiPToP’s architecture: it plans a single, time-optimal trajectory upfront and executes it open-loop, whereas
-π
-0.5
-\pi_{0.5}
--DROID runs a reactive control loop that may need several cycles of approaching, grasping, and recovering from failed attempts.
-In fact, we observed qualitatively that
-π
-0.5
-\pi_{0.5}
--DROID spends a significant amount of time idling and seemingly not making any task progress.
-On multi-step tasks, TiPToP remains faster (47.0s vs. 53.4s on pack pods), though the margin narrows as more of the total time is spent on execution rather than planning.
-VII-C
-Cross-Embodiment Generalization
-To validate TiPToP’s modularity with respect to embodiments, we deployed the system on a UR5e arm with a wrist-mounted Intel Realsense D435 camera (Figure
-LABEL:fig:teaser
-c).
-Adapting to the new embodiment required providing the robot URDF, generating collision spheres for the robot, writing a cuRobo configuration file, and implementing camera and controller interfaces for the new hardware. The full adaptation was completed within a few hours (Appendix
--D
-). TiPToP was also deployed on a Trossen WidowX AI arm with a wrist-mounted RealSense D405 camera in collaboration with an independent researcher (Figure
-LABEL:fig:teaser
-d).
-Figure 2
-:
-Wiping.
-We demonstrate that TiPToP can be straightforwardly extended to perform wiping in addition to pick-and-place. Task instruction: “erase the whiteboard and put everything into the bowl”.
-VII-D
-Extending Beyond Pick-and-Place
-TiPToP’s modularity makes it straightforward to extend beyond pick-and-place. To demonstrate this, we added a
-whiteboard wiping
-primitive that enables the robot to wipe writing off a surface given an eraser (as depicted in Figure
-2
-). This required three localized changes, none of which modified the perception or execution infrastructure.
-Semantic branch.
-We add two new predicates,
-IsEraser
-and
-IsCleaned
-, and extend the VLM goal-grounding prompt to translate instructions involving cleaning into conjunctions over these predicates (e.g.,
-IsCleaned(whiteboard)
-).
-Planning.
-We define a new
-Wipe
-TAMP operator in cuTAMP with preconditions that the robot is holding an eraser and the target is a surface, and an effect that marks the surface as cleaned. The task planner automatically sequences pick then wipe to satisfy an
-IsCleaned
-goal. During motion solving,
-Wipe
-hands off to a low-level wiping skill.
-Execution.
-The wiping controller calls the VLM a second time to localize the region of interest (e.g., written text) on the surface via a bounding box query. It reprojects the bounding box corners into world coordinates using the existing point cloud, then executes a sequence of back-and-forth strokes covering the detected region using IK-based Cartesian control.
-The entire extension was implemented in under a day without modifying any existing perception, planning, or execution code outside of the additions described above.
-VII-E
-Failure Analysis
-A key advantage of TiPToP’s modular architecture is the ability to ‘debug’ the system by tracing the root cause of failures to particular parts of the system. To understand the relative frequency of failures in different parts of the system (Q3), we ran an additional 173 trials of a variety of rearrangement tasks on the real-world DROID setup in the lab of the TiPToP developers. For each failure, we traced the root cause to a particular part of the system. The results are displayed in Figure
-3
-.
-Figure 3
-:
-Failure Analysis.
-Sankey diagram showing outcomes of 173 trials. The most common failure modes are grasping failures (missed or unstable grasps), followed by scene completion errors, VLM detection errors, then cuTAMP failures.
-Grasping failures
-(31/55 failures) are the most common failure mode.
-These occur when M2T2 produces high-scoring grasps that fail in execution, or when the heuristic fallback sampler is used for objects without M2T2 predictions.
-Scene completion errors
-(13/55 failures) result from incorrect mesh approximations that cause collisions during execution.
-These typically occur when convex hull completion overapproximates concave objects (e.g. overapproximating the mesh of a banana into a large oval) or when partial observability leads to underapproximation.
-VLM errors
-(6/55 failures) occur when Gemini fails to detect objects or produces incorrect bounding boxes.
-cuTAMP failures
-(5/55 failures) occur when the planner cannot find feasible plans within the time budget, typically due to motion planning failures in cluttered scenes.
-VIII
-Discussion
-TiPToP’s modular architecture means each of its current limitations maps to a specific component that can be improved independently. Below, we discuss these limitations alongside concrete directions for addressing them.
-Open-loop execution.
-This is the single most impactful limitation: our failure analysis (Figure
-3
-) shows that grasping failures account for over half of all failures, many of which could be recovered from by re-attempting the grasp.
-The most direct improvement is to re-run perception and planning after each pick-and-place step, enabling recovery from failed grasps or unexpected object movement
-[
-12
-,
-34
-,
-44
-,
-8
-]
-.
-Single-viewpoint perception.
-All task-relevant objects must be at least partially visible from a single wrist-camera pose.
-This also limits mesh quality: with only one viewpoint, convex hull completion can over or under-approximate object geometry, leading to unnecessary collisions or missed collisions during execution.
-Multi-view perception, via active camera movement before planning or additional static cameras, would reduce occlusions and improve shape estimates.
-Learned shape completion methods such as SAM-3D
-[
-47
-]
-could replace convex hull approximation with more accurate meshes.
-Advances in depth estimation
-[
-60
-,
-54
-]
-could further improve point cloud quality, and better grasp prediction models would address TiPToP’s most common failure mode.
-Integrating learned policies.
-Our experiments show that TiPToP and
-π
-0.5
-\pi_{0.5}
--DROID exhibit complementary failure modes: TiPToP excels at geometric reasoning, long-horizon sequencing, and semantic grounding, but fails when grasps slip or meshes are poorly approximated;
-π
-0.5
-\pi_{0.5}
--DROID benefits from closed-loop reactivity but struggles with multi-step structure, tight constraints, and distractor-rich scenes.
-This suggests that learned policies such as VLAs could serve as reactive skill primitives within TiPToP, both improving robustness for existing skills and enabling new ones that are difficult to hand-engineer (e.g., folding, cable manipulation).
-Integrating such skills requires specifying their abstract preconditions and effects so the planner can reason about when to invoke them. These abstract models could be manually engineered or learned from interaction data
-[
-49
-,
-32
-,
-36
-,
-3
-]
-.
-Belief-space planning.
-Extending cuTAMP to operate in belief space would enable reasoning about uncertainty in object poses, grasp outcomes, and partially observable state
-[
-28
-,
-14
-,
-10
-]
-.
-This could also enable information-gathering actions (e.g., moving the camera to observe an occluded region before planning) and more robust action selection under perceptual uncertainty.
-IX
-Conclusion
-We presented TiPToP, a modular planning-based manipulation system that composes pretrained vision foundation models with GPU-accelerated TAMP to solve multi-step manipulation tasks from RGB images and natural language, without any robot training data. Over 165 trials in 28 evaluation scenes in simulation and on real hardware, TiPToP matches or outperforms
-π
-0.5
-\pi_{0.5}
--DROID, particularly on tasks requiring semantic grounding, distractor rejection, and multi-step sequencing. Our system’s modular architecture enables component-level failure analysis: we traced failures over 173 trials to specific modules, identifying grasping as the dominant bottleneck.
-A central finding of this work is that a modular system built from off-the-shelf foundation models and planning algorithms can serve as a strong manipulation system.
-Importantly, each component of TiPToP can be independently upgraded as better depth estimators, grasp predictors, VLMs, and TAMP or motion planners become available. At the same time, the complementary failure profiles of TiPToP and
-π
-0.5
-\pi_{0.5}
--DROID suggest that integrating end-to-end VLA models with our framework could yield systems that combine the structured reasoning of planning with the robustness and flexibility of closed-loop visuomotor control. We hope that our open-source system, as well as our empirical findings, support future research towards broadly competent and generalizable manipulation systems.
-Acknowledgments
-We gratefully acknowledge support from NSF grant 2214177; from AFOSR grant FA9550-22-1-0249; from ONR MURI grants N00014-22-1-2740 and N00014-24-1-2603; from the MIT Quest for Intelligence; and from the Robotics and AI Institute.
-We thank Ryan Lindeborg for deploying TiPToP on his Trossen WidowX AI and for providing installation and debugging feedback.
-We thank Jesse Zhang for testing TiPToP at the University of Washington. We thank Wenlong Huang for help setting up FoundationStereo to improve point cloud accuracy, as well as several helpful discussions. We also thank Tom Silver, Chris Agia, Joey Hejna, Karl Pertsch, Danny Driess, and Fabio Ramos for helpful discussions and feedback on earlier drafts of this work.
-Author Contributions
-William Shen
-and
-Nishanth Kumar
-contributed equally to this work. William adapted and improved the core cuTAMP system to be suitable (simpler to use, faster) for our purposes. Nishanth implemented the perception interface to Gemini and SAM. Both William and Nishanth worked on integrating additional models (FoundationStereo, M2T2) into the system, packaging all components to be easily used, benchmarking system capabilities, and writing the paper.
-Sahit Chintalapudi
-implemented and packaged the control stack for the Franka Panda and FR3 robots. He also helped run quantitative experiments to investigate TiPToP’s failure modes, and helped make figures and edit the paper.
-Jie Wang
-led the evaluations conducted at the University of Pennsylvania (Penn), and assisted with analysis and experimental design.
-Christopher Watson
-set up TiPToP at Penn and assisted with evaluations, experimental design and analysis.
-Edward S. Hu
-assisted with TiPToP setup at Penn and contributed to experimental design and analysis.
-Jing Cao
-set up the simulator and ran simulation experiments comparing
-π
-0.5
-​
--DROID
-\pi_{0.5}\text{-DROID}
-to TiPToP, and analyzed the results.
-Dinesh Jayaraman
-advised the evaluations at the University of Pennsylvania and provided lab resources.
-Leslie Pack Kaelbling
-and
-Tomás Lozano-Pérez
-provided several helpful system implementation and task suggestions, and strongly encouraged that the code should be easy to install. They helped edit the paper, and also provided several more suggestions for improvement, the bulk of which have been left for future work.
-References
-[1]
-A. Agarwal, G. Singh, B. Sen, T. Lozano-Pérez, and L. P. Kaelbling
-(2025)
-SceneComplete: open-world 3d scene completion in cluttered real world environments for robot manipulation
-.
-IEEE Robotics and Automation Letters (RA-L)
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[2]
-M. Ahn, A. Brohan, N. Brown, Y. Chebotar, O. Cortes, B. David, C. Finn, C. Fu, K. Gopalakrishnan, K. Hausman,
-et al.
-(2022)
-Do as i can, not as i say: grounding language in robotic affordances
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[3]
-A. Athalye, N. Kumar, T. Silver, Y. Liang, J. Wang, T. Lozano-Pérez, and L. P. Kaelbling
-(2026)
-From pixels to predicates: learning symbolic world models via pretrained vision-language models
-.
-Robotics and Automation Letters (RA-L)
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[4]
-S. Bai, Y. Cai, R. Chen, K. Chen, X. Chen, Z. Cheng, L. Deng, W. Ding, C. Gao, C. Ge,
-et al.
-(2025)
-Qwen3-vl technical report
-.
-arXiv preprint arXiv:2511.21631
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[5]
-J. L. Bentley
-(1975)
-Multidimensional binary search trees used for associative searching
-.
-Communications of the ACM (CACM)
-.
-External Links:
-Link
-Cited by:
-§
-IV-C
-.
-[6]
-J. Bjorck, F. Castañeda, N. Cherniadev, X. Da, R. Ding, L. Fan, Y. Fang, D. Fox, F. Hu, S. Huang, J. Jang, Z. Jiang, J. Kautz, K. Kundalia, L. Lao, Z. Li, Z. Lin, K. Lin, G. Liu, E. Llontop, L. Magne, A. Mandlekar, A. Narayan, S. Nasiriany, S. Reed, Y. L. Tan, G. Wang, Z. Wang, J. Wang, Q. Wang, J. Xiang, Y. Xie, Y. Xu, Z. Xu, S. Ye, Z. Yu, A. Zhang, H. Zhang, Y. Zhao, R. Zheng, and Y. Zhu
-(2025)
-GR00T n1: an open foundation model for generalist humanoid robots
-.
-arXiv preprint arXiv:2503.14734
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[7]
-K. Black, N. Brown, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, L. Groom, K. Hausman, B. Ichter,
-et al.
-(2025)
-π
-0
-\pi_{0}
-: A vision-language-action flow model for general robot control
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[8]
-A. Bouguerra, L. Karlsson, and A. Saffiotti
-(2008)
-Monitoring the execution of robot plans using semantic knowledge
-.
-Robotics and Autonomous Systems (RAS)
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[9]
-A. Brohan, N. Brown, J. Carbajal, Y. Chebotar, X. Chen, K. Choromanski, T. Ding, D. Driess, A. Dubey, C. Finn,
-et al.
-(2023)
-RT-2: vision-language-action models transfer web knowledge to robotic control
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[10]
-S. Chintalapudi, L. P. Kaelbling, and T. Lozano-Pérez
-(2024)
-Bi-level belief space search for compliant part mating under uncertainty
-.
-arXiv preprint arXiv:2409.15774
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[11]
-R. Chitnis, T. Silver, J. B. Tenenbaum, T. Lozano-Pérez, and L. P. Kaelbling
-(2022)
-Learning neuro-symbolic relational transition models for bilevel planning
-.
-In
-IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[12]
-A. Curtis, X. Fang, L. P. Kaelbling, T. Lozano-Pérez, and C. R. Garrett
-(2022)
-Long-horizon manipulation of unknown objects via task and motion planning with estimated affordances
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-,
-§VIII
-.
-[13]
-A. Curtis, N. Kumar, J. Cao, T. Lozano-Pérez, and L. P. Kaelbling
-(2024)
-Trust the proc3s: solving long-horizon robotics problems with llms and constraint satisfaction
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[14]
-A. Curtis, G. Matheos, N. Gothoskar, V. Mansinghka, J. Tenenbaum, T. Lozano-Pérez, and L. P. Kaelbling
-(2024)
-Partially observable task and motion planning with uncertainty and risk awareness
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§VIII
-.
-[15]
-M. Deitke, C. Clark, S. Lee, R. Tripathi, Y. Yang, J. S. Park, M. Salehi, N. Muennighoff, K. Lo, L. Soldaini,
-et al.
-(2025)
-Molmo and pixmo: open weights and open data for state-of-the-art vision-language models
-.
-In
-IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[16]
-H. Fang, C. Wang, H. Fang, M. Gou, J. Liu, H. Yan, W. Liu, Y. Xie, and C. Lu
-(2023)
-AnyGrasp: robust and efficient grasp perception in spatial and temporal domains
-.
-IEEE Transactions on Robotics (T-RO)
-.
-External Links:
-Link
-Cited by:
-§
-IV-A
-.
-[17]
-R. E. Fikes and N. J. Nilsson
-(1971)
-STRIPS: a new approach to the application of theorem proving to problem solving
-.
-Artificial Intelligence
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[18]
-M. A. Fischler and R. C. Bolles
-(1981)
-Random sample consensus: a paradigm for model fitting with applications to image analysis and automated cartography
-.
-Communications of the ACM (CACM)
-.
-External Links:
-Link
-Cited by:
-§
-IV-C
-.
-[19]
-C. R. Garrett, R. Chitnis, R. Holladay, B. Kim, T. Silver, L. P. Kaelbling, and T. Lozano-Pérez
-(2021)
-Integrated task and motion planning
-.
-Annual Review of Control, Robotics, and Autonomous Systems
-.
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[20]
-C. R. Garrett, T. Lozano-Pérez, and L. P. Kaelbling
-(2018)
-FFRob: leveraging symbolic planning for efficient task and motion planning
-.
-International Journal of Robotics Research (IJRR)
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[21]
-C. R. Garrett, T. Lozano-Pérez, and L. P. Kaelbling
-(2020)
-PDDLStream: integrating symbolic planners and blackbox samplers via optimistic adaptive planning
-.
-In
-International Conference on Automated Planning and Scheduling (ICAPS)
-,
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[22]
-Gemini Robotics Team, S. Abeyruwan, J. Ainslie, J. Alayrac, M. G. Arenas, T. Armstrong, A. Balakrishna, R. Baruch, M. Bauza, M. Blokzijl,
-et al.
-(2025)
-Gemini robotics: bringing ai into the physical world
-.
-arXiv preprint arXiv:2503.20020
-.
-External Links:
-Link
-Cited by:
-§II
-,
-§
-IV-B
-.
-[23]
-Gemini Team, R. Anil, S. Borgeaud, J. Alayrac, J. Yu, R. Soricut, J. Schalkwyk, A. M. Dai, A. Hauth, K. Millican,
-et al.
-(2023)
-Gemini: a family of highly capable multimodal models
-.
-arXiv preprint arXiv:2312.11805
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[24]
-X. Guo, C. Zhang, Y. Zhang, R. Wang, D. Nie, W. Zheng, M. Poggi, H. Zhao, M. Ye, Q. Zou, and L. Chen
-(2024)
-Stereo anything: unifying zero-shot stereo matching with large-scale mixed data
-.
-arXiv preprint arXiv:2411.14053
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[25]
-W. Huang, C. Wang, R. Zhang, Y. Li, J. Wu, and L. Fei-Fei
-(2023)
-VoxPoser: composable 3d value maps for robotic manipulation with language models
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[26]
-W. Huang, F. Xia, T. Xiao, H. Chan, J. Liang, P. Florence, A. Zeng, J. Tompson, I. Mordatch, Y. Chebotar, P. Sermanet, N. Brown, T. Jackson, L. Luu, S. Levine, K. Hausman, and B. Ichter
-(2022)
-Inner monologue: embodied reasoning through planning with language models
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[27]
-L. P. Kaelbling and T. Lozano-Pérez
-(2011)
-Hierarchical task and motion planning in the now
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[28]
-L. P. Kaelbling and T. Lozano-Pérez
-(2013)
-Integrated task and motion planning in belief space
-.
-International Journal of Robotics Research (IJRR)
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[29]
-A. Khazatsky, K. Pertsch, S. Nair, A. Balakrishna, S. Dasari, S. Karamcheti, S. Nasiriany, M. K. Srirama, L. Luo, K. Vuong,
-et al.
-(2024)
-DROID: a large-scale in-the-wild robot manipulation dataset
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§I
-.
-[30]
-M. J. Kim, K. Pertsch, S. Karamcheti, T. Xiao, A. Balakrishna, S. Nair, R. Rafailov, E. Foster, G. Lam, P. Sanketi,
-et al.
-(2024)
-OpenVLA: an open-source vision-language-action model
-.
-arXiv preprint arXiv:2406.09246
-.
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[31]
-A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson, T. Xiao, S. Whitehead, A. C. Berg, W. Lo, P. Dollár, and R. Girshick
-(2023)
-Segment anything
-.
-In
-IEEE/CVF International Conference on Computer Vision (ICCV)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[32]
-N. Kumar, W. McClinton, R. Chitnis, T. Silver, T. Lozano-Pérez, and L. P. Kaelbling
-(2023)
-Learning efficient abstract planning models that choose what to predict
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§VIII
-.
-[33]
-N. Kumar, W. Shen, F. Ramos, D. Fox, T. Lozano-Pérez, L. P. Kaelbling, and C. R. Garrett
-(2024)
-Open-world task and motion planning via vision-language model inferred constraints
-.
-arXiv preprint arXiv:2411.08253
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[34]
-M. Levihn, L. P. Kaelbling, T. Lozano-Pérez, and M. Stilman
-(2013)
-Foresight and reconsideration in hierarchical planning and execution
-.
-In
-IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)
-,
-External Links:
-Link
-Cited by:
-§VIII
-.
-[35]
-J. Liang, W. Huang, F. Xia, P. Xu, K. Hausman, B. Ichter, P. Florence, and A. Zeng
-(2023)
-Code as policies: language model programs for embodied control
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[36]
-Y. Liang, N. Kumar, H. Tang, A. Weller, J. B. Tenenbaum, T. Silver, J. F. Henriques, and K. Ellis
-(2025)
-VisualPredicator: learning abstract world models with neuro-symbolic predicates for robot planning
-.
-In
-International Conference on Learning Representations (ICLR)
-,
-External Links:
-Link
-Cited by:
-§VIII
-.
-[37]
-P. Liu, Y. Orru, J. Vakil, C. Paxton, N. M. M. Shafiullah, and L. Pinto
-(2024)
-Demonstrating ok-robot: what really matters in integrating open-knowledge models for robotics
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[38]
-D. McDermott, M. Ghallab, A. E. Howe, C. A. Knoblock, A. Ram, M. M. Veloso, D. S. Weld, and D. E. Wilkins
-(1998)
-PDDL: the planning domain definition language
-.
-External Links:
-Link
-Cited by:
-§V
-.
-[39]
-A. Murali, B. Sundaralingam, Y. Chao, W. Yuan, J. Yamada, M. Carlson, F. Ramos, S. Birchfield, D. Fox, and C. Eppner
-(2025)
-GraspGen: a diffusion-based framework for 6-dof grasping with on-generator training
-.
-arXiv preprint arXiv:2507.13097
-.
-External Links:
-Link
-Cited by:
-§II
-,
-§
-IV-A
-.
-[40]
-N. J. Nilsson
-(1984)
-Shakey the robot
-.
-Technical report
-SRI International, Artificial Intelligence Center
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[41]
-Isaac Sim
-External Links:
-Link
-Cited by:
-§I
-,
-§
-VII-A
-.
-[42]
-Open X-Embodiment Collaboration
-(2024)
-Open x-embodiment: robotic learning datasets and rt-x models
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[43]
-OpenAI
-(2024)
-GPT-4o system card
-.
-arXiv preprint arXiv:2410.21276
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[44]
-O. Pettersson
-(2005)
-Execution monitoring in robotics: a survey
-.
-Robotics and Autonomous Systems (RAS)
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[45]
-Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, M. Y. Galliker, D. Ghosh, L. Groom, K. Hausman, B. Ichter, S. Jakubczak, T. Jones, L. Ke, D. LeBlanc, S. Levine, A. Li-Bell, M. Mothukuri, S. Nair, K. Pertsch, A. Z. Ren, L. X. Shi, L. Smith, J. T. Springenberg, K. Stachowicz, J. Tanner, Q. Vuong, H. Walke, A. Walling, H. Wang, L. Yu, and U. Zhilinsky
-(2025)
-π
-0.5
-\pi_{0.5}
-: A vision-language-action model with open-world generalization
-.
-arXiv preprint arXiv:2504.16054
-.
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[46]
-N. Ravi, V. Gabeur, Y. Hu, R. Hu, C. Ryali, T. Ma, H. Khedr, R. Rädle, C. Rolland, L. Gustafson, E. Mintun, J. Pan, K. V. Alwala, N. Carion, C. Wu, R. Girshick, P. Dollár, and C. Feichtenhofer
-(2024)
-SAM 2: segment anything in images and videos
-.
-arXiv preprint arXiv:2408.00714
-.
-External Links:
-Link
-Cited by:
-§II
-,
-§
-IV-B
-.
-[47]
-SAM 3D Team, X. Chen, F. Chu, P. Gleize, K. J. Liang, A. Sax, H. Tang, W. Wang, M. Guo, T. Hardin, X. Li, A. Lin, J. Liu, Z. Ma, A. Sagar, B. Song, X. Wang, J. Yang, B. Zhang, P. Dollár, G. Gkioxari, M. Feiszli, and J. Malik
-(2025)
-SAM 3D: 3dfy anything in images
-.
-arXiv preprint arXiv:2511.16624
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[48]
-W. Shen, C. Garrett, N. Kumar, A. Goyal, T. Hermans, L. P. Kaelbling, T. Lozano-Pérez, and F. Ramos
-(2025)
-Differentiable gpu-parallelized task and motion planning
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§
--A
-,
-§I
-,
-§II
-,
-§
-III-B
-,
-§V
-.
-[49]
-T. Silver, R. Chitnis, N. Kumar, W. McClinton, T. Lozano-Pérez, L. P. Kaelbling, and J. B. Tenenbaum
-(2023)
-Predicate invention for bilevel planning
-.
-In
-AAAI Conference on Artificial Intelligence (AAAI)
-,
-External Links:
-Link
-Cited by:
-§VIII
-.
-[50]
-I. Singh, V. Blukis, A. Mousavian, A. Goyal, D. Xu, J. Tremblay, D. Fox, J. Thomason, and A. Garg
-(2023)
-ProgPrompt: generating situated robot task plans using large language models
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[51]
-S. Srivastava, E. Fang, L. Riano, R. Chitnis, S. Russell, and P. Abbeel
-(2014)
-Combined task and motion planning through an extensible planner-independent interface layer
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§I
-,
-§II
-.
-[52]
-B. Sundaralingam, S. K. S. Hari, A. Fishman, C. R. Garrett, K. Van Wyk, V. Blukis, A. Millane, H. Oleynikova, A. Handa, F. Ramos, N. D. Ratliff, and D. Fox
-(2023)
-CuRobo: parallelized collision-free robot motion generation
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§V
-.
-[53]
-M. Sundermeyer, A. Mousavian, R. Triebel, and D. Fox
-(2021)
-Contact-graspnet: efficient 6-dof grasp generation in cluttered scenes
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[54]
-B. Tan, C. Sun, X. Qin, H. Adai, Z. Fu, T. Zhou, H. Zhang, Y. Xu, X. Zhu, Y. Shen, and N. Xue
-(2026)
-Masked depth modeling for spatial perception
-.
-arXiv preprint arXiv:2601.17895
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[55]
-F. Tosi, L. Bartolomei, and M. Poggi
-(2025)
-A survey on deep stereo matching in the twenties
-.
-International Journal of Computer Vision (IJCV)
-.
-External Links:
-Link
-Cited by:
-§II
-.
-[56]
-M. Toussaint, K. Allen, K. Smith, and J. Tenenbaum
-(2018)
-Differentiable physics and stable modes for tool-use and manipulation planning
-.
-In
-Robotics: Science and Systems (RSS)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[57]
-M. Toussaint
-(2015)
-Logic-geometric programming: an optimization-based approach to combined task and motion planning
-.
-In
-International Joint Conference on Artificial Intelligence (IJCAI)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[58]
-J. Wang, M. Leonard, K. Daniilidis, D. Jayaraman, and E. S. Hu
-(2025)
-Evaluating
-π
-0
-\pi_{0}
-in the wild: strengths, problems, and the future of generalist robot policies
-.
-External Links:
-Link
-Cited by:
-§
-VII-A
-.
-[59]
-S. Wang, M. Han, Z. Jiao, Z. Zhang, Y. N. Wu, S. Zhu, and H. Liu
-(2024)
-LLM3: large language model-based task and motion planning with motion failure reasoning
-.
-In
-IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[60]
-B. Wen, S. Dewan, and S. Birchfield
-(2025)
-Fast-foundationstereo: real-time zero-shot stereo matching
-.
-arXiv preprint arXiv:2512.11130
-.
-External Links:
-Link
-Cited by:
-§VIII
-.
-[61]
-B. Wen, M. Trepte, J. Aribido, J. Kautz, O. Gallo, and S. Birchfield
-(2025)
-FoundationStereo: zero-shot stereo matching
-.
-In
-IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)
-,
-External Links:
-Link
-Cited by:
-§II
-,
-§
-IV-A
-.
-[62]
-Z. Yang, C. R. Garrett, D. Fox, T. Lozano-Pérez, and L. P. Kaelbling
-(2025)
-Guiding long-horizon task and motion planning with vision language models
-.
-In
-IEEE International Conference on Robotics and Automation (ICRA)
-,
-External Links:
-Link
-Cited by:
-§II
-.
-[63]
-W. Yuan, A. Murali, A. Mousavian, and D. Fox
-(2023)
-M2T2: multi-task masked transformer for object-centric pick and place
-.
-In
-Conference on Robot Learning (CoRL)
-,
-External Links:
-Link
-Cited by:
-§II
-,
-§
-IV-A
-.
--A
-cuTAMP Extensions
-We made several extensions to cuTAMP
-[
-48
-]
-to improve real-world deployability:
-M2T2 Grasp Integration.
-We support initializing grasp particles from M2T2 6-DoF grasp predictions, with collision filtering to reject grasps where the gripper would collide with the target object.
-Oriented Bounding Box Surfaces.
-We added support for oriented bounding boxes (OBBs) as placement surfaces, with cost functions that penalize object placements near surface edges, and placement samplers that account for object extents during particle initialization.
-Motion Planning Robustness.
-We increased motion planning attempts over constraint-satisfying particles since cuTAMP’s collision representation (spheres) differs from cuRobo’s low-level collision checks (oriented bounding boxes). When motion planning fails for path segments, we optionally relax collision checking thresholds as a fallback.
-Efficient Movable Object Collision Handling.
-We optimized collision checks between movable objects by only evaluating costs after an object’s action is activated.
-This allows us to handle objects that are initially in collision (e.g., due to clutter or convex hull overapproximation) by excluding them from collision penalties until moved.
-Hardware Support.
-We added robot models for the Franka FR3 with Robotiq gripper and ZED Mini camera mount, including collision sphere approximations.
-Task Planning Caching.
-Task planning becomes a bottleneck with many objects in the scene. We cache intermediate results over the task planner’s tree search to reduce redundant computation.
--B
-Controller Implementation Details
-For the DROID setup with the Franka FR3 arm, we implemented a joint impedance controller to track the planned trajectory waypoints (see §
-V
-) by computing joint torques at each control timestep:
-τ
-=
-K
-p
-⊙
-(
-q
-d
-−
-q
-)
-+
-K
-d
-⊙
-(
-q
-˙
-d
-−
-q
-˙
-)
-+
-τ
-coriolis
-+
-τ
-g
-+
-M
-​
-q
-¨
-d
-\tau=K_{p}\odot(q_{d}-q)+K_{d}\odot(\dot{q}_{d}-\dot{q})+\tau_{\text{coriolis}}+\tau_{g}+M\ddot{q}_{d}
-where
-K
-p
-K_{p}
-and
-K
-d
-K_{d}
-are per-joint position and velocity gains,
-τ
-coriolis
-\tau_{\text{coriolis}}
-compensates for Coriolis forces,
-τ
-g
-\tau_{g}
-compensates for gravity,
-M
-M
-is the mass matrix, and
-q
-¨
-d
-\ddot{q}_{d}
-is the desired acceleration estimated via filtered numerical differentiation of
-q
-˙
-d
-\dot{q}_{d}
-.
-The term
-M
-​
-q
-¨
-d
-M\ddot{q}_{d}
-compensates for the robot’s inertia.
-The gains
-K
-p
-K_{p}
-and
-K
-d
-K_{d}
-were tuned to improve trajectory tracking, though the controller still exhibits small deviations during execution at high speeds (typically up to 5mm position error).
-We will open-source our controller implementation for the Franka FR3 and Panda robots upon acceptance.
--C
-Additional Experiment Details
-Table
-LABEL:tab:trials
-shows each evaluation scene with its language instruction and task progress metric.
-Evaluation protocol.
-π
-0.5
-\pi_{0.5}
--DROID is a reactive policy that runs continuously until manually terminated. TiPToP, by contrast, plans once and either produces a full trajectory or explicitly fails if no valid plan is found. We use a 30–60 second planning timeout for TiPToP.
-In simulation, we terminated
-π
-0.5
-\pi_{0.5}
--DROID trials after 60s or upon success and reset object configurations identically across all trials for each scene.
-For real-world experiments run by the external evaluators (unmarked scenes in Table
-LABEL:tab:trials
-),
-π
-0.5
-\pi_{0.5}
--DROID trials were terminated after 800 steps or upon success. They independently chose a step-based limit, which decouples evaluation from inference speed. Objects were reset to similar positions within the wrist camera’s field of view using the same robot starting configuration.
-For real-world experiments run by the system designers (scenes marked with
-†
-in Table
-LABEL:tab:trials
-),
-π
-0.5
-\pi_{0.5}
--DROID trials were terminated after 120s or upon success. The longer timeout accommodates multi-step tasks. Since exact scene resets are not possible in the real world, we reset scenes by visually comparing against reference images, producing generally consistent configurations.
-All termination limits are generous relative to typical task completion times, ensuring timeouts do not artificially limit
-π
-0.5
-\pi_{0.5}
--DROID’s performance. We ran all systems on an NVIDIA L4 (simulation), RTX 3080 Laptop (external evaluators), or RTX 4090 (system designers) GPU.
-Completion time.
-In Table
-II
-, we report average completion time over successful trials only. For TiPToP, we set the
-time_dilation_factor
-in cuRobo to 0.6 in both simulation and real-world experiments. In the real-world experiments, we measure execution time using a remote iPad timer (Figure
-LABEL:fig:teaser
-), which is automatically stopped upon robot execution for TiPToP, and manually stopped for
-π
-0.5
-\pi_{0.5}
--DROID.
-Figure 4
-:
-Object Segmentation.
-SAM-2 generates eight pixel-level segmentation masks from the bounding boxes in Fig.
-1
-c.
-Failure Analysis.
-Our systematic failure analysis from Section
-VII-E
-was performed by collecting 173 trials of TiPToP execution over a range of different tasks (different from the evaluation tasks).
-For each trial, we selected a random set of objects in a random initial pose on the tabletop, and provided an appropriate natural language goal given the objects and initial configuration.
-For each trial, we judged success manually and traced failures via logging and visualization.
-Of the 173 trials, 52 were simple single-object pick-and-place tasks with no distractor objects (instruction: “put the object into the container”). The remaining 121 trials all included distractor objects on the table: 50 were single-object tasks with significant clutter (instruction: “put the smallest object into or onto the container”), 20 were single-object tasks with varied natural language goals (e.g. “put the soft yellow object into the box”, “put the red thing into the box”, “put the orange item in the receptacle”), 21 were two-object pick-and-place (e.g. “put the fruits in the orange bowl”), 20 were three-object pick-and-place (e.g. “serve all the non-fruit food on the tray”), 5 were four-object pick-and-place (instruction: “put all the cups with handles on the bin”), and 5 were five-object pick-and-place (instruction: “put the caffeinated beverages and coffee pods on the box”).
--D
-Deployment on UR5e
-We deployed TiPToP on a UR5e arm with a Realsense D435 wrist camera (bottom row of Figure
-LABEL:fig:teaser
-). Adapting TiPToP to this new embodiment required:
-•
-The robot URDF.
-•
-Collision spheres for the robot geometry, automatically generated using tools like
-Ballpark
-or
-Foam
-.
-•
-A cuRobo configuration file, following
-this guide
-from the cuRobo developers.
-•
-Code changes in cuTAMP to load the new configuration files.
-•
-Code changes in TiPToP to interface with the RealSense camera (via
-pyrealsense2
-) and the robot controller (via Universal Robots’
-Real-Time Data Exchange
-(RTDE) interface).
-TiPToP’s codebase provides abstractions that make adding new camera types or robot controllers straightforward. Given an existing robot controller, we completed all changes in approximately 2–3 hours.
-FoundationStereo with a RealSense.
-For stereo input to FoundationStereo, we used the RealSense’s left and right infrared (IR) sensors. This qualitatively resulted in noisier depth estimates than the DROID setup, which uses RGB stereo pairs from the ZED Mini, particularly on transparent, specular, and reflective objects. This is expected: active IR stereo struggles with such surfaces because the projected pattern does not reflect reliably.
-Controller Implementation.
-We implement a joint-space trajectory tracking controller using the Universal Robots
-servoJ
-primitive via the RTDE interface. The controller interpolates sparse waypoints to a 125Hz command stream. We use a high proportional gain (400) during motion to minimize tracking error, then reduce the gain (300) during a settling phase with dwell waypoints at the end of the trajectory to mitigate mechanical oscillation.
-TABLE III:
-Evaluation scene details.
-Each scene shows an image of the task, its identifier (as referenced in Table
-I
-), language prompt, and task progress metric. Scenes are grouped by category: Simple, Distractor, Semantic, and Multi-step.
-†
-indicates tasks evaluated by the system designers. Unmarked scenes are evaluated by external evaluators not involved in the development of TiPToP. (sim) denotes tasks evaluated in simulation. Task progress metric numbers are reported in %; a
-+
-+
-or
-−
--
-sign indicates that the particular denoted amount is added or subtracted from the overall score, and no sign indicates that the number is the absolute score for achieving that particular condition.
-Progress metrics may vary by the evaluator and the task. Some metrics penalize manipulating distractors while others do not.
-Scene
-Identifier / Language Prompt
-Progress Metric
-Scene
-Identifier / Language Prompt
-Progress Metric
-Simple
-Cube
-→
-\to
-bowl (sim)
-“put the cube in the bowl”
-25% approach cube, 50% grasp, 75% approach bowl with cube, 100% place
-Can
-→
-\to
-mug (sim)
-“put the can in the mug”
-25% approach can, 50% grasp, 75% approach mug with can, 100% place
-Banana
-→
-\to
-bin (sim)
-“put banana in the bin”
-25% approach banana, 50% grasp, 75% approach bin with banana, 100% place
-Marker
-→
-\to
-tray
-“put the marker in the tray”
-+25% touch marker, +25% grasp, +25% touch tray, +25% place
-Crackers
-→
-\to
-tray
-†
-“place the crackers onto the tray”
-50% grasp crackers, 100% place
-Distractor
-Meat can
-→
-\to
-sugar box (sim)
-“put the meat can on the sugar box”
-25% approach meat can, 50% grasp, 75% approach box with meat can, 100% place
-Coffee capsules
-→
-\to
-plate
-“put all of the coffee capsules onto the white plate”
-+50% per capsule placed,
-−
--
-20% per distractor
-Turkish figs
-→
-\to
-plate
-“put the turkish figs onto the white plate”
-+50% per fig placed,
-−
--
-20% per cashew
-Cashews
-→
-\to
-plate
-“put the roasted cashews onto the white plate”
-+50% per cashew placed,
-−
--
-20% per fig
-Red cubes
-→
-\to
-plate
-“put the red cubes onto the white plate”
-+50% per cube placed,
-−
--
-20% if distractor placed
-Fish
-→
-\to
-box
-“place the fish into the white box”
-+50% pick fish, +50% place into white box
-Crackers
-→
-\to
-tray (med.)
-†
-“place the crackers onto the tray”
-+50% pick crackers, +50% place on the tray (no penalty for distractor)
-PB crackers
-→
-\to
-tray (hard)
-†
-“place the peanut butter crackers onto the tray”
-+50% pick crackers, +50% place on the tray (no penalty for distractor)
-Semantic
-Toy
-→
-\to
-matching plate
-“pick up the toy and place on the plate with similar color”
-+50% pick toy, +50% place on teal or +30% place on blue
-Creeper
-→
-\to
-plate
-“pick up the creeper and place onto the purple plate”
-+50% pick creeper toy, +50% place onto purple plate
-Largest toy
-→
-\to
-plate
-“pick up the largest toy and place onto the purple plate”
-+50% pick creeper, +50% place onto purple plate,
-−
--
-20% if attempt to place on distractor
-Red A
-→
-\to
-color pile
-“pick up the red A and place on same color pile”
-+50% pick red A block, +50% place onto red pile,
-−
--
-20% knock pile over
-Banana
-→
-\to
-box
-“pick up the banana and put it in the box”
-+50% place banana into any box, +50% place into box with fruit (aims to test common sense of human selection)
-N block
-→
-\to
-indicated cup
-“put the N block into the cup pointed to by the arrow”
-+50% grasp N block, +50% place into cup pointed at
-Sort blocks by color
-“sort the blocks into opposite color plates”
-+10% per block touched, +40% per correct place
-Banana
-→
-\to
-matching plate
-“place banana into plate has similar color”
-+50% pick banana, +50% place into orange plate
-Multi-step
-Color cubes
-→
-\to
-bowl (sim)
-“put 3 cubes into the bowl”
-For up to 3 cubes (normalized to 100%): +5% approach cube, +10% grasp, +10% approach bowl with cube, +15% place
-AirPods
-→
-\to
-cup
-“place airpods into the yellow cup”
-+25% per AirPods picked, +25% per place,
-−
--
-20% distractor
-Pack pods
-→
-\to
-tray
-†
-“pack the coffee pods onto the rectangular tray”
-For each of the 3 pods: +3.33% approach, +15% grasp, +0% place not in tray, +15% place touching tray
-Pack pods
-→
-\to
-tray (obs.)
-†
-“pack the coffee pods onto the rectangular tray”
-+12.5% pick can, +12.5% place s.t. it doesn’t obstruct tray (or +25% for clearing can obstruction without pick/place), for each of 3 pods: +5% for approaching pod, +10% for correct pick, +10% for correct place into tray
-Aleve bottle
-→
-\to
-tray (obs.)
-†
-“put the small white aleve bottle into the cardboard tray”
-+10% pick an obstacle object, +10% place obstacle s.t. unobstructs aleve, +30% pick aleve bottle (+50% if picked without clearing obstacles), +50% place bottle in tray
-Three marbles
-→
-\to
-cup
-†
-“put only the marbles in the cup”
-+16.67% for each pick of a marble, +16.67% for each place of a marble into the cup
-Marbles + cable
-†
-“put the small plastic bag of marbles into the black mesh bag, and the cable on top of the empty large plastic bag”
-wire: +5% approach, +20% stable pick, +25% stable place atop plastic; marbles pouch: +5% approach, +20% pick, +25% place into mesh bag
--E
-VLM Prompting Details.
-As part of the perception module in Section
-IV
-, we use the following prompt for object detection and goal grounding:
-⬇
-Perform
-two
-tasks
-on
-this
-image
-based
-on
-the
-task
-instruction
-:
-&quot;{
-task_instruction
-}&quot;.
-TASK
-1
--
-OBJECT
-DETECTION
-:
-Detect
-and
-return
-bounding
-boxes
-for
-objects
-in
-the
-image
-.
--
-DO
-NOT
-include
-the
-robot
-,
-robot
-gripper
-,
-or
-table
-surface
--
-DO
-NOT
-include
-objects
-or
-surfaces
-irrelevant
-to
-the
-task
-or
-too
-far
-away
-to
-matter
-(
-e
-.
-g
-.
-walls
-,
-things
-on
-the
-wall
-that
-are
-far
-away
-,
-things
-on
-the
-floor
-below
-the
-table
-,
-people
-who
-might
-be
-in
-the
-scene
-,
-etc
-.)
--
-Limit
-to
-25
-objects
--
-If
-an
-object
-appears
-multiple
-times
-,
-name
-them
-by
-unique
-characteristics
-(
-color
-,
-size
-,
-position
-,
-etc
-.).
-If
-they
-seem
-the
-same
-,
-then
-just
-use
-numbers
-(
-e
-.
-g
-.
-’
-soda_can1
-’
-and
-’
-soda_can2
-’,
-...
-for
-identical
--
-looking
-soda
-cans
-)
--
-An
-object
-**
-cannot
-have
-the
-same
-name
-**
-as
-another
-under
-any
-circumstance
-.
--
-Format
-:
-normalized
-coordinates
-0-1000
-as
-integers
-Be
-very
-careful
-to
-identify
-objects
-and
-name
-them
-in
-a
-way
-that
-’
-s
-relevant
-to
-the
-task
-.
-If
-the
-task
-involves
-picking
-up
-a
-red
-apple
-,
-make
-sure
-that
-’
-red
-’
-appears
-in
-the
-name
-of
-the
-apple
-.
-TASK
-2
--
-TASK
-TRANSLATION
-:
-Translate
-this
-natural
-language
-instruction
-into
-some
-conjunction
-of
-formal
-predicates
-:
-AVAILABLE
-PREDICATES
-:
--
-on
-(
-movable
-,
-surface
-):
-Object
-A
-is
-placed
-on
-top
-of
-object
-B
-It
-is
-very
-important
-that
-the
-goal
-is
-exact
-:
-use
-your
-visual
-recognition
-,
-common
--
-sense
-and
-reasoning
-abilities
-to
-make
-sure
-the
-goal
-expression
-is
-perfectly
-accurate
-.
-For
-instance
--
-for
-the
-task
-&quot;
-throw
-away
-the
-trash
-in
-the
-bin
-&quot;
-when
-there
-is
-a
-bin
-,
-an
-open
-empty
-chips
-packet
-,
-an
-empty
-soda
-can
-,
-a
-closed
-and
-full
-soda
-bottle
-,
-and
-several
-full
-candy
-bars
-on
-the
-table
-,
-the
-goal
-should
-be
-:
-&quot;
-predicates
-&quot;:
-[
-{{&quot;
-name
-&quot;:
-&quot;
-on
-&quot;,
-&quot;
-args
-&quot;:
-[&quot;
-chips_packet
-&quot;,
-&quot;
-bin
-&quot;]}},
-{{&quot;
-name
-&quot;:
-&quot;
-on
-&quot;,
-&quot;
-args
-&quot;:
-[&quot;
-soda_can
-&quot;,
-&quot;
-bin
-&quot;]}},
-]
-This
-is
-because
-only
-the
-chips
-and
-soda
-are
-empty
-and
-clearly
-trash
-.
-Everything
-else
-is
-still
-usable
-!
-Return
-a
-single
-JSON
-object
-with
-this
-structure
-(
-no
-code
-fencing
-):
-{{
-&quot;
-bboxes
-&quot;:
-[
-{{&quot;
-box_2d
-&quot;:
-[
-ymin
-,
-xmin
-,
-ymax
-,
-xmax
-],
-&quot;
-label
-&quot;:
-&quot;
-object
-name
-&quot;}},
-...
-],
-&quot;
-predicates
-&quot;:
-[
-{{&quot;
-name
-&quot;:
-&quot;
-predicate_name
-&quot;,
-&quot;
-args
-&quot;:
-[&quot;
-object1
-&quot;,
-&quot;
-object2
-&quot;]}},
-...
-]
-}}
-Use
-the
-object
-labels
-you
-detect
-in
-Task
-1
-when
-creating
-predicates
-in
-Task
-2.
-Only
-reference
-objects
-that
-you
-actually
-detected
-in
-the
-image
+<p>TiPToP: A Modular Open-Vocabulary Planning System for Robotic Manipulation<br />
+William Shen<br />
+1<em><br />
+,<br />
+Nishanth Kumar<br />
+1</em><br />
+,<br />
+Sahit Chintalapudi<br />
+1<br />
+,<br />
+Jie Wang<br />
+2<br />
+,<br />
+Christopher Watson<br />
+2<br />
+,<br />
+Edward Hu<br />
+2<br />
+,<br />
+Jing Cao<br />
+1<br />
+,<br />
+Dinesh Jayaraman<br />
+2<br />
+,<br />
+Leslie Pack Kaelbling<br />
+1<br />
+,<br />
+Tomás Lozano-Pérez<br />
+1<br />
+Abstract<br />
+We present TiPToP, an extensible modular system that combines pretrained vision foundation models with an existing Task and Motion Planner (TAMP) to solve multi-step manipulation tasks directly from input RGB images and natural-language instructions.<br />
+Our system aims to be simple and easy-to-use: it can be installed and run on a standard DROID setup in under one hour and adapted to new embodiments with minimal effort.<br />
+We evaluate TiPToP — which requires zero robot data — over 28 tabletop manipulation tasks in simulation and the real world and find it matches or outperforms<br />
+π<br />
+0.5<br />
+​<br />
+-DROID<br />
+\pi_{0.5}\text{-DROID}<br />
+, a vision-language-action (VLA) model fine-tuned on 350 hours of embodiment-specific demonstrations.<br />
+TiPToP’s modular architecture enables us to analyze the system’s failure modes at the component level.<br />
+We analyze results from an evaluation of 173 trials and identify directions for improvement.<br />
+We release TiPToP open-source to further research on modular manipulation systems and tighter integration between learning and planning.<br />
+Project website and code:<br />
+tiptop-robot.github.io<br />
+*<br />
+*<br />
+footnotetext:<br />
+Equal contribution. Correspondence to<br />
+{willshen,njk}@mit.edu<br />
+I<br />
+Introduction<br />
+Figure 0<br />
+:<br />
+TiPToP System Overview.<br />
+TiPToP takes a stereo RGB image pair and a natural language instruction<br />
+ℒ<br />
+\mathcal{L}<br />
+as input and outputs robot joint trajectories with gripper commands. (a) The perception module constructs an object-centric 3D scene representation using learned depth estimation, grasp prediction, object detection, and segmentation. (b) The planning module uses GPU-parallelized TAMP (cuTAMP) to find feasible manipulation plans. (c) The execution module tracks the planned trajectory using a joint impedance controller.<br />
+A longstanding goal of robotics research has been to build a manipulation system that “just works” out-of-the-box: one that can be deployed on arbitrary robots and perform tasks specified in natural language on arbitrary objects, without requiring object, environment, or embodiment-specific tuning.<br />
+Vision-Language-Action (VLA) models such as<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+[<br />
+45<br />
+]<br />
+and OpenVLA<br />
+[<br />
+30<br />
+]<br />
+offer an appealing input-output specification — natural language and camera images in, robot actions out — but require substantial training data and lack reliable cross-embodiment generality. On the other hand, Task and Motion Planning (TAMP)<br />
+[<br />
+27<br />
+,<br />
+19<br />
+,<br />
+12<br />
+]<br />
+offers a structured framework for multi-step manipulation, jointly reasoning over discrete action sequences and continuous geometric constraints. There has been substantial research demonstrating TAMP in the real world<br />
+[<br />
+51<br />
+,<br />
+21<br />
+,<br />
+12<br />
+,<br />
+48<br />
+]<br />
+, but these systems lack generality and have generally relied on implementations that are tightly coupled to specific hardware, perception, and control stacks, making them difficult to access and build upon.<br />
+We introduce<br />
+TiPToP<br />
+(TiPToP is a Planner That just works on Pixels), a modular planning-based manipulation system built on recent advances in vision and language foundation models, learned grasp prediction, and GPU-accelerated TAMP.<br />
+TiPToP accepts the same inputs as VLAs — natural language and camera images — but requires no data collection or training, instead leveraging pretrained foundation models for perception and GPU-accelerated TAMP for planning at inference time.<br />
+Our primary contribution is a complete manipulation system that can be installed and deployed on supported<br />
+1<br />
+1<br />
+1<br />
+The embodiment must possess a camera, gripper, URDF, and trajectory tracking controller to be supported.<br />
+robot embodiments in under one hour with only camera calibration. Its modular architecture allows individual components to be improved or replaced independently as better foundation models become available, and when failures occur, they can be traced to specific modules for targeted debugging.<br />
+To validate TiPToP’s accessibility and generalizability, we sent our code to an external evaluation team not involved in its development. This team independently deployed TiPToP on the DROID hardware platform<br />
+[<br />
+29<br />
+]<br />
+and conducted a systematic comparison against<br />
+π<br />
+0.5<br />
+​<br />
+-DROID<br />
+\pi_{0.5}\text{-DROID}<br />
+[<br />
+7<br />
+]<br />
+, a state-of-the-art VLA fine-tuned on 350 hours of embodiment-specific demonstrations. We additionally performed similar comparisons on our own hardware and in simulation. Results show that TiPToP achieves comparable or better success rates across diverse tasks, and we find that the two systems fail in complementary ways. We provide a detailed failure analysis and use it to identify concrete directions for improving individual modules. We further demonstrate deployment on UR5e and Trossen WidowX AI robot arms to validate ease of deployment on new embodiments.<br />
+We release TiPToP as open-source software, with support for both real-world deployments and development in simulation<br />
+[<br />
+41<br />
+]<br />
+, to provide an accessible foundation for future research into planning-based manipulation and to facilitate direct comparison and integration with end-to-end learned approaches.<br />
+II<br />
+Related Work<br />
+Foundation Models for Perception.<br />
+Recent advances in vision foundation models have enabled robots to perceive diverse objects and scenes without task-specific training data.<br />
+Stereo depth estimation models<br />
+[<br />
+55<br />
+,<br />
+61<br />
+,<br />
+24<br />
+]<br />
+predict dense depth maps from RGB image pairs. Foundation models for grasp generation<br />
+[<br />
+39<br />
+,<br />
+53<br />
+,<br />
+63<br />
+]<br />
+predict 6-DoF grasp poses from point clouds. SAM<br />
+[<br />
+31<br />
+]<br />
+and SAM-2<br />
+[<br />
+46<br />
+]<br />
+provide promptable segmentation from bounding boxes or points, enabling precise object boundary delineation. VLMs<br />
+[<br />
+23<br />
+,<br />
+15<br />
+,<br />
+4<br />
+,<br />
+43<br />
+]<br />
+combine vision and language understanding to perform open-vocabulary object detection, visual reasoning, and language grounding, providing semantic scene understanding and enabling robots to interpret natural language instructions.<br />
+SceneComplete<br />
+[<br />
+1<br />
+]<br />
+similarly composes perceptual foundation models to build 3D scene representations from 2D observations. TiPToP leverages this idea and integrates grasp generation and a VLM with a TAMP system to enable full manipulation planning.<br />
+Vision-Language-Action Models.<br />
+Building on vision-language foundation models, recent work has scaled end-to-end learning for robotic manipulation by training large models on diverse robot data. Many VLAs leverage VLM backbones to enable language-conditioned control<br />
+[<br />
+9<br />
+,<br />
+30<br />
+,<br />
+6<br />
+,<br />
+22<br />
+]<br />
+and demonstrate that transformer-based policies trained on large datasets (e.g., the Open X-Embodiment dataset<br />
+[<br />
+42<br />
+]<br />
+) can generalize across tasks and objects.<br />
+π<br />
+0<br />
+\pi_{0}<br />
+[<br />
+7<br />
+]<br />
+introduced a flow-matching architecture, which was subsequently extended in<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+[<br />
+45<br />
+]<br />
+via co-training on heterogeneous data sources to improve generalization. We compare against<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID, a variant fine-tuned on 350 hours of DROID demonstrations.<br />
+While these approaches can be applied across embodiments, show impressive generalization over scenes and objects, and can solve challenging tasks directly from pixels, they require substantial training data and are trained end-to-end, making it difficult to diagnose failures.<br />
+By contrast, TiPToP’s modular architecture requires no embodiment-specific training and explicitly reasons about geometry and task structure.<br />
+Task and Motion Planning.<br />
+TAMP algorithms jointly solve discrete task planning and continuous motion planning problems<br />
+[<br />
+27<br />
+,<br />
+19<br />
+]<br />
+, enabling the satisfaction of constraints involving both high-level action sequencing and low-level geometric feasibility.<br />
+Common approaches use sampling-based methods<br />
+[<br />
+20<br />
+,<br />
+21<br />
+]<br />
+or optimization<br />
+[<br />
+57<br />
+,<br />
+56<br />
+]<br />
+to identify the continuous values that satisfy the constraints.<br />
+However, most TAMP systems require detailed object geometries, limiting their application primarily to environments in which the geometries are given<br />
+a priori<br />
+.<br />
+The work most closely related to ours is by Curtis et al.<br />
+[<br />
+12<br />
+]<br />
+, who integrated learned perception modules for property and affordance estimation with PDDLStream<br />
+[<br />
+21<br />
+]<br />
+to enable long-horizon manipulation of unknown objects in the real world.<br />
+Our system differs in several critical ways: first, we use cuTAMP<br />
+[<br />
+48<br />
+]<br />
+, a GPU-parallelized optimization-based TAMP algorithm, which provides significantly improved computational efficiency compared to sampling-based approaches like PDDLStream and search-then-sample bilevel planners<br />
+[<br />
+51<br />
+,<br />
+11<br />
+]<br />
+; second, we leverage much larger foundation models trained on significantly more data than the perception models used in previous work.<br />
+Modular Robotic Planning Systems.<br />
+Modular approaches to robot planning decompose manipulation into distinct components such as perception, high-level planning, and low-level control.<br />
+Early symbolic systems like STRIPS<br />
+[<br />
+17<br />
+]<br />
+, applied to the Shakey robot<br />
+[<br />
+40<br />
+]<br />
+, demonstrated the power of symbolic plans but required detailed world models and controlled environments.<br />
+More recently, neurosymbolic approaches use LLMs to sequence pre-trained skills<br />
+[<br />
+2<br />
+,<br />
+26<br />
+]<br />
+, generate robot programs<br />
+[<br />
+35<br />
+,<br />
+50<br />
+]<br />
+, construct 3D value maps<br />
+[<br />
+25<br />
+]<br />
+, or combine VLMs with manipulation skills<br />
+[<br />
+37<br />
+]<br />
+.<br />
+Other work integrates learning with TAMP: LLM<br />
+3<br />
+[<br />
+59<br />
+]<br />
+uses LLMs to propose task plans with motion failure reasoning, PRoC3S<br />
+[<br />
+13<br />
+]<br />
+combines LLMs with continuous constraint satisfaction, VLM-TAMP<br />
+[<br />
+62<br />
+]<br />
+feeds VLM-generated subgoals to a task and motion planner, and OWL-TAMP<br />
+[<br />
+33<br />
+]<br />
+uses a VLM to infer constraints passed to a TAMP system.<br />
+Compared to LLM-based systems that sequence discrete skills, TiPToP jointly optimizes discrete task plans and continuous collision-free trajectories, which is important when constraints on continuous parameters impact the feasibility of skill sequences.<br />
+III<br />
+Problem Setting<br />
+We consider language-conditioned manipulation: given a natural language instruction<br />
+ℒ<br />
+\mathcal{L}<br />
+and a robot with known kinematics, produce actions that accomplish the task. At each timestep<br />
+t<br />
+t<br />
+, the policy<br />
+π<br />
+\pi<br />
+receives RGB observations<br />
+𝐨<br />
+t<br />
+\mathbf{o}<em>{t}<br />
+from one or more cameras, the current joint configuration<br />
+q<br />
+t<br />
+q</em>{t}<br />
+, and outputs an action<br />
+a<br />
+t<br />
+a_{t}<br />
+. That is,<br />
+a<br />
+t<br />
+=<br />
+π<br />
+​<br />
+(<br />
+𝐨<br />
+t<br />
+,<br />
+q<br />
+t<br />
+∣<br />
+ℒ<br />
+)<br />
+a_{t}=\pi(\mathbf{o}<em>{t},\,q</em>{t}\mid\mathcal{L})<br />
+.<br />
+The two systems we compare instantiate this specification very differently:<br />
+III-A<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID runs at 15 Hz. At every timestep it observes<br />
+𝐨<br />
+t<br />
+=<br />
+(<br />
+I<br />
+t<br />
+wrist<br />
+,<br />
+I<br />
+t<br />
+ext<br />
+)<br />
+\mathbf{o}<em>{t}=(I^{\text{wrist}}</em>{t},I^{\text{ext}}<em>{t})<br />
+, monocular RGB images from the wrist camera and external camera, respectively, along with the current joint and gripper positions<br />
+(<br />
+q<br />
+t<br />
+,<br />
+g<br />
+t<br />
+)<br />
+(q</em>{t},g_{t})<br />
+. It outputs chunks of 15 actions<br />
+{<br />
+a<br />
+t<br />
+}<br />
+=<br />
+(<br />
+q<br />
+˙<br />
+t<br />
+:<br />
+t<br />
++<br />
+15<br />
+,<br />
+g<br />
+t<br />
+:<br />
+t<br />
++<br />
+15<br />
+)<br />
+{a_{t}}=(\dot{q}<em>{t:t+15},g</em>{t:t+15})<br />
+, where<br />
+q<br />
+˙<br />
+\dot{q}<br />
+is a joint velocity command and<br />
+g<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+g\in{0,1}<br />
+is the binary gripper action.<br />
+III-B<br />
+TiPToP<br />
+TiPToP implements the policy using a<br />
+planner<br />
+: it observes the scene<br />
+once<br />
+at<br />
+t<br />
+=<br />
+0<br />
+t{=}0<br />
+from a<br />
+calibrated<br />
+wrist camera at a capture pose, which we assume provides a good view of the workspace. The observation<br />
+𝐨<br />
+0<br />
+=<br />
+(<br />
+I<br />
+0<br />
+left<br />
+,<br />
+I<br />
+0<br />
+right<br />
+)<br />
+\mathbf{o}<em>{0}=(I^{\text{left}}</em>{0},I^{\text{right}}<em>{0})<br />
+is a stereo RGB image pair with known intrinsics<br />
+K<br />
+K<br />
+, camera-to-end-effector extrinsics<br />
+T<br />
+cam<br />
+ee<br />
+T</em>{\text{cam}}^{\text{ee}}<br />
+, and stereo baseline<br />
+b<br />
+b<br />
+. From this single observation, it produces a complete timed trajectory<br />
+a<br />
+0<br />
+=<br />
+{<br />
+(<br />
+q<br />
+t<br />
+,<br />
+q<br />
+˙<br />
+t<br />
+,<br />
+g<br />
+t<br />
+)<br />
+}<br />
+t<br />
+=<br />
+0<br />
+T<br />
+a_{0}={(q_{t},\dot{q}<em>{t},g</em>{t})}<em>{t=0}^{T}<br />
+, where<br />
+q<br />
+t<br />
+q</em>{t}<br />
+is a joint configuration,<br />
+q<br />
+˙<br />
+t<br />
+\dot{q}<em>{t}<br />
+a joint velocity, and<br />
+g<br />
+t<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+g</em>{t}\in{0,1}<br />
+a binary gripper action. This plan is then executed open-loop with no further visual observations.<br />
+Modular Architecture.<br />
+TiPToP is composed of three modules (Figure<br />
+‣<br />
+I<br />
+):<br />
+(1) the<br />
+perception module<br />
+(§<br />
+IV<br />
+) takes<br />
+𝐨<br />
+0<br />
+\mathbf{o}<em>{0}<br />
+and<br />
+ℒ<br />
+\mathcal{L}<br />
+and constructs an object-centric 3D scene representation with per-object meshes, candidate grasps, and a symbolic goal<br />
+𝒢<br />
+\mathcal{G}<br />
+;<br />
+(2) the<br />
+planning module<br />
+(§<br />
+V<br />
+) uses cuTAMP<br />
+[<br />
+48<br />
+]<br />
+to search over plan skeletons and optimize continuous parameters (grasp poses, placement poses, collision-free trajectories) to find a feasible plan;<br />
+and (3) the<br />
+execution module<br />
+(§<br />
+VI<br />
+) tracks the planned trajectory open-loop using a joint impedance controller.<br />
+Illustrative Example.<br />
+We illustrate TiPToP in the DROID setup (Franka FR3 with a ZED Mini stereo camera mounted on the wrist) in the following scenario: the robot is given the instruction<br />
+“serve peanut butter crackers on each tray”<br />
+and the scene in Figure<br />
+‣<br />
+I<br />
+.<br />
+This task requires identifying peanut butter crackers among visually similar snacks (Goldfish, Cheez-Its), requiring cultural understanding and visual knowledge to distinguish them.<br />
+Additionally, a Sprite can obstructs all grasps on the left peanut butter cracker package, complicating depth estimation due to its reflective surface and requiring the robot to move the can out of the way before grasping the crackers.<br />
+Figure 1<br />
+:<br />
+Perception Module.<br />
+(a) Depth map predicted by FoundationStereo with sharp object boundaries. (b) Grasps predicted by M2T2 on the scene point cloud (colors correspond to grasp confidences). (c) Labeled object bounding boxes and symbolic goal<br />
+𝒢<br />
+\mathcal{G}<br />
+predicted by Gemini (<br />
+On<br />
+​<br />
+(<br />
+a<br />
+,<br />
+b<br />
+)<br />
+\text{On}(a,b)<br />
+specifies that object<br />
+a<br />
+a<br />
+should be placed on object or surface<br />
+b<br />
+b<br />
+).<br />
+IV<br />
+Perception Module<br />
+The perception module takes the initial observation<br />
+𝐨<br />
+0<br />
+\mathbf{o}</em>{0}<br />
+, joint configuration<br />
+q<br />
+0<br />
+q_{0}<br />
+, and the language instruction<br />
+ℒ<br />
+\mathcal{L}<br />
+as input to produce an object-centric 3D scene representation consisting of per-object meshes with candidate grasps, along with symbolic goal propositions that ground<br />
+ℒ<br />
+\mathcal{L}<br />
+into the desired relations between objects. Two branches run in parallel: the<br />
+3D Vision Branch<br />
+(§<br />
+IV-A<br />
+) extracts scene geometry and grasps, while the<br />
+Semantic Branch<br />
+(§<br />
+IV-B<br />
+) identifies objects and grounds the task goal. Their outputs are then merged (§<br />
+IV-C<br />
+).<br />
+IV-A<br />
+3D Vision Branch<br />
+Depth Estimation.<br />
+We use FoundationStereo<br />
+[<br />
+61<br />
+]<br />
+, a foundation model for stereo depth estimation, to predict a dense depth map<br />
+D<br />
+D<br />
+from the stereo RGB pair<br />
+𝐨<br />
+0<br />
+=<br />
+(<br />
+I<br />
+0<br />
+left<br />
+,<br />
+I<br />
+0<br />
+right<br />
+)<br />
+\mathbf{o}<em>{0}=(I^{\text{left}}</em>{0},I^{\text{right}}<em>{0})<br />
+from the wrist camera, the camera intrinsics<br />
+K<br />
+K<br />
+, and stereo baseline<br />
+b<br />
+b<br />
+.<br />
+D<br />
+D<br />
+is aligned to the left image<br />
+I<br />
+0<br />
+left<br />
+I^{\text{left}}</em>{0}<br />
+.<br />
+We found that FoundationStereo produces cleaner depth maps than the ZED camera’s proprietary stereo matching, particularly on transparent, specular, and textureless surfaces (Figure<br />
+1<br />
+a).<br />
+Unprojecting depth to 3D.<br />
+We unproject the depth map<br />
+D<br />
+D<br />
+into a 3D point cloud using the camera intrinsics<br />
+K<br />
+K<br />
+, then transform the points to the world frame by composing the camera-to-end-effector extrinsics<br />
+T<br />
+cam<br />
+ee<br />
+T_{\text{cam}}^{\text{ee}}<br />
+with the forward kinematics (FK) at the capture joint configuration<br />
+q<br />
+0<br />
+q_{0}<br />
+:<br />
+𝐩<br />
+world<br />
+=<br />
+T<br />
+ee<br />
+world<br />
+​<br />
+T<br />
+cam<br />
+ee<br />
+​<br />
+𝐩<br />
+cam<br />
+where<br />
+​<br />
+T<br />
+ee<br />
+world<br />
+=<br />
+FK<br />
+​<br />
+(<br />
+q<br />
+0<br />
+)<br />
+.<br />
+\mathbf{p}^{\text{world}}=T_{\text{ee}}^{\text{world}}\,T_{\text{cam}}^{\text{ee}}\,\mathbf{p}^{\text{cam}}\quad\text{where}\ T_{\text{ee}}^{\text{world}}=\text{FK}(q_{0}).\vskip-2.5pt<br />
+This produces a dense point cloud of the scene in the world frame<br />
+𝐩<br />
+world<br />
+\mathbf{p}^{\text{world}}<br />
+(Figure<br />
+1<br />
+b).<br />
+Grasp Generation.<br />
+We use M2T2<br />
+[<br />
+63<br />
+]<br />
+to predict ranked 6-DoF grasp poses from the full scene point cloud.<br />
+Object-to-grasp association is performed in §<br />
+IV-C<br />
+using segmentation masks from the<br />
+Semantic Branch<br />
+(§<br />
+IV-B<br />
+).<br />
+Because M2T2 reasons over the full scene, its predictions are informed by surrounding geometry, though they are not guaranteed to be collision-free.<br />
+In our illustrative example, M2T2 generates candidate grasps on the trays, one cracker package, and the soda can (Figure<br />
+1<br />
+b).<br />
+Note that some objects may not have predicted grasps; in such cases, we fall back to a heuristic 4-DoF grasp sampler in the<br />
+planning module<br />
+(§<br />
+V<br />
+).<br />
+Having a large set of scene-level candidate grasps at this stage allows the planner to later select appropriate grasps based on task requirements and collision constraints.<br />
+We also tried GraspGen<br />
+[<br />
+39<br />
+]<br />
+, but it requires segmented object point clouds and does not consider scene geometry for predicting grasps, requiring additional overhead for collision checking. We also considered AnyGrasp<br />
+[<br />
+16<br />
+]<br />
+, but its license application process complicates out-of-the-box deployment.<br />
+IV-B<br />
+Semantic Branch<br />
+Object Detection and Goal Grounding.<br />
+We query Gemini Robotics-ER 1.5<br />
+[<br />
+22<br />
+]<br />
+, a VLM, once to jointly extract: (1) labels and 2D bounding boxes for objects in the scene, and (2) a symbolic goal<br />
+𝒢<br />
+\mathcal{G}<br />
+expressed as a conjunction of<br />
+predicates<br />
+(i.e., logical relations betweeen objects) over detected objects. We currently support one predicate,<br />
+On<br />
+​<br />
+(<br />
+a<br />
+,<br />
+b<br />
+)<br />
+\texttt{On}(a,b)<br />
+, though we demonstrate defining additional predicates for new skills in §<br />
+VII-D<br />
+.<br />
+The VLM leverages its common-sense reasoning and cultural knowledge to ground references in the instruction to specific objects and assign task-relevant labels.<br />
+In our example with<br />
+ℒ<br />
+=<br />
+\mathcal{L}=<br />
+“serve peanut butter crackers on each tray”, the VLM correctly identifies that “peanut butter crackers” refers to the two Lance cracker packages among other snacks (Goldfish crackers, Cheez-It crackers, nuts), and reasons that “each tray” requires placing one package on each to produce<br />
+𝒢<br />
+\mathcal{G}<br />
+(Figure<br />
+1<br />
+c).<br />
+Object Segmentation.<br />
+For each detected bounding box, we use SAM-2<br />
+[<br />
+46<br />
+]<br />
+to generate a pixel-level segmentation mask from<br />
+I<br />
+0<br />
+left<br />
+I^{\text{left}}<em>{0}<br />
+.<br />
+These masks are combined with the scene point cloud in §<br />
+IV-C<br />
+to extract per-object geometry and assign grasps to specific objects.<br />
+IV-C<br />
+Combining Outputs<br />
+We combine scene-level geometry and candidate grasps from the<br />
+3D Vision Branch<br />
+with object identities and segmentation masks from the Semantic Branch into an object-centric 3D scene representation, producing per-object meshes with assigned grasps for the planning module.<br />
+Table Detection.<br />
+We apply RANSAC<br />
+[<br />
+18<br />
+]<br />
+to the scene point cloud<br />
+𝐩<br />
+world<br />
+\mathbf{p}^{\text{world}}<br />
+to fit the dominant planar surface, which we assume to be the table. This assumption could be relaxed by detecting multiple support surfaces (e.g., tables, floors, cabinets) via semantic segmentation or multi-plane fitting.<br />
+Per-Object Mesh Reconstruction.<br />
+We use the segmentation mask of each detected object to extract the corresponding points from<br />
+𝐩<br />
+world<br />
+\mathbf{p}^{\text{world}}<br />
+, project them downward along the<br />
+z<br />
+z<br />
+-axis to the object’s lowest observed point, and compute the convex hull to form a watertight mesh.<br />
+We project to each object’s own lowest point rather than to the table, as objects may rest on each other.<br />
+Since we observe from a single viewpoint, the convex hull typically over-approximates object geometry, which is preferable for collision checking.<br />
+Grasp-to-Object Assignment.<br />
+Each grasp predicted by M2T2 is assigned to the nearest object by querying its contact point against a KDTree<br />
+[<br />
+5<br />
+]<br />
+built from all object point clouds.<br />
+Grasps whose nearest object point exceeds a distance threshold are discarded, as these typically arise from point cloud noise or partial observability.<br />
+V<br />
+Planning Module<br />
+TiPToP uses cuTAMP<br />
+[<br />
+48<br />
+]<br />
+, a GPU-parallelized Task and Motion Planning algorithm, to search over discrete<br />
+plan skeletons<br />
+and optimize continuous parameters (grasp poses, placement poses, trajectories) to produce a full manipulation plan.<br />
+cuTAMP operates primarily over pick-and-place primitives, though it can be extended to support additional primitives such as wiping (§<br />
+VII-D<br />
+).<br />
+We chose cuTAMP for its fast solution times on a single GPU and its ease of installation, and made several extensions to improve its real-world deployability (Appendix<br />
+-A<br />
+).<br />
+Plan Skeleton Enumeration.<br />
+Given the symbolic goal<br />
+𝒢<br />
+\mathcal{G}<br />
+, cuTAMP uses a PDDL-style symbolic planner<br />
+[<br />
+38<br />
+]<br />
+to enumerate candidate plan skeletons — sequences of symbolic actions without committed continuous parameters. For example:<br />
+[<br />
+\displaystyle[<br />
+MoveFree<br />
+​<br />
+(<br />
+q<br />
+0<br />
+,<br />
+?<br />
+​<br />
+q<br />
+1<br />
+,<br />
+?<br />
+​<br />
+τ<br />
+1<br />
+)<br />
+,<br />
+Pick<br />
+​<br />
+(<br />
+cracker<br />
+,<br />
+?<br />
+​<br />
+g<br />
+,<br />
+p<br />
+0<br />
+,<br />
+?<br />
+​<br />
+q<br />
+1<br />
+)<br />
+,<br />
+\displaystyle{\texttt{MoveFree}}(q</em>{0},{?q_{1}},{?\tau_{1}}),\;{\texttt{Pick}}({\texttt{cracker}},{?g},p_{0},{?q_{1}}),<br />
+MoveHolding<br />
+​<br />
+(<br />
+cracker<br />
+,<br />
+?<br />
+​<br />
+g<br />
+,<br />
+?<br />
+​<br />
+q<br />
+1<br />
+,<br />
+?<br />
+​<br />
+q<br />
+2<br />
+,<br />
+?<br />
+​<br />
+τ<br />
+2<br />
+)<br />
+,<br />
+\displaystyle{\texttt{MoveHolding}}({\texttt{cracker}},{?g},{?q_{1}},{?q_{2}},{?\tau_{2}}),\;<br />
+Place<br />
+(<br />
+cracker<br />
+,<br />
+?<br />
+g<br />
+,<br />
+?<br />
+p<br />
+1<br />
+,<br />
+tray<br />
+,<br />
+?<br />
+q<br />
+2<br />
+)<br />
+]<br />
+\displaystyle{\texttt{Place}}({\texttt{cracker}},{?g},{?p_{1}},{\texttt{tray}},{?q_{2}})]<br />
+where<br />
+?<br />
+​<br />
+g<br />
+?g<br />
+,<br />
+?<br />
+​<br />
+p<br />
+1<br />
+?p_{1}<br />
+,<br />
+?<br />
+​<br />
+q<br />
+i<br />
+?q_{i}<br />
+, and<br />
+?<br />
+​<br />
+τ<br />
+i<br />
+?\tau_{i}<br />
+are unbound continuous parameters (grasp pose, placement pose, robot configurations, and trajectories, respectively).<br />
+The planner generates multiple skeletons that differ in action ordering and, crucially, may include auxiliary actions to move obstructing objects. In our example (Figure<br />
+‣<br />
+I<br />
+), shorter skeletons pick and place the two cracker packages directly onto the trays, while longer skeletons additionally move the soda can out of the way before grasping the obstructed crackers.<br />
+Particle Initialization.<br />
+For each skeleton, cuTAMP initializes a large batch of candidate solutions, called<br />
+particles<br />
+, by sampling the continuous parameters left unbound by the skeleton: grasp poses (from M2T2 predictions or a heuristic top-down grasp sampler), placement poses on target surfaces, and robot configurations via inverse kinematics. For multi-step problems, these initial samples are generally infeasible as they may violate collision, stability, or kinematic constraints.<br />
+Particle Optimization.<br />
+cuTAMP then ranks skeletons by a heuristic over the feasibility of their initialized particles.<br />
+For each skeleton, cuTAMP performs differentiable optimization over all particles simultaneously, refining placement poses and robot configurations to jointly satisfy collision avoidance, stable placement, and kinematic feasibility constraints. The optimization terminates once sufficient particles satisfy all constraints, moving to the next skeleton otherwise. In our example, skeletons that attempt to pick the left crackers package directly fail optimization because the soda can obstructs all feasible grasps. cuTAMP finds satisfying particles on a longer skeleton that first moves the soda can elsewhere on the table.<br />
+Motion Planning.<br />
+For each satisfying particle, cuTAMP invokes cuRobo<br />
+[<br />
+52<br />
+]<br />
+, a GPU-accelerated motion planner, to solve for the remaining trajectory parameters (<br />
+?<br />
+​<br />
+τ<br />
+i<br />
+?\tau_{i}<br />
+) as collision-free, time-parameterized trajectories. The final output is a manipulation plan<br />
+{<br />
+(<br />
+q<br />
+t<br />
+,<br />
+q<br />
+˙<br />
+t<br />
+,<br />
+g<br />
+t<br />
+)<br />
+}<br />
+t<br />
+=<br />
+0<br />
+T<br />
+{(q_{t},\dot{q}<em>{t},g</em>{t})}<em>{t=0}^{T}<br />
+: joint positions, joint velocities, and gripper commands.<br />
+VI<br />
+Execution Module<br />
+The execution module tracks a planned trajectory<br />
+{<br />
+(<br />
+q<br />
+t<br />
+,<br />
+q<br />
+˙<br />
+t<br />
+,<br />
+g<br />
+t<br />
+)<br />
+}<br />
+t<br />
+=<br />
+0<br />
+T<br />
+{(q</em>{t},\dot{q}<em>{t},g</em>{t})}<em>{t=0}^{T}<br />
+on the robot. Accurately tracking trajectories is crucial, since the planner assumes consistency between the robot’s joint-space execution and the resulting scene configuration. Even sub-centimeter tracking errors can cause grasps or placements to fail.<br />
+We implemented our own joint-space impedance controller for Franka arms (Appendix<br />
+-B<br />
+), because existing open-source controllers, including DROID’s default Polymetis controller, were unable to track timed trajectories sufficiently precisely.<br />
+TiPToP does not monitor execution or replan based on execution-time observations (i.e., it is open-loop with respect to visual observations).<br />
+This succeeds when the world is static and trajectories are tracked accurately, but fails when objects move unexpectedly or grasps slip.<br />
+VII<br />
+Experiments<br />
+Our experiments are designed to answer the following questions:<br />
+•<br />
+Q1.<br />
+To what extent is TiPToP capable of satisfying manipulation tasks specified with open-ended language expressions and involving everyday objects, especially when compared to a state-of-the-art VLA?<br />
+•<br />
+Q2.<br />
+How does TiPToP’s time taken for task success compare to a state-of-the-art VLA?<br />
+•<br />
+Q3.<br />
+What are the primary failure modes of TiPToP?<br />
+VII-A<br />
+Experimental Setup<br />
+TiPToP<br />
+π<br />
+0.5<br />
+\pi</em>{0.5}<br />
+-DROID<br />
+Scene<br />
+SR<br />
+TP<br />
+SR<br />
+TP<br />
+Simple<br />
+Cube<br />
+→<br />
+\to<br />
+bowl (sim)<br />
+5/10<br />
+72.5%<br />
+8/10<br />
+90%<br />
+Can<br />
+→<br />
+\to<br />
+mug (sim)<br />
+9/10<br />
+97.5%<br />
+2/10<br />
+50%<br />
+Banana<br />
+→<br />
+\to<br />
+bin (sim)<br />
+0/10<br />
+70%<br />
+9/10<br />
+97.5%<br />
+Marker<br />
+→<br />
+\to<br />
+tray<br />
+3/5<br />
+80%<br />
+5/5<br />
+100%<br />
+Crackers<br />
+→<br />
+\to<br />
+tray<br />
+†<br />
+5/5<br />
+100%<br />
+3/5<br />
+60%<br />
+22/40<br />
+84.0%<br />
+27/40<br />
+79.5%<br />
+Distractor<br />
+Meat can<br />
+→<br />
+\to<br />
+sugar box (sim)<br />
+5/10<br />
+72.5%<br />
+0/10<br />
+5%<br />
+Coffee capsules<br />
+→<br />
+\to<br />
+plate<br />
+4/5<br />
+90%<br />
+2/5<br />
+58%<br />
+Turkish figs<br />
+→<br />
+\to<br />
+plate<br />
+3/5<br />
+64%<br />
+2/5<br />
+52%<br />
+Cashews<br />
+→<br />
+\to<br />
+plate<br />
+0/5<br />
+16%<br />
+0/5<br />
+12%<br />
+Red cubes<br />
+→<br />
+\to<br />
+plate<br />
+1/5<br />
+50%<br />
+5/5<br />
+92%<br />
+Fish<br />
+→<br />
+\to<br />
+box<br />
+4/5<br />
+80%<br />
+0/5<br />
+10%<br />
+Crackers<br />
+→<br />
+\to<br />
+tray (medium)<br />
+†<br />
+5/5<br />
+100%<br />
+3/5<br />
+80%<br />
+PB crackers<br />
+→<br />
+\to<br />
+tray (hard)<br />
+†<br />
+5/5<br />
+100%<br />
+0/5<br />
+20%<br />
+27/45<br />
+71.6%<br />
+12/45<br />
+41.1%<br />
+Semantic<br />
+Toy<br />
+→<br />
+\to<br />
+matching plate<br />
+4/5<br />
+90%<br />
+1/5<br />
+62%<br />
+Creeper<br />
+→<br />
+\to<br />
+plate<br />
+3/5<br />
+70%<br />
+0/5<br />
+0%<br />
+Largest toy<br />
+→<br />
+\to<br />
+plate<br />
+3/5<br />
+70%<br />
+0/5<br />
+20%<br />
+Red A<br />
+→<br />
+\to<br />
+color pile<br />
+5/5<br />
+100%<br />
+3/5<br />
+80%<br />
+Banana<br />
+→<br />
+\to<br />
+box<br />
+2/5<br />
+40%<br />
+0/5<br />
+30%<br />
+N block<br />
+→<br />
+\to<br />
+indicated cup<br />
+3/5<br />
+80%<br />
+2/5<br />
+60%<br />
+Sort blocks by color<br />
+5/5<br />
+100%<br />
+0/5<br />
+32%<br />
+Banana<br />
+→<br />
+\to<br />
+matching plate<br />
+1/5<br />
+20%<br />
+4/5<br />
+90%<br />
+26/40<br />
+71.3%<br />
+10/40<br />
+46.8%<br />
+Multi-step<br />
+Color cubes<br />
+→<br />
+\to<br />
+bowl (sim)<br />
+9/10<br />
+94.6%<br />
+0/10<br />
+24.2%<br />
+AirPods<br />
+→<br />
+\to<br />
+cup<br />
+1/5<br />
+55%<br />
+3/5<br />
+75%<br />
+Pack pods<br />
+→<br />
+\to<br />
+tray<br />
+†<br />
+4/5<br />
+80%<br />
+1/5<br />
+65.7%<br />
+Pack pods<br />
+→<br />
+\to<br />
+tray (obs.)<br />
+†<br />
+1/5<br />
+67%<br />
+0/5<br />
+64%<br />
+Aleve bottle<br />
+→<br />
+\to<br />
+tray (obs.)<br />
+†<br />
+4/5<br />
+80%<br />
+2/5<br />
+70%<br />
+Three marbles<br />
+→<br />
+\to<br />
+cup<br />
+†<br />
+2/5<br />
+80%<br />
+0/5<br />
+6.7%<br />
+Marbles + cable<br />
+†<br />
+2/5<br />
+70%<br />
+0/5<br />
+60%<br />
+23/40<br />
+75.2%<br />
+6/40<br />
+52.2%<br />
+Overall<br />
+98/165<br />
+74.6%<br />
+55/165<br />
+52.4%<br />
+TABLE I:<br />
+Per-scene performance comparison over 28 evaluation scenes.<br />
+SR = Success Rate, TP = Task Progress. Best results are<br />
+bolded<br />
+. The row at the bottom of each category shows the aggregate SR (sum) and TP (mean);<br />
+Overall<br />
+aggregates across all scenes. Sim scenes use 10 trials; all others are real-world evaluations with 5 trials.<br />
+†<br />
+Evaluated by system designers; unmarked scenes evaluated by the external evaluation team.<br />
+We tested TiPToP in 3 different settings: (i) in a simulation environment built using the IsaacSim<br />
+[<br />
+41<br />
+]<br />
+simulator, (ii) on a real-world DROID hardware setup, (iii) on a separate DROID hardware setup operated by an external evaluation team.<br />
+Evaluation Protocol.<br />
+Following an “in-the-wild” evaluation protocol inspired by<br />
+Wang<br />
+et al.<br />
+[<br />
+58<br />
+]<br />
+, we chose natural language goal expressions and objects that corresponded to tasks that both TiPToP and<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID seemed capable of.<br />
+Both systems received the same natural-language instruction and started from the same robot configuration.<br />
+We ran<br />
+5<br />
+5<br />
+tasks in simulation,<br />
+8<br />
+8<br />
+tasks on the DROID setup used by TiPToP’s developers (top row Figure<br />
+LABEL:fig:teaser<br />
+), and<br />
+15<br />
+15<br />
+tasks on the external DROID setup (middle row of Figure<br />
+LABEL:fig:teaser<br />
+).<br />
+We ran 5 trials per task in the real world, and 10 trials per task in simulation.<br />
+Our key measure was binary success rate averaged over trials, though we also report task progress, which is a more continuous measure that was defined using subgoals on a per-task basis (see Appendix<br />
+-C<br />
+for details).<br />
+VII-B<br />
+Results and Analysis<br />
+Table<br />
+I<br />
+shows the results of these experiments (Q1).<br />
+We grouped the tasks from the evaluation into<br />
+4<br />
+4<br />
+separate categories for the purposes of interpretation and analysis.<br />
+The<br />
+simple<br />
+tasks are one-step pick-and-place tasks with no distractor objects.<br />
+The<br />
+distractor<br />
+tasks are rearrangement tasks that feature a number of distractors and require identifying and manipulating only the relevant object(s).<br />
+The<br />
+semantic<br />
+tasks feature complex natural language goal expressions that require semantic reasoning about the scene to identify the correct object(s) (e.g. “Pick up the largest toy and place onto the purple plate”).<br />
+Finally, the<br />
+multi-step<br />
+tasks require executing many actions in sequence in settings where some physical reasoning is required to accomplish the task (e.g. constrained packing, moving an obstacle out of the way to reach a particular object, or moving an obstacle to make room for a placement).<br />
+TiPToP is comparable to<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID on simple tasks and outperforms on the others.<br />
+On the five simple pick-and-place scenes, results are mixed: TiPToP achieves slightly higher task progress, while<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID achieves a slightly higher overall success rate.<br />
+As task complexity increases, however, a consistent performance gap emerges.<br />
+On distractor tasks, TiPToP achieves a higher success rate on six of eight scenes and an overall success rate of 60%, while<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID only achieves 26.7%.<br />
+On semantic tasks, this gap is more pronounced: TiPToP achieves a higher success rate on seven of eight scenes, and<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID scores 0/5 on four of them.<br />
+We attribute this performance to TiPToP’s use of a large VLM to translate visual observations and natural language instructions into a symbolic goal<br />
+𝒢<br />
+\mathcal{G}<br />
+. This explicit grounding step enables TiPToP to correctly identify task-relevant objects amid distractors and to interpret complex referring expressions (e.g., “largest toy,” “matching plate,” “sort by color”) that<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID has no mechanism to reason about.<br />
+On multi-step tasks, TiPToP achieves a higher success rate on six of seven scenes, with the largest difference in the simulated color cubes scene (9/10 vs. 0/10).<br />
+This advantage stems from TAMP: cuTAMP decomposes multi-step goals into a sequence of feasible pick-and-place actions with collision-free motion plans, whereas<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID must implicitly discover multi-step structure from the language command.<br />
+Task progress scores tell a complementary story: even in scenes where TiPToP does not fully succeed, it often completes most subgoals (e.g., 72.5% task progress at 5/10 success rate on cube<br />
+→<br />
+\to<br />
+bowl), indicating that failures tend to be isolated to a single step rather than wholesale inability to make progress.<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID also achieves non-trivial task progress on many scenes where it ultimately fails, but TiPToP consistently achieves higher task progress, especially in both semantic and multi-step categories.<br />
+Failure cases.<br />
+The scenes where TiPToP performs relatively poorly, and where<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID outperforms TiPToP reveal systematic limitations of TiPToP’s current implementation.<br />
+First, TiPToP’s perception module approximates object meshes using convex hulls, which fails for objects with concave geometry. Bananas are the clearest example: in both banana<br />
+→<br />
+\to<br />
+bin (sim) and banana<br />
+→<br />
+\to<br />
+matching plate, the convex hull poorly represents the true shape, leading to grasp and placement failures. This accounts for two of the six scenes where<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID achieves a higher success rate.<br />
+Second, small objects such as cashews and AirPods are difficult to grasp reliably in a single attempt.<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID benefits here from its closed-loop, reactive policy: when a grasp fails, it can re-attempt on the next control step, whereas TiPToP commits to a single open-loop trajectory and has no mechanism to retry.<br />
+Third, objects can slip after an initially successful grasp. In the red cubes<br />
+→<br />
+\to<br />
+plate scene, TiPToP frequently grasped the correct cube but lost it during transport, resulting in only 1/5 success despite 50% task progress.<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID’s continuous visual feedback allows it to adjust its grip or re-grasp, achieving 5/5 on this task.<br />
+These failure modes point to a common theme: TiPToP’s lack of reactivity while executing is a significant limitation.<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID<br />
+TiPToP<br />
+Scene<br />
+Time (s)<br />
+Time (s)<br />
+Plan (s)<br />
+Simulation<br />
+Cube<br />
+→<br />
+\to<br />
+bowl<br />
+27.4<br />
+17.9<br />
+9.7<br />
+Can<br />
+→<br />
+\to<br />
+mug<br />
+41.0<br />
+18.6<br />
+9.2<br />
+Real-World<br />
+Crackers<br />
+→<br />
+\to<br />
+tray (simple)<br />
+32.2<br />
+14.9<br />
+7.0<br />
+Crackers<br />
+→<br />
+\to<br />
+tray (medium)<br />
+45.2<br />
+14.9<br />
+7.3<br />
+Pack pods<br />
+→<br />
+\to<br />
+tray<br />
+53.4<br />
+47.0<br />
+20.5<br />
+Aleve bottle<br />
+→<br />
+\to<br />
+tray (obs.)<br />
+†<br />
+31.2<br />
+31.2<br />
+16.4<br />
+TABLE II:<br />
+Completion time comparison<br />
+. ‘Time’ reports average time-to-success over successful trials only. ‘Plan’ reports the time required for TiPToP to run the perception and planning module (included in ‘Time’).<br />
+Execution time.<br />
+Table<br />
+II<br />
+compares average time-to-success for both systems (Q2).<br />
+TiPToP is faster than<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID in five of six scenes, often by a substantial margin, and matches it on the remaining one.<br />
+On single-step real-world tasks, TiPToP completes execution in around 15 seconds, roughly half the time of<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID.<br />
+The advantage is even larger on scenes where<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID requires multiple grasp attempts (e.g., can<br />
+→<br />
+\to<br />
+mug: 18.6s vs. 41.0s).<br />
+This speed advantage stems from TiPToP’s architecture: it plans a single, time-optimal trajectory upfront and executes it open-loop, whereas<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID runs a reactive control loop that may need several cycles of approaching, grasping, and recovering from failed attempts.<br />
+In fact, we observed qualitatively that<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID spends a significant amount of time idling and seemingly not making any task progress.<br />
+On multi-step tasks, TiPToP remains faster (47.0s vs. 53.4s on pack pods), though the margin narrows as more of the total time is spent on execution rather than planning.<br />
+VII-C<br />
+Cross-Embodiment Generalization<br />
+To validate TiPToP’s modularity with respect to embodiments, we deployed the system on a UR5e arm with a wrist-mounted Intel Realsense D435 camera (Figure<br />
+LABEL:fig:teaser<br />
+c).<br />
+Adapting to the new embodiment required providing the robot URDF, generating collision spheres for the robot, writing a cuRobo configuration file, and implementing camera and controller interfaces for the new hardware. The full adaptation was completed within a few hours (Appendix<br />
+-D<br />
+). TiPToP was also deployed on a Trossen WidowX AI arm with a wrist-mounted RealSense D405 camera in collaboration with an independent researcher (Figure<br />
+LABEL:fig:teaser<br />
+d).<br />
+Figure 2<br />
+:<br />
+Wiping.<br />
+We demonstrate that TiPToP can be straightforwardly extended to perform wiping in addition to pick-and-place. Task instruction: “erase the whiteboard and put everything into the bowl”.<br />
+VII-D<br />
+Extending Beyond Pick-and-Place<br />
+TiPToP’s modularity makes it straightforward to extend beyond pick-and-place. To demonstrate this, we added a<br />
+whiteboard wiping<br />
+primitive that enables the robot to wipe writing off a surface given an eraser (as depicted in Figure<br />
+2<br />
+). This required three localized changes, none of which modified the perception or execution infrastructure.<br />
+Semantic branch.<br />
+We add two new predicates,<br />
+IsEraser<br />
+and<br />
+IsCleaned<br />
+, and extend the VLM goal-grounding prompt to translate instructions involving cleaning into conjunctions over these predicates (e.g.,<br />
+IsCleaned(whiteboard)<br />
+).<br />
+Planning.<br />
+We define a new<br />
+Wipe<br />
+TAMP operator in cuTAMP with preconditions that the robot is holding an eraser and the target is a surface, and an effect that marks the surface as cleaned. The task planner automatically sequences pick then wipe to satisfy an<br />
+IsCleaned<br />
+goal. During motion solving,<br />
+Wipe<br />
+hands off to a low-level wiping skill.<br />
+Execution.<br />
+The wiping controller calls the VLM a second time to localize the region of interest (e.g., written text) on the surface via a bounding box query. It reprojects the bounding box corners into world coordinates using the existing point cloud, then executes a sequence of back-and-forth strokes covering the detected region using IK-based Cartesian control.<br />
+The entire extension was implemented in under a day without modifying any existing perception, planning, or execution code outside of the additions described above.<br />
+VII-E<br />
+Failure Analysis<br />
+A key advantage of TiPToP’s modular architecture is the ability to ‘debug’ the system by tracing the root cause of failures to particular parts of the system. To understand the relative frequency of failures in different parts of the system (Q3), we ran an additional 173 trials of a variety of rearrangement tasks on the real-world DROID setup in the lab of the TiPToP developers. For each failure, we traced the root cause to a particular part of the system. The results are displayed in Figure<br />
+3<br />
+.<br />
+Figure 3<br />
+:<br />
+Failure Analysis.<br />
+Sankey diagram showing outcomes of 173 trials. The most common failure modes are grasping failures (missed or unstable grasps), followed by scene completion errors, VLM detection errors, then cuTAMP failures.<br />
+Grasping failures<br />
+(31/55 failures) are the most common failure mode.<br />
+These occur when M2T2 produces high-scoring grasps that fail in execution, or when the heuristic fallback sampler is used for objects without M2T2 predictions.<br />
+Scene completion errors<br />
+(13/55 failures) result from incorrect mesh approximations that cause collisions during execution.<br />
+These typically occur when convex hull completion overapproximates concave objects (e.g. overapproximating the mesh of a banana into a large oval) or when partial observability leads to underapproximation.<br />
+VLM errors<br />
+(6/55 failures) occur when Gemini fails to detect objects or produces incorrect bounding boxes.<br />
+cuTAMP failures<br />
+(5/55 failures) occur when the planner cannot find feasible plans within the time budget, typically due to motion planning failures in cluttered scenes.<br />
+VIII<br />
+Discussion<br />
+TiPToP’s modular architecture means each of its current limitations maps to a specific component that can be improved independently. Below, we discuss these limitations alongside concrete directions for addressing them.<br />
+Open-loop execution.<br />
+This is the single most impactful limitation: our failure analysis (Figure<br />
+3<br />
+) shows that grasping failures account for over half of all failures, many of which could be recovered from by re-attempting the grasp.<br />
+The most direct improvement is to re-run perception and planning after each pick-and-place step, enabling recovery from failed grasps or unexpected object movement<br />
+[<br />
+12<br />
+,<br />
+34<br />
+,<br />
+44<br />
+,<br />
+8<br />
+]<br />
+.<br />
+Single-viewpoint perception.<br />
+All task-relevant objects must be at least partially visible from a single wrist-camera pose.<br />
+This also limits mesh quality: with only one viewpoint, convex hull completion can over or under-approximate object geometry, leading to unnecessary collisions or missed collisions during execution.<br />
+Multi-view perception, via active camera movement before planning or additional static cameras, would reduce occlusions and improve shape estimates.<br />
+Learned shape completion methods such as SAM-3D<br />
+[<br />
+47<br />
+]<br />
+could replace convex hull approximation with more accurate meshes.<br />
+Advances in depth estimation<br />
+[<br />
+60<br />
+,<br />
+54<br />
+]<br />
+could further improve point cloud quality, and better grasp prediction models would address TiPToP’s most common failure mode.<br />
+Integrating learned policies.<br />
+Our experiments show that TiPToP and<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID exhibit complementary failure modes: TiPToP excels at geometric reasoning, long-horizon sequencing, and semantic grounding, but fails when grasps slip or meshes are poorly approximated;<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID benefits from closed-loop reactivity but struggles with multi-step structure, tight constraints, and distractor-rich scenes.<br />
+This suggests that learned policies such as VLAs could serve as reactive skill primitives within TiPToP, both improving robustness for existing skills and enabling new ones that are difficult to hand-engineer (e.g., folding, cable manipulation).<br />
+Integrating such skills requires specifying their abstract preconditions and effects so the planner can reason about when to invoke them. These abstract models could be manually engineered or learned from interaction data<br />
+[<br />
+49<br />
+,<br />
+32<br />
+,<br />
+36<br />
+,<br />
+3<br />
+]<br />
+.<br />
+Belief-space planning.<br />
+Extending cuTAMP to operate in belief space would enable reasoning about uncertainty in object poses, grasp outcomes, and partially observable state<br />
+[<br />
+28<br />
+,<br />
+14<br />
+,<br />
+10<br />
+]<br />
+.<br />
+This could also enable information-gathering actions (e.g., moving the camera to observe an occluded region before planning) and more robust action selection under perceptual uncertainty.<br />
+IX<br />
+Conclusion<br />
+We presented TiPToP, a modular planning-based manipulation system that composes pretrained vision foundation models with GPU-accelerated TAMP to solve multi-step manipulation tasks from RGB images and natural language, without any robot training data. Over 165 trials in 28 evaluation scenes in simulation and on real hardware, TiPToP matches or outperforms<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID, particularly on tasks requiring semantic grounding, distractor rejection, and multi-step sequencing. Our system’s modular architecture enables component-level failure analysis: we traced failures over 173 trials to specific modules, identifying grasping as the dominant bottleneck.<br />
+A central finding of this work is that a modular system built from off-the-shelf foundation models and planning algorithms can serve as a strong manipulation system.<br />
+Importantly, each component of TiPToP can be independently upgraded as better depth estimators, grasp predictors, VLMs, and TAMP or motion planners become available. At the same time, the complementary failure profiles of TiPToP and<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID suggest that integrating end-to-end VLA models with our framework could yield systems that combine the structured reasoning of planning with the robustness and flexibility of closed-loop visuomotor control. We hope that our open-source system, as well as our empirical findings, support future research towards broadly competent and generalizable manipulation systems.<br />
+Acknowledgments<br />
+We gratefully acknowledge support from NSF grant 2214177; from AFOSR grant FA9550-22-1-0249; from ONR MURI grants N00014-22-1-2740 and N00014-24-1-2603; from the MIT Quest for Intelligence; and from the Robotics and AI Institute.<br />
+We thank Ryan Lindeborg for deploying TiPToP on his Trossen WidowX AI and for providing installation and debugging feedback.<br />
+We thank Jesse Zhang for testing TiPToP at the University of Washington. We thank Wenlong Huang for help setting up FoundationStereo to improve point cloud accuracy, as well as several helpful discussions. We also thank Tom Silver, Chris Agia, Joey Hejna, Karl Pertsch, Danny Driess, and Fabio Ramos for helpful discussions and feedback on earlier drafts of this work.<br />
+Author Contributions<br />
+William Shen<br />
+and<br />
+Nishanth Kumar<br />
+contributed equally to this work. William adapted and improved the core cuTAMP system to be suitable (simpler to use, faster) for our purposes. Nishanth implemented the perception interface to Gemini and SAM. Both William and Nishanth worked on integrating additional models (FoundationStereo, M2T2) into the system, packaging all components to be easily used, benchmarking system capabilities, and writing the paper.<br />
+Sahit Chintalapudi<br />
+implemented and packaged the control stack for the Franka Panda and FR3 robots. He also helped run quantitative experiments to investigate TiPToP’s failure modes, and helped make figures and edit the paper.<br />
+Jie Wang<br />
+led the evaluations conducted at the University of Pennsylvania (Penn), and assisted with analysis and experimental design.<br />
+Christopher Watson<br />
+set up TiPToP at Penn and assisted with evaluations, experimental design and analysis.<br />
+Edward S. Hu<br />
+assisted with TiPToP setup at Penn and contributed to experimental design and analysis.<br />
+Jing Cao<br />
+set up the simulator and ran simulation experiments comparing<br />
+π<br />
+0.5<br />
+​<br />
+-DROID<br />
+\pi_{0.5}\text{-DROID}<br />
+to TiPToP, and analyzed the results.<br />
+Dinesh Jayaraman<br />
+advised the evaluations at the University of Pennsylvania and provided lab resources.<br />
+Leslie Pack Kaelbling<br />
+and<br />
+Tomás Lozano-Pérez<br />
+provided several helpful system implementation and task suggestions, and strongly encouraged that the code should be easy to install. They helped edit the paper, and also provided several more suggestions for improvement, the bulk of which have been left for future work.<br />
+References<br />
+[1]<br />
+A. Agarwal, G. Singh, B. Sen, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2025)<br />
+SceneComplete: open-world 3d scene completion in cluttered real world environments for robot manipulation<br />
+.<br />
+IEEE Robotics and Automation Letters (RA-L)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[2]<br />
+M. Ahn, A. Brohan, N. Brown, Y. Chebotar, O. Cortes, B. David, C. Finn, C. Fu, K. Gopalakrishnan, K. Hausman,<br />
+et al.<br />
+(2022)<br />
+Do as i can, not as i say: grounding language in robotic affordances<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[3]<br />
+A. Athalye, N. Kumar, T. Silver, Y. Liang, J. Wang, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2026)<br />
+From pixels to predicates: learning symbolic world models via pretrained vision-language models<br />
+.<br />
+Robotics and Automation Letters (RA-L)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[4]<br />
+S. Bai, Y. Cai, R. Chen, K. Chen, X. Chen, Z. Cheng, L. Deng, W. Ding, C. Gao, C. Ge,<br />
+et al.<br />
+(2025)<br />
+Qwen3-vl technical report<br />
+.<br />
+arXiv preprint arXiv:2511.21631<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[5]<br />
+J. L. Bentley<br />
+(1975)<br />
+Multidimensional binary search trees used for associative searching<br />
+.<br />
+Communications of the ACM (CACM)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§<br />
+IV-C<br />
+.<br />
+[6]<br />
+J. Bjorck, F. Castañeda, N. Cherniadev, X. Da, R. Ding, L. Fan, Y. Fang, D. Fox, F. Hu, S. Huang, J. Jang, Z. Jiang, J. Kautz, K. Kundalia, L. Lao, Z. Li, Z. Lin, K. Lin, G. Liu, E. Llontop, L. Magne, A. Mandlekar, A. Narayan, S. Nasiriany, S. Reed, Y. L. Tan, G. Wang, Z. Wang, J. Wang, Q. Wang, J. Xiang, Y. Xie, Y. Xu, Z. Xu, S. Ye, Z. Yu, A. Zhang, H. Zhang, Y. Zhao, R. Zheng, and Y. Zhu<br />
+(2025)<br />
+GR00T n1: an open foundation model for generalist humanoid robots<br />
+.<br />
+arXiv preprint arXiv:2503.14734<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[7]<br />
+K. Black, N. Brown, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, L. Groom, K. Hausman, B. Ichter,<br />
+et al.<br />
+(2025)<br />
+π<br />
+0<br />
+\pi_{0}<br />
+: A vision-language-action flow model for general robot control<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[8]<br />
+A. Bouguerra, L. Karlsson, and A. Saffiotti<br />
+(2008)<br />
+Monitoring the execution of robot plans using semantic knowledge<br />
+.<br />
+Robotics and Autonomous Systems (RAS)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[9]<br />
+A. Brohan, N. Brown, J. Carbajal, Y. Chebotar, X. Chen, K. Choromanski, T. Ding, D. Driess, A. Dubey, C. Finn,<br />
+et al.<br />
+(2023)<br />
+RT-2: vision-language-action models transfer web knowledge to robotic control<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[10]<br />
+S. Chintalapudi, L. P. Kaelbling, and T. Lozano-Pérez<br />
+(2024)<br />
+Bi-level belief space search for compliant part mating under uncertainty<br />
+.<br />
+arXiv preprint arXiv:2409.15774<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[11]<br />
+R. Chitnis, T. Silver, J. B. Tenenbaum, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2022)<br />
+Learning neuro-symbolic relational transition models for bilevel planning<br />
+.<br />
+In<br />
+IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[12]<br />
+A. Curtis, X. Fang, L. P. Kaelbling, T. Lozano-Pérez, and C. R. Garrett<br />
+(2022)<br />
+Long-horizon manipulation of unknown objects via task and motion planning with estimated affordances<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+,<br />
+§VIII<br />
+.<br />
+[13]<br />
+A. Curtis, N. Kumar, J. Cao, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2024)<br />
+Trust the proc3s: solving long-horizon robotics problems with llms and constraint satisfaction<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[14]<br />
+A. Curtis, G. Matheos, N. Gothoskar, V. Mansinghka, J. Tenenbaum, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2024)<br />
+Partially observable task and motion planning with uncertainty and risk awareness<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[15]<br />
+M. Deitke, C. Clark, S. Lee, R. Tripathi, Y. Yang, J. S. Park, M. Salehi, N. Muennighoff, K. Lo, L. Soldaini,<br />
+et al.<br />
+(2025)<br />
+Molmo and pixmo: open weights and open data for state-of-the-art vision-language models<br />
+.<br />
+In<br />
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[16]<br />
+H. Fang, C. Wang, H. Fang, M. Gou, J. Liu, H. Yan, W. Liu, Y. Xie, and C. Lu<br />
+(2023)<br />
+AnyGrasp: robust and efficient grasp perception in spatial and temporal domains<br />
+.<br />
+IEEE Transactions on Robotics (T-RO)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§<br />
+IV-A<br />
+.<br />
+[17]<br />
+R. E. Fikes and N. J. Nilsson<br />
+(1971)<br />
+STRIPS: a new approach to the application of theorem proving to problem solving<br />
+.<br />
+Artificial Intelligence<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[18]<br />
+M. A. Fischler and R. C. Bolles<br />
+(1981)<br />
+Random sample consensus: a paradigm for model fitting with applications to image analysis and automated cartography<br />
+.<br />
+Communications of the ACM (CACM)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§<br />
+IV-C<br />
+.<br />
+[19]<br />
+C. R. Garrett, R. Chitnis, R. Holladay, B. Kim, T. Silver, L. P. Kaelbling, and T. Lozano-Pérez<br />
+(2021)<br />
+Integrated task and motion planning<br />
+.<br />
+Annual Review of Control, Robotics, and Autonomous Systems<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[20]<br />
+C. R. Garrett, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2018)<br />
+FFRob: leveraging symbolic planning for efficient task and motion planning<br />
+.<br />
+International Journal of Robotics Research (IJRR)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[21]<br />
+C. R. Garrett, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2020)<br />
+PDDLStream: integrating symbolic planners and blackbox samplers via optimistic adaptive planning<br />
+.<br />
+In<br />
+International Conference on Automated Planning and Scheduling (ICAPS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[22]<br />
+Gemini Robotics Team, S. Abeyruwan, J. Ainslie, J. Alayrac, M. G. Arenas, T. Armstrong, A. Balakrishna, R. Baruch, M. Bauza, M. Blokzijl,<br />
+et al.<br />
+(2025)<br />
+Gemini robotics: bringing ai into the physical world<br />
+.<br />
+arXiv preprint arXiv:2503.20020<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+,<br />
+§<br />
+IV-B<br />
+.<br />
+[23]<br />
+Gemini Team, R. Anil, S. Borgeaud, J. Alayrac, J. Yu, R. Soricut, J. Schalkwyk, A. M. Dai, A. Hauth, K. Millican,<br />
+et al.<br />
+(2023)<br />
+Gemini: a family of highly capable multimodal models<br />
+.<br />
+arXiv preprint arXiv:2312.11805<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[24]<br />
+X. Guo, C. Zhang, Y. Zhang, R. Wang, D. Nie, W. Zheng, M. Poggi, H. Zhao, M. Ye, Q. Zou, and L. Chen<br />
+(2024)<br />
+Stereo anything: unifying zero-shot stereo matching with large-scale mixed data<br />
+.<br />
+arXiv preprint arXiv:2411.14053<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[25]<br />
+W. Huang, C. Wang, R. Zhang, Y. Li, J. Wu, and L. Fei-Fei<br />
+(2023)<br />
+VoxPoser: composable 3d value maps for robotic manipulation with language models<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[26]<br />
+W. Huang, F. Xia, T. Xiao, H. Chan, J. Liang, P. Florence, A. Zeng, J. Tompson, I. Mordatch, Y. Chebotar, P. Sermanet, N. Brown, T. Jackson, L. Luu, S. Levine, K. Hausman, and B. Ichter<br />
+(2022)<br />
+Inner monologue: embodied reasoning through planning with language models<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[27]<br />
+L. P. Kaelbling and T. Lozano-Pérez<br />
+(2011)<br />
+Hierarchical task and motion planning in the now<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[28]<br />
+L. P. Kaelbling and T. Lozano-Pérez<br />
+(2013)<br />
+Integrated task and motion planning in belief space<br />
+.<br />
+International Journal of Robotics Research (IJRR)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[29]<br />
+A. Khazatsky, K. Pertsch, S. Nair, A. Balakrishna, S. Dasari, S. Karamcheti, S. Nasiriany, M. K. Srirama, L. Luo, K. Vuong,<br />
+et al.<br />
+(2024)<br />
+DROID: a large-scale in-the-wild robot manipulation dataset<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+.<br />
+[30]<br />
+M. J. Kim, K. Pertsch, S. Karamcheti, T. Xiao, A. Balakrishna, S. Nair, R. Rafailov, E. Foster, G. Lam, P. Sanketi,<br />
+et al.<br />
+(2024)<br />
+OpenVLA: an open-source vision-language-action model<br />
+.<br />
+arXiv preprint arXiv:2406.09246<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[31]<br />
+A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson, T. Xiao, S. Whitehead, A. C. Berg, W. Lo, P. Dollár, and R. Girshick<br />
+(2023)<br />
+Segment anything<br />
+.<br />
+In<br />
+IEEE/CVF International Conference on Computer Vision (ICCV)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[32]<br />
+N. Kumar, W. McClinton, R. Chitnis, T. Silver, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2023)<br />
+Learning efficient abstract planning models that choose what to predict<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[33]<br />
+N. Kumar, W. Shen, F. Ramos, D. Fox, T. Lozano-Pérez, L. P. Kaelbling, and C. R. Garrett<br />
+(2024)<br />
+Open-world task and motion planning via vision-language model inferred constraints<br />
+.<br />
+arXiv preprint arXiv:2411.08253<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[34]<br />
+M. Levihn, L. P. Kaelbling, T. Lozano-Pérez, and M. Stilman<br />
+(2013)<br />
+Foresight and reconsideration in hierarchical planning and execution<br />
+.<br />
+In<br />
+IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[35]<br />
+J. Liang, W. Huang, F. Xia, P. Xu, K. Hausman, B. Ichter, P. Florence, and A. Zeng<br />
+(2023)<br />
+Code as policies: language model programs for embodied control<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[36]<br />
+Y. Liang, N. Kumar, H. Tang, A. Weller, J. B. Tenenbaum, T. Silver, J. F. Henriques, and K. Ellis<br />
+(2025)<br />
+VisualPredicator: learning abstract world models with neuro-symbolic predicates for robot planning<br />
+.<br />
+In<br />
+International Conference on Learning Representations (ICLR)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[37]<br />
+P. Liu, Y. Orru, J. Vakil, C. Paxton, N. M. M. Shafiullah, and L. Pinto<br />
+(2024)<br />
+Demonstrating ok-robot: what really matters in integrating open-knowledge models for robotics<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[38]<br />
+D. McDermott, M. Ghallab, A. E. Howe, C. A. Knoblock, A. Ram, M. M. Veloso, D. S. Weld, and D. E. Wilkins<br />
+(1998)<br />
+PDDL: the planning domain definition language<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§V<br />
+.<br />
+[39]<br />
+A. Murali, B. Sundaralingam, Y. Chao, W. Yuan, J. Yamada, M. Carlson, F. Ramos, S. Birchfield, D. Fox, and C. Eppner<br />
+(2025)<br />
+GraspGen: a diffusion-based framework for 6-dof grasping with on-generator training<br />
+.<br />
+arXiv preprint arXiv:2507.13097<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+,<br />
+§<br />
+IV-A<br />
+.<br />
+[40]<br />
+N. J. Nilsson<br />
+(1984)<br />
+Shakey the robot<br />
+.<br />
+Technical report<br />
+SRI International, Artificial Intelligence Center<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[41]<br />
+Isaac Sim<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§<br />
+VII-A<br />
+.<br />
+[42]<br />
+Open X-Embodiment Collaboration<br />
+(2024)<br />
+Open x-embodiment: robotic learning datasets and rt-x models<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[43]<br />
+OpenAI<br />
+(2024)<br />
+GPT-4o system card<br />
+.<br />
+arXiv preprint arXiv:2410.21276<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[44]<br />
+O. Pettersson<br />
+(2005)<br />
+Execution monitoring in robotics: a survey<br />
+.<br />
+Robotics and Autonomous Systems (RAS)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[45]<br />
+Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, M. Y. Galliker, D. Ghosh, L. Groom, K. Hausman, B. Ichter, S. Jakubczak, T. Jones, L. Ke, D. LeBlanc, S. Levine, A. Li-Bell, M. Mothukuri, S. Nair, K. Pertsch, A. Z. Ren, L. X. Shi, L. Smith, J. T. Springenberg, K. Stachowicz, J. Tanner, Q. Vuong, H. Walke, A. Walling, H. Wang, L. Yu, and U. Zhilinsky<br />
+(2025)<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+: A vision-language-action model with open-world generalization<br />
+.<br />
+arXiv preprint arXiv:2504.16054<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[46]<br />
+N. Ravi, V. Gabeur, Y. Hu, R. Hu, C. Ryali, T. Ma, H. Khedr, R. Rädle, C. Rolland, L. Gustafson, E. Mintun, J. Pan, K. V. Alwala, N. Carion, C. Wu, R. Girshick, P. Dollár, and C. Feichtenhofer<br />
+(2024)<br />
+SAM 2: segment anything in images and videos<br />
+.<br />
+arXiv preprint arXiv:2408.00714<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+,<br />
+§<br />
+IV-B<br />
+.<br />
+[47]<br />
+SAM 3D Team, X. Chen, F. Chu, P. Gleize, K. J. Liang, A. Sax, H. Tang, W. Wang, M. Guo, T. Hardin, X. Li, A. Lin, J. Liu, Z. Ma, A. Sagar, B. Song, X. Wang, J. Yang, B. Zhang, P. Dollár, G. Gkioxari, M. Feiszli, and J. Malik<br />
+(2025)<br />
+SAM 3D: 3dfy anything in images<br />
+.<br />
+arXiv preprint arXiv:2511.16624<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[48]<br />
+W. Shen, C. Garrett, N. Kumar, A. Goyal, T. Hermans, L. P. Kaelbling, T. Lozano-Pérez, and F. Ramos<br />
+(2025)<br />
+Differentiable gpu-parallelized task and motion planning<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§<br />
+-A<br />
+,<br />
+§I<br />
+,<br />
+§II<br />
+,<br />
+§<br />
+III-B<br />
+,<br />
+§V<br />
+.<br />
+[49]<br />
+T. Silver, R. Chitnis, N. Kumar, W. McClinton, T. Lozano-Pérez, L. P. Kaelbling, and J. B. Tenenbaum<br />
+(2023)<br />
+Predicate invention for bilevel planning<br />
+.<br />
+In<br />
+AAAI Conference on Artificial Intelligence (AAAI)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[50]<br />
+I. Singh, V. Blukis, A. Mousavian, A. Goyal, D. Xu, J. Tremblay, D. Fox, J. Thomason, and A. Garg<br />
+(2023)<br />
+ProgPrompt: generating situated robot task plans using large language models<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[51]<br />
+S. Srivastava, E. Fang, L. Riano, R. Chitnis, S. Russell, and P. Abbeel<br />
+(2014)<br />
+Combined task and motion planning through an extensible planner-independent interface layer<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§I<br />
+,<br />
+§II<br />
+.<br />
+[52]<br />
+B. Sundaralingam, S. K. S. Hari, A. Fishman, C. R. Garrett, K. Van Wyk, V. Blukis, A. Millane, H. Oleynikova, A. Handa, F. Ramos, N. D. Ratliff, and D. Fox<br />
+(2023)<br />
+CuRobo: parallelized collision-free robot motion generation<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§V<br />
+.<br />
+[53]<br />
+M. Sundermeyer, A. Mousavian, R. Triebel, and D. Fox<br />
+(2021)<br />
+Contact-graspnet: efficient 6-dof grasp generation in cluttered scenes<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[54]<br />
+B. Tan, C. Sun, X. Qin, H. Adai, Z. Fu, T. Zhou, H. Zhang, Y. Xu, X. Zhu, Y. Shen, and N. Xue<br />
+(2026)<br />
+Masked depth modeling for spatial perception<br />
+.<br />
+arXiv preprint arXiv:2601.17895<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[55]<br />
+F. Tosi, L. Bartolomei, and M. Poggi<br />
+(2025)<br />
+A survey on deep stereo matching in the twenties<br />
+.<br />
+International Journal of Computer Vision (IJCV)<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[56]<br />
+M. Toussaint, K. Allen, K. Smith, and J. Tenenbaum<br />
+(2018)<br />
+Differentiable physics and stable modes for tool-use and manipulation planning<br />
+.<br />
+In<br />
+Robotics: Science and Systems (RSS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[57]<br />
+M. Toussaint<br />
+(2015)<br />
+Logic-geometric programming: an optimization-based approach to combined task and motion planning<br />
+.<br />
+In<br />
+International Joint Conference on Artificial Intelligence (IJCAI)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[58]<br />
+J. Wang, M. Leonard, K. Daniilidis, D. Jayaraman, and E. S. Hu<br />
+(2025)<br />
+Evaluating<br />
+π<br />
+0<br />
+\pi_{0}<br />
+in the wild: strengths, problems, and the future of generalist robot policies<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§<br />
+VII-A<br />
+.<br />
+[59]<br />
+S. Wang, M. Han, Z. Jiao, Z. Zhang, Y. N. Wu, S. Zhu, and H. Liu<br />
+(2024)<br />
+LLM3: large language model-based task and motion planning with motion failure reasoning<br />
+.<br />
+In<br />
+IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[60]<br />
+B. Wen, S. Dewan, and S. Birchfield<br />
+(2025)<br />
+Fast-foundationstereo: real-time zero-shot stereo matching<br />
+.<br />
+arXiv preprint arXiv:2512.11130<br />
+.<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§VIII<br />
+.<br />
+[61]<br />
+B. Wen, M. Trepte, J. Aribido, J. Kautz, O. Gallo, and S. Birchfield<br />
+(2025)<br />
+FoundationStereo: zero-shot stereo matching<br />
+.<br />
+In<br />
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+,<br />
+§<br />
+IV-A<br />
+.<br />
+[62]<br />
+Z. Yang, C. R. Garrett, D. Fox, T. Lozano-Pérez, and L. P. Kaelbling<br />
+(2025)<br />
+Guiding long-horizon task and motion planning with vision language models<br />
+.<br />
+In<br />
+IEEE International Conference on Robotics and Automation (ICRA)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+.<br />
+[63]<br />
+W. Yuan, A. Murali, A. Mousavian, and D. Fox<br />
+(2023)<br />
+M2T2: multi-task masked transformer for object-centric pick and place<br />
+.<br />
+In<br />
+Conference on Robot Learning (CoRL)<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§II<br />
+,<br />
+§<br />
+IV-A<br />
+.<br />
+-A<br />
+cuTAMP Extensions<br />
+We made several extensions to cuTAMP<br />
+[<br />
+48<br />
+]<br />
+to improve real-world deployability:<br />
+M2T2 Grasp Integration.<br />
+We support initializing grasp particles from M2T2 6-DoF grasp predictions, with collision filtering to reject grasps where the gripper would collide with the target object.<br />
+Oriented Bounding Box Surfaces.<br />
+We added support for oriented bounding boxes (OBBs) as placement surfaces, with cost functions that penalize object placements near surface edges, and placement samplers that account for object extents during particle initialization.<br />
+Motion Planning Robustness.<br />
+We increased motion planning attempts over constraint-satisfying particles since cuTAMP’s collision representation (spheres) differs from cuRobo’s low-level collision checks (oriented bounding boxes). When motion planning fails for path segments, we optionally relax collision checking thresholds as a fallback.<br />
+Efficient Movable Object Collision Handling.<br />
+We optimized collision checks between movable objects by only evaluating costs after an object’s action is activated.<br />
+This allows us to handle objects that are initially in collision (e.g., due to clutter or convex hull overapproximation) by excluding them from collision penalties until moved.<br />
+Hardware Support.<br />
+We added robot models for the Franka FR3 with Robotiq gripper and ZED Mini camera mount, including collision sphere approximations.<br />
+Task Planning Caching.<br />
+Task planning becomes a bottleneck with many objects in the scene. We cache intermediate results over the task planner’s tree search to reduce redundant computation.<br />
+-B<br />
+Controller Implementation Details<br />
+For the DROID setup with the Franka FR3 arm, we implemented a joint impedance controller to track the planned trajectory waypoints (see §<br />
+V<br />
+) by computing joint torques at each control timestep:<br />
+τ<br />
+=<br />
+K<br />
+p<br />
+⊙<br />
+(<br />
+q<br />
+d<br />
+−<br />
+q<br />
+)<br />
++<br />
+K<br />
+d<br />
+⊙<br />
+(<br />
+q<br />
+˙<br />
+d<br />
+−<br />
+q<br />
+˙<br />
+)<br />
++<br />
+τ<br />
+coriolis<br />
++<br />
+τ<br />
+g<br />
++<br />
+M<br />
+​<br />
+q<br />
+¨<br />
+d<br />
+\tau=K_{p}\odot(q_{d}-q)+K_{d}\odot(\dot{q}<em>{d}-\dot{q})+\tau</em>{\text{coriolis}}+\tau_{g}+M\ddot{q}<em>{d}<br />
+where<br />
+K<br />
+p<br />
+K</em>{p}<br />
+and<br />
+K<br />
+d<br />
+K_{d}<br />
+are per-joint position and velocity gains,<br />
+τ<br />
+coriolis<br />
+\tau_{\text{coriolis}}<br />
+compensates for Coriolis forces,<br />
+τ<br />
+g<br />
+\tau_{g}<br />
+compensates for gravity,<br />
+M<br />
+M<br />
+is the mass matrix, and<br />
+q<br />
+¨<br />
+d<br />
+\ddot{q}<em>{d}<br />
+is the desired acceleration estimated via filtered numerical differentiation of<br />
+q<br />
+˙<br />
+d<br />
+\dot{q}</em>{d}<br />
+.<br />
+The term<br />
+M<br />
+​<br />
+q<br />
+¨<br />
+d<br />
+M\ddot{q}<em>{d}<br />
+compensates for the robot’s inertia.<br />
+The gains<br />
+K<br />
+p<br />
+K</em>{p}<br />
+and<br />
+K<br />
+d<br />
+K_{d}<br />
+were tuned to improve trajectory tracking, though the controller still exhibits small deviations during execution at high speeds (typically up to 5mm position error).<br />
+We will open-source our controller implementation for the Franka FR3 and Panda robots upon acceptance.<br />
+-C<br />
+Additional Experiment Details<br />
+Table<br />
+LABEL:tab:trials<br />
+shows each evaluation scene with its language instruction and task progress metric.<br />
+Evaluation protocol.<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID is a reactive policy that runs continuously until manually terminated. TiPToP, by contrast, plans once and either produces a full trajectory or explicitly fails if no valid plan is found. We use a 30–60 second planning timeout for TiPToP.<br />
+In simulation, we terminated<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID trials after 60s or upon success and reset object configurations identically across all trials for each scene.<br />
+For real-world experiments run by the external evaluators (unmarked scenes in Table<br />
+LABEL:tab:trials<br />
+),<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID trials were terminated after 800 steps or upon success. They independently chose a step-based limit, which decouples evaluation from inference speed. Objects were reset to similar positions within the wrist camera’s field of view using the same robot starting configuration.<br />
+For real-world experiments run by the system designers (scenes marked with<br />
+†<br />
+in Table<br />
+LABEL:tab:trials<br />
+),<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID trials were terminated after 120s or upon success. The longer timeout accommodates multi-step tasks. Since exact scene resets are not possible in the real world, we reset scenes by visually comparing against reference images, producing generally consistent configurations.<br />
+All termination limits are generous relative to typical task completion times, ensuring timeouts do not artificially limit<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID’s performance. We ran all systems on an NVIDIA L4 (simulation), RTX 3080 Laptop (external evaluators), or RTX 4090 (system designers) GPU.<br />
+Completion time.<br />
+In Table<br />
+II<br />
+, we report average completion time over successful trials only. For TiPToP, we set the<br />
+time_dilation_factor<br />
+in cuRobo to 0.6 in both simulation and real-world experiments. In the real-world experiments, we measure execution time using a remote iPad timer (Figure<br />
+LABEL:fig:teaser<br />
+), which is automatically stopped upon robot execution for TiPToP, and manually stopped for<br />
+π<br />
+0.5<br />
+\pi_{0.5}<br />
+-DROID.<br />
+Figure 4<br />
+:<br />
+Object Segmentation.<br />
+SAM-2 generates eight pixel-level segmentation masks from the bounding boxes in Fig.<br />
+1<br />
+c.<br />
+Failure Analysis.<br />
+Our systematic failure analysis from Section<br />
+VII-E<br />
+was performed by collecting 173 trials of TiPToP execution over a range of different tasks (different from the evaluation tasks).<br />
+For each trial, we selected a random set of objects in a random initial pose on the tabletop, and provided an appropriate natural language goal given the objects and initial configuration.<br />
+For each trial, we judged success manually and traced failures via logging and visualization.<br />
+Of the 173 trials, 52 were simple single-object pick-and-place tasks with no distractor objects (instruction: “put the object into the container”). The remaining 121 trials all included distractor objects on the table: 50 were single-object tasks with significant clutter (instruction: “put the smallest object into or onto the container”), 20 were single-object tasks with varied natural language goals (e.g. “put the soft yellow object into the box”, “put the red thing into the box”, “put the orange item in the receptacle”), 21 were two-object pick-and-place (e.g. “put the fruits in the orange bowl”), 20 were three-object pick-and-place (e.g. “serve all the non-fruit food on the tray”), 5 were four-object pick-and-place (instruction: “put all the cups with handles on the bin”), and 5 were five-object pick-and-place (instruction: “put the caffeinated beverages and coffee pods on the box”).<br />
+-D<br />
+Deployment on UR5e<br />
+We deployed TiPToP on a UR5e arm with a Realsense D435 wrist camera (bottom row of Figure<br />
+LABEL:fig:teaser<br />
+). Adapting TiPToP to this new embodiment required:<br />
+•<br />
+The robot URDF.<br />
+•<br />
+Collision spheres for the robot geometry, automatically generated using tools like<br />
+Ballpark<br />
+or<br />
+Foam<br />
+.<br />
+•<br />
+A cuRobo configuration file, following<br />
+this guide<br />
+from the cuRobo developers.<br />
+•<br />
+Code changes in cuTAMP to load the new configuration files.<br />
+•<br />
+Code changes in TiPToP to interface with the RealSense camera (via<br />
+pyrealsense2<br />
+) and the robot controller (via Universal Robots’<br />
+Real-Time Data Exchange<br />
+(RTDE) interface).<br />
+TiPToP’s codebase provides abstractions that make adding new camera types or robot controllers straightforward. Given an existing robot controller, we completed all changes in approximately 2–3 hours.<br />
+FoundationStereo with a RealSense.<br />
+For stereo input to FoundationStereo, we used the RealSense’s left and right infrared (IR) sensors. This qualitatively resulted in noisier depth estimates than the DROID setup, which uses RGB stereo pairs from the ZED Mini, particularly on transparent, specular, and reflective objects. This is expected: active IR stereo struggles with such surfaces because the projected pattern does not reflect reliably.<br />
+Controller Implementation.<br />
+We implement a joint-space trajectory tracking controller using the Universal Robots<br />
+servoJ<br />
+primitive via the RTDE interface. The controller interpolates sparse waypoints to a 125Hz command stream. We use a high proportional gain (400) during motion to minimize tracking error, then reduce the gain (300) during a settling phase with dwell waypoints at the end of the trajectory to mitigate mechanical oscillation.<br />
+TABLE III:<br />
+Evaluation scene details.<br />
+Each scene shows an image of the task, its identifier (as referenced in Table<br />
+I<br />
+), language prompt, and task progress metric. Scenes are grouped by category: Simple, Distractor, Semantic, and Multi-step.<br />
+†<br />
+indicates tasks evaluated by the system designers. Unmarked scenes are evaluated by external evaluators not involved in the development of TiPToP. (sim) denotes tasks evaluated in simulation. Task progress metric numbers are reported in %; a<br />
++<br />
++<br />
+or<br />
+−<br />
+-<br />
+sign indicates that the particular denoted amount is added or subtracted from the overall score, and no sign indicates that the number is the absolute score for achieving that particular condition.<br />
+Progress metrics may vary by the evaluator and the task. Some metrics penalize manipulating distractors while others do not.<br />
+Scene<br />
+Identifier / Language Prompt<br />
+Progress Metric<br />
+Scene<br />
+Identifier / Language Prompt<br />
+Progress Metric<br />
+Simple<br />
+Cube<br />
+→<br />
+\to<br />
+bowl (sim)<br />
+“put the cube in the bowl”<br />
+25% approach cube, 50% grasp, 75% approach bowl with cube, 100% place<br />
+Can<br />
+→<br />
+\to<br />
+mug (sim)<br />
+“put the can in the mug”<br />
+25% approach can, 50% grasp, 75% approach mug with can, 100% place<br />
+Banana<br />
+→<br />
+\to<br />
+bin (sim)<br />
+“put banana in the bin”<br />
+25% approach banana, 50% grasp, 75% approach bin with banana, 100% place<br />
+Marker<br />
+→<br />
+\to<br />
+tray<br />
+“put the marker in the tray”<br />
++25% touch marker, +25% grasp, +25% touch tray, +25% place<br />
+Crackers<br />
+→<br />
+\to<br />
+tray<br />
+†<br />
+“place the crackers onto the tray”<br />
+50% grasp crackers, 100% place<br />
+Distractor<br />
+Meat can<br />
+→<br />
+\to<br />
+sugar box (sim)<br />
+“put the meat can on the sugar box”<br />
+25% approach meat can, 50% grasp, 75% approach box with meat can, 100% place<br />
+Coffee capsules<br />
+→<br />
+\to<br />
+plate<br />
+“put all of the coffee capsules onto the white plate”<br />
++50% per capsule placed,<br />
+−<br />
+-<br />
+20% per distractor<br />
+Turkish figs<br />
+→<br />
+\to<br />
+plate<br />
+“put the turkish figs onto the white plate”<br />
++50% per fig placed,<br />
+−<br />
+-<br />
+20% per cashew<br />
+Cashews<br />
+→<br />
+\to<br />
+plate<br />
+“put the roasted cashews onto the white plate”<br />
++50% per cashew placed,<br />
+−<br />
+-<br />
+20% per fig<br />
+Red cubes<br />
+→<br />
+\to<br />
+plate<br />
+“put the red cubes onto the white plate”<br />
++50% per cube placed,<br />
+−<br />
+-<br />
+20% if distractor placed<br />
+Fish<br />
+→<br />
+\to<br />
+box<br />
+“place the fish into the white box”<br />
++50% pick fish, +50% place into white box<br />
+Crackers<br />
+→<br />
+\to<br />
+tray (med.)<br />
+†<br />
+“place the crackers onto the tray”<br />
++50% pick crackers, +50% place on the tray (no penalty for distractor)<br />
+PB crackers<br />
+→<br />
+\to<br />
+tray (hard)<br />
+†<br />
+“place the peanut butter crackers onto the tray”<br />
++50% pick crackers, +50% place on the tray (no penalty for distractor)<br />
+Semantic<br />
+Toy<br />
+→<br />
+\to<br />
+matching plate<br />
+“pick up the toy and place on the plate with similar color”<br />
++50% pick toy, +50% place on teal or +30% place on blue<br />
+Creeper<br />
+→<br />
+\to<br />
+plate<br />
+“pick up the creeper and place onto the purple plate”<br />
++50% pick creeper toy, +50% place onto purple plate<br />
+Largest toy<br />
+→<br />
+\to<br />
+plate<br />
+“pick up the largest toy and place onto the purple plate”<br />
++50% pick creeper, +50% place onto purple plate,<br />
+−<br />
+-<br />
+20% if attempt to place on distractor<br />
+Red A<br />
+→<br />
+\to<br />
+color pile<br />
+“pick up the red A and place on same color pile”<br />
++50% pick red A block, +50% place onto red pile,<br />
+−<br />
+-<br />
+20% knock pile over<br />
+Banana<br />
+→<br />
+\to<br />
+box<br />
+“pick up the banana and put it in the box”<br />
++50% place banana into any box, +50% place into box with fruit (aims to test common sense of human selection)<br />
+N block<br />
+→<br />
+\to<br />
+indicated cup<br />
+“put the N block into the cup pointed to by the arrow”<br />
++50% grasp N block, +50% place into cup pointed at<br />
+Sort blocks by color<br />
+“sort the blocks into opposite color plates”<br />
++10% per block touched, +40% per correct place<br />
+Banana<br />
+→<br />
+\to<br />
+matching plate<br />
+“place banana into plate has similar color”<br />
++50% pick banana, +50% place into orange plate<br />
+Multi-step<br />
+Color cubes<br />
+→<br />
+\to<br />
+bowl (sim)<br />
+“put 3 cubes into the bowl”<br />
+For up to 3 cubes (normalized to 100%): +5% approach cube, +10% grasp, +10% approach bowl with cube, +15% place<br />
+AirPods<br />
+→<br />
+\to<br />
+cup<br />
+“place airpods into the yellow cup”<br />
++25% per AirPods picked, +25% per place,<br />
+−<br />
+-<br />
+20% distractor<br />
+Pack pods<br />
+→<br />
+\to<br />
+tray<br />
+†<br />
+“pack the coffee pods onto the rectangular tray”<br />
+For each of the 3 pods: +3.33% approach, +15% grasp, +0% place not in tray, +15% place touching tray<br />
+Pack pods<br />
+→<br />
+\to<br />
+tray (obs.)<br />
+†<br />
+“pack the coffee pods onto the rectangular tray”<br />
++12.5% pick can, +12.5% place s.t. it doesn’t obstruct tray (or +25% for clearing can obstruction without pick/place), for each of 3 pods: +5% for approaching pod, +10% for correct pick, +10% for correct place into tray<br />
+Aleve bottle<br />
+→<br />
+\to<br />
+tray (obs.)<br />
+†<br />
+“put the small white aleve bottle into the cardboard tray”<br />
++10% pick an obstacle object, +10% place obstacle s.t. unobstructs aleve, +30% pick aleve bottle (+50% if picked without clearing obstacles), +50% place bottle in tray<br />
+Three marbles<br />
+→<br />
+\to<br />
+cup<br />
+†<br />
+“put only the marbles in the cup”<br />
++16.67% for each pick of a marble, +16.67% for each place of a marble into the cup<br />
+Marbles + cable<br />
+†<br />
+“put the small plastic bag of marbles into the black mesh bag, and the cable on top of the empty large plastic bag”<br />
+wire: +5% approach, +20% stable pick, +25% stable place atop plastic; marbles pouch: +5% approach, +20% pick, +25% place into mesh bag<br />
+-E<br />
+VLM Prompting Details.<br />
+As part of the perception module in Section<br />
+IV<br />
+, we use the following prompt for object detection and goal grounding:<br />
+⬇<br />
+Perform<br />
+two<br />
+tasks<br />
+on<br />
+this<br />
+image<br />
+based<br />
+on<br />
+the<br />
+task<br />
+instruction<br />
+:<br />
+"{<br />
+task_instruction<br />
+}".<br />
+TASK<br />
+1<br />
+-<br />
+OBJECT<br />
+DETECTION<br />
+:<br />
+Detect<br />
+and<br />
+return<br />
+bounding<br />
+boxes<br />
+for<br />
+objects<br />
+in<br />
+the<br />
+image<br />
+.<br />
+-<br />
+DO<br />
+NOT<br />
+include<br />
+the<br />
+robot<br />
+,<br />
+robot<br />
+gripper<br />
+,<br />
+or<br />
+table<br />
+surface<br />
+-<br />
+DO<br />
+NOT<br />
+include<br />
+objects<br />
+or<br />
+surfaces<br />
+irrelevant<br />
+to<br />
+the<br />
+task<br />
+or<br />
+too<br />
+far<br />
+away<br />
+to<br />
+matter<br />
+(<br />
+e<br />
+.<br />
+g<br />
+.<br />
+walls<br />
+,<br />
+things<br />
+on<br />
+the<br />
+wall<br />
+that<br />
+are<br />
+far<br />
+away<br />
+,<br />
+things<br />
+on<br />
+the<br />
+floor<br />
+below<br />
+the<br />
+table<br />
+,<br />
+people<br />
+who<br />
+might<br />
+be<br />
+in<br />
+the<br />
+scene<br />
+,<br />
+etc<br />
+.)<br />
+-<br />
+Limit<br />
+to<br />
+25<br />
+objects<br />
+-<br />
+If<br />
+an<br />
+object<br />
+appears<br />
+multiple<br />
+times<br />
+,<br />
+name<br />
+them<br />
+by<br />
+unique<br />
+characteristics<br />
+(<br />
+color<br />
+,<br />
+size<br />
+,<br />
+position<br />
+,<br />
+etc<br />
+.).<br />
+If<br />
+they<br />
+seem<br />
+the<br />
+same<br />
+,<br />
+then<br />
+just<br />
+use<br />
+numbers<br />
+(<br />
+e<br />
+.<br />
+g<br />
+.<br />
+’<br />
+soda_can1<br />
+’<br />
+and<br />
+’<br />
+soda_can2<br />
+’,<br />
+...<br />
+for<br />
+identical<br />
+-<br />
+looking<br />
+soda<br />
+cans<br />
+)<br />
+-<br />
+An<br />
+object<br />
+**<br />
+cannot<br />
+have<br />
+the<br />
+same<br />
+name<br />
+**<br />
+as<br />
+another<br />
+under<br />
+any<br />
+circumstance<br />
+.<br />
+-<br />
+Format<br />
+:<br />
+normalized<br />
+coordinates<br />
+0-1000<br />
+as<br />
+integers<br />
+Be<br />
+very<br />
+careful<br />
+to<br />
+identify<br />
+objects<br />
+and<br />
+name<br />
+them<br />
+in<br />
+a<br />
+way<br />
+that<br />
+’<br />
+s<br />
+relevant<br />
+to<br />
+the<br />
+task<br />
+.<br />
+If<br />
+the<br />
+task<br />
+involves<br />
+picking<br />
+up<br />
+a<br />
+red<br />
+apple<br />
+,<br />
+make<br />
+sure<br />
+that<br />
+’<br />
+red<br />
+’<br />
+appears<br />
+in<br />
+the<br />
+name<br />
+of<br />
+the<br />
+apple<br />
+.<br />
+TASK<br />
+2<br />
+-<br />
+TASK<br />
+TRANSLATION<br />
+:<br />
+Translate<br />
+this<br />
+natural<br />
+language<br />
+instruction<br />
+into<br />
+some<br />
+conjunction<br />
+of<br />
+formal<br />
+predicates<br />
+:<br />
+AVAILABLE<br />
+PREDICATES<br />
+:<br />
+-<br />
+on<br />
+(<br />
+movable<br />
+,<br />
+surface<br />
+):<br />
+Object<br />
+A<br />
+is<br />
+placed<br />
+on<br />
+top<br />
+of<br />
+object<br />
+B<br />
+It<br />
+is<br />
+very<br />
+important<br />
+that<br />
+the<br />
+goal<br />
+is<br />
+exact<br />
+:<br />
+use<br />
+your<br />
+visual<br />
+recognition<br />
+,<br />
+common<br />
+-<br />
+sense<br />
+and<br />
+reasoning<br />
+abilities<br />
+to<br />
+make<br />
+sure<br />
+the<br />
+goal<br />
+expression<br />
+is<br />
+perfectly<br />
+accurate<br />
+.<br />
+For<br />
+instance<br />
+-<br />
+for<br />
+the<br />
+task<br />
+"<br />
+throw<br />
+away<br />
+the<br />
+trash<br />
+in<br />
+the<br />
+bin<br />
+"<br />
+when<br />
+there<br />
+is<br />
+a<br />
+bin<br />
+,<br />
+an<br />
+open<br />
+empty<br />
+chips<br />
+packet<br />
+,<br />
+an<br />
+empty<br />
+soda<br />
+can<br />
+,<br />
+a<br />
+closed<br />
+and<br />
+full<br />
+soda<br />
+bottle<br />
+,<br />
+and<br />
+several<br />
+full<br />
+candy<br />
+bars<br />
+on<br />
+the<br />
+table<br />
+,<br />
+the<br />
+goal<br />
+should<br />
+be<br />
+:<br />
+"<br />
+predicates<br />
+":<br />
+[<br />
+{{"<br />
+name<br />
+":<br />
+"<br />
+on<br />
+",<br />
+"<br />
+args<br />
+":<br />
+["<br />
+chips_packet<br />
+",<br />
+"<br />
+bin<br />
+"]}},<br />
+{{"<br />
+name<br />
+":<br />
+"<br />
+on<br />
+",<br />
+"<br />
+args<br />
+":<br />
+["<br />
+soda_can<br />
+",<br />
+"<br />
+bin<br />
+"]}},<br />
+]<br />
+This<br />
+is<br />
+because<br />
+only<br />
+the<br />
+chips<br />
+and<br />
+soda<br />
+are<br />
+empty<br />
+and<br />
+clearly<br />
+trash<br />
+.<br />
+Everything<br />
+else<br />
+is<br />
+still<br />
+usable<br />
+!<br />
+Return<br />
+a<br />
+single<br />
+JSON<br />
+object<br />
+with<br />
+this<br />
+structure<br />
+(<br />
+no<br />
+code<br />
+fencing<br />
+):<br />
+{{<br />
+"<br />
+bboxes<br />
+":<br />
+[<br />
+{{"<br />
+box_2d<br />
+":<br />
+[<br />
+ymin<br />
+,<br />
+xmin<br />
+,<br />
+ymax<br />
+,<br />
+xmax<br />
+],<br />
+"<br />
+label<br />
+":<br />
+"<br />
+object<br />
+name<br />
+"}},<br />
+...<br />
+],<br />
+"<br />
+predicates<br />
+":<br />
+[<br />
+{{"<br />
+name<br />
+":<br />
+"<br />
+predicate_name<br />
+",<br />
+"<br />
+args<br />
+":<br />
+["<br />
+object1<br />
+",<br />
+"<br />
+object2<br />
+"]}},<br />
+...<br />
+]<br />
+}}<br />
+Use<br />
+the<br />
+object<br />
+labels<br />
+you<br />
+detect<br />
+in<br />
+Task<br />
+1<br />
+when<br />
+creating<br />
+predicates<br />
+in<br />
+Task<br />
+2.<br />
+Only<br />
+reference<br />
+objects<br />
+that<br />
+you<br />
+actually<br />
+detected<br />
+in<br />
+the<br />
+image<br />
 .</p>
         </div>
         

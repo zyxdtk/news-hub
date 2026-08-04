@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,2981 +183,2982 @@
         </div>
         
         <div class="fulltext-content">
-<p>TSN-Affinity: Similarity-Driven Parameter Reuse for Continual Offline Reinforcement Learning
-Dominik Żurek
-AGH University of Krakow, Poland
-Kamil Faber
-AGH University of Krakow, Poland
-Marcin Pietron
-AGH University of Krakow, Poland
-Paweł Gajewski
-AGH University of Krakow, Poland
-Roberto Corizzo
-American University, Washington, DC, USA
-Abstract
-Continual offline reinforcement learning (CORL) aims to learn a sequence of tasks from datasets collected over time while preserving performance on previously learned tasks. This setting corresponds to domains where new tasks arise over time, but adapting the model in live environment interactions is expensive, risky, or impossible. However, CORL inherits the dual difficulty of offline reinforcement learning and adapting while preventing catastrophic forgetting. Replay-based continual learning approaches remain a strong baseline but incur memory overhead and suffer from a distribution mismatch between replayed samples and newly learned policies. At the same time, architectural continual learning methods have shown strong potential in supervised learning but remain underexplored in CORL.
-In this work, we propose TSN-Affinity, a novel CORL method based on TinySubNetworks and Decision Transformer.
-The method enables task-specific parameterization and controlled knowledge sharing through a RL-aware reuse strategy that routes tasks according to action compatibility and latent similarity.
-We evaluate the approach on benchmarks based on Atari games and simulations of manipulation tasks with the Franka Emika Panda robotic arm, covering both discrete and continuous control. Results show strong retention from sparse SubNetworks, with routing further improving multi-task performance.
-Our findings suggest that similarity-guided architectural reuse is a strong and viable alternative to replay-based strategies in a CORL setting. Our code is available at:
-https://github.com/anonymized-for-submission123/tsn-affinity
-.
-1
-Introduction
-Continual learning and reinforcement learning address two complementary requirements of adaptive systems: the ability to accumulate knowledge over time and the ability to make optimized sequential decisions
-[
-1
-]
-. Reinforcement learning provides a principled framework for learning such decision policies by optimizing cumulative reward through interaction with an environment. However, in many real-world applications, the interaction with the environment is expensive, unsafe, or infeasible, which requires learning from previously collected data
-[
-2
-]
-. This setting has motivated significant progress in offline reinforcement learning (offline RL), where policies are learned entirely from gathered datasets without further environment interaction.
-Despite advances in offline RL, the CORL setting, in which the model adapts to arriving tasks, remains relatively underexplored
-[
-7
-]
-. In CORL, the learner must incorporate new knowledge while preserving performance on previously learned tasks, without access to past data unless explicitly stored
-[
-7
-]
-. This setting combines two major challenges: i) tackling out-of-distribution exploration and distributional shift between training and evaluation, typical of offline RL, and ii) preventing catastrophic forgetting of previous tasks while learning new ones, typical of continual learning.
-Recent developments in offline RL show that sequence modeling approaches such as the Decision Transformer or Trajectory Transformer
-[
-4
-,
-9
-]
-offer a flexible and stable framework for learning from static trajectories. Because this paradigm reformulates RL as a supervised sequence problem, it serves as an excellent foundation for isolating and studying continual learning dynamics.
-Existing approaches to continual RL, including those adapted to the offline setting, are predominantly replay-based, relying on storing and reusing past samples to mitigate forgetting
-[
-7
-,
-22
-,
-17
-]
-. In contrast, in domains such as continual image classification and anomaly detection, architectural approaches have demonstrated strong resistance to forgetting
-[
-20
-,
-5
-]
-.
-Methods such as PackNet
-[
-14
-]
-, Piggyback
-[
-13
-]
-, and HAT
-[
-19
-]
-demonstrate that task-specific masks or gating mechanisms can preserve prior knowledge by limiting destructive interference across tasks.
-TinySubNets
-[
-15
-]
-extends these ideas with weight sharing, replay memory, and KL-based task routing.
-However, the applicability of such methods to CORL is non-trivial, as the transition from supervised learning to reinforcement learning introduces additional challenges, including sequential decision dependencies, policy-induced distributional shift, and the need to generalize across temporally extended trajectories. In particular, effective reuse of knowledge across task-specific subnetworks is critical, yet fundamentally more challenging in reinforcement learning.
-Building on this, we propose
-TSN-Affinity
-, a continual learning method for CORL that introduces a similarity-driven parameter reuse paradigm for sequence-based reinforcement learning. Built on sparse task-specific TinySubNetworks
-[
-15
-]
-, TSN-Affinity leverages the Decision Transformer
-[
-4
-]
-architecture.
-Central to our approach is
-Affinity Routing
-, a CORL-specific mechanism that dynamically selects and reuses relevant parameters across tasks to enable effective knowledge transfer while preventing interference.
-We evaluate TSN-Affinity on two continual offline RL benchmarks covering both discrete and continuous control: a suite of classic Atari games and the multi-goal panda-gym environments utilizing the Franka Emika Panda robotic arm. Our experimental study shows that sparse task-specific subnetworks provide strong retention, while our proposed Affinity Routing further improves final multi-task performance, especially on the discrete Atari tasks. At the same time, the results on the Panda benchmark highlight the greater difficulty of knowledge transfer in heterogeneous continuous-control settings.
-Our contributions can be summarized as follows:
-1. TSN-Affinity, a novel CORL method that formulates knowledge transfer as similarity-driven routing over sparse task-specific subnetworks, dynamically selects and reuses parameters across tasks.
-2. Affinity Routing, a CORL-specific mechanism that leverages action- and representation-level similarity to dynamically select and reuse parameters across tasks.
-3. Two continuous offline reinforcement learning benchmarks covering visual discrete-control (Atari) and continuous-control (robotic manipulation) settings, enabling systematic analysis of retention and transfer.
-4. An extensive experimental evaluation demonstrating that architectural approaches can completely mitigate forgetting and that similarity-driven reuse significantly improves multi-task performance.
-2
-Related Work
-Architectural continual learning.
-Architectural methods mitigate forgetting by allocating task-specific parameters, masks, or subnetworks within a shared backbone. Representative examples include PackNet, which iteratively prunes and reallocates weights, Piggyback, which learns binary task masks over a fixed network, and HAT, which uses task-specific hard attention to gate parameter usage
-[
-14
-,
-13
-,
-19
-]
-. Our work is most closely related to the recent architectural CL line: Ada-QPackNet combines pruning and quantization for capacity-aware continual learning, while TinySubNets extends this idea with adaptive quantization, weight sharing, replay memory, and KL-based routing
-[
-16
-,
-15
-]
-. We also build on the benchmark-oriented work, which stressed the need for more realistic and heterogeneous continual learning evaluation
-[
-6
-]
-.
-Offline reinforcement learning and sequence modeling.
-Offline RL studies how to learn policies entirely from static datasets without additional environment interaction. The central challenge in this setting is the distributional shift between the training data and the states visited during online evaluation. This shift causes standard off-policy algorithms to query out-of-distribution (OOD) actions, resulting in overly optimistic value function estimates and policy collapse
-[
-12
-]
-. To mitigate this, many offline RL methods, such as CQL
-[
-10
-]
-and SAC-N
-[
-3
-]
-, address the instability by enforcing conservative value updates. Alternatively, architectures like the Decision Transformer and Trajectory Transformer demonstrate that offline RL can be effectively formulated as a sequence modeling problem over trajectories, bypassing explicit value-function optimization entirely
-[
-4
-,
-9
-]
-. Because these models treat action generation as a supervised learning problem, they naturally constrain their predictions to the empirical distribution of the dataset, largely avoiding OOD actions. Our work adopts this sequence-modeling perspective via the Decision Transformer, extending it to a continual setting where tasks arrive sequentially.
-Continual reinforcement learning and continual offline RL.
-Replay remains one of the strongest general baselines for continual adaptation in reinforcement learning
-[
-17
-]
-. More recently, replay-centric continual RL methods such as RECALL revisited the role of replay under policy drift and reward-scale mismatch
-[
-22
-]
-. In continual offline RL, OER formulated sequential offline task learning with a bounded replay buffer and showed the effectiveness of offline replay under distribution mismatch
-[
-7
-]
-. Our contribution is complementary: instead of relying only on sample-level replay, we study parameter-level reuse through sparse task-specific subnetworks and control-aware routing.
-Continual RL with transformer-based models.
-Published work on transformer-based continual RL remains limited. Foundational multi-task architectures, such as the Multi-Game Decision Transformer
-[
-11
-]
-, demonstrate that DTs can successfully represent diverse behaviors when past and present data are accumulated and trained jointly, effectively serving as a cumulative continual learning baseline. Moving beyond this joint-training setting to strict sequential task arrival, P2DT introduced a progressive prompt-based Decision Transformer to mitigate forgetting by appending task-specific decision tokens
-[
-21
-]
-. Similarly, L2M studied continual adaptation by modulating a frozen pre-trained model, reporting strong results on continuous-control benchmarks
-[
-18
-]
-. More recently, VQ-CD addressed continual offline RL with heterogeneous state and action spaces through quantized space alignment and selective weight activation in a diffusion-based framework
-[
-8
-]
-. In contrast, our work focuses on architectural continual learning for Decision Transformer backbones through sparse task-specific subnetworks and reuse-aware routing, evaluating this perspective on both visual discrete-control (Atari) and continuous robotic-manipulation (Panda) benchmarks.
-3
-Methodology
-Figure 1:
-Overview of the proposed TSN-Affinity method.
-We consider a CORL setting with a sequence of tasks
-𝒯
-1
-,
-𝒯
-2
-,
-…
-,
-𝒯
-N
-\mathcal{T}_{1},\mathcal{T}_{2},\dots,\mathcal{T}_{N}
-.
-For each task
-𝒯
-t
-\mathcal{T}_{t}
-, the learner receives a fixed offline dataset
-𝒟
-t
-=
-{
-τ
-i
-(
-t
-)
-}
-i
-=
-1
-M
-t
-\mathcal{D}_{t}=\{\tau_{i}^{(t)}\}_{i=1}^{M_{t}}
-of trajectories.
-Tasks are revealed sequentially, and the learner must acquire each new task while preserving performance on previously learned ones.
-No environment interaction is used during model optimization.
-Our main contribution is
-TSN-Affinity
-, a continual offline RL method that combines
-(i) sparse task-specific subnetworks,
-(ii) copy-level routing across multiple model instances,
-and
-(iii) RL-aware affinity scores for transfer-aware reuse.
-Instead of relying solely on replay to preserve past behavior, TSN-Affinity stores previously learned task subnetworks and decides, for each incoming task, whether it should reuse an existing model copy or initialize a new one.
-When reuse is selected, previously learned weights are not fine-tuned further; they remain frozen and are reused as fixed functional components, while the new task learns only its own sparse mask and any newly allocated trainable parameters.
-Figure
-1
-illustrates this mechanism.
-TSN-Affinity is built on a Decision Transformer (DT) backbone
-f
-θ
-f_{\theta}
-.
-For discrete-control domains such as Atari, the model predicts action logits and is trained with a cross-entropy objective over valid (non-padded) sequence positions.
-For continuous-control domains such as Panda, the model predicts continuous actions and is trained with a masked mean-squared-error objective.
-When Panda tasks have heterogeneous action dimensionalities, actions are padded to a shared global action dimension.
-During training, an action-dimension mask is applied in the loss, while during evaluation the active output dimensionality is enforced through task-specific truncation.
-We also study two reduced variants of the same framework:
-TSN-ReplayKL
-, which replaces affinity routing by replay-memory similarity,
-and
-TSN-Core
-, which removes routing entirely and keeps a single sparse model copy.
-These variants serve as controlled comparisons for isolating the contribution of affinity-based routing.
-3.1
-Decision Transformer training objectives
-Each trajectory is represented as a sequence of observations, actions, timesteps, and returns-to-go.
-For a minibatch, let
-Ω
-\Omega
-denote the set of valid (non-padded) sequence positions. For a minibatch of size
-B
-B
-and context length
-L
-L
-,
-b
-∈
-{
-1
-,
-…
-,
-B
-}
-b\in\{1,\dots,B\}
-indexes the batch element, while
-ℓ
-∈
-{
-1
-,
-…
-,
-L
-}
-\ell\in\{1,\dots,L\}
-indexes the sequence position (time step) within that element. Let
-Ω
-⊆
-{
-1
-,
-…
-,
-B
-}
-×
-{
-1
-,
-…
-,
-L
-}
-\Omega\subseteq\{1,\dots,B\}\times\{1,\dots,L\}
-denote the set of valid (non-padded) sequence positions.
-For Atari, the Decision Transformer outputs action logits
-y
-^
-b
-,
-ℓ
-\hat{y}_{b,\ell}
-, and the training objective for task
-t
-t
-is
-ℒ
-Atari
-(
-t
-)
-=
-1
-|
-Ω
-|
-​
-∑
-(
-b
-,
-ℓ
-)
-∈
-Ω
-CE
-​
-(
-y
-^
-b
-,
-ℓ
-,
-a
-b
-,
-ℓ
-)
-,
-\mathcal{L}_{\mathrm{Atari}}^{(t)}=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\mathrm{CE}\!\left(\hat{y}_{b,\ell},a_{b,\ell}\right),
-(1)
-where
-C
-​
-E
-CE
-is cross-entropy and the logits are computed from teacher-forced trajectory prefixes consisting of observations, past actions, returns-to-go, and timesteps.
-For Panda, let
-m
-a
-(
-t
-)
-∈
-{
-0
-,
-1
-}
-d
-max
-m_{a}^{(t)}\in\{0,1\}^{d_{\max}}
-denote the action dimension mask of task
-t
-t
-, where
-d
-max
-d_{\max}
-is the shared global action dimension.
-The Panda objective is
-ℒ
-Panda
-(
-t
-)
-=
-1
-|
-Ω
-|
-​
-∑
-(
-b
-,
-ℓ
-)
-∈
-Ω
-‖
-m
-a
-(
-t
-)
-⊙
-(
-a
-^
-b
-,
-ℓ
-−
-a
-b
-,
-ℓ
-)
-‖
-2
-2
-‖
-m
-a
-(
-t
-)
-‖
-1
-,
-\mathcal{L}_{\mathrm{Panda}}^{(t)}=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\frac{\left\|m_{a}^{(t)}\odot\big(\hat{a}_{b,\ell}-a_{b,\ell}\big)\right\|_{2}^{2}}{\|m_{a}^{(t)}\|_{1}},
-(2)
-where
-a
-^
-b
-,
-ℓ
-\hat{a}_{b,\ell}
-is the predicted continuous action.
-Thus, the Panda loss is averaged only over the active action dimensions of the current task.
-3.2
-Sparse task-specific subnetworks
-TSN-Affinity operates on selected DT layers, denoted by
-𝒜
-TSN
-\mathcal{A}_{\mathrm{TSN}}
-In practice, these are linear and convolutional layers, and optionally, embedding layers.
-Selected modules, such as the timestep embedding, may be excluded from conversion.
-Each TSN-compatible layer
-ℓ
-∈
-𝒜
-TSN
-\ell\in\mathcal{A}_{\mathrm{TSN}}
-in model copy
-c
-c
-contains: i) a dense weight tensor
-W
-ℓ
-,
-c
-W_{\ell,c}
-; ii) a trainable score tensor
-S
-ℓ
-,
-c
-S_{\ell,c}
-of the same shape, iii) and, when present, analogous tensors for the bias term.
-For each task
-t
-t
-, the method learns a binary task-specific mask
-M
-ℓ
-(
-t
-)
-∈
-{
-0
-,
-1
-}
-shape
-​
-(
-W
-ℓ
-,
-g
-​
-(
-t
-)
-)
-M_{\ell}^{(t)}\in\{0,1\}^{\mathrm{shape}(W_{\ell,g(t)})}
-,
-where
-g
-​
-(
-t
-)
-g(t)
-denotes the selected model copy
-The mask is obtained by top-
-k
-k
-selection over the largest absolute scores among admissible parameters:
-M
-ℓ
-(
-t
-)
-=
-TopKMask
-⁡
-(
-|
-S
-ℓ
-,
-g
-​
-(
-t
-)
-|
-,
-ρ
-t
-,
-F
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-)
-,
-M_{\ell}^{(t)}=\operatorname{TopKMask}\!\left(|S_{\ell,g(t)}|,\rho_{t},F_{\ell,g(t)}^{(t-1)}\right),
-(3)
-where
-ρ
-t
-\rho_{t}
-is the task keep ratio and
-F
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-F_{\ell,g(t)}^{(t-1)}
-is the feasibility mask of parameters currently available to the new task. Equivalently, if
-F
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-F_{\ell,g(t)}^{(t-1)}
-denotes the feasibility mask, then the number of selected parameters is
-k
-ℓ
-(
-t
-)
-=
-⌈
-ρ
-t
-​
-‖
-F
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-‖
-0
-⌉
-,
-k_{\ell}^{(t)}=\left\lceil\rho_{t}\,\bigl\|F_{\ell,g(t)}^{(t-1)}\bigr\|_{0}\right\rceil,
-(4)
-so that, up to rounding,
-‖
-M
-ℓ
-(
-t
-)
-‖
-0
-‖
-F
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-‖
-0
-≈
-ρ
-t
-.
-\frac{\|M_{\ell}^{(t)}\|_{0}}{\|F_{\ell,g(t)}^{(t-1)}\|_{0}}\approx\rho_{t}.
-(5)
-Thus,
-ρ
-t
-\rho_{t}
-controls the density of the task-specific mask, whereas the corresponding sparsity level is
-1
-−
-ρ
-t
-1-\rho_{t}
-.
-If reuse is disabled, the task may select only previously unused weights.
-If reuse is enabled, the task may also reactivate already occupied weights while keeping them frozen.
-The effective weights used by task
-t
-t
-are therefore:
-W
-~
-ℓ
-(
-t
-)
-=
-M
-ℓ
-(
-t
-)
-⊙
-W
-ℓ
-,
-g
-​
-(
-t
-)
-,
-\widetilde{W}_{\ell}^{(t)}=M_{\ell}^{(t)}\odot W_{\ell,g(t)},
-(6)
-where
-⊙
-\odot
-denotes element-wise multiplication.
-Previously allocated weights are tracked by a copy-local occupancy mask:
-O
-ℓ
-,
-c
-(
-t
-−
-1
-)
-=
-⋁
-k
-&lt;
-t
-g
-​
-(
-k
-)
-=
-c
-M
-ℓ
-(
-k
-)
-,
-O_{\ell,c}^{(t-1)}=\bigvee_{\begin{subarray}{c}k&lt;t\\
-g(k)=c\end{subarray}}M_{\ell}^{(k)},
-(7)
-so occupancy, reuse, and protection are always handled locally within a selected copy.
-3.3
-Training inside a selected copy
-Once a copy has been selected for task
-t
-t
-, sparse training proceeds by jointly optimizing the DT objective and the score tensors that define the current task mask.
-The task keep ratio
-ρ
-t
-\rho_{t}
-can either be constant, where
-ρ
-t
-=
-ρ
-\rho_{t}=\rho
-for all tasks, or follow an
-equal_remaining
-schedule, where each task receives approximately an equal share of the remaining sparse capacity.
-A key property of TSN-Affinity is that previously allocated weights remain protected.
-Gradients on occupied parameters are masked as:
-∇
-W
-ℓ
-,
-g
-​
-(
-t
-)
-←
-(
-1
-−
-O
-ℓ
-,
-g
-​
-(
-t
-)
-(
-t
-−
-1
-)
-)
-⊙
-∇
-W
-ℓ
-,
-g
-​
-(
-t
-)
-.
-\nabla W_{\ell,g(t)}\leftarrow\big(1-O_{\ell,g(t)}^{(t-1)}\big)\odot\nabla W_{\ell,g(t)}.
-(8)
-In addition, after every optimizer step, protected parameters are restored to their pre-update values.
-This makes weight protection strict even when optimizer state could otherwise introduce drift.
-As a result, reuse does not mean re-training previously learned parameters.
-Instead, it means that the new task may
-reactivate
-them in its own sparse mask and use them as frozen functional components, while learning proceeds only through the current score tensors and any newly allocated trainable parameters.
-Optionally, non-mask parameters outside the TSN-converted layers can also be frozen after the first task.
-3.4
-TSN-Affinity: routing by RL-aware task affinity
-The core novelty of our method lies in the routing mechanism shown in Figure
-1
-.
-Before training the incoming task
-𝒯
-t
-\mathcal{T}_{t}
-, TSN-Affinity compares it to previously learned tasks and decides whether it should:
-(i) reuse one of the existing model copies,
-or
-(ii) spawn a new copy.
-Unlike replay-only routing, this decision is based on control-relevant affinity scores.
-For the first task, no routing is required, and the method reduces to sparse TSN training in a single copy.
-For later tasks, we consider three routing modes:
-TSN-Affinity-A
-(action affinity),
-TSN-Affinity-L
-(latent affinity),
-and
-TSN-Affinity-H
-(hybrid affinity).
-3.4.1
-Action affinity
-Action affinity asks whether a previously learned subnetwork already explains expert behavior on the incoming task.
-For each candidate source task
-s
-s
-, we activate the source-task copy and source-task mask, then evaluate the new-task trajectories under teacher forcing.
-For Atari, the action-affinity score is the average cross-entropy:
-d
-A
-​
-(
-t
-,
-s
-)
-=
-1
-|
-Ω
-|
-​
-∑
-(
-b
-,
-ℓ
-)
-∈
-Ω
-CE
-​
-(
-y
-^
-b
-,
-ℓ
-(
-s
-→
-t
-)
-,
-a
-b
-,
-ℓ
-)
-,
-d_{\mathrm{A}}(t,s)=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\mathrm{CE}\!\left(\hat{y}_{b,\ell}^{(s\rightarrow t)},a_{b,\ell}\right),
-(9)
-where
-y
-^
-b
-,
-ℓ
-(
-s
-→
-t
-)
-\hat{y}_{b,\ell}^{(s\rightarrow t)}
-are the action logits produced by the DT with source-task mask
-s
-s
-on trajectories of task
-t
-t
-.
-For Panda, the action-affinity score is the masked mean-squared error:
-d
-A
-​
-(
-t
-,
-s
-)
-=
-1
-|
-Ω
-|
-​
-∑
-(
-b
-,
-ℓ
-)
-∈
-Ω
-‖
-m
-a
-(
-t
-)
-⊙
-(
-a
-^
-b
-,
-ℓ
-(
-s
-→
-t
-)
-−
-a
-b
-,
-ℓ
-)
-‖
-2
-2
-‖
-m
-a
-(
-t
-)
-‖
-1
-.
-d_{\mathrm{A}}(t,s)=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\frac{\left\|m_{a}^{(t)}\odot\big(\hat{a}_{b,\ell}^{(s\rightarrow t)}-a_{b,\ell}\big)\right\|_{2}^{2}}{\|m_{a}^{(t)}\|_{1}}.
-(10)
-Small values of
-d
-A
-​
-(
-t
-,
-s
-)
-d_{\mathrm{A}}(t,s)
-indicate that the source-task subnetwork already matches the demonstrated behavior of the new task.
-This makes action affinity a direct measure of transfer at the policy level.
-3.4.2
-Latent affinity
-Action compatibility alone does not capture whether two tasks are represented similarly inside the model.
-TSN-Affinity therefore also compares tasks at the representation level.
-For each learned task
-s
-s
-, we store latent statistics computed from its task memory under its own copy and task mask.
-The latent vectors are extracted from the DT observation encoder:
-z
-=
-ϕ
-s
-​
-(
-o
-)
-,
-z=\phi_{s}(o),
-(11)
-where
-ϕ
-s
-\phi_{s}
-denotes the observation encoder with source-task mask
-s
-s
-activated.
-For each task memory, we fit a diagonal Gaussian approximation:
-z
-∼
-𝒩
-​
-(
-μ
-,
-Σ
-)
-,
-Σ
-=
-diag
-​
-(
-σ
-1
-2
-,
-…
-,
-σ
-H
-2
-)
-.
-z\sim\mathcal{N}(\mu,\Sigma),\qquad\Sigma=\mathrm{diag}(\sigma_{1}^{2},\dots,\sigma_{H}^{2}).
-(12)
-To evaluate a new task
-t
-t
-against source task
-s
-s
-, we pass the new-task memory through the
-same source-task encoder
-𝒩
-\mathcal{N}
-and compare the resulting latent statistics to those previously stored for
-s
-s
-:
-d
-L
-​
-(
-t
-,
-s
-)
-=
-1
-2
-​
-(
-KL
-​
-(
-𝒩
-t
-→
-s
-∥
-𝒩
-s
-)
-+
-KL
-​
-(
-𝒩
-s
-∥
-𝒩
-t
-→
-s
-)
-)
-.
-d_{\mathrm{L}}(t,s)=\frac{1}{2}\Big(\mathrm{KL}(\mathcal{N}_{t\rightarrow s}\|\mathcal{N}_{s})+\mathrm{KL}(\mathcal{N}_{s}\|\mathcal{N}_{t\rightarrow s})\Big).
-(13)
-We use the symmetric KL divergence rather than a one-way KL term, because standard KL is asymmetric and would otherwise make the latent-affinity score depend on which task distribution is treated as the reference.
-This score measures whether the incoming task induces representations similar to those already supported by a given source copy.
-3.4.3
-Hybrid affinity
-The hybrid mode combines both signals:
-d
-H
-​
-(
-t
-,
-s
-)
-=
-α
-​
-d
-~
-A
-​
-(
-t
-,
-s
-)
-+
-(
-1
-−
-α
-)
-​
-d
-~
-L
-​
-(
-t
-,
-s
-)
-,
-d_{\mathrm{H}}(t,s)=\alpha\,\widetilde{d}_{\mathrm{A}}(t,s)+(1-\alpha)\,\widetilde{d}_{\mathrm{L}}(t,s),
-(14)
-where
-α
-∈
-[
-0
-,
-1
-]
-\alpha\in[0,1]
-controls the trade-off.
-When multiple candidate source tasks are available, the two score families are normalized across candidates before combination.
-When only one candidate exists, the direct scores are used without cross-task normalization.
-3.4.4
-Routing decision and copy reuse
-Let
-d
-⋆
-​
-(
-t
-,
-s
-)
-d_{\star}(t,s)
-denote the active routing criterion, where
-⋆
-∈
-{
-A
-,
-L
-,
-H
-}
-\star\in\{\mathrm{A},\mathrm{L},\mathrm{H}\}
-.
-The best source task is selected as:
-s
-⋆
-=
-arg
-⁡
-min
-s
-&lt;
-t
-⁡
-d
-⋆
-​
-(
-t
-,
-s
-)
-.
-s^{\star}=\arg\min_{s&lt;t}d_{\star}(t,s).
-(15)
-If the following condition applies:
-d
-⋆
-​
-(
-t
-,
-s
-⋆
-)
-≤
-τ
-⋆
-,
-d_{\star}(t,s^{\star})\leq\tau_{\star},
-(16)
-the new task is assigned to the copy of task
-s
-⋆
-s^{\star}
-.
-Otherwise, a new copy is created.
-If a maximum number of copies is imposed and already reached, the task falls back to the best existing copy.
-Thus,
-τ
-⋆
-\tau_{\star}
-acts as a reuse-capacity control: lower values make reuse more conservative and tend to create more copies, whereas higher values force more tasks into existing copies.
-The resulting behavior is exactly the one depicted in Figure
-1
-: the method either reuses a selected copy, where previously learned components remain frozen and protected while new sparse trainable connections are added, or spawns a fresh copy for the incoming task.
-When a source task is selected, the new task may optionally warm-start mask scores from the source mask; details are given in Appendix
-C.2
-.
-3.5
-Reduced comparison variants
-To isolate the contribution of affinity-based routing, we also study two reduced variants of the same framework.
-TSN-ReplayKL.
-TSN-ReplayKL keeps the multi-copy TSN structure but replaces RL-aware routing with a replay-memory similarity heuristic.
-For each task
-𝒯
-t
-\mathcal{T}_{t}
-, it constructs a compact observation memory
-ℳ
-t
-=
-{
-x
-1
-(
-t
-)
-,
-…
-,
-x
-K
-(
-t
-)
-}
-\mathcal{M}_{t}=\{x_{1}^{(t)},\dots,x_{K}^{(t)}\}
-. Each flattened memory sample is converted into a pseudo-probability vector using a softmax transform, and the routing score is:
-d
-RKL
-​
-(
-t
-,
-s
-)
-=
-1
-K
-′
-​
-∑
-i
-=
-1
-K
-′
-KL
-​
-(
-p
-i
-(
-s
-)
-∥
-p
-i
-(
-t
-)
-)
-,
-d_{\mathrm{RKL}}(t,s)=\frac{1}{K^{\prime}}\sum_{i=1}^{K^{\prime}}\mathrm{KL}\!\left(p_{i}^{(s)}\,\|\,p_{i}^{(t)}\right),
-(17)
-where
-p
-i
-(
-t
-)
-=
-softmax
-​
-(
-x
-i
-(
-t
-)
-)
-p_{i}^{(t)}=\mathrm{softmax}(x_{i}^{(t)})
-and
-K
-′
-=
-min
-⁡
-(
-|
-ℳ
-t
-|
-,
-|
-ℳ
-s
-|
-)
-K^{\prime}=\min(|\mathcal{M}_{t}|,|\mathcal{M}_{s}|)
-. Thus, TSN-ReplayKL retains copy-level reuse but uses observation-level similarity rather than control-aware affinity.
-TSN-Core.
-TSN-Core removes copy routing altogether and keeps a single evolving model copy.
-Each task learns a fresh sparse subnetwork within that copy, while previously occupied parameters remain protected.
-TSN-Core, therefore, isolates the effect of sparse task-specific parameterization without any routing or copy selection.
-3.6
-Task-specific inference
-All variants are evaluated in the task-incremental continual learning protocol.
-At test time, task identity is provided and used to activate the corresponding task-specific mask.
-For copy-based variants, this also selects the corresponding model copy.
-For Panda reuse variants, task-specific observation normalization statistics and the active action dimensionality are restored together with the selected task mask.
-4
-Benchmarks
-We evaluate CORL on two complementary benchmark families. The first benchmark targets high-dimensional visual decision making with discrete actions, while the second focuses on low-dimensional continuous-control manipulation. Together, they test whether subnetwork reuse remains effective across different observation modalities, action spaces, horizon lengths, and transfer regimes. Additional experimental details are reported in Appendix
-A
-.
-4.1
-Atari Continual Decision Making
-Our first benchmark is a continual offline Atari suite constructed from five ALE tasks:
-Breakout
-,
-Alien
-,
-Atlantis
-,
-Boxing
-, and
-Centipede
-. This benchmark operates on high-dimensional visual observations and discrete action spaces, making it substantially different from standard low-dimensional control settings.
-In the experiments discussed in this work, we use the following task order:
-Breakout
-→
-\rightarrow
-Alien
-→
-\rightarrow
-Atlantis
-→
-\rightarrow
-Boxing
-→
-\rightarrow
-Centipede
-.
-Evaluation details, horizons, and return-conditioning settings are reported in Appendix
-A
-.
-4.2
-Panda Continual Manipulation
-Our second benchmark utilizes the
-panda-gym
-simulation suite, which models the continuous control of a Franka Emika Panda robotic arm. From this framework, we construct a compact continual-learning suite using three dense-reward manipulation tasks:
-PandaReachDense-v3
-,
-PandaPushDense-v3
-, and
-PandaPickAndPlaceDense-v3
-. These tasks share an underlying kinematic structure but progressively increase in difficulty. Specifically, Reach is a short-horizon end-effector positioning problem, Push demands controlled interaction with an unattached object, and Pick-and-Place further introduces grasping mechanics and vertical object translation.
-Unless stated otherwise, the Panda task order is
-PandaReach
-→
-PandaPush
-→
-PandaPickAndPlace
-.
-\texttt{PandaReach}\rightarrow\texttt{PandaPush}\rightarrow\texttt{PandaPickAndPlace}.
-Evaluation details, horizons, and return-conditioning settings are reported in Appendix
-A
-.
-4.3
-Evaluation Protocol
-Let
-T
-T
-denote the number of tasks in a continual sequence. After training on task
-i
-i
-, each method is evaluated on all tasks, yielding a performance matrix
-𝐏
-∈
-ℝ
-T
-×
-T
-,
-\mathbf{P}\in\mathbb{R}^{T\times T},
-where
-P
-i
-,
-j
-P_{i,j}
-is the average return on task
-j
-j
-after learning task
-i
-i
-.
-We report the full performance matrix for completeness, but continual-learning metrics are computed from the task-incremental part of the matrix, i.e., from entries with
-j
-≤
-i
-j\leq i
-. For task-specific architectural methods, task identity is provided at evaluation time in order to activate the corresponding task-specific subnetwork, following the standard task-incremental continual learning protocol.
-In addition to aggregate metrics, we focus on:
-(i) task-wise final performance,
-(ii) preservation of early tasks after later updates,
-and
-(iii) the ability of reuse-based methods to improve transfer without collapsing previously learned behavior.
-This protocol is identical across Atari and Panda, allowing us to compare the behavior of the same reuse mechanism under visual discrete-control and continuous-control regimes.
-5
-Results
-The routing threshold in reuse-based TSN variants is a capacity-control hyperparameter: it determines when an incoming task is similar enough to reuse an existing copy rather than allocate a new one. For each benchmark, we use a small grid of threshold values and keep the selected threshold fixed across the full task sequence. The full grid, together with single-task reference scores and auxiliary runs, is reported in Appendix
-D
-, so the performance–capacity trade-off induced by this choice is explicit.
-5.1
-Atari benchmark
-We evaluate all methods on a five-task continual offline Atari benchmark with the task order
-Breakout
-→
-\rightarrow
-Alien
-→
-\rightarrow
-Atlantis
-→
-\rightarrow
-Boxing
-→
-\rightarrow
-Centipede
-.
-Because the games operate on very different score scales, we summarize final performance with the expert-normalized mean return:
-NormAvg
-=
-1
-N
-​
-∑
-j
-=
-1
-N
-100
-⋅
-P
-N
-,
-j
-R
-j
-⋆
-,
-\mathrm{NormAvg}=\frac{1}{N}\sum_{j=1}^{N}100\cdot\frac{P_{N,j}}{R_{j}^{\star}},
-(18)
-where
-P
-N
-,
-j
-P_{N,j}
-is the final score on task
-j
-j
-after learning all
-N
-N
-tasks and
-R
-j
-⋆
-R_{j}^{\star}
-is the target return used for Decision Transformer conditioning.
-We also measure forgetting by
-F
-j
-=
-max
-t
-∈
-{
-j
-,
-…
-,
-N
-}
-⁡
-P
-t
-,
-j
-−
-P
-N
-,
-j
-,
-F_{j}=\max_{t\in\{j,\dots,N\}}P_{t,j}-P_{N,j},
-(19)
-where larger values indicate stronger degradation after a task has already been learned.
-Single-task Atari reference scores are reported in Appendix
-4
-.
-Method
-Copies
-Breakout
-Alien
-Atlantis
-Boxing
-Centipede
-NormAvg (%)
-Naive
-1
-0
-27
-10
--10
-92
-18.0
-Cumulative
-1
-57
-52
-1492
-92
-108
-76.2
-EWC
-1
-0
-29
-7
--3
-75
-17.3
-SI
-1
-0
-20
-23
--1
-68
-14.8
-TSN-Core
-1
-114
-52
-1564
-97
-103
-87.5
-TSN-ReplayKL
-1
-103
-52
-1522
-90
-131
-87.7
-TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-4
-97
-73
-1511
-92
-117
-89.7
-TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-5
-97
-73
-1501
-92
-117
-89.6
-TSN-Affinity-H (
-τ
-H
-=
-0.50
-,
-α
-=
-0.70
-\tau_{H}=0.50,\alpha=0.70
-)
-1
-97
-38
-1511
-92
-62
-73.4
-Table 1:
-Final Atari results for the selected operating point of each method family on the Breakout-first continual offline RL benchmark. “Copies” denotes the number of model copies created by the reuse mechanism and serves as a coarse proxy for additional capacity and memory overhead. The full threshold grid is reported in Appendix
-D
-.
-Table
-1
-shows three main trends.
-First, the dense baselines are clearly weaker in this benchmark.
-Naive, EWC, and SI all remain in the same low-performance regime, with normalized final returns between
-14.8
-%
-14.8\%
-and
-18.0
-%
-18.0\%
-, which indicates severe catastrophic forgetting.
-Among the dense methods, cumulative replay is clearly the strongest baseline.
-It improves substantially over Naive, EWC, and SI and reaches
-76.2
-%
-76.2\%
-normalized performance, but it still remains well below the best TSN-based methods.
-This shows that replay alone is helpful, yet it does not remove backward interference when all tasks continue to share a single dense parameterization.
-Second, sparse task-specific subnetworks provide an exceptionally strong retention regime in Atari.
-In all reported TSN-based Atari runs, final forgetting is zero.
-Once a task-specific sparse subnetwork has been allocated, subsequent tasks do not overwrite it.
-As a result, the main challenge in Atari is not forgetting itself, but rather how efficiently the model allocates and reuses capacity for future tasks.
-Capacity, routing-memory, and quantization settings are summarized in Appendix
-B
-.
-Third, routing and reuse improve final multi-task performance on top of this already strong retention.
-TSN-ReplayKL improves over TSN-Core, and the affinity-based variants improve further.
-At the selected operating point, TSN-Affinity-A with
-τ
-A
-=
-10
-\tau_{A}=10
-reaches
-89.7
-%
-89.7\%
-normalized performance, closely followed by TSN-Affinity-L with
-τ
-L
-=
-35
-\tau_{L}=35
-at
-89.6
-%
-89.6\%
-.
-Because the best-performing configurations use additional model copies, these gains should be interpreted as a performance–capacity trade-off; details are provided in Appendix
-C.3
-.
-The effect of the routing threshold is analyzed explicitly in Appendix
-D
-; the same threshold is fixed across the whole Atari task sequence for each reported run.
-Both TSN-Affinity-A and TSN-Affinity-L are also competitive with the single-task Atari references in Appendix
-4
-, which indicates that the best continual TSN variants operate very close to the performance range of individually trained models.
-Overall, the Atari experiments support three conclusions:
-i) dense continual baselines, including replay and regularization methods, remain substantially weaker than sparse TSN-based models,
-ii) sparse task-specific subnetworks are already sufficient to eliminate forgetting in the reported Atari setting, and
-iii) RL-aware affinity routing improves final multi-task performance further, with the strongest results obtained by action-based and latent-based routing at the cost of additional model copies.
-Appendix
-D
-contains the single-task reference tables, the full sets of tested threshold values, and auxiliary repeated runs extracted from the available logs.
-5.2
-Panda benchmark
-We evaluate all methods on a three-task continual offline Panda benchmark with the task order
-PandaReach
-→
-\rightarrow
-PandaPush
-→
-\rightarrow
-PandaPickAndPlace
-.
-Because the target returns in Panda are very close to zero, expert-normalized percentages are not stable or particularly interpretable.
-We therefore report final task returns directly and summarize overall quality using the mean absolute deviation from the target return:
-AvgGap
-=
-1
-N
-​
-∑
-j
-=
-1
-N
-|
-P
-N
-,
-j
-−
-R
-j
-⋆
-|
-.
-\mathrm{AvgGap}=\frac{1}{N}\sum_{j=1}^{N}\left|P_{N,j}-R_{j}^{\star}\right|.
-(20)
-We also report the mean forgetting, denoted by
-AvgF
-\mathrm{AvgF}
-, obtained by averaging the standard forgetting score from Eq. (
-19
-) over previously learned tasks.
-Higher returns (i.e., values closer to zero) are better, while lower
-AvgGap
-\mathrm{AvgGap}
-and
-AvgF
-\mathrm{AvgF}
-are preferable.
-Single-task Panda reference scores are reported in Appendix
-5
-.
-Method
-Copies
-PandaReach
-↑
-\uparrow
-PandaPush
-↑
-\uparrow
-PandaPickAndPlace
-↑
-\uparrow
-AvgGap
-↓
-\downarrow
-AvgF
-↓
-\downarrow
-Naive
-1
--10.902
--8.195
--1.311
-6.657
-8.977
-Cumulative
-1
--0.189
--1.120
--1.314
-0.729
-0.071
-EWC
-1
--13.863
--7.979
--1.490
-7.632
-10.352
-SI
-1
--1.754
--7.011
--11.890
-6.739
-3.012
-TSN-Core
-1
--0.235
--2.589
--1.427
-1.271
-0.857
-TSN-ReplayKL
-2
--7.865
--1.026
--2.061
-3.505
-3.838
-TSN-Affinity-A (
-τ
-A
-=
-0.45
-\tau_{A}=0.45
-)
-3
--0.189
--0.972
--1.422
-0.715
-0.001
-TSN-Affinity-L (
-τ
-L
-=
-25
-\tau_{L}=25
-)
-3
--0.189
--0.949
--1.308
-0.670
-0.000
-TSN-Affinity-H (
-τ
-H
-=
-0.50
-,
-α
-=
-0.70
-\tau_{H}=0.50,\alpha=0.70
-)
-2
--1.482
--0.949
--2.643
-1.546
-0.647
-Table 2:
-Final Panda results for the selected operating point of each method family. “Copies” denotes the number of model copies created by the reuse mechanism and serves as a coarse proxy for additional capacity and memory overhead. Auxiliary runs and threshold settings are reported in Appendix
-D
-.
-Table
-2
-shows that Panda is substantially more challenging than Atari from the continual transfer perspective.
-Unlike Atari, Panda does not produce a universal zero-forgetting regime across the whole TSN family.
-Instead, the methods must balance retention against transfer to later tasks.
-First, the dense baselines are generally weak.
-Naive and EWC suffer from severe forgetting, with large
-AvgF
-\mathrm{AvgF}
-values and poor final performance on
-PandaReach
-and
-PandaPush
-.
-SI is somewhat more stable than EWC but still forgets substantially and collapses on
-PandaPickAndPlace
-.
-Among the dense baselines, cumulative replay is clearly the strongest: it achieves the best dense-model trade-off, with
-AvgGap
-=
-0.729
-\mathrm{AvgGap}=0.729
-and near-optimal retention on
-PandaReach
-.
-Second, the Panda benchmark highlights the limitations of replay-memory KL routing in heterogeneous continuous control.
-TSN-Core improves considerably over Naive, EWC, and SI, but it does not match cumulative replay.
-TSN-ReplayKL is worse still, especially on
-PandaReach
-, which suggests that observation-memory KL is not a reliable routing signal in this setting.
-A detailed discussion of this behavior and the replay-memory comparison is provided in Appendix
-C.3
-.
-Third, the Panda results should be interpreted together with their capacity cost.
-At the selected operating point, TSN-Affinity-L with
-τ
-L
-=
-25
-\tau_{L}=25
-reaches the lowest
-AvgGap
-\mathrm{AvgGap}
-of
-0.670
-0.670
-and zero forgetting, but uses 3 model copies.
-Relative to TSN-Core, this yields a clear improvement in both transfer and retention.
-However, relative to cumulative replay, the gain is more modest, improving
-AvgGap
-\mathrm{AvgGap}
-only from
-0.729
-0.729
-to
-0.670
-0.670
-.
-Hence, the Panda results also reflect a performance–capacity trade-off rather than a free improvement.
-The effect of the routing threshold is analyzed explicitly in Appendix
-D.1
-; the same threshold is fixed across the whole Panda task sequence for each reported run.
-Capacity, routing-memory, and quantization settings are summarized in Appendix
-B
-.
-Finally, the single-task Panda results in Appendix
-5
-show that Panda remains difficult even without continual interference.
-In particular,
-PandaPush
-and
-PandaPickAndPlace
-do not approach zero return in the single-task setting either.
-Thus, the Panda gap is not caused by forgetting alone; it also reflects the intrinsic difficulty of offline continuous-control transfer in a heterogeneous action space.
-Overall, the Panda experiments support three conclusions:
-i) Panda is a substantially harder continual offline RL benchmark than Atari,
-ii) replay-memory KL routing is not reliable enough in this heterogeneous continuous-control setting, and
-iii) RL-aware affinity routing provides the best trade-off between transfer and retention.
-Appendix
-D
-contains the single-task reference tables, the full sets of tested threshold values, and auxiliary repeated runs extracted from the available logs.
-6
-Conclusion
-In this work, we investigated the challenges of CORL, where agents must learn a sequence of tasks from previously collected datasets without interacting with the environment. We proposed TSN-Affinity, a novel architectural approach that combines sparse task-specific subnetworks with similarity-driven parameter reuse. By formulating knowledge transfer as a routing problem based on action and latent affinities, our method effectively decouples the learning of new tasks from the preservation of previously acquired knowledge.
-Our evaluation on the Atari and Panda benchmarks shows that architectural continual learning can provide strong retention and robust transfer in settings where replay-based baselines struggle with memory overhead or distribution mismatch. Specifically, the affinity-based routing mechanisms consistently outperformed replay-memory heuristics, particularly in the heterogeneous continuous-control domain of Panda. The results indicate that direct action and latent similarity are reliable indicators of routing decisions.
-Future work will focus on investigating the generalization of affinity scores to larger, more diverse benchmarks.
-Another interesting direction is extending the affinity routing framework to online continual learning settings, which could further elucidate the role of architectural reuse when environment interactions are feasible.
-Finally, we will extend TinySubnetworks with hybrid pruning and adaptive quantization strategies.
-References
-[1]
-D. Abel, A. Barreto, B. Van Roy, D. Precup, H. P. van Hasselt, and S. Singh
-,
-A definition of continual reinforcement learning
-, Advances in Neural Information Processing Systems, 36 (2023), pp. 50377–50407.
-[2]
-R. Agarwal, D. Schuurmans, and M. Norouzi
-,
-An optimistic perspective on offline reinforcement learning
-, in Proceedings of the 37th International Conference on Machine Learning, H. D. III and A. Singh, eds., vol. 119 of Proceedings of Machine Learning Research, PMLR, 13–18 Jul 2020, pp. 104–114.
-[3]
-G. An, S. Moon, J.-H. Kim, and H. O. Song
-,
-Uncertainty-based offline reinforcement learning with diversified q-ensemble
-, Advances in neural information processing systems, 34 (2021), pp. 7436–7447.
-[4]
-L. Chen, K. Lu, A. Rajeswaran, K. Lee, A. Grover, M. Laskin, P. Abbeel, A. Srinivas, and I. Mordatch
-,
-Decision transformer: Reinforcement learning via sequence modeling
-, in Advances in Neural Information Processing Systems, vol. 34, 2021, pp. 15084–15097.
-[5]
-K. Faber, C. Kanan, V. Lomonaco, and R. Corizzo
-,
-Continual anomaly detection: A comprehensive survey and research roadmap
-, Preprints, (2026),
-https://doi.org/10.20944/preprints202601.1931.v1
-,
-https://doi.org/10.20944/preprints202601.1931.v1
-.
-[6]
-K. Faber, D. Zurek, M. Pietron, N. Japkowicz, A. Vergari, and R. Corizzo
-,
-From MNIST to ImageNet and back: benchmarking continual curriculum learning
-, Machine Learning, 113 (2024), pp. 8137–8164,
-https://doi.org/10.1007/s10994-024-06524-z
-.
-[7]
-S. Gai, D. Wang, and L. He
-,
-OER: Offline experience replay for continual offline reinforcement learning
-, in Proceedings of the 26th European Conference on Artificial Intelligence (ECAI 2023), IOS Press, 2023, pp. 772–779,
-https://doi.org/10.3233/FAIA230343
-.
-[8]
-J. Hu, S. Huang, L. Shen, Z. Yang, S. Hu, S. Tang, H. Chen, L. Sun, Y. Chang, and D. Tao
-,
-Tackling continual offline rl through selective weights activation on aligned spaces
-, in Advances in Neural Information Processing Systems, 2025.
-[9]
-M. Janner, Q. Li, and S. Levine
-,
-Offline reinforcement learning as one big sequence modeling problem
-, in Advances in Neural Information Processing Systems, vol. 34, 2021.
-[10]
-A. Kumar, A. Zhou, G. Tucker, and S. Levine
-,
-Conservative Q-learning for offline reinforcement learning
-, in Advances in Neural Information Processing Systems, vol. 33, 2020, pp. 1179–1191.
-[11]
-K.-H. Lee, O. Nachum, M. S. Yang, L. Lee, D. Freeman, S. Guadarrama, I. Fischer, W. Xu, E. Jang, H. Michalewski, et al.
-,
-Multi-game decision transformers
-, Advances in neural information processing systems, 35 (2022), pp. 27921–27936.
-[12]
-S. Levine, A. Kumar, G. Tucker, and J. Fu
-,
-Offline reinforcement learning: Tutorial, review, and perspectives on open problems
-, arXiv preprint arXiv:2005.01643, (2020).
-[13]
-A. Mallya, D. Davis, and S. Lazebnik
-,
-Piggyback: Adapting a single network to multiple tasks by learning to mask weights
-, in Proceedings of the European Conference on Computer Vision (ECCV), 2018.
-[14]
-A. Mallya and S. Lazebnik
-,
-Packnet: Adding multiple tasks to a single network by iterative pruning
-, in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2018.
-[15]
-M. Pietron, K. Faber, D. Zurek, and R. Corizzo
-,
-TinySubNets: An efficient and low capacity continual learning strategy
-, Proceedings of the AAAI Conference on Artificial Intelligence, 39 (2025), pp. 19913–19920,
-https://doi.org/10.1609/aaai.v39i19.34193
-.
-[16]
-M. Pietron, D. Zurek, K. Faber, and R. Corizzo
-,
-Ada-qpacknet - multi-task forget-free continual learning with quantization driven adaptive pruning
-, in Proceedings of the 26th European Conference on Artificial Intelligence (ECAI 2023), 2023, pp. 1882–1889.
-[17]
-D. Rolnick, A. Ahuja, J. Schwarz, T. P. Lillicrap, and G. Wayne
-,
-Experience replay for continual learning
-, in Advances in Neural Information Processing Systems, vol. 32, 2019.
-[18]
-T. Schmied, M. Hofmarcher, F. Paischer, R. Pascanu, and S. Hochreiter
-,
-Learning to modulate pre-trained models in rl
-, in Advances in Neural Information Processing Systems, 2023.
-[19]
-J. Serra, D. Suris, M. Miron, and A. Karatzoglou
-,
-Overcoming catastrophic forgetting with hard attention to the task
-, in Proceedings of the 35th International Conference on Machine Learning, vol. 80 of Proceedings of Machine Learning Research, 2018, pp. 4548–4557.
-[20]
-L. Wang, X. Zhang, H. Su, and J. Zhu
-,
-A comprehensive survey of continual learning: Theory, method and application
-, IEEE transactions on pattern analysis and machine intelligence, 46 (2024), pp. 5362–5383.
-[21]
-Z. Wang, X. Qu, J. Xiao, B. Chen, and J. Wang
-,
-P2dt: Mitigating forgetting in task-incremental learning with progressive prompt decision transformer
-, in 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), 2024, pp. 7265–7269,
-https://doi.org/10.1109/ICASSP48485.2024.10447775
-.
-[22]
-T. Zhang, K. Z. Shen, Z. Lin, B. Yuan, X. Wang, X. Li, and D. Ye
-,
-Replay-enhanced continual reinforcement learning
-, Transactions on Machine Learning Research, (2023).
-Appendix A
-Benchmarks
-In both benchmarks, tasks are revealed sequentially: at stage
-t
-t
-, the learner receives only the offline dataset for the current task, while access to previous data is available only if a method explicitly stores or reuses it.
-A.1
-Atari Continual Decision Making
-We use expert offline trajectories stored in
-expert_minari_dqn.npz
-format. The environment pipeline is matched to the dataset through a Minari-like DQN preprocessing setup with frame stacking of
-4
-4
-, frame skip of
-4
-4
-, and
-84
-×
-84
-84\times 84
-observations. We additionally perform a replay-consistency check by replaying expert actions in the environment and verifying that the obtained return matches the dataset return, which ensures that the simulator and offline data are aligned.
-The Decision Transformer uses a shared discrete-action interface over the whole task sequence. Observations have shape
-(
-4
-,
-84
-,
-84
-)
-(4,84,84)
-after preprocessing, while the action vocabulary is shared across tasks using the maximum action-space size observed in the benchmark.
-Evaluation is performed for
-20
-20
-episodes per task using greedy action selection. The maximum evaluation horizon is
-27
-,
-000
-27{,}000
-environment steps. Return-conditioning targets are derived independently for each task from the corresponding offline expert data.
-A.2
-Panda Continual Manipulation
-For each task, we use an offline expert dataset. Observations are formed by concatenating
-observation
-,
-achieved_goal
-, and
-desired_goal
-. In our setup, the dataset representation additionally includes a normalized time feature, which is matched during environment interaction through a dedicated wrapper.
-Because the tasks have different raw observation and action dimensions, we map them into a shared continual-learning interface by padding all observation and action vectors to global dimensions. In practice, shorter vectors are zero-padded in the trailing coordinates, while Panda action losses are computed only over the task-active action dimensions. During evaluation, the model output is truncated back to the original task-specific action dimensionality. In the experiments reported here, the shared dimensions are
-26
-26
-for observations and
-4
-4
-for actions, allowing all methods to use a single Decision Transformer backbone across the whole Panda sequence.
-Evaluation is performed for
-20
-20
-episodes per task, with a maximum horizon of
-50
-50
-environment steps. We report the average episodic return. Return-conditioning uses fixed task-specific targets corresponding to expert-level returns in our setup.
-Single-task Panda reference scores are reported in Appendix
-5
-.
-Appendix B
-Experimental setup
-For the TSN-based methods, we use a routing memory of 256 samples per task. This memory is used only for routing and latent-statistics estimation and is not replayed for gradient-based optimization. All Atari TSN experiments use a constant keep ratio of
-ρ
-=
-0.5
-\rho=0.5
-, whereas all Panda TSN experiments use
-ρ
-=
-0.33
-\rho=0.33
-, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers. We used benchmark-specific keep ratios chosen empirically:
-ρ
-=
-0.5
-\rho=0.5
-for Atari and
-ρ
-=
-0.33
-\rho=0.33
-for Panda, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers. The larger Atari value reflects a denser per-task allocation in the more homogeneous discrete-control setting, whereas the smaller Panda value yields a more conservative allocation in the more heterogeneous continuous-control setting. Since the keep ratio is applied to the currently feasible parameter set, these values correspond to approximate single-copy occupancies of
-1
-−
-(
-1
-−
-ρ
-)
-5
-≈
-96.9
-%
-1-(1-\rho)^{5}\approx 96.9\%
-in Atari and
-1
-−
-(
-1
-−
-ρ
-)
-3
-≈
-69.9
-%
-1-(1-\rho)^{3}\approx 69.9\%
-in Panda when reuse is disabled. Quantization was disabled in all reported experiments in order to isolate the effect of sparse masking and routing. For Panda, the cumulative baseline uses a rehearsal capacity of 5000, while in Atari cumulative replay is controlled by a replay mix of 0.5 and the runner does not expose a separate replay-capacity limit.
-Benchmark
-ρ
-\rho
-Sparsity
-Routing memory
-Replay setting
-Quantization
-Atari
-0.50
-50%
-256
-mix = 0.5
-off
-Panda
-0.33
-67%
-256
-capacity = 5000
-off
-Table 3:
-Key benchmark-specific TSN and replay settings used in the reported experiments.
-Appendix C
-Additional Method and Metric Details
-C.1
-TSN Mask Density
-The mask-density equations are included in the main Methodology section. In the reported experiments, we use constant keep ratios of
-ρ
-=
-0.5
-\rho=0.5
-for Atari and
-ρ
-=
-0.33
-\rho=0.33
-for Panda, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers.
-C.2
-Score Warm-Start
-Once a source task
-s
-⋆
-s^{\star}
-has been selected, the score tensors of the new task can optionally be warm-started from the source-task mask:
-S
-ℓ
-,
-g
-​
-(
-t
-)
-←
-λ
-​
-M
-ℓ
-(
-s
-⋆
-)
-+
-ϵ
-,
-S_{\ell,g(t)}\leftarrow\lambda M_{\ell}^{(s^{\star})}+\epsilon,
-(21)
-where
-λ
-&gt;
-0
-\lambda&gt;0
-controls the warm-start strength, and
-ϵ
-\epsilon
-is a small random noise term.
-This warm-start does not copy or fine-tune old weights; it only biases sparse mask search toward structures that were already useful for the selected source task.
-C.3
-Capacity and Replay-Memory Discussion
-For Atari, the memory used by TSN-ReplayKL and TSN-Affinity is a routing memory of 256 samples per task rather than a rehearsal buffer. Thus, the gap between TSN-ReplayKL and Cumulative is not caused by larger replay storage, but by the fact that TSN methods reduce interference through task-specific sparse allocation and copy-level routing, whereas Cumulative continues to optimize a single dense model on mixed past-task data.
-The best Atari configurations use 4 and 5 model copies for TSN-Affinity-A and TSN-Affinity-L, respectively, whereas TSN-Core and TSN-ReplayKL use only a single copy in the reported setting. The roughly two-point gain over the strongest single-copy TSN baselines should therefore be interpreted as a performance–capacity trade-off rather than a free improvement.
-In Panda, TSN-ReplayKL can underperform even the single-copy TSN-Core baseline because its routing decision is based on observation-level replay-memory similarity rather than control-aware compatibility. When KL-based routing creates an additional copy, the new copy is initialized from scratch rather than inheriting previously trained dense weights, so the method may lose beneficial sharing without obtaining strong transfer in return.
-This also explains the large gap to cumulative replay: cumulative replay repeatedly optimizes on real past-task data, whereas TSN-ReplayKL uses only a small routing memory for copy selection and does not revisit past datasets in the same way during optimization. In our setup, the Panda cumulative baseline uses a rehearsal capacity of 5000, whereas TSN-ReplayKL and TSN-Affinity use routing memories of 256 samples per task.
-The selected Panda operating point uses 3 model copies, so this result also reflects a performance–capacity trade-off. More conservative reuse often improves performance by reducing forced reuse across heterogeneous tasks. Since quantization was disabled in all reported Panda experiments, we do not report a compressed memory footprint here and instead use the number of copies as the main coarse proxy for additional capacity.
-Appendix D
-Additional Tables
-The tables in this appendix complement the main results with three additional views.
-First, we report single-task reference scores to separate continual-learning effects from the intrinsic difficulty of the underlying offline RL tasks.
-Second, we provide threshold grids for the reuse-based TSN variants to show how the routing-capacity operating point affects final performance.
-Third, we include auxiliary repeated runs to provide a compact view of run-to-run stability, especially in the more variable Panda setting.
-Together, these tables provide additional support for the main conclusions of the paper while keeping the main text focused on the strongest representative configurations.
-Task
-Target
-R
-⋆
-R^{\star}
-Single-task DT
-Breakout
-114
-112
-Alien
-86
-62
-Atlantis
-1556
-1505
-Boxing
-97
-86
-Centipede
-135
-117
-NormAvg (%)
-88.5
-Table 4:
-Single-task Atari references. Breakout and Atlantis are already strong, while Alien remains the hardest game.
-Task
-CL target
-R
-⋆
-R^{\star}
-Single-task at
-R
-⋆
-R^{\star}
-Best sweep
-Reach
--0.000320
--0.243
--0.243
-Push
--0.436000
--0.971
--0.937
-Pick&amp;Place
--0.001000
--1.027
--1.024
-Table 5:
-Single-task Panda references. Push and Pick&amp;Place remain difficult even without continual interference.
-Method/configuration
-Run
-NormAvg (%)
-AvgF
-Cumulative
-s0
-67.2
-359.0
-Cumulative
-s1
-76.2
-20.3
-Cumulative
-s2
-62.6
-8.5
-TSN-Core
-s1
-87.5
-0.0
-TSN-Core
-s2
-81.5
-0.0
-TSN-ReplayKL
-s1
-86.1
-0.0
-TSN-ReplayKL
-s2
-87.7
-0.0
-TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-s0
-89.7
-0.0
-TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-s1
-89.2
-0.0
-TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-s2
-82.2
-0.0
-TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-s0
-89.6
-0.0
-TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-s1
-86.9
-0.0
-TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-s2
-81.6
-0.0
-Table 6:
-Auxiliary Atari runs. All listed TSN runs retain zero forgetting, whereas cumulative replay is more variable.
-D.1
-Affinity Routing Thresholds Analysis
-Table
-7
-reports the threshold grid for affinity routing on the Atari benchmark.
-For action-based routing, decreasing the threshold from
-τ
-A
-=
-16
-\tau_{A}=16
-to
-τ
-A
-=
-10
-\tau_{A}=10
-increases the number of copies from
-2
-2
-to
-4
-4
-and improves normalized performance from
-88.5
-%
-88.5\%
-to
-89.7
-%
-89.7\%
-, mainly because
-Centipede
-improves from
-102
-102
-to
-117
-117
-.
-At the same time, more aggressive reuse at
-τ
-A
-=
-12
-\tau_{A}=12
-or
-τ
-A
-=
-14
-\tau_{A}=14
-is clearly worse, dropping performance to about
-81.9
-%
-81.9\%
-.
-For latent routing, the strongest operating point in this grid is obtained at
-τ
-L
-=
-35
-\tau_{L}=35
-.
-Increasing the threshold to
-τ
-L
-=
-75
-\tau_{L}=75
-reduces the number of copies from
-5
-5
-to
-3
-3
-and lowers performance from
-89.6
-%
-89.6\%
-to
-86.6
-%
-86.6\%
-.
-Intermediate values
-τ
-L
-=
-45
-\tau_{L}=45
-and
-τ
-L
-=
-55
-\tau_{L}=55
-are worse still, at about
-82.3
-%
-82.3\%
-.
-Thus, in Atari, a more conservative reuse policy is preferable to forcing more tasks into the same copy.
-Variant
-Copies
-Breakout
-Alien
-Atlantis
-Boxing
-Centipede
-NormAvg (%)
-TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-4
-97
-73
-1511
-92
-117
-89.7
-TSN-Affinity-A (
-τ
-A
-=
-12
-\tau_{A}=12
-)
-2
-97
-73
-1512
-90
-67
-81.9
-TSN-Affinity-A (
-τ
-A
-=
-14
-\tau_{A}=14
-)
-2
-97
-73
-1512
-90
-67
-81.9
-TSN-Affinity-A (
-τ
-A
-=
-16
-\tau_{A}=16
-)
-2
-97
-73
-1511
-97
-102
-88.5
-TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-5
-97
-73
-1501
-92
-117
-89.6
-TSN-Affinity-L (
-τ
-L
-=
-45
-\tau_{L}=45
-)
-3
-97
-73
-1509
-90
-70
-82.3
-TSN-Affinity-L (
-τ
-L
-=
-55
-\tau_{L}=55
-)
-3
-97
-73
-1509
-90
-70
-82.3
-TSN-Affinity-L (
-τ
-L
-=
-75
-\tau_{L}=75
-)
-3
-97
-73
-1501
-97
-90
-86.6
-TSN-Affinity-H (
-τ
-H
-=
-0.50
-,
-α
-=
-0.70
-\tau_{H}=0.50,\alpha=0.70
-)
-1
-97
-38
-1511
-92
-62
-73.4
-TSN-Affinity-H (
-τ
-H
-=
-0.50
-,
-α
-=
-0.50
-\tau_{H}=0.50,\alpha=0.50
-)
-1
-97
-38
-1511
-92
-62
-73.4
-TSN-Affinity-H (
-τ
-H
-=
-0.55
-,
-α
-=
-0.80
-\tau_{H}=0.55,\alpha=0.80
-)
-1
-97
-38
-1511
-92
-62
-73.4
-Table 7:
-Full Atari threshold grid. More conservative reuse often improves final performance in this Atari sequence, at the cost of additional copies, while the tested hybrid settings collapse to the same result.
-Table
-8
-reports the threshold grid and auxiliary reuse runs for affinity routing on the Panda benchmark.
-For action-based routing, we evaluated
-τ
-A
-∈
-{
-0.35
-,
-0.45
-,
-0.65
-}
-\tau_{A}\in\{0.35,0.45,0.65\}
-.
-Reducing the threshold from
-0.65
-0.65
-to
-0.45
-0.45
-improves
-AvgGap
-\mathrm{AvgGap}
-from
-0.737
-0.737
-to
-0.715
-0.715
-.
-This gain comes mainly from better
-PandaPickAndPlace
-performance, which improves from
-−
-1.505
--1.505
-to
-−
-1.422
--1.422
-, while
-PandaPush
-becomes slightly worse, from
-−
-0.956
--0.956
-to
-−
-0.972
--0.972
-.
-Lowering the threshold further from
-0.45
-0.45
-to
-0.35
-0.35
-does not change the final result, which indicates that the routing decisions are already saturated in that range.
-For latent routing, the strongest operating point in this grid is obtained at
-τ
-L
-=
-25
-\tau_{L}=25
-.
-In contrast to Atari, Panda therefore shows a smaller numerical effect of the threshold choice, but a clearer distinction between useful and non-useful routing criteria: latent affinity and action affinity are both effective, whereas replay-memory KL and the current hybrid rule are not.
-Configuration
-Run
-Copies
-Reach
-Push
-Pick&amp;Place
-AvgGap
-AvgF
-TSN-ReplayKL
-r1
-2
--7.865
--1.026
--2.061
-3.505
-3.838
-TSN-ReplayKL
-r2
-2
--14.716
--1.203
--1.433
-5.638
-7.270
-TSN-ReplayKL
-r3
-2
--10.546
--1.083
--1.585
-4.259
-5.179
-TSN-Affinity-A (
-τ
-A
-=
-0.65
-\tau_{A}=0.65
-)
-r1
-3
--0.188
--0.956
--1.505
-0.737
-0.000
-TSN-Affinity-A (
-τ
-A
-=
-0.65
-\tau_{A}=0.65
-)
-r2
-2
--1.482
--0.949
--2.643
-1.546
-0.647
-TSN-Affinity-A (
-τ
-A
-=
-0.45
-\tau_{A}=0.45
-)
-r1
-3
--0.189
--0.972
--1.422
-0.715
-0.001
-TSN-Affinity-A (
-τ
-A
-=
-0.35
-\tau_{A}=0.35
-)
-r1
-3
--0.189
--0.972
--1.422
-0.715
-0.001
-TSN-Affinity-L (
-τ
-L
-=
-25
-\tau_{L}=25
-)
-r1
-3
--0.189
--0.949
--1.308
-0.670
-0.000
-TSN-Affinity-L (
-τ
-L
-=
-25
-\tau_{L}=25
-)
-r2
-3
--0.188
--0.956
--1.505
-0.737
-0.000
-TSN-Affinity-H (
-τ
-H
-=
-0.50
-,
-α
-=
-0.70
-\tau_{H}=0.50,\alpha=0.70
-)
-r1
-2
--1.482
--0.949
--2.643
-1.546
-0.647
-Table 8:
-Auxiliary Panda reuse runs. Replay-memory KL routing is weaker and less stable than affinity-based routing.
-Appendix E
-Additional Learning Curves
-Each plot shows performance after the end of task
-t
-t
-.
-Background colors indicate the currently trained task, and lines indicate evaluation tasks.
-Atari uses single-task-normalized scores.
-Panda uses the same normalization only for qualitative comparison.
-E.1
-Atari Learning Curves
-Naive is unstable, Cumulative reduces but does not remove backward interference, and the affinity-based TSN variants remain nearly flat after a task has been acquired.
-(a) Atari Naive
-(b) Atari Cumulative
-(c) Atari TSN-Affinity-A (
-τ
-A
-=
-10
-\tau_{A}=10
-)
-(d) Atari TSN-Affinity-L (
-τ
-L
-=
-35
-\tau_{L}=35
-)
-Figure 2:
-Additional Atari learning curves. The affinity-based TSN variants exhibit the characteristic near-zero-forgetting regime.
-E.2
-Panda Learning Curves
-Panda is less regular than Atari: Naive remains unstable, Cumulative is more structured, and the affinity-based variants are smoother but not uniformly flat.
-(a) Panda Naive
-(b) Panda Cumulative
-(c) Panda TSN-Affinity-A (
-τ
-A
-=
-0.45
-\tau_{A}=0.45
-)
-(d) Panda TSN-Affinity-L (
-τ
-L
-=
-25
-\tau_{L}=25
-)
-Figure 3:
-Additional Panda learning curves. These plots are intended mainly for qualitative comparison; the main quantitative discussion in the paper relies on raw returns and average gap-to-target metrics.
-Appendix F
-Panda Padding and Shared Task Interface
-The Panda tasks considered in this work differ in their raw observations and action dimensionalities. To support a single continual-learning backbone across the whole task sequence, we embed all tasks into a shared observation space of dimension
-26
-26
-and a shared action space of dimension
-4
-4
-.
-For observations, task-specific state vectors are first formed by concatenating
-observation
-,
-achieved_goal
-, and
-desired_goal
-, along with an additional normalized time feature used in our environment wrapper. If the resulting vector is shorter than the global observation dimension, it is zero-padded in the trailing coordinates.
-For actions, task-specific action vectors are analogously embedded into the shared global action space by zero-padding trailing coordinates. During training, padded action dimensions are excluded from the loss by means of a task-specific binary action mask. Concretely, if task
-t
-t
-has an active action mask
-m
-a
-(
-t
-)
-∈
-{
-0
-,
-1
-}
-4
-m_{a}^{(t)}\in\{0,1\}^{4}
-, then only dimensions with
-m
-a
-(
-t
-)
-=
-1
-m_{a}^{(t)}=1
-contribute to the Panda regression objective. During evaluation, the predicted action vector is truncated back to the original task-specific action dimensionality before being applied in the environment.
+<p>TSN-Affinity: Similarity-Driven Parameter Reuse for Continual Offline Reinforcement Learning<br />
+Dominik Żurek<br />
+AGH University of Krakow, Poland<br />
+Kamil Faber<br />
+AGH University of Krakow, Poland<br />
+Marcin Pietron<br />
+AGH University of Krakow, Poland<br />
+Paweł Gajewski<br />
+AGH University of Krakow, Poland<br />
+Roberto Corizzo<br />
+American University, Washington, DC, USA<br />
+Abstract<br />
+Continual offline reinforcement learning (CORL) aims to learn a sequence of tasks from datasets collected over time while preserving performance on previously learned tasks. This setting corresponds to domains where new tasks arise over time, but adapting the model in live environment interactions is expensive, risky, or impossible. However, CORL inherits the dual difficulty of offline reinforcement learning and adapting while preventing catastrophic forgetting. Replay-based continual learning approaches remain a strong baseline but incur memory overhead and suffer from a distribution mismatch between replayed samples and newly learned policies. At the same time, architectural continual learning methods have shown strong potential in supervised learning but remain underexplored in CORL.<br />
+In this work, we propose TSN-Affinity, a novel CORL method based on TinySubNetworks and Decision Transformer.<br />
+The method enables task-specific parameterization and controlled knowledge sharing through a RL-aware reuse strategy that routes tasks according to action compatibility and latent similarity.<br />
+We evaluate the approach on benchmarks based on Atari games and simulations of manipulation tasks with the Franka Emika Panda robotic arm, covering both discrete and continuous control. Results show strong retention from sparse SubNetworks, with routing further improving multi-task performance.<br />
+Our findings suggest that similarity-guided architectural reuse is a strong and viable alternative to replay-based strategies in a CORL setting. Our code is available at:<br />
+https://github.com/anonymized-for-submission123/tsn-affinity<br />
+.<br />
+1<br />
+Introduction<br />
+Continual learning and reinforcement learning address two complementary requirements of adaptive systems: the ability to accumulate knowledge over time and the ability to make optimized sequential decisions<br />
+[<br />
+1<br />
+]<br />
+. Reinforcement learning provides a principled framework for learning such decision policies by optimizing cumulative reward through interaction with an environment. However, in many real-world applications, the interaction with the environment is expensive, unsafe, or infeasible, which requires learning from previously collected data<br />
+[<br />
+2<br />
+]<br />
+. This setting has motivated significant progress in offline reinforcement learning (offline RL), where policies are learned entirely from gathered datasets without further environment interaction.<br />
+Despite advances in offline RL, the CORL setting, in which the model adapts to arriving tasks, remains relatively underexplored<br />
+[<br />
+7<br />
+]<br />
+. In CORL, the learner must incorporate new knowledge while preserving performance on previously learned tasks, without access to past data unless explicitly stored<br />
+[<br />
+7<br />
+]<br />
+. This setting combines two major challenges: i) tackling out-of-distribution exploration and distributional shift between training and evaluation, typical of offline RL, and ii) preventing catastrophic forgetting of previous tasks while learning new ones, typical of continual learning.<br />
+Recent developments in offline RL show that sequence modeling approaches such as the Decision Transformer or Trajectory Transformer<br />
+[<br />
+4<br />
+,<br />
+9<br />
+]<br />
+offer a flexible and stable framework for learning from static trajectories. Because this paradigm reformulates RL as a supervised sequence problem, it serves as an excellent foundation for isolating and studying continual learning dynamics.<br />
+Existing approaches to continual RL, including those adapted to the offline setting, are predominantly replay-based, relying on storing and reusing past samples to mitigate forgetting<br />
+[<br />
+7<br />
+,<br />
+22<br />
+,<br />
+17<br />
+]<br />
+. In contrast, in domains such as continual image classification and anomaly detection, architectural approaches have demonstrated strong resistance to forgetting<br />
+[<br />
+20<br />
+,<br />
+5<br />
+]<br />
+.<br />
+Methods such as PackNet<br />
+[<br />
+14<br />
+]<br />
+, Piggyback<br />
+[<br />
+13<br />
+]<br />
+, and HAT<br />
+[<br />
+19<br />
+]<br />
+demonstrate that task-specific masks or gating mechanisms can preserve prior knowledge by limiting destructive interference across tasks.<br />
+TinySubNets<br />
+[<br />
+15<br />
+]<br />
+extends these ideas with weight sharing, replay memory, and KL-based task routing.<br />
+However, the applicability of such methods to CORL is non-trivial, as the transition from supervised learning to reinforcement learning introduces additional challenges, including sequential decision dependencies, policy-induced distributional shift, and the need to generalize across temporally extended trajectories. In particular, effective reuse of knowledge across task-specific subnetworks is critical, yet fundamentally more challenging in reinforcement learning.<br />
+Building on this, we propose<br />
+TSN-Affinity<br />
+, a continual learning method for CORL that introduces a similarity-driven parameter reuse paradigm for sequence-based reinforcement learning. Built on sparse task-specific TinySubNetworks<br />
+[<br />
+15<br />
+]<br />
+, TSN-Affinity leverages the Decision Transformer<br />
+[<br />
+4<br />
+]<br />
+architecture.<br />
+Central to our approach is<br />
+Affinity Routing<br />
+, a CORL-specific mechanism that dynamically selects and reuses relevant parameters across tasks to enable effective knowledge transfer while preventing interference.<br />
+We evaluate TSN-Affinity on two continual offline RL benchmarks covering both discrete and continuous control: a suite of classic Atari games and the multi-goal panda-gym environments utilizing the Franka Emika Panda robotic arm. Our experimental study shows that sparse task-specific subnetworks provide strong retention, while our proposed Affinity Routing further improves final multi-task performance, especially on the discrete Atari tasks. At the same time, the results on the Panda benchmark highlight the greater difficulty of knowledge transfer in heterogeneous continuous-control settings.<br />
+Our contributions can be summarized as follows:<br />
+1. TSN-Affinity, a novel CORL method that formulates knowledge transfer as similarity-driven routing over sparse task-specific subnetworks, dynamically selects and reuses parameters across tasks.<br />
+2. Affinity Routing, a CORL-specific mechanism that leverages action- and representation-level similarity to dynamically select and reuse parameters across tasks.<br />
+3. Two continuous offline reinforcement learning benchmarks covering visual discrete-control (Atari) and continuous-control (robotic manipulation) settings, enabling systematic analysis of retention and transfer.<br />
+4. An extensive experimental evaluation demonstrating that architectural approaches can completely mitigate forgetting and that similarity-driven reuse significantly improves multi-task performance.<br />
+2<br />
+Related Work<br />
+Architectural continual learning.<br />
+Architectural methods mitigate forgetting by allocating task-specific parameters, masks, or subnetworks within a shared backbone. Representative examples include PackNet, which iteratively prunes and reallocates weights, Piggyback, which learns binary task masks over a fixed network, and HAT, which uses task-specific hard attention to gate parameter usage<br />
+[<br />
+14<br />
+,<br />
+13<br />
+,<br />
+19<br />
+]<br />
+. Our work is most closely related to the recent architectural CL line: Ada-QPackNet combines pruning and quantization for capacity-aware continual learning, while TinySubNets extends this idea with adaptive quantization, weight sharing, replay memory, and KL-based routing<br />
+[<br />
+16<br />
+,<br />
+15<br />
+]<br />
+. We also build on the benchmark-oriented work, which stressed the need for more realistic and heterogeneous continual learning evaluation<br />
+[<br />
+6<br />
+]<br />
+.<br />
+Offline reinforcement learning and sequence modeling.<br />
+Offline RL studies how to learn policies entirely from static datasets without additional environment interaction. The central challenge in this setting is the distributional shift between the training data and the states visited during online evaluation. This shift causes standard off-policy algorithms to query out-of-distribution (OOD) actions, resulting in overly optimistic value function estimates and policy collapse<br />
+[<br />
+12<br />
+]<br />
+. To mitigate this, many offline RL methods, such as CQL<br />
+[<br />
+10<br />
+]<br />
+and SAC-N<br />
+[<br />
+3<br />
+]<br />
+, address the instability by enforcing conservative value updates. Alternatively, architectures like the Decision Transformer and Trajectory Transformer demonstrate that offline RL can be effectively formulated as a sequence modeling problem over trajectories, bypassing explicit value-function optimization entirely<br />
+[<br />
+4<br />
+,<br />
+9<br />
+]<br />
+. Because these models treat action generation as a supervised learning problem, they naturally constrain their predictions to the empirical distribution of the dataset, largely avoiding OOD actions. Our work adopts this sequence-modeling perspective via the Decision Transformer, extending it to a continual setting where tasks arrive sequentially.<br />
+Continual reinforcement learning and continual offline RL.<br />
+Replay remains one of the strongest general baselines for continual adaptation in reinforcement learning<br />
+[<br />
+17<br />
+]<br />
+. More recently, replay-centric continual RL methods such as RECALL revisited the role of replay under policy drift and reward-scale mismatch<br />
+[<br />
+22<br />
+]<br />
+. In continual offline RL, OER formulated sequential offline task learning with a bounded replay buffer and showed the effectiveness of offline replay under distribution mismatch<br />
+[<br />
+7<br />
+]<br />
+. Our contribution is complementary: instead of relying only on sample-level replay, we study parameter-level reuse through sparse task-specific subnetworks and control-aware routing.<br />
+Continual RL with transformer-based models.<br />
+Published work on transformer-based continual RL remains limited. Foundational multi-task architectures, such as the Multi-Game Decision Transformer<br />
+[<br />
+11<br />
+]<br />
+, demonstrate that DTs can successfully represent diverse behaviors when past and present data are accumulated and trained jointly, effectively serving as a cumulative continual learning baseline. Moving beyond this joint-training setting to strict sequential task arrival, P2DT introduced a progressive prompt-based Decision Transformer to mitigate forgetting by appending task-specific decision tokens<br />
+[<br />
+21<br />
+]<br />
+. Similarly, L2M studied continual adaptation by modulating a frozen pre-trained model, reporting strong results on continuous-control benchmarks<br />
+[<br />
+18<br />
+]<br />
+. More recently, VQ-CD addressed continual offline RL with heterogeneous state and action spaces through quantized space alignment and selective weight activation in a diffusion-based framework<br />
+[<br />
+8<br />
+]<br />
+. In contrast, our work focuses on architectural continual learning for Decision Transformer backbones through sparse task-specific subnetworks and reuse-aware routing, evaluating this perspective on both visual discrete-control (Atari) and continuous robotic-manipulation (Panda) benchmarks.<br />
+3<br />
+Methodology<br />
+Figure 1:<br />
+Overview of the proposed TSN-Affinity method.<br />
+We consider a CORL setting with a sequence of tasks<br />
+𝒯<br />
+1<br />
+,<br />
+𝒯<br />
+2<br />
+,<br />
+…<br />
+,<br />
+𝒯<br />
+N<br />
+\mathcal{T}<em>{1},\mathcal{T}</em>{2},\dots,\mathcal{T}<em>{N}<br />
+.<br />
+For each task<br />
+𝒯<br />
+t<br />
+\mathcal{T}</em>{t}<br />
+, the learner receives a fixed offline dataset<br />
+𝒟<br />
+t<br />
+=<br />
+{<br />
+τ<br />
+i<br />
+(<br />
+t<br />
+)<br />
+}<br />
+i<br />
+=<br />
+1<br />
+M<br />
+t<br />
+\mathcal{D}<em>{t}={\tau</em>{i}^{(t)}}<em>{i=1}^{M</em>{t}}<br />
+of trajectories.<br />
+Tasks are revealed sequentially, and the learner must acquire each new task while preserving performance on previously learned ones.<br />
+No environment interaction is used during model optimization.<br />
+Our main contribution is<br />
+TSN-Affinity<br />
+, a continual offline RL method that combines<br />
+(i) sparse task-specific subnetworks,<br />
+(ii) copy-level routing across multiple model instances,<br />
+and<br />
+(iii) RL-aware affinity scores for transfer-aware reuse.<br />
+Instead of relying solely on replay to preserve past behavior, TSN-Affinity stores previously learned task subnetworks and decides, for each incoming task, whether it should reuse an existing model copy or initialize a new one.<br />
+When reuse is selected, previously learned weights are not fine-tuned further; they remain frozen and are reused as fixed functional components, while the new task learns only its own sparse mask and any newly allocated trainable parameters.<br />
+Figure<br />
+1<br />
+illustrates this mechanism.<br />
+TSN-Affinity is built on a Decision Transformer (DT) backbone<br />
+f<br />
+θ<br />
+f_{\theta}<br />
+.<br />
+For discrete-control domains such as Atari, the model predicts action logits and is trained with a cross-entropy objective over valid (non-padded) sequence positions.<br />
+For continuous-control domains such as Panda, the model predicts continuous actions and is trained with a masked mean-squared-error objective.<br />
+When Panda tasks have heterogeneous action dimensionalities, actions are padded to a shared global action dimension.<br />
+During training, an action-dimension mask is applied in the loss, while during evaluation the active output dimensionality is enforced through task-specific truncation.<br />
+We also study two reduced variants of the same framework:<br />
+TSN-ReplayKL<br />
+, which replaces affinity routing by replay-memory similarity,<br />
+and<br />
+TSN-Core<br />
+, which removes routing entirely and keeps a single sparse model copy.<br />
+These variants serve as controlled comparisons for isolating the contribution of affinity-based routing.<br />
+3.1<br />
+Decision Transformer training objectives<br />
+Each trajectory is represented as a sequence of observations, actions, timesteps, and returns-to-go.<br />
+For a minibatch, let<br />
+Ω<br />
+\Omega<br />
+denote the set of valid (non-padded) sequence positions. For a minibatch of size<br />
+B<br />
+B<br />
+and context length<br />
+L<br />
+L<br />
+,<br />
+b<br />
+∈<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+B<br />
+}<br />
+b\in{1,\dots,B}<br />
+indexes the batch element, while<br />
+ℓ<br />
+∈<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+L<br />
+}<br />
+\ell\in{1,\dots,L}<br />
+indexes the sequence position (time step) within that element. Let<br />
+Ω<br />
+⊆<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+B<br />
+}<br />
+×<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+L<br />
+}<br />
+\Omega\subseteq{1,\dots,B}\times{1,\dots,L}<br />
+denote the set of valid (non-padded) sequence positions.<br />
+For Atari, the Decision Transformer outputs action logits<br />
+y<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+\hat{y}<em>{b,\ell}<br />
+, and the training objective for task<br />
+t<br />
+t<br />
+is<br />
+ℒ<br />
+Atari<br />
+(<br />
+t<br />
+)<br />
+=<br />
+1<br />
+|<br />
+Ω<br />
+|<br />
+​<br />
+∑<br />
+(<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+∈<br />
+Ω<br />
+CE<br />
+​<br />
+(<br />
+y<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+,<br />
+a<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+,<br />
+\mathcal{L}</em>{\mathrm{Atari}}^{(t)}=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\mathrm{CE}!\left(\hat{y}<em>{b,\ell},a</em>{b,\ell}\right),<br />
+(1)<br />
+where<br />
+C<br />
+​<br />
+E<br />
+CE<br />
+is cross-entropy and the logits are computed from teacher-forced trajectory prefixes consisting of observations, past actions, returns-to-go, and timesteps.<br />
+For Panda, let<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+d<br />
+max<br />
+m_{a}^{(t)}\in{0,1}^{d_{\max}}<br />
+denote the action dimension mask of task<br />
+t<br />
+t<br />
+, where<br />
+d<br />
+max<br />
+d_{\max}<br />
+is the shared global action dimension.<br />
+The Panda objective is<br />
+ℒ<br />
+Panda<br />
+(<br />
+t<br />
+)<br />
+=<br />
+1<br />
+|<br />
+Ω<br />
+|<br />
+​<br />
+∑<br />
+(<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+∈<br />
+Ω<br />
+‖<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+⊙<br />
+(<br />
+a<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+−<br />
+a<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+‖<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+‖<br />
+1<br />
+,<br />
+\mathcal{L}<em>{\mathrm{Panda}}^{(t)}=\frac{1}{|\Omega|}\sum</em>{(b,\ell)\in\Omega}\frac{\left|m_{a}^{(t)}\odot\big(\hat{a}<em>{b,\ell}-a</em>{b,\ell}\big)\right|<em>{2}^{2}}{|m</em>{a}^{(t)}|<em>{1}},<br />
+(2)<br />
+where<br />
+a<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+\hat{a}</em>{b,\ell}<br />
+is the predicted continuous action.<br />
+Thus, the Panda loss is averaged only over the active action dimensions of the current task.<br />
+3.2<br />
+Sparse task-specific subnetworks<br />
+TSN-Affinity operates on selected DT layers, denoted by<br />
+𝒜<br />
+TSN<br />
+\mathcal{A}<em>{\mathrm{TSN}}<br />
+In practice, these are linear and convolutional layers, and optionally, embedding layers.<br />
+Selected modules, such as the timestep embedding, may be excluded from conversion.<br />
+Each TSN-compatible layer<br />
+ℓ<br />
+∈<br />
+𝒜<br />
+TSN<br />
+\ell\in\mathcal{A}</em>{\mathrm{TSN}}<br />
+in model copy<br />
+c<br />
+c<br />
+contains: i) a dense weight tensor<br />
+W<br />
+ℓ<br />
+,<br />
+c<br />
+W_{\ell,c}<br />
+; ii) a trainable score tensor<br />
+S<br />
+ℓ<br />
+,<br />
+c<br />
+S_{\ell,c}<br />
+of the same shape, iii) and, when present, analogous tensors for the bias term.<br />
+For each task<br />
+t<br />
+t<br />
+, the method learns a binary task-specific mask<br />
+M<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+shape<br />
+​<br />
+(<br />
+W<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+)<br />
+M_{\ell}^{(t)}\in{0,1}^{\mathrm{shape}(W_{\ell,g(t)})}<br />
+,<br />
+where<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+g(t)<br />
+denotes the selected model copy<br />
+The mask is obtained by top-<br />
+k<br />
+k<br />
+selection over the largest absolute scores among admissible parameters:<br />
+M<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+=<br />
+TopKMask<br />
+⁡<br />
+(<br />
+|<br />
+S<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+|<br />
+,<br />
+ρ<br />
+t<br />
+,<br />
+F<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+)<br />
+,<br />
+M_{\ell}^{(t)}=\operatorname{TopKMask}!\left(|S_{\ell,g(t)}|,\rho_{t},F_{\ell,g(t)}^{(t-1)}\right),<br />
+(3)<br />
+where<br />
+ρ<br />
+t<br />
+\rho_{t}<br />
+is the task keep ratio and<br />
+F<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+F_{\ell,g(t)}^{(t-1)}<br />
+is the feasibility mask of parameters currently available to the new task. Equivalently, if<br />
+F<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+F_{\ell,g(t)}^{(t-1)}<br />
+denotes the feasibility mask, then the number of selected parameters is<br />
+k<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+=<br />
+⌈<br />
+ρ<br />
+t<br />
+​<br />
+‖<br />
+F<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+‖<br />
+0<br />
+⌉<br />
+,<br />
+k_{\ell}^{(t)}=\left\lceil\rho_{t}\,\bigl|F_{\ell,g(t)}^{(t-1)}\bigr|<em>{0}\right\rceil,<br />
+(4)<br />
+so that, up to rounding,<br />
+‖<br />
+M<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+‖<br />
+0<br />
+‖<br />
+F<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+‖<br />
+0<br />
+≈<br />
+ρ<br />
+t<br />
+.<br />
+\frac{|M</em>{\ell}^{(t)}|<em>{0}}{|F</em>{\ell,g(t)}^{(t-1)}|<em>{0}}\approx\rho</em>{t}.<br />
+(5)<br />
+Thus,<br />
+ρ<br />
+t<br />
+\rho_{t}<br />
+controls the density of the task-specific mask, whereas the corresponding sparsity level is<br />
+1<br />
+−<br />
+ρ<br />
+t<br />
+1-\rho_{t}<br />
+.<br />
+If reuse is disabled, the task may select only previously unused weights.<br />
+If reuse is enabled, the task may also reactivate already occupied weights while keeping them frozen.<br />
+The effective weights used by task<br />
+t<br />
+t<br />
+are therefore:<br />
+W<br />
+~<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+=<br />
+M<br />
+ℓ<br />
+(<br />
+t<br />
+)<br />
+⊙<br />
+W<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+,<br />
+\widetilde{W}<em>{\ell}^{(t)}=M</em>{\ell}^{(t)}\odot W_{\ell,g(t)},<br />
+(6)<br />
+where<br />
+⊙<br />
+\odot<br />
+denotes element-wise multiplication.<br />
+Previously allocated weights are tracked by a copy-local occupancy mask:<br />
+O<br />
+ℓ<br />
+,<br />
+c<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+=<br />
+⋁<br />
+k<br />
+&lt;<br />
+t<br />
+g<br />
+​<br />
+(<br />
+k<br />
+)<br />
+=<br />
+c<br />
+M<br />
+ℓ<br />
+(<br />
+k<br />
+)<br />
+,<br />
+O_{\ell,c}^{(t-1)}=\bigvee_{\begin{subarray}{c}k&lt;t\<br />
+g(k)=c\end{subarray}}M_{\ell}^{(k)},<br />
+(7)<br />
+so occupancy, reuse, and protection are always handled locally within a selected copy.<br />
+3.3<br />
+Training inside a selected copy<br />
+Once a copy has been selected for task<br />
+t<br />
+t<br />
+, sparse training proceeds by jointly optimizing the DT objective and the score tensors that define the current task mask.<br />
+The task keep ratio<br />
+ρ<br />
+t<br />
+\rho_{t}<br />
+can either be constant, where<br />
+ρ<br />
+t<br />
+=<br />
+ρ<br />
+\rho_{t}=\rho<br />
+for all tasks, or follow an<br />
+equal_remaining<br />
+schedule, where each task receives approximately an equal share of the remaining sparse capacity.<br />
+A key property of TSN-Affinity is that previously allocated weights remain protected.<br />
+Gradients on occupied parameters are masked as:<br />
+∇<br />
+W<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+←<br />
+(<br />
+1<br />
+−<br />
+O<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+(<br />
+t<br />
+−<br />
+1<br />
+)<br />
+)<br />
+⊙<br />
+∇<br />
+W<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+.<br />
+\nabla W_{\ell,g(t)}\leftarrow\big(1-O_{\ell,g(t)}^{(t-1)}\big)\odot\nabla W_{\ell,g(t)}.<br />
+(8)<br />
+In addition, after every optimizer step, protected parameters are restored to their pre-update values.<br />
+This makes weight protection strict even when optimizer state could otherwise introduce drift.<br />
+As a result, reuse does not mean re-training previously learned parameters.<br />
+Instead, it means that the new task may<br />
+reactivate<br />
+them in its own sparse mask and use them as frozen functional components, while learning proceeds only through the current score tensors and any newly allocated trainable parameters.<br />
+Optionally, non-mask parameters outside the TSN-converted layers can also be frozen after the first task.<br />
+3.4<br />
+TSN-Affinity: routing by RL-aware task affinity<br />
+The core novelty of our method lies in the routing mechanism shown in Figure<br />
+1<br />
+.<br />
+Before training the incoming task<br />
+𝒯<br />
+t<br />
+\mathcal{T}<em>{t}<br />
+, TSN-Affinity compares it to previously learned tasks and decides whether it should:<br />
+(i) reuse one of the existing model copies,<br />
+or<br />
+(ii) spawn a new copy.<br />
+Unlike replay-only routing, this decision is based on control-relevant affinity scores.<br />
+For the first task, no routing is required, and the method reduces to sparse TSN training in a single copy.<br />
+For later tasks, we consider three routing modes:<br />
+TSN-Affinity-A<br />
+(action affinity),<br />
+TSN-Affinity-L<br />
+(latent affinity),<br />
+and<br />
+TSN-Affinity-H<br />
+(hybrid affinity).<br />
+3.4.1<br />
+Action affinity<br />
+Action affinity asks whether a previously learned subnetwork already explains expert behavior on the incoming task.<br />
+For each candidate source task<br />
+s<br />
+s<br />
+, we activate the source-task copy and source-task mask, then evaluate the new-task trajectories under teacher forcing.<br />
+For Atari, the action-affinity score is the average cross-entropy:<br />
+d<br />
+A<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+=<br />
+1<br />
+|<br />
+Ω<br />
+|<br />
+​<br />
+∑<br />
+(<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+∈<br />
+Ω<br />
+CE<br />
+​<br />
+(<br />
+y<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+(<br />
+s<br />
+→<br />
+t<br />
+)<br />
+,<br />
+a<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+,<br />
+d</em>{\mathrm{A}}(t,s)=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\mathrm{CE}!\left(\hat{y}<em>{b,\ell}^{(s\rightarrow t)},a</em>{b,\ell}\right),<br />
+(9)<br />
+where<br />
+y<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+(<br />
+s<br />
+→<br />
+t<br />
+)<br />
+\hat{y}<em>{b,\ell}^{(s\rightarrow t)}<br />
+are the action logits produced by the DT with source-task mask<br />
+s<br />
+s<br />
+on trajectories of task<br />
+t<br />
+t<br />
+.<br />
+For Panda, the action-affinity score is the masked mean-squared error:<br />
+d<br />
+A<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+=<br />
+1<br />
+|<br />
+Ω<br />
+|<br />
+​<br />
+∑<br />
+(<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+∈<br />
+Ω<br />
+‖<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+⊙<br />
+(<br />
+a<br />
+^<br />
+b<br />
+,<br />
+ℓ<br />
+(<br />
+s<br />
+→<br />
+t<br />
+)<br />
+−<br />
+a<br />
+b<br />
+,<br />
+ℓ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+‖<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+‖<br />
+1<br />
+.<br />
+d</em>{\mathrm{A}}(t,s)=\frac{1}{|\Omega|}\sum_{(b,\ell)\in\Omega}\frac{\left|m_{a}^{(t)}\odot\big(\hat{a}<em>{b,\ell}^{(s\rightarrow t)}-a</em>{b,\ell}\big)\right|<em>{2}^{2}}{|m</em>{a}^{(t)}|<em>{1}}.<br />
+(10)<br />
+Small values of<br />
+d<br />
+A<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+d</em>{\mathrm{A}}(t,s)<br />
+indicate that the source-task subnetwork already matches the demonstrated behavior of the new task.<br />
+This makes action affinity a direct measure of transfer at the policy level.<br />
+3.4.2<br />
+Latent affinity<br />
+Action compatibility alone does not capture whether two tasks are represented similarly inside the model.<br />
+TSN-Affinity therefore also compares tasks at the representation level.<br />
+For each learned task<br />
+s<br />
+s<br />
+, we store latent statistics computed from its task memory under its own copy and task mask.<br />
+The latent vectors are extracted from the DT observation encoder:<br />
+z<br />
+=<br />
+ϕ<br />
+s<br />
+​<br />
+(<br />
+o<br />
+)<br />
+,<br />
+z=\phi_{s}(o),<br />
+(11)<br />
+where<br />
+ϕ<br />
+s<br />
+\phi_{s}<br />
+denotes the observation encoder with source-task mask<br />
+s<br />
+s<br />
+activated.<br />
+For each task memory, we fit a diagonal Gaussian approximation:<br />
+z<br />
+∼<br />
+𝒩<br />
+​<br />
+(<br />
+μ<br />
+,<br />
+Σ<br />
+)<br />
+,<br />
+Σ<br />
+=<br />
+diag<br />
+​<br />
+(<br />
+σ<br />
+1<br />
+2<br />
+,<br />
+…<br />
+,<br />
+σ<br />
+H<br />
+2<br />
+)<br />
+.<br />
+z\sim\mathcal{N}(\mu,\Sigma),\qquad\Sigma=\mathrm{diag}(\sigma_{1}^{2},\dots,\sigma_{H}^{2}).<br />
+(12)<br />
+To evaluate a new task<br />
+t<br />
+t<br />
+against source task<br />
+s<br />
+s<br />
+, we pass the new-task memory through the<br />
+same source-task encoder<br />
+𝒩<br />
+\mathcal{N}<br />
+and compare the resulting latent statistics to those previously stored for<br />
+s<br />
+s<br />
+:<br />
+d<br />
+L<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+=<br />
+1<br />
+2<br />
+​<br />
+(<br />
+KL<br />
+​<br />
+(<br />
+𝒩<br />
+t<br />
+→<br />
+s<br />
+∥<br />
+𝒩<br />
+s<br />
+)<br />
++<br />
+KL<br />
+​<br />
+(<br />
+𝒩<br />
+s<br />
+∥<br />
+𝒩<br />
+t<br />
+→<br />
+s<br />
+)<br />
+)<br />
+.<br />
+d_{\mathrm{L}}(t,s)=\frac{1}{2}\Big(\mathrm{KL}(\mathcal{N}<em>{t\rightarrow s}|\mathcal{N}</em>{s})+\mathrm{KL}(\mathcal{N}<em>{s}|\mathcal{N}</em>{t\rightarrow s})\Big).<br />
+(13)<br />
+We use the symmetric KL divergence rather than a one-way KL term, because standard KL is asymmetric and would otherwise make the latent-affinity score depend on which task distribution is treated as the reference.<br />
+This score measures whether the incoming task induces representations similar to those already supported by a given source copy.<br />
+3.4.3<br />
+Hybrid affinity<br />
+The hybrid mode combines both signals:<br />
+d<br />
+H<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+=<br />
+α<br />
+​<br />
+d<br />
+~<br />
+A<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
++<br />
+(<br />
+1<br />
+−<br />
+α<br />
+)<br />
+​<br />
+d<br />
+~<br />
+L<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+,<br />
+d_{\mathrm{H}}(t,s)=\alpha\,\widetilde{d}<em>{\mathrm{A}}(t,s)+(1-\alpha)\,\widetilde{d}</em>{\mathrm{L}}(t,s),<br />
+(14)<br />
+where<br />
+α<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+\alpha\in[0,1]<br />
+controls the trade-off.<br />
+When multiple candidate source tasks are available, the two score families are normalized across candidates before combination.<br />
+When only one candidate exists, the direct scores are used without cross-task normalization.<br />
+3.4.4<br />
+Routing decision and copy reuse<br />
+Let<br />
+d<br />
+⋆<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+d_{\star}(t,s)<br />
+denote the active routing criterion, where<br />
+⋆<br />
+∈<br />
+{<br />
+A<br />
+,<br />
+L<br />
+,<br />
+H<br />
+}<br />
+\star\in{\mathrm{A},\mathrm{L},\mathrm{H}}<br />
+.<br />
+The best source task is selected as:<br />
+s<br />
+⋆<br />
+=<br />
+arg<br />
+⁡<br />
+min<br />
+s<br />
+&lt;<br />
+t<br />
+⁡<br />
+d<br />
+⋆<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+.<br />
+s^{\star}=\arg\min_{s&lt;t}d_{\star}(t,s).<br />
+(15)<br />
+If the following condition applies:<br />
+d<br />
+⋆<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+⋆<br />
+)<br />
+≤<br />
+τ<br />
+⋆<br />
+,<br />
+d_{\star}(t,s^{\star})\leq\tau_{\star},<br />
+(16)<br />
+the new task is assigned to the copy of task<br />
+s<br />
+⋆<br />
+s^{\star}<br />
+.<br />
+Otherwise, a new copy is created.<br />
+If a maximum number of copies is imposed and already reached, the task falls back to the best existing copy.<br />
+Thus,<br />
+τ<br />
+⋆<br />
+\tau_{\star}<br />
+acts as a reuse-capacity control: lower values make reuse more conservative and tend to create more copies, whereas higher values force more tasks into existing copies.<br />
+The resulting behavior is exactly the one depicted in Figure<br />
+1<br />
+: the method either reuses a selected copy, where previously learned components remain frozen and protected while new sparse trainable connections are added, or spawns a fresh copy for the incoming task.<br />
+When a source task is selected, the new task may optionally warm-start mask scores from the source mask; details are given in Appendix<br />
+C.2<br />
+.<br />
+3.5<br />
+Reduced comparison variants<br />
+To isolate the contribution of affinity-based routing, we also study two reduced variants of the same framework.<br />
+TSN-ReplayKL.<br />
+TSN-ReplayKL keeps the multi-copy TSN structure but replaces RL-aware routing with a replay-memory similarity heuristic.<br />
+For each task<br />
+𝒯<br />
+t<br />
+\mathcal{T}<em>{t}<br />
+, it constructs a compact observation memory<br />
+ℳ<br />
+t<br />
+=<br />
+{<br />
+x<br />
+1<br />
+(<br />
+t<br />
+)<br />
+,<br />
+…<br />
+,<br />
+x<br />
+K<br />
+(<br />
+t<br />
+)<br />
+}<br />
+\mathcal{M}</em>{t}={x_{1}^{(t)},\dots,x_{K}^{(t)}}<br />
+. Each flattened memory sample is converted into a pseudo-probability vector using a softmax transform, and the routing score is:<br />
+d<br />
+RKL<br />
+​<br />
+(<br />
+t<br />
+,<br />
+s<br />
+)<br />
+=<br />
+1<br />
+K<br />
+′<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+1<br />
+K<br />
+′<br />
+KL<br />
+​<br />
+(<br />
+p<br />
+i<br />
+(<br />
+s<br />
+)<br />
+∥<br />
+p<br />
+i<br />
+(<br />
+t<br />
+)<br />
+)<br />
+,<br />
+d_{\mathrm{RKL}}(t,s)=\frac{1}{K^{\prime}}\sum_{i=1}^{K^{\prime}}\mathrm{KL}!\left(p_{i}^{(s)}\,|\,p_{i}^{(t)}\right),<br />
+(17)<br />
+where<br />
+p<br />
+i<br />
+(<br />
+t<br />
+)<br />
+=<br />
+softmax<br />
+​<br />
+(<br />
+x<br />
+i<br />
+(<br />
+t<br />
+)<br />
+)<br />
+p_{i}^{(t)}=\mathrm{softmax}(x_{i}^{(t)})<br />
+and<br />
+K<br />
+′<br />
+=<br />
+min<br />
+⁡<br />
+(<br />
+|<br />
+ℳ<br />
+t<br />
+|<br />
+,<br />
+|<br />
+ℳ<br />
+s<br />
+|<br />
+)<br />
+K^{\prime}=\min(|\mathcal{M}<em>{t}|,|\mathcal{M}</em>{s}|)<br />
+. Thus, TSN-ReplayKL retains copy-level reuse but uses observation-level similarity rather than control-aware affinity.<br />
+TSN-Core.<br />
+TSN-Core removes copy routing altogether and keeps a single evolving model copy.<br />
+Each task learns a fresh sparse subnetwork within that copy, while previously occupied parameters remain protected.<br />
+TSN-Core, therefore, isolates the effect of sparse task-specific parameterization without any routing or copy selection.<br />
+3.6<br />
+Task-specific inference<br />
+All variants are evaluated in the task-incremental continual learning protocol.<br />
+At test time, task identity is provided and used to activate the corresponding task-specific mask.<br />
+For copy-based variants, this also selects the corresponding model copy.<br />
+For Panda reuse variants, task-specific observation normalization statistics and the active action dimensionality are restored together with the selected task mask.<br />
+4<br />
+Benchmarks<br />
+We evaluate CORL on two complementary benchmark families. The first benchmark targets high-dimensional visual decision making with discrete actions, while the second focuses on low-dimensional continuous-control manipulation. Together, they test whether subnetwork reuse remains effective across different observation modalities, action spaces, horizon lengths, and transfer regimes. Additional experimental details are reported in Appendix<br />
+A<br />
+.<br />
+4.1<br />
+Atari Continual Decision Making<br />
+Our first benchmark is a continual offline Atari suite constructed from five ALE tasks:<br />
+Breakout<br />
+,<br />
+Alien<br />
+,<br />
+Atlantis<br />
+,<br />
+Boxing<br />
+, and<br />
+Centipede<br />
+. This benchmark operates on high-dimensional visual observations and discrete action spaces, making it substantially different from standard low-dimensional control settings.<br />
+In the experiments discussed in this work, we use the following task order:<br />
+Breakout<br />
+→<br />
+\rightarrow<br />
+Alien<br />
+→<br />
+\rightarrow<br />
+Atlantis<br />
+→<br />
+\rightarrow<br />
+Boxing<br />
+→<br />
+\rightarrow<br />
+Centipede<br />
+.<br />
+Evaluation details, horizons, and return-conditioning settings are reported in Appendix<br />
+A<br />
+.<br />
+4.2<br />
+Panda Continual Manipulation<br />
+Our second benchmark utilizes the<br />
+panda-gym<br />
+simulation suite, which models the continuous control of a Franka Emika Panda robotic arm. From this framework, we construct a compact continual-learning suite using three dense-reward manipulation tasks:<br />
+PandaReachDense-v3<br />
+,<br />
+PandaPushDense-v3<br />
+, and<br />
+PandaPickAndPlaceDense-v3<br />
+. These tasks share an underlying kinematic structure but progressively increase in difficulty. Specifically, Reach is a short-horizon end-effector positioning problem, Push demands controlled interaction with an unattached object, and Pick-and-Place further introduces grasping mechanics and vertical object translation.<br />
+Unless stated otherwise, the Panda task order is<br />
+PandaReach<br />
+→<br />
+PandaPush<br />
+→<br />
+PandaPickAndPlace<br />
+.<br />
+\texttt{PandaReach}\rightarrow\texttt{PandaPush}\rightarrow\texttt{PandaPickAndPlace}.<br />
+Evaluation details, horizons, and return-conditioning settings are reported in Appendix<br />
+A<br />
+.<br />
+4.3<br />
+Evaluation Protocol<br />
+Let<br />
+T<br />
+T<br />
+denote the number of tasks in a continual sequence. After training on task<br />
+i<br />
+i<br />
+, each method is evaluated on all tasks, yielding a performance matrix<br />
+𝐏<br />
+∈<br />
+ℝ<br />
+T<br />
+×<br />
+T<br />
+,<br />
+\mathbf{P}\in\mathbb{R}^{T\times T},<br />
+where<br />
+P<br />
+i<br />
+,<br />
+j<br />
+P_{i,j}<br />
+is the average return on task<br />
+j<br />
+j<br />
+after learning task<br />
+i<br />
+i<br />
+.<br />
+We report the full performance matrix for completeness, but continual-learning metrics are computed from the task-incremental part of the matrix, i.e., from entries with<br />
+j<br />
+≤<br />
+i<br />
+j\leq i<br />
+. For task-specific architectural methods, task identity is provided at evaluation time in order to activate the corresponding task-specific subnetwork, following the standard task-incremental continual learning protocol.<br />
+In addition to aggregate metrics, we focus on:<br />
+(i) task-wise final performance,<br />
+(ii) preservation of early tasks after later updates,<br />
+and<br />
+(iii) the ability of reuse-based methods to improve transfer without collapsing previously learned behavior.<br />
+This protocol is identical across Atari and Panda, allowing us to compare the behavior of the same reuse mechanism under visual discrete-control and continuous-control regimes.<br />
+5<br />
+Results<br />
+The routing threshold in reuse-based TSN variants is a capacity-control hyperparameter: it determines when an incoming task is similar enough to reuse an existing copy rather than allocate a new one. For each benchmark, we use a small grid of threshold values and keep the selected threshold fixed across the full task sequence. The full grid, together with single-task reference scores and auxiliary runs, is reported in Appendix<br />
+D<br />
+, so the performance–capacity trade-off induced by this choice is explicit.<br />
+5.1<br />
+Atari benchmark<br />
+We evaluate all methods on a five-task continual offline Atari benchmark with the task order<br />
+Breakout<br />
+→<br />
+\rightarrow<br />
+Alien<br />
+→<br />
+\rightarrow<br />
+Atlantis<br />
+→<br />
+\rightarrow<br />
+Boxing<br />
+→<br />
+\rightarrow<br />
+Centipede<br />
+.<br />
+Because the games operate on very different score scales, we summarize final performance with the expert-normalized mean return:<br />
+NormAvg<br />
+=<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+N<br />
+100<br />
+⋅<br />
+P<br />
+N<br />
+,<br />
+j<br />
+R<br />
+j<br />
+⋆<br />
+,<br />
+\mathrm{NormAvg}=\frac{1}{N}\sum_{j=1}^{N}100\cdot\frac{P_{N,j}}{R_{j}^{\star}},<br />
+(18)<br />
+where<br />
+P<br />
+N<br />
+,<br />
+j<br />
+P_{N,j}<br />
+is the final score on task<br />
+j<br />
+j<br />
+after learning all<br />
+N<br />
+N<br />
+tasks and<br />
+R<br />
+j<br />
+⋆<br />
+R_{j}^{\star}<br />
+is the target return used for Decision Transformer conditioning.<br />
+We also measure forgetting by<br />
+F<br />
+j<br />
+=<br />
+max<br />
+t<br />
+∈<br />
+{<br />
+j<br />
+,<br />
+…<br />
+,<br />
+N<br />
+}<br />
+⁡<br />
+P<br />
+t<br />
+,<br />
+j<br />
+−<br />
+P<br />
+N<br />
+,<br />
+j<br />
+,<br />
+F_{j}=\max_{t\in{j,\dots,N}}P_{t,j}-P_{N,j},<br />
+(19)<br />
+where larger values indicate stronger degradation after a task has already been learned.<br />
+Single-task Atari reference scores are reported in Appendix<br />
+4<br />
+.<br />
+Method<br />
+Copies<br />
+Breakout<br />
+Alien<br />
+Atlantis<br />
+Boxing<br />
+Centipede<br />
+NormAvg (%)<br />
+Naive<br />
+1<br />
+0<br />
+27<br />
+10<br />
+-10<br />
+92<br />
+18.0<br />
+Cumulative<br />
+1<br />
+57<br />
+52<br />
+1492<br />
+92<br />
+108<br />
+76.2<br />
+EWC<br />
+1<br />
+0<br />
+29<br />
+7<br />
+-3<br />
+75<br />
+17.3<br />
+SI<br />
+1<br />
+0<br />
+20<br />
+23<br />
+-1<br />
+68<br />
+14.8<br />
+TSN-Core<br />
+1<br />
+114<br />
+52<br />
+1564<br />
+97<br />
+103<br />
+87.5<br />
+TSN-ReplayKL<br />
+1<br />
+103<br />
+52<br />
+1522<br />
+90<br />
+131<br />
+87.7<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+4<br />
+97<br />
+73<br />
+1511<br />
+92<br />
+117<br />
+89.7<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+5<br />
+97<br />
+73<br />
+1501<br />
+92<br />
+117<br />
+89.6<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.50<br />
+,<br />
+α<br />
+=<br />
+0.70<br />
+\tau_{H}=0.50,\alpha=0.70<br />
+)<br />
+1<br />
+97<br />
+38<br />
+1511<br />
+92<br />
+62<br />
+73.4<br />
+Table 1:<br />
+Final Atari results for the selected operating point of each method family on the Breakout-first continual offline RL benchmark. “Copies” denotes the number of model copies created by the reuse mechanism and serves as a coarse proxy for additional capacity and memory overhead. The full threshold grid is reported in Appendix<br />
+D<br />
+.<br />
+Table<br />
+1<br />
+shows three main trends.<br />
+First, the dense baselines are clearly weaker in this benchmark.<br />
+Naive, EWC, and SI all remain in the same low-performance regime, with normalized final returns between<br />
+14.8<br />
+%<br />
+14.8\%<br />
+and<br />
+18.0<br />
+%<br />
+18.0\%<br />
+, which indicates severe catastrophic forgetting.<br />
+Among the dense methods, cumulative replay is clearly the strongest baseline.<br />
+It improves substantially over Naive, EWC, and SI and reaches<br />
+76.2<br />
+%<br />
+76.2\%<br />
+normalized performance, but it still remains well below the best TSN-based methods.<br />
+This shows that replay alone is helpful, yet it does not remove backward interference when all tasks continue to share a single dense parameterization.<br />
+Second, sparse task-specific subnetworks provide an exceptionally strong retention regime in Atari.<br />
+In all reported TSN-based Atari runs, final forgetting is zero.<br />
+Once a task-specific sparse subnetwork has been allocated, subsequent tasks do not overwrite it.<br />
+As a result, the main challenge in Atari is not forgetting itself, but rather how efficiently the model allocates and reuses capacity for future tasks.<br />
+Capacity, routing-memory, and quantization settings are summarized in Appendix<br />
+B<br />
+.<br />
+Third, routing and reuse improve final multi-task performance on top of this already strong retention.<br />
+TSN-ReplayKL improves over TSN-Core, and the affinity-based variants improve further.<br />
+At the selected operating point, TSN-Affinity-A with<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+reaches<br />
+89.7<br />
+%<br />
+89.7\%<br />
+normalized performance, closely followed by TSN-Affinity-L with<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+at<br />
+89.6<br />
+%<br />
+89.6\%<br />
+.<br />
+Because the best-performing configurations use additional model copies, these gains should be interpreted as a performance–capacity trade-off; details are provided in Appendix<br />
+C.3<br />
+.<br />
+The effect of the routing threshold is analyzed explicitly in Appendix<br />
+D<br />
+; the same threshold is fixed across the whole Atari task sequence for each reported run.<br />
+Both TSN-Affinity-A and TSN-Affinity-L are also competitive with the single-task Atari references in Appendix<br />
+4<br />
+, which indicates that the best continual TSN variants operate very close to the performance range of individually trained models.<br />
+Overall, the Atari experiments support three conclusions:<br />
+i) dense continual baselines, including replay and regularization methods, remain substantially weaker than sparse TSN-based models,<br />
+ii) sparse task-specific subnetworks are already sufficient to eliminate forgetting in the reported Atari setting, and<br />
+iii) RL-aware affinity routing improves final multi-task performance further, with the strongest results obtained by action-based and latent-based routing at the cost of additional model copies.<br />
+Appendix<br />
+D<br />
+contains the single-task reference tables, the full sets of tested threshold values, and auxiliary repeated runs extracted from the available logs.<br />
+5.2<br />
+Panda benchmark<br />
+We evaluate all methods on a three-task continual offline Panda benchmark with the task order<br />
+PandaReach<br />
+→<br />
+\rightarrow<br />
+PandaPush<br />
+→<br />
+\rightarrow<br />
+PandaPickAndPlace<br />
+.<br />
+Because the target returns in Panda are very close to zero, expert-normalized percentages are not stable or particularly interpretable.<br />
+We therefore report final task returns directly and summarize overall quality using the mean absolute deviation from the target return:<br />
+AvgGap<br />
+=<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+N<br />
+|<br />
+P<br />
+N<br />
+,<br />
+j<br />
+−<br />
+R<br />
+j<br />
+⋆<br />
+|<br />
+.<br />
+\mathrm{AvgGap}=\frac{1}{N}\sum_{j=1}^{N}\left|P_{N,j}-R_{j}^{\star}\right|.<br />
+(20)<br />
+We also report the mean forgetting, denoted by<br />
+AvgF<br />
+\mathrm{AvgF}<br />
+, obtained by averaging the standard forgetting score from Eq. (<br />
+19<br />
+) over previously learned tasks.<br />
+Higher returns (i.e., values closer to zero) are better, while lower<br />
+AvgGap<br />
+\mathrm{AvgGap}<br />
+and<br />
+AvgF<br />
+\mathrm{AvgF}<br />
+are preferable.<br />
+Single-task Panda reference scores are reported in Appendix<br />
+5<br />
+.<br />
+Method<br />
+Copies<br />
+PandaReach<br />
+↑<br />
+\uparrow<br />
+PandaPush<br />
+↑<br />
+\uparrow<br />
+PandaPickAndPlace<br />
+↑<br />
+\uparrow<br />
+AvgGap<br />
+↓<br />
+\downarrow<br />
+AvgF<br />
+↓<br />
+\downarrow<br />
+Naive<br />
+1<br />
+-10.902<br />
+-8.195<br />
+-1.311<br />
+6.657<br />
+8.977<br />
+Cumulative<br />
+1<br />
+-0.189<br />
+-1.120<br />
+-1.314<br />
+0.729<br />
+0.071<br />
+EWC<br />
+1<br />
+-13.863<br />
+-7.979<br />
+-1.490<br />
+7.632<br />
+10.352<br />
+SI<br />
+1<br />
+-1.754<br />
+-7.011<br />
+-11.890<br />
+6.739<br />
+3.012<br />
+TSN-Core<br />
+1<br />
+-0.235<br />
+-2.589<br />
+-1.427<br />
+1.271<br />
+0.857<br />
+TSN-ReplayKL<br />
+2<br />
+-7.865<br />
+-1.026<br />
+-2.061<br />
+3.505<br />
+3.838<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.45<br />
+\tau_{A}=0.45<br />
+)<br />
+3<br />
+-0.189<br />
+-0.972<br />
+-1.422<br />
+0.715<br />
+0.001<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+)<br />
+3<br />
+-0.189<br />
+-0.949<br />
+-1.308<br />
+0.670<br />
+0.000<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.50<br />
+,<br />
+α<br />
+=<br />
+0.70<br />
+\tau_{H}=0.50,\alpha=0.70<br />
+)<br />
+2<br />
+-1.482<br />
+-0.949<br />
+-2.643<br />
+1.546<br />
+0.647<br />
+Table 2:<br />
+Final Panda results for the selected operating point of each method family. “Copies” denotes the number of model copies created by the reuse mechanism and serves as a coarse proxy for additional capacity and memory overhead. Auxiliary runs and threshold settings are reported in Appendix<br />
+D<br />
+.<br />
+Table<br />
+2<br />
+shows that Panda is substantially more challenging than Atari from the continual transfer perspective.<br />
+Unlike Atari, Panda does not produce a universal zero-forgetting regime across the whole TSN family.<br />
+Instead, the methods must balance retention against transfer to later tasks.<br />
+First, the dense baselines are generally weak.<br />
+Naive and EWC suffer from severe forgetting, with large<br />
+AvgF<br />
+\mathrm{AvgF}<br />
+values and poor final performance on<br />
+PandaReach<br />
+and<br />
+PandaPush<br />
+.<br />
+SI is somewhat more stable than EWC but still forgets substantially and collapses on<br />
+PandaPickAndPlace<br />
+.<br />
+Among the dense baselines, cumulative replay is clearly the strongest: it achieves the best dense-model trade-off, with<br />
+AvgGap<br />
+=<br />
+0.729<br />
+\mathrm{AvgGap}=0.729<br />
+and near-optimal retention on<br />
+PandaReach<br />
+.<br />
+Second, the Panda benchmark highlights the limitations of replay-memory KL routing in heterogeneous continuous control.<br />
+TSN-Core improves considerably over Naive, EWC, and SI, but it does not match cumulative replay.<br />
+TSN-ReplayKL is worse still, especially on<br />
+PandaReach<br />
+, which suggests that observation-memory KL is not a reliable routing signal in this setting.<br />
+A detailed discussion of this behavior and the replay-memory comparison is provided in Appendix<br />
+C.3<br />
+.<br />
+Third, the Panda results should be interpreted together with their capacity cost.<br />
+At the selected operating point, TSN-Affinity-L with<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+reaches the lowest<br />
+AvgGap<br />
+\mathrm{AvgGap}<br />
+of<br />
+0.670<br />
+0.670<br />
+and zero forgetting, but uses 3 model copies.<br />
+Relative to TSN-Core, this yields a clear improvement in both transfer and retention.<br />
+However, relative to cumulative replay, the gain is more modest, improving<br />
+AvgGap<br />
+\mathrm{AvgGap}<br />
+only from<br />
+0.729<br />
+0.729<br />
+to<br />
+0.670<br />
+0.670<br />
+.<br />
+Hence, the Panda results also reflect a performance–capacity trade-off rather than a free improvement.<br />
+The effect of the routing threshold is analyzed explicitly in Appendix<br />
+D.1<br />
+; the same threshold is fixed across the whole Panda task sequence for each reported run.<br />
+Capacity, routing-memory, and quantization settings are summarized in Appendix<br />
+B<br />
+.<br />
+Finally, the single-task Panda results in Appendix<br />
+5<br />
+show that Panda remains difficult even without continual interference.<br />
+In particular,<br />
+PandaPush<br />
+and<br />
+PandaPickAndPlace<br />
+do not approach zero return in the single-task setting either.<br />
+Thus, the Panda gap is not caused by forgetting alone; it also reflects the intrinsic difficulty of offline continuous-control transfer in a heterogeneous action space.<br />
+Overall, the Panda experiments support three conclusions:<br />
+i) Panda is a substantially harder continual offline RL benchmark than Atari,<br />
+ii) replay-memory KL routing is not reliable enough in this heterogeneous continuous-control setting, and<br />
+iii) RL-aware affinity routing provides the best trade-off between transfer and retention.<br />
+Appendix<br />
+D<br />
+contains the single-task reference tables, the full sets of tested threshold values, and auxiliary repeated runs extracted from the available logs.<br />
+6<br />
+Conclusion<br />
+In this work, we investigated the challenges of CORL, where agents must learn a sequence of tasks from previously collected datasets without interacting with the environment. We proposed TSN-Affinity, a novel architectural approach that combines sparse task-specific subnetworks with similarity-driven parameter reuse. By formulating knowledge transfer as a routing problem based on action and latent affinities, our method effectively decouples the learning of new tasks from the preservation of previously acquired knowledge.<br />
+Our evaluation on the Atari and Panda benchmarks shows that architectural continual learning can provide strong retention and robust transfer in settings where replay-based baselines struggle with memory overhead or distribution mismatch. Specifically, the affinity-based routing mechanisms consistently outperformed replay-memory heuristics, particularly in the heterogeneous continuous-control domain of Panda. The results indicate that direct action and latent similarity are reliable indicators of routing decisions.<br />
+Future work will focus on investigating the generalization of affinity scores to larger, more diverse benchmarks.<br />
+Another interesting direction is extending the affinity routing framework to online continual learning settings, which could further elucidate the role of architectural reuse when environment interactions are feasible.<br />
+Finally, we will extend TinySubnetworks with hybrid pruning and adaptive quantization strategies.<br />
+References<br />
+[1]<br />
+D. Abel, A. Barreto, B. Van Roy, D. Precup, H. P. van Hasselt, and S. Singh<br />
+,<br />
+A definition of continual reinforcement learning<br />
+, Advances in Neural Information Processing Systems, 36 (2023), pp. 50377–50407.<br />
+[2]<br />
+R. Agarwal, D. Schuurmans, and M. Norouzi<br />
+,<br />
+An optimistic perspective on offline reinforcement learning<br />
+, in Proceedings of the 37th International Conference on Machine Learning, H. D. III and A. Singh, eds., vol. 119 of Proceedings of Machine Learning Research, PMLR, 13–18 Jul 2020, pp. 104–114.<br />
+[3]<br />
+G. An, S. Moon, J.-H. Kim, and H. O. Song<br />
+,<br />
+Uncertainty-based offline reinforcement learning with diversified q-ensemble<br />
+, Advances in neural information processing systems, 34 (2021), pp. 7436–7447.<br />
+[4]<br />
+L. Chen, K. Lu, A. Rajeswaran, K. Lee, A. Grover, M. Laskin, P. Abbeel, A. Srinivas, and I. Mordatch<br />
+,<br />
+Decision transformer: Reinforcement learning via sequence modeling<br />
+, in Advances in Neural Information Processing Systems, vol. 34, 2021, pp. 15084–15097.<br />
+[5]<br />
+K. Faber, C. Kanan, V. Lomonaco, and R. Corizzo<br />
+,<br />
+Continual anomaly detection: A comprehensive survey and research roadmap<br />
+, Preprints, (2026),<br />
+https://doi.org/10.20944/preprints202601.1931.v1<br />
+,<br />
+https://doi.org/10.20944/preprints202601.1931.v1<br />
+.<br />
+[6]<br />
+K. Faber, D. Zurek, M. Pietron, N. Japkowicz, A. Vergari, and R. Corizzo<br />
+,<br />
+From MNIST to ImageNet and back: benchmarking continual curriculum learning<br />
+, Machine Learning, 113 (2024), pp. 8137–8164,<br />
+https://doi.org/10.1007/s10994-024-06524-z<br />
+.<br />
+[7]<br />
+S. Gai, D. Wang, and L. He<br />
+,<br />
+OER: Offline experience replay for continual offline reinforcement learning<br />
+, in Proceedings of the 26th European Conference on Artificial Intelligence (ECAI 2023), IOS Press, 2023, pp. 772–779,<br />
+https://doi.org/10.3233/FAIA230343<br />
+.<br />
+[8]<br />
+J. Hu, S. Huang, L. Shen, Z. Yang, S. Hu, S. Tang, H. Chen, L. Sun, Y. Chang, and D. Tao<br />
+,<br />
+Tackling continual offline rl through selective weights activation on aligned spaces<br />
+, in Advances in Neural Information Processing Systems, 2025.<br />
+[9]<br />
+M. Janner, Q. Li, and S. Levine<br />
+,<br />
+Offline reinforcement learning as one big sequence modeling problem<br />
+, in Advances in Neural Information Processing Systems, vol. 34, 2021.<br />
+[10]<br />
+A. Kumar, A. Zhou, G. Tucker, and S. Levine<br />
+,<br />
+Conservative Q-learning for offline reinforcement learning<br />
+, in Advances in Neural Information Processing Systems, vol. 33, 2020, pp. 1179–1191.<br />
+[11]<br />
+K.-H. Lee, O. Nachum, M. S. Yang, L. Lee, D. Freeman, S. Guadarrama, I. Fischer, W. Xu, E. Jang, H. Michalewski, et al.<br />
+,<br />
+Multi-game decision transformers<br />
+, Advances in neural information processing systems, 35 (2022), pp. 27921–27936.<br />
+[12]<br />
+S. Levine, A. Kumar, G. Tucker, and J. Fu<br />
+,<br />
+Offline reinforcement learning: Tutorial, review, and perspectives on open problems<br />
+, arXiv preprint arXiv:2005.01643, (2020).<br />
+[13]<br />
+A. Mallya, D. Davis, and S. Lazebnik<br />
+,<br />
+Piggyback: Adapting a single network to multiple tasks by learning to mask weights<br />
+, in Proceedings of the European Conference on Computer Vision (ECCV), 2018.<br />
+[14]<br />
+A. Mallya and S. Lazebnik<br />
+,<br />
+Packnet: Adding multiple tasks to a single network by iterative pruning<br />
+, in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2018.<br />
+[15]<br />
+M. Pietron, K. Faber, D. Zurek, and R. Corizzo<br />
+,<br />
+TinySubNets: An efficient and low capacity continual learning strategy<br />
+, Proceedings of the AAAI Conference on Artificial Intelligence, 39 (2025), pp. 19913–19920,<br />
+https://doi.org/10.1609/aaai.v39i19.34193<br />
+.<br />
+[16]<br />
+M. Pietron, D. Zurek, K. Faber, and R. Corizzo<br />
+,<br />
+Ada-qpacknet - multi-task forget-free continual learning with quantization driven adaptive pruning<br />
+, in Proceedings of the 26th European Conference on Artificial Intelligence (ECAI 2023), 2023, pp. 1882–1889.<br />
+[17]<br />
+D. Rolnick, A. Ahuja, J. Schwarz, T. P. Lillicrap, and G. Wayne<br />
+,<br />
+Experience replay for continual learning<br />
+, in Advances in Neural Information Processing Systems, vol. 32, 2019.<br />
+[18]<br />
+T. Schmied, M. Hofmarcher, F. Paischer, R. Pascanu, and S. Hochreiter<br />
+,<br />
+Learning to modulate pre-trained models in rl<br />
+, in Advances in Neural Information Processing Systems, 2023.<br />
+[19]<br />
+J. Serra, D. Suris, M. Miron, and A. Karatzoglou<br />
+,<br />
+Overcoming catastrophic forgetting with hard attention to the task<br />
+, in Proceedings of the 35th International Conference on Machine Learning, vol. 80 of Proceedings of Machine Learning Research, 2018, pp. 4548–4557.<br />
+[20]<br />
+L. Wang, X. Zhang, H. Su, and J. Zhu<br />
+,<br />
+A comprehensive survey of continual learning: Theory, method and application<br />
+, IEEE transactions on pattern analysis and machine intelligence, 46 (2024), pp. 5362–5383.<br />
+[21]<br />
+Z. Wang, X. Qu, J. Xiao, B. Chen, and J. Wang<br />
+,<br />
+P2dt: Mitigating forgetting in task-incremental learning with progressive prompt decision transformer<br />
+, in 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), 2024, pp. 7265–7269,<br />
+https://doi.org/10.1109/ICASSP48485.2024.10447775<br />
+.<br />
+[22]<br />
+T. Zhang, K. Z. Shen, Z. Lin, B. Yuan, X. Wang, X. Li, and D. Ye<br />
+,<br />
+Replay-enhanced continual reinforcement learning<br />
+, Transactions on Machine Learning Research, (2023).<br />
+Appendix A<br />
+Benchmarks<br />
+In both benchmarks, tasks are revealed sequentially: at stage<br />
+t<br />
+t<br />
+, the learner receives only the offline dataset for the current task, while access to previous data is available only if a method explicitly stores or reuses it.<br />
+A.1<br />
+Atari Continual Decision Making<br />
+We use expert offline trajectories stored in<br />
+expert_minari_dqn.npz<br />
+format. The environment pipeline is matched to the dataset through a Minari-like DQN preprocessing setup with frame stacking of<br />
+4<br />
+4<br />
+, frame skip of<br />
+4<br />
+4<br />
+, and<br />
+84<br />
+×<br />
+84<br />
+84\times 84<br />
+observations. We additionally perform a replay-consistency check by replaying expert actions in the environment and verifying that the obtained return matches the dataset return, which ensures that the simulator and offline data are aligned.<br />
+The Decision Transformer uses a shared discrete-action interface over the whole task sequence. Observations have shape<br />
+(<br />
+4<br />
+,<br />
+84<br />
+,<br />
+84<br />
+)<br />
+(4,84,84)<br />
+after preprocessing, while the action vocabulary is shared across tasks using the maximum action-space size observed in the benchmark.<br />
+Evaluation is performed for<br />
+20<br />
+20<br />
+episodes per task using greedy action selection. The maximum evaluation horizon is<br />
+27<br />
+,<br />
+000<br />
+27{,}000<br />
+environment steps. Return-conditioning targets are derived independently for each task from the corresponding offline expert data.<br />
+A.2<br />
+Panda Continual Manipulation<br />
+For each task, we use an offline expert dataset. Observations are formed by concatenating<br />
+observation<br />
+,<br />
+achieved_goal<br />
+, and<br />
+desired_goal<br />
+. In our setup, the dataset representation additionally includes a normalized time feature, which is matched during environment interaction through a dedicated wrapper.<br />
+Because the tasks have different raw observation and action dimensions, we map them into a shared continual-learning interface by padding all observation and action vectors to global dimensions. In practice, shorter vectors are zero-padded in the trailing coordinates, while Panda action losses are computed only over the task-active action dimensions. During evaluation, the model output is truncated back to the original task-specific action dimensionality. In the experiments reported here, the shared dimensions are<br />
+26<br />
+26<br />
+for observations and<br />
+4<br />
+4<br />
+for actions, allowing all methods to use a single Decision Transformer backbone across the whole Panda sequence.<br />
+Evaluation is performed for<br />
+20<br />
+20<br />
+episodes per task, with a maximum horizon of<br />
+50<br />
+50<br />
+environment steps. We report the average episodic return. Return-conditioning uses fixed task-specific targets corresponding to expert-level returns in our setup.<br />
+Single-task Panda reference scores are reported in Appendix<br />
+5<br />
+.<br />
+Appendix B<br />
+Experimental setup<br />
+For the TSN-based methods, we use a routing memory of 256 samples per task. This memory is used only for routing and latent-statistics estimation and is not replayed for gradient-based optimization. All Atari TSN experiments use a constant keep ratio of<br />
+ρ<br />
+=<br />
+0.5<br />
+\rho=0.5<br />
+, whereas all Panda TSN experiments use<br />
+ρ<br />
+=<br />
+0.33<br />
+\rho=0.33<br />
+, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers. We used benchmark-specific keep ratios chosen empirically:<br />
+ρ<br />
+=<br />
+0.5<br />
+\rho=0.5<br />
+for Atari and<br />
+ρ<br />
+=<br />
+0.33<br />
+\rho=0.33<br />
+for Panda, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers. The larger Atari value reflects a denser per-task allocation in the more homogeneous discrete-control setting, whereas the smaller Panda value yields a more conservative allocation in the more heterogeneous continuous-control setting. Since the keep ratio is applied to the currently feasible parameter set, these values correspond to approximate single-copy occupancies of<br />
+1<br />
+−<br />
+(<br />
+1<br />
+−<br />
+ρ<br />
+)<br />
+5<br />
+≈<br />
+96.9<br />
+%<br />
+1-(1-\rho)^{5}\approx 96.9\%<br />
+in Atari and<br />
+1<br />
+−<br />
+(<br />
+1<br />
+−<br />
+ρ<br />
+)<br />
+3<br />
+≈<br />
+69.9<br />
+%<br />
+1-(1-\rho)^{3}\approx 69.9\%<br />
+in Panda when reuse is disabled. Quantization was disabled in all reported experiments in order to isolate the effect of sparse masking and routing. For Panda, the cumulative baseline uses a rehearsal capacity of 5000, while in Atari cumulative replay is controlled by a replay mix of 0.5 and the runner does not expose a separate replay-capacity limit.<br />
+Benchmark<br />
+ρ<br />
+\rho<br />
+Sparsity<br />
+Routing memory<br />
+Replay setting<br />
+Quantization<br />
+Atari<br />
+0.50<br />
+50%<br />
+256<br />
+mix = 0.5<br />
+off<br />
+Panda<br />
+0.33<br />
+67%<br />
+256<br />
+capacity = 5000<br />
+off<br />
+Table 3:<br />
+Key benchmark-specific TSN and replay settings used in the reported experiments.<br />
+Appendix C<br />
+Additional Method and Metric Details<br />
+C.1<br />
+TSN Mask Density<br />
+The mask-density equations are included in the main Methodology section. In the reported experiments, we use constant keep ratios of<br />
+ρ<br />
+=<br />
+0.5<br />
+\rho=0.5<br />
+for Atari and<br />
+ρ<br />
+=<br />
+0.33<br />
+\rho=0.33<br />
+for Panda, corresponding to task-wise sparsity levels of 50% and 67%, respectively, in TSN-converted layers.<br />
+C.2<br />
+Score Warm-Start<br />
+Once a source task<br />
+s<br />
+⋆<br />
+s^{\star}<br />
+has been selected, the score tensors of the new task can optionally be warm-started from the source-task mask:<br />
+S<br />
+ℓ<br />
+,<br />
+g<br />
+​<br />
+(<br />
+t<br />
+)<br />
+←<br />
+λ<br />
+​<br />
+M<br />
+ℓ<br />
+(<br />
+s<br />
+⋆<br />
+)<br />
++<br />
+ϵ<br />
+,<br />
+S_{\ell,g(t)}\leftarrow\lambda M_{\ell}^{(s^{\star})}+\epsilon,<br />
+(21)<br />
+where<br />
+λ</p>
+<blockquote>
+<p>0<br />
+\lambda&gt;0<br />
+controls the warm-start strength, and<br />
+ϵ<br />
+\epsilon<br />
+is a small random noise term.<br />
+This warm-start does not copy or fine-tune old weights; it only biases sparse mask search toward structures that were already useful for the selected source task.<br />
+C.3<br />
+Capacity and Replay-Memory Discussion<br />
+For Atari, the memory used by TSN-ReplayKL and TSN-Affinity is a routing memory of 256 samples per task rather than a rehearsal buffer. Thus, the gap between TSN-ReplayKL and Cumulative is not caused by larger replay storage, but by the fact that TSN methods reduce interference through task-specific sparse allocation and copy-level routing, whereas Cumulative continues to optimize a single dense model on mixed past-task data.<br />
+The best Atari configurations use 4 and 5 model copies for TSN-Affinity-A and TSN-Affinity-L, respectively, whereas TSN-Core and TSN-ReplayKL use only a single copy in the reported setting. The roughly two-point gain over the strongest single-copy TSN baselines should therefore be interpreted as a performance–capacity trade-off rather than a free improvement.<br />
+In Panda, TSN-ReplayKL can underperform even the single-copy TSN-Core baseline because its routing decision is based on observation-level replay-memory similarity rather than control-aware compatibility. When KL-based routing creates an additional copy, the new copy is initialized from scratch rather than inheriting previously trained dense weights, so the method may lose beneficial sharing without obtaining strong transfer in return.<br />
+This also explains the large gap to cumulative replay: cumulative replay repeatedly optimizes on real past-task data, whereas TSN-ReplayKL uses only a small routing memory for copy selection and does not revisit past datasets in the same way during optimization. In our setup, the Panda cumulative baseline uses a rehearsal capacity of 5000, whereas TSN-ReplayKL and TSN-Affinity use routing memories of 256 samples per task.<br />
+The selected Panda operating point uses 3 model copies, so this result also reflects a performance–capacity trade-off. More conservative reuse often improves performance by reducing forced reuse across heterogeneous tasks. Since quantization was disabled in all reported Panda experiments, we do not report a compressed memory footprint here and instead use the number of copies as the main coarse proxy for additional capacity.<br />
+Appendix D<br />
+Additional Tables<br />
+The tables in this appendix complement the main results with three additional views.<br />
+First, we report single-task reference scores to separate continual-learning effects from the intrinsic difficulty of the underlying offline RL tasks.<br />
+Second, we provide threshold grids for the reuse-based TSN variants to show how the routing-capacity operating point affects final performance.<br />
+Third, we include auxiliary repeated runs to provide a compact view of run-to-run stability, especially in the more variable Panda setting.<br />
+Together, these tables provide additional support for the main conclusions of the paper while keeping the main text focused on the strongest representative configurations.<br />
+Task<br />
+Target<br />
+R<br />
+⋆<br />
+R^{\star}<br />
+Single-task DT<br />
+Breakout<br />
+114<br />
+112<br />
+Alien<br />
+86<br />
+62<br />
+Atlantis<br />
+1556<br />
+1505<br />
+Boxing<br />
+97<br />
+86<br />
+Centipede<br />
+135<br />
+117<br />
+NormAvg (%)<br />
+88.5<br />
+Table 4:<br />
+Single-task Atari references. Breakout and Atlantis are already strong, while Alien remains the hardest game.<br />
+Task<br />
+CL target<br />
+R<br />
+⋆<br />
+R^{\star}<br />
+Single-task at<br />
+R<br />
+⋆<br />
+R^{\star}<br />
+Best sweep<br />
+Reach<br />
+-0.000320<br />
+-0.243<br />
+-0.243<br />
+Push<br />
+-0.436000<br />
+-0.971<br />
+-0.937<br />
+Pick&amp;Place<br />
+-0.001000<br />
+-1.027<br />
+-1.024<br />
+Table 5:<br />
+Single-task Panda references. Push and Pick&amp;Place remain difficult even without continual interference.<br />
+Method/configuration<br />
+Run<br />
+NormAvg (%)<br />
+AvgF<br />
+Cumulative<br />
+s0<br />
+67.2<br />
+359.0<br />
+Cumulative<br />
+s1<br />
+76.2<br />
+20.3<br />
+Cumulative<br />
+s2<br />
+62.6<br />
+8.5<br />
+TSN-Core<br />
+s1<br />
+87.5<br />
+0.0<br />
+TSN-Core<br />
+s2<br />
+81.5<br />
+0.0<br />
+TSN-ReplayKL<br />
+s1<br />
+86.1<br />
+0.0<br />
+TSN-ReplayKL<br />
+s2<br />
+87.7<br />
+0.0<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+s0<br />
+89.7<br />
+0.0<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+s1<br />
+89.2<br />
+0.0<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+s2<br />
+82.2<br />
+0.0<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+s0<br />
+89.6<br />
+0.0<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+s1<br />
+86.9<br />
+0.0<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+s2<br />
+81.6<br />
+0.0<br />
+Table 6:<br />
+Auxiliary Atari runs. All listed TSN runs retain zero forgetting, whereas cumulative replay is more variable.<br />
+D.1<br />
+Affinity Routing Thresholds Analysis<br />
+Table<br />
+7<br />
+reports the threshold grid for affinity routing on the Atari benchmark.<br />
+For action-based routing, decreasing the threshold from<br />
+τ<br />
+A<br />
+=<br />
+16<br />
+\tau_{A}=16<br />
+to<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+increases the number of copies from<br />
+2<br />
+2<br />
+to<br />
+4<br />
+4<br />
+and improves normalized performance from<br />
+88.5<br />
+%<br />
+88.5\%<br />
+to<br />
+89.7<br />
+%<br />
+89.7\%<br />
+, mainly because<br />
+Centipede<br />
+improves from<br />
+102<br />
+102<br />
+to<br />
+117<br />
+117<br />
+.<br />
+At the same time, more aggressive reuse at<br />
+τ<br />
+A<br />
+=<br />
+12<br />
+\tau_{A}=12<br />
+or<br />
+τ<br />
+A<br />
+=<br />
+14<br />
+\tau_{A}=14<br />
+is clearly worse, dropping performance to about<br />
+81.9<br />
+%<br />
+81.9\%<br />
+.<br />
+For latent routing, the strongest operating point in this grid is obtained at<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+.<br />
+Increasing the threshold to<br />
+τ<br />
+L<br />
+=<br />
+75<br />
+\tau_{L}=75<br />
+reduces the number of copies from<br />
+5<br />
+5<br />
+to<br />
+3<br />
+3<br />
+and lowers performance from<br />
+89.6<br />
+%<br />
+89.6\%<br />
+to<br />
+86.6<br />
+%<br />
+86.6\%<br />
+.<br />
+Intermediate values<br />
+τ<br />
+L<br />
+=<br />
+45<br />
+\tau_{L}=45<br />
+and<br />
+τ<br />
+L<br />
+=<br />
+55<br />
+\tau_{L}=55<br />
+are worse still, at about<br />
+82.3<br />
+%<br />
+82.3\%<br />
+.<br />
+Thus, in Atari, a more conservative reuse policy is preferable to forcing more tasks into the same copy.<br />
+Variant<br />
+Copies<br />
+Breakout<br />
+Alien<br />
+Atlantis<br />
+Boxing<br />
+Centipede<br />
+NormAvg (%)<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+4<br />
+97<br />
+73<br />
+1511<br />
+92<br />
+117<br />
+89.7<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+12<br />
+\tau_{A}=12<br />
+)<br />
+2<br />
+97<br />
+73<br />
+1512<br />
+90<br />
+67<br />
+81.9<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+14<br />
+\tau_{A}=14<br />
+)<br />
+2<br />
+97<br />
+73<br />
+1512<br />
+90<br />
+67<br />
+81.9<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+16<br />
+\tau_{A}=16<br />
+)<br />
+2<br />
+97<br />
+73<br />
+1511<br />
+97<br />
+102<br />
+88.5<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+5<br />
+97<br />
+73<br />
+1501<br />
+92<br />
+117<br />
+89.6<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+45<br />
+\tau_{L}=45<br />
+)<br />
+3<br />
+97<br />
+73<br />
+1509<br />
+90<br />
+70<br />
+82.3<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+55<br />
+\tau_{L}=55<br />
+)<br />
+3<br />
+97<br />
+73<br />
+1509<br />
+90<br />
+70<br />
+82.3<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+75<br />
+\tau_{L}=75<br />
+)<br />
+3<br />
+97<br />
+73<br />
+1501<br />
+97<br />
+90<br />
+86.6<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.50<br />
+,<br />
+α<br />
+=<br />
+0.70<br />
+\tau_{H}=0.50,\alpha=0.70<br />
+)<br />
+1<br />
+97<br />
+38<br />
+1511<br />
+92<br />
+62<br />
+73.4<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.50<br />
+,<br />
+α<br />
+=<br />
+0.50<br />
+\tau_{H}=0.50,\alpha=0.50<br />
+)<br />
+1<br />
+97<br />
+38<br />
+1511<br />
+92<br />
+62<br />
+73.4<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.55<br />
+,<br />
+α<br />
+=<br />
+0.80<br />
+\tau_{H}=0.55,\alpha=0.80<br />
+)<br />
+1<br />
+97<br />
+38<br />
+1511<br />
+92<br />
+62<br />
+73.4<br />
+Table 7:<br />
+Full Atari threshold grid. More conservative reuse often improves final performance in this Atari sequence, at the cost of additional copies, while the tested hybrid settings collapse to the same result.<br />
+Table<br />
+8<br />
+reports the threshold grid and auxiliary reuse runs for affinity routing on the Panda benchmark.<br />
+For action-based routing, we evaluated<br />
+τ<br />
+A<br />
+∈<br />
+{<br />
+0.35<br />
+,<br />
+0.45<br />
+,<br />
+0.65<br />
+}<br />
+\tau_{A}\in{0.35,0.45,0.65}<br />
+.<br />
+Reducing the threshold from<br />
+0.65<br />
+0.65<br />
+to<br />
+0.45<br />
+0.45<br />
+improves<br />
+AvgGap<br />
+\mathrm{AvgGap}<br />
+from<br />
+0.737<br />
+0.737<br />
+to<br />
+0.715<br />
+0.715<br />
+.<br />
+This gain comes mainly from better<br />
+PandaPickAndPlace<br />
+performance, which improves from<br />
+−<br />
+1.505<br />
+-1.505<br />
+to<br />
+−<br />
+1.422<br />
+-1.422<br />
+, while<br />
+PandaPush<br />
+becomes slightly worse, from<br />
+−<br />
+0.956<br />
+-0.956<br />
+to<br />
+−<br />
+0.972<br />
+-0.972<br />
+.<br />
+Lowering the threshold further from<br />
+0.45<br />
+0.45<br />
+to<br />
+0.35<br />
+0.35<br />
+does not change the final result, which indicates that the routing decisions are already saturated in that range.<br />
+For latent routing, the strongest operating point in this grid is obtained at<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+.<br />
+In contrast to Atari, Panda therefore shows a smaller numerical effect of the threshold choice, but a clearer distinction between useful and non-useful routing criteria: latent affinity and action affinity are both effective, whereas replay-memory KL and the current hybrid rule are not.<br />
+Configuration<br />
+Run<br />
+Copies<br />
+Reach<br />
+Push<br />
+Pick&amp;Place<br />
+AvgGap<br />
+AvgF<br />
+TSN-ReplayKL<br />
+r1<br />
+2<br />
+-7.865<br />
+-1.026<br />
+-2.061<br />
+3.505<br />
+3.838<br />
+TSN-ReplayKL<br />
+r2<br />
+2<br />
+-14.716<br />
+-1.203<br />
+-1.433<br />
+5.638<br />
+7.270<br />
+TSN-ReplayKL<br />
+r3<br />
+2<br />
+-10.546<br />
+-1.083<br />
+-1.585<br />
+4.259<br />
+5.179<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.65<br />
+\tau_{A}=0.65<br />
+)<br />
+r1<br />
+3<br />
+-0.188<br />
+-0.956<br />
+-1.505<br />
+0.737<br />
+0.000<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.65<br />
+\tau_{A}=0.65<br />
+)<br />
+r2<br />
+2<br />
+-1.482<br />
+-0.949<br />
+-2.643<br />
+1.546<br />
+0.647<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.45<br />
+\tau_{A}=0.45<br />
+)<br />
+r1<br />
+3<br />
+-0.189<br />
+-0.972<br />
+-1.422<br />
+0.715<br />
+0.001<br />
+TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.35<br />
+\tau_{A}=0.35<br />
+)<br />
+r1<br />
+3<br />
+-0.189<br />
+-0.972<br />
+-1.422<br />
+0.715<br />
+0.001<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+)<br />
+r1<br />
+3<br />
+-0.189<br />
+-0.949<br />
+-1.308<br />
+0.670<br />
+0.000<br />
+TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+)<br />
+r2<br />
+3<br />
+-0.188<br />
+-0.956<br />
+-1.505<br />
+0.737<br />
+0.000<br />
+TSN-Affinity-H (<br />
+τ<br />
+H<br />
+=<br />
+0.50<br />
+,<br />
+α<br />
+=<br />
+0.70<br />
+\tau_{H}=0.50,\alpha=0.70<br />
+)<br />
+r1<br />
+2<br />
+-1.482<br />
+-0.949<br />
+-2.643<br />
+1.546<br />
+0.647<br />
+Table 8:<br />
+Auxiliary Panda reuse runs. Replay-memory KL routing is weaker and less stable than affinity-based routing.<br />
+Appendix E<br />
+Additional Learning Curves<br />
+Each plot shows performance after the end of task<br />
+t<br />
+t<br />
+.<br />
+Background colors indicate the currently trained task, and lines indicate evaluation tasks.<br />
+Atari uses single-task-normalized scores.<br />
+Panda uses the same normalization only for qualitative comparison.<br />
+E.1<br />
+Atari Learning Curves<br />
+Naive is unstable, Cumulative reduces but does not remove backward interference, and the affinity-based TSN variants remain nearly flat after a task has been acquired.<br />
+(a) Atari Naive<br />
+(b) Atari Cumulative<br />
+(c) Atari TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+10<br />
+\tau_{A}=10<br />
+)<br />
+(d) Atari TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+35<br />
+\tau_{L}=35<br />
+)<br />
+Figure 2:<br />
+Additional Atari learning curves. The affinity-based TSN variants exhibit the characteristic near-zero-forgetting regime.<br />
+E.2<br />
+Panda Learning Curves<br />
+Panda is less regular than Atari: Naive remains unstable, Cumulative is more structured, and the affinity-based variants are smoother but not uniformly flat.<br />
+(a) Panda Naive<br />
+(b) Panda Cumulative<br />
+(c) Panda TSN-Affinity-A (<br />
+τ<br />
+A<br />
+=<br />
+0.45<br />
+\tau_{A}=0.45<br />
+)<br />
+(d) Panda TSN-Affinity-L (<br />
+τ<br />
+L<br />
+=<br />
+25<br />
+\tau_{L}=25<br />
+)<br />
+Figure 3:<br />
+Additional Panda learning curves. These plots are intended mainly for qualitative comparison; the main quantitative discussion in the paper relies on raw returns and average gap-to-target metrics.<br />
+Appendix F<br />
+Panda Padding and Shared Task Interface<br />
+The Panda tasks considered in this work differ in their raw observations and action dimensionalities. To support a single continual-learning backbone across the whole task sequence, we embed all tasks into a shared observation space of dimension<br />
+26<br />
+26<br />
+and a shared action space of dimension<br />
+4<br />
+4<br />
+.<br />
+For observations, task-specific state vectors are first formed by concatenating<br />
+observation<br />
+,<br />
+achieved_goal<br />
+, and<br />
+desired_goal<br />
+, along with an additional normalized time feature used in our environment wrapper. If the resulting vector is shorter than the global observation dimension, it is zero-padded in the trailing coordinates.<br />
+For actions, task-specific action vectors are analogously embedded into the shared global action space by zero-padding trailing coordinates. During training, padded action dimensions are excluded from the loss by means of a task-specific binary action mask. Concretely, if task<br />
+t<br />
+t<br />
+has an active action mask<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+4<br />
+m_{a}^{(t)}\in{0,1}^{4}<br />
+, then only dimensions with<br />
+m<br />
+a<br />
+(<br />
+t<br />
+)<br />
+=<br />
+1<br />
+m_{a}^{(t)}=1<br />
+contribute to the Panda regression objective. During evaluation, the predicted action vector is truncated back to the original task-specific action dimensionality before being applied in the environment.<br />
 This design allows all Panda tasks to share a single Decision Transformer backbone while avoiding artificial penalties on padded coordinates.</p>
+</blockquote>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">

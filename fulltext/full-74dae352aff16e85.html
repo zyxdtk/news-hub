@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,3492 +183,3492 @@
         </div>
         
         <div class="fulltext-content">
-<p>EVATok: Adaptive Length Video Tokenization for Efficient Visual Autoregressive Generation
-Tianwei Xiong
-1
-Jun Hao Liew
-2
-Zilong Huang
-2
-Zhijie Lin
-2
-Jiashi Feng
-2
-Xihui Liu
-1†
-1
-The University of Hong Kong
-2
-ByteDance Seed
-Abstract
-Autoregressive (AR) video generative models rely on video tokenizers that compress pixels into discrete token sequences. The length of these token sequences is crucial for balancing reconstruction quality against downstream generation computational cost. Traditional video tokenizers apply a uniform token assignment across temporal blocks of different videos, often wasting tokens on simple, static, or repetitive segments while underserving dynamic or complex ones.
-To address this inefficiency, we introduce
-EVATok
-, a framework to produce
-E
-fficient
-V
-ideo
-A
-daptive
-Tok
-enizers. Our framework estimates optimal token assignments for each video to achieve the best quality-cost trade-off, develops lightweight routers for fast prediction of these optimal assignments, and trains adaptive tokenizers that encode videos based on the assignments predicted by routers.
-We demonstrate that EVATok delivers substantial improvements in efficiency and overall quality for video reconstruction and downstream AR generation. Enhanced by our advanced training recipe that integrates video semantic encoders, EVATok achieves superior reconstruction and state-of-the-art class-to-video generation on UCF-101, with at least 24.4% savings in average token usage compared to the prior state-of-the-art LARP and our fixed-length baseline.
-0
-0
-footnotetext:
-Project page:
-https://silentview.github.io/EVATok/
-Figure 1
-:
-EVATok highlights.
-Top
-: EVATok achieves superior video reconstruction and downstream generation quality with significant savings in token usage.
-Bottom
-: EVATok assigns tokens in an intuitive way. Clips with dynamic motion or complex layout will be encoded with more tokens, while clips that are repetitive or simple will be assigned fewer tokens.
-1
-Introduction
-Visual generation with autoregressive (AR) language models is rapidly advancing
-[
-35
-,
-62
-,
-11
-,
-67
-]
-, driven by the success of LLMs
-[
-14
-,
-10
-,
-1
-,
-19
-,
-34
-]
-and their potential for unified multi-modal generation
-[
-30
-,
-66
-,
-43
-,
-9
-,
-65
-]
-. AR visual generative models typically operate on sequences of discrete visual tokens, obtained by patch-wise compression of pixels via visual tokenizers
-[
-16
-,
-73
-]
-. The tokenizer’s design directly influences reconstruction quality and token sequence length, thus determining the quality-cost trade-off and computational overhead for downstream AR models.
-However, most existing visual tokenizers
-[
-16
-,
-73
-,
-75
-]
-produce fixed-length sequences regardless of input content complexity. This uniform budget allocation is especially inefficient for AR video generative models using causal video tokenizers
-[
-62
-,
-64
-,
-30
-,
-17
-,
-75
-]
-, as information density in videos varies not only across samples but also temporally: simple-layout, near-static or repetitive segments receive excessive tokens, while dynamic or complex-layout segments are undeserved, compromising both efficiency and fidelity.
-Ideally, given a video and specified preference between better quality or less token cost, we would predict an optimal
-assignment
-—specifying the total number of tokens used for video reconstruction and their distribution over temporal blocks—that maximizes the quality-cost trade-off. Prior video adaptive tokenizers
-[
-70
-,
-33
-]
-enable variable length compression via tail-token-dropping
-[
-41
-,
-3
-]
-training, with assignment selection by threshold-based search
-[
-70
-]
-or Integer Linear Programming (ILP) within video mini-batches under fixed average budget constraints
-[
-33
-]
-.
-However, these approaches can yield suboptimal results: heuristic threshold-based searches may neglect global quality-cost balance, while mini-batch ILP ties per-sample decisions to the batch compositions and rigid average budgets. Critically, they do not address the core need: for each sample, determining the optimal assignment tailored to the samples’s inherent complexity, enabling optimal adaptive tokenization that allocates budgets where they are most needed, achieving the best balance for overall efficiency and quality.
-The challenge for optimal assignment identification is that there was no estimation approach or even definition for it. To fill in this blank, we formulate the optimal assignment identification problem as a tractable maximum proxy reward assignment identification task, where the proxy reward is a novel metric measuring both the reconstruction quality and cost (token length) to quantify the quality-cost trade-off for a particular assignment. In other words, the optimal assignment with the maximum proxy reward achieves the best quality-cost trade-off.
-To estimate the proxy reward, we introduce a proxy tokenizer that learns to reconstruct the input video under different token assignments. Once trained, we can simply iterate over all possible candidates to identify the optimal token assignment with maximum proxy reward.
-And to build a faster approach for optimal assignments prediction, we curate a dataset to train a lightweight model, named the router, which learns optimal assignment prediction in a classification task form.
-Equipped with this router, we train final adaptive tokenizers to encode videos using content-adaptive assignments, which in turn support downstream efficient adaptive length AR generative models.
-In summary, EVATok unfolds in four stages: (1) Train a proxy tokenizer for optimal assignment estimation; (2) Curate a dataset of  (video, optimal assignment) pairs for router training; (3) Train a lightweight router for fast optimal assignment prediction; and (4) Train the final video adaptive tokenizer under assignments from the router.
-For video reconstruction and downstream AR generation, EVATok yields substantial gains in efficiency and quality. Enhanced by our advanced recipe integrating video semantic encoders
-[
-53
-,
-2
-]
-into tokenizer training, EVATok achieves superior reconstruction and state-of-the-art (SOTA) class-to-video generation quality with at least 24.4% token length savings compared to prior video tokenizers
-[
-59
-,
-33
-]
-, as shown in Fig.
-1
-. The adaptive assignment examples of EVATok in Fig.
-1
-also correspond to intuitions: repetitive, simple-layout, and static content is assigned fewer tokens; in contrast, non-repetitive, complex-layout, and dynamic content is assigned more. EVATok highlights the promising potential of content-adaptive video tokenization for improving efficiency and quality for overall reconstruction and downstream AR generation.
-We summarize our main contributions as follows:
-•
-A four-stage framework for efficient video adaptive tokenization, featuring a router that provides optimal budget assignment during training and inference of tokenizers.
-•
-Proxy reward: a novel metric utilizing a variable length tokenizer to identify optimal assignments for each video.
-•
-Extensive experiments showing that content-adaptive video tokenization can surpass fixed-length baselines, achieving superior performances in reconstruction and downstream AR generation with fewer tokens.
-2
-Related Work
-Discrete image and video tokenizers.
-Since the classic VQ-VAE
-[
-56
-]
-and VQ-GAN
-[
-16
-]
-, extensive efforts have been made to better compress visual inputs into discrete token sequences for autoregressive modeling. LFQ
-[
-75
-]
-and FSQ
-[
-40
-]
-are proposed for large-scale codebook training. VAR
-[
-52
-]
-encodes token sequences in a residual-style
-[
-31
-]
-multi-scale structure for efficient generation. For videos, while many works choose 3D CNN to implement video tokenizers
-[
-18
-,
-75
-,
-62
-,
-64
-]
-, recently more video tokenizers are being implemented using transformer architecture
-[
-60
-,
-59
-,
-57
-,
-70
-,
-33
-]
-. Transformers are beneficial to video tokenizers not only due to their known scalability, but also because their flexible attention mechanism naturally helps build 1D tokenizers
-[
-70
-,
-76
-]
-, which removes the grid-like spatial prior in token sequences, making the sequence length easy to adjust and convenient for adaptive tokenization. In this work, we use Q-Former-style
-[
-6
-,
-32
-]
-1D tokenizer design
-[
-68
-]
-to build adaptive video tokenizers.
-Adaptive visual tokenization.
-Based on the intuition that simple content needs fewer tokens while complex content needs more for efficient compression, the seminal work Dynamic VQ
-[
-24
-]
-encodes different regions across images with different granularity adaptively, utilizing Gumbel Softmax
-[
-26
-]
-. Differently, CAT
-[
-46
-]
-lets LLMs decide the compression granularity based on captions. Recently, techniques like tail-token-dropping
-[
-41
-,
-3
-,
-61
-,
-70
-]
-or iterative token allocation
-[
-15
-,
-39
-]
-have been used to enable tokenizers to encode visual inputs under different token assignments. Further on video tokenization, ElasticTok
-[
-70
-]
-and AdapTok
-[
-33
-]
-study how to determine these given assignments in adaptive video tokenization. However, their adaptive assignment searching methods are heuristic and can potentially lead to suboptimal assignments. A concurrent work, InfoTok
-[
-72
-]
-, masks less important tokens from pre-trained tokenizers with an ELBO-based method.
-In this work, EVATok directly predicts the optimal assignments given input videos and preferences between quality and cost.
-Video representation alignment.
-The representation of pretrained semantic encoders
-[
-42
-,
-44
-,
-78
-]
-have been used to enhance image generative models
-[
-77
-]
-or image tokenizers
-[
-69
-,
-68
-,
-71
-,
-4
-,
-38
-]
-. Recently, similar approaches have been studied for video diffusion models
-[
-80
-]
-or reported in use for video tokenizers
-[
-11
-]
-. We further reveal that representation alignment is beneficial for video tokenizers, especially when combined with semantic video discriminators.
-3
-Method
-Figure 2
-:
-Four-stage framework for adaptive video tokenizer training.
-Stage 1
-trains a proxy tokenizer to reconstruct videos under all candidate assignments.
-Stage 2
-applies the proxy tokenizer to compute proxy rewards for all candidate assignments across videos from a dataset. It identifies the assignments with maximum proxy rewards to curate a classification dataset of videos and their optimal assignments.
-Stage 3
-trains a router on the curated dataset to predict the optimal assignments for videos.
-Stage 4
-trains the final tokenizer from scratch, with the router determining the assignment for each input video during training.
-Problem setup.
-We first introduce the problem setup of our video adaptive tokenizer before presenting our proposed solution.
-Given a video
-x
-x
-, we temporally downsample it by
-4
-×
-4\times
-and divide it into
-T
-T
-causal blocks. Each block
-t
-t
-is assigned
-k
-t
-k_{t}
-tokens from a candidate set
-K
-K
-(
-e.g
-.
-,
-{
-32
-,
-…
-,
-512
-}
-\{32,\dots,512\}
-) with
-m
-m
-levels, forming an assignment
-a
-=
-(
-k
-1
-,
-…
-,
-k
-T
-)
-a=(k_{1},\dots,k_{T})
-with total token length
-L
-​
-(
-a
-)
-=
-∑
-t
-=
-1
-T
-k
-t
-L(a)=\sum_{t=1}^{T}k_{t}
-. We identify that the primary challenge for an adaptive video tokenizer lies in predicting the optimal token assignment
-a
-∗
-a^{*}
-for each video to achieve the best quality-cost trade-off.
-We formulate the optimal assignment prediction problem as a tractable maximum proxy reward assignment prediction task, where the proxy reward is a novel metric that we introduce to quantify the quality-cost trade-off performance for a particular token assignment. Centering on the idea of using proxy reward for optimal assignment prediction, we build our four-stage framework, as in Fig.
-2
-, for efficient video adaptive tokenization:
-(Stage 1)
-train a proxy tokenizer that can reconstruct videos w.r.t.
-randomly sampled token assignments. This proxy tokenizer later serves for proxy reward computation;
-(Stage 2)
-curate a dataset comprising (video, optimal token assignment) pairs by searching proxy reward under different token assignments calculated with the proxy tokenizer. This dataset serves for training a router for fast optimal assignment prediction;
-(Stage 3)
-train the router on this curated dataset, to accelerate optimal assignment prediction largely against searching;
-(Stage 4)
-train an adaptive video tokenizer using the optimal assignments predicted by the router, hence achieving adaptive length video tokenization.
-Next, we will introduce each stage with more details.
-3.1
-Stage 1: Training a Proxy Tokenizer
-Figure 3
-:
-Architecture of 1D variable-length video tokenizer for EVATok.
-The input video is spatio-temporally patchified into 3D embeddings. According to a given assignment
-a
-a
-, 1D variable-length query embeddings are initialized from these 3D embeddings. After Q-Former encoding and quantization, 1D discrete tokens are produced. Finally, 3D queries are initialized to reconstruct the video frames from the 1D tokens.
-In stage 1, we train a proxy tokenizer that can reconstruct a video w.r.t.
-a randomly sampled assignment
-a
-a
-. This proxy tokenizer can serve as a proxy for the assessment of the quality of a particular token assignment, which we subsequently use to identify optimal assignments, train a router, and build the final adaptive length tokenizer.
-Model architecture.
-We adopt a Q-Former
-[
-32
-,
-6
-]
-style 1D tokenizer for its scalability
-[
-68
-]
-and flexibility in variable length tokenization. As shown in Fig.
-3
-, input videos are first spatio-temporally patchified into 3D embeddings using a simple linear patch embedding module, consistent with prior video tokenizers
-[
-59
-,
-33
-,
-70
-]
-. Then, given a randomly sampled token assignment
-a
-=
-(
-q
-1
-,
-q
-2
-,
-q
-3
-,
-q
-4
-)
-a=(q_{1},q_{2},q_{3},q_{4})
-specifying the number of 1D tokens per temporal block, a 1D query sequence is initialized,
-i.e
-.
-, each 1D query is derived from the 2D pooling feature of the corresponding temporal block in the 3D embeddings. Through Q-Former encoder layers, these 1D queries encode visual information from the 3D embeddings and are vector-quantized into discrete tokens. Temporally causal attention masks ensure that 1D tokens do not encode information from subsequent blocks.
-As for the decoder, 3D queries are initialized using the first 1D token in their corresponding temporal block. After a similar temporally causal decoding process, the final 3D features will be linearly projected and reshaped into video frames. We do not use the typical tail-token-dropping
-[
-41
-,
-70
-,
-33
-,
-39
-]
-strategy to produce variable length tokens as it may lead to two concerns: (1) extra computation overhead caused by using many tokens that will just be dropped as register tokens; (2) the roles of tail 1D queries being ambiguous during encoding: tail 1D queries cannot be aware of whether they will be dropped after encoding. Since the two concerns potentially hurt efficiency and performance, in EVATok, the length of 1D tokens is decided and fixed during the initialization of 1D queries.
-Training recipe.
-We enhance the tokenizer training by video semantic encoders
-[
-53
-,
-2
-]
-through video representation alignment. Following typical image representation alignment approaches
-[
-77
-,
-71
-,
-68
-]
-, we apply patch-wise alignment between the intermediate 3D features of the tokenizer decoder and the features from pre-trained V-JEPA2-L
-[
-2
-]
-. We use a linear projection and reshape strategy, similar to depatchify, to address feature shape mismatches. Formally, let
-f
-dec
-,
-l
-f^{\text{dec},l}
-be the output 3D features from the
-l
-l
--th decoder layer, and
-f
-sem
-f^{\rm sem}
-the semantic features from the pretrained encoder. The representation alignment loss is:
-ℒ
-align
-=
-−
-1
-N
-​
-∑
-n
-=
-1
-N
-sim
-​
-(
-f
-n
-dec
-,
-l
-,
-ϕ
-​
-(
-f
-n
-sem
-)
-)
-\mathcal{L}_{\rm align}=-\frac{1}{N}\sum_{n=1}^{N}{\rm sim}\Big(f^{\text{dec},l}_{n},\phi(f^{\rm sem}_{n})\Big)
-(1)
-where
-N
-N
-is the batch size,
-n
-n
-is the batch item index,
-sim
-​
-(
-⋅
-,
-⋅
-)
-\text{sim}(\cdot,\cdot)
-is cosine similarity, and
-ϕ
-​
-(
-⋅
-)
-\phi(\cdot)
-combines an MLP and a depatchify module for shape matching.
-We use a transformer PatchGAN
-[
-25
-]
-discriminator as in LARP
-[
-59
-]
-. The final training loss of our video tokenizer is:
-ℒ
-total
-=
-ℒ
-vqgan
-+
-λ
-​
-ℒ
-align
-+
-γ
-​
-ℒ
-entropy
-\mathcal{L}_{\text{total}}=\mathcal{L}_{\text{vqgan}}+\lambda\mathcal{L}_{\text{align}}+\gamma\mathcal{L}_{\text{entropy}}
-(2)
-with
-λ
-\lambda
-tuned as
-0.7
-0.7
-by default. Here,
-ℒ
-vqgan
-\mathcal{L}_{\text{vqgan}}
-combines
-l
-1
-l_{1}
-reconstruction loss
-ℒ
-recon
-\mathcal{L}_{\text{recon}}
-, perceptual loss
-ℒ
-percp
-\mathcal{L}_{\text{percp}}
-[
-79
-,
-27
-]
-, adversarial loss
-ℒ
-GAN
-\mathcal{L}_{\text{GAN}}
-, and VQ codebook loss
-ℒ
-VQ
-\mathcal{L}_{\text{VQ}}
-[
-16
-,
-73
-]
-;
-ℒ
-entropy
-\mathcal{L}_{\text{entropy}}
-is the entropy loss from
-[
-75
-]
-used for better codebook usage, with
-γ
-\gamma
-set empirically as
-0.02
-0.02
-.
-3.2
-Stage 2: Dataset Curation for Router Training
-With the proxy tokenizer, we can use it to assess the quality-cost trade-off performance of a specific assignment
-a
-a
-for a video
-x
-x
-, which will be illustrated in detail later. This means we can brute-force evaluate all the candidate assignments for
-x
-x
-to find the optimal one. However, brute-force searching is undesirable due to the massive computational cost during adaptive video tokenization. Therefore, we aim to train a lightweight router that predicts optimal assignments in one pass. Towards this objective, we design stage 2 to curate a dataset to train such a lightweight router.
-First, we illustrate how to evaluate the quality-cost trade-off performance of
-a
-a
-on
-x
-x
-with the proxy tokenizer. We quantify this performance using the
-proxy reward
-:
-R
-proxy
-=
-w
-q
-​
-Q
-​
-(
-ℰ
-proxy
-,
-x
-,
-a
-)
-−
-w
-l
-​
-L
-​
-(
-a
-)
-R_{\text{proxy}}=w_{q}Q(\mathcal{E}_{\text{proxy}},x,a)-w_{l}L(a)
-(3)
-where
-Q
-​
-(
-x
-,
-a
-)
-Q(x,a)
-denotes the reconstruction quality of
-a
-a
-for
-x
-x
-,
-L
-​
-(
-a
-)
-L(a)
-is the token length cost of
-a
-a
-, and
-w
-q
-,
-w
-l
-w_{q},w_{l}
-are the weights reflecting preferences for better quality or less cost. For each
-x
-x
-, its optimal assignment
-a
-∗
-a^{*}
-maximizes
-R
-R
-, balancing token savings with minimal quality loss. Then, with this measurement, we resolve the challenging task of optimal assignment
-a
-∗
-a^{*}
-prediction by brute-force searching for the
-a
-a
-with maximum proxy reward:
-a
-∗
-=
-argmax
-a
-∈
-A
-​
-R
-proxy
-a^{*}=\text{argmax}_{a\in A}R_{\text{proxy}}
-(4)
-In practice, we collect 100k video clips from the diverse dataset WebVid-10M
-[
-5
-]
-. We record the reconstruction quality (LPIPS
-[
-79
-]
-, PSNR, MSE) of each video clip under all candidate assignments. Then, with specified preference weights
-w
-q
-,
-w
-l
-w_{q},w_{l}
-, the proxy reward is calculated with Eq.
-3
-for all candidate assignments for each video. Specifically, we calculate
-Q
-​
-(
-ℰ
-proxy
-,
-x
-,
-a
-)
-Q(\mathcal{E}_{\text{proxy}},x,a)
-as the normalized LPIPS
-[
-79
-]
-, and
-L
-​
-(
-a
-)
-L(a)
-as the normalized length. Finally, only the assignment with the maximum proxy reward will be chosen for the video, resulting in a training dataset of 100k videos and their respective ground-truth assignments.
-3.3
-Stage 3: Router Training
-With the training dataset containing (video, optimal assignment) pairs from stage 2, we can train a lightweight router for one-pass optimal token assignment prediction in a classification formulation task. Our router adopts a ViT-like architecture
-[
-13
-]
-and is trained to classify input video
-x
-x
-into one of the
-m
-T
-m^{T}
-candidate assignment categories, which should be the optimal assignment for
-x
-x
-.
-Given an input video, our router patchifies it to 3D visual embeddings, appends a
-[CLS]
-embedding. The router finally produces the probability of each candidate assignment
-a
-a
-being the optimal one for the input video from the
-[CLS]
-embedding feature and is trained with cross-entropy loss.
-3.4
-Stage 4: Adaptive Length Video Tokenizer
-Integrating the router into our final video adaptive tokenization solution, we train an adaptive length video tokenizer conditioned on the token assignments predicted by the router. Specifically, the router predicts the optimal assignment for each video clip sample, which decides the token length and temporal distribution of the encoded token sequence. And the adaptive tokenizer learns to reconstruct each video using the predicted assignment from the router. Instead of combining the router with the proxy tokenizer as the final video adaptive tokenization solution, we choose to train a final tokenizer from scratch with the assignments from the tokenizer. This is to mitigate an issue in proxy tokenizer and prior video adaptive length tokenizers
-[
-33
-,
-70
-]
-: the training-inference gap. For the proxy tokenizer, it is trained to encode videos across all
-m
-T
-m^{T}
-possible assignments, yet during inference, only a few assignments might be used per video. This inefficiency in training can degrade tokenizer performance, as shown in Sec.
-4.3
-, and is addressed by EVATok in our stage 4 training.
-Different from the proxy tokenizer, which can suffice with a simpler training recipe, the final tokenizer training can further benefit from advanced training designs. Inspired by DINO
-[
-7
-,
-42
-]
-discriminators in image tokenization
-[
-52
-,
-38
-]
-, in the final tokenizer training, we optionally employ video semantic encoders as discriminators for potentially better reconstruction and downstream AR generation. We use a frozen pretrained VideoMAE-B
-[
-53
-,
-63
-]
-to process input videos and feed multi-layer features to trainable 1D CNN heads for fake/real logits. We avoid larger V-JEPA2 models
-[
-2
-]
-due to logit divergence instability risks
-[
-36
-]
-in adversarial training.
-We validate that a VideoMAE semantic discriminator, combined with video representation alignment, can significantly enhance both reconstruction and downstream AR generation quality for video tokenizers in Sec.
-4.5
-.
-4
-Experiments
-Figure 4
-:
-Quality-cost trade-off curves for different assignment strategies.
-By adaptively assigning token budgets to different temporal blocks across various videos, our max-proxy-reward strategy (green series) achieves superior performance under various overall budgets compared to the typical fixed uniform token assignment approach (red series). The router-based assignment (blue series) delivers performance close to that of the max-proxy-reward strategy on both WebVid and UCF datasets (the latter unseen during router training).
-4.1
-Settings
-Dataset.
-We apply the commonly used combination of UCF
-[
-49
-]
-and K600
-[
-8
-]
-datasets for video reconstruction and generation experiments. And for validation on more general data, we additionally experiment on WebVid-10M
-[
-5
-]
-for video reconstruction. In all experiments, we use
-16
-×
-128
-×
-128
-16\times 128\times 128
-video clips for training and evaluation. For router training, the video data is a randomly sampled subset of WebVid-10M, containing 100k video clips.
-Implementation details.
-When patchifying videos in EVATok, the spatial downsample ratio is 8 and the temporal downsample ratio is 4. Therefore, a
-16
-×
-128
-×
-128
-16\times 128\times 128
-video produces
-4
-×
-16
-×
-16
-4\times 16\times 16
-features. When initializing 1D query embeddings, the candidate length of each temporal block is in
-{
-512
-,
-256
-,
-128
-,
-64
-,
-32
-}
-\{512,256,128,64,32\}
-, so the number of all candidate assignments is
-5
-4
-=
-625
-5^{4}=625
-. EVATok applies a codebook size of 16384 by default. But for the final tokenizers trained on UCF and K600 dataset, we use 8192 codebook size for fair comparison to previous methods
-[
-59
-,
-33
-]
-. We train 19.9M ViT-S size routers in stage 3.
-We train Llama-like
-[
-54
-,
-50
-]
-GPT models on variable length sequences. For class2video generation, the condition token corresponds to class labels, and for K600 frame prediction the conditions are tokens encoded from 8 frames padded from the 5 condition frames. Per-frame reconstruction fidelity metric LPIPS
-[
-79
-]
-and the overall distribution fidelity metric FVD
-[
-55
-]
-are used for evaluation.
-More details on the training and inference of the AR models can be found in the supplementary material.
-4.2
-Validation on Quality-Cost Trade-off Curves
-We validate the effect of our max-proxy-reward searching strategy and routers on proxy tokenizers. We compare these approaches against a commonly used baseline: fixed uniform assignment, which allocates the same number of tokens to different temporal blocks across videos. We plot quality-cost trade-off curves to show the overall trends of these assignment strategies under varying overall budgets.
-To generate the quality-cost curves, we adjust the overall budgets to obtain multiple evaluation points. For the uniform assignment strategy, we vary the number of tokens allocated to each temporal block from 64 to 512. For the max-proxy-reward assignment strategy, we adjust
-w
-q
-w_{q}
-in steps of 0.2 from 0.4 to 2.0, while setting
-w
-l
-=
-2.0
-−
-w
-q
-w_{l}=2.0-w_{q}
-, thereby producing various
-w
-q
-,
-w
-l
-w_{q},w_{l}
-combinations that alter the overall budgets. For the router assignment strategy, we employ routers trained under different
-w
-q
-,
-w
-l
-w_{q},w_{l}
-combinations:
-w
-q
-w_{q}
-ranging from 0.8 to 1.6 in steps of 0.2, with
-w
-l
-=
-2.0
-−
-w
-q
-w_{l}=2.0-w_{q}
-. We evaluate on two benchmarks: the WebVid validation set and the UCF-101 training set, using two corresponding proxy tokenizers trained on either the WebVid training set or the UCF &amp; K600 training sets.
-As shown in Fig.
-4
-, on both datasets, the max-proxy-reward assignment strategy yields a quality-cost curve that achieves superior LPIPS and reconstruction FVD (rFVD) at equivalent overall budgets. Moreover, the routers closely align with the quality-cost curve of the max-proxy-reward strategy, demonstrating their ability to effectively simulate it. The routers also generalize well to different proxy tokenizers and datasets not seen during training, as evidenced in the last two columns of Fig.
-4
-. The routers significantly reduce the total budget while delivering even better overall reconstruction quality. Focusing solely on rFVD, compared to traditional fixed uniform assignment approaches that allocate 1024 tokens on average to a
-16
-×
-128
-×
-128
-16\times 128\times 128
-video clip, the routers can achieve 56% token savings on WebVid and 42% on UCF, with comparable or even better performance. We validate the performance and generalization of the routers on proxy tokenizers. Next, we demonstrate the advantages of using routers to guide final tokenizer training.
-Settings
-PSNR
-↑
-\uparrow
-LPIPS
-↓
-\downarrow
-rFVD
-↓
-\downarrow
-#rTokens
-↓
-\downarrow
-A1. Uniform (Proxy Tok.)
-27.26
-0.1178
-73
-1024
-A2. Uniform (Final Tok.)
-27.77
-0.1056
-63
-1024
-A2 + VideoMAE Disc.
-26.68
-0.1197
-13
-1024
-B1. Router (Proxy Tok.)
-27.05
-0.1182
-50
-721
-(-29.6%)
-B2. Router (Final Tok.)
-27.68
-0.1068
-33
-721
-(-29.6%)
-B2 + VideoMAE Disc.
-26.90
-0.1144
-9.2
-721
-(-29.6%)
-Table 1
-:
-Final tokenizer validation on WebVid.
-The tokenizers are trained for 400k iterations. With the router, final tokenizers achieve comparable LPIPS and better rFVD with 29.6% saving in token length (row A2
-vs
-.
-B2 and row A2+
-vs
-.
-B2+). Final tokenizers outperform proxy tokenizers with the same training efforts (row A2
-vs
-.
-A1, B2
-vs
-.
-row B1), showing the importance of bridging the training-inference gap for variable-length tokenizers.
-Settings
-LPIPS
-↓
-\downarrow
-rFVD
-↓
-\downarrow
-#rTokens
-↓
-\downarrow
-gFVD
-↓
-\downarrow
-#gTokens
-↓
-\downarrow
-Uniform (Final)
-0.1303
-13
-1024
-98
-1024
-Router (Final)
-0.1212
-13
-774
-(-24.4%)
-96
-740
-(-27.7%)
-Table 2
-:
-Final tokenizer validation on UCF.
-The final tokenizer with router beats the fixed uniform assignment baseline in both reconstruction and downstream AR generation, while saving 24.4% and 27.7% token length separately.
-Method
-#Params
-#rTokens
-rFVD
-↓
-\downarrow
-gFVD
-↓
-\downarrow
-#gTokens
-Tokenizer
-Generator
-K600
-UCF
-UCF
-Diffusion-based generative models with continuous video tokenizers
-VideoFusion
-[
-37
-]
--
-2B
--
--
--
-173
--
-HPDM
-[
-48
-]
--
-725M
--
--
--
-66
--
-W.A.L.T-L
-[
-20
-]
--
-313M
--
--
-3.3
-46
--
-MLM generative models with discrete video tokenizers
-MAGVIT-MLM
-[
-74
-]
-158M
-306M
-1024
-25
-9.9
-76
-1024
-MAGVIT-v2-MLM
-[
-75
-]
--
-307M
-1280
-8.6
-4.3
-58
-1280
-AR generative models with discrete video tokenizers
-CogVideo
-[
-23
-]
--
-9.4B
--
--
-109.2
-626
--
-TATS
-[
-18
-]
-32M
-321M
-1024
-162
--
-332
-1024
-MAGVIT-AR
-[
-74
-]
-158M
-306M
-1024
-25
--
-265
-1024
-MAGVIT-v2-AR
-[
-75
-]
--
-840M
-1280
-8.6
--
-109
-1280
-OmniTokenizer
-[
-60
-]
-82.2M
-650M
-1280
-42
-32.9
-191
-1280
-AdapTok
-[
-33
-]
-195M
-633M
-1024
-36
-11
-67
-1024
-LARP-L-Long
-[
-59
-]
-173M
-343M
-1024
-20
-6.2
-102
-1024
-LARP-L-Long
-[
-59
-]
-173M
-632M
-1024
-20
-5.1
-57
-1024
-EVATok (ours)
-145M
-327M
-774
-(-24.4%)
-9.7
-4.6
-62
-756
-(-26.2%)
-EVATok (ours)
-145M
-633M
-774
-(-24.4%)
-9.7
-4.0
-48
-756
-(-26.2%)
-Table 3
-:
-System-level comparison for tokenizers and downstream generation models.
-EVATok achieves superior performances in UCF-101 video reconstruction, downstream class-to-video generation and K600 frame prediction, while saving 24.4% tokens in reconstruction and 26.2% tokens in UCF class-to-video generation.
-4.3
-Validation on Final Adaptive Tokenizer
-We validate the benefits of using routers to provide optimal assignment guidance in both the training and inference of adaptive video tokenizers, which bridges the training-inference gap in previous adaptive length video tokenizers
-[
-70
-,
-33
-]
-. For the choice of router, we choose the router conditioned on
-w
-q
-=
-1.2
-,
-w
-l
-=
-0.8
-w_{q}=1.2,w_{l}=0.8
-, which achieves comparable LPIPS and better rFVD with
-24.4
-%
-24.4\%
-token length saving against the uniform assignment. We conduct two sets of experiments on WebVid-10M and the combination of UCF &amp; K600 separately.
-On the WebVid-10M dataset, with the assignments provided the a router, we train two variants of final tokenizers, one not using the VideoMAE discriminator while the other uses it. As baselines, with fixed uniform assignments of 1024 tokens per video, we train two variants of final tokenizers correspondingly. And all tokenizers evaluated in this experiment are trained for 400k iterations for fair comparison. As shown in Tab.
-1
-, on the WebVid validation set, we validate that for final tokenizers, the router-guided tokenizer achieves comparable LPIPS, better rFVD and
-29.6
-%
-29.6\%
-token length savings against the tokenizer trained with uniform assignments, no matter using VideoMAE discriminator or not (row A2
-vs
-.
-B2 and A2+
-vs
-.
-B2+). Besides, Tab.
-1
-also indicates that the final tokenizers outperform the proxy tokenizers with the same training iterations (row A2
-vs
-.
-A1 and B2
-vs
-.
-B1), proving that using optimal assignments in both tokenizer training and inference benefits performances.
-On UCF &amp; K600 dataset, we train two tokenizers with fixed uniform assignment or router-guided assignment, both using the VideoMAE discriminator. As shown in Tab.
-2
-, under the predicted optimal assignment, the final tokenizer trained with the router achieves even better reconstruction with 24.4% savings in token length. Further, we train 99M GPT-B AR generation models on the two tokenizers separately on the UCF-101 class2video dataset, and evaluate them by generation FVD (gFVD) based on 10k generated samples. The AR model that adaptively decides the length of tokens it generates achieves even better gFVD while generating 740 tokens per video on average, saving 27.7% of tokens compared to the fixed-length AR model.
-By training and evaluating final tokenizers with the adaptive assignments of our router, we show that a router helps train a better adaptive tokenizer by eliminating the previous training-inference gap, beating baselines trained with fixed uniform assignment. And importantly, for the first time, we show that downstream AR models trained on adaptive length video token sequences can achieve better overall generation quality with significant savings in token length cost.
-Methods
-Tok. Param.
-#gTokens
-AR Param.
-gFVD
-↓
-\downarrow
-AdapTok
-[
-33
-]
-195M
-1024
-633M
-11
-LARP
-[
-59
-]
-173M
-1024
-632M
-5.1
-EVATok (ours)
-145M
-862
-(-15.8%)
-633M
-4.0
-Table 4
-:
-K600 frame prediction comparison.
-In similar settings, EVATok performs the best with 15.8% less generated tokens.
-4.4
-System-Level Comparison
-We compare EVATok with previous video generative models, evaluating performance in terms of video reconstruction, generation quality, and average token length. These aspects are assessed using the UCF-101 reconstruction, UCF-101 class-to-video generation, and K600 frame prediction benchmarks. As shown in Tab.
-3
-, EVATok achieves substantially better reconstruction FVD (rFVD) while reducing token length by 24.4% compared to LARP
-[
-59
-]
-. EVATok establishes a new state-of-the-art (SOTA) on UCF-101 class-to-video generation, with a generation FVD (gFVD) of 48 and 26.2% fewer tokens than the previous SOTA method, LARP
-[
-59
-]
-. EVATok also delivers the best results on K600 frame prediction.
-For a fair comparison of generation efficiency on K600 frame prediction, we benchmark against AdapTok
-[
-33
-]
-and LARP
-[
-59
-]
-in Tab.
-4
-, as we employ the same approach of additionally generating conditioning frames during both training and inference. We fix the token length for conditioning frames as
-512
-+
-128
-=
-640
-512+128=640
-, therefore, during frame prediction training, we choose assignments with
-(
-512
-,
-128
-)
-(512,128)
-prefix for the first two temporal blocks that have the highest probability predicted by the router, for the encoding of 16-frame samples. Under this setting, EVATok achieves the best gFVD on K600 frame prediction while saving 15.8% in generated tokens.
-We demonstrate that adaptive video tokenization, combined with our advanced training recipe, enables EVATok to achieve both high efficiency and leading performance on video reconstruction and downstream AR generation.
-4.5
-Ablation Study
-Threshold
-vs
-.
-max-proxy-reward searching.
-For adaptive video tokenization, ElasticTok
-[
-70
-]
-applies a heuristic method to find adaptive assignments: searching the minimum token length to be kept that maintains the reconstruction quality above certain thresholds. This heuristic threshold-based method is not designed to optimize for the overall quality-cost trade-off. To compare this threshold-based method to our max-proxy-reward strategy, we implement a similar baseline method in our setting, which finds the assignment with the minimum token length and satisfies a certain LPIPS threshold for each video. If no assignment can satisfy the threshold, the maximum length assignment will be chosen. Testing on our proxy tokenizer, by varying the LPIPS threshold, we can plot the quality-cost trade-off curve for this baseline strategy. As shown in Fig.
-5
-, on the WebVid validation set, while the threshold-based baseline improves the rFVD compared to uniform assignment, it still lags behind our max-proxy-reward strategy.
-Figure 5
-:
-Quality-cost curve: threshold based
-vs
-.
-max-proxy-reward
-vs
-.
-uniform assignment.
-While threshold-based assignment improves rFVD against uniform assignment, it underperforms our max-proxy-reward strategy.
-Configuration
-PSNR
-↑
-\uparrow
-LPIPS
-↓
-\downarrow
-rFVD
-↓
-\downarrow
-gFVD
-↓
-\downarrow
-Final Recipe (Uniform)
-25.05
-0.1303
-13
-98
-- VideoMAE
-[
-53
-,
-63
-]
-Disc.
-26.21
-0.1097
-65
-155
-- V-JEPA2
-[
-2
-]
-Align.
-25.30
-0.1253
-18
-144
-- Both
-26.41
-0.1095
-80
-230
-Table 5
-:
-Ablation study for video representation alignment and video semantic discriminator.
-Removing either design will lead to degradation in rFVD and downstream gFVD.
-Video semantic encoder for video tokenizers.
-Video semantic encoders can help video tokenizer training in two ways: (1) providing representation alignment; (2) giving perceptual feedback as the discriminator for better reconstruction quality. We study the two designs and reveal that they are both important for reconstruction and downstream generation for video tokenizers. Here, for simplicity, we utilize the typical uniform assignment and train video tokenizers under different recipes on the UCF&amp;K600 dataset for 400k iterations, and evaluate them by reconstruction and downstream GPT-B model generation on UCF-101. As shown in Tab.
-5
-, removing either representation alignment or VideoMAE discriminator can lead to degradation of rFVD and downstream gFVD. While we do recognize a drop in the per-frame fidelity metric PSNR and LPIPS brought especially by the VideoMAE discriminator, in our qualitative checking, we identify that the drop in PSNR and LPIPS is traded for less blurriness and less temporal flickering, which corresponds to higher rFVD. More qualitative comparisons are in the supplementary material.
-5
-Conclusions
-In this work, we propose EVATok, a content-adaptive video tokenization framework to efficiently assign tokens across different temporal blocks and videos. We introduce proxy reward as a novel metric for finding the optimal assignments with the best quality-cost trade-off. By reformulating optimal assignment selection for video tokenization as a maximum proxy reward assignment classification task, we can curate supervision datasets to train routers to map each video to its optimal assignment. These routers help us train video adaptive tokenizers and downstream autoregressive (AR) video generative models with efficient token assignments. Enhanced by our advanced recipe incorporating video semantic encoders in tokenizer training, EVATok achieves superior reconstruction and downstream AR generation quality while significantly saving token length cost. EVATok has presented promising results on 16-frame videos in this work, and for future development, can potentially achieve higher efficiency for videos with longer duration. Please refer to the supplementary material for more discussions on future work and limitations of EVATok.
-Acknowledgments
-This work is supported in part by the Research Grant Council of Hong Kong through the NSFC-RGC Joint Research Scheme under grant N_HKU769/25.
-References
-[1]
-J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat,
-et al.
-(2023)
-Gpt-4 technical report
-.
-arXiv preprint arXiv:2303.08774
-.
-Cited by:
-§1
-.
-[2]
-M. Assran, A. Bardes, D. Fan, Q. Garrido, R. Howes, M. Muckley, A. Rizvi, C. Roberts, K. Sinha, A. Zholus,
-et al.
-(2025)
-V-jepa 2: self-supervised video models enable understanding, prediction and planning
-.
-arXiv preprint arXiv:2506.09985
-.
-Cited by:
-§1
-,
-§3.1
-,
-§3.4
-,
-Table 5
-,
-§H
-.
-[3]
-R. Bachmann, J. Allardice, D. Mizrahi, E. Fini, O. F. Kar, E. Amirloo, A. El-Nouby, A. Zamir, and A. Dehghan
-(2025)
-FlexTok: resampling images into 1d token sequences of flexible length
-.
-arXiv preprint arXiv:2502.13967
-.
-Cited by:
-§1
-,
-§2
-.
-[4]
-Z. Bai, J. Gao, Z. Gao, P. Wang, Z. Zhang, T. He, and M. Z. Shou
-(2024)
-Factorized visual tokenization and generation
-.
-arXiv preprint arXiv:2411.16681
-.
-Cited by:
-§2
-.
-[5]
-M. Bain, A. Nagrani, G. Varol, and A. Zisserman
-(2021)
-Frozen in time: a joint video and image encoder for end-to-end retrieval
-.
-In
-IEEE International Conference on Computer Vision
-,
-Cited by:
-§3.2
-,
-§4.1
-,
-§I.1
-.
-[6]
-N. Carion, F. Massa, G. Synnaeve, N. Usunier, A. Kirillov, and S. Zagoruyko
-(2020)
-End-to-end object detection with transformers
-.
-In
-European conference on computer vision
-,
-pp. 213–229
-.
-Cited by:
-§2
-,
-§3.1
-.
-[7]
-M. Caron, H. Touvron, I. Misra, H. Jégou, J. Mairal, P. Bojanowski, and A. Joulin
-(2021)
-Emerging properties in self-supervised vision transformers
-.
-In
-Proceedings of the IEEE/CVF international conference on computer vision
-,
-pp. 9650–9660
-.
-Cited by:
-§3.4
-.
-[8]
-J. Carreira, E. Noland, A. Banki-Horvath, C. Hillier, and A. Zisserman
-(2018)
-A short note about kinetics-600
-.
-External Links:
-Link
-,
-1808.01340
-Cited by:
-§4.1
-.
-[9]
-X. Chen, Z. Wu, X. Liu, Z. Pan, W. Liu, Z. Xie, X. Yu, and C. Ruan
-(2025)
-Janus-pro: unified multimodal understanding and generation with data and model scaling
-.
-arXiv preprint arXiv:2501.17811
-.
-Cited by:
-§1
-.
-[10]
-G. Comanici, E. Bieber, M. Schaekermann, I. Pasupat, N. Sachdeva, I. Dhillon, M. Blistein, O. Ram, D. Zhang, E. Rosen,
-et al.
-(2025)
-Gemini 2.5: pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities
-.
-arXiv preprint arXiv:2507.06261
-.
-Cited by:
-§1
-.
-[11]
-Y. Cui, H. Chen, H. Deng, X. Huang, X. Li, J. Liu, Y. Liu, Z. Luo, J. Wang, W. Wang, Y. Wang, C. Wang, F. Zhang, Y. Zhao, T. Pan, X. Li, Z. Hao, W. Ma, Z. Chen, Y. Ao, T. Huang, Z. Wang, and X. Wang
-(2025)
-Emu3.5: native multimodal models are world learners
-.
-External Links:
-Link
-,
-2510.26583
-Cited by:
-§1
-,
-§2
-,
-§F
-.
-[12]
-P. Dhariwal and A. Nichol
-(2021)
-Diffusion models beat gans on image synthesis
-.
-Advances in neural information processing systems
-34
-,
-pp. 8780–8794
-.
-Cited by:
-§M.1
-.
-[13]
-A. Dosovitskiy
-(2020)
-An image is worth 16x16 words: transformers for image recognition at scale
-.
-arXiv preprint arXiv:2010.11929
-.
-Cited by:
-§M.1
-,
-§3.3
-.
-[14]
-A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Letman, A. Mathur, A. Schelten, A. Yang, A. Fan,
-et al.
-(2024)
-The llama 3 herd of models
-.
-arXiv preprint arXiv:2407.21783
-.
-Cited by:
-§1
-.
-[15]
-S. Duggal, P. Isola, A. Torralba, and W. T. Freeman
-(2025)
-Adaptive length image tokenization via recurrent allocation
-.
-In
-The Thirteenth International Conference on Learning Representations
-,
-External Links:
-Link
-Cited by:
-§2
-.
-[16]
-P. Esser, R. Rombach, and B. Ommer
-(2021)
-Taming transformers for high-resolution image synthesis
-.
-In
-Proceedings of the IEEE/CVF conference on computer vision and pattern
-recognition
-,
-pp. 12873–12883
-.
-Cited by:
-§1
-,
-§1
-,
-§2
-,
-§3.1
-.
-[17]
-N. et. al.
-(2025)
-Cosmos world foundation model platform for physical ai
-.
-arXiv preprint arXiv:2501.03575
-.
-Cited by:
-§1
-.
-[18]
-S. Ge, T. Hayes, H. Yang, X. Yin, G. Pang, D. Jacobs, J. Huang, and D. Parikh
-(2022)
-Long video generation with time-agnostic vqgan and time-sensitive transformer
-.
-In
-European Conference on Computer Vision
-,
-pp. 102–118
-.
-Cited by:
-§2
-,
-Table 3
-.
-[19]
-D. Guo, D. Yang, H. Zhang, J. Song, R. Zhang, R. Xu, Q. Zhu, S. Ma, P. Wang, X. Bi,
-et al.
-(2025)
-Deepseek-r1: incentivizing reasoning capability in llms via reinforcement learning
-.
-arXiv preprint arXiv:2501.12948
-.
-Cited by:
-§1
-.
-[20]
-A. Gupta, L. Yu, K. Sohn, X. Gu, M. Hahn, F. Li, I. Essa, L. Jiang, and J. Lezama
-(2024)
-Photorealistic video generation with diffusion models
-.
-In
-European Conference on Computer Vision
-,
-pp. 393–411
-.
-Cited by:
-Table 3
-.
-[21]
-A. Hägele, E. Bakouch, A. Kosson, L. B. Allal, L. Von Werra, and M. Jaggi
-(2024)
-Scaling laws and compute-optimal training beyond fixed training durations
-.
-arXiv preprint arXiv:2405.18392
-.
-Cited by:
-§H
-.
-[22]
-M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, and S. Hochreiter
-(2017)
-Gans trained by a two time-scale update rule converge to a local nash equilibrium
-.
-Advances in neural information processing systems
-30
-.
-Cited by:
-§M.1
-,
-§M
-.
-[23]
-W. Hong, M. Ding, W. Zheng, X. Liu, and J. Tang
-(2022)
-Cogvideo: large-scale pretraining for text-to-video generation via transformers
-.
-arXiv preprint arXiv:2205.15868
-.
-Cited by:
-Table 3
-.
-[24]
-M. Huang, Z. Mao, Z. Chen, and Y. Zhang
-(2023)
-Towards accurate image coding: improved autoregressive image generation with dynamic vector quantization
-.
-In
-Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
-Recognition
-,
-pp. 22596–22605
-.
-Cited by:
-§2
-.
-[25]
-P. Isola, J. Zhu, T. Zhou, and A. A. Efros
-(2017)
-Image-to-image translation with conditional adversarial networks
-.
-In
-Proceedings of the IEEE conference on computer vision and pattern recognition
-,
-pp. 1125–1134
-.
-Cited by:
-§3.1
-.
-[26]
-E. Jang, S. Gu, and B. Poole
-(2016)
-Categorical reparameterization with gumbel-softmax
-.
-arXiv preprint arXiv:1611.01144
-.
-Cited by:
-§2
-.
-[27]
-J. Johnson, A. Alahi, and L. Fei-Fei
-(2016)
-Perceptual losses for real-time style transfer and super-resolution
-.
-In
-Computer Vision–ECCV 2016: 14th European Conference, Amsterdam, The Netherlands, October 11-14, 2016, Proceedings, Part II 14
-,
-pp. 694–711
-.
-Cited by:
-§3.1
-.
-[28]
-D. P. Kingma, M. Welling,
-et al.
-(2019)
-An introduction to variational autoencoders
-.
-Foundations and Trends® in Machine Learning
-12
-(
-4
-),
-pp. 307–392
-.
-Cited by:
-§G
-.
-[29]
-D. P. Kingma
-(2013)
-Auto-encoding variational bayes
-.
-arXiv preprint arXiv:1312.6114
-.
-Cited by:
-§G
-.
-[30]
-D. Kondratyuk, L. Yu, X. Gu, J. Lezama, J. Huang, G. Schindler, R. Hornung, V. Birodkar, J. Yan, M. Chiu, K. Somandepalli, H. Akbari, Y. Alon, Y. Cheng, J. V. Dillon, A. Gupta, M. Hahn, A. Hauth, D. Hendon, A. Martinez, D. Minnen, M. Sirotenko, K. Sohn, X. Yang, H. Adam, M. Yang, I. Essa, H. Wang, D. A. Ross, B. Seybold, and L. Jiang
-(2024)
-VideoPoet: a large language model for zero-shot video generation
-.
-In
-Proceedings of the 41st International Conference on Machine Learning
-,
-Cited by:
-§1
-,
-§1
-.
-[31]
-D. Lee, C. Kim, S. Kim, M. Cho, and W. Han
-(2022)
-Autoregressive image generation using residual quantization
-.
-In
-Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
-Recognition
-,
-pp. 11523–11532
-.
-Cited by:
-§2
-.
-[32]
-J. Li, D. Li, S. Savarese, and S. Hoi
-(2023)
-Blip-2: bootstrapping language-image pre-training with frozen image encoders and large language models
-.
-In
-International conference on machine learning
-,
-pp. 19730–19742
-.
-Cited by:
-§2
-,
-§3.1
-.
-[33]
-Y. Li, C. Tian, R. Xia, N. Liao, W. Guo, J. Yan, H. Li, J. Dai, H. Li, and X. Yang
-(2025)
-Learning adaptive and temporally causal video tokenization in a 1d latent space
-.
-External Links:
-Link
-,
-2505.17011
-Cited by:
-§1
-,
-§1
-,
-§2
-,
-§2
-,
-§3.1
-,
-§3.1
-,
-§3.4
-,
-§4.1
-,
-§4.3
-,
-§4.4
-,
-Table 3
-,
-Table 4
-,
-§H
-.
-[34]
-A. Liu, B. Feng, B. Xue, B. Wang, B. Wu, C. Lu, C. Zhao, C. Deng, C. Zhang, C. Ruan,
-et al.
-(2024)
-Deepseek-v3 technical report
-.
-arXiv preprint arXiv:2412.19437
-.
-Cited by:
-§1
-.
-[35]
-D. Liu, S. Zhao, L. Zhuo, W. Lin, Y. Qiao, H. Li, and P. Gao
-(2024)
-Lumina-mgpt: illuminate flexible photorealistic text-to-image generation with multimodal generative pretraining
-.
-arXiv preprint arXiv:2408.02657
-.
-Cited by:
-§1
-.
-[36]
-J. Lu, L. Song, M. Xu, B. Ahn, Y. Wang, C. Chen, A. Dehghan, and Y. Yang
-(2025)
-Atoken: a unified tokenizer for vision
-.
-arXiv preprint arXiv:2509.14476
-.
-Cited by:
-§3.4
-.
-[37]
-Z. Luo, D. Chen, Y. Zhang, Y. Huang, L. Wang, Y. Shen, D. Zhao, J. Zhou, and T. Tan
-(2023)
-Videofusion: decomposed diffusion models for high-quality video generation
-.
-arXiv preprint arXiv:2303.08320
-.
-Cited by:
-Table 3
-.
-[38]
-C. Ma, Y. Jiang, J. Wu, J. Yang, X. Yu, Z. Yuan, B. Peng, and X. Qi
-(2025)
-UniTok: a unified tokenizer for visual generation and understanding
-.
-arXiv preprint arXiv:2502.20321
-.
-Cited by:
-§2
-,
-§3.4
-.
-[39]
-L. Mao, R. Corona, X. Liang, W. Yan, and Z. Tang
-(2025)
-Images are worth variable length of representations
-.
-arXiv preprint arXiv:2506.03643
-.
-Cited by:
-§M.2
-,
-§2
-,
-§3.1
-.
-[40]
-F. Mentzer, D. Minnen, E. Agustsson, and M. Tschannen
-(2023)
-Finite scalar quantization: vq-vae made simple
-.
-arXiv preprint arXiv:2309.15505
-.
-Cited by:
-§2
-.
-[41]
-K. Miwa, K. Sasaki, H. Arai, T. Takahashi, and Y. Yamaguchi
-(2025)
-One-d-piece: image tokenizer meets quality-controllable compression
-.
-External Links:
-Link
-,
-2501.10064
-Cited by:
-§1
-,
-§2
-,
-§3.1
-.
-[42]
-M. Oquab, T. Darcet, T. Moutakanni, H. Vo, M. Szafraniec, V. Khalidov, P. Fernandez, D. Haziza, F. Massa, A. El-Nouby,
-et al.
-(2023)
-Dinov2: learning robust visual features without supervision
-.
-arXiv preprint arXiv:2304.07193
-.
-Cited by:
-§2
-,
-§3.4
-.
-[43]
-L. Qu, H. Zhang, Y. Liu, X. Wang, Y. Jiang, Y. Gao, H. Ye, D. K. Du, Z. Yuan, and X. Wu
-(2024)
-Tokenflow: unified image tokenizer for multimodal understanding and generation
-.
-arXiv preprint arXiv:2412.03069
-.
-Cited by:
-§1
-.
-[44]
-A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry, A. Askell, P. Mishkin, J. Clark,
-et al.
-(2021)
-Learning transferable visual models from natural language supervision
-.
-In
-International conference on machine learning
-,
-pp. 8748–8763
-.
-Cited by:
-§2
-.
-[45]
-O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang, A. Karpathy, A. Khosla, M. Bernstein,
-et al.
-(2015)
-Imagenet large scale visual recognition challenge
-.
-International journal of computer vision
-115
-,
-pp. 211–252
-.
-Cited by:
-§M.1
-,
-§M
-.
-[46]
-J. Shen, K. Tirumala, M. Yasunaga, I. Misra, L. Zettlemoyer, L. Yu, and C. Zhou
-(2025)
-CAT: content-adaptive image tokenization
-.
-External Links:
-Link
-,
-2501.03120
-Cited by:
-§M.2
-,
-§2
-.
-[47]
-O. Siméoni, H. V. Vo, M. Seitzer, F. Baldassarre, M. Oquab, C. Jose, V. Khalidov, M. Szafraniec, S. Yi, M. Ramamonjisoa,
-et al.
-(2025)
-Dinov3
-.
-arXiv preprint arXiv:2508.10104
-.
-Cited by:
-§M.1
-.
-[48]
-I. Skorokhodov, W. Menapace, A. Siarohin, and S. Tulyakov
-(2024)
-Hierarchical patch diffusion models for high-resolution video generation
-.
-In
-Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition
-,
-pp. 7569–7579
-.
-Cited by:
-Table 3
-.
-[49]
-K. Soomro, A. R. Zamir, and M. Shah
-(2012)
-UCF101: a dataset of 101 human actions classes from videos in the wild
-.
-External Links:
-Link
-,
-1212.0402
-Cited by:
-§4.1
-.
-[50]
-P. Sun, Y. Jiang, S. Chen, S. Zhang, B. Peng, P. Luo, and Z. Yuan
-(2024)
-Autoregressive model beats diffusion: llama for scalable image generation
-.
-External Links:
-Link
-,
-2406.06525
-Cited by:
-§M.1
-,
-§4.1
-.
-[51]
-A. Tang, T. He, J. Guo, X. Cheng, L. Song, and J. Bian
-(2024)
-VidTok: a versatile and open-source video tokenizer
-.
-arXiv preprint arXiv:2412.13061
-.
-Cited by:
-§H
-.
-[52]
-K. Tian, Y. Jiang, Z. Yuan, B. PENG, and L. Wang
-(2024)
-Visual autoregressive modeling: scalable image generation via next-scale prediction
-.
-In
-The Thirty-eighth Annual Conference on Neural Information Processing Systems
-,
-External Links:
-Link
-Cited by:
-§2
-,
-§3.4
-.
-[53]
-Z. Tong, Y. Song, J. Wang, and L. Wang
-(2022)
-Videomae: masked autoencoders are data-efficient learners for self-supervised video pre-training
-.
-Advances in neural information processing systems
-35
-,
-pp. 10078–10093
-.
-Cited by:
-§1
-,
-§3.1
-,
-§3.4
-,
-Table 5
-,
-§I.2
-,
-§I
-.
-[54]
-H. Touvron, T. Lavril, G. Izacard, X. Martinet, M. Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro, F. Azhar,
-et al.
-(2023)
-Llama: open and efficient foundation language models
-.
-arXiv preprint arXiv:2302.13971
-.
-Cited by:
-§4.1
-.
-[55]
-T. Unterthiner, S. Van Steenkiste, K. Kurach, R. Marinier, M. Michalski, and S. Gelly
-(2018)
-Towards accurate generative models of video: a new metric &amp; challenges
-.
-arXiv preprint arXiv:1812.01717
-.
-Cited by:
-§4.1
-.
-[56]
-A. Van Den Oord, O. Vinyals,
-et al.
-(2017)
-Neural discrete representation learning
-.
-Advances in neural information processing systems
-30
-.
-Cited by:
-§2
-.
-[57]
-R. Villegas, M. Babaeizadeh, P. Kindermans, H. Moraldo, H. Zhang, M. T. Saffar, S. Castro, J. Kunze, and D. Erhan
-(2022)
-Phenaki: variable length video generation from open domain textual description
-.
-arXiv preprint arXiv:2210.02399
-.
-Cited by:
-§2
-.
-[58]
-T. Wan, A. Wang, B. Ai, B. Wen, C. Mao, C. Xie, D. Chen, F. Yu, H. Zhao, J. Yang, J. Zeng, J. Wang, J. Zhang, J. Zhou, J. Wang, J. Chen, K. Zhu, K. Zhao, K. Yan, L. Huang, M. Feng, N. Zhang, P. Li, P. Wu, R. Chu, R. Feng, S. Zhang, S. Sun, T. Fang, T. Wang, T. Gui, T. Weng, T. Shen, W. Lin, W. Wang, W. Wang, W. Zhou, W. Wang, W. Shen, W. Yu, X. Shi, X. Huang, X. Xu, Y. Kou, Y. Lv, Y. Li, Y. Liu, Y. Wang, Y. Zhang, Y. Huang, Y. Li, Y. Wu, Y. Liu, Y. Pan, Y. Zheng, Y. Hong, Y. Shi, Y. Feng, Z. Jiang, Z. Han, Z. Wu, and Z. Liu
-(2025)
-Wan: open and advanced large-scale video generative models
-.
-arXiv preprint arXiv:2503.20314
-.
-Cited by:
-§F
-.
-[59]
-H. Wang, S. Suri, Y. Ren, H. Chen, and A. Shrivastava
-(2025)
-LARP: tokenizing videos with a learned autoregressive generative prior
-.
-In
-ICLR
-,
-Cited by:
-§1
-,
-§2
-,
-§3.1
-,
-§3.1
-,
-§4.1
-,
-§4.4
-,
-Table 3
-,
-Table 3
-,
-Table 4
-,
-§H
-.
-[60]
-J. Wang, Y. Jiang, Z. Yuan, B. PENG, Z. Wu, and Y. Jiang
-(2024)
-OmniTokenizer: a joint image-video tokenizer for visual generation
-.
-In
-The Thirty-eighth Annual Conference on Neural Information Processing Systems
-,
-External Links:
-Link
-Cited by:
-§2
-,
-Table 3
-.
-[61]
-L. Wang, H. Lin, S. Chen, T. Wang, C. Cheng, Y. Zhong, D. Zheng, and W. Zhao
-(2025)
-ALTo: adaptive-length tokenizer for autoregressive mask generation
-.
-External Links:
-Link
-,
-2505.16495
-Cited by:
-§2
-.
-[62]
-X. Wang, X. Zhang, Z. Luo, Q. Sun, Y. Cui, J. Wang, F. Zhang, Y. Wang, Z. Li, Q. Yu,
-et al.
-(2024)
-Emu3: next-token prediction is all you need
-.
-arXiv preprint arXiv:2409.18869
-.
-Cited by:
-§1
-,
-§1
-,
-§2
-.
-[63]
-Y. Wang, K. Li, Y. Li, Y. He, B. Huang, Z. Zhao, H. Zhang, J. Xu, Y. Liu, Z. Wang,
-et al.
-(2022)
-Internvideo: general video foundation models via generative and discriminative learning
-.
-arXiv preprint arXiv:2212.03191
-.
-Cited by:
-§3.4
-,
-Table 5
-,
-§I.2
-.
-[64]
-Y. Wang, T. Xiong, D. Zhou, Z. Lin, Y. Zhao, B. Kang, J. Feng, and X. Liu
-(2024)
-Loong: generating minute-level long videos with autoregressive language models
-.
-arXiv preprint arXiv:2410.02757
-.
-Cited by:
-§1
-,
-§2
-.
-[65]
-J. Wu, Y. Jiang, C. Ma, Y. Liu, H. Zhao, Z. Yuan, S. Bai, and X. Bai
-(2024)
-Liquid: language models are scalable multi-modal generators
-.
-arXiv preprint arXiv:2412.04332
-.
-Cited by:
-§1
-.
-[66]
-Y. Wu, Z. Zhang, J. Chen, H. Tang, D. Li, Y. Fang, L. Zhu, E. Xie, H. Yin, L. Yi,
-et al.
-(2024)
-Vila-u: a unified foundation model integrating visual understanding and generation
-.
-arXiv preprint arXiv:2409.04429
-.
-Cited by:
-§1
-.
-[67]
-Y. Xin, J. Yan, Q. Qin, Z. Li, D. Liu, S. Li, V. S. Huang, Y. Zhou, R. Zhang, L. Zhuo,
-et al.
-(2025)
-Lumina-mgpt 2.0: stand-alone autoregressive image modeling
-.
-arXiv preprint arXiv:2507.17801
-.
-Cited by:
-§1
-.
-[68]
-T. Xiong, J. H. Liew, Z. Huang, J. Feng, and X. Liu
-(2025)
-GigaTok: scaling visual tokenizers to 3 billion parameters for autoregressive image generation
-.
-External Links:
-Link
-,
-2504.08736
-Cited by:
-§M.1
-,
-§2
-,
-§2
-,
-§3.1
-,
-§3.1
-.
-[69]
-W. Xu, X. Yue, Z. Wang, Y. Teng, W. Zhang, X. Liu, L. Zhou, W. Ouyang, and L. Bai
-(2025)
-Exploring representation-aligned latent space for better generation
-.
-arXiv preprint arXiv:2502.00359
-.
-Cited by:
-§2
-.
-[70]
-W. Yan, V. Mnih, A. Faust, M. Zaharia, P. Abbeel, and H. Liu
-(2025)
-ElasticTok: adaptive tokenization for image and video
-.
-In
-The Thirteenth International Conference on Learning Representations
-,
-External Links:
-Link
-Cited by:
-§1
-,
-§2
-,
-§2
-,
-§3.1
-,
-§3.1
-,
-§3.4
-,
-§4.3
-,
-§4.5
-.
-[71]
-J. Yao and X. Wang
-(2025)
-Reconstruction vs. generation: taming optimization dilemma in latent diffusion models
-.
-arXiv preprint arXiv:2501.01423
-.
-Cited by:
-§2
-,
-§3.1
-.
-[72]
-H. Ye, Q. He, J. Han, P. Li, J. Fan, Z. Hao, F. Reda, Y. Balaji, H. Chen, S. Liu, A. Yao, J. Zou, S. Ermon, H. Wang, and M. Liu
-(2026)
-InfoTok: adaptive discrete video tokenizer via information-theoretic compression
-.
-In
-The Fourteenth International Conference on Learning Representations
-,
-External Links:
-Link
-Cited by:
-§2
-.
-[73]
-J. Yu, X. Li, J. Y. Koh, H. Zhang, R. Pang, J. Qin, A. Ku, Y. Xu, J. Baldridge, and Y. Wu
-(2021)
-Vector-quantized image modeling with improved vqgan
-.
-arXiv preprint arXiv:2110.04627
-.
-Cited by:
-§1
-,
-§1
-,
-§3.1
-.
-[74]
-L. Yu, Y. Cheng, K. Sohn, J. Lezama, H. Zhang, H. Chang, A. G. Hauptmann, M. Yang, Y. Hao, I. Essa,
-et al.
-(2023)
-Magvit: masked generative video transformer
-.
-In
-Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition
-,
-pp. 10459–10469
-.
-Cited by:
-Table 3
-,
-Table 3
-.
-[75]
-L. Yu, J. Lezama, N. B. Gundavarapu, L. Versari, K. Sohn, D. Minnen, Y. Cheng, V. Birodkar, A. Gupta, X. Gu,
-et al.
-(2023)
-Language model beats diffusion–tokenizer is key to visual generation
-.
-arXiv preprint arXiv:2310.05737
-.
-Cited by:
-§1
-,
-§2
-,
-§3.1
-,
-Table 3
-,
-Table 3
-.
-[76]
-Q. Yu, M. Weber, X. Deng, X. Shen, D. Cremers, and L. Chen
-(2024)
-An image is worth 32 tokens for reconstruction and generation
-.
-arXiv preprint arXiv:2406.07550
-.
-Cited by:
-§2
-.
-[77]
-S. Yu, S. Kwak, H. Jang, J. Jeong, J. Huang, J. Shin, and S. Xie
-(2024)
-Representation alignment for generation: training diffusion transformers is easier than you think
-.
-arXiv preprint arXiv:2410.06940
-.
-Cited by:
-§2
-,
-§3.1
-.
-[78]
-X. Zhai, B. Mustafa, A. Kolesnikov, and L. Beyer
-(2023)
-Sigmoid loss for language image pre-training
-.
-In
-Proceedings of the IEEE/CVF international conference on computer vision
-,
-pp. 11975–11986
-.
-Cited by:
-§2
-.
-[79]
-R. Zhang, P. Isola, A. A. Efros, E. Shechtman, and O. Wang
-(2018)
-The unreasonable effectiveness of deep features as a perceptual metric
-.
-In
-Proceedings of the IEEE conference on computer vision and pattern recognition
-,
-pp. 586–595
-.
-Cited by:
-§3.1
-,
-§3.2
-,
-§4.1
-.
-[80]
-X. Zhang, J. Liao, S. Zhang, F. Meng, X. Wan, J. Yan, and Y. Cheng
-(2025)
-VideoREPA: learning physics for video generation through relational alignment with foundation models
-.
-arXiv preprint arXiv:2505.23656
-.
-Cited by:
-§2
-.
-\thetitle
-Supplementary Material
-Content of the Appendix
-This supplementary material includes the following content:
-•
-Sec.
-F
-discusses the limitations of EVATok.
-•
-Sec.
-G
-provides the plan for the future work.
-•
-Sec.
-H
-gives the detailed implementation of the four-stage framework of EVATok and downstream adaptive length AR models.
-•
-Sec.
-I
-provides the reconstruction performances of our final tokenizers, including qualitative examples for the adaptive length reconstruction and generation, as well as cases of how VideoMAE discriminator affects video reconstruction perceptually.
-•
-Sec.
-J
-provides the compute cost analysis for our four-stage framework and downstream AR generation model training.
-•
-Sec.
-L
-analyzes the router’s max-proxy-reward assignment predictions in terms of accuracy and proxy reward.
-•
-Sec.
-K
-explains the attention mask mechanism in our Q-Former style video adaptive tokenizers.
-•
-Sec.
-M
-shows the results for translating the solution of EVATok to image adaptive tokenization.
-F
-Limitations
-In this work, we focus on addressing the key challenge in adaptive length video tokenization: identifying the optimal assignment. Although we have demonstrated the superiority of our method in video reconstruction, as well as downstream autoregressive (AR) class-to-video generation and frame prediction tasks, our experiments were limited to
-16
-×
-128
-×
-128
-16\times 128\times 128
-video clips. We did not evaluate it on videos with higher resolution or longer duration that align with industry-level requirements
-[
-58
-,
-11
-]
-. Additionally, due to limited computational resources, we have not validated EVATok on more complex downstream tasks, such as text-to-video generation.
-Furthermore, when extending video duration in adaptive length video tokenizers, the number of possible assignment choices can grow exponentially if exhaustive searching is naively applied. Although this issue is not addressed in the current work, we discuss a potential solution in our future work section (Sec.
-G
-), which can reduce the complexity of optimal assignment searching from
-O
-​
-(
-m
-t
-)
-O(m^{t})
-to around
-O
-​
-(
-t
-2
-)
-O(t^{2})
-with respect to the maximum video duration
-t
-t
-.
-G
-Future Work
-Adaptive length video tokenization on longer videos.
-In the main paper, when identifying the optimal assignment for a video clip with
-T
-T
-temporal blocks and
-m
-m
-possible token number choices for each temporal block, we search for
-m
-T
-m^{T}
-possible assignments to find the optimal one. This approach will become unaffordable for larger
-T
-T
-. To address this, in future work, we will explore a method that searches for optimal assignments approximately in an autoregressive way. For example, for a video with
-2
-​
-T
-2T
-temporal blocks, we can first search the
-m
-T
-m^{T}
-possible assignments for the first
-T
-T
-blocks, then, based on the optimal assignment for the first
-T
-T
-blocks, we continue to search the
-m
-T
-m^{T}
-possible assignments for the
-T
-T
-blocks. Therefore, if we assume the reconstruction cost for the proxy tokenizer increases linearly with longer
-T
-T
-, then the complexity for optimal assignment searching is estimated to be
-O
-​
-(
-T
-2
-)
-O(T^{2})
-.
-Extension to adaptive length video VAE and diffusion models.
-The idea of adaptive length video tokenization is not limited to discrete tokenizers, and can naturally transfer to adaptive length VAE
-[
-29
-,
-28
-]
-training. While it is natural for AR models to learn on variable length sequences, the performance of diffusion models on denoising adaptive length sequences can be discussed in future work.
-Router improvements.
-In our current implementation, the preference weights are implicitly fixed during the process of training data curation for routers. In the future work, we may want the preference weights to be able to be input explicitly for the routers for more flexible applications.
-H
-Implementation Details
-Tokenizer training.
-On WebVid-10M, we train variable length tokenizer on 3 FPS video frames, following the approaches in VidTok
-[
-51
-]
-. On UCF &amp; K600 dataset, we train tokenizers on video frames with their original FPS, following typical settings. We use a cosine learning rate schedule. The maximum learning rate is
-1
-×
-10
-−
-4
-1\times 10^{-4}
-and end learning rate is
-1
-×
-10
-−
-6
-1\times 10^{-6}
-. The batch size is 128, and proxy tokenizers are all trained for only 400k iterations before being used for proxy reward calculation. The final video adaptive tokenizers are trained for 1000k iterations, whose training cost is aligned with previous work
-[
-59
-,
-33
-]
-.
-Proxy reward calculation.
-For proxy reward calculation from the main paper:
-R
-proxy
-=
-w
-q
-​
-Q
-​
-(
-ℰ
-proxy
-,
-x
-,
-a
-)
-−
-w
-l
-​
-L
-​
-(
-a
-)
-R_{\text{proxy}}=w_{q}Q(\mathcal{E}_{\text{proxy}},x,a)-w_{l}L(a)
-(5)
-Specifically, we calculate
-Q
-​
-(
-ℰ
-proxy
-,
-x
-,
-a
-)
-Q(\mathcal{E}_{\text{proxy}},x,a)
-as:
-Q
-​
-(
-ℰ
-proxy
-,
-x
-,
-a
-)
-=
-LPIPS
-​
-(
-ℰ
-proxy
-​
-(
-x
-,
-a
-)
-,
-x
-)
-−
-MEAN
-LPIPS
-STD
-LPIPS
-Q(\mathcal{E}_{\text{proxy}},x,a)=\frac{\text{LPIPS}(\mathcal{E}_{\text{proxy}}(x,a),x)-\text{MEAN}_{\text{LPIPS}}}{\text{STD}_{\text{LPIPS}}}
-(6)
-where
-LPIPS
-​
-(
-ℰ
-proxy
-​
-(
-x
-,
-a
-)
-,
-x
-)
-\text{LPIPS}(\mathcal{E}_{\text{proxy}}(x,a),x)
-is the LPIPS value between original video
-x
-x
-and the reconstruction result
-ℰ
-proxy
-​
-(
-x
-,
-a
-)
-\mathcal{E}_{\text{proxy}}(x,a)
-using proxy tokenizer
-ℰ
-proxy
-\mathcal{E}_{\text{proxy}}
-under assignment
-a
-a
-.
-MEAN
-LPIPS
-\text{MEAN}_{\text{LPIPS}}
-denotes the expectation of
-ℰ
-proxy
-​
-(
-x
-,
-a
-)
-\mathcal{E}_{\text{proxy}}(x,a)
-for randomly sampled
-x
-x
-from all the training videos and randomly sampled
-a
-a
-from all candidate assignments, and
-STD
-LPIPS
-\text{STD}_{\text{LPIPS}}
-represents the standard deviation of
-ℰ
-proxy
-​
-(
-x
-,
-a
-)
-\mathcal{E}_{\text{proxy}}(x,a)
-for random
-x
-x
-and
-a
-a
-. We choose LPIPS for per-video reconstruction quality measurement, as it is a metric designed to better align with human perception. We calculate
-L
-​
-(
-a
-)
-L(a)
-as:
-L
-​
-(
-a
-)
-=
-∑
-k
-=
-1
-T
-a
-​
-[
-k
-]
-−
-MEAN
-L
-STD
-L
-L(a)=\frac{\sum_{k=1}^{T}a[k]-\text{MEAN}_{L}}{\text{STD}_{L}}
-(7)
-where
-∑
-k
-=
-1
-T
-a
-​
-[
-k
-]
-\sum_{k=1}^{T}a[k]
-is the sum of the allocated tokens across all
-T
-T
-temporal blocks.
-MEAN
-L
-\text{MEAN}_{L}
-and
-STD
-L
-\text{STD}_{L}
-are the expectation of
-∑
-k
-=
-1
-T
-a
-​
-[
-k
-]
-\sum_{k=1}^{T}a[k]
-for randomly sampled
-a
-a
-.
-Router training.
-We train 19.9M ViT-S size routers with a batch size of 128 for 50k iterations. We optionally use frozen V-JEPA2
-[
-2
-]
-to patchify raw frames into video embeddings. Otherwise, we use the typical learnable linear projection for patch embeddings. In practice, we find that there is no obvious performance gap between these two visual embedding strategies.
-AR model training.
-For the adaptive length token sequences produced by EVATok, before each temporal block, a special token indicating the number of tokens for the upcoming temporal block will be inserted for AR training. Therefore, for AR inference, before generating the tokens of the next temporal block, the AR model first predicts the special tokens indicating the length of the next block. On UCF-101, AR models are trained for 3000 epochs using WSD
-[
-21
-]
-learning rate schedule, where the learning rate is kept constant for the first 80% of the training and quickly annealed to 0 in the rest 20% training iterations. On K600, the AR models are trained for 75 epochs with the same learning rate scheduler.
-AR inference for adaptive length video generation.
-In adaptive length AR generation, we observe that even with a special token preceding each temporal block to indicate the number of tokens in the upcoming block, the AR model may still occasionally produce unexpected tokens during inference (
-e.g
-.
-, sampling a special token when a visual token is expected, or vice versa). To ensure the model generates precisely the number of tokens specified by the preceding special token for each temporal block, we employ a logit-masking strategy. For instance, when sampling the first token of a variable length sequence, which is expected to be a special token denoting the token count for the initial block, all logit entries corresponding to visual tokens are masked to
-−
-𝚒𝚗𝚏
-\tt-inf
-before the softmax operation. This guarantees that only a special token is sampled. Subsequently, for the next
-k
-k
-tokens (as indicated by the special token), the logits for special tokens are masked, ensuring only visual tokens are generated. This process continues until
-m
-m
-special tokens and their corresponding temporal blocks are generated. This approach incurs nearly no additional computational overhead and guarantees the generated variable length sequence maintains the correct structure. We use constant classifier free guidance (CFG) schedules for AR model inference during class-to-video sampling. For GPT-B models, the CFG value is
-2.5
-2.5
-, for larger GPT models, we use
-1.75
-1.75
-CFG value.
-I
-More Results and Qualitative Analysis
-Settings / Dataset
-PSNR
-↑
-\uparrow
-LPIPS
-↓
-\downarrow
-rFVD
-↓
-\downarrow
-#rTokens
-↓
-\downarrow
-Final w/ VideoMAE Disc. (WebVid)
-27.37
-0.1063
-7.3
-721
-Final w/o VideoMAE Disc. (WebVid)
-28.18
-0.0983
-32
-721
-Final w/ VideoMAE Disc. (UCF&amp;K600)
-25.75
-0.1140
-9.7
-774
-Table 6
-:
-The detailed performances of final tokenizers reconstruction results.
-All models are trained for the full 1000k iterations. The tokenizers trained on WebVid-10M are evaluated on the WebVid validation set, and the tokenizers trained on UCF-101 and K600 are evaluated on UCF-101 training set.
-Figure 6
-:
-Adaptive reconstruction results on WebVid.
-We downsample 16 frames into 8 frames for visualization, and each two frames represent a 4-frame temporal block.
-The router typically assigns more tokens to the initial temporal block, allowing the reconstruction of subsequent frames to also benefit from more precise information encoded for the initial block. Content with simple layouts receives fewer tokens (first example
-vs
-.
-other examples). If later frames largely repeat previous ones, they are assigned the minimum number of tokens. Video clips that vary constantly and intensely are allocated more tokens.
-Figure 7
-:
-Adaptive reconstruction results on UCF-101.
-We downsample 16 frames into 8 frames for visualization, and each two frames represent a 4-frame temporal block.
-Figure 8
-:
-Qualitative comparison for using VideoMAE discriminator or not.
-Using VideoMAE discriminator can degrade the PSNR/LPIPS, but in actual perceptual checking, we find that this degradation is traded for alleviated blurriness and artifact patterns. Zoom in to check the visual details.
-Figure 9
-:
-Adaptive generation results on UCF-101.
-We use the 633M GPT model trained on EVATok. We use a constant 3.0 CFG for sampling.
-Figure 10
-:
-Adaptive generation results on K600 frame prediction.
-We use the 633M GPT model trained on EVATok. We don’t use CFG for sampling, following typical approaches. The 1, 3, 5 frames from the 5 condition frames are plotted as the condition part, and the rest 11 frames are downsampled into 6 frames for visualization.
-In this section, we present the full metrics of our final adaptive tokenizers on reconstruction in Tab.
-6
-, and their reconstruction examples on samples from WebVid and the UCF-101 dataset. We also qualitatively present the effect of using VideoMAE
-[
-53
-]
-as part of the video discriminator. Besides, for video generation, we present generated samples on the UCF-101 class-to-video and K600 frame prediction task.
-I.1
-Adaptive Length Reconstruction Examples
-We present the reconstruction results of our final video adaptive tokenizer, along with their token assignments decided by the router. In Fig.
-6
-, we present the reconstruction results of the final adaptive tokenizer trained on WebVid-10M
-[
-5
-]
-. And in Fig.
-7
-are the reconstruction results on UCF-101 dataset, using another final video adaptive tokenizer trained on UCF-101 and K600 datasets. The patterns of video and assignment pairs given by the router correspond to intuitions. The router typically assigns more tokens to the initial temporal block, which helps the reconstruction of subsequent frames to also benefit from more precise information encoded for the initial block. Content with simple layouts or largely repeats previous frames receives fewer tokens. In contrast, videos that vary intensely are assigned more.
-I.2
-VideoMAE Discriminator for Visual Quality
-In our ablation study in the main paper, the application of the VideoMAE
-[
-53
-,
-63
-]
-discriminator significantly improves the rFVD and downstream gFVD but leads to degradation in PSNR and LPIPS. In this part, we aim to qualitatively examine the perceptual effect for improved rFVD and degraded PSNR/LPIPS. We compare two video adaptive length tokenizers on WebVid-10M, one is trained with the pretrained VideoMAE discriminator, while another is trained with the PatchGAN discriminator. As shown in Fig.
-8
-, although the reconstructed videos of the tokenizer trained with VideoMAE discriminator show worse PSNR and LPIPS, they are actually more perceptually preferable as they largely alleviate the blurriness or artifact patterns, especially for highly dynamic and challenging examples. Therefore, we conclude that despite the degradation in PNSR/LPIPS, VideoMAE discriminator still largely enhances the reconstruction quality perceptually.
-I.3
-Adaptive Length Video Generation Examples
-We present UCF-101 class-to-video generation results in Fig.
-9
-and K600 frame prediction results in Fig.
-10
-. As in Fig.
-9
-, the AR generation model learns an intuitive way for adaptive length generation. First, the model tends to pay more efforts for the generation of the first temporal block, which lays the foundation for the later generation. For later blocks, content with more variation tends to take more tokens to generate, while small-motion content takes fewer tokens.
-J
-Computational Overhead Analysis
-Stage / Task
-Model Size
-Dataset
-Bsz
-Iters / Epochs
-GPUs
-Time
-Stage 1: Proxy tokenizer training
-145M
-WebVid (or UCF&amp; K600)
-128
-400k iters
-64×V100
-116 h
-Stage 2: Data curation
-–
-WebVid 100k-Subset
-–
-–
-4×64×V100
-12.5 h
-Stage 3: Router training
-20M
-WebVid 100k-Subset
-128
-50k iters
-32×V100
-5 h
-Stage 4: Final adaptive tokenizer training
-145M
-WebVid (or UCF&amp; K600)
-128
-1000k iters
-64×V100
-347 h
-AR training: UCF-101 class-to-video
-633M
-UCF-101
-128
-3000 epochs
-64×V100
-88 h
-AR training: K600 frame prediction
-633M
-Kinetics-600
-128
-75 epochs
-64×V100
-140 h
-Table 7:
-Summary of compute and time for the four-stage tokenizer pipeline and subsequent AR model training.
-We present the computation cost for the model training of our four-stage framework and the downstream AR models, as shown in Tab.
-7
-. Compared to the previous fixed-length methods, the extra training cost of our four-stage framework comes from the first three stages. However, the first three stages only take around 27.8% of the total four-stage training cost. This percentage can be further reduced in real-world applications. The size of the proxy tokenizer and its training duration can be decreased for faster training, as we only need the proxy tokenizer to compare assignments, instead of performing well. The data curation can be processed by parallel and independent processes, without any GPU communication bottlenecks. And ultimately, the extra cost in adaptive tokenizer training is a one-time investment, but the savings for downstream deployment will consistently take effect. Therefore, the extra cost of the four-stage training is controllable and worthwhile.
-K
-Attention Mask for EVATok
-Figure 11
-:
-Example for the attention masks in our Q-Former style adaptive tokenizer.
-In this section, we illustrate the specific details of the attention mask mechanism in our Q-Former style tokenizer, which ensures the temporal causal structure of our 1D token sequences. Each Q-Former layer consists of one self-attention module and one cross-attention module. The queries are first passed through the self-attention module, and then in the cross-attention module, the queries will attend to the reference embeddings. Next, we use an example to show what attention masks look like in the Q-Former encoder and Q-Former decoder. Assume a video clip is patchified into a
-4
-×
-4
-×
-4
-4\times 4\times 4
-shape tensor, where the first
-4
-4
-corresponds to the number of temporal blocks. And let the assignment of tokens across the
-4
-4
-blocks for this video be
-(
-16
-,
-8
-,
-2
-,
-2
-)
-(16,8,2,2)
-. Then, the attention masks for the Q-Former encoder and Q-Former decoder will be the ones shown in Fig.
-11
-. The query embeddings of each temporal block can only attend to query embeddings or reference embeddings that are no later than this temporal block.
-Dataset
-Method
-Val top1/top5 acc.
-Proxy Reward Percentile
-WebVid
-Best-Uniform
--
-84.88%
-Router
-11.72% / 35.03%
-96.96%
-UCf-101
-Best-Uniform
--
-88.46%
-Router
-5.77% / 23.68%
-96.19%
-Table 8
-:
-Accuracy
-vs
-.
-proxy reward percentile for the router assignment.
-In terms of accuracy. the assignments predicted by the router do not usually hit the top1 or top5 highest proxy reward assignments. However, in terms of proxy reward percentile, the router assignments achieve good results, and generalize to unseen dataset (UCF-101) well.
-L
-Accuracy
-vs
-.
-Proxy Reward for Routers
-In this part, we examine the accuracy of the router on the validation sets. We find that although the accuracy is relatively slow, the assignments given by the router still obtain decent proxy reward. We use preference weights
-w
-q
-=
-1.2
-,
-w
-l
-=
-0.8
-w_{q}=1.2,w_{l}=0.8
-for proxy reward calculation, which are the same as the weights used for the evaluated router training data curation. To evaluate relatively how good the predicted assignments are among all candidate assignments, we use a new metric, proxy reward percentile, defined as:
-𝒫
-=
-𝔼
-x
-​
-(
-R
-proxy
-​
-(
-a
-eval
-,
-x
-)
-)
-−
-𝔼
-x
-​
-(
-R
-proxy
-​
-(
-a
-worst
-,
-x
-)
-)
-𝔼
-x
-​
-(
-R
-proxy
-​
-(
-a
-best
-,
-x
-)
-)
-−
-𝔼
-x
-​
-(
-R
-proxy
-​
-(
-a
-worst
-,
-x
-)
-)
-×
-100
-%
-\mathcal{P}=\frac{\mathbb{E}_{x}(R_{\text{proxy}}(a_{\text{eval}},x))-\mathbb{E}_{x}(R_{\text{proxy}}(a_{\text{worst}},x))}{\mathbb{E}_{x}(R_{\text{proxy}}(a_{\text{best}},x))-\mathbb{E}_{x}(R_{\text{proxy}}(a_{\text{worst}},x))}\times 100\%
-(8)
-where
-a
-eval
-a_{\text{eval}}
-is the assignment to be evaluated for video
-x
-x
-,
-a
-best
-a_{\text{best}}
-is the searched max-proxy-reward assignment for
-x
-x
-, and
-a
-worst
-a_{\text{worst}}
-is the min-proxy-reward assignment. In practice,
-a
-eval
-a_{\text{eval}}
-can be given by the router according to
-x
-x
-or by some other manually designed strategy.
-𝔼
-x
-​
-(
-R
-proxy
-​
-(
-a
-eval
-,
-x
-)
-)
-\mathbb{E}_{x}(R_{\text{proxy}}(a_{\text{eval}},x))
-is the expectation for the proxy reward based on
-a
-eval
-a_{\text{eval}}
-and
-x
-x
-. The range of
-𝒫
-\mathcal{P}
-is
-[
-0
-,
-1
-]
-[0,1]
-and the larger
-𝒫
-\mathcal{P}
-, the better the assignment strategy is. We design a best-uniform baseline, which chooses the max-proxy-reward uniform assignment for
-x
-x
-, to compare with the router assignment. As shown in Tab.
-8
-, on WebVid validation set, the top1 accuracy of the router is relatively low, but the proxy reward percentile of the router is high. Moreover, when tested on the unseen UCF-101 dataset, although the top1 accuracy of the router significantly drops, its proxy reward percentile is largely maintained. This phenomenon indicates that the router does not need to be very precise to achieve good performance, implying that the optimal assignment prediction task is not demanding, and some deviation from the best choice won’t result in a large performance drop.
-Figure 12
-:
-Image tokenization quality-cost trade-off curve.
-On ImageNet
-256
-×
-256
-256\times 256
-reconstruction, the improvements of max-proxy-reward assignment can be marginal compared to uniform assignment.
-LPIPS
-↓
-\downarrow
-rFID
-↓
-\downarrow
-#rTokens
-↓
-\downarrow
-gFID
-↓
-\downarrow
-#gTokens
-↓
-\downarrow
-Uniform (Final)
-0.2205
-1.22
-256
-4.72
-256
-Router (Final)
-0.2455
-1.46
-205
-(-19.9%)
-4.51
-197
-(-23.0%)
-Table 9
-:
-Image final tokenizer validation.
-For ImageNet
-256
-×
-256
-256\times 256
-, saving 19.9% tokens by adaptive tokenization inevitably leads to worse rFID, but the performance and efficiency of downstream AR generation models can still benefit from our router. The AR generation models use a constant 1.5 CFG during inference.
-M
-Image Adaptive Tokenization
-Different from videos, images don’t have a temporal dimension, so intuitively images are much less redundant than videos. Our experiments on ImageNet
-[
-45
-]
-256
-×
-256
-256\times 256
-show that in this setting, the improvement in overall reconstruction quality that can be brought by assigning different token lengths to different images could be limited. However, for downstream generation, adaptive image tokenization can still help produce better generation FID
-[
-22
-]
-with fewer tokens generated. This result highlights that training generative models on adaptive length sequences is not only efficient but also beneficial to their generation capability.
-M.1
-Implementation Details
-We train image tokenizers on
-256
-×
-256
-256\times 256
-ImageNet
-[
-45
-]
-dataset using a similar CNN + Q-Former hybrid architecture of GigaTok-S-B
-[
-68
-]
-. The basic training recipe is also largely aligned to GigaTok except that we utilize DINOv3
-[
-47
-]
-to provide semantic alignment. We train all image tokenizers with 256 batch size with only 400k iterations, as we only target to validate the gain of adaptive tokenization on images compared to the fixed-length baseline. Our four-stage framework smoothly translates from videos to image adaptive tokenization, because an image can be equivalent to a one-block video in the tokenization process.
-For the proxy tokenizer, we predefine 8 candidate levels of token numbers,
-{
-512
-,
-384
-,
-256
-,
-192
-,
-128
-,
-96
-,
-64
-,
-32
-}
-\{512,384,256,192,128,96,64,32\}
-, to be assigned to each image for variable length tokenizer training. For image router training, we train ViT-S
-[
-13
-]
-size routers on a subset of ImageNet training split of 100k images. They are trained for 25k iterations with a batch size of 256. We use normalized LPIPS as the quality metric in the proxy reward calculation. The reconstruction quality is evaluated on the 50k ImageNet validation set. For downstream AR generation validation, we train Llama-like
-[
-50
-]
-GPT-B models on each tokenizer for 300 epochs on ImageNet, and evaluate them with generation FID
-[
-22
-]
-with a constant 1.5 CFG, following the typical approaches
-[
-50
-,
-12
-]
-.
-M.2
-Results
-Quality-cost trade-off curve.
-We use a similar way as for video proxy tokenizers, to plot the quality-cost trade-off curve under different overall token budgets on an image proxy tokenizer. As shown in Fig.
-12
-, the quality-cost trade-off curve evaluated on image proxy-tokenizers shows that the improvements brought by max-proxy-reward assignment are limited, which is different from the results on videos. This phenomenon corresponds to observations in previous adaptive image tokenization trials
-[
-46
-,
-39
-]
-on ImageNet, where their adaptive length image tokenizers cannot outperform their fixed-length baselines even with the same overall token budgets.
-Final image tokenizer validation.
-In the final image adaptive tokenizer training, as shown in Tab.
-9
-, we utilize an image router trained with
-w
-q
-=
-1.3
-,
-w
-l
-=
-0.7
-w_{q}=1.3,w_{l}=0.7
-to save 19.8% tokens in reconstruction, but it inevitably leads to worse rFID. However, the AR model trained on our adaptive image tokenizer achieves better gFID with 23.0% fewer tokens generated, compared to the fixed-uniform baselines, which assign 256 tokens to all
-256
-×
-256
-256\times 256
+<p>EVATok: Adaptive Length Video Tokenization for Efficient Visual Autoregressive Generation<br />
+Tianwei Xiong<br />
+1<br />
+Jun Hao Liew<br />
+2<br />
+Zilong Huang<br />
+2<br />
+Zhijie Lin<br />
+2<br />
+Jiashi Feng<br />
+2<br />
+Xihui Liu<br />
+1†<br />
+1<br />
+The University of Hong Kong<br />
+2<br />
+ByteDance Seed<br />
+Abstract<br />
+Autoregressive (AR) video generative models rely on video tokenizers that compress pixels into discrete token sequences. The length of these token sequences is crucial for balancing reconstruction quality against downstream generation computational cost. Traditional video tokenizers apply a uniform token assignment across temporal blocks of different videos, often wasting tokens on simple, static, or repetitive segments while underserving dynamic or complex ones.<br />
+To address this inefficiency, we introduce<br />
+EVATok<br />
+, a framework to produce<br />
+E<br />
+fficient<br />
+V<br />
+ideo<br />
+A<br />
+daptive<br />
+Tok<br />
+enizers. Our framework estimates optimal token assignments for each video to achieve the best quality-cost trade-off, develops lightweight routers for fast prediction of these optimal assignments, and trains adaptive tokenizers that encode videos based on the assignments predicted by routers.<br />
+We demonstrate that EVATok delivers substantial improvements in efficiency and overall quality for video reconstruction and downstream AR generation. Enhanced by our advanced training recipe that integrates video semantic encoders, EVATok achieves superior reconstruction and state-of-the-art class-to-video generation on UCF-101, with at least 24.4% savings in average token usage compared to the prior state-of-the-art LARP and our fixed-length baseline.<br />
+0<br />
+0<br />
+footnotetext:<br />
+Project page:<br />
+https://silentview.github.io/EVATok/<br />
+Figure 1<br />
+:<br />
+EVATok highlights.<br />
+Top<br />
+: EVATok achieves superior video reconstruction and downstream generation quality with significant savings in token usage.<br />
+Bottom<br />
+: EVATok assigns tokens in an intuitive way. Clips with dynamic motion or complex layout will be encoded with more tokens, while clips that are repetitive or simple will be assigned fewer tokens.<br />
+1<br />
+Introduction<br />
+Visual generation with autoregressive (AR) language models is rapidly advancing<br />
+[<br />
+35<br />
+,<br />
+62<br />
+,<br />
+11<br />
+,<br />
+67<br />
+]<br />
+, driven by the success of LLMs<br />
+[<br />
+14<br />
+,<br />
+10<br />
+,<br />
+1<br />
+,<br />
+19<br />
+,<br />
+34<br />
+]<br />
+and their potential for unified multi-modal generation<br />
+[<br />
+30<br />
+,<br />
+66<br />
+,<br />
+43<br />
+,<br />
+9<br />
+,<br />
+65<br />
+]<br />
+. AR visual generative models typically operate on sequences of discrete visual tokens, obtained by patch-wise compression of pixels via visual tokenizers<br />
+[<br />
+16<br />
+,<br />
+73<br />
+]<br />
+. The tokenizer’s design directly influences reconstruction quality and token sequence length, thus determining the quality-cost trade-off and computational overhead for downstream AR models.<br />
+However, most existing visual tokenizers<br />
+[<br />
+16<br />
+,<br />
+73<br />
+,<br />
+75<br />
+]<br />
+produce fixed-length sequences regardless of input content complexity. This uniform budget allocation is especially inefficient for AR video generative models using causal video tokenizers<br />
+[<br />
+62<br />
+,<br />
+64<br />
+,<br />
+30<br />
+,<br />
+17<br />
+,<br />
+75<br />
+]<br />
+, as information density in videos varies not only across samples but also temporally: simple-layout, near-static or repetitive segments receive excessive tokens, while dynamic or complex-layout segments are undeserved, compromising both efficiency and fidelity.<br />
+Ideally, given a video and specified preference between better quality or less token cost, we would predict an optimal<br />
+assignment<br />
+—specifying the total number of tokens used for video reconstruction and their distribution over temporal blocks—that maximizes the quality-cost trade-off. Prior video adaptive tokenizers<br />
+[<br />
+70<br />
+,<br />
+33<br />
+]<br />
+enable variable length compression via tail-token-dropping<br />
+[<br />
+41<br />
+,<br />
+3<br />
+]<br />
+training, with assignment selection by threshold-based search<br />
+[<br />
+70<br />
+]<br />
+or Integer Linear Programming (ILP) within video mini-batches under fixed average budget constraints<br />
+[<br />
+33<br />
+]<br />
+.<br />
+However, these approaches can yield suboptimal results: heuristic threshold-based searches may neglect global quality-cost balance, while mini-batch ILP ties per-sample decisions to the batch compositions and rigid average budgets. Critically, they do not address the core need: for each sample, determining the optimal assignment tailored to the samples’s inherent complexity, enabling optimal adaptive tokenization that allocates budgets where they are most needed, achieving the best balance for overall efficiency and quality.<br />
+The challenge for optimal assignment identification is that there was no estimation approach or even definition for it. To fill in this blank, we formulate the optimal assignment identification problem as a tractable maximum proxy reward assignment identification task, where the proxy reward is a novel metric measuring both the reconstruction quality and cost (token length) to quantify the quality-cost trade-off for a particular assignment. In other words, the optimal assignment with the maximum proxy reward achieves the best quality-cost trade-off.<br />
+To estimate the proxy reward, we introduce a proxy tokenizer that learns to reconstruct the input video under different token assignments. Once trained, we can simply iterate over all possible candidates to identify the optimal token assignment with maximum proxy reward.<br />
+And to build a faster approach for optimal assignments prediction, we curate a dataset to train a lightweight model, named the router, which learns optimal assignment prediction in a classification task form.<br />
+Equipped with this router, we train final adaptive tokenizers to encode videos using content-adaptive assignments, which in turn support downstream efficient adaptive length AR generative models.<br />
+In summary, EVATok unfolds in four stages: (1) Train a proxy tokenizer for optimal assignment estimation; (2) Curate a dataset of  (video, optimal assignment) pairs for router training; (3) Train a lightweight router for fast optimal assignment prediction; and (4) Train the final video adaptive tokenizer under assignments from the router.<br />
+For video reconstruction and downstream AR generation, EVATok yields substantial gains in efficiency and quality. Enhanced by our advanced recipe integrating video semantic encoders<br />
+[<br />
+53<br />
+,<br />
+2<br />
+]<br />
+into tokenizer training, EVATok achieves superior reconstruction and state-of-the-art (SOTA) class-to-video generation quality with at least 24.4% token length savings compared to prior video tokenizers<br />
+[<br />
+59<br />
+,<br />
+33<br />
+]<br />
+, as shown in Fig.<br />
+1<br />
+. The adaptive assignment examples of EVATok in Fig.<br />
+1<br />
+also correspond to intuitions: repetitive, simple-layout, and static content is assigned fewer tokens; in contrast, non-repetitive, complex-layout, and dynamic content is assigned more. EVATok highlights the promising potential of content-adaptive video tokenization for improving efficiency and quality for overall reconstruction and downstream AR generation.<br />
+We summarize our main contributions as follows:<br />
+•<br />
+A four-stage framework for efficient video adaptive tokenization, featuring a router that provides optimal budget assignment during training and inference of tokenizers.<br />
+•<br />
+Proxy reward: a novel metric utilizing a variable length tokenizer to identify optimal assignments for each video.<br />
+•<br />
+Extensive experiments showing that content-adaptive video tokenization can surpass fixed-length baselines, achieving superior performances in reconstruction and downstream AR generation with fewer tokens.<br />
+2<br />
+Related Work<br />
+Discrete image and video tokenizers.<br />
+Since the classic VQ-VAE<br />
+[<br />
+56<br />
+]<br />
+and VQ-GAN<br />
+[<br />
+16<br />
+]<br />
+, extensive efforts have been made to better compress visual inputs into discrete token sequences for autoregressive modeling. LFQ<br />
+[<br />
+75<br />
+]<br />
+and FSQ<br />
+[<br />
+40<br />
+]<br />
+are proposed for large-scale codebook training. VAR<br />
+[<br />
+52<br />
+]<br />
+encodes token sequences in a residual-style<br />
+[<br />
+31<br />
+]<br />
+multi-scale structure for efficient generation. For videos, while many works choose 3D CNN to implement video tokenizers<br />
+[<br />
+18<br />
+,<br />
+75<br />
+,<br />
+62<br />
+,<br />
+64<br />
+]<br />
+, recently more video tokenizers are being implemented using transformer architecture<br />
+[<br />
+60<br />
+,<br />
+59<br />
+,<br />
+57<br />
+,<br />
+70<br />
+,<br />
+33<br />
+]<br />
+. Transformers are beneficial to video tokenizers not only due to their known scalability, but also because their flexible attention mechanism naturally helps build 1D tokenizers<br />
+[<br />
+70<br />
+,<br />
+76<br />
+]<br />
+, which removes the grid-like spatial prior in token sequences, making the sequence length easy to adjust and convenient for adaptive tokenization. In this work, we use Q-Former-style<br />
+[<br />
+6<br />
+,<br />
+32<br />
+]<br />
+1D tokenizer design<br />
+[<br />
+68<br />
+]<br />
+to build adaptive video tokenizers.<br />
+Adaptive visual tokenization.<br />
+Based on the intuition that simple content needs fewer tokens while complex content needs more for efficient compression, the seminal work Dynamic VQ<br />
+[<br />
+24<br />
+]<br />
+encodes different regions across images with different granularity adaptively, utilizing Gumbel Softmax<br />
+[<br />
+26<br />
+]<br />
+. Differently, CAT<br />
+[<br />
+46<br />
+]<br />
+lets LLMs decide the compression granularity based on captions. Recently, techniques like tail-token-dropping<br />
+[<br />
+41<br />
+,<br />
+3<br />
+,<br />
+61<br />
+,<br />
+70<br />
+]<br />
+or iterative token allocation<br />
+[<br />
+15<br />
+,<br />
+39<br />
+]<br />
+have been used to enable tokenizers to encode visual inputs under different token assignments. Further on video tokenization, ElasticTok<br />
+[<br />
+70<br />
+]<br />
+and AdapTok<br />
+[<br />
+33<br />
+]<br />
+study how to determine these given assignments in adaptive video tokenization. However, their adaptive assignment searching methods are heuristic and can potentially lead to suboptimal assignments. A concurrent work, InfoTok<br />
+[<br />
+72<br />
+]<br />
+, masks less important tokens from pre-trained tokenizers with an ELBO-based method.<br />
+In this work, EVATok directly predicts the optimal assignments given input videos and preferences between quality and cost.<br />
+Video representation alignment.<br />
+The representation of pretrained semantic encoders<br />
+[<br />
+42<br />
+,<br />
+44<br />
+,<br />
+78<br />
+]<br />
+have been used to enhance image generative models<br />
+[<br />
+77<br />
+]<br />
+or image tokenizers<br />
+[<br />
+69<br />
+,<br />
+68<br />
+,<br />
+71<br />
+,<br />
+4<br />
+,<br />
+38<br />
+]<br />
+. Recently, similar approaches have been studied for video diffusion models<br />
+[<br />
+80<br />
+]<br />
+or reported in use for video tokenizers<br />
+[<br />
+11<br />
+]<br />
+. We further reveal that representation alignment is beneficial for video tokenizers, especially when combined with semantic video discriminators.<br />
+3<br />
+Method<br />
+Figure 2<br />
+:<br />
+Four-stage framework for adaptive video tokenizer training.<br />
+Stage 1<br />
+trains a proxy tokenizer to reconstruct videos under all candidate assignments.<br />
+Stage 2<br />
+applies the proxy tokenizer to compute proxy rewards for all candidate assignments across videos from a dataset. It identifies the assignments with maximum proxy rewards to curate a classification dataset of videos and their optimal assignments.<br />
+Stage 3<br />
+trains a router on the curated dataset to predict the optimal assignments for videos.<br />
+Stage 4<br />
+trains the final tokenizer from scratch, with the router determining the assignment for each input video during training.<br />
+Problem setup.<br />
+We first introduce the problem setup of our video adaptive tokenizer before presenting our proposed solution.<br />
+Given a video<br />
+x<br />
+x<br />
+, we temporally downsample it by<br />
+4<br />
+×<br />
+4\times<br />
+and divide it into<br />
+T<br />
+T<br />
+causal blocks. Each block<br />
+t<br />
+t<br />
+is assigned<br />
+k<br />
+t<br />
+k_{t}<br />
+tokens from a candidate set<br />
+K<br />
+K<br />
+(<br />
+e.g<br />
+.<br />
+,<br />
+{<br />
+32<br />
+,<br />
+…<br />
+,<br />
+512<br />
+}<br />
+{32,\dots,512}<br />
+) with<br />
+m<br />
+m<br />
+levels, forming an assignment<br />
+a<br />
+=<br />
+(<br />
+k<br />
+1<br />
+,<br />
+…<br />
+,<br />
+k<br />
+T<br />
+)<br />
+a=(k_{1},\dots,k_{T})<br />
+with total token length<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+=<br />
+∑<br />
+t<br />
+=<br />
+1<br />
+T<br />
+k<br />
+t<br />
+L(a)=\sum_{t=1}^{T}k_{t}<br />
+. We identify that the primary challenge for an adaptive video tokenizer lies in predicting the optimal token assignment<br />
+a<br />
+∗<br />
+a^{<em>}<br />
+for each video to achieve the best quality-cost trade-off.<br />
+We formulate the optimal assignment prediction problem as a tractable maximum proxy reward assignment prediction task, where the proxy reward is a novel metric that we introduce to quantify the quality-cost trade-off performance for a particular token assignment. Centering on the idea of using proxy reward for optimal assignment prediction, we build our four-stage framework, as in Fig.<br />
+2<br />
+, for efficient video adaptive tokenization:<br />
+(Stage 1)<br />
+train a proxy tokenizer that can reconstruct videos w.r.t.<br />
+randomly sampled token assignments. This proxy tokenizer later serves for proxy reward computation;<br />
+(Stage 2)<br />
+curate a dataset comprising (video, optimal token assignment) pairs by searching proxy reward under different token assignments calculated with the proxy tokenizer. This dataset serves for training a router for fast optimal assignment prediction;<br />
+(Stage 3)<br />
+train the router on this curated dataset, to accelerate optimal assignment prediction largely against searching;<br />
+(Stage 4)<br />
+train an adaptive video tokenizer using the optimal assignments predicted by the router, hence achieving adaptive length video tokenization.<br />
+Next, we will introduce each stage with more details.<br />
+3.1<br />
+Stage 1: Training a Proxy Tokenizer<br />
+Figure 3<br />
+:<br />
+Architecture of 1D variable-length video tokenizer for EVATok.<br />
+The input video is spatio-temporally patchified into 3D embeddings. According to a given assignment<br />
+a<br />
+a<br />
+, 1D variable-length query embeddings are initialized from these 3D embeddings. After Q-Former encoding and quantization, 1D discrete tokens are produced. Finally, 3D queries are initialized to reconstruct the video frames from the 1D tokens.<br />
+In stage 1, we train a proxy tokenizer that can reconstruct a video w.r.t.<br />
+a randomly sampled assignment<br />
+a<br />
+a<br />
+. This proxy tokenizer can serve as a proxy for the assessment of the quality of a particular token assignment, which we subsequently use to identify optimal assignments, train a router, and build the final adaptive length tokenizer.<br />
+Model architecture.<br />
+We adopt a Q-Former<br />
+[<br />
+32<br />
+,<br />
+6<br />
+]<br />
+style 1D tokenizer for its scalability<br />
+[<br />
+68<br />
+]<br />
+and flexibility in variable length tokenization. As shown in Fig.<br />
+3<br />
+, input videos are first spatio-temporally patchified into 3D embeddings using a simple linear patch embedding module, consistent with prior video tokenizers<br />
+[<br />
+59<br />
+,<br />
+33<br />
+,<br />
+70<br />
+]<br />
+. Then, given a randomly sampled token assignment<br />
+a<br />
+=<br />
+(<br />
+q<br />
+1<br />
+,<br />
+q<br />
+2<br />
+,<br />
+q<br />
+3<br />
+,<br />
+q<br />
+4<br />
+)<br />
+a=(q_{1},q_{2},q_{3},q_{4})<br />
+specifying the number of 1D tokens per temporal block, a 1D query sequence is initialized,<br />
+i.e<br />
+.<br />
+, each 1D query is derived from the 2D pooling feature of the corresponding temporal block in the 3D embeddings. Through Q-Former encoder layers, these 1D queries encode visual information from the 3D embeddings and are vector-quantized into discrete tokens. Temporally causal attention masks ensure that 1D tokens do not encode information from subsequent blocks.<br />
+As for the decoder, 3D queries are initialized using the first 1D token in their corresponding temporal block. After a similar temporally causal decoding process, the final 3D features will be linearly projected and reshaped into video frames. We do not use the typical tail-token-dropping<br />
+[<br />
+41<br />
+,<br />
+70<br />
+,<br />
+33<br />
+,<br />
+39<br />
+]<br />
+strategy to produce variable length tokens as it may lead to two concerns: (1) extra computation overhead caused by using many tokens that will just be dropped as register tokens; (2) the roles of tail 1D queries being ambiguous during encoding: tail 1D queries cannot be aware of whether they will be dropped after encoding. Since the two concerns potentially hurt efficiency and performance, in EVATok, the length of 1D tokens is decided and fixed during the initialization of 1D queries.<br />
+Training recipe.<br />
+We enhance the tokenizer training by video semantic encoders<br />
+[<br />
+53<br />
+,<br />
+2<br />
+]<br />
+through video representation alignment. Following typical image representation alignment approaches<br />
+[<br />
+77<br />
+,<br />
+71<br />
+,<br />
+68<br />
+]<br />
+, we apply patch-wise alignment between the intermediate 3D features of the tokenizer decoder and the features from pre-trained V-JEPA2-L<br />
+[<br />
+2<br />
+]<br />
+. We use a linear projection and reshape strategy, similar to depatchify, to address feature shape mismatches. Formally, let<br />
+f<br />
+dec<br />
+,<br />
+l<br />
+f^{\text{dec},l}<br />
+be the output 3D features from the<br />
+l<br />
+l<br />
+-th decoder layer, and<br />
+f<br />
+sem<br />
+f^{\rm sem}<br />
+the semantic features from the pretrained encoder. The representation alignment loss is:<br />
+ℒ<br />
+align<br />
+=<br />
+−<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+n<br />
+=<br />
+1<br />
+N<br />
+sim<br />
+​<br />
+(<br />
+f<br />
+n<br />
+dec<br />
+,<br />
+l<br />
+,<br />
+ϕ<br />
+​<br />
+(<br />
+f<br />
+n<br />
+sem<br />
+)<br />
+)<br />
+\mathcal{L}<em>{\rm align}=-\frac{1}{N}\sum</em>{n=1}^{N}{\rm sim}\Big(f^{\text{dec},l}<em>{n},\phi(f^{\rm sem}</em>{n})\Big)<br />
+(1)<br />
+where<br />
+N<br />
+N<br />
+is the batch size,<br />
+n<br />
+n<br />
+is the batch item index,<br />
+sim<br />
+​<br />
+(<br />
+⋅<br />
+,<br />
+⋅<br />
+)<br />
+\text{sim}(\cdot,\cdot)<br />
+is cosine similarity, and<br />
+ϕ<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\phi(\cdot)<br />
+combines an MLP and a depatchify module for shape matching.<br />
+We use a transformer PatchGAN<br />
+[<br />
+25<br />
+]<br />
+discriminator as in LARP<br />
+[<br />
+59<br />
+]<br />
+. The final training loss of our video tokenizer is:<br />
+ℒ<br />
+total<br />
+=<br />
+ℒ<br />
+vqgan<br />
++<br />
+λ<br />
+​<br />
+ℒ<br />
+align<br />
++<br />
+γ<br />
+​<br />
+ℒ<br />
+entropy<br />
+\mathcal{L}<em>{\text{total}}=\mathcal{L}</em>{\text{vqgan}}+\lambda\mathcal{L}<em>{\text{align}}+\gamma\mathcal{L}</em>{\text{entropy}}<br />
+(2)<br />
+with<br />
+λ<br />
+\lambda<br />
+tuned as<br />
+0.7<br />
+0.7<br />
+by default. Here,<br />
+ℒ<br />
+vqgan<br />
+\mathcal{L}<em>{\text{vqgan}}<br />
+combines<br />
+l<br />
+1<br />
+l</em>{1}<br />
+reconstruction loss<br />
+ℒ<br />
+recon<br />
+\mathcal{L}<em>{\text{recon}}<br />
+, perceptual loss<br />
+ℒ<br />
+percp<br />
+\mathcal{L}</em>{\text{percp}}<br />
+[<br />
+79<br />
+,<br />
+27<br />
+]<br />
+, adversarial loss<br />
+ℒ<br />
+GAN<br />
+\mathcal{L}<em>{\text{GAN}}<br />
+, and VQ codebook loss<br />
+ℒ<br />
+VQ<br />
+\mathcal{L}</em>{\text{VQ}}<br />
+[<br />
+16<br />
+,<br />
+73<br />
+]<br />
+;<br />
+ℒ<br />
+entropy<br />
+\mathcal{L}<em>{\text{entropy}}<br />
+is the entropy loss from<br />
+[<br />
+75<br />
+]<br />
+used for better codebook usage, with<br />
+γ<br />
+\gamma<br />
+set empirically as<br />
+0.02<br />
+0.02<br />
+.<br />
+3.2<br />
+Stage 2: Dataset Curation for Router Training<br />
+With the proxy tokenizer, we can use it to assess the quality-cost trade-off performance of a specific assignment<br />
+a<br />
+a<br />
+for a video<br />
+x<br />
+x<br />
+, which will be illustrated in detail later. This means we can brute-force evaluate all the candidate assignments for<br />
+x<br />
+x<br />
+to find the optimal one. However, brute-force searching is undesirable due to the massive computational cost during adaptive video tokenization. Therefore, we aim to train a lightweight router that predicts optimal assignments in one pass. Towards this objective, we design stage 2 to curate a dataset to train such a lightweight router.<br />
+First, we illustrate how to evaluate the quality-cost trade-off performance of<br />
+a<br />
+a<br />
+on<br />
+x<br />
+x<br />
+with the proxy tokenizer. We quantify this performance using the<br />
+proxy reward<br />
+:<br />
+R<br />
+proxy<br />
+=<br />
+w<br />
+q<br />
+​<br />
+Q<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+,<br />
+x<br />
+,<br />
+a<br />
+)<br />
+−<br />
+w<br />
+l<br />
+​<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+R</em>{\text{proxy}}=w_{q}Q(\mathcal{E}<em>{\text{proxy}},x,a)-w</em>{l}L(a)<br />
+(3)<br />
+where<br />
+Q<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+Q(x,a)<br />
+denotes the reconstruction quality of<br />
+a<br />
+a<br />
+for<br />
+x<br />
+x<br />
+,<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+L(a)<br />
+is the token length cost of<br />
+a<br />
+a<br />
+, and<br />
+w<br />
+q<br />
+,<br />
+w<br />
+l<br />
+w_{q},w_{l}<br />
+are the weights reflecting preferences for better quality or less cost. For each<br />
+x<br />
+x<br />
+, its optimal assignment<br />
+a<br />
+∗<br />
+a^{</em>}<br />
+maximizes<br />
+R<br />
+R<br />
+, balancing token savings with minimal quality loss. Then, with this measurement, we resolve the challenging task of optimal assignment<br />
+a<br />
+∗<br />
+a^{<em>}<br />
+prediction by brute-force searching for the<br />
+a<br />
+a<br />
+with maximum proxy reward:<br />
+a<br />
+∗<br />
+=<br />
+argmax<br />
+a<br />
+∈<br />
+A<br />
+​<br />
+R<br />
+proxy<br />
+a^{</em>}=\text{argmax}<em>{a\in A}R</em>{\text{proxy}}<br />
+(4)<br />
+In practice, we collect 100k video clips from the diverse dataset WebVid-10M<br />
+[<br />
+5<br />
+]<br />
+. We record the reconstruction quality (LPIPS<br />
+[<br />
+79<br />
+]<br />
+, PSNR, MSE) of each video clip under all candidate assignments. Then, with specified preference weights<br />
+w<br />
+q<br />
+,<br />
+w<br />
+l<br />
+w_{q},w_{l}<br />
+, the proxy reward is calculated with Eq.<br />
+3<br />
+for all candidate assignments for each video. Specifically, we calculate<br />
+Q<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+,<br />
+x<br />
+,<br />
+a<br />
+)<br />
+Q(\mathcal{E}<em>{\text{proxy}},x,a)<br />
+as the normalized LPIPS<br />
+[<br />
+79<br />
+]<br />
+, and<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+L(a)<br />
+as the normalized length. Finally, only the assignment with the maximum proxy reward will be chosen for the video, resulting in a training dataset of 100k videos and their respective ground-truth assignments.<br />
+3.3<br />
+Stage 3: Router Training<br />
+With the training dataset containing (video, optimal assignment) pairs from stage 2, we can train a lightweight router for one-pass optimal token assignment prediction in a classification formulation task. Our router adopts a ViT-like architecture<br />
+[<br />
+13<br />
+]<br />
+and is trained to classify input video<br />
+x<br />
+x<br />
+into one of the<br />
+m<br />
+T<br />
+m^{T}<br />
+candidate assignment categories, which should be the optimal assignment for<br />
+x<br />
+x<br />
+.<br />
+Given an input video, our router patchifies it to 3D visual embeddings, appends a<br />
+[CLS]<br />
+embedding. The router finally produces the probability of each candidate assignment<br />
+a<br />
+a<br />
+being the optimal one for the input video from the<br />
+[CLS]<br />
+embedding feature and is trained with cross-entropy loss.<br />
+3.4<br />
+Stage 4: Adaptive Length Video Tokenizer<br />
+Integrating the router into our final video adaptive tokenization solution, we train an adaptive length video tokenizer conditioned on the token assignments predicted by the router. Specifically, the router predicts the optimal assignment for each video clip sample, which decides the token length and temporal distribution of the encoded token sequence. And the adaptive tokenizer learns to reconstruct each video using the predicted assignment from the router. Instead of combining the router with the proxy tokenizer as the final video adaptive tokenization solution, we choose to train a final tokenizer from scratch with the assignments from the tokenizer. This is to mitigate an issue in proxy tokenizer and prior video adaptive length tokenizers<br />
+[<br />
+33<br />
+,<br />
+70<br />
+]<br />
+: the training-inference gap. For the proxy tokenizer, it is trained to encode videos across all<br />
+m<br />
+T<br />
+m^{T}<br />
+possible assignments, yet during inference, only a few assignments might be used per video. This inefficiency in training can degrade tokenizer performance, as shown in Sec.<br />
+4.3<br />
+, and is addressed by EVATok in our stage 4 training.<br />
+Different from the proxy tokenizer, which can suffice with a simpler training recipe, the final tokenizer training can further benefit from advanced training designs. Inspired by DINO<br />
+[<br />
+7<br />
+,<br />
+42<br />
+]<br />
+discriminators in image tokenization<br />
+[<br />
+52<br />
+,<br />
+38<br />
+]<br />
+, in the final tokenizer training, we optionally employ video semantic encoders as discriminators for potentially better reconstruction and downstream AR generation. We use a frozen pretrained VideoMAE-B<br />
+[<br />
+53<br />
+,<br />
+63<br />
+]<br />
+to process input videos and feed multi-layer features to trainable 1D CNN heads for fake/real logits. We avoid larger V-JEPA2 models<br />
+[<br />
+2<br />
+]<br />
+due to logit divergence instability risks<br />
+[<br />
+36<br />
+]<br />
+in adversarial training.<br />
+We validate that a VideoMAE semantic discriminator, combined with video representation alignment, can significantly enhance both reconstruction and downstream AR generation quality for video tokenizers in Sec.<br />
+4.5<br />
+.<br />
+4<br />
+Experiments<br />
+Figure 4<br />
+:<br />
+Quality-cost trade-off curves for different assignment strategies.<br />
+By adaptively assigning token budgets to different temporal blocks across various videos, our max-proxy-reward strategy (green series) achieves superior performance under various overall budgets compared to the typical fixed uniform token assignment approach (red series). The router-based assignment (blue series) delivers performance close to that of the max-proxy-reward strategy on both WebVid and UCF datasets (the latter unseen during router training).<br />
+4.1<br />
+Settings<br />
+Dataset.<br />
+We apply the commonly used combination of UCF<br />
+[<br />
+49<br />
+]<br />
+and K600<br />
+[<br />
+8<br />
+]<br />
+datasets for video reconstruction and generation experiments. And for validation on more general data, we additionally experiment on WebVid-10M<br />
+[<br />
+5<br />
+]<br />
+for video reconstruction. In all experiments, we use<br />
+16<br />
+×<br />
+128<br />
+×<br />
+128<br />
+16\times 128\times 128<br />
+video clips for training and evaluation. For router training, the video data is a randomly sampled subset of WebVid-10M, containing 100k video clips.<br />
+Implementation details.<br />
+When patchifying videos in EVATok, the spatial downsample ratio is 8 and the temporal downsample ratio is 4. Therefore, a<br />
+16<br />
+×<br />
+128<br />
+×<br />
+128<br />
+16\times 128\times 128<br />
+video produces<br />
+4<br />
+×<br />
+16<br />
+×<br />
+16<br />
+4\times 16\times 16<br />
+features. When initializing 1D query embeddings, the candidate length of each temporal block is in<br />
+{<br />
+512<br />
+,<br />
+256<br />
+,<br />
+128<br />
+,<br />
+64<br />
+,<br />
+32<br />
+}<br />
+{512,256,128,64,32}<br />
+, so the number of all candidate assignments is<br />
+5<br />
+4<br />
+=<br />
+625<br />
+5^{4}=625<br />
+. EVATok applies a codebook size of 16384 by default. But for the final tokenizers trained on UCF and K600 dataset, we use 8192 codebook size for fair comparison to previous methods<br />
+[<br />
+59<br />
+,<br />
+33<br />
+]<br />
+. We train 19.9M ViT-S size routers in stage 3.<br />
+We train Llama-like<br />
+[<br />
+54<br />
+,<br />
+50<br />
+]<br />
+GPT models on variable length sequences. For class2video generation, the condition token corresponds to class labels, and for K600 frame prediction the conditions are tokens encoded from 8 frames padded from the 5 condition frames. Per-frame reconstruction fidelity metric LPIPS<br />
+[<br />
+79<br />
+]<br />
+and the overall distribution fidelity metric FVD<br />
+[<br />
+55<br />
+]<br />
+are used for evaluation.<br />
+More details on the training and inference of the AR models can be found in the supplementary material.<br />
+4.2<br />
+Validation on Quality-Cost Trade-off Curves<br />
+We validate the effect of our max-proxy-reward searching strategy and routers on proxy tokenizers. We compare these approaches against a commonly used baseline: fixed uniform assignment, which allocates the same number of tokens to different temporal blocks across videos. We plot quality-cost trade-off curves to show the overall trends of these assignment strategies under varying overall budgets.<br />
+To generate the quality-cost curves, we adjust the overall budgets to obtain multiple evaluation points. For the uniform assignment strategy, we vary the number of tokens allocated to each temporal block from 64 to 512. For the max-proxy-reward assignment strategy, we adjust<br />
+w<br />
+q<br />
+w</em>{q}<br />
+in steps of 0.2 from 0.4 to 2.0, while setting<br />
+w<br />
+l<br />
+=<br />
+2.0<br />
+−<br />
+w<br />
+q<br />
+w_{l}=2.0-w_{q}<br />
+, thereby producing various<br />
+w<br />
+q<br />
+,<br />
+w<br />
+l<br />
+w_{q},w_{l}<br />
+combinations that alter the overall budgets. For the router assignment strategy, we employ routers trained under different<br />
+w<br />
+q<br />
+,<br />
+w<br />
+l<br />
+w_{q},w_{l}<br />
+combinations:<br />
+w<br />
+q<br />
+w_{q}<br />
+ranging from 0.8 to 1.6 in steps of 0.2, with<br />
+w<br />
+l<br />
+=<br />
+2.0<br />
+−<br />
+w<br />
+q<br />
+w_{l}=2.0-w_{q}<br />
+. We evaluate on two benchmarks: the WebVid validation set and the UCF-101 training set, using two corresponding proxy tokenizers trained on either the WebVid training set or the UCF &amp; K600 training sets.<br />
+As shown in Fig.<br />
+4<br />
+, on both datasets, the max-proxy-reward assignment strategy yields a quality-cost curve that achieves superior LPIPS and reconstruction FVD (rFVD) at equivalent overall budgets. Moreover, the routers closely align with the quality-cost curve of the max-proxy-reward strategy, demonstrating their ability to effectively simulate it. The routers also generalize well to different proxy tokenizers and datasets not seen during training, as evidenced in the last two columns of Fig.<br />
+4<br />
+. The routers significantly reduce the total budget while delivering even better overall reconstruction quality. Focusing solely on rFVD, compared to traditional fixed uniform assignment approaches that allocate 1024 tokens on average to a<br />
+16<br />
+×<br />
+128<br />
+×<br />
+128<br />
+16\times 128\times 128<br />
+video clip, the routers can achieve 56% token savings on WebVid and 42% on UCF, with comparable or even better performance. We validate the performance and generalization of the routers on proxy tokenizers. Next, we demonstrate the advantages of using routers to guide final tokenizer training.<br />
+Settings<br />
+PSNR<br />
+↑<br />
+\uparrow<br />
+LPIPS<br />
+↓<br />
+\downarrow<br />
+rFVD<br />
+↓<br />
+\downarrow</p>
+<h1>rTokens</h1>
+<p>↓<br />
+\downarrow<br />
+A1. Uniform (Proxy Tok.)<br />
+27.26<br />
+0.1178<br />
+73<br />
+1024<br />
+A2. Uniform (Final Tok.)<br />
+27.77<br />
+0.1056<br />
+63<br />
+1024<br />
+A2 + VideoMAE Disc.<br />
+26.68<br />
+0.1197<br />
+13<br />
+1024<br />
+B1. Router (Proxy Tok.)<br />
+27.05<br />
+0.1182<br />
+50<br />
+721<br />
+(-29.6%)<br />
+B2. Router (Final Tok.)<br />
+27.68<br />
+0.1068<br />
+33<br />
+721<br />
+(-29.6%)<br />
+B2 + VideoMAE Disc.<br />
+26.90<br />
+0.1144<br />
+9.2<br />
+721<br />
+(-29.6%)<br />
+Table 1<br />
+:<br />
+Final tokenizer validation on WebVid.<br />
+The tokenizers are trained for 400k iterations. With the router, final tokenizers achieve comparable LPIPS and better rFVD with 29.6% saving in token length (row A2<br />
+vs<br />
+.<br />
+B2 and row A2+<br />
+vs<br />
+.<br />
+B2+). Final tokenizers outperform proxy tokenizers with the same training efforts (row A2<br />
+vs<br />
+.<br />
+A1, B2<br />
+vs<br />
+.<br />
+row B1), showing the importance of bridging the training-inference gap for variable-length tokenizers.<br />
+Settings<br />
+LPIPS<br />
+↓<br />
+\downarrow<br />
+rFVD<br />
+↓<br />
+\downarrow</p>
+<h1>rTokens</h1>
+<p>↓<br />
+\downarrow<br />
+gFVD<br />
+↓<br />
+\downarrow</p>
+<h1>gTokens</h1>
+<p>↓<br />
+\downarrow<br />
+Uniform (Final)<br />
+0.1303<br />
+13<br />
+1024<br />
+98<br />
+1024<br />
+Router (Final)<br />
+0.1212<br />
+13<br />
+774<br />
+(-24.4%)<br />
+96<br />
+740<br />
+(-27.7%)<br />
+Table 2<br />
+:<br />
+Final tokenizer validation on UCF.<br />
+The final tokenizer with router beats the fixed uniform assignment baseline in both reconstruction and downstream AR generation, while saving 24.4% and 27.7% token length separately.<br />
+Method</p>
+<h1>Params</h1>
+<h1>rTokens</h1>
+<p>rFVD<br />
+↓<br />
+\downarrow<br />
+gFVD<br />
+↓<br />
+\downarrow</p>
+<h1>gTokens</h1>
+<p>Tokenizer<br />
+Generator<br />
+K600<br />
+UCF<br />
+UCF<br />
+Diffusion-based generative models with continuous video tokenizers<br />
+VideoFusion<br />
+[<br />
+37<br />
+]<br />
+-<br />
+2B<br />
+-<br />
+-<br />
+-<br />
+173<br />
+-<br />
+HPDM<br />
+[<br />
+48<br />
+]<br />
+-<br />
+725M<br />
+-<br />
+-<br />
+-<br />
+66<br />
+-<br />
+W.A.L.T-L<br />
+[<br />
+20<br />
+]<br />
+-<br />
+313M<br />
+-<br />
+-<br />
+3.3<br />
+46<br />
+-<br />
+MLM generative models with discrete video tokenizers<br />
+MAGVIT-MLM<br />
+[<br />
+74<br />
+]<br />
+158M<br />
+306M<br />
+1024<br />
+25<br />
+9.9<br />
+76<br />
+1024<br />
+MAGVIT-v2-MLM<br />
+[<br />
+75<br />
+]<br />
+-<br />
+307M<br />
+1280<br />
+8.6<br />
+4.3<br />
+58<br />
+1280<br />
+AR generative models with discrete video tokenizers<br />
+CogVideo<br />
+[<br />
+23<br />
+]<br />
+-<br />
+9.4B<br />
+-<br />
+-<br />
+109.2<br />
+626<br />
+-<br />
+TATS<br />
+[<br />
+18<br />
+]<br />
+32M<br />
+321M<br />
+1024<br />
+162<br />
+-<br />
+332<br />
+1024<br />
+MAGVIT-AR<br />
+[<br />
+74<br />
+]<br />
+158M<br />
+306M<br />
+1024<br />
+25<br />
+-<br />
+265<br />
+1024<br />
+MAGVIT-v2-AR<br />
+[<br />
+75<br />
+]<br />
+-<br />
+840M<br />
+1280<br />
+8.6<br />
+-<br />
+109<br />
+1280<br />
+OmniTokenizer<br />
+[<br />
+60<br />
+]<br />
+82.2M<br />
+650M<br />
+1280<br />
+42<br />
+32.9<br />
+191<br />
+1280<br />
+AdapTok<br />
+[<br />
+33<br />
+]<br />
+195M<br />
+633M<br />
+1024<br />
+36<br />
+11<br />
+67<br />
+1024<br />
+LARP-L-Long<br />
+[<br />
+59<br />
+]<br />
+173M<br />
+343M<br />
+1024<br />
+20<br />
+6.2<br />
+102<br />
+1024<br />
+LARP-L-Long<br />
+[<br />
+59<br />
+]<br />
+173M<br />
+632M<br />
+1024<br />
+20<br />
+5.1<br />
+57<br />
+1024<br />
+EVATok (ours)<br />
+145M<br />
+327M<br />
+774<br />
+(-24.4%)<br />
+9.7<br />
+4.6<br />
+62<br />
+756<br />
+(-26.2%)<br />
+EVATok (ours)<br />
+145M<br />
+633M<br />
+774<br />
+(-24.4%)<br />
+9.7<br />
+4.0<br />
+48<br />
+756<br />
+(-26.2%)<br />
+Table 3<br />
+:<br />
+System-level comparison for tokenizers and downstream generation models.<br />
+EVATok achieves superior performances in UCF-101 video reconstruction, downstream class-to-video generation and K600 frame prediction, while saving 24.4% tokens in reconstruction and 26.2% tokens in UCF class-to-video generation.<br />
+4.3<br />
+Validation on Final Adaptive Tokenizer<br />
+We validate the benefits of using routers to provide optimal assignment guidance in both the training and inference of adaptive video tokenizers, which bridges the training-inference gap in previous adaptive length video tokenizers<br />
+[<br />
+70<br />
+,<br />
+33<br />
+]<br />
+. For the choice of router, we choose the router conditioned on<br />
+w<br />
+q<br />
+=<br />
+1.2<br />
+,<br />
+w<br />
+l<br />
+=<br />
+0.8<br />
+w_{q}=1.2,w_{l}=0.8<br />
+, which achieves comparable LPIPS and better rFVD with<br />
+24.4<br />
+%<br />
+24.4\%<br />
+token length saving against the uniform assignment. We conduct two sets of experiments on WebVid-10M and the combination of UCF &amp; K600 separately.<br />
+On the WebVid-10M dataset, with the assignments provided the a router, we train two variants of final tokenizers, one not using the VideoMAE discriminator while the other uses it. As baselines, with fixed uniform assignments of 1024 tokens per video, we train two variants of final tokenizers correspondingly. And all tokenizers evaluated in this experiment are trained for 400k iterations for fair comparison. As shown in Tab.<br />
+1<br />
+, on the WebVid validation set, we validate that for final tokenizers, the router-guided tokenizer achieves comparable LPIPS, better rFVD and<br />
+29.6<br />
+%<br />
+29.6\%<br />
+token length savings against the tokenizer trained with uniform assignments, no matter using VideoMAE discriminator or not (row A2<br />
+vs<br />
+.<br />
+B2 and A2+<br />
+vs<br />
+.<br />
+B2+). Besides, Tab.<br />
+1<br />
+also indicates that the final tokenizers outperform the proxy tokenizers with the same training iterations (row A2<br />
+vs<br />
+.<br />
+A1 and B2<br />
+vs<br />
+.<br />
+B1), proving that using optimal assignments in both tokenizer training and inference benefits performances.<br />
+On UCF &amp; K600 dataset, we train two tokenizers with fixed uniform assignment or router-guided assignment, both using the VideoMAE discriminator. As shown in Tab.<br />
+2<br />
+, under the predicted optimal assignment, the final tokenizer trained with the router achieves even better reconstruction with 24.4% savings in token length. Further, we train 99M GPT-B AR generation models on the two tokenizers separately on the UCF-101 class2video dataset, and evaluate them by generation FVD (gFVD) based on 10k generated samples. The AR model that adaptively decides the length of tokens it generates achieves even better gFVD while generating 740 tokens per video on average, saving 27.7% of tokens compared to the fixed-length AR model.<br />
+By training and evaluating final tokenizers with the adaptive assignments of our router, we show that a router helps train a better adaptive tokenizer by eliminating the previous training-inference gap, beating baselines trained with fixed uniform assignment. And importantly, for the first time, we show that downstream AR models trained on adaptive length video token sequences can achieve better overall generation quality with significant savings in token length cost.<br />
+Methods<br />
+Tok. Param.</p>
+<h1>gTokens</h1>
+<p>AR Param.<br />
+gFVD<br />
+↓<br />
+\downarrow<br />
+AdapTok<br />
+[<br />
+33<br />
+]<br />
+195M<br />
+1024<br />
+633M<br />
+11<br />
+LARP<br />
+[<br />
+59<br />
+]<br />
+173M<br />
+1024<br />
+632M<br />
+5.1<br />
+EVATok (ours)<br />
+145M<br />
+862<br />
+(-15.8%)<br />
+633M<br />
+4.0<br />
+Table 4<br />
+:<br />
+K600 frame prediction comparison.<br />
+In similar settings, EVATok performs the best with 15.8% less generated tokens.<br />
+4.4<br />
+System-Level Comparison<br />
+We compare EVATok with previous video generative models, evaluating performance in terms of video reconstruction, generation quality, and average token length. These aspects are assessed using the UCF-101 reconstruction, UCF-101 class-to-video generation, and K600 frame prediction benchmarks. As shown in Tab.<br />
+3<br />
+, EVATok achieves substantially better reconstruction FVD (rFVD) while reducing token length by 24.4% compared to LARP<br />
+[<br />
+59<br />
+]<br />
+. EVATok establishes a new state-of-the-art (SOTA) on UCF-101 class-to-video generation, with a generation FVD (gFVD) of 48 and 26.2% fewer tokens than the previous SOTA method, LARP<br />
+[<br />
+59<br />
+]<br />
+. EVATok also delivers the best results on K600 frame prediction.<br />
+For a fair comparison of generation efficiency on K600 frame prediction, we benchmark against AdapTok<br />
+[<br />
+33<br />
+]<br />
+and LARP<br />
+[<br />
+59<br />
+]<br />
+in Tab.<br />
+4<br />
+, as we employ the same approach of additionally generating conditioning frames during both training and inference. We fix the token length for conditioning frames as<br />
+512<br />
++<br />
+128<br />
+=<br />
+640<br />
+512+128=640<br />
+, therefore, during frame prediction training, we choose assignments with<br />
+(<br />
+512<br />
+,<br />
+128<br />
+)<br />
+(512,128)<br />
+prefix for the first two temporal blocks that have the highest probability predicted by the router, for the encoding of 16-frame samples. Under this setting, EVATok achieves the best gFVD on K600 frame prediction while saving 15.8% in generated tokens.<br />
+We demonstrate that adaptive video tokenization, combined with our advanced training recipe, enables EVATok to achieve both high efficiency and leading performance on video reconstruction and downstream AR generation.<br />
+4.5<br />
+Ablation Study<br />
+Threshold<br />
+vs<br />
+.<br />
+max-proxy-reward searching.<br />
+For adaptive video tokenization, ElasticTok<br />
+[<br />
+70<br />
+]<br />
+applies a heuristic method to find adaptive assignments: searching the minimum token length to be kept that maintains the reconstruction quality above certain thresholds. This heuristic threshold-based method is not designed to optimize for the overall quality-cost trade-off. To compare this threshold-based method to our max-proxy-reward strategy, we implement a similar baseline method in our setting, which finds the assignment with the minimum token length and satisfies a certain LPIPS threshold for each video. If no assignment can satisfy the threshold, the maximum length assignment will be chosen. Testing on our proxy tokenizer, by varying the LPIPS threshold, we can plot the quality-cost trade-off curve for this baseline strategy. As shown in Fig.<br />
+5<br />
+, on the WebVid validation set, while the threshold-based baseline improves the rFVD compared to uniform assignment, it still lags behind our max-proxy-reward strategy.<br />
+Figure 5<br />
+:<br />
+Quality-cost curve: threshold based<br />
+vs<br />
+.<br />
+max-proxy-reward<br />
+vs<br />
+.<br />
+uniform assignment.<br />
+While threshold-based assignment improves rFVD against uniform assignment, it underperforms our max-proxy-reward strategy.<br />
+Configuration<br />
+PSNR<br />
+↑<br />
+\uparrow<br />
+LPIPS<br />
+↓<br />
+\downarrow<br />
+rFVD<br />
+↓<br />
+\downarrow<br />
+gFVD<br />
+↓<br />
+\downarrow<br />
+Final Recipe (Uniform)<br />
+25.05<br />
+0.1303<br />
+13<br />
+98<br />
+- VideoMAE<br />
+[<br />
+53<br />
+,<br />
+63<br />
+]<br />
+Disc.<br />
+26.21<br />
+0.1097<br />
+65<br />
+155<br />
+- V-JEPA2<br />
+[<br />
+2<br />
+]<br />
+Align.<br />
+25.30<br />
+0.1253<br />
+18<br />
+144<br />
+- Both<br />
+26.41<br />
+0.1095<br />
+80<br />
+230<br />
+Table 5<br />
+:<br />
+Ablation study for video representation alignment and video semantic discriminator.<br />
+Removing either design will lead to degradation in rFVD and downstream gFVD.<br />
+Video semantic encoder for video tokenizers.<br />
+Video semantic encoders can help video tokenizer training in two ways: (1) providing representation alignment; (2) giving perceptual feedback as the discriminator for better reconstruction quality. We study the two designs and reveal that they are both important for reconstruction and downstream generation for video tokenizers. Here, for simplicity, we utilize the typical uniform assignment and train video tokenizers under different recipes on the UCF&amp;K600 dataset for 400k iterations, and evaluate them by reconstruction and downstream GPT-B model generation on UCF-101. As shown in Tab.<br />
+5<br />
+, removing either representation alignment or VideoMAE discriminator can lead to degradation of rFVD and downstream gFVD. While we do recognize a drop in the per-frame fidelity metric PSNR and LPIPS brought especially by the VideoMAE discriminator, in our qualitative checking, we identify that the drop in PSNR and LPIPS is traded for less blurriness and less temporal flickering, which corresponds to higher rFVD. More qualitative comparisons are in the supplementary material.<br />
+5<br />
+Conclusions<br />
+In this work, we propose EVATok, a content-adaptive video tokenization framework to efficiently assign tokens across different temporal blocks and videos. We introduce proxy reward as a novel metric for finding the optimal assignments with the best quality-cost trade-off. By reformulating optimal assignment selection for video tokenization as a maximum proxy reward assignment classification task, we can curate supervision datasets to train routers to map each video to its optimal assignment. These routers help us train video adaptive tokenizers and downstream autoregressive (AR) video generative models with efficient token assignments. Enhanced by our advanced recipe incorporating video semantic encoders in tokenizer training, EVATok achieves superior reconstruction and downstream AR generation quality while significantly saving token length cost. EVATok has presented promising results on 16-frame videos in this work, and for future development, can potentially achieve higher efficiency for videos with longer duration. Please refer to the supplementary material for more discussions on future work and limitations of EVATok.<br />
+Acknowledgments<br />
+This work is supported in part by the Research Grant Council of Hong Kong through the NSFC-RGC Joint Research Scheme under grant N_HKU769/25.<br />
+References<br />
+[1]<br />
+J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat,<br />
+et al.<br />
+(2023)<br />
+Gpt-4 technical report<br />
+.<br />
+arXiv preprint arXiv:2303.08774<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[2]<br />
+M. Assran, A. Bardes, D. Fan, Q. Garrido, R. Howes, M. Muckley, A. Rizvi, C. Roberts, K. Sinha, A. Zholus,<br />
+et al.<br />
+(2025)<br />
+V-jepa 2: self-supervised video models enable understanding, prediction and planning<br />
+.<br />
+arXiv preprint arXiv:2506.09985<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.4<br />
+,<br />
+Table 5<br />
+,<br />
+§H<br />
+.<br />
+[3]<br />
+R. Bachmann, J. Allardice, D. Mizrahi, E. Fini, O. F. Kar, E. Amirloo, A. El-Nouby, A. Zamir, and A. Dehghan<br />
+(2025)<br />
+FlexTok: resampling images into 1d token sequences of flexible length<br />
+.<br />
+arXiv preprint arXiv:2502.13967<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+.<br />
+[4]<br />
+Z. Bai, J. Gao, Z. Gao, P. Wang, Z. Zhang, T. He, and M. Z. Shou<br />
+(2024)<br />
+Factorized visual tokenization and generation<br />
+.<br />
+arXiv preprint arXiv:2411.16681<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[5]<br />
+M. Bain, A. Nagrani, G. Varol, and A. Zisserman<br />
+(2021)<br />
+Frozen in time: a joint video and image encoder for end-to-end retrieval<br />
+.<br />
+In<br />
+IEEE International Conference on Computer Vision<br />
+,<br />
+Cited by:<br />
+§3.2<br />
+,<br />
+§4.1<br />
+,<br />
+§I.1<br />
+.<br />
+[6]<br />
+N. Carion, F. Massa, G. Synnaeve, N. Usunier, A. Kirillov, and S. Zagoruyko<br />
+(2020)<br />
+End-to-end object detection with transformers<br />
+.<br />
+In<br />
+European conference on computer vision<br />
+,<br />
+pp. 213–229<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[7]<br />
+M. Caron, H. Touvron, I. Misra, H. Jégou, J. Mairal, P. Bojanowski, and A. Joulin<br />
+(2021)<br />
+Emerging properties in self-supervised vision transformers<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF international conference on computer vision<br />
+,<br />
+pp. 9650–9660<br />
+.<br />
+Cited by:<br />
+§3.4<br />
+.<br />
+[8]<br />
+J. Carreira, E. Noland, A. Banki-Horvath, C. Hillier, and A. Zisserman<br />
+(2018)<br />
+A short note about kinetics-600<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+1808.01340<br />
+Cited by:<br />
+§4.1<br />
+.<br />
+[9]<br />
+X. Chen, Z. Wu, X. Liu, Z. Pan, W. Liu, Z. Xie, X. Yu, and C. Ruan<br />
+(2025)<br />
+Janus-pro: unified multimodal understanding and generation with data and model scaling<br />
+.<br />
+arXiv preprint arXiv:2501.17811<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[10]<br />
+G. Comanici, E. Bieber, M. Schaekermann, I. Pasupat, N. Sachdeva, I. Dhillon, M. Blistein, O. Ram, D. Zhang, E. Rosen,<br />
+et al.<br />
+(2025)<br />
+Gemini 2.5: pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities<br />
+.<br />
+arXiv preprint arXiv:2507.06261<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[11]<br />
+Y. Cui, H. Chen, H. Deng, X. Huang, X. Li, J. Liu, Y. Liu, Z. Luo, J. Wang, W. Wang, Y. Wang, C. Wang, F. Zhang, Y. Zhao, T. Pan, X. Li, Z. Hao, W. Ma, Z. Chen, Y. Ao, T. Huang, Z. Wang, and X. Wang<br />
+(2025)<br />
+Emu3.5: native multimodal models are world learners<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2510.26583<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§F<br />
+.<br />
+[12]<br />
+P. Dhariwal and A. Nichol<br />
+(2021)<br />
+Diffusion models beat gans on image synthesis<br />
+.<br />
+Advances in neural information processing systems<br />
+34<br />
+,<br />
+pp. 8780–8794<br />
+.<br />
+Cited by:<br />
+§M.1<br />
+.<br />
+[13]<br />
+A. Dosovitskiy<br />
+(2020)<br />
+An image is worth 16x16 words: transformers for image recognition at scale<br />
+.<br />
+arXiv preprint arXiv:2010.11929<br />
+.<br />
+Cited by:<br />
+§M.1<br />
+,<br />
+§3.3<br />
+.<br />
+[14]<br />
+A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Letman, A. Mathur, A. Schelten, A. Yang, A. Fan,<br />
+et al.<br />
+(2024)<br />
+The llama 3 herd of models<br />
+.<br />
+arXiv preprint arXiv:2407.21783<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[15]<br />
+S. Duggal, P. Isola, A. Torralba, and W. T. Freeman<br />
+(2025)<br />
+Adaptive length image tokenization via recurrent allocation<br />
+.<br />
+In<br />
+The Thirteenth International Conference on Learning Representations<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§2<br />
+.<br />
+[16]<br />
+P. Esser, R. Rombach, and B. Ommer<br />
+(2021)<br />
+Taming transformers for high-resolution image synthesis<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF conference on computer vision and pattern<br />
+recognition<br />
+,<br />
+pp. 12873–12883<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[17]<br />
+N. et. al.<br />
+(2025)<br />
+Cosmos world foundation model platform for physical ai<br />
+.<br />
+arXiv preprint arXiv:2501.03575<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[18]<br />
+S. Ge, T. Hayes, H. Yang, X. Yin, G. Pang, D. Jacobs, J. Huang, and D. Parikh<br />
+(2022)<br />
+Long video generation with time-agnostic vqgan and time-sensitive transformer<br />
+.<br />
+In<br />
+European Conference on Computer Vision<br />
+,<br />
+pp. 102–118<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+Table 3<br />
+.<br />
+[19]<br />
+D. Guo, D. Yang, H. Zhang, J. Song, R. Zhang, R. Xu, Q. Zhu, S. Ma, P. Wang, X. Bi,<br />
+et al.<br />
+(2025)<br />
+Deepseek-r1: incentivizing reasoning capability in llms via reinforcement learning<br />
+.<br />
+arXiv preprint arXiv:2501.12948<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[20]<br />
+A. Gupta, L. Yu, K. Sohn, X. Gu, M. Hahn, F. Li, I. Essa, L. Jiang, and J. Lezama<br />
+(2024)<br />
+Photorealistic video generation with diffusion models<br />
+.<br />
+In<br />
+European Conference on Computer Vision<br />
+,<br />
+pp. 393–411<br />
+.<br />
+Cited by:<br />
+Table 3<br />
+.<br />
+[21]<br />
+A. Hägele, E. Bakouch, A. Kosson, L. B. Allal, L. Von Werra, and M. Jaggi<br />
+(2024)<br />
+Scaling laws and compute-optimal training beyond fixed training durations<br />
+.<br />
+arXiv preprint arXiv:2405.18392<br />
+.<br />
+Cited by:<br />
+§H<br />
+.<br />
+[22]<br />
+M. Heusel, H. Ramsauer, T. Unterthiner, B. Nessler, and S. Hochreiter<br />
+(2017)<br />
+Gans trained by a two time-scale update rule converge to a local nash equilibrium<br />
+.<br />
+Advances in neural information processing systems<br />
+30<br />
+.<br />
+Cited by:<br />
+§M.1<br />
+,<br />
+§M<br />
+.<br />
+[23]<br />
+W. Hong, M. Ding, W. Zheng, X. Liu, and J. Tang<br />
+(2022)<br />
+Cogvideo: large-scale pretraining for text-to-video generation via transformers<br />
+.<br />
+arXiv preprint arXiv:2205.15868<br />
+.<br />
+Cited by:<br />
+Table 3<br />
+.<br />
+[24]<br />
+M. Huang, Z. Mao, Z. Chen, and Y. Zhang<br />
+(2023)<br />
+Towards accurate image coding: improved autoregressive image generation with dynamic vector quantization<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern<br />
+Recognition<br />
+,<br />
+pp. 22596–22605<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[25]<br />
+P. Isola, J. Zhu, T. Zhou, and A. A. Efros<br />
+(2017)<br />
+Image-to-image translation with conditional adversarial networks<br />
+.<br />
+In<br />
+Proceedings of the IEEE conference on computer vision and pattern recognition<br />
+,<br />
+pp. 1125–1134<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+[26]<br />
+E. Jang, S. Gu, and B. Poole<br />
+(2016)<br />
+Categorical reparameterization with gumbel-softmax<br />
+.<br />
+arXiv preprint arXiv:1611.01144<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[27]<br />
+J. Johnson, A. Alahi, and L. Fei-Fei<br />
+(2016)<br />
+Perceptual losses for real-time style transfer and super-resolution<br />
+.<br />
+In<br />
+Computer Vision–ECCV 2016: 14th European Conference, Amsterdam, The Netherlands, October 11-14, 2016, Proceedings, Part II 14<br />
+,<br />
+pp. 694–711<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+[28]<br />
+D. P. Kingma, M. Welling,<br />
+et al.<br />
+(2019)<br />
+An introduction to variational autoencoders<br />
+.<br />
+Foundations and Trends® in Machine Learning<br />
+12<br />
+(<br />
+4<br />
+),<br />
+pp. 307–392<br />
+.<br />
+Cited by:<br />
+§G<br />
+.<br />
+[29]<br />
+D. P. Kingma<br />
+(2013)<br />
+Auto-encoding variational bayes<br />
+.<br />
+arXiv preprint arXiv:1312.6114<br />
+.<br />
+Cited by:<br />
+§G<br />
+.<br />
+[30]<br />
+D. Kondratyuk, L. Yu, X. Gu, J. Lezama, J. Huang, G. Schindler, R. Hornung, V. Birodkar, J. Yan, M. Chiu, K. Somandepalli, H. Akbari, Y. Alon, Y. Cheng, J. V. Dillon, A. Gupta, M. Hahn, A. Hauth, D. Hendon, A. Martinez, D. Minnen, M. Sirotenko, K. Sohn, X. Yang, H. Adam, M. Yang, I. Essa, H. Wang, D. A. Ross, B. Seybold, and L. Jiang<br />
+(2024)<br />
+VideoPoet: a large language model for zero-shot video generation<br />
+.<br />
+In<br />
+Proceedings of the 41st International Conference on Machine Learning<br />
+,<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+.<br />
+[31]<br />
+D. Lee, C. Kim, S. Kim, M. Cho, and W. Han<br />
+(2022)<br />
+Autoregressive image generation using residual quantization<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern<br />
+Recognition<br />
+,<br />
+pp. 11523–11532<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[32]<br />
+J. Li, D. Li, S. Savarese, and S. Hoi<br />
+(2023)<br />
+Blip-2: bootstrapping language-image pre-training with frozen image encoders and large language models<br />
+.<br />
+In<br />
+International conference on machine learning<br />
+,<br />
+pp. 19730–19742<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[33]<br />
+Y. Li, C. Tian, R. Xia, N. Liao, W. Guo, J. Yan, H. Li, J. Dai, H. Li, and X. Yang<br />
+(2025)<br />
+Learning adaptive and temporally causal video tokenization in a 1d latent space<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2505.17011<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.4<br />
+,<br />
+§4.1<br />
+,<br />
+§4.3<br />
+,<br />
+§4.4<br />
+,<br />
+Table 3<br />
+,<br />
+Table 4<br />
+,<br />
+§H<br />
+.<br />
+[34]<br />
+A. Liu, B. Feng, B. Xue, B. Wang, B. Wu, C. Lu, C. Zhao, C. Deng, C. Zhang, C. Ruan,<br />
+et al.<br />
+(2024)<br />
+Deepseek-v3 technical report<br />
+.<br />
+arXiv preprint arXiv:2412.19437<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[35]<br />
+D. Liu, S. Zhao, L. Zhuo, W. Lin, Y. Qiao, H. Li, and P. Gao<br />
+(2024)<br />
+Lumina-mgpt: illuminate flexible photorealistic text-to-image generation with multimodal generative pretraining<br />
+.<br />
+arXiv preprint arXiv:2408.02657<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[36]<br />
+J. Lu, L. Song, M. Xu, B. Ahn, Y. Wang, C. Chen, A. Dehghan, and Y. Yang<br />
+(2025)<br />
+Atoken: a unified tokenizer for vision<br />
+.<br />
+arXiv preprint arXiv:2509.14476<br />
+.<br />
+Cited by:<br />
+§3.4<br />
+.<br />
+[37]<br />
+Z. Luo, D. Chen, Y. Zhang, Y. Huang, L. Wang, Y. Shen, D. Zhao, J. Zhou, and T. Tan<br />
+(2023)<br />
+Videofusion: decomposed diffusion models for high-quality video generation<br />
+.<br />
+arXiv preprint arXiv:2303.08320<br />
+.<br />
+Cited by:<br />
+Table 3<br />
+.<br />
+[38]<br />
+C. Ma, Y. Jiang, J. Wu, J. Yang, X. Yu, Z. Yuan, B. Peng, and X. Qi<br />
+(2025)<br />
+UniTok: a unified tokenizer for visual generation and understanding<br />
+.<br />
+arXiv preprint arXiv:2502.20321<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.4<br />
+.<br />
+[39]<br />
+L. Mao, R. Corona, X. Liang, W. Yan, and Z. Tang<br />
+(2025)<br />
+Images are worth variable length of representations<br />
+.<br />
+arXiv preprint arXiv:2506.03643<br />
+.<br />
+Cited by:<br />
+§M.2<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[40]<br />
+F. Mentzer, D. Minnen, E. Agustsson, and M. Tschannen<br />
+(2023)<br />
+Finite scalar quantization: vq-vae made simple<br />
+.<br />
+arXiv preprint arXiv:2309.15505<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[41]<br />
+K. Miwa, K. Sasaki, H. Arai, T. Takahashi, and Y. Yamaguchi<br />
+(2025)<br />
+One-d-piece: image tokenizer meets quality-controllable compression<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2501.10064<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[42]<br />
+M. Oquab, T. Darcet, T. Moutakanni, H. Vo, M. Szafraniec, V. Khalidov, P. Fernandez, D. Haziza, F. Massa, A. El-Nouby,<br />
+et al.<br />
+(2023)<br />
+Dinov2: learning robust visual features without supervision<br />
+.<br />
+arXiv preprint arXiv:2304.07193<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.4<br />
+.<br />
+[43]<br />
+L. Qu, H. Zhang, Y. Liu, X. Wang, Y. Jiang, Y. Gao, H. Ye, D. K. Du, Z. Yuan, and X. Wu<br />
+(2024)<br />
+Tokenflow: unified image tokenizer for multimodal understanding and generation<br />
+.<br />
+arXiv preprint arXiv:2412.03069<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[44]<br />
+A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal, G. Sastry, A. Askell, P. Mishkin, J. Clark,<br />
+et al.<br />
+(2021)<br />
+Learning transferable visual models from natural language supervision<br />
+.<br />
+In<br />
+International conference on machine learning<br />
+,<br />
+pp. 8748–8763<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[45]<br />
+O. Russakovsky, J. Deng, H. Su, J. Krause, S. Satheesh, S. Ma, Z. Huang, A. Karpathy, A. Khosla, M. Bernstein,<br />
+et al.<br />
+(2015)<br />
+Imagenet large scale visual recognition challenge<br />
+.<br />
+International journal of computer vision<br />
+115<br />
+,<br />
+pp. 211–252<br />
+.<br />
+Cited by:<br />
+§M.1<br />
+,<br />
+§M<br />
+.<br />
+[46]<br />
+J. Shen, K. Tirumala, M. Yasunaga, I. Misra, L. Zettlemoyer, L. Yu, and C. Zhou<br />
+(2025)<br />
+CAT: content-adaptive image tokenization<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2501.03120<br />
+Cited by:<br />
+§M.2<br />
+,<br />
+§2<br />
+.<br />
+[47]<br />
+O. Siméoni, H. V. Vo, M. Seitzer, F. Baldassarre, M. Oquab, C. Jose, V. Khalidov, M. Szafraniec, S. Yi, M. Ramamonjisoa,<br />
+et al.<br />
+(2025)<br />
+Dinov3<br />
+.<br />
+arXiv preprint arXiv:2508.10104<br />
+.<br />
+Cited by:<br />
+§M.1<br />
+.<br />
+[48]<br />
+I. Skorokhodov, W. Menapace, A. Siarohin, and S. Tulyakov<br />
+(2024)<br />
+Hierarchical patch diffusion models for high-resolution video generation<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition<br />
+,<br />
+pp. 7569–7579<br />
+.<br />
+Cited by:<br />
+Table 3<br />
+.<br />
+[49]<br />
+K. Soomro, A. R. Zamir, and M. Shah<br />
+(2012)<br />
+UCF101: a dataset of 101 human actions classes from videos in the wild<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+1212.0402<br />
+Cited by:<br />
+§4.1<br />
+.<br />
+[50]<br />
+P. Sun, Y. Jiang, S. Chen, S. Zhang, B. Peng, P. Luo, and Z. Yuan<br />
+(2024)<br />
+Autoregressive model beats diffusion: llama for scalable image generation<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2406.06525<br />
+Cited by:<br />
+§M.1<br />
+,<br />
+§4.1<br />
+.<br />
+[51]<br />
+A. Tang, T. He, J. Guo, X. Cheng, L. Song, and J. Bian<br />
+(2024)<br />
+VidTok: a versatile and open-source video tokenizer<br />
+.<br />
+arXiv preprint arXiv:2412.13061<br />
+.<br />
+Cited by:<br />
+§H<br />
+.<br />
+[52]<br />
+K. Tian, Y. Jiang, Z. Yuan, B. PENG, and L. Wang<br />
+(2024)<br />
+Visual autoregressive modeling: scalable image generation via next-scale prediction<br />
+.<br />
+In<br />
+The Thirty-eighth Annual Conference on Neural Information Processing Systems<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.4<br />
+.<br />
+[53]<br />
+Z. Tong, Y. Song, J. Wang, and L. Wang<br />
+(2022)<br />
+Videomae: masked autoencoders are data-efficient learners for self-supervised video pre-training<br />
+.<br />
+Advances in neural information processing systems<br />
+35<br />
+,<br />
+pp. 10078–10093<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.4<br />
+,<br />
+Table 5<br />
+,<br />
+§I.2<br />
+,<br />
+§I<br />
+.<br />
+[54]<br />
+H. Touvron, T. Lavril, G. Izacard, X. Martinet, M. Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro, F. Azhar,<br />
+et al.<br />
+(2023)<br />
+Llama: open and efficient foundation language models<br />
+.<br />
+arXiv preprint arXiv:2302.13971<br />
+.<br />
+Cited by:<br />
+§4.1<br />
+.<br />
+[55]<br />
+T. Unterthiner, S. Van Steenkiste, K. Kurach, R. Marinier, M. Michalski, and S. Gelly<br />
+(2018)<br />
+Towards accurate generative models of video: a new metric &amp; challenges<br />
+.<br />
+arXiv preprint arXiv:1812.01717<br />
+.<br />
+Cited by:<br />
+§4.1<br />
+.<br />
+[56]<br />
+A. Van Den Oord, O. Vinyals,<br />
+et al.<br />
+(2017)<br />
+Neural discrete representation learning<br />
+.<br />
+Advances in neural information processing systems<br />
+30<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[57]<br />
+R. Villegas, M. Babaeizadeh, P. Kindermans, H. Moraldo, H. Zhang, M. T. Saffar, S. Castro, J. Kunze, and D. Erhan<br />
+(2022)<br />
+Phenaki: variable length video generation from open domain textual description<br />
+.<br />
+arXiv preprint arXiv:2210.02399<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[58]<br />
+T. Wan, A. Wang, B. Ai, B. Wen, C. Mao, C. Xie, D. Chen, F. Yu, H. Zhao, J. Yang, J. Zeng, J. Wang, J. Zhang, J. Zhou, J. Wang, J. Chen, K. Zhu, K. Zhao, K. Yan, L. Huang, M. Feng, N. Zhang, P. Li, P. Wu, R. Chu, R. Feng, S. Zhang, S. Sun, T. Fang, T. Wang, T. Gui, T. Weng, T. Shen, W. Lin, W. Wang, W. Wang, W. Zhou, W. Wang, W. Shen, W. Yu, X. Shi, X. Huang, X. Xu, Y. Kou, Y. Lv, Y. Li, Y. Liu, Y. Wang, Y. Zhang, Y. Huang, Y. Li, Y. Wu, Y. Liu, Y. Pan, Y. Zheng, Y. Hong, Y. Shi, Y. Feng, Z. Jiang, Z. Han, Z. Wu, and Z. Liu<br />
+(2025)<br />
+Wan: open and advanced large-scale video generative models<br />
+.<br />
+arXiv preprint arXiv:2503.20314<br />
+.<br />
+Cited by:<br />
+§F<br />
+.<br />
+[59]<br />
+H. Wang, S. Suri, Y. Ren, H. Chen, and A. Shrivastava<br />
+(2025)<br />
+LARP: tokenizing videos with a learned autoregressive generative prior<br />
+.<br />
+In<br />
+ICLR<br />
+,<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+,<br />
+§4.1<br />
+,<br />
+§4.4<br />
+,<br />
+Table 3<br />
+,<br />
+Table 3<br />
+,<br />
+Table 4<br />
+,<br />
+§H<br />
+.<br />
+[60]<br />
+J. Wang, Y. Jiang, Z. Yuan, B. PENG, Z. Wu, and Y. Jiang<br />
+(2024)<br />
+OmniTokenizer: a joint image-video tokenizer for visual generation<br />
+.<br />
+In<br />
+The Thirty-eighth Annual Conference on Neural Information Processing Systems<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§2<br />
+,<br />
+Table 3<br />
+.<br />
+[61]<br />
+L. Wang, H. Lin, S. Chen, T. Wang, C. Cheng, Y. Zhong, D. Zheng, and W. Zhao<br />
+(2025)<br />
+ALTo: adaptive-length tokenizer for autoregressive mask generation<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2505.16495<br />
+Cited by:<br />
+§2<br />
+.<br />
+[62]<br />
+X. Wang, X. Zhang, Z. Luo, Q. Sun, Y. Cui, J. Wang, F. Zhang, Y. Wang, Z. Li, Q. Yu,<br />
+et al.<br />
+(2024)<br />
+Emu3: next-token prediction is all you need<br />
+.<br />
+arXiv preprint arXiv:2409.18869<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§2<br />
+.<br />
+[63]<br />
+Y. Wang, K. Li, Y. Li, Y. He, B. Huang, Z. Zhao, H. Zhang, J. Xu, Y. Liu, Z. Wang,<br />
+et al.<br />
+(2022)<br />
+Internvideo: general video foundation models via generative and discriminative learning<br />
+.<br />
+arXiv preprint arXiv:2212.03191<br />
+.<br />
+Cited by:<br />
+§3.4<br />
+,<br />
+Table 5<br />
+,<br />
+§I.2<br />
+.<br />
+[64]<br />
+Y. Wang, T. Xiong, D. Zhou, Z. Lin, Y. Zhao, B. Kang, J. Feng, and X. Liu<br />
+(2024)<br />
+Loong: generating minute-level long videos with autoregressive language models<br />
+.<br />
+arXiv preprint arXiv:2410.02757<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+.<br />
+[65]<br />
+J. Wu, Y. Jiang, C. Ma, Y. Liu, H. Zhao, Z. Yuan, S. Bai, and X. Bai<br />
+(2024)<br />
+Liquid: language models are scalable multi-modal generators<br />
+.<br />
+arXiv preprint arXiv:2412.04332<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[66]<br />
+Y. Wu, Z. Zhang, J. Chen, H. Tang, D. Li, Y. Fang, L. Zhu, E. Xie, H. Yin, L. Yi,<br />
+et al.<br />
+(2024)<br />
+Vila-u: a unified foundation model integrating visual understanding and generation<br />
+.<br />
+arXiv preprint arXiv:2409.04429<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[67]<br />
+Y. Xin, J. Yan, Q. Qin, Z. Li, D. Liu, S. Li, V. S. Huang, Y. Zhou, R. Zhang, L. Zhuo,<br />
+et al.<br />
+(2025)<br />
+Lumina-mgpt 2.0: stand-alone autoregressive image modeling<br />
+.<br />
+arXiv preprint arXiv:2507.17801<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+[68]<br />
+T. Xiong, J. H. Liew, Z. Huang, J. Feng, and X. Liu<br />
+(2025)<br />
+GigaTok: scaling visual tokenizers to 3 billion parameters for autoregressive image generation<br />
+.<br />
+External Links:<br />
+Link<br />
+,<br />
+2504.08736<br />
+Cited by:<br />
+§M.1<br />
+,<br />
+§2<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+.<br />
+[69]<br />
+W. Xu, X. Yue, Z. Wang, Y. Teng, W. Zhang, X. Liu, L. Zhou, W. Ouyang, and L. Bai<br />
+(2025)<br />
+Exploring representation-aligned latent space for better generation<br />
+.<br />
+arXiv preprint arXiv:2502.00359<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[70]<br />
+W. Yan, V. Mnih, A. Faust, M. Zaharia, P. Abbeel, and H. Liu<br />
+(2025)<br />
+ElasticTok: adaptive tokenization for image and video<br />
+.<br />
+In<br />
+The Thirteenth International Conference on Learning Representations<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.4<br />
+,<br />
+§4.3<br />
+,<br />
+§4.5<br />
+.<br />
+[71]<br />
+J. Yao and X. Wang<br />
+(2025)<br />
+Reconstruction vs. generation: taming optimization dilemma in latent diffusion models<br />
+.<br />
+arXiv preprint arXiv:2501.01423<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[72]<br />
+H. Ye, Q. He, J. Han, P. Li, J. Fan, Z. Hao, F. Reda, Y. Balaji, H. Chen, S. Liu, A. Yao, J. Zou, S. Ermon, H. Wang, and M. Liu<br />
+(2026)<br />
+InfoTok: adaptive discrete video tokenizer via information-theoretic compression<br />
+.<br />
+In<br />
+The Fourteenth International Conference on Learning Representations<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§2<br />
+.<br />
+[73]<br />
+J. Yu, X. Li, J. Y. Koh, H. Zhang, R. Pang, J. Qin, A. Ku, Y. Xu, J. Baldridge, and Y. Wu<br />
+(2021)<br />
+Vector-quantized image modeling with improved vqgan<br />
+.<br />
+arXiv preprint arXiv:2110.04627<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§3.1<br />
+.<br />
+[74]<br />
+L. Yu, Y. Cheng, K. Sohn, J. Lezama, H. Zhang, H. Chang, A. G. Hauptmann, M. Yang, Y. Hao, I. Essa,<br />
+et al.<br />
+(2023)<br />
+Magvit: masked generative video transformer<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition<br />
+,<br />
+pp. 10459–10469<br />
+.<br />
+Cited by:<br />
+Table 3<br />
+,<br />
+Table 3<br />
+.<br />
+[75]<br />
+L. Yu, J. Lezama, N. B. Gundavarapu, L. Versari, K. Sohn, D. Minnen, Y. Cheng, V. Birodkar, A. Gupta, X. Gu,<br />
+et al.<br />
+(2023)<br />
+Language model beats diffusion–tokenizer is key to visual generation<br />
+.<br />
+arXiv preprint arXiv:2310.05737<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§2<br />
+,<br />
+§3.1<br />
+,<br />
+Table 3<br />
+,<br />
+Table 3<br />
+.<br />
+[76]<br />
+Q. Yu, M. Weber, X. Deng, X. Shen, D. Cremers, and L. Chen<br />
+(2024)<br />
+An image is worth 32 tokens for reconstruction and generation<br />
+.<br />
+arXiv preprint arXiv:2406.07550<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[77]<br />
+S. Yu, S. Kwak, H. Jang, J. Jeong, J. Huang, J. Shin, and S. Xie<br />
+(2024)<br />
+Representation alignment for generation: training diffusion transformers is easier than you think<br />
+.<br />
+arXiv preprint arXiv:2410.06940<br />
+.<br />
+Cited by:<br />
+§2<br />
+,<br />
+§3.1<br />
+.<br />
+[78]<br />
+X. Zhai, B. Mustafa, A. Kolesnikov, and L. Beyer<br />
+(2023)<br />
+Sigmoid loss for language image pre-training<br />
+.<br />
+In<br />
+Proceedings of the IEEE/CVF international conference on computer vision<br />
+,<br />
+pp. 11975–11986<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+[79]<br />
+R. Zhang, P. Isola, A. A. Efros, E. Shechtman, and O. Wang<br />
+(2018)<br />
+The unreasonable effectiveness of deep features as a perceptual metric<br />
+.<br />
+In<br />
+Proceedings of the IEEE conference on computer vision and pattern recognition<br />
+,<br />
+pp. 586–595<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+,<br />
+§3.2<br />
+,<br />
+§4.1<br />
+.<br />
+[80]<br />
+X. Zhang, J. Liao, S. Zhang, F. Meng, X. Wan, J. Yan, and Y. Cheng<br />
+(2025)<br />
+VideoREPA: learning physics for video generation through relational alignment with foundation models<br />
+.<br />
+arXiv preprint arXiv:2505.23656<br />
+.<br />
+Cited by:<br />
+§2<br />
+.<br />
+\thetitle<br />
+Supplementary Material<br />
+Content of the Appendix<br />
+This supplementary material includes the following content:<br />
+•<br />
+Sec.<br />
+F<br />
+discusses the limitations of EVATok.<br />
+•<br />
+Sec.<br />
+G<br />
+provides the plan for the future work.<br />
+•<br />
+Sec.<br />
+H<br />
+gives the detailed implementation of the four-stage framework of EVATok and downstream adaptive length AR models.<br />
+•<br />
+Sec.<br />
+I<br />
+provides the reconstruction performances of our final tokenizers, including qualitative examples for the adaptive length reconstruction and generation, as well as cases of how VideoMAE discriminator affects video reconstruction perceptually.<br />
+•<br />
+Sec.<br />
+J<br />
+provides the compute cost analysis for our four-stage framework and downstream AR generation model training.<br />
+•<br />
+Sec.<br />
+L<br />
+analyzes the router’s max-proxy-reward assignment predictions in terms of accuracy and proxy reward.<br />
+•<br />
+Sec.<br />
+K<br />
+explains the attention mask mechanism in our Q-Former style video adaptive tokenizers.<br />
+•<br />
+Sec.<br />
+M<br />
+shows the results for translating the solution of EVATok to image adaptive tokenization.<br />
+F<br />
+Limitations<br />
+In this work, we focus on addressing the key challenge in adaptive length video tokenization: identifying the optimal assignment. Although we have demonstrated the superiority of our method in video reconstruction, as well as downstream autoregressive (AR) class-to-video generation and frame prediction tasks, our experiments were limited to<br />
+16<br />
+×<br />
+128<br />
+×<br />
+128<br />
+16\times 128\times 128<br />
+video clips. We did not evaluate it on videos with higher resolution or longer duration that align with industry-level requirements<br />
+[<br />
+58<br />
+,<br />
+11<br />
+]<br />
+. Additionally, due to limited computational resources, we have not validated EVATok on more complex downstream tasks, such as text-to-video generation.<br />
+Furthermore, when extending video duration in adaptive length video tokenizers, the number of possible assignment choices can grow exponentially if exhaustive searching is naively applied. Although this issue is not addressed in the current work, we discuss a potential solution in our future work section (Sec.<br />
+G<br />
+), which can reduce the complexity of optimal assignment searching from<br />
+O<br />
+​<br />
+(<br />
+m<br />
+t<br />
+)<br />
+O(m^{t})<br />
+to around<br />
+O<br />
+​<br />
+(<br />
+t<br />
+2<br />
+)<br />
+O(t^{2})<br />
+with respect to the maximum video duration<br />
+t<br />
+t<br />
+.<br />
+G<br />
+Future Work<br />
+Adaptive length video tokenization on longer videos.<br />
+In the main paper, when identifying the optimal assignment for a video clip with<br />
+T<br />
+T<br />
+temporal blocks and<br />
+m<br />
+m<br />
+possible token number choices for each temporal block, we search for<br />
+m<br />
+T<br />
+m^{T}<br />
+possible assignments to find the optimal one. This approach will become unaffordable for larger<br />
+T<br />
+T<br />
+. To address this, in future work, we will explore a method that searches for optimal assignments approximately in an autoregressive way. For example, for a video with<br />
+2<br />
+​<br />
+T<br />
+2T<br />
+temporal blocks, we can first search the<br />
+m<br />
+T<br />
+m^{T}<br />
+possible assignments for the first<br />
+T<br />
+T<br />
+blocks, then, based on the optimal assignment for the first<br />
+T<br />
+T<br />
+blocks, we continue to search the<br />
+m<br />
+T<br />
+m^{T}<br />
+possible assignments for the<br />
+T<br />
+T<br />
+blocks. Therefore, if we assume the reconstruction cost for the proxy tokenizer increases linearly with longer<br />
+T<br />
+T<br />
+, then the complexity for optimal assignment searching is estimated to be<br />
+O<br />
+​<br />
+(<br />
+T<br />
+2<br />
+)<br />
+O(T^{2})<br />
+.<br />
+Extension to adaptive length video VAE and diffusion models.<br />
+The idea of adaptive length video tokenization is not limited to discrete tokenizers, and can naturally transfer to adaptive length VAE<br />
+[<br />
+29<br />
+,<br />
+28<br />
+]<br />
+training. While it is natural for AR models to learn on variable length sequences, the performance of diffusion models on denoising adaptive length sequences can be discussed in future work.<br />
+Router improvements.<br />
+In our current implementation, the preference weights are implicitly fixed during the process of training data curation for routers. In the future work, we may want the preference weights to be able to be input explicitly for the routers for more flexible applications.<br />
+H<br />
+Implementation Details<br />
+Tokenizer training.<br />
+On WebVid-10M, we train variable length tokenizer on 3 FPS video frames, following the approaches in VidTok<br />
+[<br />
+51<br />
+]<br />
+. On UCF &amp; K600 dataset, we train tokenizers on video frames with their original FPS, following typical settings. We use a cosine learning rate schedule. The maximum learning rate is<br />
+1<br />
+×<br />
+10<br />
+−<br />
+4<br />
+1\times 10^{-4}<br />
+and end learning rate is<br />
+1<br />
+×<br />
+10<br />
+−<br />
+6<br />
+1\times 10^{-6}<br />
+. The batch size is 128, and proxy tokenizers are all trained for only 400k iterations before being used for proxy reward calculation. The final video adaptive tokenizers are trained for 1000k iterations, whose training cost is aligned with previous work<br />
+[<br />
+59<br />
+,<br />
+33<br />
+]<br />
+.<br />
+Proxy reward calculation.<br />
+For proxy reward calculation from the main paper:<br />
+R<br />
+proxy<br />
+=<br />
+w<br />
+q<br />
+​<br />
+Q<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+,<br />
+x<br />
+,<br />
+a<br />
+)<br />
+−<br />
+w<br />
+l<br />
+​<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+R_{\text{proxy}}=w_{q}Q(\mathcal{E}<em>{\text{proxy}},x,a)-w</em>{l}L(a)<br />
+(5)<br />
+Specifically, we calculate<br />
+Q<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+,<br />
+x<br />
+,<br />
+a<br />
+)<br />
+Q(\mathcal{E}<em>{\text{proxy}},x,a)<br />
+as:<br />
+Q<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+,<br />
+x<br />
+,<br />
+a<br />
+)<br />
+=<br />
+LPIPS<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+,<br />
+x<br />
+)<br />
+−<br />
+MEAN<br />
+LPIPS<br />
+STD<br />
+LPIPS<br />
+Q(\mathcal{E}</em>{\text{proxy}},x,a)=\frac{\text{LPIPS}(\mathcal{E}<em>{\text{proxy}}(x,a),x)-\text{MEAN}</em>{\text{LPIPS}}}{\text{STD}<em>{\text{LPIPS}}}<br />
+(6)<br />
+where<br />
+LPIPS<br />
+​<br />
+(<br />
+ℰ<br />
+proxy<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+,<br />
+x<br />
+)<br />
+\text{LPIPS}(\mathcal{E}</em>{\text{proxy}}(x,a),x)<br />
+is the LPIPS value between original video<br />
+x<br />
+x<br />
+and the reconstruction result<br />
+ℰ<br />
+proxy<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+\mathcal{E}<em>{\text{proxy}}(x,a)<br />
+using proxy tokenizer<br />
+ℰ<br />
+proxy<br />
+\mathcal{E}</em>{\text{proxy}}<br />
+under assignment<br />
+a<br />
+a<br />
+.<br />
+MEAN<br />
+LPIPS<br />
+\text{MEAN}<em>{\text{LPIPS}}<br />
+denotes the expectation of<br />
+ℰ<br />
+proxy<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+\mathcal{E}</em>{\text{proxy}}(x,a)<br />
+for randomly sampled<br />
+x<br />
+x<br />
+from all the training videos and randomly sampled<br />
+a<br />
+a<br />
+from all candidate assignments, and<br />
+STD<br />
+LPIPS<br />
+\text{STD}<em>{\text{LPIPS}}<br />
+represents the standard deviation of<br />
+ℰ<br />
+proxy<br />
+​<br />
+(<br />
+x<br />
+,<br />
+a<br />
+)<br />
+\mathcal{E}</em>{\text{proxy}}(x,a)<br />
+for random<br />
+x<br />
+x<br />
+and<br />
+a<br />
+a<br />
+. We choose LPIPS for per-video reconstruction quality measurement, as it is a metric designed to better align with human perception. We calculate<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+L(a)<br />
+as:<br />
+L<br />
+​<br />
+(<br />
+a<br />
+)<br />
+=<br />
+∑<br />
+k<br />
+=<br />
+1<br />
+T<br />
+a<br />
+​<br />
+[<br />
+k<br />
+]<br />
+−<br />
+MEAN<br />
+L<br />
+STD<br />
+L<br />
+L(a)=\frac{\sum_{k=1}^{T}a[k]-\text{MEAN}<em>{L}}{\text{STD}</em>{L}}<br />
+(7)<br />
+where<br />
+∑<br />
+k<br />
+=<br />
+1<br />
+T<br />
+a<br />
+​<br />
+[<br />
+k<br />
+]<br />
+\sum_{k=1}^{T}a[k]<br />
+is the sum of the allocated tokens across all<br />
+T<br />
+T<br />
+temporal blocks.<br />
+MEAN<br />
+L<br />
+\text{MEAN}<em>{L}<br />
+and<br />
+STD<br />
+L<br />
+\text{STD}</em>{L}<br />
+are the expectation of<br />
+∑<br />
+k<br />
+=<br />
+1<br />
+T<br />
+a<br />
+​<br />
+[<br />
+k<br />
+]<br />
+\sum_{k=1}^{T}a[k]<br />
+for randomly sampled<br />
+a<br />
+a<br />
+.<br />
+Router training.<br />
+We train 19.9M ViT-S size routers with a batch size of 128 for 50k iterations. We optionally use frozen V-JEPA2<br />
+[<br />
+2<br />
+]<br />
+to patchify raw frames into video embeddings. Otherwise, we use the typical learnable linear projection for patch embeddings. In practice, we find that there is no obvious performance gap between these two visual embedding strategies.<br />
+AR model training.<br />
+For the adaptive length token sequences produced by EVATok, before each temporal block, a special token indicating the number of tokens for the upcoming temporal block will be inserted for AR training. Therefore, for AR inference, before generating the tokens of the next temporal block, the AR model first predicts the special tokens indicating the length of the next block. On UCF-101, AR models are trained for 3000 epochs using WSD<br />
+[<br />
+21<br />
+]<br />
+learning rate schedule, where the learning rate is kept constant for the first 80% of the training and quickly annealed to 0 in the rest 20% training iterations. On K600, the AR models are trained for 75 epochs with the same learning rate scheduler.<br />
+AR inference for adaptive length video generation.<br />
+In adaptive length AR generation, we observe that even with a special token preceding each temporal block to indicate the number of tokens in the upcoming block, the AR model may still occasionally produce unexpected tokens during inference (<br />
+e.g<br />
+.<br />
+, sampling a special token when a visual token is expected, or vice versa). To ensure the model generates precisely the number of tokens specified by the preceding special token for each temporal block, we employ a logit-masking strategy. For instance, when sampling the first token of a variable length sequence, which is expected to be a special token denoting the token count for the initial block, all logit entries corresponding to visual tokens are masked to<br />
+−<br />
+𝚒𝚗𝚏<br />
+\tt-inf<br />
+before the softmax operation. This guarantees that only a special token is sampled. Subsequently, for the next<br />
+k<br />
+k<br />
+tokens (as indicated by the special token), the logits for special tokens are masked, ensuring only visual tokens are generated. This process continues until<br />
+m<br />
+m<br />
+special tokens and their corresponding temporal blocks are generated. This approach incurs nearly no additional computational overhead and guarantees the generated variable length sequence maintains the correct structure. We use constant classifier free guidance (CFG) schedules for AR model inference during class-to-video sampling. For GPT-B models, the CFG value is<br />
+2.5<br />
+2.5<br />
+, for larger GPT models, we use<br />
+1.75<br />
+1.75<br />
+CFG value.<br />
+I<br />
+More Results and Qualitative Analysis<br />
+Settings / Dataset<br />
+PSNR<br />
+↑<br />
+\uparrow<br />
+LPIPS<br />
+↓<br />
+\downarrow<br />
+rFVD<br />
+↓<br />
+\downarrow</p>
+<h1>rTokens</h1>
+<p>↓<br />
+\downarrow<br />
+Final w/ VideoMAE Disc. (WebVid)<br />
+27.37<br />
+0.1063<br />
+7.3<br />
+721<br />
+Final w/o VideoMAE Disc. (WebVid)<br />
+28.18<br />
+0.0983<br />
+32<br />
+721<br />
+Final w/ VideoMAE Disc. (UCF&amp;K600)<br />
+25.75<br />
+0.1140<br />
+9.7<br />
+774<br />
+Table 6<br />
+:<br />
+The detailed performances of final tokenizers reconstruction results.<br />
+All models are trained for the full 1000k iterations. The tokenizers trained on WebVid-10M are evaluated on the WebVid validation set, and the tokenizers trained on UCF-101 and K600 are evaluated on UCF-101 training set.<br />
+Figure 6<br />
+:<br />
+Adaptive reconstruction results on WebVid.<br />
+We downsample 16 frames into 8 frames for visualization, and each two frames represent a 4-frame temporal block.<br />
+The router typically assigns more tokens to the initial temporal block, allowing the reconstruction of subsequent frames to also benefit from more precise information encoded for the initial block. Content with simple layouts receives fewer tokens (first example<br />
+vs<br />
+.<br />
+other examples). If later frames largely repeat previous ones, they are assigned the minimum number of tokens. Video clips that vary constantly and intensely are allocated more tokens.<br />
+Figure 7<br />
+:<br />
+Adaptive reconstruction results on UCF-101.<br />
+We downsample 16 frames into 8 frames for visualization, and each two frames represent a 4-frame temporal block.<br />
+Figure 8<br />
+:<br />
+Qualitative comparison for using VideoMAE discriminator or not.<br />
+Using VideoMAE discriminator can degrade the PSNR/LPIPS, but in actual perceptual checking, we find that this degradation is traded for alleviated blurriness and artifact patterns. Zoom in to check the visual details.<br />
+Figure 9<br />
+:<br />
+Adaptive generation results on UCF-101.<br />
+We use the 633M GPT model trained on EVATok. We use a constant 3.0 CFG for sampling.<br />
+Figure 10<br />
+:<br />
+Adaptive generation results on K600 frame prediction.<br />
+We use the 633M GPT model trained on EVATok. We don’t use CFG for sampling, following typical approaches. The 1, 3, 5 frames from the 5 condition frames are plotted as the condition part, and the rest 11 frames are downsampled into 6 frames for visualization.<br />
+In this section, we present the full metrics of our final adaptive tokenizers on reconstruction in Tab.<br />
+6<br />
+, and their reconstruction examples on samples from WebVid and the UCF-101 dataset. We also qualitatively present the effect of using VideoMAE<br />
+[<br />
+53<br />
+]<br />
+as part of the video discriminator. Besides, for video generation, we present generated samples on the UCF-101 class-to-video and K600 frame prediction task.<br />
+I.1<br />
+Adaptive Length Reconstruction Examples<br />
+We present the reconstruction results of our final video adaptive tokenizer, along with their token assignments decided by the router. In Fig.<br />
+6<br />
+, we present the reconstruction results of the final adaptive tokenizer trained on WebVid-10M<br />
+[<br />
+5<br />
+]<br />
+. And in Fig.<br />
+7<br />
+are the reconstruction results on UCF-101 dataset, using another final video adaptive tokenizer trained on UCF-101 and K600 datasets. The patterns of video and assignment pairs given by the router correspond to intuitions. The router typically assigns more tokens to the initial temporal block, which helps the reconstruction of subsequent frames to also benefit from more precise information encoded for the initial block. Content with simple layouts or largely repeats previous frames receives fewer tokens. In contrast, videos that vary intensely are assigned more.<br />
+I.2<br />
+VideoMAE Discriminator for Visual Quality<br />
+In our ablation study in the main paper, the application of the VideoMAE<br />
+[<br />
+53<br />
+,<br />
+63<br />
+]<br />
+discriminator significantly improves the rFVD and downstream gFVD but leads to degradation in PSNR and LPIPS. In this part, we aim to qualitatively examine the perceptual effect for improved rFVD and degraded PSNR/LPIPS. We compare two video adaptive length tokenizers on WebVid-10M, one is trained with the pretrained VideoMAE discriminator, while another is trained with the PatchGAN discriminator. As shown in Fig.<br />
+8<br />
+, although the reconstructed videos of the tokenizer trained with VideoMAE discriminator show worse PSNR and LPIPS, they are actually more perceptually preferable as they largely alleviate the blurriness or artifact patterns, especially for highly dynamic and challenging examples. Therefore, we conclude that despite the degradation in PNSR/LPIPS, VideoMAE discriminator still largely enhances the reconstruction quality perceptually.<br />
+I.3<br />
+Adaptive Length Video Generation Examples<br />
+We present UCF-101 class-to-video generation results in Fig.<br />
+9<br />
+and K600 frame prediction results in Fig.<br />
+10<br />
+. As in Fig.<br />
+9<br />
+, the AR generation model learns an intuitive way for adaptive length generation. First, the model tends to pay more efforts for the generation of the first temporal block, which lays the foundation for the later generation. For later blocks, content with more variation tends to take more tokens to generate, while small-motion content takes fewer tokens.<br />
+J<br />
+Computational Overhead Analysis<br />
+Stage / Task<br />
+Model Size<br />
+Dataset<br />
+Bsz<br />
+Iters / Epochs<br />
+GPUs<br />
+Time<br />
+Stage 1: Proxy tokenizer training<br />
+145M<br />
+WebVid (or UCF&amp; K600)<br />
+128<br />
+400k iters<br />
+64×V100<br />
+116 h<br />
+Stage 2: Data curation<br />
+–<br />
+WebVid 100k-Subset<br />
+–<br />
+–<br />
+4×64×V100<br />
+12.5 h<br />
+Stage 3: Router training<br />
+20M<br />
+WebVid 100k-Subset<br />
+128<br />
+50k iters<br />
+32×V100<br />
+5 h<br />
+Stage 4: Final adaptive tokenizer training<br />
+145M<br />
+WebVid (or UCF&amp; K600)<br />
+128<br />
+1000k iters<br />
+64×V100<br />
+347 h<br />
+AR training: UCF-101 class-to-video<br />
+633M<br />
+UCF-101<br />
+128<br />
+3000 epochs<br />
+64×V100<br />
+88 h<br />
+AR training: K600 frame prediction<br />
+633M<br />
+Kinetics-600<br />
+128<br />
+75 epochs<br />
+64×V100<br />
+140 h<br />
+Table 7:<br />
+Summary of compute and time for the four-stage tokenizer pipeline and subsequent AR model training.<br />
+We present the computation cost for the model training of our four-stage framework and the downstream AR models, as shown in Tab.<br />
+7<br />
+. Compared to the previous fixed-length methods, the extra training cost of our four-stage framework comes from the first three stages. However, the first three stages only take around 27.8% of the total four-stage training cost. This percentage can be further reduced in real-world applications. The size of the proxy tokenizer and its training duration can be decreased for faster training, as we only need the proxy tokenizer to compare assignments, instead of performing well. The data curation can be processed by parallel and independent processes, without any GPU communication bottlenecks. And ultimately, the extra cost in adaptive tokenizer training is a one-time investment, but the savings for downstream deployment will consistently take effect. Therefore, the extra cost of the four-stage training is controllable and worthwhile.<br />
+K<br />
+Attention Mask for EVATok<br />
+Figure 11<br />
+:<br />
+Example for the attention masks in our Q-Former style adaptive tokenizer.<br />
+In this section, we illustrate the specific details of the attention mask mechanism in our Q-Former style tokenizer, which ensures the temporal causal structure of our 1D token sequences. Each Q-Former layer consists of one self-attention module and one cross-attention module. The queries are first passed through the self-attention module, and then in the cross-attention module, the queries will attend to the reference embeddings. Next, we use an example to show what attention masks look like in the Q-Former encoder and Q-Former decoder. Assume a video clip is patchified into a<br />
+4<br />
+×<br />
+4<br />
+×<br />
+4<br />
+4\times 4\times 4<br />
+shape tensor, where the first<br />
+4<br />
+4<br />
+corresponds to the number of temporal blocks. And let the assignment of tokens across the<br />
+4<br />
+4<br />
+blocks for this video be<br />
+(<br />
+16<br />
+,<br />
+8<br />
+,<br />
+2<br />
+,<br />
+2<br />
+)<br />
+(16,8,2,2)<br />
+. Then, the attention masks for the Q-Former encoder and Q-Former decoder will be the ones shown in Fig.<br />
+11<br />
+. The query embeddings of each temporal block can only attend to query embeddings or reference embeddings that are no later than this temporal block.<br />
+Dataset<br />
+Method<br />
+Val top1/top5 acc.<br />
+Proxy Reward Percentile<br />
+WebVid<br />
+Best-Uniform<br />
+-<br />
+84.88%<br />
+Router<br />
+11.72% / 35.03%<br />
+96.96%<br />
+UCf-101<br />
+Best-Uniform<br />
+-<br />
+88.46%<br />
+Router<br />
+5.77% / 23.68%<br />
+96.19%<br />
+Table 8<br />
+:<br />
+Accuracy<br />
+vs<br />
+.<br />
+proxy reward percentile for the router assignment.<br />
+In terms of accuracy. the assignments predicted by the router do not usually hit the top1 or top5 highest proxy reward assignments. However, in terms of proxy reward percentile, the router assignments achieve good results, and generalize to unseen dataset (UCF-101) well.<br />
+L<br />
+Accuracy<br />
+vs<br />
+.<br />
+Proxy Reward for Routers<br />
+In this part, we examine the accuracy of the router on the validation sets. We find that although the accuracy is relatively slow, the assignments given by the router still obtain decent proxy reward. We use preference weights<br />
+w<br />
+q<br />
+=<br />
+1.2<br />
+,<br />
+w<br />
+l<br />
+=<br />
+0.8<br />
+w_{q}=1.2,w_{l}=0.8<br />
+for proxy reward calculation, which are the same as the weights used for the evaluated router training data curation. To evaluate relatively how good the predicted assignments are among all candidate assignments, we use a new metric, proxy reward percentile, defined as:<br />
+𝒫<br />
+=<br />
+𝔼<br />
+x<br />
+​<br />
+(<br />
+R<br />
+proxy<br />
+​<br />
+(<br />
+a<br />
+eval<br />
+,<br />
+x<br />
+)<br />
+)<br />
+−<br />
+𝔼<br />
+x<br />
+​<br />
+(<br />
+R<br />
+proxy<br />
+​<br />
+(<br />
+a<br />
+worst<br />
+,<br />
+x<br />
+)<br />
+)<br />
+𝔼<br />
+x<br />
+​<br />
+(<br />
+R<br />
+proxy<br />
+​<br />
+(<br />
+a<br />
+best<br />
+,<br />
+x<br />
+)<br />
+)<br />
+−<br />
+𝔼<br />
+x<br />
+​<br />
+(<br />
+R<br />
+proxy<br />
+​<br />
+(<br />
+a<br />
+worst<br />
+,<br />
+x<br />
+)<br />
+)<br />
+×<br />
+100<br />
+%<br />
+\mathcal{P}=\frac{\mathbb{E}<em>{x}(R</em>{\text{proxy}}(a_{\text{eval}},x))-\mathbb{E}<em>{x}(R</em>{\text{proxy}}(a_{\text{worst}},x))}{\mathbb{E}<em>{x}(R</em>{\text{proxy}}(a_{\text{best}},x))-\mathbb{E}<em>{x}(R</em>{\text{proxy}}(a_{\text{worst}},x))}\times 100\%<br />
+(8)<br />
+where<br />
+a<br />
+eval<br />
+a_{\text{eval}}<br />
+is the assignment to be evaluated for video<br />
+x<br />
+x<br />
+,<br />
+a<br />
+best<br />
+a_{\text{best}}<br />
+is the searched max-proxy-reward assignment for<br />
+x<br />
+x<br />
+, and<br />
+a<br />
+worst<br />
+a_{\text{worst}}<br />
+is the min-proxy-reward assignment. In practice,<br />
+a<br />
+eval<br />
+a_{\text{eval}}<br />
+can be given by the router according to<br />
+x<br />
+x<br />
+or by some other manually designed strategy.<br />
+𝔼<br />
+x<br />
+​<br />
+(<br />
+R<br />
+proxy<br />
+​<br />
+(<br />
+a<br />
+eval<br />
+,<br />
+x<br />
+)<br />
+)<br />
+\mathbb{E}<em>{x}(R</em>{\text{proxy}}(a_{\text{eval}},x))<br />
+is the expectation for the proxy reward based on<br />
+a<br />
+eval<br />
+a_{\text{eval}}<br />
+and<br />
+x<br />
+x<br />
+. The range of<br />
+𝒫<br />
+\mathcal{P}<br />
+is<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+[0,1]<br />
+and the larger<br />
+𝒫<br />
+\mathcal{P}<br />
+, the better the assignment strategy is. We design a best-uniform baseline, which chooses the max-proxy-reward uniform assignment for<br />
+x<br />
+x<br />
+, to compare with the router assignment. As shown in Tab.<br />
+8<br />
+, on WebVid validation set, the top1 accuracy of the router is relatively low, but the proxy reward percentile of the router is high. Moreover, when tested on the unseen UCF-101 dataset, although the top1 accuracy of the router significantly drops, its proxy reward percentile is largely maintained. This phenomenon indicates that the router does not need to be very precise to achieve good performance, implying that the optimal assignment prediction task is not demanding, and some deviation from the best choice won’t result in a large performance drop.<br />
+Figure 12<br />
+:<br />
+Image tokenization quality-cost trade-off curve.<br />
+On ImageNet<br />
+256<br />
+×<br />
+256<br />
+256\times 256<br />
+reconstruction, the improvements of max-proxy-reward assignment can be marginal compared to uniform assignment.<br />
+LPIPS<br />
+↓<br />
+\downarrow<br />
+rFID<br />
+↓<br />
+\downarrow</p>
+<h1>rTokens</h1>
+<p>↓<br />
+\downarrow<br />
+gFID<br />
+↓<br />
+\downarrow</p>
+<h1>gTokens</h1>
+<p>↓<br />
+\downarrow<br />
+Uniform (Final)<br />
+0.2205<br />
+1.22<br />
+256<br />
+4.72<br />
+256<br />
+Router (Final)<br />
+0.2455<br />
+1.46<br />
+205<br />
+(-19.9%)<br />
+4.51<br />
+197<br />
+(-23.0%)<br />
+Table 9<br />
+:<br />
+Image final tokenizer validation.<br />
+For ImageNet<br />
+256<br />
+×<br />
+256<br />
+256\times 256<br />
+, saving 19.9% tokens by adaptive tokenization inevitably leads to worse rFID, but the performance and efficiency of downstream AR generation models can still benefit from our router. The AR generation models use a constant 1.5 CFG during inference.<br />
+M<br />
+Image Adaptive Tokenization<br />
+Different from videos, images don’t have a temporal dimension, so intuitively images are much less redundant than videos. Our experiments on ImageNet<br />
+[<br />
+45<br />
+]<br />
+256<br />
+×<br />
+256<br />
+256\times 256<br />
+show that in this setting, the improvement in overall reconstruction quality that can be brought by assigning different token lengths to different images could be limited. However, for downstream generation, adaptive image tokenization can still help produce better generation FID<br />
+[<br />
+22<br />
+]<br />
+with fewer tokens generated. This result highlights that training generative models on adaptive length sequences is not only efficient but also beneficial to their generation capability.<br />
+M.1<br />
+Implementation Details<br />
+We train image tokenizers on<br />
+256<br />
+×<br />
+256<br />
+256\times 256<br />
+ImageNet<br />
+[<br />
+45<br />
+]<br />
+dataset using a similar CNN + Q-Former hybrid architecture of GigaTok-S-B<br />
+[<br />
+68<br />
+]<br />
+. The basic training recipe is also largely aligned to GigaTok except that we utilize DINOv3<br />
+[<br />
+47<br />
+]<br />
+to provide semantic alignment. We train all image tokenizers with 256 batch size with only 400k iterations, as we only target to validate the gain of adaptive tokenization on images compared to the fixed-length baseline. Our four-stage framework smoothly translates from videos to image adaptive tokenization, because an image can be equivalent to a one-block video in the tokenization process.<br />
+For the proxy tokenizer, we predefine 8 candidate levels of token numbers,<br />
+{<br />
+512<br />
+,<br />
+384<br />
+,<br />
+256<br />
+,<br />
+192<br />
+,<br />
+128<br />
+,<br />
+96<br />
+,<br />
+64<br />
+,<br />
+32<br />
+}<br />
+{512,384,256,192,128,96,64,32}<br />
+, to be assigned to each image for variable length tokenizer training. For image router training, we train ViT-S<br />
+[<br />
+13<br />
+]<br />
+size routers on a subset of ImageNet training split of 100k images. They are trained for 25k iterations with a batch size of 256. We use normalized LPIPS as the quality metric in the proxy reward calculation. The reconstruction quality is evaluated on the 50k ImageNet validation set. For downstream AR generation validation, we train Llama-like<br />
+[<br />
+50<br />
+]<br />
+GPT-B models on each tokenizer for 300 epochs on ImageNet, and evaluate them with generation FID<br />
+[<br />
+22<br />
+]<br />
+with a constant 1.5 CFG, following the typical approaches<br />
+[<br />
+50<br />
+,<br />
+12<br />
+]<br />
+.<br />
+M.2<br />
+Results<br />
+Quality-cost trade-off curve.<br />
+We use a similar way as for video proxy tokenizers, to plot the quality-cost trade-off curve under different overall token budgets on an image proxy tokenizer. As shown in Fig.<br />
+12<br />
+, the quality-cost trade-off curve evaluated on image proxy-tokenizers shows that the improvements brought by max-proxy-reward assignment are limited, which is different from the results on videos. This phenomenon corresponds to observations in previous adaptive image tokenization trials<br />
+[<br />
+46<br />
+,<br />
+39<br />
+]<br />
+on ImageNet, where their adaptive length image tokenizers cannot outperform their fixed-length baselines even with the same overall token budgets.<br />
+Final image tokenizer validation.<br />
+In the final image adaptive tokenizer training, as shown in Tab.<br />
+9<br />
+, we utilize an image router trained with<br />
+w<br />
+q<br />
+=<br />
+1.3<br />
+,<br />
+w<br />
+l<br />
+=<br />
+0.7<br />
+w_{q}=1.3,w_{l}=0.7<br />
+to save 19.8% tokens in reconstruction, but it inevitably leads to worse rFID. However, the AR model trained on our adaptive image tokenizer achieves better gFID with 23.0% fewer tokens generated, compared to the fixed-uniform baselines, which assign 256 tokens to all<br />
+256<br />
+×<br />
+256<br />
+256\times 256<br />
 images. This indicates that the performance and efficiency of downstream AR image generation can still benefit from image adaptive tokenization using our method.</p>
         </div>
         

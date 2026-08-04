@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,3408 +183,3409 @@
         </div>
         
         <div class="fulltext-content">
-<p>Turning the
-Tide
-: Cross-Architecture Distillation for
-Diffusion Large Language Models
-Gongbo Zhang
-1
-Wen Wang
-2
-Ye Tian
-1
-Li Yuan
-1,∗
-1
-Peking University
-2
-Zhejiang University
-∗
-Corresponding author:
-yuanli-ece@pku.edu.cn
-Abstract
-Diffusion large language models (dLLMs) offer parallel decoding and bidirectional context, but state-of-the-art dLLMs require billions of parameters for competitive performance. While existing distillation methods for dLLMs reduce inference steps within a single architecture, none address cross-architecture knowledge transfer, in which the teacher and student differ in architecture, attention mechanism, and tokenizer.
-We present
-Tide
-, the first framework for cross-architecture dLLM distillation, comprising three modular components: (1)
-Tidal
-, which jointly modulates distillation strength across training progress and diffusion timestep to account for the teacher’s noise-dependent reliability; (2)
-CompDemo
-, which enriches the teacher’s context via complementary mask splitting to improve predictions under heavy masking; and (3) Reverse
-Calm
-, a cross-tokenizer objective that inverts chunk-level likelihood matching, yielding bounded gradients and dual-end noise filtering.
-Distilling 8B dense and 16B MoE teachers into a 0.6B student via two heterogeneous pipelines outperforms the baseline by an average of 1.53 points across eight benchmarks, yielding notable gains in code generation, where HumanEval scores reach 48.78 compared to 32.3 for the AR baseline.
-Code:
-GitHub
-Models:
-Hugging Face
-Data:
-Hugging Face
-1
-Introduction
-Figure 1:
-Cross-architecture distillation for dLLMs. Compared to prior step distillation (a) that retains the original model size, the
-Tide
-framework (b) distills heterogeneous 16B MoE and 8B dense teachers into a 0.6B student. The distilled model achieves a +16.5 gain on HumanEval over the AR baseline, 22
-×
-\times
-memory reduction, and 5
-×
-\times
-faster inference.
-Autoregressive language models dominate natural language generation
-(Vaswani
-et al.
-,
-2017
-; Yang
-et al.
-,
-2024
-;
-2025
-)
-, yet diffusion language models have gained traction as an alternative paradigm.
-Earlier works, such as D3PM
-(Austin
-et al.
-,
-2021a
-)
-and MDLM
-(Sahoo
-et al.
-,
-2024
-)
-, explore the basic training architectures.
-Recent works, such as LLaDA
-(Nie
-et al.
-,
-2025
-)
-and Dream
-(Ye
-et al.
-,
-2025
-)
-, scale model size to that of large language models.
-For example, recent work, LLaDA 2.0
-(Bie
-et al.
-,
-2025
-)
-, scales the model size to 100B, achieving a new state-of-the-art performance.
-Compared with autoregressive models, dLLMs iteratively denoise a fully masked sequence, enabling parallel decoding and bidirectional context.
-However, competitive dLLMs require 8B-16B or even more parameters and computation costs
-(Nie
-et al.
-,
-2025
-; Liu
-et al.
-,
-2025
-; Bie
-et al.
-,
-2025
-; Ye
-et al.
-,
-2025
-)
-, posing a barrier to deployment (Figure
-1
-).
-One simple solution for developing stronger small models is knowledge distillation
-(Hinton
-et al.
-,
-2015
-)
-, which compresses large models into smaller ones.
-For autoregressive LMs, methods such as MiniLLM
-(Gu
-et al.
-,
-2024
-)
-, DistiLLM
-(
-Ko
-et al.
-,
-)
-, GKD
-(Agarwal
-et al.
-,
-2024
-)
-, and TAID
-(Shing
-et al.
-,
-2025
-)
-are well established, with various designs, including new Kullback-Leibler divergence losses, leveraging the teacher model’s feedback, etc.
-For dLLMs, however, existing methods—CDLM
-(Kim
-et al.
-,
-2025
-)
-, DDD
-(Hayakawa
-et al.
-,
-2024
-)
-, LSD
-(Fu
-et al.
-,
-2025
-)
-, and SDTT
-(Deschenaux and Gulcehre,
-2024
-)
-—focus exclusively on
-step compression
-within a single architecture, leaving
-cross-architecture distillation
-unexplored.
-This setting introduces
-three
-fundamental challenges.
-First, due to the random sampling of timesteps during training, the teacher’s reliability fluctuates drastically across the diffusion process, leading to inconsistent temporal dynamics.
-Second, severe masking at high noise levels greatly reduces available context, making the raw output of the teacher too uninformative to transfer rich spatial representations.
-Third, distinct tokenizer vocabularies render standard token-level likelihood objectives mathematically inapplicable.
-In this work, we present
-Tide
-(Figure
-2
-), the first unified framework for cross-architecture dLLM distillation designed to comprehensively overcome the aforementioned temporal, spatial, and vocabulary barriers.
-Rather than treating these challenges in isolation,
-Tide
-integrates three synergistic components that orchestrate an end-to-end learning pipeline:
-•
-Scheduling Level (
-Tidal
-):
-To resolve temporal inconsistencies,
-Tidal
-dynamically modulates the distillation strength along both the training progress and diffusion timestep axes. It acts as the pacemaker of the framework, ensuring the student selectively learns from the teacher only when the teacher’s timestep-dependent signals are highly reliable.
-•
-Contextual Level (
-CompDemo
-):
-Operating within this scheduled process,
-CompDemo
-overcomes the context scarcity caused by heavy masking at high noise levels. It enriches the teacher’s signals via complementary mask splitting, providing the student with demonstration-conditioned targets that enable robust spatial knowledge transfer.
-•
-Output Level (Reverse
-Calm
-):
-Finally, to map the enriched contextual knowledge into the student’s output space, Reverse
-Calm
-overcomes the cross-tokenizer barrier. By inverting chunk-level likelihood matching, it avoids the instability of direct token mapping, achieving bounded gradients and dual-end noise filtering.
-Collectively, these three modules constitute an integrated framework:
-Tidal
-controls
-when
-to learn across timesteps,
-CompDemo
-determines
-what
-contextual information to enrich, and Reverse
-Calm
-specifies
-how
-to project this knowledge across distinct vocabularies.
-We validate
-Tide
-across two heterogeneous pipelines: (A) cross-tokenizer distillation from a 16B MoE teacher (LLaDA2
-(Bie
-et al.
-,
-2025
-)
-) and (B) shared-tokenizer distillation from an 8B dense teacher (WeDLM
-(Liu
-et al.
-,
-2025
-)
-), both into a 0.6B block diffusion student (BD3LM
-(Arriola
-et al.
-,
-2025
-)
-).
-The best configuration improves the non-distilled baseline by +1.53 on the eight-benchmark average (34.20 vs. 32.67), with distilled dLLMs excelling at code generation (HumanEval 48.78 vs. 32.3 for the same-size AR model).
-Ablations confirm that each pipeline favors a distinct strategy, validating the modular design.
-Our primary contributions are:
-•
-We introduce
-Tide
-, the pioneering cross-architecture knowledge distillation framework for dLLMs, specifically designed to overcome challenges in heterogeneous transfer such as varying timestep reliability, mismatched attention, and distinct tokenizers.
-•
-We propose three novel, modular components to enable this transfer:
-Tidal
-for dual-axis, timestep-aware distillation scheduling,
-CompDemo
-to enrich teacher signals via complementary masking, and Reverse
-Calm
-for robust cross-tokenizer alignment.
-•
-Experiments across eight benchmarks and two pipelines show that cross-architecture dLLM distillation is effective. Ablations confirm that each component contributes and that each pipeline favors a distinct configuration.
-Figure 2:
-Overview of the
-Tide
-framework, transferring knowledge from a large teacher to a 0.6B student via three modular components: (1)
-Tidal
-for dual-axis interpolation, (2)
-CompDemo
-for complementary teacher demonstration, and (3) Reverse
-Calm
-for cross-tokenizer alignment.
-2
-Method
-Tide
-(figure
-2
-) addresses the problem of distilling a large teacher dLLM
-f
-T
-f_{T}
-(parameterized by
-θ
-T
-\theta_{T}
-) into a smaller student dLLM
-f
-S
-f_{S}
-(parameterized by
-θ
-S
-\theta_{S}
-), where the teacher and the student may differ in foundational model architecture, attention mechanism, and tokenizer vocabulary. Let
-𝐱
-=
-(
-x
-1
-,
-…
-,
-x
-L
-)
-\mathbf{x}=(x_{1},\ldots,x_{L})
-denote a clean token sequence and
-𝐱
-t
-\mathbf{x}_{t}
-denote the noised version at a diffusion timestep
-t
-∈
-[
-ϵ
-,
-1
-)
-t\in[\epsilon,1)
-, where the positions within the mask set
-ℳ
-\mathcal{M}
-are replaced with a special
-[MASK]
-token. The student is trained to predict the clean tokens at the masked positions, guided by both the ground-truth labels and the teacher’s predicted categorical token distribution.
-2.1
-Time-Iteration Dual-Axis Lambda Modulation
-Knowledge distillation for dLLMs encounters a unique challenge absent in autoregressive (AR) distillation: the reliability of the teacher signal varies with the diffusion timestep. At low masking ratios (
-t
-≈
-0
-t\approx 0
-), the teacher observes nearly the entire sequence and produces highly reliable predictions. Conversely, at high masking ratios (
-t
-≈
-1
-t\approx 1
-), even a large teacher model primarily relies on guessing. Furthermore, the student model’s capacity to absorb knowledge from the teacher evolves throughout training. These two phenomena motivate a
-dual-axis
-scheduling approach that jointly modulates distillation strength along both the diffusion timestep and the training progress.
-Axis 1: Diffusion timestep.
-To account for the timestep-dependent reliability of the teacher, we modulate the interpolation coefficient
-λ
-t
-\lambda_{t}
-according to the current diffusion timestep
-t
-t
-:
-λ
-t
-=
-λ
-train
-×
-(
-1
-−
-t
-)
-,
-\lambda_{t}=\lambda_{\text{train}}\times(1-t),
-(1)
-where
-λ
-train
-\lambda_{\text{train}}
-denotes a base coefficient determined by the training progress (defined below). At high noise levels (
-t
-≈
-1
-t\approx 1
-),
-λ
-t
-≈
-0
-\lambda_{t}\approx 0
-, and the target is dominated by the student, thereby avoiding the distillation of unreliable signals from the teacher.
-At low noise levels (
-t
-≈
-0
-t\approx 0
-),
-λ
-t
-≈
-λ
-train
-\lambda_{t}\approx\lambda_{\text{train}}
-, and the student fully relies on the teacher. This axis is unique to dLLMs; in AR models, the teacher consistently maintains access to the full left context, which renders predictions uniformly reliable and eliminates the need for timestep-dependent modulation.
-Axis 2: Training progress.
-The base coefficient
-λ
-train
-\lambda_{\text{train}}
-follows a cosine schedule over the normalized training progress
-p
-∈
-[
-0
-,
-1
-]
-p\in[0,1]
-:
-λ
-train
-=
-λ
-init
-+
-(
-λ
-max
-−
-λ
-init
-)
-×
-1
-2
-​
-(
-1
-−
-cos
-⁡
-(
-π
-⋅
-p
-)
-)
-,
-\lambda_{\text{train}}=\lambda_{\text{init}}+(\lambda_{\max}-\lambda_{\text{init}})\times\frac{1}{2}\left(1-\cos(\pi\cdot p)\right),
-(2)
-where
-λ
-init
-\lambda_{\text{init}}
-and
-λ
-max
-\lambda_{\max}
-denote hyperparameters, with default values typically set to 0.1 and 0.9. In the initial phases of training,
-λ
-train
-≈
-λ
-init
-\lambda_{\text{train}}\approx\lambda_{\text{init}}
-, which ensures that the target is dominated by the student model to prevent representation collapse. As training progresses to the later stages,
-λ
-train
-\lambda_{\text{train}}
-approaches
-λ
-max
-\lambda_{\max}
-, thereby shifting the learning objective toward comprehensive teacher supervision.
-A similar interpolation-based distillation approach has been proposed in TAID
-(Shing
-et al.
-,
-2025
-)
-for AR models. However, TAID operates along a single axis (training progress only) and does not account for the teacher’s timestep-dependent reliability, which is specific to the dLLM setting. Our
-Time-Iteration Dual-Axis Lambda modulation
-(
-Tidal
-) extends this principle by incorporating a novel diffusion-timestep axis.
-Interpolated target and loss.
-Given the student logits
-𝐬
-\mathbf{s}
-and the teacher logits
-𝐭
-\mathbf{t}
-at the masked positions, the interpolated target is formulated as:
-𝐫
-t
-=
-softmax
-​
-(
-(
-1
-−
-λ
-t
-)
-⋅
-𝐬
-+
-λ
-t
-⋅
-𝐭
-T
-)
-,
-\mathbf{r}_{t}=\mathrm{softmax}\!\left(\frac{(1-\lambda_{t})\cdot\mathbf{s}+\lambda_{t}\cdot\mathbf{t}}{T}\right),
-(3)
-where
-T
-T
-denotes the temperature parameter. To prevent gradient flow through the mixed target, the interpolated target
-𝐫
-t
-\mathbf{r}_{t}
-is detached from the computation graph. Consequently, the
-Tidal
-loss is defined as:
-ℒ
-TIDAL
-=
-D
-KL
-(
-𝐫
-t
-∥
-softmax
-(
-𝐬
-T
-)
-)
-×
-T
-2
-.
-\mathcal{L}_{\text{TIDAL}}=D_{\mathrm{KL}}\!\left(\mathbf{r}_{t}\,\middle\|\,\mathrm{softmax}\!\left(\frac{\mathbf{s}}{T}\right)\right)\times T^{2}.
-(4)
-To maintain memory efficiency, this loss is computed exclusively at the masked positions. Optionally, a midrange timestep weighting
-w
-​
-(
-t
-)
-=
-exp
-⁡
-(
-−
-(
-t
-−
-0.5
-)
-2
-2
-​
-σ
-2
-)
-w(t)=\exp\!\left(-\frac{(t-0.5)^{2}}{2\sigma^{2}}\right)
-with
-σ
-=
-0.15
-\sigma=0.15
-is applied to emphasize the most informative timesteps.
-2.2
-Complementary Demonstration
-In standard dLLM distillation, the teacher model receives the identical masked input
-𝐱
-t
-\mathbf{x}_{t}
-as the student model.
-At high masking ratios, the limited context causes the teacher to produce noisy predictions, thereby degrading the quality of the distillation signal. To address this limitation, we propose
-Complementary Demonstration-Conditioned Denoising
-(
-CompDemo
-), which leverages the mask structure to enrich the context provided to the teacher. This mechanism is specific to dLLMs and lacks an equivalent in AR distillation.
-Motivation.
-In dLLMs, the teacher must denoise under heavy masking, producing noisy predictions at high masking ratios.
-Shenfeld
-et al.
-(
-2026
-)
-show that demonstration-conditioned teachers yield better training signals in the AR setting. Discrete diffusion provides a natural analog: revealing a subset of masked tokens shifts the teacher to a lower effective timestep, improving its predictions. We partition the masked positions into two complementary subsets; each subset serves as additional context for one of two teacher forward passes, so every masked position benefits from enriched context.
-Mask splitting.
-Given the set of masked positions
-ℳ
-\mathcal{M}
-, we randomly partition this set into two complementary subsets,
-ℳ
-A
-\mathcal{M}_{A}
-and
-ℳ
-B
-\mathcal{M}_{B}
-, such that:
-ℳ
-A
-∪
-ℳ
-B
-=
-ℳ
-,
-ℳ
-A
-∩
-ℳ
-B
-=
-∅
-,
-|
-ℳ
-A
-|
-/
-|
-ℳ
-|
-≈
-ρ
-,
-\mathcal{M}_{A}\cup\mathcal{M}_{B}=\mathcal{M},\quad\mathcal{M}_{A}\cap\mathcal{M}_{B}=\emptyset,\quad|\mathcal{M}_{A}|/|\mathcal{M}|\approx\rho,
-(5)
-where
-ρ
-=
-0.5
-\rho=0.5
-represents the demonstration ratio.
-Two-pass teacher inference.
-We perform two forward passes through the frozen teacher model:
-Pass 1:
-𝐭
-(
-1
-)
-=
-f
-T
-​
-(
-reveal
-​
-ℳ
-A
-,
-mask
-​
-ℳ
-B
-)
-→
-logits at
-​
-ℳ
-B
-,
-\displaystyle\mathbf{t}^{(1)}=f_{T}(\text{reveal }\mathcal{M}_{A},\text{mask }\mathcal{M}_{B})\to\text{logits at }\mathcal{M}_{B},
-(6)
-Pass 2:
-𝐭
-(
-2
-)
-=
-f
-T
-​
-(
-reveal
-​
-ℳ
-B
-,
-mask
-​
-ℳ
-A
-)
-→
-logits at
-​
-ℳ
-A
-.
-\displaystyle\mathbf{t}^{(2)}=f_{T}(\text{reveal }\mathcal{M}_{B},\text{mask }\mathcal{M}_{A})\to\text{logits at }\mathcal{M}_{A}.
-In Pass 1, positions in
-ℳ
-A
-\mathcal{M}_{A}
-retain clean tokens as demonstration context while
-ℳ
-B
-\mathcal{M}_{B}
-remains masked; Pass 2 is symmetric. The merged logits are
-𝐭
-final
-​
-[
-ℳ
-B
-]
-←
-𝐭
-(
-1
-)
-​
-[
-ℳ
-B
-]
-\mathbf{t}_{\text{final}}[\mathcal{M}_{B}]\leftarrow\mathbf{t}^{(1)}[\mathcal{M}_{B}]
-and
-𝐭
-final
-​
-[
-ℳ
-A
-]
-←
-𝐭
-(
-2
-)
-​
-[
-ℳ
-A
-]
-\mathbf{t}_{\text{final}}[\mathcal{M}_{A}]\leftarrow\mathbf{t}^{(2)}[\mathcal{M}_{A}]
-.
-Cost analysis.
-CompDemo
-doubles the teacher’s forward passes, but since the teacher is frozen (no gradient computation), overall training time increases by approximately 50%.
-2.3
-Distillation Objectives
-Tide
-supports two distillation pipelines, which depend on the tokenizer compatibility between the teacher and student models. For each pipeline, we design a tailored objective that accounts for the granularity of alignment.
-Shared-tokenizer objective (WeDLM
-→
-\to
-BD3LM).
-When the teacher and student models share an identical tokenizer family
-(Liu
-et al.
-,
-2025
-)
-, the distributions at the token level are directly comparable. We apply the
-Tidal
-loss (section
-2.1
-) by employing KL divergence at the token level, combined with the optional
-CompDemo
-(section
-2.2
-):
-ℒ
-B
-=
-ℒ
-CE
-+
-w
-tidal
-⋅
-ℒ
-TIDAL
-.
-\mathcal{L}_{B}=\mathcal{L}_{\text{CE}}+w_{\text{tidal}}\cdot\mathcal{L}_{\text{TIDAL}}.
-(7)
-Cross-tokenizer objective (LLaDA2
-→
-\to
-BD3LM).
-When the teacher and the student employ different tokenizers (
-𝒱
-T
-≠
-𝒱
-S
-\mathcal{V}_{T}\neq\mathcal{V}_{S}
-),the token-level KL divergence remains undefined due to vocabulary misalignment. To address this limitation, we introduce
-Chunk-level Approximate Likelihood Matching
-(
-Calm
-), which adapts ALM
-(Minixhofer
-et al.
-,
-2025
-)
-for the dLLM setting.
-Chunk alignment.
-Using tokenkit
-(Minixhofer
-et al.
-,
-2024
-;
-2025
-)
-, we align the two token sequences at the byte level to identify
-chunks
-—the minimal text spans that contain one or more complete tokens from each vocabulary. Let
-C
-C
-denote the total number of aligned chunks. We construct binary alignment matrices
-𝑨
-S
-∈
-{
-0
-,
-1
-}
-L
-S
-×
-C
-{\bm{A}}_{S}\in\{0,1\}^{L_{S}\times C}
-and
-𝑨
-T
-∈
-{
-0
-,
-1
-}
-L
-T
-×
-C
-{\bm{A}}_{T}\in\{0,1\}^{L_{T}\times C}
-, where
-[
-𝑨
-S
-]
-i
-,
-c
-=
-1
-[{\bm{A}}_{S}]_{i,c}=1
-if and only if the student token
-i
-i
-is assigned to chunk
-c
-c
-.
-Given that the teacher and student models use distinct chat templates with incompatible special tokens, we restrict the alignment process to
-content
-tokens only.
-We exclude template-specific markup to prevent the formation of spurious cross-tokenizer chunks.
-Chunk-level log-probabilities.
-For each token
-x
-i
-x_{i}
-, the log-probability is computed as
-log
-⁡
-P
-​
-(
-x
-i
-)
-=
-logits
-x
-i
-−
-logsumexp
-​
-(
-logits
-)
-\log P(x_{i})=\text{logits}_{x_{i}}-\text{logsumexp}(\text{logits})
-to avoid the materialization of the full
-[
-b
-,
-L
-,
-V
-]
-[b,L,V]
-softmax matrix. The chunk-level log-probabilities are subsequently obtained through matrix multiplication:
-LP
-S
-=
-𝐥𝐩
-S
-⋅
-𝑨
-S
-∈
-ℝ
-b
-×
-C
-,
-LP
-T
-=
-𝐥𝐩
-T
-⋅
-𝑨
-T
-∈
-ℝ
-b
-×
-C
-,
-\text{LP}_{S}=\mathbf{lp}_{S}\cdot{\bm{A}}_{S}\in\mathbb{R}^{b\times C},\quad\text{LP}_{T}=\mathbf{lp}_{T}\cdot{\bm{A}}_{T}\in\mathbb{R}^{b\times C},
-(8)
-where
-𝐥𝐩
-S
-\mathbf{lp}_{S}
-and
-𝐥𝐩
-T
-\mathbf{lp}_{T}
-denote the per-token log-probability vectors. The chunk probabilities are then derived via temperature scaling:
-p
-s
-c
-=
-exp
-⁡
-(
-LP
-S
-c
-/
-T
-)
-p_{s}^{c}=\exp(\text{LP}_{S}^{c}/T)
-and
-p
-t
-c
-=
-exp
-⁡
-(
-LP
-T
-c
-/
-T
-)
-p_{t}^{c}=\exp(\text{LP}_{T}^{c}/T)
-.
-Forward
-Calm
-.
-A natural baseline involves the application of a forward (mode-covering) binary cross-entropy loss on the chunk probabilities at masked positions:
-ℒ
-Fwd-CALM
-=
-−
-[
-p
-t
-c
-​
-log
-⁡
-p
-s
-c
-+
-(
-1
-−
-p
-t
-c
-)
-​
-log
-⁡
-(
-1
-−
-p
-s
-c
-)
-]
-.
-\mathcal{L}_{\text{Fwd-CALM}}=-\left[p_{t}^{c}\log p_{s}^{c}+(1-p_{t}^{c})\log(1-p_{s}^{c})\right].
-(9)
-Note that
-Calm
-operates on
-scalar
-chunk probabilities
-p
-c
-∈
-[
-0
-,
-1
-]
-p^{c}\in[0,1]
-, so BCE is the appropriate loss and the forward/reverse analysis differs from the KL divergence used in token-level distillation.
-The forward
-Calm
-objective can be further integrated with the progressive curriculum of
-Tidal
-by performing interpolation within the chunk probability space:
-p
-mix
-=
-(
-1
-−
-λ
-t
-)
-⋅
-p
-s
-c
-+
-λ
-t
-⋅
-p
-t
-c
-,
-ℒ
-CALM-TIDAL
-=
-−
-[
-p
-mix
-​
-log
-⁡
-p
-s
-c
-+
-(
-1
-−
-p
-mix
-)
-​
-log
-⁡
-(
-1
-−
-p
-s
-c
-)
-]
-.
-p_{\text{mix}}=(1-\lambda_{t})\cdot p_{s}^{c}+\lambda_{t}\cdot p_{t}^{c},\quad\mathcal{L}_{\text{CALM-TIDAL}}=-\left[p_{\text{mix}}\log p_{s}^{c}+(1-p_{\text{mix}})\log(1-p_{s}^{c})\right].
-(10)
-Limitations of forward
-Calm
-.
-The forward BCE gradient contains a ratio
-p
-t
-c
-/
-p
-s
-c
-p_{t}^{c}/p_{s}^{c}
-. When
-p
-t
-c
-→
-1
-p_{t}^{c}\to 1
-but
-p
-s
-c
-→
-0
-p_{s}^{c}\to 0
-, which is common under imperfect cross-tokenizer alignment, this ratio diverges, causing gradient explosion. The
-1
-/
-p
-s
-c
-1/p_{s}^{c}
-term also amplifies noise from misaligned chunks indiscriminately.
-Reverse
-Calm
-.
-To address these limitations, we propose
-Reverse
-Calm
-, which reverses the direction of the BCE loss:
-ℒ
-Rev-CALM
-=
-−
-[
-p
-s
-c
-​
-log
-⁡
-p
-t
-c
-+
-(
-1
-−
-p
-s
-c
-)
-​
-log
-⁡
-(
-1
-−
-p
-t
-c
-)
-]
-.
-\mathcal{L}_{\text{Rev-CALM}}=-\left[p_{s}^{c}\log p_{t}^{c}+(1-p_{s}^{c})\log(1-p_{t}^{c})\right].
-(11)
-Swapping
-p
-s
-c
-p_{s}^{c}
-and
-p
-t
-c
-p_{t}^{c}
-makes the gradient coefficient
-log
-⁡
-p
-t
-c
-1
-−
-p
-t
-c
-\log\frac{p_{t}^{c}}{1-p_{t}^{c}}
-, which depends only on the fixed teacher and is bounded. This also provides dual-end noise filtering: poorly aligned chunks (
-p
-t
-c
-≈
-0.5
-p_{t}^{c}\approx 0.5
-) zero the coefficient, while low
-p
-s
-c
-p_{s}^{c}
-suppresses noise via small
-∂
-p
-s
-c
-/
-∂
-θ
-\partial p_{s}^{c}/\partial\theta
-. Reverse
-Calm
-is equivalent to minimizing the Bernoulli KL
-KL
-Bern
-​
-(
-p
-s
-c
-∥
-p
-t
-c
-)
-\text{KL}_{\text{Bern}}(p_{s}^{c}\|p_{t}^{c})
-, a mode-seeking objective in scalar space (Appendix
-C
-). Since
-Tidal
-targets the instability of
-forward
-objectives, it is counterproductive for reverse
-Calm
-and is not applied (Appendix
-C
-).
-Training objectives.
-The cross-tokenizer pipeline combines cross-entropy with a distillation loss:
-ℒ
-A
-=
-ℒ
-CE
-+
-w
-calm
-⋅
-ℒ
-dist
-,
-where
-​
-ℒ
-dist
-∈
-{
-ℒ
-CALM-TIDAL
-,
-ℒ
-Rev-CALM
-}
-.
-\mathcal{L}_{A}=\mathcal{L}_{\text{CE}}+w_{\text{calm}}\cdot\mathcal{L}_{\text{dist}},\quad\text{where }\mathcal{L}_{\text{dist}}\in\{\mathcal{L}_{\text{CALM-TIDAL}},\;\mathcal{L}_{\text{Rev-CALM}}\}.
-(12)
-Both losses are computed at masked positions. When
-CompDemo
-is enabled, teacher logits are replaced by the merged two-pass logits (section
-2.2
-).
-3
-Experiments
-3.1
-Experimental Setup
-Models.
-The student model is Qwen3-0.6B-BD3LM, a 0.6B-parameter block diffusion language model initialized from Qwen3-0.6B-Base
-(Yang
-et al.
-,
-2025
-)
-and obtained from
-Zhou
-et al.
-(
-2026
-)
-. Following the BD3LM
-(Arriola
-et al.
-,
-2025
-)
-framework, the model takes the concatenation of
-[
-𝐱
-t
-,
-𝐱
-0
-]
-[\mathbf{x}_{t},\mathbf{x}_{0}]
-with a specialized attention mask during training and uses block diffusion with bidirectional attention for inference.
-We distill from two heterogeneous teachers:
-(A)
-LLaDA2.0-mini
-(Bie
-et al.
-,
-2025
-)
-, an MoE dLLM with an independent tokenizer derived from the Ling series
-(Team
-et al.
-,
-2025
-)
-; and
-(B)
-WeDLM-8B-Instruct
-(Liu
-et al.
-,
-2025
-)
-, an 8B dense causal dLLM initialized from Qwen3-8B-Base
-(Yang
-et al.
-,
-2025
-)
-.
-Training.
-All experiments use a learning rate of 5e-5, 10 training epochs, and bfloat16 precision. Following the training recipe of
-Zhou
-et al.
-(
-2026
-)
-, we combine four SFT datasets: Tulu-3 SFT Mixture
-(Lambert
-et al.
-,
-2024
-)
-, SmolTalk
-(Allal
-et al.
-,
-2025
-)
-, and OpenCoder OPC-SFT Stage 1 and Stage 2
-(Huang
-et al.
-,
-2025
-)
-. The student model’s sequence length is set to 512 tokens, with a block size of 32. Complete hyperparameter settings are provided in Appendix
-B
-.
-Evaluation.
-We evaluate across eight benchmarks spanning reasoning (GSM8K
-(Cobbe
-et al.
-,
-2021
-)
-, MATH
-(Hendrycks
-et al.
-,
-2021b
-)
-, BBH
-(Suzgun
-et al.
-,
-2023
-)
-), knowledge (MMLU-Pro
-(Wang
-et al.
-,
-2024
-)
-, MMLU
-(Hendrycks
-et al.
-,
-2021a
-)
-), commonsense (HellaSwag
-(Zellers
-et al.
-,
-2019
-)
-), and code generation (HumanEval
-(Chen
-et al.
-,
-2021
-)
-, MBPP
-(Austin
-et al.
-,
-2021b
-)
-). Inference and evaluation hyperparameters follow
-Zhou
-et al.
-(
-2026
-)
-; task-specific configurations are detailed in Appendix
-B
-.
-Baselines.
-We adopt the baselines and their reported results from
-Zhou
-et al.
-(
-2026
-)
-: (1) the AR model Qwen3-0.6B-Base, which shares the same architecture and tokenizer as the student prior to block diffusion conversion; and (2) the undistilled BD3LM
-(Arriola
-et al.
-,
-2025
-)
-, derived from Qwen3-0.6B-Base by fine-tuning on the same dataset, which serves as the direct non-distilled reference.
-3.2
-Main Results
-Table
-1
-presents the evaluation results of two distinct distillation pipelines. The
-shared-tokenizer
-pipeline distills WeDLM-8B-Instruct into the Qwen3-0.6B-BD3LM model using token-level KL divergence as the baseline objective. In contrast, the
-cross-tokenizer
-pipeline distills LLaDA2.0-mini into the identical student model using
-Calm
-as the baseline objective. Within the
-Tide
-framework, each pipeline is evaluated under two complementary strategies. Specifically,
-Tide
--Shared applies
-Tidal
-and
-CompDemo
-to enhance signal quality through progressive scheduling and enriched teacher logits. Meanwhile,
-Tide
--Cross adopts a mode-seeking optimization direction via Reverse
-Calm
-(or Reverse KL in the shared-tokenizer setting). To assess generalizability, we further evaluate each strategy within the non-native pipeline.
-Table 1:
-Main results across eight benchmarks. All distillation methods include a cross-entropy loss term.
-Bold
-: best among dLLM models;
-underline
-: second best.
-Qwen3-0.6B
-Shared-Tokenizer
-Cross-Tokenizer
-Benchmark
-AR
-BD3LM
-KL
-Tide
--Cross
-Tide
--Shared
-CALM
-Tide
--Shared
-Tide
--Cross
-GSM8K
-59.60
-45.56
-43.97
-45.03
-48.98
-48.60
-49.89
-52.24
-MATH
-32.40
-13.08
-9.40
-9.76
-11.16
-13.14
-12.98
-13.20
-BBH
-41.50
-26.32
-25.79
-26.00
-26.79
-24.21
-26.85
-27.37
-MMLU-Pro
-24.70
-13.80
-13.19
-12.88
-14.48
-13.47
-14.02
-14.52
-HellaSwag
-47.40
-39.28
-39.78
-39.50
-40.50
-40.42
-39.57
-39.88
-MMLU
-52.80
-39.15
-39.57
-39.09
-39.92
-39.42
-39.54
-39.59
-HumanEval
-32.30
-46.34
-41.46
-42.68
-48.78
-43.90
-49.39
-48.17
-MBPP
-36.60
-37.80
-31.20
-31.40
-37.80
-34.80
-38.40
-38.60
-Avg
-40.91
-32.67
-30.55
-30.79
-33.55
-32.25
-33.83
-34.20
-Cross-Architecture Distillation Is Effective.
-Both
-Tide
-pipelines consistently outperform the non-distilled BD3LM baseline (with an average score of 32.67). The cross-tokenizer pipeline, utilizing the native
-Tide
--Cross strategy, achieves the highest average score of 34.20, while the shared-tokenizer pipeline reaches 33.55 using
-Tide
--Shared. Furthermore, the baseline distillation objectives, even without the components of
-Tide
-, demonstrate improvement over the non-distilled model. This result confirms that the transfer of knowledge across architectures is viable across distinct tokenizers and attention mechanisms.
-Each Pipeline Favors Its Native Strategy.
-The experimental results validate the modular design of
-Tide
-, as each pipeline benefits from a distinct optimal configuration. Within the cross-tokenizer pipeline, the native
-Tide
--Cross strategy outperforms the swapped
-Tide
--Shared strategy by an average margin of 0.37. This observation indicates that the bounded gradients and dual-end noise filtering in the reverse objective are well-suited to scenarios involving alignment noise across different tokenizers (section
-2.3
-). Conversely, within the shared-tokenizer pipeline, the native
-Tide
--Shared strategy surpasses
-Tide
--Cross by an average margin of 2.76. This finding demonstrates that a progressive curriculum and enriched teacher signals are more effective when token-level alignment is exact.
-Distilled dLLMs Excel at Code Generation.
-Across all configurations, the distilled models exhibit strong proficiency in programming tasks. On the HumanEval benchmark,
-Tide
--Shared within the shared-tokenizer pipeline achieves a score of 48.78, and
-Tide
--Cross within the cross-tokenizer pipeline achieves 48.17 (
-Tide
--Shared further reaches 49.39), all substantially exceeding the 32.30 score of an equivalent-sized autoregressive model. A similar pattern emerges on the MBPP benchmark, where the best distilled model reaches a score of 38.60, compared to 36.60 for the autoregressive baseline. This advantage suggests that the parallel generation process of diffusion decoding, which maintains global coherence across the entire output, is particularly suitable for structured outputs such as code. In these contexts, the syntactic and semantic consistency across the entire program remains critical.
-3.3
-Ablation Studies
-To isolate the contribution of each component within the
-Tide
--Cross (
-Tidal
-+
-CompDemo
-) strategy, we conduct ablations on the shared-tokenizer pipeline (WeDLM
-→
-\to
-Qwen3-BD3LM) by removing one component at a time from the full method.
-The three ablation conditions are: removing the timestep axis, replacing the dual-axis scheduling with a timestep-only schedule which serves as our baseline, and removing
-CompDemo
-.
-Detailed configuration settings and formal definitions for these ablations are provided in Appendix
-B
-.
-Table 2:
-Component-level ablation on the shared-tokenizer pipeline (WeDLM
-→
-\to
-Qwen3-BD3LM).
-Bold
-: best per row.
-Benchmark
-Baseline
-w/o Tstep
-w/o
-CompDemo
-Full
-(w/o Train)
-(
-Tidal
-+
-CompDemo
-)
-GSM8K
-48.07
-48.82
-48.90
-48.90
-MATH
-11.74
-11.96
-11.84
-11.68
-BBH
-26.37
-26.51
-26.77
-26.66
-MMLU-Pro
-14.12
-14.42
-13.76
-13.76
-HellaSwag
-40.03
-40.35
-40.16
-40.27
-MMLU
-39.81
-39.84
-39.58
-39.92
-HumanEval
-45.73
-43.90
-44.51
-46.95
-MBPP
-38.60
-37.20
-38.20
-37.00
-Avg
-33.06
-32.88
-32.97
-33.14
-The complete method achieves the highest average score of 33.14 (Table
-2
-), which confirms that each component provides a positive contribution.
-The Timestep Axis Is the Most Impactful Component.
-The removal of the timestep axis causes the largest average performance drop of 0.26, which is primarily driven by a decline of 3.05 on HumanEval. This result validates the central motivation of
-Tidal
-: the reliability of the teacher varies according to the masking ratio, and the modulation of
-λ
-t
-\lambda_{t}
-along the diffusion timestep is essential for stable distillation. The timestep axis enables the student to decrease reliance on the teacher at high masking ratios where predictions are noisy, and to increase this reliance at low masking ratios where the teacher is confident. This dynamic is absent in autoregressive distillation, where the teacher always observes the complete left context.
-CompDemo Provides Consistent Gains.
-The removal of
-CompDemo
-reduces the average performance by 0.17, with the most notable drops occurring on HumanEval (2.44) and MMLU (0.34). The complementary mask splitting strategy enriches the guidance signal from the teacher by exposing the student to two complementary views per training sample, which proves particularly beneficial for tasks that require structured generation.
-Proposed Framework Outperforms Baseline.
-Compared to the Baseline—which relies solely on timestep scheduling as proposed in prior works—our complete
-Tide
-framework achieves a higher average score. The integration of the training-progress axis into our dual-axis
-Tidal
-, combined with
-CompDemo
-, stabilizes the early phase of distillation and prevents a significant performance drop of 0.83 on reasoning tasks such as GSM8K. This demonstrates the effectiveness and necessity of our proposed holistic approach over standalone scheduling methods.
-3.4
-Inference Efficiency
-To evaluate the benefits of distillation for practical deployment, we benchmark inference efficiency under two settings on a single NVIDIA H100-80GB GPU in bfloat16 (Appendix
-B
-). The
-controlled
-setting (Table
-3
-) generates exactly 256 tokens from a single fixed prompt for every model, providing a fair comparison of peak memory, latency, and throughput. The
-evaluation
-setting (Table
-4
-) reports throughput during actual benchmark runs, where input prompts, context lengths, and few-shot configurations vary across eight tasks.
-Table 3:
-Inference efficiency comparison (controlled setting). Peak memory, latency, and throughput are measured on a single H100-80GB GPU generating 256 tokens in bfloat16.
-Model
-Params
-Peak Mem
-Latency
-Tokens/s
-(B)
-(GB)
-(s)
-Student (BD3LM-0.6B)
-Distilled
-0.60
-1.4
-6.25
-41.0
-No Distill
-0.60
-1.4
-6.08
-42.1
-AR Baseline
-Qwen3-0.6B-Base
-0.60
-1.2
-4.99
-51.3
-Teachers
-WeDLM-8B-Instruct
-8.19
-15.5
-6.79
-37.7
-LLaDA2.0-mini
-16.26
-31.3
-32.55
-7.8
-Table 4:
-Per-benchmark inference speed (tokens/s) measured during actual evaluation runs. BD3LM exhibits near-constant throughput due to its fixed diffusion schedule.
-Teachers
-AR
-Student
-Benchmark
-LLaDA2
-WeDLM
-Qwen3
-No Distill
-Distilled
-GSM8K
-8.3
-38.6
-51.4
-41.9
-40.7
-MATH
-10.3
-38.4
-51.1
-41.8
-40.6
-BBH
-9.8
-38.5
-51.1
-42.0
-40.9
-MMLU-Pro
-5.6
-38.3
-51.0
-42.2
-40.5
-HellaSwag
-6.8
-37.2
-51.5
-42.4
-40.6
-MMLU
-6.2
-37.1
-51.4
-41.9
-41.1
-HumanEval
-9.8
-36.8
-51.1
-42.5
-41.7
-MBPP
-9.1
-37.0
-51.8
-42.3
-41.6
-Avg
-8.2
-37.7
-51.3
-42.1
-40.9
-Distillation Enables Practical Deployment.
-Under the controlled setting (Table
-3
-), the distilled student model requires only 1.4 GB of peak memory, representing a 22
-×
-\times
-reduction compared to LLaDA2 (31.3 GB) and an 11
-×
-\times
-reduction compared to WeDLM (15.5 GB). The inference latency of 6.25 s for 256 tokens yields a 5.2
-×
-\times
-speedup over LLaDA2 (32.55 s). As illustrated in figure
-1
-, cross-architecture distillation compresses the knowledge of large teacher dLLMs into a model suitable for deployment on commodity hardware.
-Distillation Adds Minimal Overhead.
-Under the controlled setting, distillation introduces only a 2.6% reduction in throughput relative to the undistilled BD3LM (41.0 vs. 42.1 tokens/s), with a marginal latency increase (6.25 s vs. 6.08 s) and identical memory footprint. The evaluation setting (Table
-4
-) confirms that this overhead is uniform across all eight benchmarks despite varying prompt lengths and generation requirements, indicating that the distillation procedure does not degrade inference efficiency under realistic conditions. Compared to the AR baseline of the same size (51.3 tokens/s), the BD3LM student achieves approximately 80% throughput due to the iterative diffusion process; however, the quality gains from distillation (Table
-1
-) and the inherent advantages of block-parallel generation make this trade-off favorable for practical deployment.
-4
-Conclusion
-We present
-Tide
-, the first cross-architecture distillation framework for heterogeneous dLLMs. Experiments across two pipelines and eight benchmarks show that (1) cross-architecture distillation improves the baseline by +1.53 on average, (2) each pipeline favors a distinct strategy (Reverse
-Calm
-for cross-tokenizer,
-Tidal
-+
-CompDemo
-for shared-tokenizer), and (3) distilled dLLMs outperform the same-size AR model by +16.48 on HumanEval. Future work includes scaling student capacity and extending the framework to continuous-state diffusion LMs.
-Ethics Statement
-This work focuses on improving the efficiency of diffusion language models through knowledge distillation. Publicly available datasets and pre-trained models are utilized.
-The computational requirements are moderate. No direct negative societal impacts are foreseen beyond the general concerns associated with the deployment of language models.
-LLM Usage
-In this section, we clarify the role of large language models (LLMs) in preparing this work.
-The model was used exclusively for language polishing, such as refining grammar, style, and readability, without contributing to the research design, analysis, or conclusions.
-Acknowledgments
-We would like to sincerely thank Xiangtai Li and Anran Wang for their selfless guidance and invaluable support throughout this project.
-References
-R. Agarwal, N. Vieillard, Y. Zhou, P. Stanczyk, S. R. Garea, M. Geist, and O. Bachem (2024)
-On-policy distillation of language models: learning from self-generated mistakes
-.
-In
-The twelfth international conference on learning representations
-,
-Cited by:
-Appendix A
-,
-§1
-.
-L. B. Allal, A. Lozhkov, E. Bakouch, G. M. Blázquez, G. Penedo, L. Tunstall, A. Marafioti, H. Kydlíček, A. P. Lajarín, V. Srivastav,
-et al.
-(2025)
-SmolLM2: when smol goes big–data-centric training of a small language model
-.
-arXiv preprint arXiv:2502.02737
-.
-Cited by:
-§3.1
-.
-M. Arriola, A. Gokaslan, J. T. Chiu, Z. Yang, Z. Qi, J. Han, S. S. Sahoo, and V. Kuleshov (2025)
-Block diffusion: interpolating between autoregressive and diffusion language models
-.
-arXiv preprint arXiv:2503.09573
-.
-Cited by:
-Appendix A
-,
-§1
-,
-§3.1
-,
-§3.1
-.
-J. Austin, D. D. Johnson, J. Ho, D. Tarlow, and R. Van Den Berg (2021a)
-Structured denoising diffusion models in discrete state-spaces
-.
-Advances in neural information processing systems
-34
-,
-pp. 17981–17993
-.
-Cited by:
-Appendix A
-,
-§1
-.
-J. Austin, A. Odena, M. Nye, M. Bosma, H. Michalewski, D. Dohan, E. Jiang, C. Cai, M. Terry, Q. Le,
-et al.
-(2021b)
-Program synthesis with large language models
-.
-arXiv preprint arXiv:2108.07732
-.
-Cited by:
-§3.1
-.
-T. Bie, M. Cao, K. Chen, L. Du, M. Gong, Z. Gong, Y. Gu, J. Hu, Z. Huang, Z. Lan,
-et al.
-(2025)
-Llada2. 0: scaling up diffusion language models to 100b
-.
-arXiv preprint arXiv:2512.15745
-.
-Cited by:
-§1
-,
-§1
-,
-§3.1
-.
-M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. D. O. Pinto, J. Kaplan, H. Edwards, Y. Burda, N. Joseph, G. Brockman,
-et al.
-(2021)
-Evaluating large language models trained on code
-.
-arXiv preprint arXiv:2107.03374
-.
-Cited by:
-§3.1
-.
-K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano,
-et al.
-(2021)
-Training verifiers to solve math word problems
-.
-arXiv preprint arXiv:2110.14168
-.
-Cited by:
-§3.1
-.
-J. Deschenaux and C. Gulcehre (2024)
-Beyond autoregression: fast llms via self-distillation through time
-.
-arXiv preprint arXiv:2410.21035
-.
-Cited by:
-Appendix A
-,
-§1
-.
-F. Fu, T. Guo, and Z. Liu (2025)
-Learnable sampler distillation for discrete diffusion models
-.
-arXiv preprint arXiv:2509.19962
-.
-Cited by:
-Appendix A
-,
-§1
-.
-S. Gong, S. Agarwal, Y. Zhang, J. Ye, L. Zheng, M. Li, C. An, P. Zhao, W. Bi, J. Han,
-et al.
-(2024)
-Scaling diffusion language models via adaptation from autoregressive models
-.
-arXiv preprint arXiv:2410.17891
-.
-Cited by:
-Appendix A
-.
-Y. Gu, L. Dong, F. Wei, and M. Huang (2024)
-MiniLLM: knowledge distillation of large language models
-.
-In
-The Twelfth International Conference on Learning Representations
-,
-External Links:
-Link
-Cited by:
-Appendix A
-,
-§1
-.
-S. Hayakawa, Y. Takida, M. Imaizumi, H. Wakaki, and Y. Mitsufuji (2024)
-Distillation of discrete diffusion through dimensional correlations
-.
-arXiv preprint arXiv:2410.08709
-.
-Cited by:
-Appendix A
-,
-§1
-.
-D. Hendrycks, C. Burns, S. Basart, A. Zou, M. Mazeika, D. Song, and J. Steinhardt (2021a)
-Measuring massive multitask language understanding
-.
-In
-International Conference on Learning Representations
-,
-External Links:
-Link
-Cited by:
-§3.1
-.
-D. Hendrycks, C. Burns, S. Kadavath, A. Arora, S. Basart, E. Tang, D. Song, and J. Steinhardt (2021b)
-Measuring mathematical problem solving with the math dataset
-.
-arXiv preprint arXiv:2103.03874
-.
-Cited by:
-§3.1
-.
-G. Hinton, O. Vinyals, and J. Dean (2015)
-Distilling the knowledge in a neural network
-.
-arXiv preprint arXiv:1503.02531
-.
-Cited by:
-Appendix A
-,
-§1
-.
-S. Huang, T. Cheng, J. K. Liu, W. Xu, J. Hao, L. Song, Y. Xu, J. Yang, J. Liu, C. Zhang,
-et al.
-(2025)
-Opencoder: the open cookbook for top-tier code large language models
-.
-pp. 33167–33193
-.
-Cited by:
-§3.1
-.
-M. Kim, C. Xu, C. Hooper, H. Singh, B. Athiwaratkun, C. Zhang, K. Keutzer, and A. Gholami (2025)
-CDLM: consistency diffusion language models for faster sampling
-.
-arXiv preprint arXiv:2511.19269
-.
-Cited by:
-Appendix A
-,
-§1
-.
-[19]
-J. Ko, S. Kim, T. Chen, and S. Yun
-DistiLLM: towards streamlined distillation for large language models
-.
-In
-Forty-first International Conference on Machine Learning
-,
-Cited by:
-Appendix A
-,
-§1
-.
-N. Lambert, J. Morrison, V. Pyatkin, S. Huang, H. Ivison, F. Brahman, L. J. V. Miranda, A. Liu, N. Dziri, S. Lyu,
-et al.
-(2024)
-Tulu 3: pushing frontiers in open language model post-training
-.
-arXiv preprint arXiv:2411.15124
-.
-Cited by:
-§3.1
-.
-A. Liu, M. He, S. Zeng, S. Zhang, L. Zhang, C. Wu, W. Jia, Y. Liu, X. Zhou, and J. Zhou (2025)
-Wedlm: reconciling diffusion language models with standard causal attention for fast inference
-.
-arXiv preprint arXiv:2512.22737
-.
-Cited by:
-Appendix A
-,
-§1
-,
-§1
-,
-§2.3
-,
-§3.1
-.
-A. Lou, C. Meng, and S. Ermon (2023)
-Discrete diffusion modeling by estimating the ratios of the data distribution
-.
-arXiv preprint arXiv:2310.16834
-.
-Cited by:
-Appendix A
-.
-B. Minixhofer, E. M. Ponti, and I. Vulić (2024)
-Zero-shot tokenizer transfer
-.
-Advances in Neural Information Processing Systems
-37
-,
-pp. 46791–46818
-.
-Cited by:
-Appendix A
-,
-§2.3
-.
-B. Minixhofer, I. Vulić, and E. M. Ponti (2025)
-Universal cross-tokenizer distillation via approximate likelihood matching
-.
-arXiv preprint arXiv:2503.20083
-.
-Cited by:
-Appendix A
-,
-§2.3
-,
-§2.3
-.
-S. Nie, F. Zhu, Z. You, X. Zhang, J. Ou, J. Hu, J. Zhou, Y. Lin, J. Wen, and C. Li (2025)
-Large language diffusion models
-.
-arXiv preprint arXiv:2502.09992
-.
-Cited by:
-Appendix A
-,
-§1
-.
-K. Saadi and D. Wang (2026)
-What should feature distillation transfer in llms? a task-tangent geometry view
-.
-External Links:
-2507.10155
-,
-Link
-Cited by:
-Appendix A
-.
-S. S. Sahoo, M. Arriola, Y. Schiff, A. Gokaslan, E. Marroquin, J. T. Chiu, A. Rush, and V. Kuleshov (2024)
-Simple and effective masked diffusion language models
-.
-Advances in Neural Information Processing Systems
-37
-,
-pp. 130136–130184
-.
-Cited by:
-Appendix A
-,
-§1
-.
-I. Shenfeld, M. Damani, J. Hübotter, and P. Agrawal (2026)
-Self-distillation enables continual learning
-.
-arXiv preprint arXiv:2601.19897
-.
-Cited by:
-§2.2
-.
-M. Shing, K. Misaki, H. Bao, S. Yokoi, and T. Akiba (2025)
-TAID: temporally adaptive interpolated distillation for efficient knowledge transfer in language models
-.
-arXiv preprint arXiv:2501.16937
-.
-Cited by:
-Appendix A
-,
-§1
-,
-§2.1
-.
-M. Suzgun, N. Scales, N. Schärli, S. Gehrmann, Y. Tay, H. W. Chung, A. Chowdhery, Q. Le, E. Chi, D. Zhou,
-et al.
-(2023)
-Challenging big-bench tasks and whether chain-of-thought can solve them
-.
-In
-Findings of the Association for Computational Linguistics: ACL 2023
-,
-pp. 13003–13051
-.
-Cited by:
-§3.1
-.
-L. Team, A. Li, B. Liu, B. Hu, B. Li, B. Zeng, B. Ye, C. Tang, C. Tian, C. Huang, C. Zhang, C. Qian, C. Ju, C. Li, C. Tang, C. Fu, C. Ren, C. Wu, C. Zhang, C. Peng, D. Xu, D. Wang, D. Zhang, D. Jin, D. Zhu, D. Hu, F. Zhao, F. Wu, F. Zhu, G. Wang, H. Zhang, H. Zhao, H. Zhang, H. Wang, H. Qian, H. Yu, H. Zhang, H. Zhang, H. Luan, H. Dong, H. Li, J. Li, J. Liu, J. Zhu, J. Sha, J. Wei, J. Yang, J. Ma, J. Wu, J. Huang, J. Tian, J. Zhang, J. Sun, J. Tu, J. Liu, J. Xu, J. Zhou, J. Ou, J. Fang, K. Zhang, K. Hu, K. Shi, K. Tang, K. Chen, L. Mei, L. Liang, L. Xu, L. Zhang, L. Ju, L. Yuan, L. Zhong, L. Ma, L. Liu, L. Yu, L. Cai, M. Zhu, M. Li, M. Chen, M. Xue, M. Cai, M. Yin, P. Jiang, P. Zhao, P. Liu, Q. Zhao, Q. Cui, Q. Huang, Q. Yang, Q. Yu, S. Wei, S. Lian, S. Zheng, S. Song, S. Zhang, S. Zhang, S. Li, S. Liu, T. Guo, T. Zhao, W. Gu, W. Wu, W. Han, W. Fang, W. Wang, X. Shu, X. Shi, X. Lan, X. Zhang, X. Sun, X. Zhao, X. Lu, X. Xu, X. Wang, X. Wang, X. Yang, Y. Yang, Y. Xiang, Y. Li, Y. Zhang, Y. Wang, Y. Li, Y. Guo, Y. Fu, Y. Wang, Y. Yang, Y. Yu, Y. Deng, Y. Zhang, Y. Yu, Y. Zhang, Y. He, Z. Gui, Z. Huan, Z. Wang, Z. Zhu, Z. Wang, Z. Zhang, Z. Wang, Z. Zeng, Z. Liu, Z. Xuan, and Z. Tang (2025)
-Every activation boosted: scaling general reasoner to 1 trillion open language foundation
-.
-External Links:
-2510.22115
-,
-Link
-Cited by:
-§3.1
-.
-A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin (2017)
-Attention is all you need
-.
-Advances in neural information processing systems
-30
-.
-Cited by:
-§1
-.
-Y. Wang, X. Ma, G. Zhang, Y. Ni, A. Chandra, S. Guo, W. Ren, A. Arulraj, X. He, Z. Jiang,
-et al.
-(2024)
-Mmlu-pro: a more robust and challenging multi-task language understanding benchmark
-.
-Advances in Neural Information Processing Systems
-37
-,
-pp. 95266–95290
-.
-Cited by:
-§3.1
-.
-A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, C. Zheng, D. Liu, F. Zhou, F. Huang, F. Hu, H. Ge, H. Wei, H. Lin, J. Tang, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Zhou, J. Lin, K. Dang, K. Bao, K. Yang, L. Yu, L. Deng, M. Li, M. Xue, M. Li, P. Zhang, P. Wang, Q. Zhu, R. Men, R. Gao, S. Liu, S. Luo, T. Li, T. Tang, W. Yin, X. Ren, X. Wang, X. Zhang, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Zhang, Y. Wan, Y. Liu, Z. Wang, Z. Cui, Z. Zhang, Z. Zhou, and Z. Qiu (2025)
-Qwen3 technical report
-.
-arXiv preprint arXiv:2505.09388
-.
-Cited by:
-§1
-,
-§3.1
-.
-A. Yang, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Li, D. Liu, F. Huang, H. Wei, H. Lin, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Lin, K. Dang, K. Lu, K. Bao, K. Yang, L. Yu, M. Li, M. Xue, P. Zhang, Q. Zhu, R. Men, R. Lin, T. Li, T. Xia, X. Ren, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Wan, Y. Liu, Z. Cui, Z. Zhang, and Z. Qiu (2024)
-Qwen2.5 technical report
-.
-arXiv preprint arXiv:2412.15115
-.
-Cited by:
-§1
-.
-J. Ye, Z. Xie, L. Zheng, J. Gao, Z. Wu, X. Jiang, Z. Li, and L. Kong (2025)
-Dream 7b: diffusion large language models
-.
-arXiv preprint arXiv:2508.15487
-.
-Cited by:
-Appendix A
-,
-§1
-.
-R. Zellers, A. Holtzman, Y. Bisk, A. Farhadi, and Y. Choi (2019)
-Hellaswag: can a machine really finish your sentence?
-.
-In
-Proceedings of the 57th annual meeting of the association for computational linguistics
-,
-pp. 4791–4800
-.
-Cited by:
-§3.1
-.
-S. Zhang, X. Zhang, Z. Sun, Y. Chen, and J. Xu (2024)
-Dual-space knowledge distillation for large language models
-.
-In
-Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing
-,
-pp. 18164–18181
-.
-Cited by:
-Appendix A
-.
-Z. Zhou, L. Chen, H. Tong, and D. Song (2026)
-DLLM: simple diffusion language modeling
-.
-External Links:
-2602.22661
-,
-Link
-Cited by:
-§3.1
-,
-§3.1
-,
-§3.1
-,
-§3.1
-.
-Appendix A
-Related Work
-Diffusion Language Models.
-D3PM
-(Austin
-et al.
-,
-2021a
-)
-pioneered discrete diffusion for text generation. MDLM
-(Sahoo
-et al.
-,
-2024
-)
-and SEDD
-(Lou
-et al.
-,
-2023
-)
-further established theoretical foundations through simplified masked diffusion and score estimation, respectively.
-Building on these foundations, practical dLLMs have emerged with diverse architectures: LLaDA
-(Nie
-et al.
-,
-2025
-)
-adopts full bidirectional attention, BD3LM
-(Arriola
-et al.
-,
-2025
-)
-introduces block diffusion with staircase attention, Dream
-(Ye
-et al.
-,
-2025
-)
-extends masked diffusion with rectified estimation, and WeDLM
-(Liu
-et al.
-,
-2025
-)
-proposes a causal diffusion architecture combining sliding-window and global attention. DiffuLLaMA
-(Gong
-et al.
-,
-2024
-)
-converts pre-trained AR models into diffusion LMs.
-This architectural heterogeneity—encoder, decoder-block, and causal variants—motivates the need for a cross-architecture distillation framework.
-Knowledge Distillation of Large Language Models.
-Knowledge distillation
-(Hinton
-et al.
-,
-2015
-)
-transfers knowledge from a large teacher to a smaller student through soft targets. For AR models, representative methods include reverse KL minimization
-(Gu
-et al.
-,
-2024
-)
-, skewed KL divergence
-(
-Ko
-et al.
-,
-)
-, on-policy distillation
-(Agarwal
-et al.
-,
-2024
-)
-, dual-space transfer
-(Zhang
-et al.
-,
-2024
-)
-, feature-level distillation
-(Saadi and Wang,
-2026
-)
-, and time-varying interpolation
-(Shing
-et al.
-,
-2025
-)
-.
-These methods target the left-to-right AR paradigm.
-Tide
-builds on this line of work, particularly TAID’s interpolation principle, and adapts it to dLLMs, where teacher reliability varies with the diffusion timestep and all masked tokens are predicted simultaneously.
-Distillation for Diffusion Language Models.
-Existing dLLM distillation methods—CDLM
-(Kim
-et al.
-,
-2025
-)
-, DDD
-(Hayakawa
-et al.
-,
-2024
-)
-, LSD
-(Fu
-et al.
-,
-2025
-)
-, and SDTT
-(Deschenaux and Gulcehre,
-2024
-)
-—focus exclusively on
-step compression
-: the student and teacher share the same architecture and tokenizer, and the goal is to reduce the number of inference steps.
-Tide
-addresses a fundamentally different problem:
-cross-architecture
-distillation, where the teacher and student differ in architecture, attention mechanism, and potentially tokenizer. For the cross-tokenizer case, we build on ALM
-(Minixhofer
-et al.
-,
-2025
-)
-and ZeTT
-(Minixhofer
-et al.
-,
-2024
-)
-, adapting chunk-level approximate likelihood matching from the AR setting to dLLMs as
-Calm
-(section
-2.3
-).
-Appendix B
-Training, Inference, and Evaluation Details
-This section provides the comprehensive configurations for training, inference, and evaluation used throughout the experiments.
-Training Configurations.
-Table
-5
-summarizes the complete set of training hyperparameters for both pipelines.
-Table 5:
-Training hyperparameters.
-Parameter
-Cross-Tok.
-Shared-Tok.
-Teacher
-LLaDA2.0-mini (16B MoE)
-WeDLM-8B-Instruct (8B)
-Student init
-SFT v0.1
-SFT v0.1
-Methods
-Reverse
-Calm
-Tidal
-+
-CompDemo
-Learning rate
-5e-5
-5e-5
-Epochs
-10
-10
-Sequence length (student)
-512
-512
-Teacher max length
-1024
-768
-Block size
-32
-32
-Precision
-bfloat16
-bfloat16
-Teacher precision
-bfloat16
-bfloat16
-Attention impl.
-flex_attention
-flex_attention
-Strategy
-DDP
-DDP
-Dataset
-Tulu-3 SFT + SmolTalk + OpenCoder-SFT (Python)
-Tidal
-λ
-init
-→
-λ
-max
-\lambda_{\text{init}}\to\lambda_{\max}
--
-0.1
-→
-0.9
-0.1\to 0.9
-Tidal
-schedule
--
-cosine
-Tidal
-timestep weight
--
-midrange
-CompDemo
-demo_ratio
--
-0.5
-Temperature
-T
-T
--
-2.0
-Ablation Study Configurations.
-For the component-level ablation studies presented in Section
-3.3
-, all configurations are trained for 3 epochs. The specific definitions for the three ablation conditions are as follows:
-•
-w/o Tstep (removing the timestep axis):
-λ
-t
-=
-λ
-train
-\lambda_{t}=\lambda_{\text{train}}
-, i.e. lambda depends only on the training progress.
-•
-Baseline (timestep-only schedule):
-λ
-t
-=
-const
-×
-(
-1
-−
-t
-)
-\lambda_{t}=\mathrm{const}\times(1-t)
-, replacing the dual-axis scheduling with a schedule proposed in previous works.
-•
-w/o
-CompDemo
-:
-Removes the complementary demonstration strategy, using only a single teacher forward pass with the dual-axis
-Tidal
-.
-Evaluation Protocol.
-All evaluations employ diffusion sampling with a block size of 32 and a classifier-free guidance scale of 0.0.
-The number of sampling steps varies depending on the specific task, ranging from 3 to 256. Table
-6
-details the precise configuration for each evaluation.
-Table 6:
-Per-task evaluation configuration.
-Task
-max_new_tokens
-steps
-few-shot
-batch_size
-MMLU
-3
-3
-0
-128
-MMLU-Pro
-256
-256
-0
-64
-HellaSwag
-3
-3
-0
-128
-GSM8K
-256
-256
-0
-128
-BBH
-256
-256
-3
-32
-MATH
-256
-256
-0
-32
-HumanEval
-256
-256
-0
-128
-MBPP
-256
-256
-0
-32
-Inference Efficiency Protocol.
-For the inference efficiency measurements in Section
-3.4
-, all evaluations are conducted on a single NVIDIA H100-80GB GPU with bfloat16 precision. Under the controlled setting, we generate 256 tokens and report the best performance observed across five independent runs. Under the evaluation setting, we run 50 randomly sampled examples from each benchmark and report the average.
-Appendix C
-Gradient Analysis
-This appendix provides detailed derivations of the gradients that support the theoretical justification for Reverse
-Calm
-presented in Section
-2.3
-.
-Forward CALM gradient.
-The gradient of the forward CALM loss with respect to the student parameters
-θ
-\theta
-contains a ratio
-p
-t
-c
-/
-p
-s
-c
-p_{t}^{c}/p_{s}^{c}
-, where
-p
-t
-c
-p_{t}^{c}
-and
-p
-s
-c
-p_{s}^{c}
-are the chunk probabilities of the teacher and the student, respectively:
-g
-fwd
-=
-p
-t
-c
-p
-s
-c
-−
-1
-−
-p
-t
-c
-1
-−
-p
-s
-c
-.
-g_{\text{fwd}}=\frac{p_{t}^{c}}{p_{s}^{c}}-\frac{1-p_{t}^{c}}{1-p_{s}^{c}}.
-(13)
-When
-p
-s
-c
-→
-0
-p_{s}^{c}\to 0
-but
-p
-t
-c
-&gt;
-0
-p_{t}^{c}&gt;0
-,
-g
-fwd
-→
-+
-∞
-g_{\text{fwd}}\to+\infty
-. In the cross-tokenizer setting, imperfect chunk alignment frequently produces chunks where the student assigns a low initial probability, triggering this gradient explosion.
-Reverse CALM gradient.
-The reverse CALM gradient takes the form:
-∂
-ℒ
-rev
-∂
-θ
-=
-−
-∑
-c
-∂
-p
-s
-c
-∂
-θ
-⋅
-log
-⁡
-p
-t
-c
-1
-−
-p
-t
-c
-.
-\frac{\partial\mathcal{L}_{\text{rev}}}{\partial\theta}=-\sum_{c}\frac{\partial p_{s}^{c}}{\partial\theta}\cdot\log\frac{p_{t}^{c}}{1-p_{t}^{c}}.
-(14)
-The gradient coefficient
-log
-⁡
-p
-t
-c
-1
-−
-p
-t
-c
-\log\frac{p_{t}^{c}}{1-p_{t}^{c}}
-depends solely on the fixed teacher probabilities and is bounded:
-|
-g
-rev
-|
-≤
-|
-log
-⁡
-1
-−
-ϵ
-ϵ
-|
-|g_{\text{rev}}|\leq|\log\frac{1-\epsilon}{\epsilon}|
-for
-p
-t
-c
-∈
-[
-ϵ
-,
-1
-−
-ϵ
-]
-p_{t}^{c}\in[\epsilon,1-\epsilon]
-. This provides a stable, self-selecting training signal where the student naturally concentrates updates on the high-probability modes of the teacher.
-Dual-end noise filtering.
-The full reverse gradient
-∂
-p
-s
-c
-∂
-θ
-⋅
-log
-⁡
-p
-t
-c
-1
-−
-p
-t
-c
-\frac{\partial p_{s}^{c}}{\partial\theta}\cdot\log\frac{p_{t}^{c}}{1-p_{t}^{c}}
-is filtered on both ends: (1) poorly aligned chunks yield
-p
-t
-c
-≈
-0.5
-p_{t}^{c}\approx 0.5
-, zeroing the teacher-end coefficient; (2) chunks with low
-p
-s
-c
-p_{s}^{c}
-contribute small
-∂
-p
-s
-c
-∂
-θ
-\frac{\partial p_{s}^{c}}{\partial\theta}
-, suppressing the student-end signal. Forward CALM has no such dual filtering—
-1
-/
-p
-s
-c
-1/p_{s}^{c}
-amplifies noise instead.
-Bernoulli KL equivalence.
-Reverse CALM is equivalent to minimizing the Bernoulli KL divergence
-KL
-Bern
-​
-(
-p
-s
-c
-∥
-p
-t
-c
-)
-=
-p
-s
-c
-​
-log
-⁡
-p
-s
-c
-p
-t
-c
-+
-(
-1
-−
-p
-s
-c
-)
-​
-log
-⁡
-1
-−
-p
-s
-c
-1
-−
-p
-t
-c
-\text{KL}_{\text{Bern}}(p_{s}^{c}\|p_{t}^{c})=p_{s}^{c}\log\frac{p_{s}^{c}}{p_{t}^{c}}+(1-p_{s}^{c})\log\frac{1-p_{s}^{c}}{1-p_{t}^{c}}
-, up to an additive constant independent of
-θ
-\theta
-. This gives Reverse CALM a principled information-theoretic interpretation as mode-seeking distillation in Bernoulli (scalar) space.
-TIDAL and reverse direction.
-Tidal
-addresses the instability of forward CALM via a curriculum where
-λ
-t
-\lambda_{t}
-transitions from emphasizing the student to the teacher. However, reverse CALM does not exhibit this instability. Applying
-Tidal
-to reverse CALM is counterproductive: during the late stages of training, the
-(
-1
-−
-λ
-t
-)
-(1-\lambda_{t})
-factor approaches 0.1, suppressing the gradient and destroying the self-selection mechanism of reverse CALM. This confirms that
-Tidal
-is effective with forward-direction objectives but should not be applied to reverse-direction objectives.
-Appendix D
-Limitations and Future Work
-The empirical scope of this work is limited to a 0.6B-parameter student model using block diffusion with staircase attention. A primary avenue for future research is to scale the student model to 1.3B or 3B parameters to assess whether cross-architecture distillation efficiency improves as the capacity gap narrows. Furthermore, while the
-Tide
-framework is theoretically architecture-agnostic, empirical validation on alternative structures, such as continuous-state diffusion language models or encoder-style dLLMs, remains necessary. Adapting the proposed loss formulations from categorical distributions to continuous densities is a critical next step to broaden the framework’s applicability.
-Furthermore, the training pipeline currently operates within a 512-token context window, leaving the efficacy of cross-tokenizer alignment and
-CompDemo
-on extended sequences unexplored. Future investigations must examine how an increase in the number of alignment chunks alters the relative contributions of these components.
-Additionally, the present methodology processes the cross-tokenizer and shared-tokenizer pipelines independently; formulating a unified multi-teacher distillation objective could facilitate complementary knowledge transfer and yield a more robust representation for the student model.
-Finally, computational efficiency and optimization dynamics present crucial areas for refinement. The
-CompDemo
-component necessitates two forward passes through the frozen teacher model per step, increasing training duration by approximately 50%. Concurrently, gradient-suppression mechanisms render the combination of Reverse
-Calm
-and
-Tidal
-counterproductive (Appendix
-C
-). Developing alternative scheduling paradigms, such as restricting  TIDAL’s modulation exclusively to the cross-entropy objective, is essential for reconciling these optimization conflicts and realizing the cumulative benefits of both strategies.
-Appendix E
-Case Study
-To comprehend the information conveyed by knowledge distillation beyond aggregate benchmark improvements, we conduct a diagnostic study that examines the transfer of dark knowledge and qualitative error patterns.
-Figure 3:
-The KL divergence relative to the WeDLM teacher on the GSM8K dataset. The distilled student achieves a KL divergence that is 46% lower than that of the non-distilled baseline (
-6.69
-6.69
-compared to
-12.44
-12.44
-).
-Dark Knowledge Transfer.
-Within the shared-tokenizer pipeline, we measure the KL divergence between the predictions of the student and those of the teacher at intermediate denoising timesteps. As illustrated in Figure
-3
-,
-Tide
--Shared reduces the KL divergence relative to the WeDLM teacher by 46% on the GSM8K dataset (
-6.69
-6.69
-compared to
-12.44
-12.44
-). This reduction confirms that the distilled student inherits the teacher’s prediction distribution.
-The cross-tokenizer KL comparison (from LLaDA2 to the student) is omitted due to vocabulary misalignment.
-Qualitative Error Analysis.
-We select four instances wherein the non-distilled baseline fails, whereas exactly one distilled variant succeeds (Table
-8
-). Table
-7
-illustrates two representative examples in detail. For instance, #39 of GSM8K, the baseline confuses time allocation with speed in a multi-step distance problem; only
-Tide
--Cross (distilled from LLaDA2) correctly computes the travel distances. For instance, #50 of HumanEval, the baseline calls
-encode_shift
-again instead of reversing the shift; only
-Tide
--Shared (distilled from WeDLM) correctly subtracts 5. These examples demonstrate that each teacher imparts distinct knowledge. Specifically, LLaDA2 corrects multi-step arithmetic omissions and enhances type-level awareness in code generation, whereas WeDLM resolves proportional reasoning errors and facilitates algorithmic inversion.
-Table 7:
-A detailed textual representation of case studies. This table compares the baseline model’s reasoning chains and generated code against those of distilled variants.
-GSM8K #39: Multi-Step Distance Calculation
-Prompt:
-Dana can run at a rate of speed four times faster than she can walk, but she can skip at a rate of speed that is half as fast as she can run. If she can skip at 3 miles per hour, how many miles can she travel in six hours if she spends one-third of the time running and two-thirds of the time walking? (
-Ground Truth:
-18)
-Model
-Output
-Analysis
-Baseline (No Distill)
-Dana can skip at a rate of speed 3 miles per hour, so she can run at a rate of speed
-3
-∗
-2
-=
-6
-3*2=6
-miles per hour. If she spends one-third of the time running, she will run
-6
-/
-3
-=
-2
-6/3=2
-miles per hour. If she spends two-thirds of the time walking, she will walk
-6
-/
-3
-=
-2
-6/3=2
-miles per hour. The total distance Dana can travel in 6 hours is
-2
-∗
-2
-+
-4
-∗
-2
-=
-12
-+
-4
-=
-16
-2*2+4*2=12+4=16
-miles. Answer:
-16
-Confuses time allocation (
-6
-/
-3
-=
-2
-6/3\!=\!2
-hours) with speed (“2 miles per hour”).
-Tide
--Cross (LLaDA2)
-Dana can skip at a rate of 3 miles per hour, so she can run at a rate of
-3
-∗
-2
-=
-6
-3*2=6
-miles per hour. If she spends one-third of the time running, she will run for
-6
-/
-3
-=
-2
-6/3=2
-hours. If she spends two-thirds of the time walking, she will walk for
-6
-/
-3
-=
-2
-6/3=2
-hours. In 2 hours, she will run for
-2
-∗
-6
-=
-12
-2*6=12
-miles. In 2 hours, she will walk for
-2
-∗
-3
-=
-6
-2*3=6
-miles. Therefore, Dana can travel a total of
-12
-+
-6
-=
-18
-12+6=18
-miles in six hours. Answer:
-18
-Correctly computes time allocation and travel distance.
-Tide
--Shared (WeDLM)
-Dana can skip at a rate of 3 miles per hour, so she can run at a rate of
-3
-∗
-2
-=
-6
-3*2=6
-miles per hour. If she spends one-third of the time running, she will spend
-6
-/
-3
-=
-2
-6/3=2
-hours running. If she spends two-thirds of the time walking, she will spend
-6
-/
-3
-=
-2
-6/3=2
-hours walking. In total, she will spend
-2
-+
-2
-=
-4
-2+2=4
-hours running and walking. If she can run at a rate of 6 miles per hour, she will travel
-6
-∗
-6
-=
-36
-6*6=36
-miles in 6 hours of running. If she can skip at a rate of 3 miles per hour, she will travel
-3
-∗
-6
-=
-18
-3*6=18
-miles in 6 hours skipping. Therefore, she will travel a total of
-36
-+
-18
-=
-54
-36+18=54
-miles. Answer:
-54
-Correctly allocates time but uses the full 6 hours instead of the allocated 2 hours.
-HumanEval #50: Algorithmic Inversion
-Prompt:
-The function
-encode_shift
-shifts each character by +5 in the alphabet. Implement the function
-decode_shift
-: reverse the encoding, and return the original string.
-Model
-Output
-Analysis
-Baseline (No Distill)
-return encode_shift(s)
-Calls
-encode_shift
-again (+5) instead of reversing (
-−
--
-5).
-Tide
--Cross (LLaDA2)
-return encode_shift(s)
-+ 500-char explanation that incorrectly justifies this as valid decoding.
-Same erroneous code as Baseline, but with a longer (incorrect) explanation appended.
-Tide
--Shared (WeDLM)
-return &quot;&quot;.join(
-[chr(((ord(ch) - 5
-- ord(&quot;a&quot;)) % 26)
-+ ord(&quot;a&quot;))
-for ch in s])
-Correctly subtracts 5 to reverse the shift.
-Table 8:
-A summary of the case studies. The non-distilled baseline fails on all four problems, whereas each distillation pipeline resolves distinct errors.
-Case &amp; Error Type
-Base
-Tide
--Cross
-Tide
--Shared
-Math Reasoning (GSM8K)
-#39: rate-distance confusion in multi-step problem
-×
-\times
-✓
-\checkmark
-×
-\times
-#77: proportional relationships reversed
-×
-\times
-×
-\times
-✓
-\checkmark
-Code Generation (HumanEval)
-#11: bitwise XOR on string characters
-×
-\times
-✓
-\checkmark
-×
-\times
-#50: decode calls encode (no reversal)
-×
-\times
-×
-\times
-✓
-\checkmark
-Verbatim Model Outputs
-The following presents the complete, unedited model outputs for all four cases in Table
-8
-. These raw responses confirm that each model produces a distinct reasoning chain or code implementation.
-GSM8K #39: Baseline (No Distill) — Incorrect.
-Dana can skip at a rate of speed 3 miles per hour, so she can run at a rate of speed
-3
-×
-2
-=
-6
-3\times 2=6
-miles per hour. If she spends one-third of the time running, she will run
-6
-/
-3
-=
-2
-6/3=2
-miles per hour. If she spends two-thirds of the time walking, she will walk
-6
-/
-3
-=
-2
-6/3=2
-miles per hour. The total distance Dana can travel in 6 hours is
-2
-×
-2
-+
-4
-×
-2
-=
-12
-+
-4
-=
-16
-2\times 2+4\times 2=12+4=16
-miles. #### 16. The answer is: 16
-GSM8K #39:
-Tide
--Cross (LLaDA2) — Correct.
-Dana can skip at a rate of 3 miles per hour, so she can run at a rate of
-3
-×
-2
-=
-6
-3\times 2=6
-miles per hour. If she spends one-third of the time running, she will run for
-6
-/
-3
-=
-2
-6/3=2
-hours. If she spends two-thirds of the time walking, she will walk for
-6
-/
-3
-=
-2
-6/3=2
-hours. In 2 hours, she will run for
-2
-×
-6
-=
-12
-2\times 6=12
-miles. In 2 hours, she will walk for
-2
-×
-3
-=
-6
-2\times 3=6
-miles. Therefore, Dana can travel a total of
-12
-+
-6
-=
-18
-12+6=18
-miles in six hours. #### 18. The answer is: 18
-GSM8K #39:
-Tide
--Shared (WeDLM) — Incorrect.
-Dana can skip at a rate of 3 miles per hour, so she can run at a rate of
-3
-×
-2
-=
-6
-3\times 2=6
-miles per hour. If she spends one-third of the time running, she will spend
-6
-/
-3
-=
-2
-6/3=2
-hours running. If she spends two-thirds of the time walking, she will spend
-6
-/
-3
-=
-2
-6/3=2
-hours walking. In total, she will spend
-2
-+
-2
-=
-4
-2+2=4
-hours running and walking. If she can run at a rate of 6 miles per hour, she will travel
-6
-×
-6
-=
-36
-6\times 6=36
-miles in 6 hours of running. If she can skip at a rate of 3 miles per hour, she will travel
-3
-×
-6
-=
-18
-3\times 6=18
-miles in 6 hours skipping. Therefore, she will travel a total of
-36
-+
-18
-=
-54
-36+18=54
-miles in 6 hours. #### 54. The answer is: 54
-GSM8K #77: Baseline (No Distill) — Incorrect.
-Sarah does 400 pounds of laundry. Raymond does
-4
-×
-400
-=
-1600
-4\times 400=1600
-pounds of laundry. Raymond does
-1600
-/
-2
-=
-800
-1600/2=800
-pounds of laundry. Raymond does
-800
-−
-400
-=
-400
-800-400=400
-pounds of laundry than David.
-GSM8K #77:
-Tide
--Cross (LLaDA2) — Incorrect.
-400
-/
-4
-=
-100
-400/4=100
-pounds of laundry. Raymond does
-100
-/
-2
-=
-50
-100/2=50
-pounds of laundry. The difference is
-100
-−
-50
-=
-50
-100-50=50
-pounds.
-GSM8K #77:
-Tide
--Shared (WeDLM) — Correct.
-Sarah does 400 pounds of laundry. Sarah does 4 times as much laundry as David, so David does
-400
-/
-4
-=
-100
-400/4=100
-pounds of laundry. Raymond does half as much laundry as Sarah, so Raymond does
-400
-/
-2
-=
-200
-400/2=200
-pounds of laundry. The difference in the amount of laundry Raymond and David do is
-200
-−
-100
-=
-100
-200-100=100
-pounds.
-HumanEval #11 (
-string_xor
-): Baseline (No Distill) — Failed.
-result = &quot;&quot;
-    for a, b in zip(a, b):
-        result += str(a ^ b)
-    return result
-HumanEval #11 (
-string_xor
-):
-Tide
--Cross (LLaDA2) — Passed.
-result = ’’
-    for a, b in zip(a, b):
-        if a != b:
-            result += ’1’
-        else:
-            result += ’0’
-    return result
-HumanEval #11 (
-string_xor
-):
-Tide
--Shared (WeDLM) — Failed.
-result = &quot;&quot;
-    for a, b in zip(a, b):
-        result += str(a ^ b))
-    return result[:-1]
-HumanEval #50 (
-decode_shift
-): Baseline (No Distill) — Failed.
-return encode_shift(s)
-HumanEval #50 (
-decode_shift
-):
-Tide
--Cross (LLaDA2) — Failed.
-return encode_shift(s)
-Note: The generated code is identical to the Baseline.
-Tide
--Cross additionally provides a lengthy explanation that incorrectly characterizes this as a valid decoding strategy, suggesting that the model lacks an understanding that decoding requires a reversal operation.
-HumanEval #50 (
-decode_shift
-):
-Tide
--Shared (WeDLM) — Passed.
-return &quot;&quot;.join(
-        [chr(((ord(ch) - 5 - ord(&quot;a&quot;))
-              % 26) + ord(&quot;a&quot;))
+<p>Turning the<br />
+Tide<br />
+: Cross-Architecture Distillation for<br />
+Diffusion Large Language Models<br />
+Gongbo Zhang<br />
+1<br />
+Wen Wang<br />
+2<br />
+Ye Tian<br />
+1<br />
+Li Yuan<br />
+1,∗<br />
+1<br />
+Peking University<br />
+2<br />
+Zhejiang University<br />
+∗<br />
+Corresponding author:<br />
+yuanli-ece@pku.edu.cn<br />
+Abstract<br />
+Diffusion large language models (dLLMs) offer parallel decoding and bidirectional context, but state-of-the-art dLLMs require billions of parameters for competitive performance. While existing distillation methods for dLLMs reduce inference steps within a single architecture, none address cross-architecture knowledge transfer, in which the teacher and student differ in architecture, attention mechanism, and tokenizer.<br />
+We present<br />
+Tide<br />
+, the first framework for cross-architecture dLLM distillation, comprising three modular components: (1)<br />
+Tidal<br />
+, which jointly modulates distillation strength across training progress and diffusion timestep to account for the teacher’s noise-dependent reliability; (2)<br />
+CompDemo<br />
+, which enriches the teacher’s context via complementary mask splitting to improve predictions under heavy masking; and (3) Reverse<br />
+Calm<br />
+, a cross-tokenizer objective that inverts chunk-level likelihood matching, yielding bounded gradients and dual-end noise filtering.<br />
+Distilling 8B dense and 16B MoE teachers into a 0.6B student via two heterogeneous pipelines outperforms the baseline by an average of 1.53 points across eight benchmarks, yielding notable gains in code generation, where HumanEval scores reach 48.78 compared to 32.3 for the AR baseline.<br />
+Code:<br />
+GitHub<br />
+Models:<br />
+Hugging Face<br />
+Data:<br />
+Hugging Face<br />
+1<br />
+Introduction<br />
+Figure 1:<br />
+Cross-architecture distillation for dLLMs. Compared to prior step distillation (a) that retains the original model size, the<br />
+Tide<br />
+framework (b) distills heterogeneous 16B MoE and 8B dense teachers into a 0.6B student. The distilled model achieves a +16.5 gain on HumanEval over the AR baseline, 22<br />
+×<br />
+\times<br />
+memory reduction, and 5<br />
+×<br />
+\times<br />
+faster inference.<br />
+Autoregressive language models dominate natural language generation<br />
+(Vaswani<br />
+et al.<br />
+,<br />
+2017<br />
+; Yang<br />
+et al.<br />
+,<br />
+2024<br />
+;<br />
+2025<br />
+)<br />
+, yet diffusion language models have gained traction as an alternative paradigm.<br />
+Earlier works, such as D3PM<br />
+(Austin<br />
+et al.<br />
+,<br />
+2021a<br />
+)<br />
+and MDLM<br />
+(Sahoo<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, explore the basic training architectures.<br />
+Recent works, such as LLaDA<br />
+(Nie<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+and Dream<br />
+(Ye<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, scale model size to that of large language models.<br />
+For example, recent work, LLaDA 2.0<br />
+(Bie<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, scales the model size to 100B, achieving a new state-of-the-art performance.<br />
+Compared with autoregressive models, dLLMs iteratively denoise a fully masked sequence, enabling parallel decoding and bidirectional context.<br />
+However, competitive dLLMs require 8B-16B or even more parameters and computation costs<br />
+(Nie<br />
+et al.<br />
+,<br />
+2025<br />
+; Liu<br />
+et al.<br />
+,<br />
+2025<br />
+; Bie<br />
+et al.<br />
+,<br />
+2025<br />
+; Ye<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, posing a barrier to deployment (Figure<br />
+1<br />
+).<br />
+One simple solution for developing stronger small models is knowledge distillation<br />
+(Hinton<br />
+et al.<br />
+,<br />
+2015<br />
+)<br />
+, which compresses large models into smaller ones.<br />
+For autoregressive LMs, methods such as MiniLLM<br />
+(Gu<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, DistiLLM<br />
+(<br />
+Ko<br />
+et al.<br />
+,<br />
+)<br />
+, GKD<br />
+(Agarwal<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, and TAID<br />
+(Shing<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+are well established, with various designs, including new Kullback-Leibler divergence losses, leveraging the teacher model’s feedback, etc.<br />
+For dLLMs, however, existing methods—CDLM<br />
+(Kim<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, DDD<br />
+(Hayakawa<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, LSD<br />
+(Fu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, and SDTT<br />
+(Deschenaux and Gulcehre,<br />
+2024<br />
+)<br />
+—focus exclusively on<br />
+step compression<br />
+within a single architecture, leaving<br />
+cross-architecture distillation<br />
+unexplored.<br />
+This setting introduces<br />
+three<br />
+fundamental challenges.<br />
+First, due to the random sampling of timesteps during training, the teacher’s reliability fluctuates drastically across the diffusion process, leading to inconsistent temporal dynamics.<br />
+Second, severe masking at high noise levels greatly reduces available context, making the raw output of the teacher too uninformative to transfer rich spatial representations.<br />
+Third, distinct tokenizer vocabularies render standard token-level likelihood objectives mathematically inapplicable.<br />
+In this work, we present<br />
+Tide<br />
+(Figure<br />
+2<br />
+), the first unified framework for cross-architecture dLLM distillation designed to comprehensively overcome the aforementioned temporal, spatial, and vocabulary barriers.<br />
+Rather than treating these challenges in isolation,<br />
+Tide<br />
+integrates three synergistic components that orchestrate an end-to-end learning pipeline:<br />
+•<br />
+Scheduling Level (<br />
+Tidal<br />
+):<br />
+To resolve temporal inconsistencies,<br />
+Tidal<br />
+dynamically modulates the distillation strength along both the training progress and diffusion timestep axes. It acts as the pacemaker of the framework, ensuring the student selectively learns from the teacher only when the teacher’s timestep-dependent signals are highly reliable.<br />
+•<br />
+Contextual Level (<br />
+CompDemo<br />
+):<br />
+Operating within this scheduled process,<br />
+CompDemo<br />
+overcomes the context scarcity caused by heavy masking at high noise levels. It enriches the teacher’s signals via complementary mask splitting, providing the student with demonstration-conditioned targets that enable robust spatial knowledge transfer.<br />
+•<br />
+Output Level (Reverse<br />
+Calm<br />
+):<br />
+Finally, to map the enriched contextual knowledge into the student’s output space, Reverse<br />
+Calm<br />
+overcomes the cross-tokenizer barrier. By inverting chunk-level likelihood matching, it avoids the instability of direct token mapping, achieving bounded gradients and dual-end noise filtering.<br />
+Collectively, these three modules constitute an integrated framework:<br />
+Tidal<br />
+controls<br />
+when<br />
+to learn across timesteps,<br />
+CompDemo<br />
+determines<br />
+what<br />
+contextual information to enrich, and Reverse<br />
+Calm<br />
+specifies<br />
+how<br />
+to project this knowledge across distinct vocabularies.<br />
+We validate<br />
+Tide<br />
+across two heterogeneous pipelines: (A) cross-tokenizer distillation from a 16B MoE teacher (LLaDA2<br />
+(Bie<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+) and (B) shared-tokenizer distillation from an 8B dense teacher (WeDLM<br />
+(Liu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+), both into a 0.6B block diffusion student (BD3LM<br />
+(Arriola<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+).<br />
+The best configuration improves the non-distilled baseline by +1.53 on the eight-benchmark average (34.20 vs. 32.67), with distilled dLLMs excelling at code generation (HumanEval 48.78 vs. 32.3 for the same-size AR model).<br />
+Ablations confirm that each pipeline favors a distinct strategy, validating the modular design.<br />
+Our primary contributions are:<br />
+•<br />
+We introduce<br />
+Tide<br />
+, the pioneering cross-architecture knowledge distillation framework for dLLMs, specifically designed to overcome challenges in heterogeneous transfer such as varying timestep reliability, mismatched attention, and distinct tokenizers.<br />
+•<br />
+We propose three novel, modular components to enable this transfer:<br />
+Tidal<br />
+for dual-axis, timestep-aware distillation scheduling,<br />
+CompDemo<br />
+to enrich teacher signals via complementary masking, and Reverse<br />
+Calm<br />
+for robust cross-tokenizer alignment.<br />
+•<br />
+Experiments across eight benchmarks and two pipelines show that cross-architecture dLLM distillation is effective. Ablations confirm that each component contributes and that each pipeline favors a distinct configuration.<br />
+Figure 2:<br />
+Overview of the<br />
+Tide<br />
+framework, transferring knowledge from a large teacher to a 0.6B student via three modular components: (1)<br />
+Tidal<br />
+for dual-axis interpolation, (2)<br />
+CompDemo<br />
+for complementary teacher demonstration, and (3) Reverse<br />
+Calm<br />
+for cross-tokenizer alignment.<br />
+2<br />
+Method<br />
+Tide<br />
+(figure<br />
+2<br />
+) addresses the problem of distilling a large teacher dLLM<br />
+f<br />
+T<br />
+f_{T}<br />
+(parameterized by<br />
+θ<br />
+T<br />
+\theta_{T}<br />
+) into a smaller student dLLM<br />
+f<br />
+S<br />
+f_{S}<br />
+(parameterized by<br />
+θ<br />
+S<br />
+\theta_{S}<br />
+), where the teacher and the student may differ in foundational model architecture, attention mechanism, and tokenizer vocabulary. Let<br />
+𝐱<br />
+=<br />
+(<br />
+x<br />
+1<br />
+,<br />
+…<br />
+,<br />
+x<br />
+L<br />
+)<br />
+\mathbf{x}=(x_{1},\ldots,x_{L})<br />
+denote a clean token sequence and<br />
+𝐱<br />
+t<br />
+\mathbf{x}<em>{t}<br />
+denote the noised version at a diffusion timestep<br />
+t<br />
+∈<br />
+[<br />
+ϵ<br />
+,<br />
+1<br />
+)<br />
+t\in[\epsilon,1)<br />
+, where the positions within the mask set<br />
+ℳ<br />
+\mathcal{M}<br />
+are replaced with a special<br />
+[MASK]<br />
+token. The student is trained to predict the clean tokens at the masked positions, guided by both the ground-truth labels and the teacher’s predicted categorical token distribution.<br />
+2.1<br />
+Time-Iteration Dual-Axis Lambda Modulation<br />
+Knowledge distillation for dLLMs encounters a unique challenge absent in autoregressive (AR) distillation: the reliability of the teacher signal varies with the diffusion timestep. At low masking ratios (<br />
+t<br />
+≈<br />
+0<br />
+t\approx 0<br />
+), the teacher observes nearly the entire sequence and produces highly reliable predictions. Conversely, at high masking ratios (<br />
+t<br />
+≈<br />
+1<br />
+t\approx 1<br />
+), even a large teacher model primarily relies on guessing. Furthermore, the student model’s capacity to absorb knowledge from the teacher evolves throughout training. These two phenomena motivate a<br />
+dual-axis<br />
+scheduling approach that jointly modulates distillation strength along both the diffusion timestep and the training progress.<br />
+Axis 1: Diffusion timestep.<br />
+To account for the timestep-dependent reliability of the teacher, we modulate the interpolation coefficient<br />
+λ<br />
+t<br />
+\lambda</em>{t}<br />
+according to the current diffusion timestep<br />
+t<br />
+t<br />
+:<br />
+λ<br />
+t<br />
+=<br />
+λ<br />
+train<br />
+×<br />
+(<br />
+1<br />
+−<br />
+t<br />
+)<br />
+,<br />
+\lambda_{t}=\lambda_{\text{train}}\times(1-t),<br />
+(1)<br />
+where<br />
+λ<br />
+train<br />
+\lambda_{\text{train}}<br />
+denotes a base coefficient determined by the training progress (defined below). At high noise levels (<br />
+t<br />
+≈<br />
+1<br />
+t\approx 1<br />
+),<br />
+λ<br />
+t<br />
+≈<br />
+0<br />
+\lambda_{t}\approx 0<br />
+, and the target is dominated by the student, thereby avoiding the distillation of unreliable signals from the teacher.<br />
+At low noise levels (<br />
+t<br />
+≈<br />
+0<br />
+t\approx 0<br />
+),<br />
+λ<br />
+t<br />
+≈<br />
+λ<br />
+train<br />
+\lambda_{t}\approx\lambda_{\text{train}}<br />
+, and the student fully relies on the teacher. This axis is unique to dLLMs; in AR models, the teacher consistently maintains access to the full left context, which renders predictions uniformly reliable and eliminates the need for timestep-dependent modulation.<br />
+Axis 2: Training progress.<br />
+The base coefficient<br />
+λ<br />
+train<br />
+\lambda_{\text{train}}<br />
+follows a cosine schedule over the normalized training progress<br />
+p<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+p\in[0,1]<br />
+:<br />
+λ<br />
+train<br />
+=<br />
+λ<br />
+init<br />
++<br />
+(<br />
+λ<br />
+max<br />
+−<br />
+λ<br />
+init<br />
+)<br />
+×<br />
+1<br />
+2<br />
+​<br />
+(<br />
+1<br />
+−<br />
+cos<br />
+⁡<br />
+(<br />
+π<br />
+⋅<br />
+p<br />
+)<br />
+)<br />
+,<br />
+\lambda_{\text{train}}=\lambda_{\text{init}}+(\lambda_{\max}-\lambda_{\text{init}})\times\frac{1}{2}\left(1-\cos(\pi\cdot p)\right),<br />
+(2)<br />
+where<br />
+λ<br />
+init<br />
+\lambda_{\text{init}}<br />
+and<br />
+λ<br />
+max<br />
+\lambda_{\max}<br />
+denote hyperparameters, with default values typically set to 0.1 and 0.9. In the initial phases of training,<br />
+λ<br />
+train<br />
+≈<br />
+λ<br />
+init<br />
+\lambda_{\text{train}}\approx\lambda_{\text{init}}<br />
+, which ensures that the target is dominated by the student model to prevent representation collapse. As training progresses to the later stages,<br />
+λ<br />
+train<br />
+\lambda_{\text{train}}<br />
+approaches<br />
+λ<br />
+max<br />
+\lambda_{\max}<br />
+, thereby shifting the learning objective toward comprehensive teacher supervision.<br />
+A similar interpolation-based distillation approach has been proposed in TAID<br />
+(Shing<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+for AR models. However, TAID operates along a single axis (training progress only) and does not account for the teacher’s timestep-dependent reliability, which is specific to the dLLM setting. Our<br />
+Time-Iteration Dual-Axis Lambda modulation<br />
+(<br />
+Tidal<br />
+) extends this principle by incorporating a novel diffusion-timestep axis.<br />
+Interpolated target and loss.<br />
+Given the student logits<br />
+𝐬<br />
+\mathbf{s}<br />
+and the teacher logits<br />
+𝐭<br />
+\mathbf{t}<br />
+at the masked positions, the interpolated target is formulated as:<br />
+𝐫<br />
+t<br />
+=<br />
+softmax<br />
+​<br />
+(<br />
+(<br />
+1<br />
+−<br />
+λ<br />
+t<br />
+)<br />
+⋅<br />
+𝐬<br />
++<br />
+λ<br />
+t<br />
+⋅<br />
+𝐭<br />
+T<br />
+)<br />
+,<br />
+\mathbf{r}<em>{t}=\mathrm{softmax}!\left(\frac{(1-\lambda</em>{t})\cdot\mathbf{s}+\lambda_{t}\cdot\mathbf{t}}{T}\right),<br />
+(3)<br />
+where<br />
+T<br />
+T<br />
+denotes the temperature parameter. To prevent gradient flow through the mixed target, the interpolated target<br />
+𝐫<br />
+t<br />
+\mathbf{r}<em>{t}<br />
+is detached from the computation graph. Consequently, the<br />
+Tidal<br />
+loss is defined as:<br />
+ℒ<br />
+TIDAL<br />
+=<br />
+D<br />
+KL<br />
+(<br />
+𝐫<br />
+t<br />
+∥<br />
+softmax<br />
+(<br />
+𝐬<br />
+T<br />
+)<br />
+)<br />
+×<br />
+T<br />
+2<br />
+.<br />
+\mathcal{L}</em>{\text{TIDAL}}=D_{\mathrm{KL}}!\left(\mathbf{r}<em>{t}\,\middle|\,\mathrm{softmax}!\left(\frac{\mathbf{s}}{T}\right)\right)\times T^{2}.<br />
+(4)<br />
+To maintain memory efficiency, this loss is computed exclusively at the masked positions. Optionally, a midrange timestep weighting<br />
+w<br />
+​<br />
+(<br />
+t<br />
+)<br />
+=<br />
+exp<br />
+⁡<br />
+(<br />
+−<br />
+(<br />
+t<br />
+−<br />
+0.5<br />
+)<br />
+2<br />
+2<br />
+​<br />
+σ<br />
+2<br />
+)<br />
+w(t)=\exp!\left(-\frac{(t-0.5)^{2}}{2\sigma^{2}}\right)<br />
+with<br />
+σ<br />
+=<br />
+0.15<br />
+\sigma=0.15<br />
+is applied to emphasize the most informative timesteps.<br />
+2.2<br />
+Complementary Demonstration<br />
+In standard dLLM distillation, the teacher model receives the identical masked input<br />
+𝐱<br />
+t<br />
+\mathbf{x}</em>{t}<br />
+as the student model.<br />
+At high masking ratios, the limited context causes the teacher to produce noisy predictions, thereby degrading the quality of the distillation signal. To address this limitation, we propose<br />
+Complementary Demonstration-Conditioned Denoising<br />
+(<br />
+CompDemo<br />
+), which leverages the mask structure to enrich the context provided to the teacher. This mechanism is specific to dLLMs and lacks an equivalent in AR distillation.<br />
+Motivation.<br />
+In dLLMs, the teacher must denoise under heavy masking, producing noisy predictions at high masking ratios.<br />
+Shenfeld<br />
+et al.<br />
+(<br />
+2026<br />
+)<br />
+show that demonstration-conditioned teachers yield better training signals in the AR setting. Discrete diffusion provides a natural analog: revealing a subset of masked tokens shifts the teacher to a lower effective timestep, improving its predictions. We partition the masked positions into two complementary subsets; each subset serves as additional context for one of two teacher forward passes, so every masked position benefits from enriched context.<br />
+Mask splitting.<br />
+Given the set of masked positions<br />
+ℳ<br />
+\mathcal{M}<br />
+, we randomly partition this set into two complementary subsets,<br />
+ℳ<br />
+A<br />
+\mathcal{M}<em>{A}<br />
+and<br />
+ℳ<br />
+B<br />
+\mathcal{M}</em>{B}<br />
+, such that:<br />
+ℳ<br />
+A<br />
+∪<br />
+ℳ<br />
+B<br />
+=<br />
+ℳ<br />
+,<br />
+ℳ<br />
+A<br />
+∩<br />
+ℳ<br />
+B<br />
+=<br />
+∅<br />
+,<br />
+|<br />
+ℳ<br />
+A<br />
+|<br />
+/<br />
+|<br />
+ℳ<br />
+|<br />
+≈<br />
+ρ<br />
+,<br />
+\mathcal{M}<em>{A}\cup\mathcal{M}</em>{B}=\mathcal{M},\quad\mathcal{M}<em>{A}\cap\mathcal{M}</em>{B}=\emptyset,\quad|\mathcal{M}<em>{A}|/|\mathcal{M}|\approx\rho,<br />
+(5)<br />
+where<br />
+ρ<br />
+=<br />
+0.5<br />
+\rho=0.5<br />
+represents the demonstration ratio.<br />
+Two-pass teacher inference.<br />
+We perform two forward passes through the frozen teacher model:<br />
+Pass 1:<br />
+𝐭<br />
+(<br />
+1<br />
+)<br />
+=<br />
+f<br />
+T<br />
+​<br />
+(<br />
+reveal<br />
+​<br />
+ℳ<br />
+A<br />
+,<br />
+mask<br />
+​<br />
+ℳ<br />
+B<br />
+)<br />
+→<br />
+logits at<br />
+​<br />
+ℳ<br />
+B<br />
+,<br />
+\displaystyle\mathbf{t}^{(1)}=f</em>{T}(\text{reveal }\mathcal{M}<em>{A},\text{mask }\mathcal{M}</em>{B})\to\text{logits at }\mathcal{M}<em>{B},<br />
+(6)<br />
+Pass 2:<br />
+𝐭<br />
+(<br />
+2<br />
+)<br />
+=<br />
+f<br />
+T<br />
+​<br />
+(<br />
+reveal<br />
+​<br />
+ℳ<br />
+B<br />
+,<br />
+mask<br />
+​<br />
+ℳ<br />
+A<br />
+)<br />
+→<br />
+logits at<br />
+​<br />
+ℳ<br />
+A<br />
+.<br />
+\displaystyle\mathbf{t}^{(2)}=f</em>{T}(\text{reveal }\mathcal{M}<em>{B},\text{mask }\mathcal{M}</em>{A})\to\text{logits at }\mathcal{M}<em>{A}.<br />
+In Pass 1, positions in<br />
+ℳ<br />
+A<br />
+\mathcal{M}</em>{A}<br />
+retain clean tokens as demonstration context while<br />
+ℳ<br />
+B<br />
+\mathcal{M}<em>{B}<br />
+remains masked; Pass 2 is symmetric. The merged logits are<br />
+𝐭<br />
+final<br />
+​<br />
+[<br />
+ℳ<br />
+B<br />
+]<br />
+←<br />
+𝐭<br />
+(<br />
+1<br />
+)<br />
+​<br />
+[<br />
+ℳ<br />
+B<br />
+]<br />
+\mathbf{t}</em>{\text{final}}[\mathcal{M}<em>{B}]\leftarrow\mathbf{t}^{(1)}[\mathcal{M}</em>{B}]<br />
+and<br />
+𝐭<br />
+final<br />
+​<br />
+[<br />
+ℳ<br />
+A<br />
+]<br />
+←<br />
+𝐭<br />
+(<br />
+2<br />
+)<br />
+​<br />
+[<br />
+ℳ<br />
+A<br />
+]<br />
+\mathbf{t}<em>{\text{final}}[\mathcal{M}</em>{A}]\leftarrow\mathbf{t}^{(2)}[\mathcal{M}<em>{A}]<br />
+.<br />
+Cost analysis.<br />
+CompDemo<br />
+doubles the teacher’s forward passes, but since the teacher is frozen (no gradient computation), overall training time increases by approximately 50%.<br />
+2.3<br />
+Distillation Objectives<br />
+Tide<br />
+supports two distillation pipelines, which depend on the tokenizer compatibility between the teacher and student models. For each pipeline, we design a tailored objective that accounts for the granularity of alignment.<br />
+Shared-tokenizer objective (WeDLM<br />
+→<br />
+\to<br />
+BD3LM).<br />
+When the teacher and student models share an identical tokenizer family<br />
+(Liu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, the distributions at the token level are directly comparable. We apply the<br />
+Tidal<br />
+loss (section<br />
+2.1<br />
+) by employing KL divergence at the token level, combined with the optional<br />
+CompDemo<br />
+(section<br />
+2.2<br />
+):<br />
+ℒ<br />
+B<br />
+=<br />
+ℒ<br />
+CE<br />
++<br />
+w<br />
+tidal<br />
+⋅<br />
+ℒ<br />
+TIDAL<br />
+.<br />
+\mathcal{L}</em>{B}=\mathcal{L}<em>{\text{CE}}+w</em>{\text{tidal}}\cdot\mathcal{L}<em>{\text{TIDAL}}.<br />
+(7)<br />
+Cross-tokenizer objective (LLaDA2<br />
+→<br />
+\to<br />
+BD3LM).<br />
+When the teacher and the student employ different tokenizers (<br />
+𝒱<br />
+T<br />
+≠<br />
+𝒱<br />
+S<br />
+\mathcal{V}</em>{T}\neq\mathcal{V}<em>{S}<br />
+),the token-level KL divergence remains undefined due to vocabulary misalignment. To address this limitation, we introduce<br />
+Chunk-level Approximate Likelihood Matching<br />
+(<br />
+Calm<br />
+), which adapts ALM<br />
+(Minixhofer<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+for the dLLM setting.<br />
+Chunk alignment.<br />
+Using tokenkit<br />
+(Minixhofer<br />
+et al.<br />
+,<br />
+2024<br />
+;<br />
+2025<br />
+)<br />
+, we align the two token sequences at the byte level to identify<br />
+chunks<br />
+—the minimal text spans that contain one or more complete tokens from each vocabulary. Let<br />
+C<br />
+C<br />
+denote the total number of aligned chunks. We construct binary alignment matrices<br />
+𝑨<br />
+S<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+L<br />
+S<br />
+×<br />
+C<br />
+{\bm{A}}</em>{S}\in{0,1}^{L_{S}\times C}<br />
+and<br />
+𝑨<br />
+T<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+L<br />
+T<br />
+×<br />
+C<br />
+{\bm{A}}<em>{T}\in{0,1}^{L</em>{T}\times C}<br />
+, where<br />
+[<br />
+𝑨<br />
+S<br />
+]<br />
+i<br />
+,<br />
+c<br />
+=<br />
+1<br />
+[{\bm{A}}<em>{S}]</em>{i,c}=1<br />
+if and only if the student token<br />
+i<br />
+i<br />
+is assigned to chunk<br />
+c<br />
+c<br />
+.<br />
+Given that the teacher and student models use distinct chat templates with incompatible special tokens, we restrict the alignment process to<br />
+content<br />
+tokens only.<br />
+We exclude template-specific markup to prevent the formation of spurious cross-tokenizer chunks.<br />
+Chunk-level log-probabilities.<br />
+For each token<br />
+x<br />
+i<br />
+x_{i}<br />
+, the log-probability is computed as<br />
+log<br />
+⁡<br />
+P<br />
+​<br />
+(<br />
+x<br />
+i<br />
+)<br />
+=<br />
+logits<br />
+x<br />
+i<br />
+−<br />
+logsumexp<br />
+​<br />
+(<br />
+logits<br />
+)<br />
+\log P(x_{i})=\text{logits}<em>{x</em>{i}}-\text{logsumexp}(\text{logits})<br />
+to avoid the materialization of the full<br />
+[<br />
+b<br />
+,<br />
+L<br />
+,<br />
+V<br />
+]<br />
+[b,L,V]<br />
+softmax matrix. The chunk-level log-probabilities are subsequently obtained through matrix multiplication:<br />
+LP<br />
+S<br />
+=<br />
+𝐥𝐩<br />
+S<br />
+⋅<br />
+𝑨<br />
+S<br />
+∈<br />
+ℝ<br />
+b<br />
+×<br />
+C<br />
+,<br />
+LP<br />
+T<br />
+=<br />
+𝐥𝐩<br />
+T<br />
+⋅<br />
+𝑨<br />
+T<br />
+∈<br />
+ℝ<br />
+b<br />
+×<br />
+C<br />
+,<br />
+\text{LP}<em>{S}=\mathbf{lp}</em>{S}\cdot{\bm{A}}<em>{S}\in\mathbb{R}^{b\times C},\quad\text{LP}</em>{T}=\mathbf{lp}<em>{T}\cdot{\bm{A}}</em>{T}\in\mathbb{R}^{b\times C},<br />
+(8)<br />
+where<br />
+𝐥𝐩<br />
+S<br />
+\mathbf{lp}<em>{S}<br />
+and<br />
+𝐥𝐩<br />
+T<br />
+\mathbf{lp}</em>{T}<br />
+denote the per-token log-probability vectors. The chunk probabilities are then derived via temperature scaling:<br />
+p<br />
+s<br />
+c<br />
+=<br />
+exp<br />
+⁡<br />
+(<br />
+LP<br />
+S<br />
+c<br />
+/<br />
+T<br />
+)<br />
+p_{s}^{c}=\exp(\text{LP}<em>{S}^{c}/T)<br />
+and<br />
+p<br />
+t<br />
+c<br />
+=<br />
+exp<br />
+⁡<br />
+(<br />
+LP<br />
+T<br />
+c<br />
+/<br />
+T<br />
+)<br />
+p</em>{t}^{c}=\exp(\text{LP}<em>{T}^{c}/T)<br />
+.<br />
+Forward<br />
+Calm<br />
+.<br />
+A natural baseline involves the application of a forward (mode-covering) binary cross-entropy loss on the chunk probabilities at masked positions:<br />
+ℒ<br />
+Fwd-CALM<br />
+=<br />
+−<br />
+[<br />
+p<br />
+t<br />
+c<br />
+​<br />
+log<br />
+⁡<br />
+p<br />
+s<br />
+c<br />
++<br />
+(<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+)<br />
+​<br />
+log<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+)<br />
+]<br />
+.<br />
+\mathcal{L}</em>{\text{Fwd-CALM}}=-\left[p_{t}^{c}\log p_{s}^{c}+(1-p_{t}^{c})\log(1-p_{s}^{c})\right].<br />
+(9)<br />
+Note that<br />
+Calm<br />
+operates on<br />
+scalar<br />
+chunk probabilities<br />
+p<br />
+c<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+p^{c}\in[0,1]<br />
+, so BCE is the appropriate loss and the forward/reverse analysis differs from the KL divergence used in token-level distillation.<br />
+The forward<br />
+Calm<br />
+objective can be further integrated with the progressive curriculum of<br />
+Tidal<br />
+by performing interpolation within the chunk probability space:<br />
+p<br />
+mix<br />
+=<br />
+(<br />
+1<br />
+−<br />
+λ<br />
+t<br />
+)<br />
+⋅<br />
+p<br />
+s<br />
+c<br />
++<br />
+λ<br />
+t<br />
+⋅<br />
+p<br />
+t<br />
+c<br />
+,<br />
+ℒ<br />
+CALM-TIDAL<br />
+=<br />
+−<br />
+[<br />
+p<br />
+mix<br />
+​<br />
+log<br />
+⁡<br />
+p<br />
+s<br />
+c<br />
++<br />
+(<br />
+1<br />
+−<br />
+p<br />
+mix<br />
+)<br />
+​<br />
+log<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+)<br />
+]<br />
+.<br />
+p_{\text{mix}}=(1-\lambda_{t})\cdot p_{s}^{c}+\lambda_{t}\cdot p_{t}^{c},\quad\mathcal{L}<em>{\text{CALM-TIDAL}}=-\left[p</em>{\text{mix}}\log p_{s}^{c}+(1-p_{\text{mix}})\log(1-p_{s}^{c})\right].<br />
+(10)<br />
+Limitations of forward<br />
+Calm<br />
+.<br />
+The forward BCE gradient contains a ratio<br />
+p<br />
+t<br />
+c<br />
+/<br />
+p<br />
+s<br />
+c<br />
+p_{t}^{c}/p_{s}^{c}<br />
+. When<br />
+p<br />
+t<br />
+c<br />
+→<br />
+1<br />
+p_{t}^{c}\to 1<br />
+but<br />
+p<br />
+s<br />
+c<br />
+→<br />
+0<br />
+p_{s}^{c}\to 0<br />
+, which is common under imperfect cross-tokenizer alignment, this ratio diverges, causing gradient explosion. The<br />
+1<br />
+/<br />
+p<br />
+s<br />
+c<br />
+1/p_{s}^{c}<br />
+term also amplifies noise from misaligned chunks indiscriminately.<br />
+Reverse<br />
+Calm<br />
+.<br />
+To address these limitations, we propose<br />
+Reverse<br />
+Calm<br />
+, which reverses the direction of the BCE loss:<br />
+ℒ<br />
+Rev-CALM<br />
+=<br />
+−<br />
+[<br />
+p<br />
+s<br />
+c<br />
+​<br />
+log<br />
+⁡<br />
+p<br />
+t<br />
+c<br />
++<br />
+(<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+)<br />
+​<br />
+log<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+)<br />
+]<br />
+.<br />
+\mathcal{L}<em>{\text{Rev-CALM}}=-\left[p</em>{s}^{c}\log p_{t}^{c}+(1-p_{s}^{c})\log(1-p_{t}^{c})\right].<br />
+(11)<br />
+Swapping<br />
+p<br />
+s<br />
+c<br />
+p_{s}^{c}<br />
+and<br />
+p<br />
+t<br />
+c<br />
+p_{t}^{c}<br />
+makes the gradient coefficient<br />
+log<br />
+⁡<br />
+p<br />
+t<br />
+c<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+\log\frac{p_{t}^{c}}{1-p_{t}^{c}}<br />
+, which depends only on the fixed teacher and is bounded. This also provides dual-end noise filtering: poorly aligned chunks (<br />
+p<br />
+t<br />
+c<br />
+≈<br />
+0.5<br />
+p_{t}^{c}\approx 0.5<br />
+) zero the coefficient, while low<br />
+p<br />
+s<br />
+c<br />
+p_{s}^{c}<br />
+suppresses noise via small<br />
+∂<br />
+p<br />
+s<br />
+c<br />
+/<br />
+∂<br />
+θ<br />
+\partial p_{s}^{c}/\partial\theta<br />
+. Reverse<br />
+Calm<br />
+is equivalent to minimizing the Bernoulli KL<br />
+KL<br />
+Bern<br />
+​<br />
+(<br />
+p<br />
+s<br />
+c<br />
+∥<br />
+p<br />
+t<br />
+c<br />
+)<br />
+\text{KL}<em>{\text{Bern}}(p</em>{s}^{c}|p_{t}^{c})<br />
+, a mode-seeking objective in scalar space (Appendix<br />
+C<br />
+). Since<br />
+Tidal<br />
+targets the instability of<br />
+forward<br />
+objectives, it is counterproductive for reverse<br />
+Calm<br />
+and is not applied (Appendix<br />
+C<br />
+).<br />
+Training objectives.<br />
+The cross-tokenizer pipeline combines cross-entropy with a distillation loss:<br />
+ℒ<br />
+A<br />
+=<br />
+ℒ<br />
+CE<br />
++<br />
+w<br />
+calm<br />
+⋅<br />
+ℒ<br />
+dist<br />
+,<br />
+where<br />
+​<br />
+ℒ<br />
+dist<br />
+∈<br />
+{<br />
+ℒ<br />
+CALM-TIDAL<br />
+,<br />
+ℒ<br />
+Rev-CALM<br />
+}<br />
+.<br />
+\mathcal{L}<em>{A}=\mathcal{L}</em>{\text{CE}}+w_{\text{calm}}\cdot\mathcal{L}<em>{\text{dist}},\quad\text{where }\mathcal{L}</em>{\text{dist}}\in{\mathcal{L}<em>{\text{CALM-TIDAL}},\;\mathcal{L}</em>{\text{Rev-CALM}}}.<br />
+(12)<br />
+Both losses are computed at masked positions. When<br />
+CompDemo<br />
+is enabled, teacher logits are replaced by the merged two-pass logits (section<br />
+2.2<br />
+).<br />
+3<br />
+Experiments<br />
+3.1<br />
+Experimental Setup<br />
+Models.<br />
+The student model is Qwen3-0.6B-BD3LM, a 0.6B-parameter block diffusion language model initialized from Qwen3-0.6B-Base<br />
+(Yang<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+and obtained from<br />
+Zhou<br />
+et al.<br />
+(<br />
+2026<br />
+)<br />
+. Following the BD3LM<br />
+(Arriola<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+framework, the model takes the concatenation of<br />
+[<br />
+𝐱<br />
+t<br />
+,<br />
+𝐱<br />
+0<br />
+]<br />
+[\mathbf{x}<em>{t},\mathbf{x}</em>{0}]<br />
+with a specialized attention mask during training and uses block diffusion with bidirectional attention for inference.<br />
+We distill from two heterogeneous teachers:<br />
+(A)<br />
+LLaDA2.0-mini<br />
+(Bie<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, an MoE dLLM with an independent tokenizer derived from the Ling series<br />
+(Team<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+; and<br />
+(B)<br />
+WeDLM-8B-Instruct<br />
+(Liu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, an 8B dense causal dLLM initialized from Qwen3-8B-Base<br />
+(Yang<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+.<br />
+Training.<br />
+All experiments use a learning rate of 5e-5, 10 training epochs, and bfloat16 precision. Following the training recipe of<br />
+Zhou<br />
+et al.<br />
+(<br />
+2026<br />
+)<br />
+, we combine four SFT datasets: Tulu-3 SFT Mixture<br />
+(Lambert<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, SmolTalk<br />
+(Allal<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, and OpenCoder OPC-SFT Stage 1 and Stage 2<br />
+(Huang<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+. The student model’s sequence length is set to 512 tokens, with a block size of 32. Complete hyperparameter settings are provided in Appendix<br />
+B<br />
+.<br />
+Evaluation.<br />
+We evaluate across eight benchmarks spanning reasoning (GSM8K<br />
+(Cobbe<br />
+et al.<br />
+,<br />
+2021<br />
+)<br />
+, MATH<br />
+(Hendrycks<br />
+et al.<br />
+,<br />
+2021b<br />
+)<br />
+, BBH<br />
+(Suzgun<br />
+et al.<br />
+,<br />
+2023<br />
+)<br />
+), knowledge (MMLU-Pro<br />
+(Wang<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, MMLU<br />
+(Hendrycks<br />
+et al.<br />
+,<br />
+2021a<br />
+)<br />
+), commonsense (HellaSwag<br />
+(Zellers<br />
+et al.<br />
+,<br />
+2019<br />
+)<br />
+), and code generation (HumanEval<br />
+(Chen<br />
+et al.<br />
+,<br />
+2021<br />
+)<br />
+, MBPP<br />
+(Austin<br />
+et al.<br />
+,<br />
+2021b<br />
+)<br />
+). Inference and evaluation hyperparameters follow<br />
+Zhou<br />
+et al.<br />
+(<br />
+2026<br />
+)<br />
+; task-specific configurations are detailed in Appendix<br />
+B<br />
+.<br />
+Baselines.<br />
+We adopt the baselines and their reported results from<br />
+Zhou<br />
+et al.<br />
+(<br />
+2026<br />
+)<br />
+: (1) the AR model Qwen3-0.6B-Base, which shares the same architecture and tokenizer as the student prior to block diffusion conversion; and (2) the undistilled BD3LM<br />
+(Arriola<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, derived from Qwen3-0.6B-Base by fine-tuning on the same dataset, which serves as the direct non-distilled reference.<br />
+3.2<br />
+Main Results<br />
+Table<br />
+1<br />
+presents the evaluation results of two distinct distillation pipelines. The<br />
+shared-tokenizer<br />
+pipeline distills WeDLM-8B-Instruct into the Qwen3-0.6B-BD3LM model using token-level KL divergence as the baseline objective. In contrast, the<br />
+cross-tokenizer<br />
+pipeline distills LLaDA2.0-mini into the identical student model using<br />
+Calm<br />
+as the baseline objective. Within the<br />
+Tide<br />
+framework, each pipeline is evaluated under two complementary strategies. Specifically,<br />
+Tide<br />
+-Shared applies<br />
+Tidal<br />
+and<br />
+CompDemo<br />
+to enhance signal quality through progressive scheduling and enriched teacher logits. Meanwhile,<br />
+Tide<br />
+-Cross adopts a mode-seeking optimization direction via Reverse<br />
+Calm<br />
+(or Reverse KL in the shared-tokenizer setting). To assess generalizability, we further evaluate each strategy within the non-native pipeline.<br />
+Table 1:<br />
+Main results across eight benchmarks. All distillation methods include a cross-entropy loss term.<br />
+Bold<br />
+: best among dLLM models;<br />
+underline<br />
+: second best.<br />
+Qwen3-0.6B<br />
+Shared-Tokenizer<br />
+Cross-Tokenizer<br />
+Benchmark<br />
+AR<br />
+BD3LM<br />
+KL<br />
+Tide<br />
+-Cross<br />
+Tide<br />
+-Shared<br />
+CALM<br />
+Tide<br />
+-Shared<br />
+Tide<br />
+-Cross<br />
+GSM8K<br />
+59.60<br />
+45.56<br />
+43.97<br />
+45.03<br />
+48.98<br />
+48.60<br />
+49.89<br />
+52.24<br />
+MATH<br />
+32.40<br />
+13.08<br />
+9.40<br />
+9.76<br />
+11.16<br />
+13.14<br />
+12.98<br />
+13.20<br />
+BBH<br />
+41.50<br />
+26.32<br />
+25.79<br />
+26.00<br />
+26.79<br />
+24.21<br />
+26.85<br />
+27.37<br />
+MMLU-Pro<br />
+24.70<br />
+13.80<br />
+13.19<br />
+12.88<br />
+14.48<br />
+13.47<br />
+14.02<br />
+14.52<br />
+HellaSwag<br />
+47.40<br />
+39.28<br />
+39.78<br />
+39.50<br />
+40.50<br />
+40.42<br />
+39.57<br />
+39.88<br />
+MMLU<br />
+52.80<br />
+39.15<br />
+39.57<br />
+39.09<br />
+39.92<br />
+39.42<br />
+39.54<br />
+39.59<br />
+HumanEval<br />
+32.30<br />
+46.34<br />
+41.46<br />
+42.68<br />
+48.78<br />
+43.90<br />
+49.39<br />
+48.17<br />
+MBPP<br />
+36.60<br />
+37.80<br />
+31.20<br />
+31.40<br />
+37.80<br />
+34.80<br />
+38.40<br />
+38.60<br />
+Avg<br />
+40.91<br />
+32.67<br />
+30.55<br />
+30.79<br />
+33.55<br />
+32.25<br />
+33.83<br />
+34.20<br />
+Cross-Architecture Distillation Is Effective.<br />
+Both<br />
+Tide<br />
+pipelines consistently outperform the non-distilled BD3LM baseline (with an average score of 32.67). The cross-tokenizer pipeline, utilizing the native<br />
+Tide<br />
+-Cross strategy, achieves the highest average score of 34.20, while the shared-tokenizer pipeline reaches 33.55 using<br />
+Tide<br />
+-Shared. Furthermore, the baseline distillation objectives, even without the components of<br />
+Tide<br />
+, demonstrate improvement over the non-distilled model. This result confirms that the transfer of knowledge across architectures is viable across distinct tokenizers and attention mechanisms.<br />
+Each Pipeline Favors Its Native Strategy.<br />
+The experimental results validate the modular design of<br />
+Tide<br />
+, as each pipeline benefits from a distinct optimal configuration. Within the cross-tokenizer pipeline, the native<br />
+Tide<br />
+-Cross strategy outperforms the swapped<br />
+Tide<br />
+-Shared strategy by an average margin of 0.37. This observation indicates that the bounded gradients and dual-end noise filtering in the reverse objective are well-suited to scenarios involving alignment noise across different tokenizers (section<br />
+2.3<br />
+). Conversely, within the shared-tokenizer pipeline, the native<br />
+Tide<br />
+-Shared strategy surpasses<br />
+Tide<br />
+-Cross by an average margin of 2.76. This finding demonstrates that a progressive curriculum and enriched teacher signals are more effective when token-level alignment is exact.<br />
+Distilled dLLMs Excel at Code Generation.<br />
+Across all configurations, the distilled models exhibit strong proficiency in programming tasks. On the HumanEval benchmark,<br />
+Tide<br />
+-Shared within the shared-tokenizer pipeline achieves a score of 48.78, and<br />
+Tide<br />
+-Cross within the cross-tokenizer pipeline achieves 48.17 (<br />
+Tide<br />
+-Shared further reaches 49.39), all substantially exceeding the 32.30 score of an equivalent-sized autoregressive model. A similar pattern emerges on the MBPP benchmark, where the best distilled model reaches a score of 38.60, compared to 36.60 for the autoregressive baseline. This advantage suggests that the parallel generation process of diffusion decoding, which maintains global coherence across the entire output, is particularly suitable for structured outputs such as code. In these contexts, the syntactic and semantic consistency across the entire program remains critical.<br />
+3.3<br />
+Ablation Studies<br />
+To isolate the contribution of each component within the<br />
+Tide<br />
+-Cross (<br />
+Tidal<br />
++<br />
+CompDemo<br />
+) strategy, we conduct ablations on the shared-tokenizer pipeline (WeDLM<br />
+→<br />
+\to<br />
+Qwen3-BD3LM) by removing one component at a time from the full method.<br />
+The three ablation conditions are: removing the timestep axis, replacing the dual-axis scheduling with a timestep-only schedule which serves as our baseline, and removing<br />
+CompDemo<br />
+.<br />
+Detailed configuration settings and formal definitions for these ablations are provided in Appendix<br />
+B<br />
+.<br />
+Table 2:<br />
+Component-level ablation on the shared-tokenizer pipeline (WeDLM<br />
+→<br />
+\to<br />
+Qwen3-BD3LM).<br />
+Bold<br />
+: best per row.<br />
+Benchmark<br />
+Baseline<br />
+w/o Tstep<br />
+w/o<br />
+CompDemo<br />
+Full<br />
+(w/o Train)<br />
+(<br />
+Tidal<br />
++<br />
+CompDemo<br />
+)<br />
+GSM8K<br />
+48.07<br />
+48.82<br />
+48.90<br />
+48.90<br />
+MATH<br />
+11.74<br />
+11.96<br />
+11.84<br />
+11.68<br />
+BBH<br />
+26.37<br />
+26.51<br />
+26.77<br />
+26.66<br />
+MMLU-Pro<br />
+14.12<br />
+14.42<br />
+13.76<br />
+13.76<br />
+HellaSwag<br />
+40.03<br />
+40.35<br />
+40.16<br />
+40.27<br />
+MMLU<br />
+39.81<br />
+39.84<br />
+39.58<br />
+39.92<br />
+HumanEval<br />
+45.73<br />
+43.90<br />
+44.51<br />
+46.95<br />
+MBPP<br />
+38.60<br />
+37.20<br />
+38.20<br />
+37.00<br />
+Avg<br />
+33.06<br />
+32.88<br />
+32.97<br />
+33.14<br />
+The complete method achieves the highest average score of 33.14 (Table<br />
+2<br />
+), which confirms that each component provides a positive contribution.<br />
+The Timestep Axis Is the Most Impactful Component.<br />
+The removal of the timestep axis causes the largest average performance drop of 0.26, which is primarily driven by a decline of 3.05 on HumanEval. This result validates the central motivation of<br />
+Tidal<br />
+: the reliability of the teacher varies according to the masking ratio, and the modulation of<br />
+λ<br />
+t<br />
+\lambda_{t}<br />
+along the diffusion timestep is essential for stable distillation. The timestep axis enables the student to decrease reliance on the teacher at high masking ratios where predictions are noisy, and to increase this reliance at low masking ratios where the teacher is confident. This dynamic is absent in autoregressive distillation, where the teacher always observes the complete left context.<br />
+CompDemo Provides Consistent Gains.<br />
+The removal of<br />
+CompDemo<br />
+reduces the average performance by 0.17, with the most notable drops occurring on HumanEval (2.44) and MMLU (0.34). The complementary mask splitting strategy enriches the guidance signal from the teacher by exposing the student to two complementary views per training sample, which proves particularly beneficial for tasks that require structured generation.<br />
+Proposed Framework Outperforms Baseline.<br />
+Compared to the Baseline—which relies solely on timestep scheduling as proposed in prior works—our complete<br />
+Tide<br />
+framework achieves a higher average score. The integration of the training-progress axis into our dual-axis<br />
+Tidal<br />
+, combined with<br />
+CompDemo<br />
+, stabilizes the early phase of distillation and prevents a significant performance drop of 0.83 on reasoning tasks such as GSM8K. This demonstrates the effectiveness and necessity of our proposed holistic approach over standalone scheduling methods.<br />
+3.4<br />
+Inference Efficiency<br />
+To evaluate the benefits of distillation for practical deployment, we benchmark inference efficiency under two settings on a single NVIDIA H100-80GB GPU in bfloat16 (Appendix<br />
+B<br />
+). The<br />
+controlled<br />
+setting (Table<br />
+3<br />
+) generates exactly 256 tokens from a single fixed prompt for every model, providing a fair comparison of peak memory, latency, and throughput. The<br />
+evaluation<br />
+setting (Table<br />
+4<br />
+) reports throughput during actual benchmark runs, where input prompts, context lengths, and few-shot configurations vary across eight tasks.<br />
+Table 3:<br />
+Inference efficiency comparison (controlled setting). Peak memory, latency, and throughput are measured on a single H100-80GB GPU generating 256 tokens in bfloat16.<br />
+Model<br />
+Params<br />
+Peak Mem<br />
+Latency<br />
+Tokens/s<br />
+(B)<br />
+(GB)<br />
+(s)<br />
+Student (BD3LM-0.6B)<br />
+Distilled<br />
+0.60<br />
+1.4<br />
+6.25<br />
+41.0<br />
+No Distill<br />
+0.60<br />
+1.4<br />
+6.08<br />
+42.1<br />
+AR Baseline<br />
+Qwen3-0.6B-Base<br />
+0.60<br />
+1.2<br />
+4.99<br />
+51.3<br />
+Teachers<br />
+WeDLM-8B-Instruct<br />
+8.19<br />
+15.5<br />
+6.79<br />
+37.7<br />
+LLaDA2.0-mini<br />
+16.26<br />
+31.3<br />
+32.55<br />
+7.8<br />
+Table 4:<br />
+Per-benchmark inference speed (tokens/s) measured during actual evaluation runs. BD3LM exhibits near-constant throughput due to its fixed diffusion schedule.<br />
+Teachers<br />
+AR<br />
+Student<br />
+Benchmark<br />
+LLaDA2<br />
+WeDLM<br />
+Qwen3<br />
+No Distill<br />
+Distilled<br />
+GSM8K<br />
+8.3<br />
+38.6<br />
+51.4<br />
+41.9<br />
+40.7<br />
+MATH<br />
+10.3<br />
+38.4<br />
+51.1<br />
+41.8<br />
+40.6<br />
+BBH<br />
+9.8<br />
+38.5<br />
+51.1<br />
+42.0<br />
+40.9<br />
+MMLU-Pro<br />
+5.6<br />
+38.3<br />
+51.0<br />
+42.2<br />
+40.5<br />
+HellaSwag<br />
+6.8<br />
+37.2<br />
+51.5<br />
+42.4<br />
+40.6<br />
+MMLU<br />
+6.2<br />
+37.1<br />
+51.4<br />
+41.9<br />
+41.1<br />
+HumanEval<br />
+9.8<br />
+36.8<br />
+51.1<br />
+42.5<br />
+41.7<br />
+MBPP<br />
+9.1<br />
+37.0<br />
+51.8<br />
+42.3<br />
+41.6<br />
+Avg<br />
+8.2<br />
+37.7<br />
+51.3<br />
+42.1<br />
+40.9<br />
+Distillation Enables Practical Deployment.<br />
+Under the controlled setting (Table<br />
+3<br />
+), the distilled student model requires only 1.4 GB of peak memory, representing a 22<br />
+×<br />
+\times<br />
+reduction compared to LLaDA2 (31.3 GB) and an 11<br />
+×<br />
+\times<br />
+reduction compared to WeDLM (15.5 GB). The inference latency of 6.25 s for 256 tokens yields a 5.2<br />
+×<br />
+\times<br />
+speedup over LLaDA2 (32.55 s). As illustrated in figure<br />
+1<br />
+, cross-architecture distillation compresses the knowledge of large teacher dLLMs into a model suitable for deployment on commodity hardware.<br />
+Distillation Adds Minimal Overhead.<br />
+Under the controlled setting, distillation introduces only a 2.6% reduction in throughput relative to the undistilled BD3LM (41.0 vs. 42.1 tokens/s), with a marginal latency increase (6.25 s vs. 6.08 s) and identical memory footprint. The evaluation setting (Table<br />
+4<br />
+) confirms that this overhead is uniform across all eight benchmarks despite varying prompt lengths and generation requirements, indicating that the distillation procedure does not degrade inference efficiency under realistic conditions. Compared to the AR baseline of the same size (51.3 tokens/s), the BD3LM student achieves approximately 80% throughput due to the iterative diffusion process; however, the quality gains from distillation (Table<br />
+1<br />
+) and the inherent advantages of block-parallel generation make this trade-off favorable for practical deployment.<br />
+4<br />
+Conclusion<br />
+We present<br />
+Tide<br />
+, the first cross-architecture distillation framework for heterogeneous dLLMs. Experiments across two pipelines and eight benchmarks show that (1) cross-architecture distillation improves the baseline by +1.53 on average, (2) each pipeline favors a distinct strategy (Reverse<br />
+Calm<br />
+for cross-tokenizer,<br />
+Tidal<br />
++<br />
+CompDemo<br />
+for shared-tokenizer), and (3) distilled dLLMs outperform the same-size AR model by +16.48 on HumanEval. Future work includes scaling student capacity and extending the framework to continuous-state diffusion LMs.<br />
+Ethics Statement<br />
+This work focuses on improving the efficiency of diffusion language models through knowledge distillation. Publicly available datasets and pre-trained models are utilized.<br />
+The computational requirements are moderate. No direct negative societal impacts are foreseen beyond the general concerns associated with the deployment of language models.<br />
+LLM Usage<br />
+In this section, we clarify the role of large language models (LLMs) in preparing this work.<br />
+The model was used exclusively for language polishing, such as refining grammar, style, and readability, without contributing to the research design, analysis, or conclusions.<br />
+Acknowledgments<br />
+We would like to sincerely thank Xiangtai Li and Anran Wang for their selfless guidance and invaluable support throughout this project.<br />
+References<br />
+R. Agarwal, N. Vieillard, Y. Zhou, P. Stanczyk, S. R. Garea, M. Geist, and O. Bachem (2024)<br />
+On-policy distillation of language models: learning from self-generated mistakes<br />
+.<br />
+In<br />
+The twelfth international conference on learning representations<br />
+,<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+L. B. Allal, A. Lozhkov, E. Bakouch, G. M. Blázquez, G. Penedo, L. Tunstall, A. Marafioti, H. Kydlíček, A. P. Lajarín, V. Srivastav,<br />
+et al.<br />
+(2025)<br />
+SmolLM2: when smol goes big–data-centric training of a small language model<br />
+.<br />
+arXiv preprint arXiv:2502.02737<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+M. Arriola, A. Gokaslan, J. T. Chiu, Z. Yang, Z. Qi, J. Han, S. S. Sahoo, and V. Kuleshov (2025)<br />
+Block diffusion: interpolating between autoregressive and diffusion language models<br />
+.<br />
+arXiv preprint arXiv:2503.09573<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+.<br />
+J. Austin, D. D. Johnson, J. Ho, D. Tarlow, and R. Van Den Berg (2021a)<br />
+Structured denoising diffusion models in discrete state-spaces<br />
+.<br />
+Advances in neural information processing systems<br />
+34<br />
+,<br />
+pp. 17981–17993<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+J. Austin, A. Odena, M. Nye, M. Bosma, H. Michalewski, D. Dohan, E. Jiang, C. Cai, M. Terry, Q. Le,<br />
+et al.<br />
+(2021b)<br />
+Program synthesis with large language models<br />
+.<br />
+arXiv preprint arXiv:2108.07732<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+T. Bie, M. Cao, K. Chen, L. Du, M. Gong, Z. Gong, Y. Gu, J. Hu, Z. Huang, Z. Lan,<br />
+et al.<br />
+(2025)<br />
+Llada2. 0: scaling up diffusion language models to 100b<br />
+.<br />
+arXiv preprint arXiv:2512.15745<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§3.1<br />
+.<br />
+M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. D. O. Pinto, J. Kaplan, H. Edwards, Y. Burda, N. Joseph, G. Brockman,<br />
+et al.<br />
+(2021)<br />
+Evaluating large language models trained on code<br />
+.<br />
+arXiv preprint arXiv:2107.03374<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano,<br />
+et al.<br />
+(2021)<br />
+Training verifiers to solve math word problems<br />
+.<br />
+arXiv preprint arXiv:2110.14168<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+J. Deschenaux and C. Gulcehre (2024)<br />
+Beyond autoregression: fast llms via self-distillation through time<br />
+.<br />
+arXiv preprint arXiv:2410.21035<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+F. Fu, T. Guo, and Z. Liu (2025)<br />
+Learnable sampler distillation for discrete diffusion models<br />
+.<br />
+arXiv preprint arXiv:2509.19962<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+S. Gong, S. Agarwal, Y. Zhang, J. Ye, L. Zheng, M. Li, C. An, P. Zhao, W. Bi, J. Han,<br />
+et al.<br />
+(2024)<br />
+Scaling diffusion language models via adaptation from autoregressive models<br />
+.<br />
+arXiv preprint arXiv:2410.17891<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+.<br />
+Y. Gu, L. Dong, F. Wei, and M. Huang (2024)<br />
+MiniLLM: knowledge distillation of large language models<br />
+.<br />
+In<br />
+The Twelfth International Conference on Learning Representations<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+S. Hayakawa, Y. Takida, M. Imaizumi, H. Wakaki, and Y. Mitsufuji (2024)<br />
+Distillation of discrete diffusion through dimensional correlations<br />
+.<br />
+arXiv preprint arXiv:2410.08709<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+D. Hendrycks, C. Burns, S. Basart, A. Zou, M. Mazeika, D. Song, and J. Steinhardt (2021a)<br />
+Measuring massive multitask language understanding<br />
+.<br />
+In<br />
+International Conference on Learning Representations<br />
+,<br />
+External Links:<br />
+Link<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+D. Hendrycks, C. Burns, S. Kadavath, A. Arora, S. Basart, E. Tang, D. Song, and J. Steinhardt (2021b)<br />
+Measuring mathematical problem solving with the math dataset<br />
+.<br />
+arXiv preprint arXiv:2103.03874<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+G. Hinton, O. Vinyals, and J. Dean (2015)<br />
+Distilling the knowledge in a neural network<br />
+.<br />
+arXiv preprint arXiv:1503.02531<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+S. Huang, T. Cheng, J. K. Liu, W. Xu, J. Hao, L. Song, Y. Xu, J. Yang, J. Liu, C. Zhang,<br />
+et al.<br />
+(2025)<br />
+Opencoder: the open cookbook for top-tier code large language models<br />
+.<br />
+pp. 33167–33193<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+M. Kim, C. Xu, C. Hooper, H. Singh, B. Athiwaratkun, C. Zhang, K. Keutzer, and A. Gholami (2025)<br />
+CDLM: consistency diffusion language models for faster sampling<br />
+.<br />
+arXiv preprint arXiv:2511.19269<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+[19]<br />
+J. Ko, S. Kim, T. Chen, and S. Yun<br />
+DistiLLM: towards streamlined distillation for large language models<br />
+.<br />
+In<br />
+Forty-first International Conference on Machine Learning<br />
+,<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+N. Lambert, J. Morrison, V. Pyatkin, S. Huang, H. Ivison, F. Brahman, L. J. V. Miranda, A. Liu, N. Dziri, S. Lyu,<br />
+et al.<br />
+(2024)<br />
+Tulu 3: pushing frontiers in open language model post-training<br />
+.<br />
+arXiv preprint arXiv:2411.15124<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+A. Liu, M. He, S. Zeng, S. Zhang, L. Zhang, C. Wu, W. Jia, Y. Liu, X. Zhou, and J. Zhou (2025)<br />
+Wedlm: reconciling diffusion language models with standard causal attention for fast inference<br />
+.<br />
+arXiv preprint arXiv:2512.22737<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+,<br />
+§1<br />
+,<br />
+§2.3<br />
+,<br />
+§3.1<br />
+.<br />
+A. Lou, C. Meng, and S. Ermon (2023)<br />
+Discrete diffusion modeling by estimating the ratios of the data distribution<br />
+.<br />
+arXiv preprint arXiv:2310.16834<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+.<br />
+B. Minixhofer, E. M. Ponti, and I. Vulić (2024)<br />
+Zero-shot tokenizer transfer<br />
+.<br />
+Advances in Neural Information Processing Systems<br />
+37<br />
+,<br />
+pp. 46791–46818<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§2.3<br />
+.<br />
+B. Minixhofer, I. Vulić, and E. M. Ponti (2025)<br />
+Universal cross-tokenizer distillation via approximate likelihood matching<br />
+.<br />
+arXiv preprint arXiv:2503.20083<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§2.3<br />
+,<br />
+§2.3<br />
+.<br />
+S. Nie, F. Zhu, Z. You, X. Zhang, J. Ou, J. Hu, J. Zhou, Y. Lin, J. Wen, and C. Li (2025)<br />
+Large language diffusion models<br />
+.<br />
+arXiv preprint arXiv:2502.09992<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+K. Saadi and D. Wang (2026)<br />
+What should feature distillation transfer in llms? a task-tangent geometry view<br />
+.<br />
+External Links:<br />
+2507.10155<br />
+,<br />
+Link<br />
+Cited by:<br />
+Appendix A<br />
+.<br />
+S. S. Sahoo, M. Arriola, Y. Schiff, A. Gokaslan, E. Marroquin, J. T. Chiu, A. Rush, and V. Kuleshov (2024)<br />
+Simple and effective masked diffusion language models<br />
+.<br />
+Advances in Neural Information Processing Systems<br />
+37<br />
+,<br />
+pp. 130136–130184<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+I. Shenfeld, M. Damani, J. Hübotter, and P. Agrawal (2026)<br />
+Self-distillation enables continual learning<br />
+.<br />
+arXiv preprint arXiv:2601.19897<br />
+.<br />
+Cited by:<br />
+§2.2<br />
+.<br />
+M. Shing, K. Misaki, H. Bao, S. Yokoi, and T. Akiba (2025)<br />
+TAID: temporally adaptive interpolated distillation for efficient knowledge transfer in language models<br />
+.<br />
+arXiv preprint arXiv:2501.16937<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+,<br />
+§2.1<br />
+.<br />
+M. Suzgun, N. Scales, N. Schärli, S. Gehrmann, Y. Tay, H. W. Chung, A. Chowdhery, Q. Le, E. Chi, D. Zhou,<br />
+et al.<br />
+(2023)<br />
+Challenging big-bench tasks and whether chain-of-thought can solve them<br />
+.<br />
+In<br />
+Findings of the Association for Computational Linguistics: ACL 2023<br />
+,<br />
+pp. 13003–13051<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+L. Team, A. Li, B. Liu, B. Hu, B. Li, B. Zeng, B. Ye, C. Tang, C. Tian, C. Huang, C. Zhang, C. Qian, C. Ju, C. Li, C. Tang, C. Fu, C. Ren, C. Wu, C. Zhang, C. Peng, D. Xu, D. Wang, D. Zhang, D. Jin, D. Zhu, D. Hu, F. Zhao, F. Wu, F. Zhu, G. Wang, H. Zhang, H. Zhao, H. Zhang, H. Wang, H. Qian, H. Yu, H. Zhang, H. Zhang, H. Luan, H. Dong, H. Li, J. Li, J. Liu, J. Zhu, J. Sha, J. Wei, J. Yang, J. Ma, J. Wu, J. Huang, J. Tian, J. Zhang, J. Sun, J. Tu, J. Liu, J. Xu, J. Zhou, J. Ou, J. Fang, K. Zhang, K. Hu, K. Shi, K. Tang, K. Chen, L. Mei, L. Liang, L. Xu, L. Zhang, L. Ju, L. Yuan, L. Zhong, L. Ma, L. Liu, L. Yu, L. Cai, M. Zhu, M. Li, M. Chen, M. Xue, M. Cai, M. Yin, P. Jiang, P. Zhao, P. Liu, Q. Zhao, Q. Cui, Q. Huang, Q. Yang, Q. Yu, S. Wei, S. Lian, S. Zheng, S. Song, S. Zhang, S. Zhang, S. Li, S. Liu, T. Guo, T. Zhao, W. Gu, W. Wu, W. Han, W. Fang, W. Wang, X. Shu, X. Shi, X. Lan, X. Zhang, X. Sun, X. Zhao, X. Lu, X. Xu, X. Wang, X. Wang, X. Yang, Y. Yang, Y. Xiang, Y. Li, Y. Zhang, Y. Wang, Y. Li, Y. Guo, Y. Fu, Y. Wang, Y. Yang, Y. Yu, Y. Deng, Y. Zhang, Y. Yu, Y. Zhang, Y. He, Z. Gui, Z. Huan, Z. Wang, Z. Zhu, Z. Wang, Z. Zhang, Z. Wang, Z. Zeng, Z. Liu, Z. Xuan, and Z. Tang (2025)<br />
+Every activation boosted: scaling general reasoner to 1 trillion open language foundation<br />
+.<br />
+External Links:<br />
+2510.22115<br />
+,<br />
+Link<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin (2017)<br />
+Attention is all you need<br />
+.<br />
+Advances in neural information processing systems<br />
+30<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+Y. Wang, X. Ma, G. Zhang, Y. Ni, A. Chandra, S. Guo, W. Ren, A. Arulraj, X. He, Z. Jiang,<br />
+et al.<br />
+(2024)<br />
+Mmlu-pro: a more robust and challenging multi-task language understanding benchmark<br />
+.<br />
+Advances in Neural Information Processing Systems<br />
+37<br />
+,<br />
+pp. 95266–95290<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, C. Zheng, D. Liu, F. Zhou, F. Huang, F. Hu, H. Ge, H. Wei, H. Lin, J. Tang, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Zhou, J. Lin, K. Dang, K. Bao, K. Yang, L. Yu, L. Deng, M. Li, M. Xue, M. Li, P. Zhang, P. Wang, Q. Zhu, R. Men, R. Gao, S. Liu, S. Luo, T. Li, T. Tang, W. Yin, X. Ren, X. Wang, X. Zhang, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Zhang, Y. Wan, Y. Liu, Z. Wang, Z. Cui, Z. Zhang, Z. Zhou, and Z. Qiu (2025)<br />
+Qwen3 technical report<br />
+.<br />
+arXiv preprint arXiv:2505.09388<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§3.1<br />
+.<br />
+A. Yang, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Li, D. Liu, F. Huang, H. Wei, H. Lin, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Lin, K. Dang, K. Lu, K. Bao, K. Yang, L. Yu, M. Li, M. Xue, P. Zhang, Q. Zhu, R. Men, R. Lin, T. Li, T. Xia, X. Ren, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Wan, Y. Liu, Z. Cui, Z. Zhang, and Z. Qiu (2024)<br />
+Qwen2.5 technical report<br />
+.<br />
+arXiv preprint arXiv:2412.15115<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+J. Ye, Z. Xie, L. Zheng, J. Gao, Z. Wu, X. Jiang, Z. Li, and L. Kong (2025)<br />
+Dream 7b: diffusion large language models<br />
+.<br />
+arXiv preprint arXiv:2508.15487<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+,<br />
+§1<br />
+.<br />
+R. Zellers, A. Holtzman, Y. Bisk, A. Farhadi, and Y. Choi (2019)<br />
+Hellaswag: can a machine really finish your sentence?<br />
+.<br />
+In<br />
+Proceedings of the 57th annual meeting of the association for computational linguistics<br />
+,<br />
+pp. 4791–4800<br />
+.<br />
+Cited by:<br />
+§3.1<br />
+.<br />
+S. Zhang, X. Zhang, Z. Sun, Y. Chen, and J. Xu (2024)<br />
+Dual-space knowledge distillation for large language models<br />
+.<br />
+In<br />
+Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing<br />
+,<br />
+pp. 18164–18181<br />
+.<br />
+Cited by:<br />
+Appendix A<br />
+.<br />
+Z. Zhou, L. Chen, H. Tong, and D. Song (2026)<br />
+DLLM: simple diffusion language modeling<br />
+.<br />
+External Links:<br />
+2602.22661<br />
+,<br />
+Link<br />
+Cited by:<br />
+§3.1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+,<br />
+§3.1<br />
+.<br />
+Appendix A<br />
+Related Work<br />
+Diffusion Language Models.<br />
+D3PM<br />
+(Austin<br />
+et al.<br />
+,<br />
+2021a<br />
+)<br />
+pioneered discrete diffusion for text generation. MDLM<br />
+(Sahoo<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+and SEDD<br />
+(Lou<br />
+et al.<br />
+,<br />
+2023<br />
+)<br />
+further established theoretical foundations through simplified masked diffusion and score estimation, respectively.<br />
+Building on these foundations, practical dLLMs have emerged with diverse architectures: LLaDA<br />
+(Nie<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+adopts full bidirectional attention, BD3LM<br />
+(Arriola<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+introduces block diffusion with staircase attention, Dream<br />
+(Ye<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+extends masked diffusion with rectified estimation, and WeDLM<br />
+(Liu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+proposes a causal diffusion architecture combining sliding-window and global attention. DiffuLLaMA<br />
+(Gong<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+converts pre-trained AR models into diffusion LMs.<br />
+This architectural heterogeneity—encoder, decoder-block, and causal variants—motivates the need for a cross-architecture distillation framework.<br />
+Knowledge Distillation of Large Language Models.<br />
+Knowledge distillation<br />
+(Hinton<br />
+et al.<br />
+,<br />
+2015<br />
+)<br />
+transfers knowledge from a large teacher to a smaller student through soft targets. For AR models, representative methods include reverse KL minimization<br />
+(Gu<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, skewed KL divergence<br />
+(<br />
+Ko<br />
+et al.<br />
+,<br />
+)<br />
+, on-policy distillation<br />
+(Agarwal<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, dual-space transfer<br />
+(Zhang<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, feature-level distillation<br />
+(Saadi and Wang,<br />
+2026<br />
+)<br />
+, and time-varying interpolation<br />
+(Shing<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+.<br />
+These methods target the left-to-right AR paradigm.<br />
+Tide<br />
+builds on this line of work, particularly TAID’s interpolation principle, and adapts it to dLLMs, where teacher reliability varies with the diffusion timestep and all masked tokens are predicted simultaneously.<br />
+Distillation for Diffusion Language Models.<br />
+Existing dLLM distillation methods—CDLM<br />
+(Kim<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, DDD<br />
+(Hayakawa<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, LSD<br />
+(Fu<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+, and SDTT<br />
+(Deschenaux and Gulcehre,<br />
+2024<br />
+)<br />
+—focus exclusively on<br />
+step compression<br />
+: the student and teacher share the same architecture and tokenizer, and the goal is to reduce the number of inference steps.<br />
+Tide<br />
+addresses a fundamentally different problem:<br />
+cross-architecture<br />
+distillation, where the teacher and student differ in architecture, attention mechanism, and potentially tokenizer. For the cross-tokenizer case, we build on ALM<br />
+(Minixhofer<br />
+et al.<br />
+,<br />
+2025<br />
+)<br />
+and ZeTT<br />
+(Minixhofer<br />
+et al.<br />
+,<br />
+2024<br />
+)<br />
+, adapting chunk-level approximate likelihood matching from the AR setting to dLLMs as<br />
+Calm<br />
+(section<br />
+2.3<br />
+).<br />
+Appendix B<br />
+Training, Inference, and Evaluation Details<br />
+This section provides the comprehensive configurations for training, inference, and evaluation used throughout the experiments.<br />
+Training Configurations.<br />
+Table<br />
+5<br />
+summarizes the complete set of training hyperparameters for both pipelines.<br />
+Table 5:<br />
+Training hyperparameters.<br />
+Parameter<br />
+Cross-Tok.<br />
+Shared-Tok.<br />
+Teacher<br />
+LLaDA2.0-mini (16B MoE)<br />
+WeDLM-8B-Instruct (8B)<br />
+Student init<br />
+SFT v0.1<br />
+SFT v0.1<br />
+Methods<br />
+Reverse<br />
+Calm<br />
+Tidal<br />
++<br />
+CompDemo<br />
+Learning rate<br />
+5e-5<br />
+5e-5<br />
+Epochs<br />
+10<br />
+10<br />
+Sequence length (student)<br />
+512<br />
+512<br />
+Teacher max length<br />
+1024<br />
+768<br />
+Block size<br />
+32<br />
+32<br />
+Precision<br />
+bfloat16<br />
+bfloat16<br />
+Teacher precision<br />
+bfloat16<br />
+bfloat16<br />
+Attention impl.<br />
+flex_attention<br />
+flex_attention<br />
+Strategy<br />
+DDP<br />
+DDP<br />
+Dataset<br />
+Tulu-3 SFT + SmolTalk + OpenCoder-SFT (Python)<br />
+Tidal<br />
+λ<br />
+init<br />
+→<br />
+λ<br />
+max<br />
+\lambda_{\text{init}}\to\lambda_{\max}<br />
+-<br />
+0.1<br />
+→<br />
+0.9<br />
+0.1\to 0.9<br />
+Tidal<br />
+schedule<br />
+-<br />
+cosine<br />
+Tidal<br />
+timestep weight<br />
+-<br />
+midrange<br />
+CompDemo<br />
+demo_ratio<br />
+-<br />
+0.5<br />
+Temperature<br />
+T<br />
+T<br />
+-<br />
+2.0<br />
+Ablation Study Configurations.<br />
+For the component-level ablation studies presented in Section<br />
+3.3<br />
+, all configurations are trained for 3 epochs. The specific definitions for the three ablation conditions are as follows:<br />
+•<br />
+w/o Tstep (removing the timestep axis):<br />
+λ<br />
+t<br />
+=<br />
+λ<br />
+train<br />
+\lambda_{t}=\lambda_{\text{train}}<br />
+, i.e. lambda depends only on the training progress.<br />
+•<br />
+Baseline (timestep-only schedule):<br />
+λ<br />
+t<br />
+=<br />
+const<br />
+×<br />
+(<br />
+1<br />
+−<br />
+t<br />
+)<br />
+\lambda_{t}=\mathrm{const}\times(1-t)<br />
+, replacing the dual-axis scheduling with a schedule proposed in previous works.<br />
+•<br />
+w/o<br />
+CompDemo<br />
+:<br />
+Removes the complementary demonstration strategy, using only a single teacher forward pass with the dual-axis<br />
+Tidal<br />
+.<br />
+Evaluation Protocol.<br />
+All evaluations employ diffusion sampling with a block size of 32 and a classifier-free guidance scale of 0.0.<br />
+The number of sampling steps varies depending on the specific task, ranging from 3 to 256. Table<br />
+6<br />
+details the precise configuration for each evaluation.<br />
+Table 6:<br />
+Per-task evaluation configuration.<br />
+Task<br />
+max_new_tokens<br />
+steps<br />
+few-shot<br />
+batch_size<br />
+MMLU<br />
+3<br />
+3<br />
+0<br />
+128<br />
+MMLU-Pro<br />
+256<br />
+256<br />
+0<br />
+64<br />
+HellaSwag<br />
+3<br />
+3<br />
+0<br />
+128<br />
+GSM8K<br />
+256<br />
+256<br />
+0<br />
+128<br />
+BBH<br />
+256<br />
+256<br />
+3<br />
+32<br />
+MATH<br />
+256<br />
+256<br />
+0<br />
+32<br />
+HumanEval<br />
+256<br />
+256<br />
+0<br />
+128<br />
+MBPP<br />
+256<br />
+256<br />
+0<br />
+32<br />
+Inference Efficiency Protocol.<br />
+For the inference efficiency measurements in Section<br />
+3.4<br />
+, all evaluations are conducted on a single NVIDIA H100-80GB GPU with bfloat16 precision. Under the controlled setting, we generate 256 tokens and report the best performance observed across five independent runs. Under the evaluation setting, we run 50 randomly sampled examples from each benchmark and report the average.<br />
+Appendix C<br />
+Gradient Analysis<br />
+This appendix provides detailed derivations of the gradients that support the theoretical justification for Reverse<br />
+Calm<br />
+presented in Section<br />
+2.3<br />
+.<br />
+Forward CALM gradient.<br />
+The gradient of the forward CALM loss with respect to the student parameters<br />
+θ<br />
+\theta<br />
+contains a ratio<br />
+p<br />
+t<br />
+c<br />
+/<br />
+p<br />
+s<br />
+c<br />
+p_{t}^{c}/p_{s}^{c}<br />
+, where<br />
+p<br />
+t<br />
+c<br />
+p_{t}^{c}<br />
+and<br />
+p<br />
+s<br />
+c<br />
+p_{s}^{c}<br />
+are the chunk probabilities of the teacher and the student, respectively:<br />
+g<br />
+fwd<br />
+=<br />
+p<br />
+t<br />
+c<br />
+p<br />
+s<br />
+c<br />
+−<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+.<br />
+g_{\text{fwd}}=\frac{p_{t}^{c}}{p_{s}^{c}}-\frac{1-p_{t}^{c}}{1-p_{s}^{c}}.<br />
+(13)<br />
+When<br />
+p<br />
+s<br />
+c<br />
+→<br />
+0<br />
+p_{s}^{c}\to 0<br />
+but<br />
+p<br />
+t<br />
+c</p>
+<blockquote>
+<p>0<br />
+p_{t}^{c}&gt;0<br />
+,<br />
+g<br />
+fwd<br />
+→<br />
++<br />
+∞<br />
+g_{\text{fwd}}\to+\infty<br />
+. In the cross-tokenizer setting, imperfect chunk alignment frequently produces chunks where the student assigns a low initial probability, triggering this gradient explosion.<br />
+Reverse CALM gradient.<br />
+The reverse CALM gradient takes the form:<br />
+∂<br />
+ℒ<br />
+rev<br />
+∂<br />
+θ<br />
+=<br />
+−<br />
+∑<br />
+c<br />
+∂<br />
+p<br />
+s<br />
+c<br />
+∂<br />
+θ<br />
+⋅<br />
+log<br />
+⁡<br />
+p<br />
+t<br />
+c<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+.<br />
+\frac{\partial\mathcal{L}<em>{\text{rev}}}{\partial\theta}=-\sum</em>{c}\frac{\partial p_{s}^{c}}{\partial\theta}\cdot\log\frac{p_{t}^{c}}{1-p_{t}^{c}}.<br />
+(14)<br />
+The gradient coefficient<br />
+log<br />
+⁡<br />
+p<br />
+t<br />
+c<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+\log\frac{p_{t}^{c}}{1-p_{t}^{c}}<br />
+depends solely on the fixed teacher probabilities and is bounded:<br />
+|<br />
+g<br />
+rev<br />
+|<br />
+≤<br />
+|<br />
+log<br />
+⁡<br />
+1<br />
+−<br />
+ϵ<br />
+ϵ<br />
+|<br />
+|g_{\text{rev}}|\leq|\log\frac{1-\epsilon}{\epsilon}|<br />
+for<br />
+p<br />
+t<br />
+c<br />
+∈<br />
+[<br />
+ϵ<br />
+,<br />
+1<br />
+−<br />
+ϵ<br />
+]<br />
+p_{t}^{c}\in[\epsilon,1-\epsilon]<br />
+. This provides a stable, self-selecting training signal where the student naturally concentrates updates on the high-probability modes of the teacher.<br />
+Dual-end noise filtering.<br />
+The full reverse gradient<br />
+∂<br />
+p<br />
+s<br />
+c<br />
+∂<br />
+θ<br />
+⋅<br />
+log<br />
+⁡<br />
+p<br />
+t<br />
+c<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+\frac{\partial p_{s}^{c}}{\partial\theta}\cdot\log\frac{p_{t}^{c}}{1-p_{t}^{c}}<br />
+is filtered on both ends: (1) poorly aligned chunks yield<br />
+p<br />
+t<br />
+c<br />
+≈<br />
+0.5<br />
+p_{t}^{c}\approx 0.5<br />
+, zeroing the teacher-end coefficient; (2) chunks with low<br />
+p<br />
+s<br />
+c<br />
+p_{s}^{c}<br />
+contribute small<br />
+∂<br />
+p<br />
+s<br />
+c<br />
+∂<br />
+θ<br />
+\frac{\partial p_{s}^{c}}{\partial\theta}<br />
+, suppressing the student-end signal. Forward CALM has no such dual filtering—<br />
+1<br />
+/<br />
+p<br />
+s<br />
+c<br />
+1/p_{s}^{c}<br />
+amplifies noise instead.<br />
+Bernoulli KL equivalence.<br />
+Reverse CALM is equivalent to minimizing the Bernoulli KL divergence<br />
+KL<br />
+Bern<br />
+​<br />
+(<br />
+p<br />
+s<br />
+c<br />
+∥<br />
+p<br />
+t<br />
+c<br />
+)<br />
+=<br />
+p<br />
+s<br />
+c<br />
+​<br />
+log<br />
+⁡<br />
+p<br />
+s<br />
+c<br />
+p<br />
+t<br />
+c<br />
++<br />
+(<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+)<br />
+​<br />
+log<br />
+⁡<br />
+1<br />
+−<br />
+p<br />
+s<br />
+c<br />
+1<br />
+−<br />
+p<br />
+t<br />
+c<br />
+\text{KL}<em>{\text{Bern}}(p</em>{s}^{c}|p_{t}^{c})=p_{s}^{c}\log\frac{p_{s}^{c}}{p_{t}^{c}}+(1-p_{s}^{c})\log\frac{1-p_{s}^{c}}{1-p_{t}^{c}}<br />
+, up to an additive constant independent of<br />
+θ<br />
+\theta<br />
+. This gives Reverse CALM a principled information-theoretic interpretation as mode-seeking distillation in Bernoulli (scalar) space.<br />
+TIDAL and reverse direction.<br />
+Tidal<br />
+addresses the instability of forward CALM via a curriculum where<br />
+λ<br />
+t<br />
+\lambda_{t}<br />
+transitions from emphasizing the student to the teacher. However, reverse CALM does not exhibit this instability. Applying<br />
+Tidal<br />
+to reverse CALM is counterproductive: during the late stages of training, the<br />
+(<br />
+1<br />
+−<br />
+λ<br />
+t<br />
+)<br />
+(1-\lambda_{t})<br />
+factor approaches 0.1, suppressing the gradient and destroying the self-selection mechanism of reverse CALM. This confirms that<br />
+Tidal<br />
+is effective with forward-direction objectives but should not be applied to reverse-direction objectives.<br />
+Appendix D<br />
+Limitations and Future Work<br />
+The empirical scope of this work is limited to a 0.6B-parameter student model using block diffusion with staircase attention. A primary avenue for future research is to scale the student model to 1.3B or 3B parameters to assess whether cross-architecture distillation efficiency improves as the capacity gap narrows. Furthermore, while the<br />
+Tide<br />
+framework is theoretically architecture-agnostic, empirical validation on alternative structures, such as continuous-state diffusion language models or encoder-style dLLMs, remains necessary. Adapting the proposed loss formulations from categorical distributions to continuous densities is a critical next step to broaden the framework’s applicability.<br />
+Furthermore, the training pipeline currently operates within a 512-token context window, leaving the efficacy of cross-tokenizer alignment and<br />
+CompDemo<br />
+on extended sequences unexplored. Future investigations must examine how an increase in the number of alignment chunks alters the relative contributions of these components.<br />
+Additionally, the present methodology processes the cross-tokenizer and shared-tokenizer pipelines independently; formulating a unified multi-teacher distillation objective could facilitate complementary knowledge transfer and yield a more robust representation for the student model.<br />
+Finally, computational efficiency and optimization dynamics present crucial areas for refinement. The<br />
+CompDemo<br />
+component necessitates two forward passes through the frozen teacher model per step, increasing training duration by approximately 50%. Concurrently, gradient-suppression mechanisms render the combination of Reverse<br />
+Calm<br />
+and<br />
+Tidal<br />
+counterproductive (Appendix<br />
+C<br />
+). Developing alternative scheduling paradigms, such as restricting  TIDAL’s modulation exclusively to the cross-entropy objective, is essential for reconciling these optimization conflicts and realizing the cumulative benefits of both strategies.<br />
+Appendix E<br />
+Case Study<br />
+To comprehend the information conveyed by knowledge distillation beyond aggregate benchmark improvements, we conduct a diagnostic study that examines the transfer of dark knowledge and qualitative error patterns.<br />
+Figure 3:<br />
+The KL divergence relative to the WeDLM teacher on the GSM8K dataset. The distilled student achieves a KL divergence that is 46% lower than that of the non-distilled baseline (<br />
+6.69<br />
+6.69<br />
+compared to<br />
+12.44<br />
+12.44<br />
+).<br />
+Dark Knowledge Transfer.<br />
+Within the shared-tokenizer pipeline, we measure the KL divergence between the predictions of the student and those of the teacher at intermediate denoising timesteps. As illustrated in Figure<br />
+3<br />
+,<br />
+Tide<br />
+-Shared reduces the KL divergence relative to the WeDLM teacher by 46% on the GSM8K dataset (<br />
+6.69<br />
+6.69<br />
+compared to<br />
+12.44<br />
+12.44<br />
+). This reduction confirms that the distilled student inherits the teacher’s prediction distribution.<br />
+The cross-tokenizer KL comparison (from LLaDA2 to the student) is omitted due to vocabulary misalignment.<br />
+Qualitative Error Analysis.<br />
+We select four instances wherein the non-distilled baseline fails, whereas exactly one distilled variant succeeds (Table<br />
+8<br />
+). Table<br />
+7<br />
+illustrates two representative examples in detail. For instance, #39 of GSM8K, the baseline confuses time allocation with speed in a multi-step distance problem; only<br />
+Tide<br />
+-Cross (distilled from LLaDA2) correctly computes the travel distances. For instance, #50 of HumanEval, the baseline calls<br />
+encode_shift<br />
+again instead of reversing the shift; only<br />
+Tide<br />
+-Shared (distilled from WeDLM) correctly subtracts 5. These examples demonstrate that each teacher imparts distinct knowledge. Specifically, LLaDA2 corrects multi-step arithmetic omissions and enhances type-level awareness in code generation, whereas WeDLM resolves proportional reasoning errors and facilitates algorithmic inversion.<br />
+Table 7:<br />
+A detailed textual representation of case studies. This table compares the baseline model’s reasoning chains and generated code against those of distilled variants.<br />
+GSM8K #39: Multi-Step Distance Calculation<br />
+Prompt:<br />
+Dana can run at a rate of speed four times faster than she can walk, but she can skip at a rate of speed that is half as fast as she can run. If she can skip at 3 miles per hour, how many miles can she travel in six hours if she spends one-third of the time running and two-thirds of the time walking? (<br />
+Ground Truth:<br />
+18)<br />
+Model<br />
+Output<br />
+Analysis<br />
+Baseline (No Distill)<br />
+Dana can skip at a rate of speed 3 miles per hour, so she can run at a rate of speed<br />
+3<br />
+∗<br />
+2<br />
+=<br />
+6<br />
+3<em>2=6<br />
+miles per hour. If she spends one-third of the time running, she will run<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+miles per hour. If she spends two-thirds of the time walking, she will walk<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+miles per hour. The total distance Dana can travel in 6 hours is<br />
+2<br />
+∗<br />
+2<br />
++<br />
+4<br />
+∗<br />
+2<br />
+=<br />
+12<br />
++<br />
+4<br />
+=<br />
+16<br />
+2</em>2+4<em>2=12+4=16<br />
+miles. Answer:<br />
+16<br />
+Confuses time allocation (<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3!=!2<br />
+hours) with speed (“2 miles per hour”).<br />
+Tide<br />
+-Cross (LLaDA2)<br />
+Dana can skip at a rate of 3 miles per hour, so she can run at a rate of<br />
+3<br />
+∗<br />
+2<br />
+=<br />
+6<br />
+3</em>2=6<br />
+miles per hour. If she spends one-third of the time running, she will run for<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours. If she spends two-thirds of the time walking, she will walk for<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours. In 2 hours, she will run for<br />
+2<br />
+∗<br />
+6<br />
+=<br />
+12<br />
+2<em>6=12<br />
+miles. In 2 hours, she will walk for<br />
+2<br />
+∗<br />
+3<br />
+=<br />
+6<br />
+2</em>3=6<br />
+miles. Therefore, Dana can travel a total of<br />
+12<br />
++<br />
+6<br />
+=<br />
+18<br />
+12+6=18<br />
+miles in six hours. Answer:<br />
+18<br />
+Correctly computes time allocation and travel distance.<br />
+Tide<br />
+-Shared (WeDLM)<br />
+Dana can skip at a rate of 3 miles per hour, so she can run at a rate of<br />
+3<br />
+∗<br />
+2<br />
+=<br />
+6<br />
+3<em>2=6<br />
+miles per hour. If she spends one-third of the time running, she will spend<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours running. If she spends two-thirds of the time walking, she will spend<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours walking. In total, she will spend<br />
+2<br />
++<br />
+2<br />
+=<br />
+4<br />
+2+2=4<br />
+hours running and walking. If she can run at a rate of 6 miles per hour, she will travel<br />
+6<br />
+∗<br />
+6<br />
+=<br />
+36<br />
+6</em>6=36<br />
+miles in 6 hours of running. If she can skip at a rate of 3 miles per hour, she will travel<br />
+3<br />
+∗<br />
+6<br />
+=<br />
+18<br />
+3*6=18<br />
+miles in 6 hours skipping. Therefore, she will travel a total of<br />
+36<br />
++<br />
+18<br />
+=<br />
+54<br />
+36+18=54<br />
+miles. Answer:<br />
+54<br />
+Correctly allocates time but uses the full 6 hours instead of the allocated 2 hours.<br />
+HumanEval #50: Algorithmic Inversion<br />
+Prompt:<br />
+The function<br />
+encode_shift<br />
+shifts each character by +5 in the alphabet. Implement the function<br />
+decode_shift<br />
+: reverse the encoding, and return the original string.<br />
+Model<br />
+Output<br />
+Analysis<br />
+Baseline (No Distill)<br />
+return encode_shift(s)<br />
+Calls<br />
+encode_shift<br />
+again (+5) instead of reversing (<br />
+−<br />
+-<br />
+5).<br />
+Tide<br />
+-Cross (LLaDA2)<br />
+return encode_shift(s)<br />
++ 500-char explanation that incorrectly justifies this as valid decoding.<br />
+Same erroneous code as Baseline, but with a longer (incorrect) explanation appended.<br />
+Tide<br />
+-Shared (WeDLM)<br />
+return "".join(<br />
+[chr(((ord(ch) - 5<br />
+- ord("a")) % 26)<br />
++ ord("a"))<br />
+for ch in s])<br />
+Correctly subtracts 5 to reverse the shift.<br />
+Table 8:<br />
+A summary of the case studies. The non-distilled baseline fails on all four problems, whereas each distillation pipeline resolves distinct errors.<br />
+Case &amp; Error Type<br />
+Base<br />
+Tide<br />
+-Cross<br />
+Tide<br />
+-Shared<br />
+Math Reasoning (GSM8K)</p>
+</blockquote>
+<h1>39: rate-distance confusion in multi-step problem</h1>
+<p>×<br />
+\times<br />
+✓<br />
+\checkmark<br />
+×<br />
+\times</p>
+<h1>77: proportional relationships reversed</h1>
+<p>×<br />
+\times<br />
+×<br />
+\times<br />
+✓<br />
+\checkmark<br />
+Code Generation (HumanEval)</p>
+<h1>11: bitwise XOR on string characters</h1>
+<p>×<br />
+\times<br />
+✓<br />
+\checkmark<br />
+×<br />
+\times</p>
+<h1>50: decode calls encode (no reversal)</h1>
+<p>×<br />
+\times<br />
+×<br />
+\times<br />
+✓<br />
+\checkmark<br />
+Verbatim Model Outputs<br />
+The following presents the complete, unedited model outputs for all four cases in Table<br />
+8<br />
+. These raw responses confirm that each model produces a distinct reasoning chain or code implementation.<br />
+GSM8K #39: Baseline (No Distill) — Incorrect.<br />
+Dana can skip at a rate of speed 3 miles per hour, so she can run at a rate of speed<br />
+3<br />
+×<br />
+2<br />
+=<br />
+6<br />
+3\times 2=6<br />
+miles per hour. If she spends one-third of the time running, she will run<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+miles per hour. If she spends two-thirds of the time walking, she will walk<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+miles per hour. The total distance Dana can travel in 6 hours is<br />
+2<br />
+×<br />
+2<br />
++<br />
+4<br />
+×<br />
+2<br />
+=<br />
+12<br />
++<br />
+4<br />
+=<br />
+16<br />
+2\times 2+4\times 2=12+4=16<br />
+miles. #### 16. The answer is: 16<br />
+GSM8K #39:<br />
+Tide<br />
+-Cross (LLaDA2) — Correct.<br />
+Dana can skip at a rate of 3 miles per hour, so she can run at a rate of<br />
+3<br />
+×<br />
+2<br />
+=<br />
+6<br />
+3\times 2=6<br />
+miles per hour. If she spends one-third of the time running, she will run for<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours. If she spends two-thirds of the time walking, she will walk for<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours. In 2 hours, she will run for<br />
+2<br />
+×<br />
+6<br />
+=<br />
+12<br />
+2\times 6=12<br />
+miles. In 2 hours, she will walk for<br />
+2<br />
+×<br />
+3<br />
+=<br />
+6<br />
+2\times 3=6<br />
+miles. Therefore, Dana can travel a total of<br />
+12<br />
++<br />
+6<br />
+=<br />
+18<br />
+12+6=18<br />
+miles in six hours. #### 18. The answer is: 18<br />
+GSM8K #39:<br />
+Tide<br />
+-Shared (WeDLM) — Incorrect.<br />
+Dana can skip at a rate of 3 miles per hour, so she can run at a rate of<br />
+3<br />
+×<br />
+2<br />
+=<br />
+6<br />
+3\times 2=6<br />
+miles per hour. If she spends one-third of the time running, she will spend<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours running. If she spends two-thirds of the time walking, she will spend<br />
+6<br />
+/<br />
+3<br />
+=<br />
+2<br />
+6/3=2<br />
+hours walking. In total, she will spend<br />
+2<br />
++<br />
+2<br />
+=<br />
+4<br />
+2+2=4<br />
+hours running and walking. If she can run at a rate of 6 miles per hour, she will travel<br />
+6<br />
+×<br />
+6<br />
+=<br />
+36<br />
+6\times 6=36<br />
+miles in 6 hours of running. If she can skip at a rate of 3 miles per hour, she will travel<br />
+3<br />
+×<br />
+6<br />
+=<br />
+18<br />
+3\times 6=18<br />
+miles in 6 hours skipping. Therefore, she will travel a total of<br />
+36<br />
++<br />
+18<br />
+=<br />
+54<br />
+36+18=54<br />
+miles in 6 hours. #### 54. The answer is: 54<br />
+GSM8K #77: Baseline (No Distill) — Incorrect.<br />
+Sarah does 400 pounds of laundry. Raymond does<br />
+4<br />
+×<br />
+400<br />
+=<br />
+1600<br />
+4\times 400=1600<br />
+pounds of laundry. Raymond does<br />
+1600<br />
+/<br />
+2<br />
+=<br />
+800<br />
+1600/2=800<br />
+pounds of laundry. Raymond does<br />
+800<br />
+−<br />
+400<br />
+=<br />
+400<br />
+800-400=400<br />
+pounds of laundry than David.<br />
+GSM8K #77:<br />
+Tide<br />
+-Cross (LLaDA2) — Incorrect.<br />
+400<br />
+/<br />
+4<br />
+=<br />
+100<br />
+400/4=100<br />
+pounds of laundry. Raymond does<br />
+100<br />
+/<br />
+2<br />
+=<br />
+50<br />
+100/2=50<br />
+pounds of laundry. The difference is<br />
+100<br />
+−<br />
+50<br />
+=<br />
+50<br />
+100-50=50<br />
+pounds.<br />
+GSM8K #77:<br />
+Tide<br />
+-Shared (WeDLM) — Correct.<br />
+Sarah does 400 pounds of laundry. Sarah does 4 times as much laundry as David, so David does<br />
+400<br />
+/<br />
+4<br />
+=<br />
+100<br />
+400/4=100<br />
+pounds of laundry. Raymond does half as much laundry as Sarah, so Raymond does<br />
+400<br />
+/<br />
+2<br />
+=<br />
+200<br />
+400/2=200<br />
+pounds of laundry. The difference in the amount of laundry Raymond and David do is<br />
+200<br />
+−<br />
+100<br />
+=<br />
+100<br />
+200-100=100<br />
+pounds.<br />
+HumanEval #11 (<br />
+string_xor<br />
+): Baseline (No Distill) — Failed.<br />
+result = ""<br />
+    for a, b in zip(a, b):<br />
+        result += str(a ^ b)<br />
+    return result<br />
+HumanEval #11 (<br />
+string_xor<br />
+):<br />
+Tide<br />
+-Cross (LLaDA2) — Passed.<br />
+result = ’’<br />
+    for a, b in zip(a, b):<br />
+        if a != b:<br />
+            result += ’1’<br />
+        else:<br />
+            result += ’0’<br />
+    return result<br />
+HumanEval #11 (<br />
+string_xor<br />
+):<br />
+Tide<br />
+-Shared (WeDLM) — Failed.<br />
+result = ""<br />
+    for a, b in zip(a, b):<br />
+        result += str(a ^ b))<br />
+    return result[:-1]<br />
+HumanEval #50 (<br />
+decode_shift<br />
+): Baseline (No Distill) — Failed.<br />
+return encode_shift(s)<br />
+HumanEval #50 (<br />
+decode_shift<br />
+):<br />
+Tide<br />
+-Cross (LLaDA2) — Failed.<br />
+return encode_shift(s)<br />
+Note: The generated code is identical to the Baseline.<br />
+Tide<br />
+-Cross additionally provides a lengthy explanation that incorrectly characterizes this as a valid decoding strategy, suggesting that the model lacks an understanding that decoding requires a reversal operation.<br />
+HumanEval #50 (<br />
+decode_shift<br />
+):<br />
+Tide<br />
+-Shared (WeDLM) — Passed.<br />
+return "".join(<br />
+        [chr(((ord(ch) - 5 - ord("a"))<br />
+              % 26) + ord("a"))<br />
          for ch in s])</p>
         </div>
         

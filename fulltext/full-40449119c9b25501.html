@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,467 +183,967 @@
         </div>
         
         <div class="fulltext-content">
-<p>预测、复用与修复：
+<p>预测、复用与修复：<br />
 加速长上下文LLM解码的动态稀疏注意力</p>
-
 <p>Tianyu Wang¹, Gourav Rattihalli², Aditya Dhakal², Junbo Li¹, Zhiwei Ren¹, Dejan Milojicic², Longfei Shangguan¹</p>
-
-<p>¹匹兹堡大学，美国宾夕法尼亚州匹兹堡
+<p>¹匹兹堡大学，美国宾夕法尼亚州匹兹堡<br />
 ²HPE实验室，美国加利福尼亚州米尔皮塔斯</p>
-
-<p>## 摘要</p>
-
-<p>动态稀疏注意力（DSA）通过仅关注与每个查询最相关的前K个KV块来加速长上下文LLM解码，但它引入了一个串行的&quot;选择-到-注意力&quot;依赖关系，这成为新的延迟瓶颈。我们提出了**PRR**，一个推测-复用-修复运行时系统，利用DSA选择中的时间局部性来预测可能的块，在选择进行的同时对这些块进行推测性注意力计算，并在真实选择集已知后增量修复遗漏的块。PRR使用轻量级的基于EMA的预测器、一个基于性能分析的推测预算（使推测工作不处于关键路径上），以及一个基于FlashAttention的修复内核，利用在线softmax统计量将遗漏块合并到部分注意力状态中。在长上下文基准测试和代表性DSA方法上，PRR将每token解码延迟降低了高达40%，同时保持了下游任务精度。</p>
-
+<h2>摘要</h2>
+<p>动态稀疏注意力（DSA）通过仅关注与每个查询最相关的前K个KV块来加速长上下文LLM解码，但它引入了一个串行的"选择-到-注意力"依赖关系，这成为新的延迟瓶颈。我们提出了<strong>PRR</strong>，一个推测-复用-修复运行时系统，利用DSA选择中的时间局部性来预测可能的块，在选择进行的同时对这些块进行推测性注意力计算，并在真实选择集已知后增量修复遗漏的块。PRR使用轻量级的基于EMA的预测器、一个基于性能分析的推测预算（使推测工作不处于关键路径上），以及一个基于FlashAttention的修复内核，利用在线softmax统计量将遗漏块合并到部分注意力状态中。在长上下文基准测试和代表性DSA方法上，PRR将每token解码延迟降低了高达40%，同时保持了下游任务精度。</p>
 <p>Github: https://github.com/Tianyu9748/Incremental_FlashAttention</p>
-
-<p>## 1 引言</p>
-
+<h2>1 引言</h2>
 <p>大语言模型（LLM）越来越多地被部署于长上下文工作负载中，如深度研究[Zheng et al. (2025); Li et al. (2026)]、多步推理[Wang et al. (2024); Yuan et al. (2025b)]和工具使用代理[He et al. (2025); Yang et al. (2026)]。然而，长上下文上的解码仍然代价高昂，因为运行时必须为每个生成的token访问并计算不断增长的KV缓存。</p>
-
 <p>动态稀疏注意力（DSA）提供了一种有前景的解决方案，它在每个解码步骤仅选择与当前查询最相关的前K个键值（KV）块[Tang et al. (2024); Xiao et al. (2024a); Zhao et al. (2025); Yuan et al. (2025a)]。通过将稀疏模式适应每个查询，DSA在保留最相关上下文的同时大幅减少注意力计算量，使其成为高效LLM解码的有吸引力方法。</p>
-
-<p>虽然DSA减少了密集注意力的算术运算量，但它在解码关键路径上引入了新的瓶颈。如图1所示，每个解码步骤（即一个transformer层）由**选择**、**注意力**和**FFN阶段**组成。在注意力运行之前，DSA必须先运行压缩注意力并识别与当前查询相关的前K个KV块（在选择阶段内）。由于这些块标识在选择完成之前是未知的，注意力严格地串行在选择之后。随着上下文长度的增长，这种&quot;选择-到-注意力&quot;依赖变得越来越昂贵，选择阶段占每token生成延迟的高达41%（§2）。</p>
-
-<p>**图1**：标准DSA将选择、对真实前K块集合A的注意力以及FFN执行串行化。PRR预测块集合P，并在选择的同时对P执行推测性注意力计算。在真实集合A已知后，PRR在FFN执行前仅增量修复遗漏的块A∖P，为每个transformer层节省超过30%的延迟。</p>
-
-<p>**动态但可预测**。尽管前K块选择是在动态稀疏注意力中在线计算的，但先前的工作观察到这种选择在解码步骤之间通常表现出时间稳定性[Lee et al. (2024); Levy (2026)]。我们发现这一特性在DSA方法和各种工作负载中也广泛成立。在我们的测量中，约68%的选定块在连续解码步骤之间被复用（§2.2）。这种时间局部性为**将块选择与注意力执行重叠**提供了机会，如图1所示。运行时无需等待当前前K集合最终确定，而是可以预判可能被选中的块，迁移其KV缓存条目，并在块选择仍在进行时推测性地计算注意力。当预测与真实选择集重叠时，相应的注意力工作就从选择后关键路径中移除，从而降低token生成延迟。</p>
-
+<p>虽然DSA减少了密集注意力的算术运算量，但它在解码关键路径上引入了新的瓶颈。如图1所示，每个解码步骤（即一个transformer层）由<strong>选择</strong>、<strong>注意力</strong>和<strong>FFN阶段</strong>组成。在注意力运行之前，DSA必须先运行压缩注意力并识别与当前查询相关的前K个KV块（在选择阶段内）。由于这些块标识在选择完成之前是未知的，注意力严格地串行在选择之后。随着上下文长度的增长，这种"选择-到-注意力"依赖变得越来越昂贵，选择阶段占每token生成延迟的高达41%（§2）。</p>
+<p><strong>图1</strong>：标准DSA将选择、对真实前K块集合A的注意力以及FFN执行串行化。PRR预测块集合P，并在选择的同时对P执行推测性注意力计算。在真实集合A已知后，PRR在FFN执行前仅增量修复遗漏的块A∖P，为每个transformer层节省超过30%的延迟。</p>
+<p><strong>动态但可预测</strong>。尽管前K块选择是在动态稀疏注意力中在线计算的，但先前的工作观察到这种选择在解码步骤之间通常表现出时间稳定性[Lee et al. (2024); Levy (2026)]。我们发现这一特性在DSA方法和各种工作负载中也广泛成立。在我们的测量中，约68%的选定块在连续解码步骤之间被复用（§2.2）。这种时间局部性为<strong>将块选择与注意力执行重叠</strong>提供了机会，如图1所示。运行时无需等待当前前K集合最终确定，而是可以预判可能被选中的块，迁移其KV缓存条目，并在块选择仍在进行时推测性地计算注意力。当预测与真实选择集重叠时，相应的注意力工作就从选择后关键路径中移除，从而降低token生成延迟。</p>
 <p>然而，实现这一机会需要解决两个挑战：</p>
-
-<p>- **首先，仅靠时间局部性是不够的**。盲目地复用上一步的前K块索引用于当前步骤只能获得适中的命中率。由于每个遗漏的块仍必须被纳入最终注意力输出，低命中率将大部分稀疏注意力工作留在关键路径上，限制了推测的收益。
-- **其次，推测必须在不可避免的误预测情况下保持DSA结果**。最终注意力输出应在真实的DSA选定块集合上计算。然而，现有的推理引擎如vLLM[Kwon et al. (2023)]和SGLang[Zheng et al. (2024)]，以及注意力内核如FlashAttention[Dao (2024)]，都没有暴露将遗漏块增量纳入部分计算注意力结果的接口。因此，纠正遗漏通常需要在真实选定集合上从头重新计算注意力，丧失了推测性注意力计算的大部分延迟收益。</p>
-
-<p>在本文中，我们提出了**PRR**（预测、复用和修复），一个保持正确性的DSA推测性注意力运行时，解决了上述两个挑战。为了将预测精度提高到超出前一步复用所提供的水平，我们引入了一个轻量级的基于指数移动平均（EMA）的预测器，它跟踪每块重要性分数的时间轨迹，并**预判**而非滞后于即将到来的前K集合。其平滑超参数使用预填充阶段已产生的重要性分数按每个提示进行校准，增加了可忽略的模型执行成本。</p>
-
+<ul>
+<li><strong>首先，仅靠时间局部性是不够的</strong>。盲目地复用上一步的前K块索引用于当前步骤只能获得适中的命中率。由于每个遗漏的块仍必须被纳入最终注意力输出，低命中率将大部分稀疏注意力工作留在关键路径上，限制了推测的收益。</li>
+<li><strong>其次，推测必须在不可避免的误预测情况下保持DSA结果</strong>。最终注意力输出应在真实的DSA选定块集合上计算。然而，现有的推理引擎如vLLM[Kwon et al. (2023)]和SGLang[Zheng et al. (2024)]，以及注意力内核如FlashAttention[Dao (2024)]，都没有暴露将遗漏块增量纳入部分计算注意力结果的接口。因此，纠正遗漏通常需要在真实选定集合上从头重新计算注意力，丧失了推测性注意力计算的大部分延迟收益。</li>
+</ul>
+<p>在本文中，我们提出了<strong>PRR</strong>（预测、复用和修复），一个保持正确性的DSA推测性注意力运行时，解决了上述两个挑战。为了将预测精度提高到超出前一步复用所提供的水平，我们引入了一个轻量级的基于指数移动平均（EMA）的预测器，它跟踪每块重要性分数的时间轨迹，并<strong>预判</strong>而非滞后于即将到来的前K集合。其平滑超参数使用预填充阶段已产生的重要性分数按每个提示进行校准，增加了可忽略的模型执行成本。</p>
 <p>为了将注意力计算与块选择重叠，PRR在当前前K选择的同时，对预测块集合P执行推测性注意力。P的大小由一个基于性能分析的动态预算控制，使推测执行不处于关键路径上，即不会延迟FFN。一旦真实的前K块集合A可用，P∩A中的块已被处理，而A∖P中的遗漏块通过增量注意力修复被纳入。P∖A中的块作为额外的低优先级上下文保留。</p>
-
-<p>为了使修复高效，PRR实现了一个基于FlashAttention在线softmax递推的定制CUDA内核，执行**增量**注意力修复，如图1所示。给定推测输出及其运行的对数和指数统计量，该内核仅关注遗漏的块，并将其贡献合并到现有累加器中。这不会产生精度损失，因为A中的所有块都被包含在内，同时将修复工作限制在|A∖P|而非|A|。</p>
-
+<p>为了使修复高效，PRR实现了一个基于FlashAttention在线softmax递推的定制CUDA内核，执行<strong>增量</strong>注意力修复，如图1所示。给定推测输出及其运行的对数和指数统计量，该内核仅关注遗漏的块，并将其贡献合并到现有累加器中。这不会产生精度损失，因为A中的所有块都被包含在内，同时将修复工作限制在|A∖P|而非|A|。</p>
 <p>通过上述设计，PRR保留了标准DSA的语义：虽然它对可能的前K块进行推测，但最终注意力输出在修复后始终覆盖真实的DSA选定块。因此，PRR保持与原始DSA实现相同的精度。在LongBench[Bai et al. (2024)]、InfiniteBench[Zhang et al. (2024)]、RULER[Hsieh et al. (2024)]、AIME[Hugging Face H4 (2024)]和MATH500[Lightman et al. (2023)]上，PRR在多个LLM上实现了每token解码加速，相对于Quest加速1.42倍，相对于InfLLM-v2加速1.56倍，同时保持相同的下游任务精度。</p>
-
 <p>我们的贡献如下：</p>
-
-<p>- 我们识别出**选择-到-注意力**依赖是动态稀疏注意力机制中新的关键路径瓶颈。
-- 我们设计了**PRR**，一个将预测块上的推测性注意力与选择重叠、复用正确预测的块状态、并仅修复遗漏块的运行时。
-- 我们实现了一个基于在线softmax的增量修复内核，确保与标准DSA相同的前K覆盖，并将选择后的工作量限制为遗漏块的数量。</p>
-
-<p>## 2 动机</p>
-
+<ul>
+<li>我们识别出<strong>选择-到-注意力</strong>依赖是动态稀疏注意力机制中新的关键路径瓶颈。</li>
+<li>我们设计了<strong>PRR</strong>，一个将预测块上的推测性注意力与选择重叠、复用正确预测的块状态、并仅修复遗漏块的运行时。</li>
+<li>我们实现了一个基于在线softmax的增量修复内核，确保与标准DSA相同的前K覆盖，并将选择后的工作量限制为遗漏块的数量。</li>
+</ul>
+<h2>2 动机</h2>
 <p>在本节中，我们首先展示DSA将解码成本转移到选择-注意力依赖上（§2.1）。然后展示稀疏索引表现出强可预测性，且DSA解码留有足够的空闲GPU资源，将这种可预测性转化为推测性注意力的机会（§2.2）。</p>
-
-<p>**设置**。我们使用GLM-4-9B[Zeng et al. (2024)]评估两种代表性DSA方法：Quest[Tang et al. (2024)]和InfLLM-V2[Zhao et al. (2025)]，涵盖长序列基准测试和一系列上下文长度。我们在NVIDIA H100 GPU上运行这些研究，使用FlashInfer的BlockSparseAttention[Ye et al. (2025)]作为优化的稀疏注意力后端。</p>
-
-<p>**图2**：(a) DSA中的三个阶段及连续两次前K选择的时间相似性，(b) GLM-4-9B在不同上下文长度下使用Quest和InfLLM-V2的延迟分解。</p>
-
-<p>### 2.1 选择-到-注意力依赖</p>
-
-<p>**观察一**：DSA显著减少了注意力计算，但在解码关键路径上暴露了串行的选择-到-注意力依赖。</p>
-
+<p><strong>设置</strong>。我们使用GLM-4-9B[Zeng et al. (2024)]评估两种代表性DSA方法：Quest[Tang et al. (2024)]和InfLLM-V2[Zhao et al. (2025)]，涵盖长序列基准测试和一系列上下文长度。我们在NVIDIA H100 GPU上运行这些研究，使用FlashInfer的BlockSparseAttention[Ye et al. (2025)]作为优化的稀疏注意力后端。</p>
+<p><strong>图2</strong>：(a) DSA中的三个阶段及连续两次前K选择的时间相似性，(b) GLM-4-9B在不同上下文长度下使用Quest和InfLLM-V2的延迟分解。</p>
+<h3>2.1 选择-到-注意力依赖</h3>
+<p><strong>观察一</strong>：DSA显著减少了注意力计算，但在解码关键路径上暴露了串行的选择-到-注意力依赖。</p>
 <p>图2(a)展示了DSA的计算流程。在每一层，运行时将KV token划分为块，压缩每个块（如均值），并计算压缩注意力以选择当前步骤的前K个块。然后运行时才能获取选定的KV块并执行（稀疏）注意力，接着是FFN。这创建了严格的选择-到-注意力依赖。</p>
-
 <p>图2(b)展示了三个阶段的性能分析延迟：选择、注意力和FFN。串行的选择-到-注意力路径在16K token时消耗约60%的解码延迟，在512K时上升至约71%。仅选择阶段在同一范围内从约4ms增长到约8ms。由于注意力在前K选择完成前被阻塞，这种不断增长的选择成本直接延迟了注意力阶段，并暴露了显著的关键路径瓶颈。</p>
-
-<p>### 2.2 推测的机会</p>
-
+<h3>2.2 推测的机会</h3>
 <p>先前的工作[Lee et al. (2024); Takbir et al. (2026)]已经表明，相同的token倾向于在连续解码步骤中被选中或获得高注意力分数。受此启发，我们在五个代表性长上下文基准测试上测量连续解码步骤中有多少块被重复选择，包括LongBench[Bai et al. (2024)]、InfiniteBench[Zhang et al. (2024)]、AIME[Hugging Face H4 (2024)]、MATH500[Lightman et al. (2023)]和RULER[Hsieh et al. (2024)]。</p>
-
-<p>**观察二**：DSA中的前K块在相邻解码步骤之间表现出强局部性，为推测性注意力留下了机会。</p>
-
-<p>**图3**：GLM-4-9B在各种基准测试下连续选择中块的平均重叠率。</p>
-
+<p><strong>观察二</strong>：DSA中的前K块在相邻解码步骤之间表现出强局部性，为推测性注意力留下了机会。</p>
+<p><strong>图3</strong>：GLM-4-9B在各种基准测试下连续选择中块的平均重叠率。</p>
 <p>图3显示，时间块选择局部性不局限于特定基准测试或DSA方法。在LongBench、InfiniteBench、AIME、MATH500和RULER上，Quest和InfLLM-V2在连续解码步骤中一致地重新选择超过65%的块，平均重叠率约为68%¹。这种在多样化长上下文和推理工作负载上的稳定性表明，DSA选择虽然是动态的，但足够可预测以进行推测。运行时无需等待当前前K选择完成，而是可以预测可能被选中的块，并在选择仍在进行时开始对它们执行注意力，如图1所示。正确预测的块将其KV收集和注意力计算从关键路径中移除，而部分预测仅在选择完成后留下遗漏块需要处理。这激发了PRR的推测性注意力与修复执行模型。</p>
-
 <p>¹我们在A.3中对其他LLM有类似观察。</p>
-
 <p>虽然时间局部性使推测成为可能，但它也提出了一个新问题：GPU是否有足够的空闲内存带宽和计算资源来执行推测性KV收集和注意力计算，而不减慢正常DSA流水线？为了回答这个问题，我们对DSA的GPU资源利用率进行了性能分析。</p>
-
-<p>**观察三**：长上下文DSA解码留有足够的空闲GPU资源来支持推测性KV收集和注意力计算。</p>
-
-<p>**图4**：GLM-4-9B搭配Quest和InfLLM-v2在不同上下文长度下的SM利用率、L2带宽和DRAM带宽性能分析。</p>
-
+<p><strong>观察三</strong>：长上下文DSA解码留有足够的空闲GPU资源来支持推测性KV收集和注意力计算。</p>
+<p><strong>图4</strong>：GLM-4-9B搭配Quest和InfLLM-v2在不同上下文长度下的SM利用率、L2带宽和DRAM带宽性能分析。</p>
 <p>我们测量了在一系列上下文长度（最高512K token）解码期间的流式多处理器（SM）、L2带宽和DRAM带宽利用率。如图4所示，即使在512K上下文长度下，SM、L2带宽和DRAM带宽利用率都保持在40%以下。这一充裕的余量表明，有大量空闲资源可用于基于估计的块选择推测性地预计算稀疏注意力，而不会与关键路径上的压缩注意力竞争。在更大批量大小下也有相同趋势，如A.4所示。</p>
-
-<p>## 3 设计空间</p>
-
+<h2>3 设计空间</h2>
 <p>这些观察表明，给定空闲带宽和计算，可以预测可能的块、预取其KV，并将其注意力计算与前K块选择重叠。这开辟了两个交织的设计空间来探索：</p>
-
-<p>**设计空间一：最大化推测性注意力精度**。设A为当前轮次中由真实前K选择选出的块集合，P表示预测的块。我们将预测错误分为两种不同类型：</p>
-
-<p>- **遗漏块**（M = A∖P）：这些块位于关键路径上：M中的每个块必须在真实选择完成后被迁移和关注，并且部分注意力输出必须相应地被纠正。
-- **浪费块**（N = P∖A）：这些块消耗额外的带宽和计算资源，浪费了宝贵的资源。但它们不会延长关键路径。</p>
-
-<p>**图5**：推测预算比率δ对PRR执行时间线的影响。（上）：当δ太小时，预测集覆盖的真实前K块太少，在关键路径上留下大的增量修复阶段。（中）：当δ太大时，推测性注意力本身超过前K选择窗口并延迟FFN。（下）：适当的δ平衡覆盖和推测成本，使推测性注意力与前K选择重叠而不相互延迟，同时在FFN前仅留下小的修复阶段。</p>
-
+<p><strong>设计空间一：最大化推测性注意力精度</strong>。设A为当前轮次中由真实前K选择选出的块集合，P表示预测的块。我们将预测错误分为两种不同类型：</p>
+<ul>
+<li><strong>遗漏块</strong>（M = A∖P）：这些块位于关键路径上：M中的每个块必须在真实选择完成后被迁移和关注，并且部分注意力输出必须相应地被纠正。</li>
+<li><strong>浪费块</strong>（N = P∖A）：这些块消耗额外的带宽和计算资源，浪费了宝贵的资源。但它们不会延长关键路径。</li>
+</ul>
+<p><strong>图5</strong>：推测预算比率δ对PRR执行时间线的影响。（上）：当δ太小时，预测集覆盖的真实前K块太少，在关键路径上留下大的增量修复阶段。（中）：当δ太大时，推测性注意力本身超过前K选择窗口并延迟FFN。（下）：适当的δ平衡覆盖和推测成本，使推测性注意力与前K选择重叠而不相互延迟，同时在FFN前仅留下小的修复阶段。</p>
 <p>因此，两种成本是不对称的，主导目标是最小化|M|。我们将其表述为带预算约束的单目标问题：</p>
-
 <p>min |M| = |A∖P|  s.t.  |P| ≤ δ|A|    (1)</p>
-
 <p>其中δ是预算比率，限制推测器可以获取多少块。较大的δ允许更多候选者，可能减少|M|，但增加带宽压力和推测性注意力计算成本。然而，如果包含太多块，推测性注意力可能比块选择耗时更长，延长关键路径并抵消推测带来的延迟收益，如图5所示。</p>
-
-<p>⇒ 为了缩小|M|，我们用基于EMA的预测器替代朴素的&quot;复用前一步前K&quot;启发式，该预测器跟踪过去解码步骤中的块重要性分数，并预测当前轮次中可能被选中的前K集合P（§4.1）。此外，我们不静态固定δ，而是使用跨上下文长度的块选择延迟和推测性注意力延迟的离线性能分析来动态选择推测预算，确保推测性注意力与选择阶段保持一致，不延长关键路径。</p>
-
-<p>**设计空间二：启用增量注意力修复**。即使有高质量的预测器，误预测也是不可避免的，即|M| &gt; 0。一旦真实前K集合A已知，运行时必须将推测性注意力结果与真实选定块协调。一个简单的回退是丢弃推测结果并在A上从头重新计算注意力。这保持了正确性，但将注意力计算放回关键路径，实际上回退到标准DSA，几乎没有延迟收益。</p>
-
-<p>⇒ 为了避免这种回退，我们提出了一个基于FlashAttention构建的定制注意力内核，支持**增量修复**。给定预测集P上的注意力状态（包括输出和运行中的softmax统计量），该内核仅关注遗漏块M = A∖P，并通过log-sum-exp重缩放将它们合并到现有累加器中。这保证了对真实选定集A的完全覆盖（与标准DSA相同），同时将选择后的工作量从|A|块减少到|M|块。因此，延迟收益随预测覆盖率扩展，而不是在预测不完美时完全丧失。</p>
-
-<p>## 4 设计</p>
-
-<p>为了探索这些设计空间，我们提出了**PRR**，一个**推测与修复**运行时，预测可能的块（§4.1）并将稀疏注意力与块选择重叠。推测器在线校准，延迟可忽略（§4.2）。PRR然后在真实前K集合A可用后增量纳入遗漏块（§4.3），并动态调整推测集P的大小以最大化A的覆盖而不延长关键路径（§4.4）。</p>
-
-<p>### 4.1 轻量级基于EMA的预测器</p>
-
+<p>⇒ 为了缩小|M|，我们用基于EMA的预测器替代朴素的"复用前一步前K"启发式，该预测器跟踪过去解码步骤中的块重要性分数，并预测当前轮次中可能被选中的前K集合P（§4.1）。此外，我们不静态固定δ，而是使用跨上下文长度的块选择延迟和推测性注意力延迟的离线性能分析来动态选择推测预算，确保推测性注意力与选择阶段保持一致，不延长关键路径。</p>
+<p><strong>设计空间二：启用增量注意力修复</strong>。即使有高质量的预测器，误预测也是不可避免的，即|M| &gt; 0。一旦真实前K集合A已知，运行时必须将推测性注意力结果与真实选定块协调。一个简单的回退是丢弃推测结果并在A上从头重新计算注意力。这保持了正确性，但将注意力计算放回关键路径，实际上回退到标准DSA，几乎没有延迟收益。</p>
+<p>⇒ 为了避免这种回退，我们提出了一个基于FlashAttention构建的定制注意力内核，支持<strong>增量修复</strong>。给定预测集P上的注意力状态（包括输出和运行中的softmax统计量），该内核仅关注遗漏块M = A∖P，并通过log-sum-exp重缩放将它们合并到现有累加器中。这保证了对真实选定集A的完全覆盖（与标准DSA相同），同时将选择后的工作量从|A|块减少到|M|块。因此，延迟收益随预测覆盖率扩展，而不是在预测不完美时完全丧失。</p>
+<h2>4 设计</h2>
+<p>为了探索这些设计空间，我们提出了<strong>PRR</strong>，一个<strong>推测与修复</strong>运行时，预测可能的块（§4.1）并将稀疏注意力与块选择重叠。推测器在线校准，延迟可忽略（§4.2）。PRR然后在真实前K集合A可用后增量纳入遗漏块（§4.3），并动态调整推测集P的大小以最大化A的覆盖而不延长关键路径（§4.4）。</p>
+<h3>4.1 轻量级基于EMA的预测器</h3>
 <p>PRR需要一个足够准确的预测器以尽可能覆盖真实前K块，同时足够轻量以在关键路径之外运行。基于神经网络的预测器有望实现更高的精度，但它会引入额外的模型执行和内存流量，可能抵消推测节省的延迟。因此，我们选择了一个无需训练的超轻量级指数移动平均（EMA）预测器，直接在DSA已产生的块重要性分数上操作。</p>
-
 <p>我们用IS_i^t表示块i在解码步骤t的真实重要性分数，由DSA的前K块选择阶段产生。在该阶段在步骤t运行之前，PRR仅使用到步骤t-1观察到的历史分数来预测每个块的分数为ÎS_i^t。预测分数用于选择推测块集合P，目标是在有界推测预算下最大化对真实前K集合A的覆盖。</p>
-
-<p>**状态和初始化**。对于每个块i，预测器在每步t后维护两个状态变量：平滑水平ℓ_i^t和趋势估计v_i^t。当块i在步骤τ首次进入KV缓存时，我们初始化ℓ_i^τ = IS_i^τ和v_i^τ = 0，因为没有先前的趋势可用。</p>
-
-<p>**预测**。在步骤t开始时，在当前DSA选择阶段产生IS_i^t之前，预测器从前一状态外推：</p>
-
+<p><strong>状态和初始化</strong>。对于每个块i，预测器在每步t后维护两个状态变量：平滑水平ℓ_i^t和趋势估计v_i^t。当块i在步骤τ首次进入KV缓存时，我们初始化ℓ_i^τ = IS_i^τ和v_i^τ = 0，因为没有先前的趋势可用。</p>
+<p><strong>预测</strong>。在步骤t开始时，在当前DSA选择阶段产生IS_i^t之前，预测器从前一状态外推：</p>
 <p>ÎS_i^t = ℓ_i^{t-1} + γ · v_i^{t-1}    (2)</p>
-
 <p>其中γ ∈ [0,1]控制预测器外推近期趋势的激进程度。</p>
-
-<p>**更新**。在步骤t的DSA选择阶段产生真实分数IS_i^t后，预测器使用以下方程更新其状态：</p>
-
-<p>v_i^t = β(IS_i^t - ℓ_i^{t-1}) + (1-β)v_i^{t-1}
+<p><strong>更新</strong>。在步骤t的DSA选择阶段产生真实分数IS_i^t后，预测器使用以下方程更新其状态：</p>
+<p>v_i^t = β(IS_i^t - ℓ_i^{t-1}) + (1-β)v_i^{t-1}<br />
 ℓ_i^t = α · IS_i^t + (1-α)ℓ_i^{t-1}    (3)</p>
-
 <p>这里，α ∈ (0,1]控制水平跟随新观察分数的速度，而β ∈ (0,1]控制趋势估计适应分数变化的速度。</p>
-
-<p>### 4.2 在线预测器校准</p>
-
+<h3>4.2 在线预测器校准</h3>
 <p>EMA预测器是轻量级的，但其预测精度取决于平滑超参数(α, β, γ)。这些参数决定预测器是平滑跟踪块重要性动态还是快速响应最近变化。单一的固定(α, β, γ)设置不会有效，因为提示特定的因素如任务类型和上下文长度可以显著改变前K轨迹的稳定性。</p>
-
-<p>**图6**：在预填充阶段，PRR通过网格搜索在重要性分数上校准EMA。在解码阶段，EMA预测块重要性分数并根据块选择产生的真实分数进行更新。</p>
-
+<p><strong>图6</strong>：在预填充阶段，PRR通过网格搜索在重要性分数上校准EMA。在解码阶段，EMA预测块重要性分数并根据块选择产生的真实分数进行更新。</p>
 <p>PRR转而使用预填充阶段按每个提示校准这些参数，如图6所示。因为DSA已经为每个预填充token计算了压缩注意力重要性分数，预填充提供了一个现成的块分数轨迹，无需额外的模型执行成本。PRR在该轨迹上搜索一个小的(α, β, γ)候选网格，并选择最能预测预填充前K选择的设置，在解码开始前产生一个提示自适应的预测器。我们在下面详细阐述设计。</p>
-
-<p>**预填充轨迹**。设T_p表示预填充token的数量。预填充阶段产生矩阵IS ∈ ℝ^{T_p × N_p}，其中行φ是预填充token φ在预填充期间形成的N_p个动态块上的压缩注意力分数向量。该矩阵在第一个解码步骤之前完全可用。</p>
-
-<p>**校准目标**。给定候选超参数设置θ = (α, β, γ)，我们在预填充的IS上模拟预测器，为每个预填充token φ产生预测选择集P_φ(θ)，并测量由此产生的分数加权命中率：</p>
-
+<p><strong>预填充轨迹</strong>。设T_p表示预填充token的数量。预填充阶段产生矩阵IS ∈ ℝ^{T_p × N_p}，其中行φ是预填充token φ在预填充期间形成的N_p个动态块上的压缩注意力分数向量。该矩阵在第一个解码步骤之前完全可用。</p>
+<p><strong>校准目标</strong>。给定候选超参数设置θ = (α, β, γ)，我们在预填充的IS上模拟预测器，为每个预填充token φ产生预测选择集P_φ(θ)，并测量由此产生的分数加权命中率：</p>
 <p>H(θ; IS) = (1/T_p) Σ_φ [Σ_{b∈P_φ(θ)∩A_φ} IS_{φ,b}] / [Σ_{b∈A_φ} IS_{φ,b}]    (4)</p>
-
 <p>其中A_φ是预填充token φ处的真实前K块选择集，IS_{φ,b}是块b在token φ处的重要性分数。每个提示的超参数选择被表述为：</p>
-
 <p>θ* = argmax_θ H(θ; IS)    (5)</p>
-
-<p>**搜索过程**。我们选择网格搜索而非基于梯度的解决方案，原因有二。首先，对集合值目标（前K成员）进行基于梯度的超参数优化需要argsort的可微替代，这引入了其自身的近似误差和实现依赖。其次，搜索空间很小，因此直接搜索既简单又足够。我们在系统中设置搜索网格如下：α ∈ [0.2, 0.8]步长0.2，β ∈ [0.1, 0.5]步长0.1，γ ∈ [0, 0.75]步长0.25，产生每个提示|Θ| = 80个候选。搜索与预填充阶段重叠，对关键路径增加最小额外延迟（0.06ms）（A.5）。</p>
-
-<p>### 4.3 通过在线softmax进行增量修复</p>
-
+<p><strong>搜索过程</strong>。我们选择网格搜索而非基于梯度的解决方案，原因有二。首先，对集合值目标（前K成员）进行基于梯度的超参数优化需要argsort的可微替代，这引入了其自身的近似误差和实现依赖。其次，搜索空间很小，因此直接搜索既简单又足够。我们在系统中设置搜索网格如下：α ∈ [0.2, 0.8]步长0.2，β ∈ [0.1, 0.5]步长0.1，γ ∈ [0, 0.75]步长0.25，产生每个提示|Θ| = 80个候选。搜索与预填充阶段重叠，对关键路径增加最小额外延迟（0.06ms）（A.5）。</p>
+<h3>4.3 通过在线softmax进行增量修复</h3>
 <p>由于误预测不可避免（即M = A∖P ≠ ∅）且softmax对最大logit敏感，忽略M会产生不精确的输出，且误差在解码步骤间累积。我们提出了一个修复阶段，其成本仅与|M|成比例，基于FlashAttention的在线softmax递推[Dao (2024)]构建。我们的定制CUDA内核实现了增量注意力修复：这是现有推理引擎[Kwon et al. (2023); Zheng et al. (2024)]和后端内核[Dao (2024); Ye et al. (2025)]所缺失的能力。</p>
-
-<p>**带插桩的推测内核**。我们修改FlashAttention前向传播，不仅写入注意力输出O，还写入分母ℓ和运行最大值m到HBM。这一修改是外科手术式的：内循环算术不变，额外的存储量是每个头两个标量，因此内核保留了原始前向传播的内存访问模式和占用率。相对于已经主导该过程的KV流量，额外带宽可忽略。</p>
-
-<p>**修复内核**。给定来自推测性稀疏注意力的(O^spec, ℓ^spec, m^spec)和M的KV条目，第二个内核对每个遗漏块应用方程(6)-(8)中的递推一次：</p>
-
+<p><strong>带插桩的推测内核</strong>。我们修改FlashAttention前向传播，不仅写入注意力输出O，还写入分母ℓ和运行最大值m到HBM。这一修改是外科手术式的：内循环算术不变，额外的存储量是每个头两个标量，因此内核保留了原始前向传播的内存访问模式和占用率。相对于已经主导该过程的KV流量，额外带宽可忽略。</p>
+<p><strong>修复内核</strong>。给定来自推测性稀疏注意力的(O^spec, ℓ^spec, m^spec)和M的KV条目，第二个内核对每个遗漏块应用方程(6)-(8)中的递推一次：</p>
 <p>m^(t+1) = max(m^(t), m̃)    (6)</p>
-
 <p>ℓ^(t+1) = e^{m^(t)-m^(t+1)} · ℓ^(t) + e^{m̃-m^(t+1)} · ℓ̃    (7)</p>
-
 <p>O^(t+1) = [e^{m^(t)-m^(t+1)} · ℓ^(t) / ℓ^(t+1)] · O^(t) + [e^{m̃-m^(t+1)} / ℓ^(t+1)] · Σ_j e^{S_{t+1,j}-m̃} · V_{t+1,j}    (8)</p>
-
 <p>每个查询独立处理。遗漏块以与FlashAttention前向传播相同的分块方式通过片上内存流式传输，因此不会物化中间分数矩阵。内核读取O^spec、ℓ^spec、m^spec和遗漏的(K,V)分块各一次，并写入纠正后的(O, ℓ, m)一次。FLOPs和内存流量都仅与|M|成比例。</p>
-
-<p>### 4.4 关键路径感知的推测预算</p>
-
+<h3>4.4 关键路径感知的推测预算</h3>
 <p>回顾图5，较大的δ允许PRR在推测性注意力中包含更多预测块，这增加了P覆盖真实选定集A的可能性，并减少遗漏块A∖P。然而，它也增加了推测性KV移动和推测性注意力计算，如果推测性注意力比选择耗时更长，可能延长关键路径。因此，PRR动态选择δ而非全局固定。</p>
-
 <p>对于每个模型-硬件-DSA配置，我们执行一次性离线性能分析扫描，测量不同上下文长度和预算比率下的选择延迟和推测性注意力延迟。由于模型、硬件后端、DSA方法、块大小和DSA前K都是固定的，这些延迟主要由上下文长度和δ决定。PRR将性能分析结果存储在以上下文长度为索引的轻量级查找表中，并在运行时选择其推测性注意力延迟适合当前选择窗口的最大安全δ。这确保推测执行与块选择保持一致，不延长关键路径。在我们的实现中，我们对4K、8K、16K、32K和64K的上下文长度进行性能分析，详情和性能分析开销在A.6中报告。注意，这里我们以五个上下文长度为例，人们可以以更细粒度的方式进行性能分析以实现更多延迟减少。</p>
-
-<p>## 5 评估</p>
-
+<h2>5 评估</h2>
 <p>我们在本节描述系统评估。</p>
-
-<p>### 5.1 实验设置</p>
-
-<p>**评估数据集**。我们在五个基准测试上评估PRR，涵盖长上下文理解（如摘要）和复杂推理（如数学）。长上下文任务使用LongBench[Bai et al. (2024)]、InfiniteBench[Zhang et al. (2024)]和RULER[Hsieh et al. (2024)]评估，推理能力在AIME[Hugging Face H4 (2024)]和MATH500[Lightman et al. (2023)]上测量。</p>
-
-<p>**模型**。我们在六个LLM上进行实验：GLM-4-9B-1M[Zeng et al. (2024)]、GLM-Z1-9B⁴、DeepSeek-R1-8B[DeepSeek-AI (2025)]、Llama3-8B-1M[AI@Meta (2024)]、Qwen3-14B[Team (2025)]和Qwen3-32B[Team (2025)]。</p>
-
-<p>**DSA**。我们考虑两种即插即用的DSA机制：Quest[Tang et al. (2024)]和InfLLM-v2[Zhao et al. (2025)]。NSA[Yuan et al. (2025a)]被排除，因为它需要从头训练其特征提取和门控组件。</p>
-
-<p>**测试平台**。实验在配备CUDA 12.8的H100 GPU上运行，张量并行度为2。</p>
-
-<p>### 5.2 加速评估</p>
-
-<p>**表1**：PRR相对于串行DSA执行（1.00×）的解码加速。越高越好。</p>
-
-<p>| 模型 | LongBench | InfiniteBench | RULER | AIME | MATH500 | 平均 |
-|---|---|---|---|---|---|---|
-| **Quest** | | | | | | |
-| GLM-4 | 1.50× | 1.40× | 1.45× | 1.30× | 1.42× | **1.42×** |
-| GLM-Z1 | 1.48× | 1.39× | 1.43× | 1.33× | 1.45× | **1.42×** |
-| DeepSeek-R1 | 1.39× | 1.42× | 1.47× | 1.35× | 1.39× | **1.41×** |
-| Llama3 | 1.36× | 1.40× | 1.41× | 1.39× | 1.34× | **1.38×** |
-| Qwen3-14B | 1.44× | 1.27× | 1.41× | 1.44× | 1.45× | **1.40×** |
-| Qwen3-32B | 1.26× | 1.34× | 1.27× | 1.27× | 1.26× | **1.28×** |
-| **InfLLM-v2** | | | | | | |
-| GLM-4 | 1.64× | 1.38× | 1.58× | 1.62× | 1.59× | **1.56×** |
-| GLM-Z1 | 1.61× | 1.35× | 1.61× | 1.64× | 1.55× | **1.55×** |
-| DeepSeek-R1 | 1.30× | 1.48× | 1.61× | 1.52× | 1.28× | **1.44×** |
-| Llama3 | 1.32× | 1.45× | 1.55× | 1.55× | 1.30× | **1.43×** |
-| Qwen3-14B | 1.56× | 1.43× | 1.51× | 1.53× | 1.53× | **1.51×** |
-| Qwen3-32B | 1.35× | 1.27× | 1.29× | 1.32× | 1.35× | **1.31×** |</p>
-
+<h3>5.1 实验设置</h3>
+<p><strong>评估数据集</strong>。我们在五个基准测试上评估PRR，涵盖长上下文理解（如摘要）和复杂推理（如数学）。长上下文任务使用LongBench[Bai et al. (2024)]、InfiniteBench[Zhang et al. (2024)]和RULER[Hsieh et al. (2024)]评估，推理能力在AIME[Hugging Face H4 (2024)]和MATH500[Lightman et al. (2023)]上测量。</p>
+<p><strong>模型</strong>。我们在六个LLM上进行实验：GLM-4-9B-1M[Zeng et al. (2024)]、GLM-Z1-9B⁴、DeepSeek-R1-8B[DeepSeek-AI (2025)]、Llama3-8B-1M[AI@Meta (2024)]、Qwen3-14B[Team (2025)]和Qwen3-32B[Team (2025)]。</p>
+<p><strong>DSA</strong>。我们考虑两种即插即用的DSA机制：Quest[Tang et al. (2024)]和InfLLM-v2[Zhao et al. (2025)]。NSA[Yuan et al. (2025a)]被排除，因为它需要从头训练其特征提取和门控组件。</p>
+<p><strong>测试平台</strong>。实验在配备CUDA 12.8的H100 GPU上运行，张量并行度为2。</p>
+<h3>5.2 加速评估</h3>
+<p><strong>表1</strong>：PRR相对于串行DSA执行（1.00×）的解码加速。越高越好。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>LongBench</th>
+<th>InfiniteBench</th>
+<th>RULER</th>
+<th>AIME</th>
+<th>MATH500</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Quest</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>1.50×</td>
+<td>1.40×</td>
+<td>1.45×</td>
+<td>1.30×</td>
+<td>1.42×</td>
+<td><strong>1.42×</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>1.48×</td>
+<td>1.39×</td>
+<td>1.43×</td>
+<td>1.33×</td>
+<td>1.45×</td>
+<td><strong>1.42×</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>1.39×</td>
+<td>1.42×</td>
+<td>1.47×</td>
+<td>1.35×</td>
+<td>1.39×</td>
+<td><strong>1.41×</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>1.36×</td>
+<td>1.40×</td>
+<td>1.41×</td>
+<td>1.39×</td>
+<td>1.34×</td>
+<td><strong>1.38×</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>1.44×</td>
+<td>1.27×</td>
+<td>1.41×</td>
+<td>1.44×</td>
+<td>1.45×</td>
+<td><strong>1.40×</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>1.26×</td>
+<td>1.34×</td>
+<td>1.27×</td>
+<td>1.27×</td>
+<td>1.26×</td>
+<td><strong>1.28×</strong></td>
+</tr>
+<tr>
+<td><strong>InfLLM-v2</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>1.64×</td>
+<td>1.38×</td>
+<td>1.58×</td>
+<td>1.62×</td>
+<td>1.59×</td>
+<td><strong>1.56×</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>1.61×</td>
+<td>1.35×</td>
+<td>1.61×</td>
+<td>1.64×</td>
+<td>1.55×</td>
+<td><strong>1.55×</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>1.30×</td>
+<td>1.48×</td>
+<td>1.61×</td>
+<td>1.52×</td>
+<td>1.28×</td>
+<td><strong>1.44×</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>1.32×</td>
+<td>1.45×</td>
+<td>1.55×</td>
+<td>1.55×</td>
+<td>1.30×</td>
+<td><strong>1.43×</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>1.56×</td>
+<td>1.43×</td>
+<td>1.51×</td>
+<td>1.53×</td>
+<td>1.53×</td>
+<td><strong>1.51×</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>1.35×</td>
+<td>1.27×</td>
+<td>1.29×</td>
+<td>1.32×</td>
+<td>1.35×</td>
+<td><strong>1.31×</strong></td>
+</tr>
+</tbody>
+</table>
 <p>我们在所有模型和基准测试上测量端到端解码延迟，并在表1中报告PRR相对于标准DSA执行的加速。如表所示，PRR提供了一致的加速，在Quest下平均加速1.35倍，在InfLLM-v2下平均加速1.47倍。这些收益来自三个互补机制。首先，EMA预测器实现了约91%的平均前K重叠率，使大部分注意力工作在推测期间完成。其次，我们定制的稀疏注意力CUDA内核在性能上大幅超过FlashInfer的BlockSparseAttention（§5.4）。它创造的余量让PRR在推测中包含更多块，将重叠率从91%提升到98%，且无额外延迟成本（§5.5）。第三，当块遗漏确实发生时，增量注意力修复直接补入缺失块而非从头重新计算注意力，保留了推测带来的延迟节省。</p>
-
-<p>### 5.3 消融研究</p>
-
+<h3>5.3 消融研究</h3>
 <p>我们通过逐步启用三个功能来量化每个设计组件对整体延迟减少的贡献：</p>
-
-<p>1. **复用上一步的前K块**：使用前一个解码步骤的块选择来推测性地计算注意力。
-2. **增量注意力修复**：用我们定制的CUDA内核替换FlashInfer的BlockSparseAttention，对遗漏块执行增量注意力修复。
-3. **EMA预测器**：应用我们基于EMA的预测器来预判即将到来的块选择，并在预测集上进行推测。</p>
-
+<ol>
+<li><strong>复用上一步的前K块</strong>：使用前一个解码步骤的块选择来推测性地计算注意力。</li>
+<li><strong>增量注意力修复</strong>：用我们定制的CUDA内核替换FlashInfer的BlockSparseAttention，对遗漏块执行增量注意力修复。</li>
+<li><strong>EMA预测器</strong>：应用我们基于EMA的预测器来预判即将到来的块选择，并在预测集上进行推测。</li>
+</ol>
 <p>这些功能从S1到S3增量启用，其中S3代表标准PRR配置。我们使用GLM-4-9B搭配InfLLM-v2作为运行示例。在其他LLM上Quest和InfLLM-v2下也观察到一致趋势（A.8）。</p>
-
-<p>**表2**：GLM-4-9B和InfLLM-v2在各基准测试上消融阶段相对于串行执行（1.00×）的解码加速。越高越好。</p>
-
-<p>| 基准测试 | S1 | S2 | S3 (PRR) |
-|---|---|---|---|
-| LongBench | 1.02× | 1.34× | 1.64× |
-| InfiniteBench | 1.00× | 1.19× | 1.38× |
-| RULER | 1.01× | 1.34× | 1.58× |
-| AIME | 1.02× | 1.34× | 1.62× |
-| MATH500 | 1.01× | 1.31× | 1.59× |
-| **平均加速** | **1.01×** | **1.30×** | **1.56×** |</p>
-
+<p><strong>表2</strong>：GLM-4-9B和InfLLM-v2在各基准测试上消融阶段相对于串行执行（1.00×）的解码加速。越高越好。</p>
+<table>
+<thead>
+<tr>
+<th>基准测试</th>
+<th>S1</th>
+<th>S2</th>
+<th>S3 (PRR)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LongBench</td>
+<td>1.02×</td>
+<td>1.34×</td>
+<td>1.64×</td>
+</tr>
+<tr>
+<td>InfiniteBench</td>
+<td>1.00×</td>
+<td>1.19×</td>
+<td>1.38×</td>
+</tr>
+<tr>
+<td>RULER</td>
+<td>1.01×</td>
+<td>1.34×</td>
+<td>1.58×</td>
+</tr>
+<tr>
+<td>AIME</td>
+<td>1.02×</td>
+<td>1.34×</td>
+<td>1.62×</td>
+</tr>
+<tr>
+<td>MATH500</td>
+<td>1.01×</td>
+<td>1.31×</td>
+<td>1.59×</td>
+</tr>
+<tr>
+<td><strong>平均加速</strong></td>
+<td><strong>1.01×</strong></td>
+<td><strong>1.30×</strong></td>
+<td><strong>1.56×</strong></td>
+</tr>
+</tbody>
+</table>
 <p>表2的结果揭示了以下发现。通过S1朴素地启用推测性注意力相对于标准DSA执行几乎没有改善。虽然从前一个解码步骤复用的块选择与当前真实前K集合平均重叠约68%，但单个遗漏块会触发对真实前K选择的完整注意力重计算，这抵消了推测带来的延迟节省。</p>
-
 <p>S2引入了我们定制的稀疏注意力内核，允许运行时修复缺失的32%块，将平均加速提升到1.30×。</p>
-
 <p>S3（PRR）在预测前K集合和真实前K集合之间达到98%的重叠率，导致平均1.55×的加速。</p>
-
-<p>### 5.4 内核速度比较</p>
-
+<h3>5.4 内核速度比较</h3>
 <p>我们在H100上将我们定制的稀疏注意力内核与FlashInfer的BlockSparseAttention[Ye et al. (2025)]进行比较，配置为GQA，32个查询头、8个KV头、头维度128、128K token上下文。我们将token预算从1K扫描到8K，KV缓存块大小从16到256，以反映解码期间真实的稀疏注意力工作负载。</p>
-
-<p>**表3**：PRR的稀疏内核相对于FlashInfer的BlockSparseAttention在各种块大小和token预算下的加速。越高表示加速越大。</p>
-
-<p>| 块大小 | 1024 | 2048 | 4096 | 6144 | 8192 | 平均 |
-|---|---|---|---|---|---|---|
-| 16 | 1.17× | 1.28× | 2.00× | 2.83× | 3.68× | **2.19×** |
-| 32 | 1.17× | 1.38× | 2.09× | 2.78× | 3.69× | **2.22×** |
-| 64 | 1.17× | 1.38× | 2.26× | 2.91× | 3.64× | **2.27×** |
-| 128 | 1.17× | 1.41× | 2.23× | 3.00× | 3.71× | **2.31×** |
-| 256 | 1.03× | 1.11× | 2.00× | 2.75× | 3.64× | **2.11×** |</p>
-
+<p><strong>表3</strong>：PRR的稀疏内核相对于FlashInfer的BlockSparseAttention在各种块大小和token预算下的加速。越高表示加速越大。</p>
+<table>
+<thead>
+<tr>
+<th>块大小</th>
+<th>1024</th>
+<th>2048</th>
+<th>4096</th>
+<th>6144</th>
+<th>8192</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td>1.17×</td>
+<td>1.28×</td>
+<td>2.00×</td>
+<td>2.83×</td>
+<td>3.68×</td>
+<td><strong>2.19×</strong></td>
+</tr>
+<tr>
+<td>32</td>
+<td>1.17×</td>
+<td>1.38×</td>
+<td>2.09×</td>
+<td>2.78×</td>
+<td>3.69×</td>
+<td><strong>2.22×</strong></td>
+</tr>
+<tr>
+<td>64</td>
+<td>1.17×</td>
+<td>1.38×</td>
+<td>2.26×</td>
+<td>2.91×</td>
+<td>3.64×</td>
+<td><strong>2.27×</strong></td>
+</tr>
+<tr>
+<td>128</td>
+<td>1.17×</td>
+<td>1.41×</td>
+<td>2.23×</td>
+<td>3.00×</td>
+<td>3.71×</td>
+<td><strong>2.31×</strong></td>
+</tr>
+<tr>
+<td>256</td>
+<td>1.03×</td>
+<td>1.11×</td>
+<td>2.00×</td>
+<td>2.75×</td>
+<td>3.64×</td>
+<td><strong>2.11×</strong></td>
+</tr>
+</tbody>
+</table>
 <p>如表3所示，我们的内核在每种配置下都优于BlockSparseAttention，平均加速2.22×，在8K预算下峰值达3.71×。在1K token时，加速较小（1.03-1.17×），因为绝对延迟较小且固定开销占主导，而在8K时带宽饱和优势叠加，产生3.64-3.71×的加速。在不同块大小上，性能稳定；块大小128产生最高平均加速（2.31×），256最低（2.11×），因为最大的分块接近密集模式，块表间接寻址对BlockSparseAttention来说成为纯开销。</p>
-
 <p>除了原始加速外，我们的内核还暴露了增量注意力修复的接口，将遗漏块补入现有注意力输出而非从头重新计算，这是PRR端到端收益背后的关键能力。</p>
-
-<p>### 5.5 EMA命中率</p>
-
+<h3>5.5 EMA命中率</h3>
 <p>表4报告了EMA预测与GLM-4-9B上真实前K集合之间的重叠率。预测器在各基准测试下Quest达到98.05%，InfLLM-v2达到97.52%。其他LLM上也观察到一致趋势（A.7）。</p>
-
-<p>**表4**：EMA预测与GLM-4-9B真实前K集合之间的重叠率(%)。</p>
-
-<p>| 模型 | LongBench | InfiniteBench | RULER | AIME | MATH500 | 平均 |
-|---|---|---|---|---|---|---|
-| Quest | 98.65 | 96.86 | 98.36 | 98.15 | 98.25 | **98.05** |
-| InfLLM-v2 | 97.86 | 97.14 | 96.46 | 98.15 | 98.01 | **97.52** |</p>
-
-<p>## 6 相关工作</p>
-
-<p>**动态稀疏注意力的KV缓存检索**。为避免KV丢弃方法[Zhang et al. (2023); Dong et al. (2024); Xiao et al. (2024b)]的信息损失，KV检索方法[Lee et al. (2024); Wu et al. (2025)]将完整KV缓存保留在CPU内存中，仅获取与查询相关的token以减少传输，这与PRR正交。LouisKV[Wu et al. (2025)]和AsyncSpade[Luo et al. (2025)]预测查询状态以预取相关token，但近似的查询状态估计可能丢弃重要token并降低质量。PRR转而基于历史重要性分数的时间局部性进行预取并推测性地计算注意力，遗漏token通过注意力修复重新纳入，实现零精度下降。</p>
-
-<p>**KV缓存管理的时间局部性**。FlexiCache[Takbir et al. (2026)]利用**跨头**的时间稳定性：稳定的头仅将其前K个KV页保留在GPU上，而不稳定的头保留所有页。这与PRR互补，PRR利用**跨解码步骤**的时间局部性——相同块在连续步骤中被重新选择的趋势。两者可组合：PRR的EMA预测器可以指导在FlexiCache的稳定头中保留哪些页，而PRR的推测性注意力单独提高解码吞吐量。</p>
-
-<p>## 7 结论</p>
-
-<p>我们引入了**PRR**，一个新颖的推测性注意力运行时，打破了DSA中的选择-到-注意力依赖。为此，我们提出了一个轻量级的基于EMA的预测器，并实现了一个支持增量注意力修复的定制稀疏注意力CUDA内核。在多样化LLM和基准测试上的实验表明，PRR相对于串行DSA实现了一致的加速。</p>
-
-<p>## 局限性</p>
-
+<p><strong>表4</strong>：EMA预测与GLM-4-9B真实前K集合之间的重叠率(%)。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>LongBench</th>
+<th>InfiniteBench</th>
+<th>RULER</th>
+<th>AIME</th>
+<th>MATH500</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quest</td>
+<td>98.65</td>
+<td>96.86</td>
+<td>98.36</td>
+<td>98.15</td>
+<td>98.25</td>
+<td><strong>98.05</strong></td>
+</tr>
+<tr>
+<td>InfLLM-v2</td>
+<td>97.86</td>
+<td>97.14</td>
+<td>96.46</td>
+<td>98.15</td>
+<td>98.01</td>
+<td><strong>97.52</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>6 相关工作</h2>
+<p><strong>动态稀疏注意力的KV缓存检索</strong>。为避免KV丢弃方法[Zhang et al. (2023); Dong et al. (2024); Xiao et al. (2024b)]的信息损失，KV检索方法[Lee et al. (2024); Wu et al. (2025)]将完整KV缓存保留在CPU内存中，仅获取与查询相关的token以减少传输，这与PRR正交。LouisKV[Wu et al. (2025)]和AsyncSpade[Luo et al. (2025)]预测查询状态以预取相关token，但近似的查询状态估计可能丢弃重要token并降低质量。PRR转而基于历史重要性分数的时间局部性进行预取并推测性地计算注意力，遗漏token通过注意力修复重新纳入，实现零精度下降。</p>
+<p><strong>KV缓存管理的时间局部性</strong>。FlexiCache[Takbir et al. (2026)]利用<strong>跨头</strong>的时间稳定性：稳定的头仅将其前K个KV页保留在GPU上，而不稳定的头保留所有页。这与PRR互补，PRR利用<strong>跨解码步骤</strong>的时间局部性——相同块在连续步骤中被重新选择的趋势。两者可组合：PRR的EMA预测器可以指导在FlexiCache的稳定头中保留哪些页，而PRR的推测性注意力单独提高解码吞吐量。</p>
+<h2>7 结论</h2>
+<p>我们引入了<strong>PRR</strong>，一个新颖的推测性注意力运行时，打破了DSA中的选择-到-注意力依赖。为此，我们提出了一个轻量级的基于EMA的预测器，并实现了一个支持增量注意力修复的定制稀疏注意力CUDA内核。在多样化LLM和基准测试上的实验表明，PRR相对于串行DSA实现了一致的加速。</p>
+<h2>局限性</h2>
 <p>PRR仍有改进空间。首先，我们仅在无需训练的动态稀疏注意力机制（即Quest和InfLLM-v2）上进行评估。我们没有在本文中包含任何可训练机制如NSA，因为它需要大量计算资源从头训练。其次，我们仅针对特定GPU架构（即NVIDIA Hopper）和半精度优化内核性能。未来工作可以将我们的内核优化扩展到其他架构（如Blackwell）和其他低位精度（如fp8）。第三，由于页面限制，我们主要在正文中展示GLM-4-9B的结果。我们对其他LLM执行了相同实验并在附录A中展示结果，其中其他LLM上观察到与GLM-4-9B相同的趋势。最后，我们仅评估了批量大小为1的PRR。未来工作可以探索如何在同一批次内的请求之间协调各阶段（如块选择、推测）以提高解码吞吐量。</p>
-
-<p>## 参考文献</p>
-
+<h2>参考文献</h2>
 <p>AI@Meta (2024). Llama 3 model card. 外部链接：Link. 引用于：§A.3, §5.1.</p>
-
-<p>Y. Bai, X. Lv, J. Zhang, H. Lyu, J. Tang, Z. Huang, Z. Du, X. Liu, A. Zeng, L. Hou, et al. (2024). Longbench: a bilingual, multitask benchmark for long context understanding. In *Proceedings of the 62nd annual meeting of the association for computational linguistics (volume 1: Long papers)*, pp. 3119–3137. 引用于：§A.3, §1, §2.2, §5.1.</p>
-
+<p>Y. Bai, X. Lv, J. Zhang, H. Lyu, J. Tang, Z. Huang, Z. Du, X. Liu, A. Zeng, L. Hou, et al. (2024). Longbench: a bilingual, multitask benchmark for long context understanding. In <em>Proceedings of the 62nd annual meeting of the association for computational linguistics (volume 1: Long papers)</em>, pp. 3119–3137. 引用于：§A.3, §1, §2.2, §5.1.</p>
 <p>M. Balunović, J. Dekoninck, I. Petrov, N. Jovanović, and M. Vechev (2025). MathArena: evaluating llms on uncontaminated math competitions. SRI Lab, ETH Zurich. 外部链接：Link. 引用于：§A.3.</p>
-
 <p>[4] (2024). ChatGLM: a family of large language models from glm-130b to glm-4 all tools. 外部链接：2406.12793. 引用于：§A.3, §5.1.</p>
-
-<p>T. Dao (2024). FlashAttention-2: faster attention with better parallelism and work partitioning. In *International Conference on Learning Representations (ICLR)*. 引用于：§1, §4.3.</p>
-
+<p>T. Dao (2024). FlashAttention-2: faster attention with better parallelism and work partitioning. In <em>International Conference on Learning Representations (ICLR)</em>. 引用于：§1, §4.3.</p>
 <p>DeepSeek-AI (2025). DeepSeek-r1: incentivizing reasoning capability in llms via reinforcement learning. 外部链接：2501.12948, Link. 引用于：§A.3, §5.1.</p>
-
 <p>H. Dong, X. Yang, Z. Zhang, Z. Wang, Y. Chi, and B. Chen (2024). Get more with less: synthesizing recurrence with kv cache compression for efficient llm inference. arXiv preprint arXiv:2402.09398. 引用于：§6.</p>
-
-<p>J. He, C. Treude, and D. Lo (2025). Llm-based multi-agent systems for software engineering: literature review, vision, and the road ahead. *ACM Transactions on Software Engineering and Methodology* 34(5), pp. 1–30. 引用于：§1.</p>
-
+<p>J. He, C. Treude, and D. Lo (2025). Llm-based multi-agent systems for software engineering: literature review, vision, and the road ahead. <em>ACM Transactions on Software Engineering and Methodology</em> 34(5), pp. 1–30. 引用于：§1.</p>
 <p>C. Hsieh, S. Sun, S. Kriman, S. Acharya, D. Rekesh, F. Jia, Y. Zhang, and B. Ginsburg (2024). RULER: what's the real context size of your long-context language models? arXiv preprint arXiv:2404.06654. 引用于：§A.3, §1, §2.2, §5.1.</p>
-
-<p>Z. Hu, V. Murthy, Z. Pan, W. Li, X. Fang, Y. Ding, and Y. Wang (2025). Hedrarag: co-optimizing generation and retrieval for heterogeneous rag workflows. In *Proceedings of the ACM SIGOPS 31st symposium on operating systems principles*, pp. 623–638. 引用于：§A.6.</p>
-
+<p>Z. Hu, V. Murthy, Z. Pan, W. Li, X. Fang, Y. Ding, and Y. Wang (2025). Hedrarag: co-optimizing generation and retrieval for heterogeneous rag workflows. In <em>Proceedings of the ACM SIGOPS 31st symposium on operating systems principles</em>, pp. 623–638. 引用于：§A.6.</p>
 <p>Hugging Face H4 (2024). AIME 2024. Hugging Face. 注：https://huggingface.co/datasets/HuggingFaceH4/aime_2024 Dataset of 30 problems from the 2024 AIME I and AIME II competitions. 引用于：§A.3, §1, §2.2, §5.1.</p>
-
-<p>W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. E. Gonzalez, H. Zhang, and I. Stoica (2023). Efficient memory management for large language model serving with pagedattention. In *Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles*. 引用于：§1, §4.3.</p>
-
-<p>W. Lee, J. Lee, J. Seo, and J. Sim (2024). {infinigen}: Efficient generative inference of large language models with dynamic {kv} cache management. In *18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24)*, pp. 155–172. 引用于：§1, §2.2, §6.</p>
-
+<p>W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. E. Gonzalez, H. Zhang, and I. Stoica (2023). Efficient memory management for large language model serving with pagedattention. In <em>Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles</em>. 引用于：§1, §4.3.</p>
+<p>W. Lee, J. Lee, J. Seo, and J. Sim (2024). {infinigen}: Efficient generative inference of large language models with dynamic {kv} cache management. In <em>18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24)</em>, pp. 155–172. 引用于：§1, §2.2, §6.</p>
 <p>N. Levy (2026). Dynamic sparse attention: access patterns and architecture. arXiv preprint arXiv:2603.13430. 引用于：§1.</p>
-
-<p>X. Li, J. Jin, G. Dong, H. Qian, Y. Wu, J. Wen, Y. Zhu, and Z. Dou (2026). Webthinker: empowering large reasoning models with deep research capability. *Advances in Neural Information Processing Systems* 38, pp. 120091–120131. 引用于：§1.</p>
-
+<p>X. Li, J. Jin, G. Dong, H. Qian, Y. Wu, J. Wen, Y. Zhu, and Z. Dou (2026). Webthinker: empowering large reasoning models with deep research capability. <em>Advances in Neural Information Processing Systems</em> 38, pp. 120091–120131. 引用于：§1.</p>
 <p>H. Lightman, V. Kosaraju, Y. Burda, H. Edwards, B. Baker, T. Lee, J. Leike, J. Schulman, I. Sutskever, and K. Cobbe (2023). Let's verify step by step. arXiv preprint arXiv:2305.20050. 引用于：§A.3, §1, §2.2, §5.1.</p>
-
 <p>S. Luo, Y. Guan, P. Li, H. Wang, and T. Chen (2025). AsyncSpade: efficient test-time scaling with asynchronous sparse decoding. arXiv preprint arXiv:2510.07486. 引用于：§6.</p>
-
-<p>J. Stojkovic, C. Zhang, Í. Goiri, J. Torrellas, and E. Choukse (2025). Dynamollm: designing llm inference clusters for performance and energy efficiency. In *2025 IEEE International Symposium on High Performance Computer Architecture (HPCA)*, pp. 1348–1362. 引用于：§A.6.</p>
-
-<p>N. Takbir, H. Alikhani, N. Dutt, and S. A. Jyothi (2026). FlexiCache: leveraging temporal stability of attention heads for efficient kv cache management. In *Proceedings of Machine Learning and Systems*, MLSys. 外部链接：Link. 引用于：§2.2, §6.</p>
-
-<p>J. Tang, Y. Zhao, K. Zhu, G. Xiao, B. Kasikci, and S. Han (2024). QUEST: query-aware sparsity for efficient long-context llm inference. In *Proceedings of the 41st International Conference on Machine Learning*, ICML'24. 引用于：§A.2, §1, §2, §5.1.</p>
-
+<p>J. Stojkovic, C. Zhang, Í. Goiri, J. Torrellas, and E. Choukse (2025). Dynamollm: designing llm inference clusters for performance and energy efficiency. In <em>2025 IEEE International Symposium on High Performance Computer Architecture (HPCA)</em>, pp. 1348–1362. 引用于：§A.6.</p>
+<p>N. Takbir, H. Alikhani, N. Dutt, and S. A. Jyothi (2026). FlexiCache: leveraging temporal stability of attention heads for efficient kv cache management. In <em>Proceedings of Machine Learning and Systems</em>, MLSys. 外部链接：Link. 引用于：§2.2, §6.</p>
+<p>J. Tang, Y. Zhao, K. Zhu, G. Xiao, B. Kasikci, and S. Han (2024). QUEST: query-aware sparsity for efficient long-context llm inference. In <em>Proceedings of the 41st International Conference on Machine Learning</em>, ICML'24. 引用于：§A.2, §1, §2, §5.1.</p>
 <p>Q. Team (2025). Qwen3 technical report. 外部链接：2505.09388, Link. 引用于：§A.3, §5.1.</p>
-
-<p>Q. Wang, Z. Wang, Y. Su, H. Tong, and Y. Song (2024). Rethinking the bounds of llm reasoning: are multi-agent discussions the key? In *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, pp. 6106–6131. 引用于：§1.</p>
-
-<p>Z. Wang, Y. Zhang, F. Wei, B. Wang, Y. Liu, Z. Hu, J. Zhang, X. Xu, J. He, X. Wang, W. Dou, G. Chen, and C. Tian (2025). Using analytical performance/power model and fine-grained dvfs to enhance ai accelerator energy efficiency. In *Proceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 1*, ASPLOS '25, New York, NY, USA, pp. 1118–1132. 外部链接：ISBN 9798400706981, Link, Document. 引用于：§A.6.</p>
-
+<p>Q. Wang, Z. Wang, Y. Su, H. Tong, and Y. Song (2024). Rethinking the bounds of llm reasoning: are multi-agent discussions the key? In <em>Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)</em>, pp. 6106–6131. 引用于：§1.</p>
+<p>Z. Wang, Y. Zhang, F. Wei, B. Wang, Y. Liu, Z. Hu, J. Zhang, X. Xu, J. He, X. Wang, W. Dou, G. Chen, and C. Tian (2025). Using analytical performance/power model and fine-grained dvfs to enhance ai accelerator energy efficiency. In <em>Proceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 1</em>, ASPLOS '25, New York, NY, USA, pp. 1118–1132. 外部链接：ISBN 9798400706981, Link, Document. 引用于：§A.6.</p>
 <p>W. Wu, Q. Si, X. Pan, Y. Wang, and J. Zhang (2025). LouisKV: efficient kv cache retrieval for long input-output sequences. arXiv preprint arXiv:2510.11292. 引用于：§6.</p>
-
-<p>C. Xiao, P. Zhang, X. Han, G. Xiao, Y. Lin, Z. Zhang, Z. Liu, and M. Sun (2024a). Infllm: training-free long-context extrapolation for llms with an efficient context memory. *Advances in neural information processing systems* 37, pp. 119638–119661. 引用于：§1.</p>
-
-<p>G. Xiao, Y. Tian, B. Chen, S. Han, and M. Lewis (2024b). Efficient streaming language models with attention sinks. In *International Conference on Learning Representations*, Vol. 2024, pp. 21875–21895. 引用于：§6.</p>
-
-<p>Y. Yang, H. Chai, S. Shao, Y. Song, S. Qi, R. Rui, and W. Zhang (2026). Agentnet: decentralized evolutionary coordination for llm-based multi-agent systems. *Advances in Neural Information Processing Systems* 38, pp. 107309–107336. 引用于：§1.</p>
-
+<p>C. Xiao, P. Zhang, X. Han, G. Xiao, Y. Lin, Z. Zhang, Z. Liu, and M. Sun (2024a). Infllm: training-free long-context extrapolation for llms with an efficient context memory. <em>Advances in neural information processing systems</em> 37, pp. 119638–119661. 引用于：§1.</p>
+<p>G. Xiao, Y. Tian, B. Chen, S. Han, and M. Lewis (2024b). Efficient streaming language models with attention sinks. In <em>International Conference on Learning Representations</em>, Vol. 2024, pp. 21875–21895. 引用于：§6.</p>
+<p>Y. Yang, H. Chai, S. Shao, Y. Song, S. Qi, R. Rui, and W. Zhang (2026). Agentnet: decentralized evolutionary coordination for llm-based multi-agent systems. <em>Advances in Neural Information Processing Systems</em> 38, pp. 107309–107336. 引用于：§1.</p>
 <p>Z. Ye, L. Chen, R. Lai, W. Lin, Y. Zhang, S. Wang, T. Chen, B. Kasikci, V. Grover, A. Krishnamurthy, and L. Ceze (2025). FlashInfer: efficient and customizable attention engine for llm inference serving. arXiv preprint arXiv:2501.01005. 外部链接：Link. 引用于：§2, §4.3, §5.4.</p>
-
-<p>J. Yuan, H. Gao, D. Dai, J. Luo, L. Zhao, Z. Zhang, Z. Xie, Y. Wei, L. Wang, Z. Xiao, et al. (2025a). Native sparse attention: hardware-aligned and natively trainable sparse attention. In *Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, pp. 23078–23097. 引用于：§1, §5.1.</p>
-
-<p>L. Yuan, G. Cui, H. Wang, N. Ding, X. Wang, B. Shan, Z. Liu, J. Deng, H. Chen, R. Xie, et al. (2025b). Advancing llm reasoning generalists with preference trees. In *International Conference on Learning Representations*, Vol. 2025, pp. 24897–24919. 引用于：§1.</p>
-
+<p>J. Yuan, H. Gao, D. Dai, J. Luo, L. Zhao, Z. Zhang, Z. Xie, Y. Wei, L. Wang, Z. Xiao, et al. (2025a). Native sparse attention: hardware-aligned and natively trainable sparse attention. In <em>Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)</em>, pp. 23078–23097. 引用于：§1, §5.1.</p>
+<p>L. Yuan, G. Cui, H. Wang, N. Ding, X. Wang, B. Shan, Z. Liu, J. Deng, H. Chen, R. Xie, et al. (2025b). Advancing llm reasoning generalists with preference trees. In <em>International Conference on Learning Representations</em>, Vol. 2025, pp. 24897–24919. 引用于：§1.</p>
 <p>A. Zeng, Z. Du, M. Liu, K. Wang, S. Jiang, L. Zhao, Y. Dong, and J. Tang (2024). Glm-4-voice: towards intelligent and human-like end-to-end spoken chatbot. arXiv preprint arXiv:2412.02612. 引用于：§2, §5.1.</p>
-
-<p>X. Zhang, Y. Chen, S. Hu, Z. Xu, J. Chen, M. Hao, X. Han, Z. Thai, S. Wang, Z. Liu, and M. Sun (2024). ∞Bench: Extending long context evaluation beyond 100K tokens. In *Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)*, L. Ku, A. Martins, and V. Srikumar (Eds.), Bangkok, Thailand, pp. 15262–15277. 外部链接：Link, Document. 引用于：§A.3, §1, §2.2, §5.1.</p>
-
-<p>Z. Zhang, Y. Sheng, T. Zhou, T. Chen, L. Zheng, R. Cai, Z. Song, Y. Tian, C. Ré, C. Barrett, et al. (2023). H2o: heavy-hitter oracle for efficient generative inference of large language models. *Advances in Neural Information Processing Systems* 36, pp. 34661–34710. 引用于：§6.</p>
-
+<p>X. Zhang, Y. Chen, S. Hu, Z. Xu, J. Chen, M. Hao, X. Han, Z. Thai, S. Wang, Z. Liu, and M. Sun (2024). ∞Bench: Extending long context evaluation beyond 100K tokens. In <em>Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)</em>, L. Ku, A. Martins, and V. Srikumar (Eds.), Bangkok, Thailand, pp. 15262–15277. 外部链接：Link, Document. 引用于：§A.3, §1, §2.2, §5.1.</p>
+<p>Z. Zhang, Y. Sheng, T. Zhou, T. Chen, L. Zheng, R. Cai, Z. Song, Y. Tian, C. Ré, C. Barrett, et al. (2023). H2o: heavy-hitter oracle for efficient generative inference of large language models. <em>Advances in Neural Information Processing Systems</em> 36, pp. 34661–34710. 引用于：§6.</p>
 <p>W. Zhao, Z. Zhou, Z. Su, C. Xiao, Y. Li, Y. Li, Y. Zhang, W. Zhao, Z. Li, Y. Huang, et al. (2025). Infllm-v2: dense-sparse switchable attention for seamless short-to-long adaptation. arXiv preprint arXiv:2509.24663. 引用于：§A.2, §1, §2, §5.1.</p>
-
-<p>L. Zheng, L. Yin, Z. Xie, C. Sun, J. Huang, C. H. Yu, S. Cao, C. Kozyrakis, I. Stoica, J. E. Gonzalez, C. Barrett, and Y. Sheng (2024). SGLang: efficient execution of structured language model programs. In *Proceedings of the 38th International Conference on Neural Information Processing Systems*, NIPS '24, Red Hook, NY, USA. 外部链接：ISBN 9798331314385. 引用于：§1, §4.3.</p>
-
-<p>Y. Zheng, D. Fu, X. Hu, X. Cai, L. Ye, P. Lu, and P. Liu (2025). Deepresearcher: scaling deep research via reinforcement learning in real-world environments. In *Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing*, pp. 414–431. 引用于：§1.</p>
-
-<p>## 附录A</p>
-
-<p>### A.1 将Quest扩展到GQA</p>
-
-<p>原始Quest公式针对多头注意力，其中每个查询头有专用的KV头并独立选择其前K页。在分组查询注意力（GQA）下，G个查询头共享一个KV头，使得按查询头选择既浪费——选定的页每个KV头只加载一次——又在组内头不一致时定义不清。我们通过在KV头粒度上操作将Quest扩展到GQA：页元数据（通道级最小/最大键m_p, M_p）按每个KV头存储如前，对于每个KV头我们形成一个代表性查询Q̄ = (1/G)Σ_{g=1}^G Q_g。关键性估计然后进行为s_p = Σ_i max(Q̄_i · m_{p,i}, Q̄_i · M_{p,i})，从每个(KV头, 页)产生一个分数，从中选择前K页并在稀疏注意力期间在组内共享。</p>
-
-<p>### A.2 Quest和InfLLM-v2的设置</p>
-
+<p>L. Zheng, L. Yin, Z. Xie, C. Sun, J. Huang, C. H. Yu, S. Cao, C. Kozyrakis, I. Stoica, J. E. Gonzalez, C. Barrett, and Y. Sheng (2024). SGLang: efficient execution of structured language model programs. In <em>Proceedings of the 38th International Conference on Neural Information Processing Systems</em>, NIPS '24, Red Hook, NY, USA. 外部链接：ISBN 9798331314385. 引用于：§1, §4.3.</p>
+<p>Y. Zheng, D. Fu, X. Hu, X. Cai, L. Ye, P. Lu, and P. Liu (2025). Deepresearcher: scaling deep research via reinforcement learning in real-world environments. In <em>Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing</em>, pp. 414–431. 引用于：§1.</p>
+<h2>附录A</h2>
+<h3>A.1 将Quest扩展到GQA</h3>
+<p>原始Quest公式针对多头注意力，其中每个查询头有专用的KV头并独立选择其前K页。在分组查询注意力（GQA）下，G个查询头共享一个KV头，使得按查询头选择既浪费——选定的页每个KV头只加载一次——又在组内头不一致时定义不清。我们通过在KV头粒度上操作将Quest扩展到GQA：页元数据（通道级最小/最大键m_p, M_p）按每个KV头存储如前，对于每个KV头我们形成一个代表性查询Q̄ = (1/G)Σ_{g=1}^G Q_g。关键性估计然后进行为s_p = Σ_i max(Q̄<em>i · m</em>{p,i}, Q̄<em>i · M</em>{p,i})，从每个(KV头, 页)产生一个分数，从中选择前K页并在稀疏注意力期间在组内共享。</p>
+<h3>A.2 Quest和InfLLM-v2的设置</h3>
 <p>我们在第5节的实验中使用与Quest[Tang et al. (2024)]和InfLLM-v2[Zhao et al. (2025)]相同的设置（如块大小、token预算）。</p>
-
-<p>### A.3 跨LLM和基准测试的时间局部性</p>
-
+<h3>A.3 跨LLM和基准测试的时间局部性</h3>
 <p>我们在五个代表性长上下文基准测试上测量连续解码步骤中有多少块被重复选择，包括LongBench[Bai et al. (2024)]、InfiniteBench[Zhang et al. (2024)]、AIME[Hugging Face H4 (2024); Balunović et al. (2025)]、MATH500[Lightman et al. (2023)]和RULER[Hsieh et al. (2024)]，针对GLM-Z1-9B⁴、Deepseek-R1-8B[DeepSeek-AI (2025)]、Llama3-8B-1M[AI@Meta (2024)]、Qwen3-14B[Team (2025)]和Qwen3-32B[Team (2025)]。</p>
-
 <p>表5报告了性能分析的重叠率。在所有LLM和基准测试上，重叠率保持在0.7以下。这表明朴素地复用上一步的块选择由于频繁触发的回退注意力重计算，为推测加速提供的空间很小。</p>
-
-<p>**表5**：各LLM在不同基准测试下连续块选择中块的平均重叠率。</p>
-
-<p>| 模型 | LongBench | InfiniteBench | RULER | AIME | MATH500 | 平均 |
-|---|---|---|---|---|---|---|
-| **Quest** | | | | | | |
-| GLM-4 | 0.669 | 0.694 | 0.658 | 0.674 | 0.664 | **0.672** |
-| GLM-Z1 | 0.689 | 0.693 | 0.700 | 0.695 | 0.707 | **0.697** |
-| DeepSeek-R1 | 0.629 | 0.639 | 0.638 | 0.633 | 0.639 | **0.636** |
-| Llama3 | 0.666 | 0.649 | 0.665 | 0.671 | 0.689 | **0.668** |
-| Qwen3-14B | 0.640 | 0.655 | 0.662 | 0.652 | 0.657 | **0.653** |
-| Qwen3-32B | 0.637 | 0.657 | 0.640 | 0.655 | 0.633 | **0.644** |
-| **InfLLM-v2** | | | | | | |
-| GLM-4 | 0.689 | 0.701 | 0.679 | 0.718 | 0.702 | **0.698** |
-| GLM-Z1 | 0.692 | 0.708 | 0.701 | 0.698 | 0.694 | **0.698** |
-| DeepSeek-R1 | 0.669 | 0.657 | 0.681 | 0.670 | 0.677 | **0.671** |
-| Llama3 | 0.679 | 0.639 | 0.672 | 0.695 | 0.699 | **0.677** |
-| Qwen3-14B | 0.651 | 0.656 | 0.675 | 0.668 | 0.682 | **0.666** |
-| Qwen3-32B | 0.646 | 0.642 | 0.663 | 0.644 | 0.680 | **0.655** |</p>
-
-<p>### A.4 DSA的低利用率</p>
-
+<p><strong>表5</strong>：各LLM在不同基准测试下连续块选择中块的平均重叠率。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>LongBench</th>
+<th>InfiniteBench</th>
+<th>RULER</th>
+<th>AIME</th>
+<th>MATH500</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Quest</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>0.669</td>
+<td>0.694</td>
+<td>0.658</td>
+<td>0.674</td>
+<td>0.664</td>
+<td><strong>0.672</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>0.689</td>
+<td>0.693</td>
+<td>0.700</td>
+<td>0.695</td>
+<td>0.707</td>
+<td><strong>0.697</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>0.629</td>
+<td>0.639</td>
+<td>0.638</td>
+<td>0.633</td>
+<td>0.639</td>
+<td><strong>0.636</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>0.666</td>
+<td>0.649</td>
+<td>0.665</td>
+<td>0.671</td>
+<td>0.689</td>
+<td><strong>0.668</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>0.640</td>
+<td>0.655</td>
+<td>0.662</td>
+<td>0.652</td>
+<td>0.657</td>
+<td><strong>0.653</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>0.637</td>
+<td>0.657</td>
+<td>0.640</td>
+<td>0.655</td>
+<td>0.633</td>
+<td><strong>0.644</strong></td>
+</tr>
+<tr>
+<td><strong>InfLLM-v2</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>0.689</td>
+<td>0.701</td>
+<td>0.679</td>
+<td>0.718</td>
+<td>0.702</td>
+<td><strong>0.698</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>0.692</td>
+<td>0.708</td>
+<td>0.701</td>
+<td>0.698</td>
+<td>0.694</td>
+<td><strong>0.698</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>0.669</td>
+<td>0.657</td>
+<td>0.681</td>
+<td>0.670</td>
+<td>0.677</td>
+<td><strong>0.671</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>0.679</td>
+<td>0.639</td>
+<td>0.672</td>
+<td>0.695</td>
+<td>0.699</td>
+<td><strong>0.677</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>0.651</td>
+<td>0.656</td>
+<td>0.675</td>
+<td>0.668</td>
+<td>0.682</td>
+<td><strong>0.666</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>0.646</td>
+<td>0.642</td>
+<td>0.663</td>
+<td>0.644</td>
+<td>0.680</td>
+<td><strong>0.655</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>A.4 DSA的低利用率</h3>
 <p>我们对GLM-4-9B在更大批量大小（即2、4、8、16）下Quest和InfLLM-v2的流式多处理器（SM）、L2带宽和DRAM带宽利用率进行性能分析。总上下文长度固定为128K，因此批量大小16对应每个提示8K token的长度——远高于Quest和InfLLM-v2使用的token预算。如表6所示，即使在这些更大批量大小下，GPU资源仍然利用不足，为推测性注意力与块选择并行执行留有充裕余量。</p>
-
-<p>**表6**：GLM-4-9B在Quest和InfLLM-v2下不同批量大小的SM、L2带宽和DRAM带宽利用率(%)。</p>
-
-<p>| DSA | 指标 | BS=2 | BS=4 | BS=8 | BS=16 |
-|---|---|---|---|---|---|
-| Quest | SM | 6.73 | 7.22 | 7.90 | 8.66 |
-| | L2 BW | 43.46 | 44.33 | 44.32 | 45.57 |
-| | DRAM BW | 36.55 | 37.26 | 37.24 | 38.02 |
-| InfLLM-v2 | SM | 6.55 | 7.31 | 7.93 | 9.27 |
-| | L2 BW | 42.53 | 43.90 | 45.84 | 47.36 |
-| | DRAM BW | 35.73 | 36.71 | 38.40 | 39.50 |</p>
-
-<p>### A.5 搜索和预测成本</p>
-
+<p><strong>表6</strong>：GLM-4-9B在Quest和InfLLM-v2下不同批量大小的SM、L2带宽和DRAM带宽利用率(%)。</p>
+<table>
+<thead>
+<tr>
+<th>DSA</th>
+<th>指标</th>
+<th>BS=2</th>
+<th>BS=4</th>
+<th>BS=8</th>
+<th>BS=16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quest</td>
+<td>SM</td>
+<td>6.73</td>
+<td>7.22</td>
+<td>7.90</td>
+<td>8.66</td>
+</tr>
+<tr>
+<td></td>
+<td>L2 BW</td>
+<td>43.46</td>
+<td>44.33</td>
+<td>44.32</td>
+<td>45.57</td>
+</tr>
+<tr>
+<td></td>
+<td>DRAM BW</td>
+<td>36.55</td>
+<td>37.26</td>
+<td>37.24</td>
+<td>38.02</td>
+</tr>
+<tr>
+<td>InfLLM-v2</td>
+<td>SM</td>
+<td>6.55</td>
+<td>7.31</td>
+<td>7.93</td>
+<td>9.27</td>
+</tr>
+<tr>
+<td></td>
+<td>L2 BW</td>
+<td>42.53</td>
+<td>43.90</td>
+<td>45.84</td>
+<td>47.36</td>
+</tr>
+<tr>
+<td></td>
+<td>DRAM BW</td>
+<td>35.73</td>
+<td>36.71</td>
+<td>38.40</td>
+<td>39.50</td>
+</tr>
+</tbody>
+</table>
+<h3>A.5 搜索和预测成本</h3>
 <p>每次网格评估以O(T_p · N_p log K)算术运算的成本在预填充分数矩阵上运行预测器。关键的是，搜索被安排与预填充阶段重叠：到最后一个预填充token被处理且IS完成时，大部分网格评估已经在CPU上并发执行。因此，校准的关键路径成本是无法重叠的网格尾部。端到端，完整搜索——包括重叠和非重叠部分——在GLM-4-9B上对16K和64K token预填充分别约需2.4ms和11.2ms。非重叠部分（即最后一层的拟合）对两个预填充分别仅占0.06ms和0.28ms。预测过程仅耗时0.01ms。</p>
-
-<p>### A.6 性能分析开销</p>
-
+<h3>A.6 性能分析开销</h3>
 <p>在单个H100 GPU上对GLM-4-9B进行跨上下文长度（4K、8K、16K、32K和64K）的块选择和推测性注意力计算执行时间性能分析耗时不到5分钟。对于此网格之外的上下文长度，我们通过多项式回归估计执行时间，这是LLM服务中连续资源建模的标准技术[Wang et al. (2025); Stojkovic et al. (2025); Hu et al. (2025)]。</p>
-
-<p>### A.7 EMA命中率</p>
-
+<h3>A.7 EMA命中率</h3>
 <p>表7报告了各LLM在各基准测试上EMA预测块集合与真实前K集合之间的重叠率。PRR的EMA预测器一致地实现高重叠率（&gt;97%）。</p>
-
-<p>**表7**：各LLM在各基准测试上EMA预测与真实前K集合之间的重叠率(%)。</p>
-
-<p>| 模型 | LongBench | InfiniteBench | RULER | AIME | MATH500 | 平均 |
-|---|---|---|---|---|---|---|
-| **Quest** | | | | | | |
-| GLM-4 | 98.65 | 96.86 | 98.36 | 98.15 | 98.25 | **98.05** |
-| GLM-Z1 | 98.55 | 97.33 | 97.95 | 97.93 | 98.09 | **97.97** |
-| DeepSeek-R1 | 98.56 | 97.60 | 96.99 | 97.71 | 97.88 | **97.75** |
-| Llama3 | 98.63 | 97.62 | 97.49 | 98.01 | 98.28 | **98.01** |
-| Qwen3-14B | 97.49 | 98.91 | 98.17 | 97.93 | 98.10 | **98.12** |
-| Qwen3-32B | 98.52 | 98.56 | 98.12 | 97.94 | 98.06 | **98.24** |
-| **InfLLM-v2** | | | | | | |
-| GLM-4 | 97.86 | 97.14 | 96.46 | 98.15 | 98.01 | **97.52** |
-| GLM-Z1 | 99.12 | 98.89 | 98.56 | 98.42 | 98.49 | **98.70** |
-| DeepSeek-R1 | 99.03 | 99.01 | 98.27 | 99.40 | 98.57 | **98.86** |
-| Llama3 | 97.67 | 97.50 | 97.85 | 98.75 | 98.95 | **98.14** |
-| Qwen3-14B | 98.37 | 98.63 | 98.66 | 98.56 | 98.62 | **98.57** |
-| Qwen3-32B | 98.87 | 98.80 | 98.93 | 98.82 | 98.87 | **98.86** |</p>
-
-<p>### A.8 消融研究</p>
-
+<p><strong>表7</strong>：各LLM在各基准测试上EMA预测与真实前K集合之间的重叠率(%)。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>LongBench</th>
+<th>InfiniteBench</th>
+<th>RULER</th>
+<th>AIME</th>
+<th>MATH500</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Quest</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>98.65</td>
+<td>96.86</td>
+<td>98.36</td>
+<td>98.15</td>
+<td>98.25</td>
+<td><strong>98.05</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>98.55</td>
+<td>97.33</td>
+<td>97.95</td>
+<td>97.93</td>
+<td>98.09</td>
+<td><strong>97.97</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>98.56</td>
+<td>97.60</td>
+<td>96.99</td>
+<td>97.71</td>
+<td>97.88</td>
+<td><strong>97.75</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>98.63</td>
+<td>97.62</td>
+<td>97.49</td>
+<td>98.01</td>
+<td>98.28</td>
+<td><strong>98.01</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>97.49</td>
+<td>98.91</td>
+<td>98.17</td>
+<td>97.93</td>
+<td>98.10</td>
+<td><strong>98.12</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>98.52</td>
+<td>98.56</td>
+<td>98.12</td>
+<td>97.94</td>
+<td>98.06</td>
+<td><strong>98.24</strong></td>
+</tr>
+<tr>
+<td><strong>InfLLM-v2</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>97.86</td>
+<td>97.14</td>
+<td>96.46</td>
+<td>98.15</td>
+<td>98.01</td>
+<td><strong>97.52</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>99.12</td>
+<td>98.89</td>
+<td>98.56</td>
+<td>98.42</td>
+<td>98.49</td>
+<td><strong>98.70</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>99.03</td>
+<td>99.01</td>
+<td>98.27</td>
+<td>99.40</td>
+<td>98.57</td>
+<td><strong>98.86</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>97.67</td>
+<td>97.50</td>
+<td>97.85</td>
+<td>98.75</td>
+<td>98.95</td>
+<td><strong>98.14</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>98.37</td>
+<td>98.63</td>
+<td>98.66</td>
+<td>98.56</td>
+<td>98.62</td>
+<td><strong>98.57</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>98.87</td>
+<td>98.80</td>
+<td>98.93</td>
+<td>98.82</td>
+<td>98.87</td>
+<td><strong>98.86</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>A.8 消融研究</h3>
 <p>表8将PRR的端到端加速分解为三个累积阶段（S1、S2、S3），在所有六个LLM和五个基准测试上Quest和InfLLM-v2下评估，其中S3代表标准PRR配置。我们做出三个观察。</p>
-
-<p>首先，通过阶段1朴素地启用推测性注意力相对于串行DSA执行几乎没有改善（在所有配置中为1.00-1.04×）。虽然从前一个解码步骤复用的块选择与当前真实前K集合平均重叠约70%，但阶段1要求**精确**覆盖才有用：单个遗漏块会触发对真实前K选择的完整注意力重计算。由于在实践中很少实现完全重叠，回退重计算抵消了推测带来的延迟节省。</p>
-
+<p>首先，通过阶段1朴素地启用推测性注意力相对于串行DSA执行几乎没有改善（在所有配置中为1.00-1.04×）。虽然从前一个解码步骤复用的块选择与当前真实前K集合平均重叠约70%，但阶段1要求<strong>精确</strong>覆盖才有用：单个遗漏块会触发对真实前K选择的完整注意力重计算。由于在实践中很少实现完全重叠，回退重计算抵消了推测带来的延迟节省。</p>
 <p>其次，阶段2引入了我们定制的稀疏注意力内核，将平均加速提升到Quest下约1.20×，InfLLM-v2下1.20-1.32×。除了简单地加速非连续块上的注意力外，该内核还实现了增量注意力修复，因此遗漏块可以直接补入而非触发代价高昂的完整重计算。InfLLM-v2下的增益更大，因为其稀疏注意力阶段承载更多延迟，为修复路径留下了更多可利用的余量。</p>
-
 <p>第三，阶段3额外激活基于EMA的预测器，在预测和真实前K集合之间达到98%的重叠率（表7）。这种近精确预测急剧减少了回退到修复的块比例，将平均加速提升到Quest下1.28-1.42×，InfLLM-v2下1.32-1.56×。这种阶段式模式在所有六个LLM和五个基准测试上的一致性表明，PRR的设计具有泛化性，而非针对任何单一配置调优。</p>
-
-<p>**表8**：跨阶段、模型和基准测试的解码加速消融。S1、S2和S3（PRR）相对于串行DSA执行（1.00×）报告。越高越好。</p>
-
-<p>| 模型 | LongBench S1/S2/S3 | InfiniteBench S1/S2/S3 | RULER S1/S2/S3 | AIME S1/S2/S3 | MATH500 S1/S2/S3 | 平均 S1/S2/S3 |
-|---|---|---|---|---|---|---|
-| **Quest** | | | | | | |
-| GLM-4 | 1.00/1.27/1.50 | 1.01/1.21/1.40 | 1.00/1.24/1.45 | 1.00/1.11/1.30 | 1.00/1.16/1.42 | **1.00/1.20/1.41** |
-| GLM-Z1 | 1.00/1.23/1.48 | 1.01/1.20/1.39 | 1.00/1.22/1.43 | 1.00/1.15/1.33 | 1.00/1.20/1.45 | **1.00/1.20/1.42** |
-| DeepSeek-R1 | 1.00/1.19/1.39 | 1.03/1.21/1.42 | 1.00/1.25/1.47 | 1.00/1.13/1.35 | 1.00/1.13/1.39 | **1.01/1.18/1.40** |
-| Llama3 | 1.00/1.17/1.36 | 1.01/1.20/1.40 | 1.00/1.20/1.41 | 1.00/1.15/1.39 | 1.00/1.11/1.34 | **1.00/1.17/1.38** |
-| Qwen3-14B | 1.00/1.23/1.44 | 1.00/1.09/1.27 | 1.00/1.19/1.41 | 1.00/1.21/1.44 | 1.00/1.21/1.45 | **1.00/1.19/1.40** |
-| Qwen3-32B | 1.00/1.06/1.26 | 1.00/1.15/1.34 | 1.00/1.10/1.27 | 1.00/1.08/1.27 | 1.00/1.05/1.26 | **1.00/1.09/1.28** |
-| **InfLLM-v2** | | | | | | |
-| GLM-4 | 1.02/1.34/1.64 | 1.00/1.19/1.38 | 1.01/1.34/1.58 | 1.02/1.34/1.62 | 1.01/1.31/1.59 | **1.01/1.30/1.56** |
-| GLM-Z1 | 1.03/1.35/1.61 | 1.00/1.17/1.35 | 1.02/1.37/1.61 | 1.04/1.39/1.64 | 1.00/1.28/1.55 | **1.02/1.31/1.55** |
-| DeepSeek-R1 | 1.00/1.08/1.30 | 1.04/1.28/1.48 | 1.03/1.37/1.61 | 1.00/1.29/1.52 | 1.00/1.06/1.28 | **1.01/1.22/1.44** |
-| Llama3 | 1.00/1.12/1.32 | 1.04/1.26/1.45 | 1.00/1.31/1.55 | 1.00/1.30/1.55 | 1.00/1.07/1.30 | **1.01/1.21/1.43** |
-| Qwen3-14B | 1.00/1.31/1.56 | 1.03/1.23/1.43 | 1.00/1.28/1.51 | 1.00/1.29/1.53 | 1.00/1.27/1.53 | **1.01/1.28/1.51** |
-| Qwen3-32B | 1.00/1.11/1.35 | 1.00/1.11/1.27 | 1.00/1.09/1.29 | 1.00/1.12/1.32 | 1.00/1.13/1.35 | **1.00/1.11/1.32** |</p>
+<p><strong>表8</strong>：跨阶段、模型和基准测试的解码加速消融。S1、S2和S3（PRR）相对于串行DSA执行（1.00×）报告。越高越好。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>LongBench S1/S2/S3</th>
+<th>InfiniteBench S1/S2/S3</th>
+<th>RULER S1/S2/S3</th>
+<th>AIME S1/S2/S3</th>
+<th>MATH500 S1/S2/S3</th>
+<th>平均 S1/S2/S3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Quest</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>1.00/1.27/1.50</td>
+<td>1.01/1.21/1.40</td>
+<td>1.00/1.24/1.45</td>
+<td>1.00/1.11/1.30</td>
+<td>1.00/1.16/1.42</td>
+<td><strong>1.00/1.20/1.41</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>1.00/1.23/1.48</td>
+<td>1.01/1.20/1.39</td>
+<td>1.00/1.22/1.43</td>
+<td>1.00/1.15/1.33</td>
+<td>1.00/1.20/1.45</td>
+<td><strong>1.00/1.20/1.42</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>1.00/1.19/1.39</td>
+<td>1.03/1.21/1.42</td>
+<td>1.00/1.25/1.47</td>
+<td>1.00/1.13/1.35</td>
+<td>1.00/1.13/1.39</td>
+<td><strong>1.01/1.18/1.40</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>1.00/1.17/1.36</td>
+<td>1.01/1.20/1.40</td>
+<td>1.00/1.20/1.41</td>
+<td>1.00/1.15/1.39</td>
+<td>1.00/1.11/1.34</td>
+<td><strong>1.00/1.17/1.38</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>1.00/1.23/1.44</td>
+<td>1.00/1.09/1.27</td>
+<td>1.00/1.19/1.41</td>
+<td>1.00/1.21/1.44</td>
+<td>1.00/1.21/1.45</td>
+<td><strong>1.00/1.19/1.40</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>1.00/1.06/1.26</td>
+<td>1.00/1.15/1.34</td>
+<td>1.00/1.10/1.27</td>
+<td>1.00/1.08/1.27</td>
+<td>1.00/1.05/1.26</td>
+<td><strong>1.00/1.09/1.28</strong></td>
+</tr>
+<tr>
+<td><strong>InfLLM-v2</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GLM-4</td>
+<td>1.02/1.34/1.64</td>
+<td>1.00/1.19/1.38</td>
+<td>1.01/1.34/1.58</td>
+<td>1.02/1.34/1.62</td>
+<td>1.01/1.31/1.59</td>
+<td><strong>1.01/1.30/1.56</strong></td>
+</tr>
+<tr>
+<td>GLM-Z1</td>
+<td>1.03/1.35/1.61</td>
+<td>1.00/1.17/1.35</td>
+<td>1.02/1.37/1.61</td>
+<td>1.04/1.39/1.64</td>
+<td>1.00/1.28/1.55</td>
+<td><strong>1.02/1.31/1.55</strong></td>
+</tr>
+<tr>
+<td>DeepSeek-R1</td>
+<td>1.00/1.08/1.30</td>
+<td>1.04/1.28/1.48</td>
+<td>1.03/1.37/1.61</td>
+<td>1.00/1.29/1.52</td>
+<td>1.00/1.06/1.28</td>
+<td><strong>1.01/1.22/1.44</strong></td>
+</tr>
+<tr>
+<td>Llama3</td>
+<td>1.00/1.12/1.32</td>
+<td>1.04/1.26/1.45</td>
+<td>1.00/1.31/1.55</td>
+<td>1.00/1.30/1.55</td>
+<td>1.00/1.07/1.30</td>
+<td><strong>1.01/1.21/1.43</strong></td>
+</tr>
+<tr>
+<td>Qwen3-14B</td>
+<td>1.00/1.31/1.56</td>
+<td>1.03/1.23/1.43</td>
+<td>1.00/1.28/1.51</td>
+<td>1.00/1.29/1.53</td>
+<td>1.00/1.27/1.53</td>
+<td><strong>1.01/1.28/1.51</strong></td>
+</tr>
+<tr>
+<td>Qwen3-32B</td>
+<td>1.00/1.11/1.35</td>
+<td>1.00/1.11/1.27</td>
+<td>1.00/1.09/1.29</td>
+<td>1.00/1.12/1.32</td>
+<td>1.00/1.13/1.35</td>
+<td><strong>1.00/1.11/1.32</strong></td>
+</tr>
+</tbody>
+</table>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">

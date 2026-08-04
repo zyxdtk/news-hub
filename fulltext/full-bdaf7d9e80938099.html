@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,2555 +183,2554 @@
         </div>
         
         <div class="fulltext-content">
-<p>\correspondingauthor
-Furong Huang; Email
-furongh@umd.edu
-Agentic Critical Training
-Weize Liu
-Minghui Liu
-Sy-Tuyen Ho
-Souradip Chakraborty
-Xiyao Wang
-‡
-Furong Huang
-‡
-University of Maryland
-College Park
-‡
-Equal advising
-Abstract
-Training large language models (LLMs) as autonomous agents often begins with imitation learning, but it only teaches agents
-what
-to do without understanding
-why
-: agents never contrast successful actions against suboptimal alternatives and thus lack awareness of action quality. Recent approaches attempt to address this by introducing self-reflection supervision derived from contrasts between expert and alternative actions. However, the training paradigm fundamentally remains imitation learning: the model imitates pre-constructed reflection text rather than learning to reason autonomously. We propose Agentic Critical Training (ACT), a reinforcement learning paradigm that trains agents to identify the better action among alternatives. By rewarding whether the model’s judgment is correct, ACT drives the model to autonomously develop reasoning about action quality, producing genuine self-reflection rather than imitating it. Across three challenging agent benchmarks, ACT consistently improves agent performance when combined with different post-training methods. It achieves an average improvement of 5.07 points over imitation learning and 4.62 points over reinforcement learning. Compared to approaches that inject reflection capability through knowledge distillation, ACT also demonstrates clear advantages, yielding an average improvement of 2.42 points. Moreover, ACT enables strong out-of-distribution generalization on agentic benchmarks and improves performance on general reasoning benchmarks without any reasoning-specific training data, highlighting the value of our method. These results suggest that ACT is a promising path toward developing more reflective and capable LLM agents.
-Project Page:
-https://attention-is-all-i-need.github.io/ACT/
-1
-Introduction
-Large language models (LLMs) have demonstrated remarkable capabilities across a wide spectrum of tasks, from natural language understanding to complex reasoning
-(
-brown2020language
-,
-achiam2023gpt
-)
-. Recent advances have enabled these models to function as autonomous agents, capable of interacting with external environments, using tools, and completing multi-step tasks
-(
-yao2022react
-,
-shinn2023reflexion
-)
-. Training effective LLM-based agents has become a critical research direction, with applications spanning web navigation
-(
-yao2022webshop
-)
-, household robotics
-(
-shridharalfworld
-)
-, scientific experimentation
-(
-wang2022scienceworld
-)
-, and function calling
-(
-patil2024gorilla
-)
-.
-Training LLM agents often begins with imitation learning (IL), where models learn to replicate expert demonstrations through supervised fine-tuning. While effective, IL suffers from a well-known limitation: it only teaches agents
-what to do
-, not
-what to avoid
-(
-ross2011reduction
-,
-hussein2017imitation
-,
-pomerleau1991efficient
-)
-. Because agents only observe successful trajectories, they lack understanding of why certain actions are preferable and have no awareness of suboptimal states. A recent approach, Early Experience
-(
-zhang2025agent
-)
-, attempts to address this by executing both expert and alternative actions in the environment, observing the resulting next states, and prompting the model to generate reflections explaining why the expert action leads to a better outcome. The self-reflection data is then mixed with the expert dataset and the model is trained using a standard next-token prediction loss. However, this approach fundamentally remains imitation learning: the model is trained to imitate a pre-generated target string rather than to autonomously discover reasoning that leads to correct action selection. The “self-reflection” is imitated from text, not spontaneously developed.
-Figure 1
-:
-Comparison of imitated vs. genuine self-reflection.
-(a)
-Early Experience executes both actions in the environment, generates a reflection from the resulting states, and trains the model to imitate this fixed text via supervised fine-tuning (SFT).
-(b)
-ACT presents two candidate actions and trains the model via RL to select the better one. Since only the selection outcome is rewarded, the model must autonomously develop reasoning about action quality to maximize reward.
-To address this issue, we propose Agentic Critical Training (ACT), illustrated in
-Figure
-˜
-1
-. Given expert demonstrations, ACT pairs each expert action with a model-generated alternative action to form a preference pair at each time step of the sequential decision-making process. These preference pairs are formed based on the hypothesis that expert actions are generally superior to model-generated ones. We then train the agent to identify which action is better via reinforcement learning (RL). The only supervision is whether the model correctly identifies the superior expert action; since no reasoning supervision is provided, the model must autonomously develop chain-of-thought
-(CoT;
-wei2022chain
-)
-reasoning that leads to correct choices. This produces genuine self-reflection rather than imitated reflection: the model learns to reason about
-action quality through RL, rather than imitating pre-constructed reflections
-through knowledge distillation.
-Across three challenging agent benchmarks (ALFWorld, WebShop, ScienceWorld), ACT consistently improves agent performance when combined with different post-training methods. Compared with imitation learning, ACT achieves an average performance gain of 5.07 points, while outperforming reinforcement learning by 4.62 points. Furthermore, compared to the Early Experience baseline that injects reflection capability through knowledge distillation, ACT still demonstrates clear advantages, yielding an additional 2.42 points improvement on average. These results indicate that directly training models to evaluate action quality is more effective than supervising them to imitate reflection behaviors.
-Beyond in-distribution improvements, ACT also exhibits strong out-of-distribution generalization on agentic benchmarks. Interestingly, despite being trained purely through action-level supervision, ACT also improves performance on general reasoning benchmarks (MATH-500 and GPQA-Diamond) without requiring any reasoning-specific training data. This suggests that learning to evaluate and compare actions can serve as a general mechanism for enhancing reasoning and decision-making abilities in LLM agents.
-In summary, our contributions are:
-1.
-We propose ACT, which trains agents to judge which action is better under the current state via RL. Unlike Early Experience, which imitates pre-generated reflections, ACT drives the model to autonomously develop critical reasoning through RL and internalize this capability into its parameters.
-2.
-Across three agentic benchmarks, ACT consistently improves both IL and RL, and outperforms Early Experience, achieving the highest performance across all benchmarks.
-3.
-We demonstrate that ACT not only enables strong out-of-distribution generalization on agentic benchmarks, but also achieves notable improvements on general reasoning benchmarks (GPQA-Diamond, MATH-500) without any reasoning-specific training data, suggesting agentic RL environments may serve as a pathway for improving general reasoning.
-2
-Agentic Critical Training
-We present Agentic Critical Training (ACT), our approach to training LLM agents beyond pure imitation. We first describe the problem setting (
-section
-˜
-2.1
-), then detail ACT data construction (
-section
-˜
-2.2
-), and finally present the training pipeline (
-section
-˜
-2.3
-).
-Figure
-˜
-2
-provides an overview.
-Figure 2
-:
-Overview of the ACT + RL training pipeline.
-Stage 1 (Data Construction):
-Given expert demonstration trajectories, we extract state-action pairs and sample alternative actions from the initial policy
-π
-θ
-0
-\pi_{\theta_{0}}
-at each state. Expert actions are paired with model-generated alternatives to construct contrastive training examples.
-Stage 2 (Agentic Critical Training):
-The model is trained via GRPO to identify the better action among candidates presented in randomized order, internalizing an understanding of action quality through verifiable rewards.
-Stage 3 (RL Action Training):
-The ACT-enhanced model is further trained with RL for direct action generation, leveraging its improved critical reasoning foundation to achieve higher task success rates.
-2.1
-Problem Formulation
-We consider an agent operating in a sequential decision-making environment, formalized as a partially observable Markov decision process (POMDP)
-ℳ
-=
-(
-𝒮
-,
-𝒜
-,
-𝒯
-,
-Ω
-,
-𝒪
-,
-ℛ
-,
-γ
-)
-\mathcal{M}=(\mathcal{S},\mathcal{A},\mathcal{T},\Omega,\mathcal{O},\mathcal{R},\gamma)
-, where
-𝒮
-\mathcal{S}
-is the state space,
-𝒜
-\mathcal{A}
-is the action space,
-𝒯
-:
-𝒮
-×
-𝒜
-→
-Δ
-​
-(
-𝒮
-)
-\mathcal{T}:\mathcal{S}\times\mathcal{A}\rightarrow\Delta(\mathcal{S})
-is the transition function,
-Ω
-\Omega
-is the observation space,
-𝒪
-:
-𝒮
-→
-Δ
-​
-(
-Ω
-)
-\mathcal{O}:\mathcal{S}\rightarrow\Delta(\Omega)
-is the observation function,
-ℛ
-:
-𝒮
-×
-𝒜
-→
-ℝ
-\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow\mathbb{R}
-is the reward function, and
-γ
-∈
-[
-0
-,
-1
-)
-\gamma\in[0,1)
-is the discount factor. In practice, the agent conditions on a textual context constructed from the task description, a truncated window of the most recent
-k
-k
-observation-action pairs, and the current observation (see prompt templates in
-section
-˜
-A.5
-). We denote this observation-derived context as
-s
-t
-s_{t}
-and use
-s
-s
-as shorthand throughout; the policy is thus
-π
-θ
-​
-(
-a
-t
-|
-s
-t
-)
-\pi_{\theta}(a_{t}|s_{t})
-.
-Given an expert demonstration dataset
-𝒟
-expert
-=
-{
-τ
-(
-n
-)
-=
-(
-s
-1
-(
-n
-)
-,
-a
-1
-(
-n
-)
-,
-…
-,
-s
-T
-n
-(
-n
-)
-,
-a
-T
-n
-(
-n
-)
-)
-}
-n
-=
-1
-N
-\mathcal{D}_{\text{expert}}=\left\{\tau^{(n)}=(s_{1}^{(n)},a_{1}^{(n)},\ldots,s_{T_{n}}^{(n)},a_{T_{n}}^{(n)})\right\}_{n=1}^{N}
-, the standard approach is imitation learning (IL), which maximizes the likelihood of expert actions:
-ℒ
-IL
-​
-(
-θ
-)
-=
-−
-𝔼
-(
-s
-,
-a
-)
-∼
-𝒟
-expert
-​
-[
-log
-⁡
-π
-θ
-​
-(
-a
-|
-s
-)
-]
-,
-\mathcal{L}_{\text{IL}}(\theta)=-\mathbb{E}_{(s,a)\sim\mathcal{D}_{\text{expert}}}\left[\log\pi_{\theta}(a|s)\right],
-(1)
-where
-π
-θ
-\pi_{\theta}
-is the policy parameterized by the LLM. While effective at teaching agents to replicate expert behavior, IL provides no signal about the relative quality of different actions: the agent learns that
-a
-i
-a_{i}
-is correct at context
-s
-i
-s_{i}
-, but not
-why
-it is preferable to alternatives. Our goal is to train agents that develop this understanding.
-2.2
-Data Construction
-The core idea of ACT is to transform the learning objective from “imitate the expert action” to “identify the better action,” requiring the model to develop discriminative understanding of action quality. For each expert state-action pair
-(
-s
-i
-,
-a
-i
-)
-∈
-𝒟
-expert
-(s_{i},a_{i})\in\mathcal{D}_{\text{expert}}
-, we construct an ACT example as follows:
-1.
-Sample alternatives.
-Draw
-K
-K
-candidate actions
-{
-a
-i
-1
-,
-a
-i
-2
-,
-…
-,
-a
-i
-K
-}
-\{a_{i}^{1},a_{i}^{2},\ldots,a_{i}^{K}\}
-from an initial policy
-π
-θ
-0
-(
-⋅
-|
-s
-i
-)
-\pi_{\theta_{0}}(\cdot|s_{i})
-.
-2.
-Filter duplicates.
-Remove candidates identical to the expert action:
-𝒜
-i
-neg
-=
-{
-a
-i
-j
-:
-a
-i
-j
-≠
-a
-i
-,
-j
-∈
-[
-K
-]
-}
-\mathcal{A}_{i}^{\text{neg}}=\{a_{i}^{j}:a_{i}^{j}\neq a_{i},j\in[K]\}
-.
-3.
-Construct pairs.
-Pair the expert action
-a
-i
-+
-=
-a
-i
-a_{i}^{+}=a_{i}
-with each alternative
-a
-i
-−
-∈
-𝒜
-i
-neg
-a_{i}^{-}\in\mathcal{A}_{i}^{\text{neg}}
-to form
-|
-𝒜
-i
-neg
-|
-|\mathcal{A}_{i}^{\text{neg}}|
-contrastive examples.
-This yields the ACT dataset
-𝒟
-critic
-=
-{
-(
-s
-i
-,
-a
-i
-+
-,
-a
-i
-−
-)
-}
-i
-=
-1
-M
-\mathcal{D}_{\text{critic}}=\{(s_{i},a_{i}^{+},a_{i}^{-})\}_{i=1}^{M}
-, where each example contains one expert action and one sampled alternative action. The key assumption is that the initial policy
-π
-θ
-0
-\pi_{\theta_{0}}
-generates actions that are, on average, inferior to expert actions.
-2.3
-Training Pipeline
-After constructing
-𝒟
-critic
-\mathcal{D}_{\text{critic}}
-, our training pipeline proceeds through two sequential RL stages: Agentic Critical Training followed by RL Action Training, both optimized using Group Relative Policy Optimization
-(GRPO;
-shao2024deepseekmath
-)
-. For each prompt, GRPO samples a group of
-G
-G
-responses from the current policy, computes a verifiable reward for each, and updates the policy using group-relative advantages. Details are provided in
-section
-˜
-A.1
-.
-Agentic Critical Training.
-The model is first trained on
-𝒟
-critic
-\mathcal{D}_{\text{critic}}
-to identify the better action among two candidates. The ACT prompt is:
-ACT Prompt
-Task: {task_description}
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-o
-t
-o_{t}
-Your admissible actions of the current situation are:
-𝒜
-admissible
-\mathcal{A}_{\text{admissible}}
-Candidate Actions for the NEXT step:
-Action 1:
-a
-σ
-​
-(
-1
-)
-a_{\sigma(1)}
-Action 2:
-a
-σ
-​
-(
-2
-)
-a_{\sigma(2)}
-Which action is better as the NEXT step? Think about why, then output the chosen action inside &lt;action&gt;...&lt;/action&gt; tags.
-Here
-σ
-\sigma
-is a random permutation, so the expert action appears in either position with equal probability.
-Given this prompt, GRPO samples
-G
-G
-responses, each containing the model’s reasoning and action selection. Crucially, because ACT is trained through RL rather than imitation learning, the model must
-autonomously discover
-chain-of-thought reasoning that causally leads to correct action selection. Unlike Early Experience
-(
-zhang2025agent
-)
-that generates reflection text and then trains on it via IL, ACT uses verifiable rewards to drive the emergence of critical thinking: the model is rewarded only for selecting correctly, and must therefore learn to reason about action quality on its own. This internalized understanding of
-why
-certain actions are preferable, rather than memorized patterns of
-what
-to output, directly enhances action generation at test time.
-RL Action Training.
-The ACT-enhanced model is then further trained with GRPO for direct action generation on the expert trajectories. Given each context
-s
-i
-s_{i}
-, GRPO samples a group of
-G
-G
-responses and rewards those matching the expert action
-a
-i
-+
-a_{i}^{+}
-. By building on the critical reasoning foundation from ACT, the model leverages its improved understanding of action quality to achieve more effective policy optimization.
-Reward Design.
-Both stages share a composite reward function:
-R
-​
-(
-s
-,
-y
-)
-=
-R
-acc
-​
-(
-a
-,
-a
-+
-)
-+
-R
-adm
-​
-(
-a
-,
-𝒜
-admissible
-)
-+
-R
-fmt
-​
-(
-y
-)
-,
-R(s,y)=R_{\text{acc}}(a,a^{+})+R_{\text{adm}}(a,\mathcal{A}_{\text{admissible}})+R_{\text{fmt}}(y),
-(2)
-where
-y
-y
-denotes the full model response and
-a
-=
-extract
-​
-(
-y
-)
-a=\mathrm{extract}(y)
-denotes the action extracted from the
-&lt;action&gt;...&lt;/action&gt;
-tags. We set
-R
-acc
-=
-1
-R_{\text{acc}}=1
-if
-a
-a
-exactly matches the expert action
-a
-+
-a^{+}
-. We set
-R
-adm
-=
-0.1
-R_{\text{adm}}=0.1
-if
-a
-a
-is admissible but does not match
-a
-+
-a^{+}
-, which provides partial credit for valid actions. We set
-R
-fmt
-=
-−
-0.5
-R_{\text{fmt}}=-0.5
-if the full response lacks proper
-&lt;action&gt;
-tags. Detailed reward definitions are provided in
-section
-˜
-A.1
-.
-3
-Related Work
-LLM-based Agents.
-LLM-based autonomous agents have advanced rapidly across web navigation
-(
-yao2022webshop
-)
-, tool use
-(
-schick2023toolformer
-,
-qin2023toolllm
-)
-, and multi-step reasoning
-(
-yao2022react
-,
-wei2022chain
-)
-. ReAct
-(
-yao2022react
-)
-interleaves reasoning and acting, while Reflexion
-(
-shinn2023reflexion
-)
-uses verbal self-reflection at inference time to improve performance. Our work instead trains self-reflection as a
-learned competence
-via RL, rather than relying on inference-time prompting.
-Training LLM Agents.
-Most approaches to training LLM agents rely on imitation learning from expert demonstrations
-(
-chen2023fireact
-,
-zeng2024agenttuning
-)
-. Recently,
-zhang2025agent
-proposed “early experience,” which enriches the training signal by prompting the model to generate reflections that explain why the expert action is preferable, and training the model to reproduce these reflections via supervised fine-tuning. However, the training objective fundamentally remains imitating a pre-generated target string. Our ACT instead trains the model to discriminate which action is better through RL, where the only supervision is whether the selection is correct. This requires the model to autonomously develop reasoning that leads to correct choices, rather than reproducing a fixed target string. In our experiments (
-section
-˜
-4
-), we include Early Experience as a baseline and show that ACT consistently outperforms it across benchmarks, including on out-of-distribution tasks and general reasoning benchmarks.
-Critique RL Training.
-Recent work uses RL to train critique capabilities, either for building stronger reward models, such as R1-Reward
-(
-zhang2025r1
-)
-and RM-R1
-(
-chen2025rm
-)
-, or for directly improving the policy through critique training, such as LLaVA-Critic-R1
-(
-wang2025llava
-)
-and Critique-Coder
-(
-ruan2025critique
-)
-. However, these approaches focus on single-turn settings (e.g., chat or code generation). Our ACT differs in two key aspects: (1) ACT operates in multi-turn agentic environments rather than single-turn chat or code settings, and (2) ACT trains the model to discriminate between expert and suboptimal actions within a sequential decision-making process, rather than critiquing standalone solutions.
-Agentic RL.
-Reinforcement learning (RL) has emerged as a powerful paradigm for training LLM-based agents
-(
-zhanglandscape
-)
-. Unlike conventional LLM-RL for chat settings, such as RLHF
-(
-ouyang2022training
-)
-and DPO
-(
-rafailov2023direct
-)
-for alignment, agentic RL tackles multi-turn, long-horizon decision-making in complex environments. DeepSeek-R1
-(
-guo2025deepseek
-)
-demonstrated that RL with verifiable rewards (RLVR) can incentivize reasoning without supervised chain-of-thought data. On the algorithmic side, GRPO
-(
-shao2024deepseekmath
-)
-provides an efficient group-relative policy optimization method, GiGPO
-(
-fenggroup
-)
-extends it with step-level credit assignment for long-horizon agent tasks, and Search-R1
-(
-jinsearch
-)
-trains LLMs to interleave reasoning with search engine queries via outcome-based RL. Our work contributes to this paradigm by showing that training agents via RL to discriminate between expert and suboptimal actions provides a complementary critical reasoning stage that further improves both IL- and RL-trained agents.
-4
-Experiments
-We evaluate our approach on three diverse benchmarks spanning different agent capabilities.
-4.1
-Experimental Setup
-Benchmarks.
-We use three benchmarks that span embodied, web, and scientific domains:
-•
-ALFWorld
-(
-shridharalfworld
-)
-: Embodied household tasks requiring navigation and object manipulation in text-based environments. ALFWorld provides “seen” and “unseen” splits: the seen split tests performance in room layouts present in the training set (used as our ID evaluation), while the unseen split requires the model to operate in rooms with novel spatial layouts and unknown object combinations (used as our OOD evaluation).
-•
-WebShop
-(
-yao2022webshop
-)
-: Web-based shopping tasks requiring product search and selection.
-•
-ScienceWorld
-(
-wang2022scienceworld
-)
-: Scientific reasoning tasks requiring multi-step experimental procedures.
-Methods.
-We compare the following methods, all trained on exactly the same expert trajectories
-𝒟
-expert
-\mathcal{D}_{\text{expert}}
-to ensure that performance differences are attributable solely to the training paradigm:
-•
-Prompt w/o CoT thinking
-: standard prompting without chain-of-thought reasoning.
-•
-Prompt w/ CoT thinking
-: CoT prompting with thinking enabled (i.e., “Let’s think step by step …”).
-•
-ACT
-: trained with ACT only (no action generation training).
-•
-IL
-: fine-tuned on expert state-action pairs via supervised next-token prediction.
-•
-Early Experience (Self-Reflection)
-: following
-zhang2025agent
-, executes both expert and alternative actions in the environment, prompts the model to generate reflections by comparing the resulting next states, and mixes the self-reflection data with the expert dataset to train the model using a standard next-token prediction loss.
-•
-RL
-: trained with GRPO, where the reward is whether the generated action matches the expert action.
-•
-IL w/ ACT
-and
-RL w/ ACT
-: first trained with ACT, then further trained with IL or RL, respectively.
-Implementation details, hyperparameters, and prompt templates are provided in
-appendix
-˜
-A
-.
-4.2
-Main Results
-Table
-˜
-1
-presents our main results on Qwen3-8B
-(
-yang2025qwen3
-)
-across three benchmarks.
-RL outperforms IL.
-When trained on the same expert data, RL consistently achieves higher success rates than IL across all benchmarks, confirming that RL is a more effective paradigm for training LLM agents from expert trajectories.
-ACT provides positive transfer.
-Training with ACT alone improves over prompting baselines but does not match IL or RL in absolute performance. This is expected, as ACT trains the model to
-judge
-which action is better, not to
-generate
-actions directly. However, when used as a first stage before IL or RL, ACT consistently improves performance across all benchmarks, and RL w/ ACT achieves the highest overall performance. Specifically, adding ACT yields an average improvement of 5.07 percentage points over IL (via IL w/ ACT) and 4.62 percentage points over RL (via RL w/ ACT) across all benchmarks. This shows that the critical reasoning learned during ACT benefits subsequent action generation training.
-ACT outperforms Early Experience.
-Early Experience
-(
-zhang2025agent
-)
-enriches IL data with self-reflection text generated by prompting the model to compare environment states after executing both expert and alternative actions. As shown in
-table
-˜
-1
-, this yields improvements over standard IL, but both IL w/ ACT and RL w/ ACT consistently outperform Early Experience across all benchmarks. Across all benchmarks, IL w/ ACT outperforms Early Experience by an average of 2.42 percentage points. This suggests that training the model to autonomously reason about action quality through RL is more effective than having it imitate pre-generated reflection text within an IL framework.
-ACT improves OOD generalization.
-On the out-of-distribution split of ALFWorld, adding ACT improves both IL and RL. RL w/ ACT also achieves the best OOD performance overall. Moreover, ACT’s gain on top of RL is larger on OOD tasks (3.73pp) than on in-distribution tasks (2.15pp), indicating that the reasoning acquired through ACT generalizes to unseen task configurations rather than overfitting to the training distribution.
-Table 1
-:
-Main results on Qwen3-8B (%). ALFWorld and WebShop report success rates; ScienceWorld reports next-action prediction accuracy. ALFWorld results include both in-distribution (ID) and out-of-distribution (OOD) tasks.
-Method
-ALFWorld
-WebShop
-ScienceWorld
-ID
-OOD
-Prompt w/o CoT thinking
-35.71
-27.61
-2.80
-28.01
-Prompt w/ CoT thinking
-56.43
-50.00
-3.00
-25.21
-ACT
-72.86
-72.39
-7.40
-26.71
-Imitation Learning
-85.71
-82.84
-28.00
-42.80
-Early Experience (Self-Reflection)
-87.86
-85.82
-31.00
-45.60
-IL w/ ACT
-91.43
-87.31
-31.60
-48.69
-RL
-90.71
-84.33
-29.40
-43.04
-RL w/ ACT
-92.86
-88.06
-33.80
-50.34
-IL Task: Clean cloth
-→
-\to
-cabinet
-Step 7: take cloth 1 from countertop 1
-Step 8: clean cloth 1 with sinkbasin 1
-Step 9: put cloth 1 in/on cabinet 1
-←
-\leftarrow
-fails
-Step 10: put cloth 1 in/on cabinet 1
-Step 11: put cloth 1 in/on cabinet 1
-Step 12: put cloth 1 in/on cabinet 1
-⋮
-(Repeats for 30+ steps until termination)
-IL Result: Failed
-×
-\times
-The IL model repeats the identical failed action for over 30 steps until termination. Having never seen failure states during imitation learning, it has no mechanism to diagnose the error or propose an alternative.
-ACT Task: Clean spoon
-→
-\to
-dining table
-Step 4: clean spoon 2 with sinkbasin 1
-Step 5: use spoon 2 on diningtable 1
-←
-\leftarrow
-“Nothing happens.”
-Step 6: put spoon 2 in/on diningtable 1
-←
-\leftarrow
-“Nothing happens.”
-Step 7: put spoon 2 in/on diningtable 1
-←
-\leftarrow
-“Nothing happens.”
-ACT Self-Critique &amp; Recovery (Correct ✓)
-I cleaned spoon 2 with sinkbasin 1. Then I tried to put spoon 2 in/on diningtable 1, but nothing happened. I did this twice.
-Wait… the task is to put it IN the dining table. I am currently at sinkbasin 1. I need to GO TO the dining table first before I can put it there!
-Action: go to diningtable 1
-✓
-Figure 3
-:
-Failure recovery on ALFWorld.
-Left:
-The IL model enters an infinite loop, repeating a failed action for over 30 steps until termination.
-Right:
-The ACT model encounters the same type of failure but uses its internal reasoning to diagnose the root cause (wrong location), break the loop, and issue the correct navigation command.
-Case study: ACT enables failure recovery.
-To illustrate how ACT improves agentic decision-making, we examine real evaluation traces. In ALFWorld, the environment returns “Nothing happens.” when an action fails. IL models, having never observed failure states during training, repeat the same failed action indefinitely.
-Figure
-˜
-3
-contrasts this with ACT’s behavior: the IL model enters an infinite loop repeating a failed action for over 30 steps until termination, while the ACT-trained model (RL w/ ACT) diagnoses the root cause through its internal reasoning and issues the correct navigation command. Notably, the self-critique behavior originates from the ACT phase, as RL alone does not produce such reflective reasoning patterns. An additional case study showing IL’s rigid execution on WebShop is provided in
-appendix
-˜
-B
-.
-4.3
-Cross-Size Data Transferability
-ACT requires collecting alternative actions from a policy to construct contrastive pairs, which can be expensive. A natural question is whether these data can be reused across model sizes to amortize the collection cost. To investigate this, we train Qwen3-4B on ALFWorld using ACT data collected entirely from Qwen3-8B, without any re-collection or adaptation.
-Table 2
-:
-Cross-size results on ALFWorld with in-distribution (ID) and out-of-distribution (OOD) success rates (%).
-Method
-Qwen3-4B
-Qwen3-8B
-ID
-OOD
-ID
-OOD
-Prompt w/o CoT thinking
-13.57
-8.96
-35.71
-27.61
-Prompt w/ CoT thinking
-50.71
-29.85
-56.43
-50.00
-ACT
-71.43
-62.69
-72.86
-72.39
-Imitation Learning
-85.00
-83.58
-85.71
-82.84
-Early Experience (Self-Reflection)
-88.57
-88.06
-87.86
-85.82
-IL w/ ACT
-88.57
-91.04
-91.43
-87.31
-RL
-91.43
-88.81
-90.71
-84.33
-RL w/ ACT
-92.14
-91.79
-92.86
-88.06
-As shown in
-table
-˜
-2
-, the transferred ACT data remains effective: all ACT-augmented methods improve over their non-ACT counterparts on both ID and OOD tasks for Qwen3-4B. Similar to Qwen3-8B, ACT’s gain on the smaller model is also larger on OOD tasks than on ID tasks. These results validate that ACT’s benefits generalize across model sizes and that the data collection cost can be amortized by reusing data across models of different sizes.
-4.4
-Generalization to General Reasoning Benchmarks
-Beyond agentic tasks, we investigate whether the critical reasoning capabilities acquired through ACT transfer to general reasoning benchmarks. We take the Qwen3-8B models trained on ALFWorld agentic data (IL, RL, and ACT) and directly evaluate them on MATH-500
-(
-hendrycks2021measuring
-)
-and GPQA-Diamond
-(
-rein2024gpqa
-)
-, two widely used benchmarks for mathematical and scientific reasoning, respectively. In our training process, none of these models are exposed to any mathematical or scientific reasoning data.
-Table 3
-:
-Performance on general reasoning benchmarks. Values are accuracy (%) with standard deviation across 3 runs. All trained models are learned solely from ALFWorld agentic data (no general reasoning training data).
-Method
-MATH-500
-GPQA-Diamond
-Prompt w/o CoT thinking
-78.6
-±
-\pm
-0.33
-42.93
-±
-\pm
-1.09
-Prompt w/ CoT thinking
-86.93
-±
-\pm
-0.74
-51.52
-±
-\pm
-1.89
-Imitation Learning
-87
-±
-\pm
-0.33
-44.61
-±
-\pm
-0.95
-Early Experience (Self-Reflection)
-86.86
-±
-\pm
-0.25
-51.85
-±
-\pm
-0.63
-RL
-87.07
-±
-\pm
-0.77
-52.36
-±
-\pm
-1.32
-ACT
-87.73
-±
-\pm
-0.19
-53.37
-±
-\pm
-0.63
-As shown in
-table
-˜
-3
-, the training paradigms exhibit different effects on general reasoning. IL and Early Experience, both based on next-token prediction, fail to improve general reasoning through agentic training. On MATH-500, both maintain performance comparable to the original model. On GPQA-Diamond, IL degrades performance by 6.91pp compared to the CoT prompting baseline (44.61% vs. 51.52%), while Early Experience only recovers to the baseline level (51.85%). This indicates that next-token prediction approaches, even when enriched with self-reflection data, do not transfer agentic training to general reasoning.
-RL roughly preserves the original model’s performance on both benchmarks. ACT achieves the highest scores on both MATH-500 and GPQA-Diamond despite being trained exclusively on agentic data. On GPQA-Diamond, ACT improves over the CoT prompting baseline by 1.85pp (53.37% vs. 51.52%), while IL degrades it by 6.91pp. ACT not only avoids the catastrophic forgetting observed in IL but improves upon the original model. This result indicates that RL in agentic environments, when combined with the ACT objective, can serve as a viable pathway for enhancing general reasoning capabilities. A detailed case study of IL’s
-reasoning collapse
-is provided in
-appendix
-˜
-C
-.
-GPQA-Diamond #12: Pion Decay Kinetic Energy
-Find the kinetic energy of product particles in
-π
-+
-→
-μ
-+
-+
-ν
-\pi^{+}\to\mu^{+}+\nu
-, where
-π
-+
-\pi^{+}
-is stationary. Rest mass of
-π
-+
-\pi^{+}
-and
-μ
-+
-\mu^{+}
-is 139.6 MeV and 105.7 MeV respectively.
-Options: (A)
-K
-​
-E
-μ
-=
-4.12
-KE_{\mu}=4.12
-MeV,
-K
-​
-E
-ν
-=
-29.8
-KE_{\nu}=29.8
-MeV    (B)
-K
-​
-E
-μ
-=
-7.2
-KE_{\mu}=7.2
-MeV,
-K
-​
-E
-ν
-=
-32.8
-KE_{\nu}=32.8
-MeV    (C)
-K
-​
-E
-μ
-=
-3.52
-KE_{\mu}=3.52
-MeV,
-K
-​
-E
-ν
-=
-20.8
-KE_{\nu}=20.8
-MeV    (D)
-K
-​
-E
-μ
-=
-2.84
-KE_{\mu}=2.84
-MeV,
-K
-​
-E
-ν
-=
-26.8
-KE_{\nu}=26.8
-MeV
-ACT Reasoning Trace: Self-Verification (Correct ✓)
-[…derives kinetic energies via conservation of energy and momentum…]
-Verification of each option against energy conservation (
-E
-total
-=
-139.6
-E_{\text{total}}=139.6
-MeV):
-Option C:
-K
-​
-E
-μ
-=
-3.52
-KE_{\mu}=3.52
-MeV,
-K
-​
-E
-ν
-=
-20.8
-KE_{\nu}=20.8
-MeV. Then, total energy would be
-105.7
-+
-3.52
-=
-109.22
-105.7+3.52=109.22
-MeV for the muon. Neutrino energy is 20.8 MeV. Total energy:
-109.22
-+
-20.8
-=
-130.02
-109.22+20.8=130.02
-MeV.
-Which is less than 139.6. So that’s not possible.
-Option D:
-K
-​
-E
-μ
-=
-2.84
-KE_{\mu}=2.84
-MeV,
-K
-​
-E
-ν
-=
-26.8
-KE_{\nu}=26.8
-MeV. Total energy:
-105.7
-+
-2.84
-=
-108.54
-105.7+2.84=108.54
-MeV for muon. Neutrino energy is 26.8 MeV. Total energy is
-108.54
-+
-26.8
-=
-135.34
-108.54+26.8=135.34
-MeV.
-Still less than 139.6.
-So, only option A gives the total energy matching. Therefore, the correct answer is A.
-Answer: A
-✓
-Figure 4
-:
-Self-verification behavior observed in ACT on GPQA-Diamond. After deriving the kinetic energies, the ACT model substitutes each answer option back into the energy conservation equation, eliminating inconsistent options.
-Case study: self-verification behavior.
-To illustrate how ACT may improve general reasoning, we examine reasoning traces on GPQA-Diamond. We observe that on certain difficult problems, ACT exhibits
-self-verification
-behavior: after performing an initial derivation, the model checks its answer by substituting back into the original equations.
-Figure
-˜
-4
-shows one such example on a particle physics problem: after deriving the kinetic energies, the ACT model substitutes each answer option back into the energy conservation equation to verify consistency, systematically eliminating incorrect options. The base model performs the initial derivation but does not systematically verify against all options. This “check your work” pattern is consistent with ACT’s training objective, which requires the model to evaluate and compare candidate actions.
-5
-Conclusion
-We introduced ACT, which trains LLM agents to reason about action quality by contrasting expert and self-generated actions via RL. Unlike approaches that imitate pre-generated self-reflection text via next-token prediction, ACT produces autonomous critical reasoning through RL. Across three benchmarks, ACT consistently improves both IL and RL, and outperforms prior approaches, achieving the highest performance across all benchmarks. ACT also enables strong out-of-distribution generalization on agentic benchmarks. Furthermore, on general reasoning benchmarks (GPQA-Diamond and MATH-500), where other training methods degrade or fail to improve reasoning, ACT achieves notable improvements without any reasoning-specific training data, indicating the potential of agentic RL environments for improving general reasoning.
-Acknowledgements
-Liu, Liu, Ho, Chakraborty, Wang, and Huang are supported by DARPA Transfer from Imprecise and Abstract Models to Autonomous Technologies (TIAMAT) 80321, DARPA HR001124S0029-AIQ-FP-019, DOD-AFOSR-Air Force Office of Scientific Research under award number FA9550-23-1-0048, National Science Foundation TRAILS Institute (2229885). Private support was provided by Peraton and Open Philanthropy. The Authors acknowledge the National Artificial Intelligence Research Resource (NAIRR) Pilot for contributing to this research result.
-References
-Appendix A
-Experimental Details
-A.1
-Training Formulation and Algorithm
-Reward Function Design.
-Our composite reward function consists of three components. Given a full generated response
-y
-y
-for state
-s
-s
-, we first extract the action span inside the
-&lt;action&gt;...&lt;/action&gt;
-tags and denote the extracted action by
-a
-=
-extract
-​
-(
-y
-)
-a=\mathrm{extract}(y)
-. The semantic rewards are applied to the extracted action
-a
-a
-, while the format reward is applied to the full response
-y
-y
-:
-R
-​
-(
-s
-,
-y
-)
-=
-R
-acc
-​
-(
-a
-,
-a
-+
-)
-+
-R
-adm
-​
-(
-a
-,
-𝒜
-admissible
-)
-+
-R
-fmt
-​
-(
-y
-)
-.
-R(s,y)=R_{\text{acc}}(a,a^{+})+R_{\text{adm}}(a,\mathcal{A}_{\text{admissible}})+R_{\text{fmt}}(y).
-(3)
-If the response does not contain a valid tagged action span, we set
-a
-=
-∅
-a=\emptyset
-, so the response receives zero semantic reward and only the format penalty applies.
-The
-accuracy reward
-measures exact match between the extracted action and the expert action:
-R
-acc
-​
-(
-a
-,
-a
-+
-)
-=
-{
-1.0
-if
-normalize
-​
-(
-a
-)
-=
-normalize
-​
-(
-a
-+
-)
-0.0
-otherwise
-R_{\text{acc}}(a,a^{+})=\begin{cases}1.0&amp;\text{if }\text{normalize}(a)=\text{normalize}(a^{+})\\
-0.0&amp;\text{otherwise}\end{cases}
-(4)
-The
-admissible action reward
-provides partial credit for extracted actions that are valid but suboptimal in environments with defined action spaces:
-R
-adm
-​
-(
-a
-,
-𝒜
-admissible
-)
-=
-{
-0.1
-if
-​
-a
-≠
-a
-+
-∧
-a
-∈
-𝒜
-admissible
-0.0
-otherwise
-R_{\text{adm}}(a,\mathcal{A}_{\text{admissible}})=\begin{cases}0.1&amp;\text{if }a\neq a^{+}\land a\in\mathcal{A}_{\text{admissible}}\\
-0.0&amp;\text{otherwise}\end{cases}
-(5)
-For WebShop RL Action Training, the action space includes open-ended search queries (e.g.,
-search[...]
-) that cannot be enumerated, so
-R
-adm
-R_{\text{adm}}
-is disabled and only
-R
-acc
-R_{\text{acc}}
-and
-R
-fmt
-R_{\text{fmt}}
-are used.
-The
-format reward
-penalizes full responses that lack proper action tags:
-R
-fmt
-​
-(
-y
-)
-=
-{
-0.0
-if action tags present
-−
-0.5
-otherwise
-R_{\text{fmt}}(y)=\begin{cases}0.0&amp;\text{if action tags present}\\
--0.5&amp;\text{otherwise}\end{cases}
-(6)
-GRPO Algorithm.
-Both stages of our training pipeline use Group Relative Policy Optimization (GRPO)
-(
-shao2024deepseekmath
-)
-, a variant of proximal policy optimization
-(
-schulman2017proximal
-)
-that eliminates the need for a learned value function by estimating advantages from group-level reward statistics. Given a prompt (state)
-s
-s
-, GRPO samples a group of
-G
-G
-responses
-{
-y
-(
-1
-)
-,
-y
-(
-2
-)
-,
-…
-,
-y
-(
-G
-)
-}
-\{y^{(1)},y^{(2)},\ldots,y^{(G)}\}
-from the current policy
-π
-θ
-\pi_{\theta}
-. Each response receives a reward
-r
-(
-g
-)
-=
-R
-​
-(
-s
-,
-y
-(
-g
-)
-)
-r^{(g)}=R(s,y^{(g)})
-, and the advantage for each response is computed relative to the group statistics:
-A
-^
-(
-g
-)
-=
-r
-(
-g
-)
-−
-r
-¯
-σ
-r
-+
-ϵ
-,
-\hat{A}^{(g)}=\frac{r^{(g)}-\bar{r}}{\sigma_{r}+\epsilon},
-(7)
-where
-r
-¯
-=
-1
-G
-​
-∑
-g
-=
-1
-G
-r
-(
-g
-)
-\bar{r}=\frac{1}{G}\sum_{g=1}^{G}r^{(g)}
-is the group mean reward,
-σ
-r
-=
-1
-G
-​
-∑
-g
-=
-1
-G
-(
-r
-(
-g
-)
-−
-r
-¯
-)
-2
-\sigma_{r}=\sqrt{\frac{1}{G}\sum_{g=1}^{G}(r^{(g)}-\bar{r})^{2}}
-is the group standard deviation, and
-ϵ
-\epsilon
-is a small constant for numerical stability. The GRPO objective combines the policy gradient with KL regularization:
-ℒ
-GRPO
-​
-(
-θ
-)
-\displaystyle\mathcal{L}_{\text{GRPO}}(\theta)
-=
-−
-𝔼
-s
-∼
-𝒟
-𝔼
-y
-(
-g
-)
-∼
-π
-θ
-(
-⋅
-|
-s
-)
-[
-min
-(
-ρ
-(
-g
-)
-A
-^
-(
-g
-)
-,
-\displaystyle=-\mathbb{E}_{s\sim\mathcal{D}}\mathbb{E}_{y^{(g)}\sim\pi_{\theta}(\cdot|s)}\bigg[\min\Big(\rho^{(g)}\hat{A}^{(g)},
-clip
-(
-ρ
-(
-g
-)
-,
-1
-−
-ϵ
-c
-,
-1
-+
-ϵ
-c
-)
-A
-^
-(
-g
-)
-)
-]
-\displaystyle\quad\text{clip}(\rho^{(g)},1-\epsilon_{c},1+\epsilon_{c})\hat{A}^{(g)}\Big)\bigg]
-+
-β
-⋅
-D
-KL
-​
-(
-π
-θ
-∥
-π
-ref
-)
-,
-\displaystyle\quad+\beta\cdot D_{\text{KL}}(\pi_{\theta}\|\pi_{\text{ref}}),
-(8)
-where
-ρ
-(
-g
-)
-=
-π
-θ
-​
-(
-y
-(
-g
-)
-|
-s
-)
-π
-θ
-old
-​
-(
-y
-(
-g
-)
-|
-s
-)
-\rho^{(g)}=\frac{\pi_{\theta}(y^{(g)}|s)}{\pi_{\theta_{\text{old}}}(y^{(g)}|s)}
-is the importance sampling ratio,
-ϵ
-c
-\epsilon_{c}
-is the clipping threshold,
-β
-\beta
-is the KL penalty coefficient, and
-π
-ref
-\pi_{\text{ref}}
-is the reference policy.
-Training Algorithm.
-Algorithm
-˜
-1
-summarizes the complete ACT procedure. The algorithm consists of two phases: data collection, where we construct the ACT dataset by sampling alternatives from the initial policy, and GRPO training, where we optimize the policy using verifiable rewards based on action correctness.
-Algorithm 1
-ACT with GRPO
-Input:
-Expert dataset
-𝒟
-expert
-\mathcal{D}_{\text{expert}}
-, initial policy
-π
-θ
-0
-\pi_{\theta_{0}}
-, number of candidate samples
-K
-K
-, group size
-G
-G
-Output:
-Trained policy
-π
-θ
-∗
-\pi_{\theta^{*}}
-//
-Phase 1: Data Collection
-𝒟
-critic
-←
-∅
-\mathcal{D}_{\text{critic}}\leftarrow\emptyset
-for
-each
-(
-s
-i
-,
-a
-i
-+
-)
-∈
-𝒟
-expert
-(s_{i},a_{i}^{+})\in\mathcal{D}_{\text{expert}}
-do
-Sample
-{
-a
-i
-1
-,
-…
-,
-a
-i
-K
-}
-∼
-π
-θ
-0
-(
-⋅
-|
-s
-i
-)
-\{a_{i}^{1},\ldots,a_{i}^{K}\}\sim\pi_{\theta_{0}}(\cdot|s_{i})
-𝒜
-i
-neg
-←
-{
-a
-i
-j
-:
-a
-i
-j
-≠
-a
-i
-+
-}
-\mathcal{A}_{i}^{\text{neg}}\leftarrow\{a_{i}^{j}:a_{i}^{j}\neq a_{i}^{+}\}
-if
-|
-𝒜
-i
-neg
-|
-&gt;
-0
-|\mathcal{A}_{i}^{\text{neg}}|&gt;0
-then
-for
-each
-a
-i
-−
-∈
-𝒜
-i
-neg
-a_{i}^{-}\in\mathcal{A}_{i}^{\text{neg}}
-do
-𝒟
-critic
-←
-𝒟
-critic
-∪
-{
-(
-s
-i
-,
-a
-i
-+
-,
-a
-i
-−
-)
-}
-\mathcal{D}_{\text{critic}}\leftarrow\mathcal{D}_{\text{critic}}\cup\{(s_{i},a_{i}^{+},a_{i}^{-})\}
-end
-for
-end
-if
-end
-for
-//
-Phase 2: GRPO Training
-Initialize
-θ
-←
-θ
-0
-\theta\leftarrow\theta_{0}
-,
-π
-ref
-←
-π
-θ
-0
-\pi_{\text{ref}}\leftarrow\pi_{\theta_{0}}
-for
-each training iteration
-do
-Sample batch
-ℬ
-⊂
-𝒟
-critic
-\mathcal{B}\subset\mathcal{D}_{\text{critic}}
-for
-each
-(
-s
-,
-a
-+
-,
-a
-−
-)
-∈
-ℬ
-(s,a^{+},a^{-})\in\mathcal{B}
-do
-Construct ACT prompt
-p
-p
-with randomized positions
-Sample
-{
-y
-(
-1
-)
-,
-…
-,
-y
-(
-G
-)
-}
-∼
-π
-θ
-(
-⋅
-|
-p
-)
-\{y^{(1)},\ldots,y^{(G)}\}\sim\pi_{\theta}(\cdot|p)
-Compute rewards
-r
-(
-g
-)
-=
-R
-​
-(
-s
-,
-y
-(
-g
-)
-)
-r^{(g)}=R(s,y^{(g)})
-via
-eq.
-˜
-3
-Compute advantages
-A
-^
-(
-g
-)
-\hat{A}^{(g)}
-via
-eq.
-˜
-7
-end
-for
-Update
-θ
-\theta
-using
-∇
-θ
-ℒ
-GRPO
-​
-(
-θ
-)
-\nabla_{\theta}\mathcal{L}_{\text{GRPO}}(\theta)
-end
-for
-return
-π
-θ
-\pi_{\theta}
-A.2
-Implementation Details
-We use OpenRLHF
-(
-hu2024openrlhf
-)
-for GRPO training with DeepSpeed ZeRO-3
-(
-rajbhandari2020zero
-)
-for memory efficiency. Training uses 4 NVIDIA GH200 GPUs.
-Table
-˜
-4
-lists the hyperparameters used in our experiments.
-Table 4
-:
-Training hyperparameters used across all experiments.
-Hyperparameter
-Value
-Base model
-Qwen3-4B / Qwen3-8B
-Learning rate
-2
-×
-10
-−
-6
-2\times 10^{-6}
-LR scheduler
-Cosine
-Warmup ratio
-0.1
-Batch size
-64
-Group size (
-G
-G
-)
-8 (Qwen3-8B) or 16 (Qwen3-4B)
-Candidate samples (
-K
-K
-)
-1
-Max epochs
-3
-Prompt max length
-4,096 tokens
-Generation max length
-4,096 tokens
-Temperature
-1.0
-Top-p
-0.95
-KL coefficient (
-β
-\beta
-)
-0.0
-Optimizer
-AdamW with offload
-Precision
-BF16
-A.3
-Data Statistics
-Table
-˜
-5
-summarizes the dataset statistics across all benchmarks. Each training sample corresponds to a single expert state-action pair extracted from successful trajectories. All methods (IL, RL, ACT, and their combinations) are trained on the same set of pairs to ensure a fair comparison. For ScienceWorld, due to its large action space and resource constraints, we randomly sample 10,240 state-action pairs for training (from the full set of expert trajectories) and evaluate offline next-action prediction accuracy on 10,000 test states (uniformly sampled across task types).
-Table 5
-:
-Dataset statistics for all training. Train samples are state-action pairs.
-ID
-: In-Distribution,
-OOD
-: Out-of-Distribution.
-Benchmark
-Domain
-Train Pairs
-Task Types
-Test Samples
-ALFWorld
-Embodied
-10,240
-6
-140 (ID) / 134 (OOD) episodes
-WebShop
-Web
-3,000
-N/A
-500 episodes
-ScienceWorld
-Science
-10,240
-30
-10,000 states
-A.4
-Expert Trajectory Collection
-For ALFWorld, expert trajectories are collected by running the model released by
-fenggroup
-on the ALFWorld training set. For WebShop, expert trajectories come from the official human demonstration data released with the benchmark. For ScienceWorld, expert trajectories come from the official gold trajectories released with the benchmark.
-A.5
-Prompt Templates
-ALFWorld Prompts.
-The ACT and RL prompts for ALFWorld are shown in
-Figures
-˜
-5
-and
-6
-, respectively.
-ACT Prompt (ALFWorld)
-You are an expert agent operating in the ALFWorld Environment.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-You need to decide which action is better for completing the task.
-Output format requirements:
-1. First, think about which action is better and why.
-2. Then, output the chosen action content inside &lt;action&gt;...&lt;/action&gt; tags.
-3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.
-Candidate Actions for the NEXT step:
-Action 1: {action_1}
-Action 2: {action_2}
-Which action is better as the NEXT step? Think about why, then output the chosen action inside &lt;action&gt;...&lt;/action&gt; tags.
-Figure 5
-:
-The ACT prompt for ALFWorld. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.
-RL Prompt (ALFWorld)
-You are an expert agent operating in the ALFWorld Environment.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-Action format examples:
-- go to {object}
-- take {object} from {container}
-- open/close {container}, examine {object}
-- inventory, look
-Now it’s your turn to take an action.
-Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within &lt;action&gt; &lt;/action&gt; tags.
-Figure 6
-:
-The RL prompt for ALFWorld. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.
-WebShop Prompts.
-The ACT and RL prompts for WebShop are shown in
-Figures
-˜
-7
-and
-8
-, respectively.
-ACT Prompt (WebShop)
-You are an expert shopping assistant navigating an e-commerce website.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-You need to decide which action is better for completing the task.
-Output format requirements:
-1. First, think about which action is better and why.
-2. Then, output the chosen action content inside &lt;action&gt;...&lt;/action&gt; tags.
-3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.
-Candidate Actions for the NEXT step:
-Action 1: {action_1}
-Action 2: {action_2}
-Which action is better as the NEXT step? Think about why, then output the chosen action inside &lt;action&gt;...&lt;/action&gt; tags.
-Figure 7
-:
-The ACT prompt for WebShop. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.
-RL Prompt (WebShop)
-You are an expert shopping assistant navigating an e-commerce website.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-Action format examples:
-- search[{query}]
-- click[{element}]
-Now it’s your turn to take an action.
-Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within &lt;action&gt; &lt;/action&gt; tags.
-Figure 8
-:
-The RL prompt for WebShop. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.
-ScienceWorld Prompts.
-The ACT and RL prompts for ScienceWorld are shown in
-Figures
-˜
-9
-and
-10
-, respectively.
-ACT Prompt (ScienceWorld)
-You are an expert science tutor guiding a student through hands-on experiments in the ScienceWorld environment.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-You need to decide which action is better for completing the task.
-Output format requirements:
-1. First, think about which action is better and why.
-2. Then, output the chosen action content inside &lt;action&gt;...&lt;/action&gt; tags.
-3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.
-Candidate Actions for the NEXT step:
-Action 1: {action_1}
-Action 2: {action_2}
-Which action is better as the NEXT step? Think about why, then output the chosen action inside &lt;action&gt;...&lt;/action&gt; tags.
-Figure 9
-:
-The ACT prompt for ScienceWorld. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.
-RL Prompt (ScienceWorld)
-You are an expert science tutor guiding a student through hands-on experiments in the ScienceWorld environment.
-Task: {task_description}
-Prior to this step, you have already taken {n} step(s).
-Below are the most recent {k} observations and actions:
-{history}
-You are now at step {current_step} and your current observation is:
-{observation}
-Your admissible actions of the current situation are:
-{admissible_actions}
-Action format examples:
-- pick up {object}
-- put {object} in {container}
-- pour {object} into {container}
-- open/close {object}, focus on {object}
-- teleport to {location}, look around, inventory
-Now it’s your turn to take an action.
-Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within &lt;action&gt; &lt;/action&gt; tags.
-Figure 10
-:
-The RL prompt for ScienceWorld. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.
-Appendix B
-Additional Case Study: Agentic Task Performance
-In the main text (
-Figure
-˜
-3
-), we showed how ACT enables failure recovery on ALFWorld through self-critique. Here we provide an additional case study on WebShop, illustrating another failure mode of IL: rigid execution without state awareness.
-B.1
-Rigid Execution Without State Awareness
-IL trains agents to replicate expert trajectories as fixed action sequences. When the environment state deviates from what was seen during training, IL models lack the internal mechanism to detect the mismatch and adjust.
-Figure
-˜
-11
-illustrates this on a WebShop task: the user requests men’s shirts with specific attributes
-priced below $50
-. The IL model follows a rigid script (search
-→
-\to
-click item
-→
-\to
-select attributes
-→
-\to
-buy), executing each step without checking whether the item actually satisfies the constraints. It clicks “Buy Now” on a $55 item, violating the price requirement and receiving a score of 0.
-ACT addresses this by training the model to evaluate candidate actions against the current state. Through critical training, the model internalizes an awareness of whether its current state (e.g., the product page) matches the goal constraints, enabling it to back out and search again rather than blindly proceeding.
-WebShop Task
-Find me wash cold, machine wash men’s shirts with polyester heathers, heathers cotton… and
-price lower than 50.00 dollars
-.
-IL Trajectory (Score: 0.0
-×
-\times
-)
-Step 1:
-search[men’s shirts polyester heathers]
-Step 2:
-click[B07XJD…]
-Observation:
-Price: $55.00
-(exceeds $50 budget)
-Step 3:
-click[black]
-Step 4:
-click[small]
-Step 5:
-click[Buy Now]
-←
-\leftarrow
-buys item despite constraint violation
-Figure 11
-:
-Rigid execution on WebShop. The IL model follows a scripted sequence (search
-→
-\to
-click
-→
-\to
-buy) without checking whether the item satisfies the price constraint ($55
-&gt;
-&gt;
-$50 budget), resulting in a failed purchase.
-Appendix C
-Additional Case Study: Why ACT Improves General Reasoning
-In the main text (
-Figure
-˜
-4
-), we showed self-verification behavior observed in ACT on GPQA-Diamond. Here we provide additional case studies analyzing IL’s
-reasoning collapse
-on general reasoning benchmarks, based on reasoning traces produced by ACT and IL (Qwen3-8B) on GPQA-Diamond and MATH-500.
-C.1
-IL Causes Reasoning Collapse
-IL on agentic data fine-tunes the model on short, action-heavy expert trajectories that contain minimal extended reasoning. By imitating these behavioral patterns, the model suffers catastrophic forgetting of its deep reasoning capabilities: the chain-of-thought reasoning capacity that the original model possesses is overwritten by the short-sequence, action-centric distribution of agentic data. We term this
-reasoning collapse
-, which explains the sharp drop in GPQA-Diamond performance observed in
-table
-˜
-3
-. Reasoning collapse manifests in two characteristic ways.
-Unfocused meandering.
-Even when the IL model does produce reasoning traces, the quality of reasoning degrades significantly.
-Figure
-˜
-12
-shows a high-energy physics problem (GPQA #7) about gamma-ray annihilation with CMB photons. ACT produces a focused 10,669-character derivation that methodically sets up the threshold energy condition and arrives at the correct answer. The IL model, by contrast, generates a 37,924-character trace, 3.5
-×
-\times
-longer, yet wanders through vague recollections and contradictory estimates, ultimately conceding “given the time I’ve spent and the lack of progress” before guessing incorrectly. The reasoning capacity has not disappeared entirely but has become diffuse and ineffective.
-GPQA-Diamond #7: Gamma-Ray CMB Annihilation Threshold
-The universe is filled with the Cosmic Microwave Background. Consider the annihilation of high-energy
-γ
-\gamma
--rays with a CMB photon into electron-positron pairs, i.e.,
-γ
-​
-γ
-→
-e
-+
-​
-e
-−
-\gamma\gamma\rightarrow e^{+}e^{-}
-. Find the energy of
-γ
-\gamma
--rays whose lifetimes are limited by this process. The average energy of a CMB photon is
-10
-−
-3
-10^{-3}
-eV.
-ACT Reasoning Trace (Correct ✓)
-For
-γ
-​
-γ
-→
-e
-+
-​
-e
-−
-\gamma\gamma\to e^{+}e^{-}
-, the total energy must be at least
-2
-​
-m
-e
-​
-c
-2
-2m_{e}c^{2}
-. For a head-on collision, the threshold condition is
-E
-γ
-⋅
-E
-CMB
-≥
-(
-m
-e
-​
-c
-2
-)
-2
-E_{\gamma}\cdot E_{\text{CMB}}\geq(m_{e}c^{2})^{2}
-. […] So
-E
-γ
-≥
-(
-0.511
-​
-MeV
-)
-2
-/
-(
-10
-−
-3
-​
-eV
-)
-=
-2.61
-×
-10
-14
-​
-eV
-≈
-2.6
-×
-10
-5
-E_{\gamma}\geq(0.511\text{ MeV})^{2}/(10^{-3}\text{ eV})=2.61\times 10^{14}\text{ eV}\approx 2.6\times 10^{5}
-GeV. The gamma rays with energy just above the threshold would have their lifetimes limited by this process. Therefore, the answer is the threshold energy.
-Answer: C (
-2.6
-×
-10
-5
-2.6\times 10^{5}
-GeV)
-✓   (10,669 chars)
-IL Reasoning Trace (Wrong
-×
-\times
-)
-[…after 37,924 characters of unfocused derivation…]
-However, I recall that the energy at which gamma rays can interact with CMB photons to produce
-e
-+
-​
-e
-−
-e^{+}e^{-}
-pairs is approximately
-10
-4
-10^{4}
-GeV. […] Given that, the answer is likely option B or C. But I’m not certain. […]
-Given the time I’ve spent and the lack of progress, I’ll go with option B:
-1.8
-×
-10
-5
-1.8\times 10^{5}
-GeV.
-Answer: B (
-1.8
-×
-10
-5
-1.8\times 10^{5}
-GeV)
-×
-\times
-(37,924 chars)
-Figure 12
-:
-Reasoning collapse: unfocused meandering. On a high-energy physics threshold problem, ACT produces a focused derivation (10K chars), while IL generates 3.5
-×
-\times
-more text (38K chars) yet wanders through vague recollections and contradictory estimates, ultimately guessing incorrectly.
-Algebraic death loops.
-On MATH-500 problems requiring sustained mathematical derivation, the IL model enters repetitive algebraic loops, producing traces exceeding 80,000 characters without reaching a correct conclusion.
-Figure
-˜
-13
-shows a probability problem (MATH-500 #445): ACT recognizes the geometric structure and cleanly derives the answer, while the IL model enters a prolonged algebraic spiral, repeatedly second-guesses itself, and ultimately produces an incorrect answer.
-MATH-500 #445: Rectangle Probability
-Rectangle
-A
-​
-B
-​
-C
-​
-D
-ABCD
-has center
-O
-O
-and
-A
-​
-B
-/
-A
-​
-D
-=
-k
-AB/AD=k
-. A point is randomly chosen from the interior of
-A
-​
-B
-​
-C
-​
-D
-ABCD
-. What is the probability that it is closer to
-O
-O
-than to any of the four vertices?
-ACT Reasoning Trace (Correct ✓)
-The set of points closer to
-O
-O
-than to any vertex is the intersection of the four half-planes defined by the perpendicular bisectors between
-O
-O
-and each vertex. These bisectors form a rectangle rotated by
-45
-∘
-45^{\circ}
-, whose area is half of the original rectangle. Therefore, the probability is
-1
-2
-\frac{1}{2}
-regardless of
-k
-k
-. […]
-I’ve verified for
-k
-=
-1
-k=1
-(square case) and general
-k
-k
-: all methods confirm that the probability is
-1
-2
-\frac{1}{2}
-.
-Answer:
-1
-2
-\frac{1}{2}
-✓   (42,641 chars of reasoning)
-IL Reasoning Trace (Wrong
-×
-\times
-)
-[…after 80,000+ characters of algebraic manipulation…]
-Given that I’m stuck, I’ll refer back to the initial correct calculation for
-k
-=
-1
-k=1
-, which gave the area as 2, and the probability as
-1
-2
-\frac{1}{2}
-. For general
-k
-k
-, if the area is
-(
-k
-2
-+
-1
-)
-2
-/
-(
-2
-​
-k
-)
-(k^{2}+1)^{2}/(2k)
-when it is inside the rectangle, but for
-k
-&lt;
-1
-k&lt;1
-, it is clipped. However, I cannot proceed further.
-Given the time I’ve spent, I will conclude that the probability is
-1
-−
-k
-2
-2
-\frac{1-k^{2}}{2}
-.
-Answer:
-1
-−
-k
-2
-2
-\frac{1-k^{2}}{2}
-×
-\times
-(80,918 chars of reasoning)
-Figure 13
-:
-Reasoning collapse: algebraic death loop. On a probability problem, ACT cleanly identifies the geometric structure, while IL generates over 80,000 characters of circular algebraic manipulation before giving up with an incorrect answer. The IL model correctly solves the
-k
-=
-1
-k=1
-special case early on but cannot generalize, endlessly rederiving and contradicting its own intermediate results.
+<p>\correspondingauthor<br />
+Furong Huang; Email<br />
+furongh@umd.edu<br />
+Agentic Critical Training<br />
+Weize Liu<br />
+Minghui Liu<br />
+Sy-Tuyen Ho<br />
+Souradip Chakraborty<br />
+Xiyao Wang<br />
+‡<br />
+Furong Huang<br />
+‡<br />
+University of Maryland<br />
+College Park<br />
+‡<br />
+Equal advising<br />
+Abstract<br />
+Training large language models (LLMs) as autonomous agents often begins with imitation learning, but it only teaches agents<br />
+what<br />
+to do without understanding<br />
+why<br />
+: agents never contrast successful actions against suboptimal alternatives and thus lack awareness of action quality. Recent approaches attempt to address this by introducing self-reflection supervision derived from contrasts between expert and alternative actions. However, the training paradigm fundamentally remains imitation learning: the model imitates pre-constructed reflection text rather than learning to reason autonomously. We propose Agentic Critical Training (ACT), a reinforcement learning paradigm that trains agents to identify the better action among alternatives. By rewarding whether the model’s judgment is correct, ACT drives the model to autonomously develop reasoning about action quality, producing genuine self-reflection rather than imitating it. Across three challenging agent benchmarks, ACT consistently improves agent performance when combined with different post-training methods. It achieves an average improvement of 5.07 points over imitation learning and 4.62 points over reinforcement learning. Compared to approaches that inject reflection capability through knowledge distillation, ACT also demonstrates clear advantages, yielding an average improvement of 2.42 points. Moreover, ACT enables strong out-of-distribution generalization on agentic benchmarks and improves performance on general reasoning benchmarks without any reasoning-specific training data, highlighting the value of our method. These results suggest that ACT is a promising path toward developing more reflective and capable LLM agents.<br />
+Project Page:<br />
+https://attention-is-all-i-need.github.io/ACT/<br />
+1<br />
+Introduction<br />
+Large language models (LLMs) have demonstrated remarkable capabilities across a wide spectrum of tasks, from natural language understanding to complex reasoning<br />
+(<br />
+brown2020language<br />
+,<br />
+achiam2023gpt<br />
+)<br />
+. Recent advances have enabled these models to function as autonomous agents, capable of interacting with external environments, using tools, and completing multi-step tasks<br />
+(<br />
+yao2022react<br />
+,<br />
+shinn2023reflexion<br />
+)<br />
+. Training effective LLM-based agents has become a critical research direction, with applications spanning web navigation<br />
+(<br />
+yao2022webshop<br />
+)<br />
+, household robotics<br />
+(<br />
+shridharalfworld<br />
+)<br />
+, scientific experimentation<br />
+(<br />
+wang2022scienceworld<br />
+)<br />
+, and function calling<br />
+(<br />
+patil2024gorilla<br />
+)<br />
+.<br />
+Training LLM agents often begins with imitation learning (IL), where models learn to replicate expert demonstrations through supervised fine-tuning. While effective, IL suffers from a well-known limitation: it only teaches agents<br />
+what to do<br />
+, not<br />
+what to avoid<br />
+(<br />
+ross2011reduction<br />
+,<br />
+hussein2017imitation<br />
+,<br />
+pomerleau1991efficient<br />
+)<br />
+. Because agents only observe successful trajectories, they lack understanding of why certain actions are preferable and have no awareness of suboptimal states. A recent approach, Early Experience<br />
+(<br />
+zhang2025agent<br />
+)<br />
+, attempts to address this by executing both expert and alternative actions in the environment, observing the resulting next states, and prompting the model to generate reflections explaining why the expert action leads to a better outcome. The self-reflection data is then mixed with the expert dataset and the model is trained using a standard next-token prediction loss. However, this approach fundamentally remains imitation learning: the model is trained to imitate a pre-generated target string rather than to autonomously discover reasoning that leads to correct action selection. The “self-reflection” is imitated from text, not spontaneously developed.<br />
+Figure 1<br />
+:<br />
+Comparison of imitated vs. genuine self-reflection.<br />
+(a)<br />
+Early Experience executes both actions in the environment, generates a reflection from the resulting states, and trains the model to imitate this fixed text via supervised fine-tuning (SFT).<br />
+(b)<br />
+ACT presents two candidate actions and trains the model via RL to select the better one. Since only the selection outcome is rewarded, the model must autonomously develop reasoning about action quality to maximize reward.<br />
+To address this issue, we propose Agentic Critical Training (ACT), illustrated in<br />
+Figure<br />
+˜<br />
+1<br />
+. Given expert demonstrations, ACT pairs each expert action with a model-generated alternative action to form a preference pair at each time step of the sequential decision-making process. These preference pairs are formed based on the hypothesis that expert actions are generally superior to model-generated ones. We then train the agent to identify which action is better via reinforcement learning (RL). The only supervision is whether the model correctly identifies the superior expert action; since no reasoning supervision is provided, the model must autonomously develop chain-of-thought<br />
+(CoT;<br />
+wei2022chain<br />
+)<br />
+reasoning that leads to correct choices. This produces genuine self-reflection rather than imitated reflection: the model learns to reason about<br />
+action quality through RL, rather than imitating pre-constructed reflections<br />
+through knowledge distillation.<br />
+Across three challenging agent benchmarks (ALFWorld, WebShop, ScienceWorld), ACT consistently improves agent performance when combined with different post-training methods. Compared with imitation learning, ACT achieves an average performance gain of 5.07 points, while outperforming reinforcement learning by 4.62 points. Furthermore, compared to the Early Experience baseline that injects reflection capability through knowledge distillation, ACT still demonstrates clear advantages, yielding an additional 2.42 points improvement on average. These results indicate that directly training models to evaluate action quality is more effective than supervising them to imitate reflection behaviors.<br />
+Beyond in-distribution improvements, ACT also exhibits strong out-of-distribution generalization on agentic benchmarks. Interestingly, despite being trained purely through action-level supervision, ACT also improves performance on general reasoning benchmarks (MATH-500 and GPQA-Diamond) without requiring any reasoning-specific training data. This suggests that learning to evaluate and compare actions can serve as a general mechanism for enhancing reasoning and decision-making abilities in LLM agents.<br />
+In summary, our contributions are:<br />
+1.<br />
+We propose ACT, which trains agents to judge which action is better under the current state via RL. Unlike Early Experience, which imitates pre-generated reflections, ACT drives the model to autonomously develop critical reasoning through RL and internalize this capability into its parameters.<br />
+2.<br />
+Across three agentic benchmarks, ACT consistently improves both IL and RL, and outperforms Early Experience, achieving the highest performance across all benchmarks.<br />
+3.<br />
+We demonstrate that ACT not only enables strong out-of-distribution generalization on agentic benchmarks, but also achieves notable improvements on general reasoning benchmarks (GPQA-Diamond, MATH-500) without any reasoning-specific training data, suggesting agentic RL environments may serve as a pathway for improving general reasoning.<br />
+2<br />
+Agentic Critical Training<br />
+We present Agentic Critical Training (ACT), our approach to training LLM agents beyond pure imitation. We first describe the problem setting (<br />
+section<br />
+˜<br />
+2.1<br />
+), then detail ACT data construction (<br />
+section<br />
+˜<br />
+2.2<br />
+), and finally present the training pipeline (<br />
+section<br />
+˜<br />
+2.3<br />
+).<br />
+Figure<br />
+˜<br />
+2<br />
+provides an overview.<br />
+Figure 2<br />
+:<br />
+Overview of the ACT + RL training pipeline.<br />
+Stage 1 (Data Construction):<br />
+Given expert demonstration trajectories, we extract state-action pairs and sample alternative actions from the initial policy<br />
+π<br />
+θ<br />
+0<br />
+\pi_{\theta_{0}}<br />
+at each state. Expert actions are paired with model-generated alternatives to construct contrastive training examples.<br />
+Stage 2 (Agentic Critical Training):<br />
+The model is trained via GRPO to identify the better action among candidates presented in randomized order, internalizing an understanding of action quality through verifiable rewards.<br />
+Stage 3 (RL Action Training):<br />
+The ACT-enhanced model is further trained with RL for direct action generation, leveraging its improved critical reasoning foundation to achieve higher task success rates.<br />
+2.1<br />
+Problem Formulation<br />
+We consider an agent operating in a sequential decision-making environment, formalized as a partially observable Markov decision process (POMDP)<br />
+ℳ<br />
+=<br />
+(<br />
+𝒮<br />
+,<br />
+𝒜<br />
+,<br />
+𝒯<br />
+,<br />
+Ω<br />
+,<br />
+𝒪<br />
+,<br />
+ℛ<br />
+,<br />
+γ<br />
+)<br />
+\mathcal{M}=(\mathcal{S},\mathcal{A},\mathcal{T},\Omega,\mathcal{O},\mathcal{R},\gamma)<br />
+, where<br />
+𝒮<br />
+\mathcal{S}<br />
+is the state space,<br />
+𝒜<br />
+\mathcal{A}<br />
+is the action space,<br />
+𝒯<br />
+:<br />
+𝒮<br />
+×<br />
+𝒜<br />
+→<br />
+Δ<br />
+​<br />
+(<br />
+𝒮<br />
+)<br />
+\mathcal{T}:\mathcal{S}\times\mathcal{A}\rightarrow\Delta(\mathcal{S})<br />
+is the transition function,<br />
+Ω<br />
+\Omega<br />
+is the observation space,<br />
+𝒪<br />
+:<br />
+𝒮<br />
+→<br />
+Δ<br />
+​<br />
+(<br />
+Ω<br />
+)<br />
+\mathcal{O}:\mathcal{S}\rightarrow\Delta(\Omega)<br />
+is the observation function,<br />
+ℛ<br />
+:<br />
+𝒮<br />
+×<br />
+𝒜<br />
+→<br />
+ℝ<br />
+\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow\mathbb{R}<br />
+is the reward function, and<br />
+γ<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+)<br />
+\gamma\in[0,1)<br />
+is the discount factor. In practice, the agent conditions on a textual context constructed from the task description, a truncated window of the most recent<br />
+k<br />
+k<br />
+observation-action pairs, and the current observation (see prompt templates in<br />
+section<br />
+˜<br />
+A.5<br />
+). We denote this observation-derived context as<br />
+s<br />
+t<br />
+s_{t}<br />
+and use<br />
+s<br />
+s<br />
+as shorthand throughout; the policy is thus<br />
+π<br />
+θ<br />
+​<br />
+(<br />
+a<br />
+t<br />
+|<br />
+s<br />
+t<br />
+)<br />
+\pi_{\theta}(a_{t}|s_{t})<br />
+.<br />
+Given an expert demonstration dataset<br />
+𝒟<br />
+expert<br />
+=<br />
+{<br />
+τ<br />
+(<br />
+n<br />
+)<br />
+=<br />
+(<br />
+s<br />
+1<br />
+(<br />
+n<br />
+)<br />
+,<br />
+a<br />
+1<br />
+(<br />
+n<br />
+)<br />
+,<br />
+…<br />
+,<br />
+s<br />
+T<br />
+n<br />
+(<br />
+n<br />
+)<br />
+,<br />
+a<br />
+T<br />
+n<br />
+(<br />
+n<br />
+)<br />
+)<br />
+}<br />
+n<br />
+=<br />
+1<br />
+N<br />
+\mathcal{D}<em>{\text{expert}}=\left{\tau^{(n)}=(s</em>{1}^{(n)},a_{1}^{(n)},\ldots,s_{T_{n}}^{(n)},a_{T_{n}}^{(n)})\right}<em>{n=1}^{N}<br />
+, the standard approach is imitation learning (IL), which maximizes the likelihood of expert actions:<br />
+ℒ<br />
+IL<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+=<br />
+−<br />
+𝔼<br />
+(<br />
+s<br />
+,<br />
+a<br />
+)<br />
+∼<br />
+𝒟<br />
+expert<br />
+​<br />
+[<br />
+log<br />
+⁡<br />
+π<br />
+θ<br />
+​<br />
+(<br />
+a<br />
+|<br />
+s<br />
+)<br />
+]<br />
+,<br />
+\mathcal{L}</em>{\text{IL}}(\theta)=-\mathbb{E}<em>{(s,a)\sim\mathcal{D}</em>{\text{expert}}}\left[\log\pi_{\theta}(a|s)\right],<br />
+(1)<br />
+where<br />
+π<br />
+θ<br />
+\pi_{\theta}<br />
+is the policy parameterized by the LLM. While effective at teaching agents to replicate expert behavior, IL provides no signal about the relative quality of different actions: the agent learns that<br />
+a<br />
+i<br />
+a_{i}<br />
+is correct at context<br />
+s<br />
+i<br />
+s_{i}<br />
+, but not<br />
+why<br />
+it is preferable to alternatives. Our goal is to train agents that develop this understanding.<br />
+2.2<br />
+Data Construction<br />
+The core idea of ACT is to transform the learning objective from “imitate the expert action” to “identify the better action,” requiring the model to develop discriminative understanding of action quality. For each expert state-action pair<br />
+(<br />
+s<br />
+i<br />
+,<br />
+a<br />
+i<br />
+)<br />
+∈<br />
+𝒟<br />
+expert<br />
+(s_{i},a_{i})\in\mathcal{D}<em>{\text{expert}}<br />
+, we construct an ACT example as follows:<br />
+1.<br />
+Sample alternatives.<br />
+Draw<br />
+K<br />
+K<br />
+candidate actions<br />
+{<br />
+a<br />
+i<br />
+1<br />
+,<br />
+a<br />
+i<br />
+2<br />
+,<br />
+…<br />
+,<br />
+a<br />
+i<br />
+K<br />
+}<br />
+{a</em>{i}^{1},a_{i}^{2},\ldots,a_{i}^{K}}<br />
+from an initial policy<br />
+π<br />
+θ<br />
+0<br />
+(<br />
+⋅<br />
+|<br />
+s<br />
+i<br />
+)<br />
+\pi_{\theta_{0}}(\cdot|s_{i})<br />
+.<br />
+2.<br />
+Filter duplicates.<br />
+Remove candidates identical to the expert action:<br />
+𝒜<br />
+i<br />
+neg<br />
+=<br />
+{<br />
+a<br />
+i<br />
+j<br />
+:<br />
+a<br />
+i<br />
+j<br />
+≠<br />
+a<br />
+i<br />
+,<br />
+j<br />
+∈<br />
+[<br />
+K<br />
+]<br />
+}<br />
+\mathcal{A}<em>{i}^{\text{neg}}={a</em>{i}^{j}:a_{i}^{j}\neq a_{i},j\in[K]}<br />
+.<br />
+3.<br />
+Construct pairs.<br />
+Pair the expert action<br />
+a<br />
+i<br />
++<br />
+=<br />
+a<br />
+i<br />
+a_{i}^{+}=a_{i}<br />
+with each alternative<br />
+a<br />
+i<br />
+−<br />
+∈<br />
+𝒜<br />
+i<br />
+neg<br />
+a_{i}^{-}\in\mathcal{A}<em>{i}^{\text{neg}}<br />
+to form<br />
+|<br />
+𝒜<br />
+i<br />
+neg<br />
+|<br />
+|\mathcal{A}</em>{i}^{\text{neg}}|<br />
+contrastive examples.<br />
+This yields the ACT dataset<br />
+𝒟<br />
+critic<br />
+=<br />
+{<br />
+(<br />
+s<br />
+i<br />
+,<br />
+a<br />
+i<br />
++<br />
+,<br />
+a<br />
+i<br />
+−<br />
+)<br />
+}<br />
+i<br />
+=<br />
+1<br />
+M<br />
+\mathcal{D}<em>{\text{critic}}={(s</em>{i},a_{i}^{+},a_{i}^{-})}<em>{i=1}^{M}<br />
+, where each example contains one expert action and one sampled alternative action. The key assumption is that the initial policy<br />
+π<br />
+θ<br />
+0<br />
+\pi</em>{\theta_{0}}<br />
+generates actions that are, on average, inferior to expert actions.<br />
+2.3<br />
+Training Pipeline<br />
+After constructing<br />
+𝒟<br />
+critic<br />
+\mathcal{D}<em>{\text{critic}}<br />
+, our training pipeline proceeds through two sequential RL stages: Agentic Critical Training followed by RL Action Training, both optimized using Group Relative Policy Optimization<br />
+(GRPO;<br />
+shao2024deepseekmath<br />
+)<br />
+. For each prompt, GRPO samples a group of<br />
+G<br />
+G<br />
+responses from the current policy, computes a verifiable reward for each, and updates the policy using group-relative advantages. Details are provided in<br />
+section<br />
+˜<br />
+A.1<br />
+.<br />
+Agentic Critical Training.<br />
+The model is first trained on<br />
+𝒟<br />
+critic<br />
+\mathcal{D}</em>{\text{critic}}<br />
+to identify the better action among two candidates. The ACT prompt is:<br />
+ACT Prompt<br />
+Task: {task_description}<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+o<br />
+t<br />
+o_{t}<br />
+Your admissible actions of the current situation are:<br />
+𝒜<br />
+admissible<br />
+\mathcal{A}<em>{\text{admissible}}<br />
+Candidate Actions for the NEXT step:<br />
+Action 1:<br />
+a<br />
+σ<br />
+​<br />
+(<br />
+1<br />
+)<br />
+a</em>{\sigma(1)}<br />
+Action 2:<br />
+a<br />
+σ<br />
+​<br />
+(<br />
+2<br />
+)<br />
+a_{\sigma(2)}<br />
+Which action is better as the NEXT step? Think about why, then output the chosen action inside <action>...</action> tags.<br />
+Here<br />
+σ<br />
+\sigma<br />
+is a random permutation, so the expert action appears in either position with equal probability.<br />
+Given this prompt, GRPO samples<br />
+G<br />
+G<br />
+responses, each containing the model’s reasoning and action selection. Crucially, because ACT is trained through RL rather than imitation learning, the model must<br />
+autonomously discover<br />
+chain-of-thought reasoning that causally leads to correct action selection. Unlike Early Experience<br />
+(<br />
+zhang2025agent<br />
+)<br />
+that generates reflection text and then trains on it via IL, ACT uses verifiable rewards to drive the emergence of critical thinking: the model is rewarded only for selecting correctly, and must therefore learn to reason about action quality on its own. This internalized understanding of<br />
+why<br />
+certain actions are preferable, rather than memorized patterns of<br />
+what<br />
+to output, directly enhances action generation at test time.<br />
+RL Action Training.<br />
+The ACT-enhanced model is then further trained with GRPO for direct action generation on the expert trajectories. Given each context<br />
+s<br />
+i<br />
+s_{i}<br />
+, GRPO samples a group of<br />
+G<br />
+G<br />
+responses and rewards those matching the expert action<br />
+a<br />
+i<br />
++<br />
+a_{i}^{+}<br />
+. By building on the critical reasoning foundation from ACT, the model leverages its improved understanding of action quality to achieve more effective policy optimization.<br />
+Reward Design.<br />
+Both stages share a composite reward function:<br />
+R<br />
+​<br />
+(<br />
+s<br />
+,<br />
+y<br />
+)<br />
+=<br />
+R<br />
+acc<br />
+​<br />
+(<br />
+a<br />
+,<br />
+a<br />
++<br />
+)<br />
++<br />
+R<br />
+adm<br />
+​<br />
+(<br />
+a<br />
+,<br />
+𝒜<br />
+admissible<br />
+)<br />
++<br />
+R<br />
+fmt<br />
+​<br />
+(<br />
+y<br />
+)<br />
+,<br />
+R(s,y)=R_{\text{acc}}(a,a^{+})+R_{\text{adm}}(a,\mathcal{A}<em>{\text{admissible}})+R</em>{\text{fmt}}(y),<br />
+(2)<br />
+where<br />
+y<br />
+y<br />
+denotes the full model response and<br />
+a<br />
+=<br />
+extract<br />
+​<br />
+(<br />
+y<br />
+)<br />
+a=\mathrm{extract}(y)<br />
+denotes the action extracted from the<br />
+<action>...</action><br />
+tags. We set<br />
+R<br />
+acc<br />
+=<br />
+1<br />
+R_{\text{acc}}=1<br />
+if<br />
+a<br />
+a<br />
+exactly matches the expert action<br />
+a<br />
++<br />
+a^{+}<br />
+. We set<br />
+R<br />
+adm<br />
+=<br />
+0.1<br />
+R_{\text{adm}}=0.1<br />
+if<br />
+a<br />
+a<br />
+is admissible but does not match<br />
+a<br />
++<br />
+a^{+}<br />
+, which provides partial credit for valid actions. We set<br />
+R<br />
+fmt<br />
+=<br />
+−<br />
+0.5<br />
+R_{\text{fmt}}=-0.5<br />
+if the full response lacks proper<br />
+<action><br />
+tags. Detailed reward definitions are provided in<br />
+section<br />
+˜<br />
+A.1<br />
+.<br />
+3<br />
+Related Work<br />
+LLM-based Agents.<br />
+LLM-based autonomous agents have advanced rapidly across web navigation<br />
+(<br />
+yao2022webshop<br />
+)<br />
+, tool use<br />
+(<br />
+schick2023toolformer<br />
+,<br />
+qin2023toolllm<br />
+)<br />
+, and multi-step reasoning<br />
+(<br />
+yao2022react<br />
+,<br />
+wei2022chain<br />
+)<br />
+. ReAct<br />
+(<br />
+yao2022react<br />
+)<br />
+interleaves reasoning and acting, while Reflexion<br />
+(<br />
+shinn2023reflexion<br />
+)<br />
+uses verbal self-reflection at inference time to improve performance. Our work instead trains self-reflection as a<br />
+learned competence<br />
+via RL, rather than relying on inference-time prompting.<br />
+Training LLM Agents.<br />
+Most approaches to training LLM agents rely on imitation learning from expert demonstrations<br />
+(<br />
+chen2023fireact<br />
+,<br />
+zeng2024agenttuning<br />
+)<br />
+. Recently,<br />
+zhang2025agent<br />
+proposed “early experience,” which enriches the training signal by prompting the model to generate reflections that explain why the expert action is preferable, and training the model to reproduce these reflections via supervised fine-tuning. However, the training objective fundamentally remains imitating a pre-generated target string. Our ACT instead trains the model to discriminate which action is better through RL, where the only supervision is whether the selection is correct. This requires the model to autonomously develop reasoning that leads to correct choices, rather than reproducing a fixed target string. In our experiments (<br />
+section<br />
+˜<br />
+4<br />
+), we include Early Experience as a baseline and show that ACT consistently outperforms it across benchmarks, including on out-of-distribution tasks and general reasoning benchmarks.<br />
+Critique RL Training.<br />
+Recent work uses RL to train critique capabilities, either for building stronger reward models, such as R1-Reward<br />
+(<br />
+zhang2025r1<br />
+)<br />
+and RM-R1<br />
+(<br />
+chen2025rm<br />
+)<br />
+, or for directly improving the policy through critique training, such as LLaVA-Critic-R1<br />
+(<br />
+wang2025llava<br />
+)<br />
+and Critique-Coder<br />
+(<br />
+ruan2025critique<br />
+)<br />
+. However, these approaches focus on single-turn settings (e.g., chat or code generation). Our ACT differs in two key aspects: (1) ACT operates in multi-turn agentic environments rather than single-turn chat or code settings, and (2) ACT trains the model to discriminate between expert and suboptimal actions within a sequential decision-making process, rather than critiquing standalone solutions.<br />
+Agentic RL.<br />
+Reinforcement learning (RL) has emerged as a powerful paradigm for training LLM-based agents<br />
+(<br />
+zhanglandscape<br />
+)<br />
+. Unlike conventional LLM-RL for chat settings, such as RLHF<br />
+(<br />
+ouyang2022training<br />
+)<br />
+and DPO<br />
+(<br />
+rafailov2023direct<br />
+)<br />
+for alignment, agentic RL tackles multi-turn, long-horizon decision-making in complex environments. DeepSeek-R1<br />
+(<br />
+guo2025deepseek<br />
+)<br />
+demonstrated that RL with verifiable rewards (RLVR) can incentivize reasoning without supervised chain-of-thought data. On the algorithmic side, GRPO<br />
+(<br />
+shao2024deepseekmath<br />
+)<br />
+provides an efficient group-relative policy optimization method, GiGPO<br />
+(<br />
+fenggroup<br />
+)<br />
+extends it with step-level credit assignment for long-horizon agent tasks, and Search-R1<br />
+(<br />
+jinsearch<br />
+)<br />
+trains LLMs to interleave reasoning with search engine queries via outcome-based RL. Our work contributes to this paradigm by showing that training agents via RL to discriminate between expert and suboptimal actions provides a complementary critical reasoning stage that further improves both IL- and RL-trained agents.<br />
+4<br />
+Experiments<br />
+We evaluate our approach on three diverse benchmarks spanning different agent capabilities.<br />
+4.1<br />
+Experimental Setup<br />
+Benchmarks.<br />
+We use three benchmarks that span embodied, web, and scientific domains:<br />
+•<br />
+ALFWorld<br />
+(<br />
+shridharalfworld<br />
+)<br />
+: Embodied household tasks requiring navigation and object manipulation in text-based environments. ALFWorld provides “seen” and “unseen” splits: the seen split tests performance in room layouts present in the training set (used as our ID evaluation), while the unseen split requires the model to operate in rooms with novel spatial layouts and unknown object combinations (used as our OOD evaluation).<br />
+•<br />
+WebShop<br />
+(<br />
+yao2022webshop<br />
+)<br />
+: Web-based shopping tasks requiring product search and selection.<br />
+•<br />
+ScienceWorld<br />
+(<br />
+wang2022scienceworld<br />
+)<br />
+: Scientific reasoning tasks requiring multi-step experimental procedures.<br />
+Methods.<br />
+We compare the following methods, all trained on exactly the same expert trajectories<br />
+𝒟<br />
+expert<br />
+\mathcal{D}<em>{\text{expert}}<br />
+to ensure that performance differences are attributable solely to the training paradigm:<br />
+•<br />
+Prompt w/o CoT thinking<br />
+: standard prompting without chain-of-thought reasoning.<br />
+•<br />
+Prompt w/ CoT thinking<br />
+: CoT prompting with thinking enabled (i.e., “Let’s think step by step …”).<br />
+•<br />
+ACT<br />
+: trained with ACT only (no action generation training).<br />
+•<br />
+IL<br />
+: fine-tuned on expert state-action pairs via supervised next-token prediction.<br />
+•<br />
+Early Experience (Self-Reflection)<br />
+: following<br />
+zhang2025agent<br />
+, executes both expert and alternative actions in the environment, prompts the model to generate reflections by comparing the resulting next states, and mixes the self-reflection data with the expert dataset to train the model using a standard next-token prediction loss.<br />
+•<br />
+RL<br />
+: trained with GRPO, where the reward is whether the generated action matches the expert action.<br />
+•<br />
+IL w/ ACT<br />
+and<br />
+RL w/ ACT<br />
+: first trained with ACT, then further trained with IL or RL, respectively.<br />
+Implementation details, hyperparameters, and prompt templates are provided in<br />
+appendix<br />
+˜<br />
+A<br />
+.<br />
+4.2<br />
+Main Results<br />
+Table<br />
+˜<br />
+1<br />
+presents our main results on Qwen3-8B<br />
+(<br />
+yang2025qwen3<br />
+)<br />
+across three benchmarks.<br />
+RL outperforms IL.<br />
+When trained on the same expert data, RL consistently achieves higher success rates than IL across all benchmarks, confirming that RL is a more effective paradigm for training LLM agents from expert trajectories.<br />
+ACT provides positive transfer.<br />
+Training with ACT alone improves over prompting baselines but does not match IL or RL in absolute performance. This is expected, as ACT trains the model to<br />
+judge<br />
+which action is better, not to<br />
+generate<br />
+actions directly. However, when used as a first stage before IL or RL, ACT consistently improves performance across all benchmarks, and RL w/ ACT achieves the highest overall performance. Specifically, adding ACT yields an average improvement of 5.07 percentage points over IL (via IL w/ ACT) and 4.62 percentage points over RL (via RL w/ ACT) across all benchmarks. This shows that the critical reasoning learned during ACT benefits subsequent action generation training.<br />
+ACT outperforms Early Experience.<br />
+Early Experience<br />
+(<br />
+zhang2025agent<br />
+)<br />
+enriches IL data with self-reflection text generated by prompting the model to compare environment states after executing both expert and alternative actions. As shown in<br />
+table<br />
+˜<br />
+1<br />
+, this yields improvements over standard IL, but both IL w/ ACT and RL w/ ACT consistently outperform Early Experience across all benchmarks. Across all benchmarks, IL w/ ACT outperforms Early Experience by an average of 2.42 percentage points. This suggests that training the model to autonomously reason about action quality through RL is more effective than having it imitate pre-generated reflection text within an IL framework.<br />
+ACT improves OOD generalization.<br />
+On the out-of-distribution split of ALFWorld, adding ACT improves both IL and RL. RL w/ ACT also achieves the best OOD performance overall. Moreover, ACT’s gain on top of RL is larger on OOD tasks (3.73pp) than on in-distribution tasks (2.15pp), indicating that the reasoning acquired through ACT generalizes to unseen task configurations rather than overfitting to the training distribution.<br />
+Table 1<br />
+:<br />
+Main results on Qwen3-8B (%). ALFWorld and WebShop report success rates; ScienceWorld reports next-action prediction accuracy. ALFWorld results include both in-distribution (ID) and out-of-distribution (OOD) tasks.<br />
+Method<br />
+ALFWorld<br />
+WebShop<br />
+ScienceWorld<br />
+ID<br />
+OOD<br />
+Prompt w/o CoT thinking<br />
+35.71<br />
+27.61<br />
+2.80<br />
+28.01<br />
+Prompt w/ CoT thinking<br />
+56.43<br />
+50.00<br />
+3.00<br />
+25.21<br />
+ACT<br />
+72.86<br />
+72.39<br />
+7.40<br />
+26.71<br />
+Imitation Learning<br />
+85.71<br />
+82.84<br />
+28.00<br />
+42.80<br />
+Early Experience (Self-Reflection)<br />
+87.86<br />
+85.82<br />
+31.00<br />
+45.60<br />
+IL w/ ACT<br />
+91.43<br />
+87.31<br />
+31.60<br />
+48.69<br />
+RL<br />
+90.71<br />
+84.33<br />
+29.40<br />
+43.04<br />
+RL w/ ACT<br />
+92.86<br />
+88.06<br />
+33.80<br />
+50.34<br />
+IL Task: Clean cloth<br />
+→<br />
+\to<br />
+cabinet<br />
+Step 7: take cloth 1 from countertop 1<br />
+Step 8: clean cloth 1 with sinkbasin 1<br />
+Step 9: put cloth 1 in/on cabinet 1<br />
+←<br />
+\leftarrow<br />
+fails<br />
+Step 10: put cloth 1 in/on cabinet 1<br />
+Step 11: put cloth 1 in/on cabinet 1<br />
+Step 12: put cloth 1 in/on cabinet 1<br />
+⋮<br />
+(Repeats for 30+ steps until termination)<br />
+IL Result: Failed<br />
+×<br />
+\times<br />
+The IL model repeats the identical failed action for over 30 steps until termination. Having never seen failure states during imitation learning, it has no mechanism to diagnose the error or propose an alternative.<br />
+ACT Task: Clean spoon<br />
+→<br />
+\to<br />
+dining table<br />
+Step 4: clean spoon 2 with sinkbasin 1<br />
+Step 5: use spoon 2 on diningtable 1<br />
+←<br />
+\leftarrow<br />
+“Nothing happens.”<br />
+Step 6: put spoon 2 in/on diningtable 1<br />
+←<br />
+\leftarrow<br />
+“Nothing happens.”<br />
+Step 7: put spoon 2 in/on diningtable 1<br />
+←<br />
+\leftarrow<br />
+“Nothing happens.”<br />
+ACT Self-Critique &amp; Recovery (Correct ✓)<br />
+I cleaned spoon 2 with sinkbasin 1. Then I tried to put spoon 2 in/on diningtable 1, but nothing happened. I did this twice.<br />
+Wait… the task is to put it IN the dining table. I am currently at sinkbasin 1. I need to GO TO the dining table first before I can put it there!<br />
+Action: go to diningtable 1<br />
+✓<br />
+Figure 3<br />
+:<br />
+Failure recovery on ALFWorld.<br />
+Left:<br />
+The IL model enters an infinite loop, repeating a failed action for over 30 steps until termination.<br />
+Right:<br />
+The ACT model encounters the same type of failure but uses its internal reasoning to diagnose the root cause (wrong location), break the loop, and issue the correct navigation command.<br />
+Case study: ACT enables failure recovery.<br />
+To illustrate how ACT improves agentic decision-making, we examine real evaluation traces. In ALFWorld, the environment returns “Nothing happens.” when an action fails. IL models, having never observed failure states during training, repeat the same failed action indefinitely.<br />
+Figure<br />
+˜<br />
+3<br />
+contrasts this with ACT’s behavior: the IL model enters an infinite loop repeating a failed action for over 30 steps until termination, while the ACT-trained model (RL w/ ACT) diagnoses the root cause through its internal reasoning and issues the correct navigation command. Notably, the self-critique behavior originates from the ACT phase, as RL alone does not produce such reflective reasoning patterns. An additional case study showing IL’s rigid execution on WebShop is provided in<br />
+appendix<br />
+˜<br />
+B<br />
+.<br />
+4.3<br />
+Cross-Size Data Transferability<br />
+ACT requires collecting alternative actions from a policy to construct contrastive pairs, which can be expensive. A natural question is whether these data can be reused across model sizes to amortize the collection cost. To investigate this, we train Qwen3-4B on ALFWorld using ACT data collected entirely from Qwen3-8B, without any re-collection or adaptation.<br />
+Table 2<br />
+:<br />
+Cross-size results on ALFWorld with in-distribution (ID) and out-of-distribution (OOD) success rates (%).<br />
+Method<br />
+Qwen3-4B<br />
+Qwen3-8B<br />
+ID<br />
+OOD<br />
+ID<br />
+OOD<br />
+Prompt w/o CoT thinking<br />
+13.57<br />
+8.96<br />
+35.71<br />
+27.61<br />
+Prompt w/ CoT thinking<br />
+50.71<br />
+29.85<br />
+56.43<br />
+50.00<br />
+ACT<br />
+71.43<br />
+62.69<br />
+72.86<br />
+72.39<br />
+Imitation Learning<br />
+85.00<br />
+83.58<br />
+85.71<br />
+82.84<br />
+Early Experience (Self-Reflection)<br />
+88.57<br />
+88.06<br />
+87.86<br />
+85.82<br />
+IL w/ ACT<br />
+88.57<br />
+91.04<br />
+91.43<br />
+87.31<br />
+RL<br />
+91.43<br />
+88.81<br />
+90.71<br />
+84.33<br />
+RL w/ ACT<br />
+92.14<br />
+91.79<br />
+92.86<br />
+88.06<br />
+As shown in<br />
+table<br />
+˜<br />
+2<br />
+, the transferred ACT data remains effective: all ACT-augmented methods improve over their non-ACT counterparts on both ID and OOD tasks for Qwen3-4B. Similar to Qwen3-8B, ACT’s gain on the smaller model is also larger on OOD tasks than on ID tasks. These results validate that ACT’s benefits generalize across model sizes and that the data collection cost can be amortized by reusing data across models of different sizes.<br />
+4.4<br />
+Generalization to General Reasoning Benchmarks<br />
+Beyond agentic tasks, we investigate whether the critical reasoning capabilities acquired through ACT transfer to general reasoning benchmarks. We take the Qwen3-8B models trained on ALFWorld agentic data (IL, RL, and ACT) and directly evaluate them on MATH-500<br />
+(<br />
+hendrycks2021measuring<br />
+)<br />
+and GPQA-Diamond<br />
+(<br />
+rein2024gpqa<br />
+)<br />
+, two widely used benchmarks for mathematical and scientific reasoning, respectively. In our training process, none of these models are exposed to any mathematical or scientific reasoning data.<br />
+Table 3<br />
+:<br />
+Performance on general reasoning benchmarks. Values are accuracy (%) with standard deviation across 3 runs. All trained models are learned solely from ALFWorld agentic data (no general reasoning training data).<br />
+Method<br />
+MATH-500<br />
+GPQA-Diamond<br />
+Prompt w/o CoT thinking<br />
+78.6<br />
+±<br />
+\pm<br />
+0.33<br />
+42.93<br />
+±<br />
+\pm<br />
+1.09<br />
+Prompt w/ CoT thinking<br />
+86.93<br />
+±<br />
+\pm<br />
+0.74<br />
+51.52<br />
+±<br />
+\pm<br />
+1.89<br />
+Imitation Learning<br />
+87<br />
+±<br />
+\pm<br />
+0.33<br />
+44.61<br />
+±<br />
+\pm<br />
+0.95<br />
+Early Experience (Self-Reflection)<br />
+86.86<br />
+±<br />
+\pm<br />
+0.25<br />
+51.85<br />
+±<br />
+\pm<br />
+0.63<br />
+RL<br />
+87.07<br />
+±<br />
+\pm<br />
+0.77<br />
+52.36<br />
+±<br />
+\pm<br />
+1.32<br />
+ACT<br />
+87.73<br />
+±<br />
+\pm<br />
+0.19<br />
+53.37<br />
+±<br />
+\pm<br />
+0.63<br />
+As shown in<br />
+table<br />
+˜<br />
+3<br />
+, the training paradigms exhibit different effects on general reasoning. IL and Early Experience, both based on next-token prediction, fail to improve general reasoning through agentic training. On MATH-500, both maintain performance comparable to the original model. On GPQA-Diamond, IL degrades performance by 6.91pp compared to the CoT prompting baseline (44.61% vs. 51.52%), while Early Experience only recovers to the baseline level (51.85%). This indicates that next-token prediction approaches, even when enriched with self-reflection data, do not transfer agentic training to general reasoning.<br />
+RL roughly preserves the original model’s performance on both benchmarks. ACT achieves the highest scores on both MATH-500 and GPQA-Diamond despite being trained exclusively on agentic data. On GPQA-Diamond, ACT improves over the CoT prompting baseline by 1.85pp (53.37% vs. 51.52%), while IL degrades it by 6.91pp. ACT not only avoids the catastrophic forgetting observed in IL but improves upon the original model. This result indicates that RL in agentic environments, when combined with the ACT objective, can serve as a viable pathway for enhancing general reasoning capabilities. A detailed case study of IL’s<br />
+reasoning collapse<br />
+is provided in<br />
+appendix<br />
+˜<br />
+C<br />
+.<br />
+GPQA-Diamond #12: Pion Decay Kinetic Energy<br />
+Find the kinetic energy of product particles in<br />
+π<br />
++<br />
+→<br />
+μ<br />
++<br />
++<br />
+ν<br />
+\pi^{+}\to\mu^{+}+\nu<br />
+, where<br />
+π<br />
++<br />
+\pi^{+}<br />
+is stationary. Rest mass of<br />
+π<br />
++<br />
+\pi^{+}<br />
+and<br />
+μ<br />
++<br />
+\mu^{+}<br />
+is 139.6 MeV and 105.7 MeV respectively.<br />
+Options: (A)<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+4.12<br />
+KE</em>{\mu}=4.12<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+29.8<br />
+KE_{\nu}=29.8<br />
+MeV    (B)<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+7.2<br />
+KE_{\mu}=7.2<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+32.8<br />
+KE_{\nu}=32.8<br />
+MeV    (C)<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+3.52<br />
+KE_{\mu}=3.52<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+20.8<br />
+KE_{\nu}=20.8<br />
+MeV    (D)<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+2.84<br />
+KE_{\mu}=2.84<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+26.8<br />
+KE_{\nu}=26.8<br />
+MeV<br />
+ACT Reasoning Trace: Self-Verification (Correct ✓)<br />
+[…derives kinetic energies via conservation of energy and momentum…]<br />
+Verification of each option against energy conservation (<br />
+E<br />
+total<br />
+=<br />
+139.6<br />
+E_{\text{total}}=139.6<br />
+MeV):<br />
+Option C:<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+3.52<br />
+KE_{\mu}=3.52<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+20.8<br />
+KE_{\nu}=20.8<br />
+MeV. Then, total energy would be<br />
+105.7<br />
++<br />
+3.52<br />
+=<br />
+109.22<br />
+105.7+3.52=109.22<br />
+MeV for the muon. Neutrino energy is 20.8 MeV. Total energy:<br />
+109.22<br />
++<br />
+20.8<br />
+=<br />
+130.02<br />
+109.22+20.8=130.02<br />
+MeV.<br />
+Which is less than 139.6. So that’s not possible.<br />
+Option D:<br />
+K<br />
+​<br />
+E<br />
+μ<br />
+=<br />
+2.84<br />
+KE_{\mu}=2.84<br />
+MeV,<br />
+K<br />
+​<br />
+E<br />
+ν<br />
+=<br />
+26.8<br />
+KE_{\nu}=26.8<br />
+MeV. Total energy:<br />
+105.7<br />
++<br />
+2.84<br />
+=<br />
+108.54<br />
+105.7+2.84=108.54<br />
+MeV for muon. Neutrino energy is 26.8 MeV. Total energy is<br />
+108.54<br />
++<br />
+26.8<br />
+=<br />
+135.34<br />
+108.54+26.8=135.34<br />
+MeV.<br />
+Still less than 139.6.<br />
+So, only option A gives the total energy matching. Therefore, the correct answer is A.<br />
+Answer: A<br />
+✓<br />
+Figure 4<br />
+:<br />
+Self-verification behavior observed in ACT on GPQA-Diamond. After deriving the kinetic energies, the ACT model substitutes each answer option back into the energy conservation equation, eliminating inconsistent options.<br />
+Case study: self-verification behavior.<br />
+To illustrate how ACT may improve general reasoning, we examine reasoning traces on GPQA-Diamond. We observe that on certain difficult problems, ACT exhibits<br />
+self-verification<br />
+behavior: after performing an initial derivation, the model checks its answer by substituting back into the original equations.<br />
+Figure<br />
+˜<br />
+4<br />
+shows one such example on a particle physics problem: after deriving the kinetic energies, the ACT model substitutes each answer option back into the energy conservation equation to verify consistency, systematically eliminating incorrect options. The base model performs the initial derivation but does not systematically verify against all options. This “check your work” pattern is consistent with ACT’s training objective, which requires the model to evaluate and compare candidate actions.<br />
+5<br />
+Conclusion<br />
+We introduced ACT, which trains LLM agents to reason about action quality by contrasting expert and self-generated actions via RL. Unlike approaches that imitate pre-generated self-reflection text via next-token prediction, ACT produces autonomous critical reasoning through RL. Across three benchmarks, ACT consistently improves both IL and RL, and outperforms prior approaches, achieving the highest performance across all benchmarks. ACT also enables strong out-of-distribution generalization on agentic benchmarks. Furthermore, on general reasoning benchmarks (GPQA-Diamond and MATH-500), where other training methods degrade or fail to improve reasoning, ACT achieves notable improvements without any reasoning-specific training data, indicating the potential of agentic RL environments for improving general reasoning.<br />
+Acknowledgements<br />
+Liu, Liu, Ho, Chakraborty, Wang, and Huang are supported by DARPA Transfer from Imprecise and Abstract Models to Autonomous Technologies (TIAMAT) 80321, DARPA HR001124S0029-AIQ-FP-019, DOD-AFOSR-Air Force Office of Scientific Research under award number FA9550-23-1-0048, National Science Foundation TRAILS Institute (2229885). Private support was provided by Peraton and Open Philanthropy. The Authors acknowledge the National Artificial Intelligence Research Resource (NAIRR) Pilot for contributing to this research result.<br />
+References<br />
+Appendix A<br />
+Experimental Details<br />
+A.1<br />
+Training Formulation and Algorithm<br />
+Reward Function Design.<br />
+Our composite reward function consists of three components. Given a full generated response<br />
+y<br />
+y<br />
+for state<br />
+s<br />
+s<br />
+, we first extract the action span inside the<br />
+<action>...</action><br />
+tags and denote the extracted action by<br />
+a<br />
+=<br />
+extract<br />
+​<br />
+(<br />
+y<br />
+)<br />
+a=\mathrm{extract}(y)<br />
+. The semantic rewards are applied to the extracted action<br />
+a<br />
+a<br />
+, while the format reward is applied to the full response<br />
+y<br />
+y<br />
+:<br />
+R<br />
+​<br />
+(<br />
+s<br />
+,<br />
+y<br />
+)<br />
+=<br />
+R<br />
+acc<br />
+​<br />
+(<br />
+a<br />
+,<br />
+a<br />
++<br />
+)<br />
++<br />
+R<br />
+adm<br />
+​<br />
+(<br />
+a<br />
+,<br />
+𝒜<br />
+admissible<br />
+)<br />
++<br />
+R<br />
+fmt<br />
+​<br />
+(<br />
+y<br />
+)<br />
+.<br />
+R(s,y)=R_{\text{acc}}(a,a^{+})+R_{\text{adm}}(a,\mathcal{A}<em>{\text{admissible}})+R</em>{\text{fmt}}(y).<br />
+(3)<br />
+If the response does not contain a valid tagged action span, we set<br />
+a<br />
+=<br />
+∅<br />
+a=\emptyset<br />
+, so the response receives zero semantic reward and only the format penalty applies.<br />
+The<br />
+accuracy reward<br />
+measures exact match between the extracted action and the expert action:<br />
+R<br />
+acc<br />
+​<br />
+(<br />
+a<br />
+,<br />
+a<br />
++<br />
+)<br />
+=<br />
+{<br />
+1.0<br />
+if<br />
+normalize<br />
+​<br />
+(<br />
+a<br />
+)<br />
+=<br />
+normalize<br />
+​<br />
+(<br />
+a<br />
++<br />
+)<br />
+0.0<br />
+otherwise<br />
+R_{\text{acc}}(a,a^{+})=\begin{cases}1.0&amp;\text{if }\text{normalize}(a)=\text{normalize}(a^{+})\<br />
+0.0&amp;\text{otherwise}\end{cases}<br />
+(4)<br />
+The<br />
+admissible action reward<br />
+provides partial credit for extracted actions that are valid but suboptimal in environments with defined action spaces:<br />
+R<br />
+adm<br />
+​<br />
+(<br />
+a<br />
+,<br />
+𝒜<br />
+admissible<br />
+)<br />
+=<br />
+{<br />
+0.1<br />
+if<br />
+​<br />
+a<br />
+≠<br />
+a<br />
++<br />
+∧<br />
+a<br />
+∈<br />
+𝒜<br />
+admissible<br />
+0.0<br />
+otherwise<br />
+R_{\text{adm}}(a,\mathcal{A}<em>{\text{admissible}})=\begin{cases}0.1&amp;\text{if }a\neq a^{+}\land a\in\mathcal{A}</em>{\text{admissible}}\<br />
+0.0&amp;\text{otherwise}\end{cases}<br />
+(5)<br />
+For WebShop RL Action Training, the action space includes open-ended search queries (e.g.,<br />
+search[...]<br />
+) that cannot be enumerated, so<br />
+R<br />
+adm<br />
+R_{\text{adm}}<br />
+is disabled and only<br />
+R<br />
+acc<br />
+R_{\text{acc}}<br />
+and<br />
+R<br />
+fmt<br />
+R_{\text{fmt}}<br />
+are used.<br />
+The<br />
+format reward<br />
+penalizes full responses that lack proper action tags:<br />
+R<br />
+fmt<br />
+​<br />
+(<br />
+y<br />
+)<br />
+=<br />
+{<br />
+0.0<br />
+if action tags present<br />
+−<br />
+0.5<br />
+otherwise<br />
+R_{\text{fmt}}(y)=\begin{cases}0.0&amp;\text{if action tags present}\<br />
+-0.5&amp;\text{otherwise}\end{cases}<br />
+(6)<br />
+GRPO Algorithm.<br />
+Both stages of our training pipeline use Group Relative Policy Optimization (GRPO)<br />
+(<br />
+shao2024deepseekmath<br />
+)<br />
+, a variant of proximal policy optimization<br />
+(<br />
+schulman2017proximal<br />
+)<br />
+that eliminates the need for a learned value function by estimating advantages from group-level reward statistics. Given a prompt (state)<br />
+s<br />
+s<br />
+, GRPO samples a group of<br />
+G<br />
+G<br />
+responses<br />
+{<br />
+y<br />
+(<br />
+1<br />
+)<br />
+,<br />
+y<br />
+(<br />
+2<br />
+)<br />
+,<br />
+…<br />
+,<br />
+y<br />
+(<br />
+G<br />
+)<br />
+}<br />
+{y^{(1)},y^{(2)},\ldots,y^{(G)}}<br />
+from the current policy<br />
+π<br />
+θ<br />
+\pi_{\theta}<br />
+. Each response receives a reward<br />
+r<br />
+(<br />
+g<br />
+)<br />
+=<br />
+R<br />
+​<br />
+(<br />
+s<br />
+,<br />
+y<br />
+(<br />
+g<br />
+)<br />
+)<br />
+r^{(g)}=R(s,y^{(g)})<br />
+, and the advantage for each response is computed relative to the group statistics:<br />
+A<br />
+^<br />
+(<br />
+g<br />
+)<br />
+=<br />
+r<br />
+(<br />
+g<br />
+)<br />
+−<br />
+r<br />
+¯<br />
+σ<br />
+r<br />
++<br />
+ϵ<br />
+,<br />
+\hat{A}^{(g)}=\frac{r^{(g)}-\bar{r}}{\sigma_{r}+\epsilon},<br />
+(7)<br />
+where<br />
+r<br />
+¯<br />
+=<br />
+1<br />
+G<br />
+​<br />
+∑<br />
+g<br />
+=<br />
+1<br />
+G<br />
+r<br />
+(<br />
+g<br />
+)<br />
+\bar{r}=\frac{1}{G}\sum_{g=1}^{G}r^{(g)}<br />
+is the group mean reward,<br />
+σ<br />
+r<br />
+=<br />
+1<br />
+G<br />
+​<br />
+∑<br />
+g<br />
+=<br />
+1<br />
+G<br />
+(<br />
+r<br />
+(<br />
+g<br />
+)<br />
+−<br />
+r<br />
+¯<br />
+)<br />
+2<br />
+\sigma_{r}=\sqrt{\frac{1}{G}\sum_{g=1}^{G}(r^{(g)}-\bar{r})^{2}}<br />
+is the group standard deviation, and<br />
+ϵ<br />
+\epsilon<br />
+is a small constant for numerical stability. The GRPO objective combines the policy gradient with KL regularization:<br />
+ℒ<br />
+GRPO<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\displaystyle\mathcal{L}<em>{\text{GRPO}}(\theta)<br />
+=<br />
+−<br />
+𝔼<br />
+s<br />
+∼<br />
+𝒟<br />
+𝔼<br />
+y<br />
+(<br />
+g<br />
+)<br />
+∼<br />
+π<br />
+θ<br />
+(<br />
+⋅<br />
+|<br />
+s<br />
+)<br />
+[<br />
+min<br />
+(<br />
+ρ<br />
+(<br />
+g<br />
+)<br />
+A<br />
+^<br />
+(<br />
+g<br />
+)<br />
+,<br />
+\displaystyle=-\mathbb{E}</em>{s\sim\mathcal{D}}\mathbb{E}<em>{y^{(g)}\sim\pi</em>{\theta}(\cdot|s)}\bigg[\min\Big(\rho^{(g)}\hat{A}^{(g)},<br />
+clip<br />
+(<br />
+ρ<br />
+(<br />
+g<br />
+)<br />
+,<br />
+1<br />
+−<br />
+ϵ<br />
+c<br />
+,<br />
+1<br />
++<br />
+ϵ<br />
+c<br />
+)<br />
+A<br />
+^<br />
+(<br />
+g<br />
+)<br />
+)<br />
+]<br />
+\displaystyle\quad\text{clip}(\rho^{(g)},1-\epsilon_{c},1+\epsilon_{c})\hat{A}^{(g)}\Big)\bigg]<br />
++<br />
+β<br />
+⋅<br />
+D<br />
+KL<br />
+​<br />
+(<br />
+π<br />
+θ<br />
+∥<br />
+π<br />
+ref<br />
+)<br />
+,<br />
+\displaystyle\quad+\beta\cdot D_{\text{KL}}(\pi_{\theta}|\pi_{\text{ref}}),<br />
+(8)<br />
+where<br />
+ρ<br />
+(<br />
+g<br />
+)<br />
+=<br />
+π<br />
+θ<br />
+​<br />
+(<br />
+y<br />
+(<br />
+g<br />
+)<br />
+|<br />
+s<br />
+)<br />
+π<br />
+θ<br />
+old<br />
+​<br />
+(<br />
+y<br />
+(<br />
+g<br />
+)<br />
+|<br />
+s<br />
+)<br />
+\rho^{(g)}=\frac{\pi_{\theta}(y^{(g)}|s)}{\pi_{\theta_{\text{old}}}(y^{(g)}|s)}<br />
+is the importance sampling ratio,<br />
+ϵ<br />
+c<br />
+\epsilon_{c}<br />
+is the clipping threshold,<br />
+β<br />
+\beta<br />
+is the KL penalty coefficient, and<br />
+π<br />
+ref<br />
+\pi_{\text{ref}}<br />
+is the reference policy.<br />
+Training Algorithm.<br />
+Algorithm<br />
+˜<br />
+1<br />
+summarizes the complete ACT procedure. The algorithm consists of two phases: data collection, where we construct the ACT dataset by sampling alternatives from the initial policy, and GRPO training, where we optimize the policy using verifiable rewards based on action correctness.<br />
+Algorithm 1<br />
+ACT with GRPO<br />
+Input:<br />
+Expert dataset<br />
+𝒟<br />
+expert<br />
+\mathcal{D}<em>{\text{expert}}<br />
+, initial policy<br />
+π<br />
+θ<br />
+0<br />
+\pi</em>{\theta_{0}}<br />
+, number of candidate samples<br />
+K<br />
+K<br />
+, group size<br />
+G<br />
+G<br />
+Output:<br />
+Trained policy<br />
+π<br />
+θ<br />
+∗<br />
+\pi_{\theta^{*}}<br />
+//<br />
+Phase 1: Data Collection<br />
+𝒟<br />
+critic<br />
+←<br />
+∅<br />
+\mathcal{D}<em>{\text{critic}}\leftarrow\emptyset<br />
+for<br />
+each<br />
+(<br />
+s<br />
+i<br />
+,<br />
+a<br />
+i<br />
++<br />
+)<br />
+∈<br />
+𝒟<br />
+expert<br />
+(s</em>{i},a_{i}^{+})\in\mathcal{D}<em>{\text{expert}}<br />
+do<br />
+Sample<br />
+{<br />
+a<br />
+i<br />
+1<br />
+,<br />
+…<br />
+,<br />
+a<br />
+i<br />
+K<br />
+}<br />
+∼<br />
+π<br />
+θ<br />
+0<br />
+(<br />
+⋅<br />
+|<br />
+s<br />
+i<br />
+)<br />
+{a</em>{i}^{1},\ldots,a_{i}^{K}}\sim\pi_{\theta_{0}}(\cdot|s_{i})<br />
+𝒜<br />
+i<br />
+neg<br />
+←<br />
+{<br />
+a<br />
+i<br />
+j<br />
+:<br />
+a<br />
+i<br />
+j<br />
+≠<br />
+a<br />
+i<br />
++<br />
+}<br />
+\mathcal{A}<em>{i}^{\text{neg}}\leftarrow{a</em>{i}^{j}:a_{i}^{j}\neq a_{i}^{+}}<br />
+if<br />
+|<br />
+𝒜<br />
+i<br />
+neg<br />
+|</p>
+<blockquote>
+<p>0<br />
+|\mathcal{A}<em>{i}^{\text{neg}}|&gt;0<br />
+then<br />
+for<br />
+each<br />
+a<br />
+i<br />
+−<br />
+∈<br />
+𝒜<br />
+i<br />
+neg<br />
+a</em>{i}^{-}\in\mathcal{A}<em>{i}^{\text{neg}}<br />
+do<br />
+𝒟<br />
+critic<br />
+←<br />
+𝒟<br />
+critic<br />
+∪<br />
+{<br />
+(<br />
+s<br />
+i<br />
+,<br />
+a<br />
+i<br />
++<br />
+,<br />
+a<br />
+i<br />
+−<br />
+)<br />
+}<br />
+\mathcal{D}</em>{\text{critic}}\leftarrow\mathcal{D}<em>{\text{critic}}\cup{(s</em>{i},a_{i}^{+},a_{i}^{-})}<br />
+end<br />
+for<br />
+end<br />
+if<br />
+end<br />
+for<br />
+//<br />
+Phase 2: GRPO Training<br />
+Initialize<br />
+θ<br />
+←<br />
+θ<br />
+0<br />
+\theta\leftarrow\theta_{0}<br />
+,<br />
+π<br />
+ref<br />
+←<br />
+π<br />
+θ<br />
+0<br />
+\pi_{\text{ref}}\leftarrow\pi_{\theta_{0}}<br />
+for<br />
+each training iteration<br />
+do<br />
+Sample batch<br />
+ℬ<br />
+⊂<br />
+𝒟<br />
+critic<br />
+\mathcal{B}\subset\mathcal{D}<em>{\text{critic}}<br />
+for<br />
+each<br />
+(<br />
+s<br />
+,<br />
+a<br />
++<br />
+,<br />
+a<br />
+−<br />
+)<br />
+∈<br />
+ℬ<br />
+(s,a^{+},a^{-})\in\mathcal{B}<br />
+do<br />
+Construct ACT prompt<br />
+p<br />
+p<br />
+with randomized positions<br />
+Sample<br />
+{<br />
+y<br />
+(<br />
+1<br />
+)<br />
+,<br />
+…<br />
+,<br />
+y<br />
+(<br />
+G<br />
+)<br />
+}<br />
+∼<br />
+π<br />
+θ<br />
+(<br />
+⋅<br />
+|<br />
+p<br />
+)<br />
+{y^{(1)},\ldots,y^{(G)}}\sim\pi</em>{\theta}(\cdot|p)<br />
+Compute rewards<br />
+r<br />
+(<br />
+g<br />
+)<br />
+=<br />
+R<br />
+​<br />
+(<br />
+s<br />
+,<br />
+y<br />
+(<br />
+g<br />
+)<br />
+)<br />
+r^{(g)}=R(s,y^{(g)})<br />
+via<br />
+eq.<br />
+˜<br />
+3<br />
+Compute advantages<br />
+A<br />
+^<br />
+(<br />
+g<br />
+)<br />
+\hat{A}^{(g)}<br />
+via<br />
+eq.<br />
+˜<br />
+7<br />
+end<br />
+for<br />
+Update<br />
+θ<br />
+\theta<br />
+using<br />
+∇<br />
+θ<br />
+ℒ<br />
+GRPO<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\nabla_{\theta}\mathcal{L}<em>{\text{GRPO}}(\theta)<br />
+end<br />
+for<br />
+return<br />
+π<br />
+θ<br />
+\pi</em>{\theta}<br />
+A.2<br />
+Implementation Details<br />
+We use OpenRLHF<br />
+(<br />
+hu2024openrlhf<br />
+)<br />
+for GRPO training with DeepSpeed ZeRO-3<br />
+(<br />
+rajbhandari2020zero<br />
+)<br />
+for memory efficiency. Training uses 4 NVIDIA GH200 GPUs.<br />
+Table<br />
+˜<br />
+4<br />
+lists the hyperparameters used in our experiments.<br />
+Table 4<br />
+:<br />
+Training hyperparameters used across all experiments.<br />
+Hyperparameter<br />
+Value<br />
+Base model<br />
+Qwen3-4B / Qwen3-8B<br />
+Learning rate<br />
+2<br />
+×<br />
+10<br />
+−<br />
+6<br />
+2\times 10^{-6}<br />
+LR scheduler<br />
+Cosine<br />
+Warmup ratio<br />
+0.1<br />
+Batch size<br />
+64<br />
+Group size (<br />
+G<br />
+G<br />
+)<br />
+8 (Qwen3-8B) or 16 (Qwen3-4B)<br />
+Candidate samples (<br />
+K<br />
+K<br />
+)<br />
+1<br />
+Max epochs<br />
+3<br />
+Prompt max length<br />
+4,096 tokens<br />
+Generation max length<br />
+4,096 tokens<br />
+Temperature<br />
+1.0<br />
+Top-p<br />
+0.95<br />
+KL coefficient (<br />
+β<br />
+\beta<br />
+)<br />
+0.0<br />
+Optimizer<br />
+AdamW with offload<br />
+Precision<br />
+BF16<br />
+A.3<br />
+Data Statistics<br />
+Table<br />
+˜<br />
+5<br />
+summarizes the dataset statistics across all benchmarks. Each training sample corresponds to a single expert state-action pair extracted from successful trajectories. All methods (IL, RL, ACT, and their combinations) are trained on the same set of pairs to ensure a fair comparison. For ScienceWorld, due to its large action space and resource constraints, we randomly sample 10,240 state-action pairs for training (from the full set of expert trajectories) and evaluate offline next-action prediction accuracy on 10,000 test states (uniformly sampled across task types).<br />
+Table 5<br />
+:<br />
+Dataset statistics for all training. Train samples are state-action pairs.<br />
+ID<br />
+: In-Distribution,<br />
+OOD<br />
+: Out-of-Distribution.<br />
+Benchmark<br />
+Domain<br />
+Train Pairs<br />
+Task Types<br />
+Test Samples<br />
+ALFWorld<br />
+Embodied<br />
+10,240<br />
+6<br />
+140 (ID) / 134 (OOD) episodes<br />
+WebShop<br />
+Web<br />
+3,000<br />
+N/A<br />
+500 episodes<br />
+ScienceWorld<br />
+Science<br />
+10,240<br />
+30<br />
+10,000 states<br />
+A.4<br />
+Expert Trajectory Collection<br />
+For ALFWorld, expert trajectories are collected by running the model released by<br />
+fenggroup<br />
+on the ALFWorld training set. For WebShop, expert trajectories come from the official human demonstration data released with the benchmark. For ScienceWorld, expert trajectories come from the official gold trajectories released with the benchmark.<br />
+A.5<br />
+Prompt Templates<br />
+ALFWorld Prompts.<br />
+The ACT and RL prompts for ALFWorld are shown in<br />
+Figures<br />
+˜<br />
+5<br />
+and<br />
+6<br />
+, respectively.<br />
+ACT Prompt (ALFWorld)<br />
+You are an expert agent operating in the ALFWorld Environment.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+You need to decide which action is better for completing the task.<br />
+Output format requirements:<br />
+1. First, think about which action is better and why.<br />
+2. Then, output the chosen action content inside <action>...</action> tags.<br />
+3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.<br />
+Candidate Actions for the NEXT step:<br />
+Action 1: {action_1}<br />
+Action 2: {action_2}<br />
+Which action is better as the NEXT step? Think about why, then output the chosen action inside <action>...</action> tags.<br />
+Figure 5<br />
+:<br />
+The ACT prompt for ALFWorld. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.<br />
+RL Prompt (ALFWorld)<br />
+You are an expert agent operating in the ALFWorld Environment.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+Action format examples:<br />
+- go to {object}<br />
+- take {object} from {container}<br />
+- open/close {container}, examine {object}<br />
+- inventory, look<br />
+Now it’s your turn to take an action.<br />
+Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within <action> </action> tags.<br />
+Figure 6<br />
+:<br />
+The RL prompt for ALFWorld. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.<br />
+WebShop Prompts.<br />
+The ACT and RL prompts for WebShop are shown in<br />
+Figures<br />
+˜<br />
+7<br />
+and<br />
+8<br />
+, respectively.<br />
+ACT Prompt (WebShop)<br />
+You are an expert shopping assistant navigating an e-commerce website.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+You need to decide which action is better for completing the task.<br />
+Output format requirements:<br />
+1. First, think about which action is better and why.<br />
+2. Then, output the chosen action content inside <action>...</action> tags.<br />
+3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.<br />
+Candidate Actions for the NEXT step:<br />
+Action 1: {action_1}<br />
+Action 2: {action_2}<br />
+Which action is better as the NEXT step? Think about why, then output the chosen action inside <action>...</action> tags.<br />
+Figure 7<br />
+:<br />
+The ACT prompt for WebShop. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.<br />
+RL Prompt (WebShop)<br />
+You are an expert shopping assistant navigating an e-commerce website.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+Action format examples:<br />
+- search[{query}]<br />
+- click[{element}]<br />
+Now it’s your turn to take an action.<br />
+Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within <action> </action> tags.<br />
+Figure 8<br />
+:<br />
+The RL prompt for WebShop. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.<br />
+ScienceWorld Prompts.<br />
+The ACT and RL prompts for ScienceWorld are shown in<br />
+Figures<br />
+˜<br />
+9<br />
+and<br />
+10<br />
+, respectively.<br />
+ACT Prompt (ScienceWorld)<br />
+You are an expert science tutor guiding a student through hands-on experiments in the ScienceWorld environment.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+You need to decide which action is better for completing the task.<br />
+Output format requirements:<br />
+1. First, think about which action is better and why.<br />
+2. Then, output the chosen action content inside <action>...</action> tags.<br />
+3. You must output the actual action text, NOT ‘Action 1’ or ‘Action 2’.<br />
+Candidate Actions for the NEXT step:<br />
+Action 1: {action_1}<br />
+Action 2: {action_2}<br />
+Which action is better as the NEXT step? Think about why, then output the chosen action inside <action>...</action> tags.<br />
+Figure 9<br />
+:<br />
+The ACT prompt for ScienceWorld. The model is presented with the full context followed by two candidate actions and is asked to select the better one with reasoning.<br />
+RL Prompt (ScienceWorld)<br />
+You are an expert science tutor guiding a student through hands-on experiments in the ScienceWorld environment.<br />
+Task: {task_description}<br />
+Prior to this step, you have already taken {n} step(s).<br />
+Below are the most recent {k} observations and actions:<br />
+{history}<br />
+You are now at step {current_step} and your current observation is:<br />
+{observation}<br />
+Your admissible actions of the current situation are:<br />
+{admissible_actions}<br />
+Action format examples:<br />
+- pick up {object}<br />
+- put {object} in {container}<br />
+- pour {object} into {container}<br />
+- open/close {object}, focus on {object}<br />
+- teleport to {location}, look around, inventory<br />
+Now it’s your turn to take an action.<br />
+Once you’ve finished your reasoning, you should choose an admissible action for current step and MUST be enclosed within <action> </action> tags.<br />
+Figure 10<br />
+:<br />
+The RL prompt for ScienceWorld. The model is presented with the task, history, current observation, and admissible actions, and is asked to generate the next action.<br />
+Appendix B<br />
+Additional Case Study: Agentic Task Performance<br />
+In the main text (<br />
+Figure<br />
+˜<br />
+3<br />
+), we showed how ACT enables failure recovery on ALFWorld through self-critique. Here we provide an additional case study on WebShop, illustrating another failure mode of IL: rigid execution without state awareness.<br />
+B.1<br />
+Rigid Execution Without State Awareness<br />
+IL trains agents to replicate expert trajectories as fixed action sequences. When the environment state deviates from what was seen during training, IL models lack the internal mechanism to detect the mismatch and adjust.<br />
+Figure<br />
+˜<br />
+11<br />
+illustrates this on a WebShop task: the user requests men’s shirts with specific attributes<br />
+priced below $50<br />
+. The IL model follows a rigid script (search<br />
+→<br />
+\to<br />
+click item<br />
+→<br />
+\to<br />
+select attributes<br />
+→<br />
+\to<br />
+buy), executing each step without checking whether the item actually satisfies the constraints. It clicks “Buy Now” on a $55 item, violating the price requirement and receiving a score of 0.<br />
+ACT addresses this by training the model to evaluate candidate actions against the current state. Through critical training, the model internalizes an awareness of whether its current state (e.g., the product page) matches the goal constraints, enabling it to back out and search again rather than blindly proceeding.<br />
+WebShop Task<br />
+Find me wash cold, machine wash men’s shirts with polyester heathers, heathers cotton… and<br />
+price lower than 50.00 dollars<br />
+.<br />
+IL Trajectory (Score: 0.0<br />
+×<br />
+\times<br />
+)<br />
+Step 1:<br />
+search[men’s shirts polyester heathers]<br />
+Step 2:<br />
+click[B07XJD…]<br />
+Observation:<br />
+Price: $55.00<br />
+(exceeds $50 budget)<br />
+Step 3:<br />
+click[black]<br />
+Step 4:<br />
+click[small]<br />
+Step 5:<br />
+click[Buy Now]<br />
+←<br />
+\leftarrow<br />
+buys item despite constraint violation<br />
+Figure 11<br />
+:<br />
+Rigid execution on WebShop. The IL model follows a scripted sequence (search<br />
+→<br />
+\to<br />
+click<br />
+→<br />
+\to<br />
+buy) without checking whether the item satisfies the price constraint ($55</p>
+<p>$50 budget), resulting in a failed purchase.<br />
+Appendix C<br />
+Additional Case Study: Why ACT Improves General Reasoning<br />
+In the main text (<br />
+Figure<br />
+˜<br />
+4<br />
+), we showed self-verification behavior observed in ACT on GPQA-Diamond. Here we provide additional case studies analyzing IL’s<br />
+reasoning collapse<br />
+on general reasoning benchmarks, based on reasoning traces produced by ACT and IL (Qwen3-8B) on GPQA-Diamond and MATH-500.<br />
+C.1<br />
+IL Causes Reasoning Collapse<br />
+IL on agentic data fine-tunes the model on short, action-heavy expert trajectories that contain minimal extended reasoning. By imitating these behavioral patterns, the model suffers catastrophic forgetting of its deep reasoning capabilities: the chain-of-thought reasoning capacity that the original model possesses is overwritten by the short-sequence, action-centric distribution of agentic data. We term this<br />
+reasoning collapse<br />
+, which explains the sharp drop in GPQA-Diamond performance observed in<br />
+table<br />
+˜<br />
+3<br />
+. Reasoning collapse manifests in two characteristic ways.<br />
+Unfocused meandering.<br />
+Even when the IL model does produce reasoning traces, the quality of reasoning degrades significantly.<br />
+Figure<br />
+˜<br />
+12<br />
+shows a high-energy physics problem (GPQA #7) about gamma-ray annihilation with CMB photons. ACT produces a focused 10,669-character derivation that methodically sets up the threshold energy condition and arrives at the correct answer. The IL model, by contrast, generates a 37,924-character trace, 3.5<br />
+×<br />
+\times<br />
+longer, yet wanders through vague recollections and contradictory estimates, ultimately conceding “given the time I’ve spent and the lack of progress” before guessing incorrectly. The reasoning capacity has not disappeared entirely but has become diffuse and ineffective.<br />
+GPQA-Diamond #7: Gamma-Ray CMB Annihilation Threshold<br />
+The universe is filled with the Cosmic Microwave Background. Consider the annihilation of high-energy<br />
+γ<br />
+\gamma<br />
+-rays with a CMB photon into electron-positron pairs, i.e.,<br />
+γ<br />
+​<br />
+γ<br />
+→<br />
+e<br />
++<br />
+​<br />
+e<br />
+−<br />
+\gamma\gamma\rightarrow e^{+}e^{-}<br />
+. Find the energy of<br />
+γ<br />
+\gamma<br />
+-rays whose lifetimes are limited by this process. The average energy of a CMB photon is<br />
+10<br />
+−<br />
+3<br />
+10^{-3}<br />
+eV.<br />
+ACT Reasoning Trace (Correct ✓)<br />
+For<br />
+γ<br />
+​<br />
+γ<br />
+→<br />
+e<br />
++<br />
+​<br />
+e<br />
+−<br />
+\gamma\gamma\to e^{+}e^{-}<br />
+, the total energy must be at least<br />
+2<br />
+​<br />
+m<br />
+e<br />
+​<br />
+c<br />
+2<br />
+2m_{e}c^{2}<br />
+. For a head-on collision, the threshold condition is<br />
+E<br />
+γ<br />
+⋅<br />
+E<br />
+CMB<br />
+≥<br />
+(<br />
+m<br />
+e<br />
+​<br />
+c<br />
+2<br />
+)<br />
+2<br />
+E_{\gamma}\cdot E_{\text{CMB}}\geq(m_{e}c^{2})^{2}<br />
+. […] So<br />
+E<br />
+γ<br />
+≥<br />
+(<br />
+0.511<br />
+​<br />
+MeV<br />
+)<br />
+2<br />
+/<br />
+(<br />
+10<br />
+−<br />
+3<br />
+​<br />
+eV<br />
+)<br />
+=<br />
+2.61<br />
+×<br />
+10<br />
+14<br />
+​<br />
+eV<br />
+≈<br />
+2.6<br />
+×<br />
+10<br />
+5<br />
+E_{\gamma}\geq(0.511\text{ MeV})^{2}/(10^{-3}\text{ eV})=2.61\times 10^{14}\text{ eV}\approx 2.6\times 10^{5}<br />
+GeV. The gamma rays with energy just above the threshold would have their lifetimes limited by this process. Therefore, the answer is the threshold energy.<br />
+Answer: C (<br />
+2.6<br />
+×<br />
+10<br />
+5<br />
+2.6\times 10^{5}<br />
+GeV)<br />
+✓   (10,669 chars)<br />
+IL Reasoning Trace (Wrong<br />
+×<br />
+\times<br />
+)<br />
+[…after 37,924 characters of unfocused derivation…]<br />
+However, I recall that the energy at which gamma rays can interact with CMB photons to produce<br />
+e<br />
++<br />
+​<br />
+e<br />
+−<br />
+e^{+}e^{-}<br />
+pairs is approximately<br />
+10<br />
+4<br />
+10^{4}<br />
+GeV. […] Given that, the answer is likely option B or C. But I’m not certain. […]<br />
+Given the time I’ve spent and the lack of progress, I’ll go with option B:<br />
+1.8<br />
+×<br />
+10<br />
+5<br />
+1.8\times 10^{5}<br />
+GeV.<br />
+Answer: B (<br />
+1.8<br />
+×<br />
+10<br />
+5<br />
+1.8\times 10^{5}<br />
+GeV)<br />
+×<br />
+\times<br />
+(37,924 chars)<br />
+Figure 12<br />
+:<br />
+Reasoning collapse: unfocused meandering. On a high-energy physics threshold problem, ACT produces a focused derivation (10K chars), while IL generates 3.5<br />
+×<br />
+\times<br />
+more text (38K chars) yet wanders through vague recollections and contradictory estimates, ultimately guessing incorrectly.<br />
+Algebraic death loops.<br />
+On MATH-500 problems requiring sustained mathematical derivation, the IL model enters repetitive algebraic loops, producing traces exceeding 80,000 characters without reaching a correct conclusion.<br />
+Figure<br />
+˜<br />
+13<br />
+shows a probability problem (MATH-500 #445): ACT recognizes the geometric structure and cleanly derives the answer, while the IL model enters a prolonged algebraic spiral, repeatedly second-guesses itself, and ultimately produces an incorrect answer.<br />
+MATH-500 #445: Rectangle Probability<br />
+Rectangle<br />
+A<br />
+​<br />
+B<br />
+​<br />
+C<br />
+​<br />
+D<br />
+ABCD<br />
+has center<br />
+O<br />
+O<br />
+and<br />
+A<br />
+​<br />
+B<br />
+/<br />
+A<br />
+​<br />
+D<br />
+=<br />
+k<br />
+AB/AD=k<br />
+. A point is randomly chosen from the interior of<br />
+A<br />
+​<br />
+B<br />
+​<br />
+C<br />
+​<br />
+D<br />
+ABCD<br />
+. What is the probability that it is closer to<br />
+O<br />
+O<br />
+than to any of the four vertices?<br />
+ACT Reasoning Trace (Correct ✓)<br />
+The set of points closer to<br />
+O<br />
+O<br />
+than to any vertex is the intersection of the four half-planes defined by the perpendicular bisectors between<br />
+O<br />
+O<br />
+and each vertex. These bisectors form a rectangle rotated by<br />
+45<br />
+∘<br />
+45^{\circ}<br />
+, whose area is half of the original rectangle. Therefore, the probability is<br />
+1<br />
+2<br />
+\frac{1}{2}<br />
+regardless of<br />
+k<br />
+k<br />
+. […]<br />
+I’ve verified for<br />
+k<br />
+=<br />
+1<br />
+k=1<br />
+(square case) and general<br />
+k<br />
+k<br />
+: all methods confirm that the probability is<br />
+1<br />
+2<br />
+\frac{1}{2}<br />
+.<br />
+Answer:<br />
+1<br />
+2<br />
+\frac{1}{2}<br />
+✓   (42,641 chars of reasoning)<br />
+IL Reasoning Trace (Wrong<br />
+×<br />
+\times<br />
+)<br />
+[…after 80,000+ characters of algebraic manipulation…]<br />
+Given that I’m stuck, I’ll refer back to the initial correct calculation for<br />
+k<br />
+=<br />
+1<br />
+k=1<br />
+, which gave the area as 2, and the probability as<br />
+1<br />
+2<br />
+\frac{1}{2}<br />
+. For general<br />
+k<br />
+k<br />
+, if the area is<br />
+(<br />
+k<br />
+2<br />
++<br />
+1<br />
+)<br />
+2<br />
+/<br />
+(<br />
+2<br />
+​<br />
+k<br />
+)<br />
+(k^{2}+1)^{2}/(2k)<br />
+when it is inside the rectangle, but for<br />
+k<br />
+&lt;<br />
+1<br />
+k&lt;1<br />
+, it is clipped. However, I cannot proceed further.<br />
+Given the time I’ve spent, I will conclude that the probability is<br />
+1<br />
+−<br />
+k<br />
+2<br />
+2<br />
+\frac{1-k^{2}}{2}<br />
+.<br />
+Answer:<br />
+1<br />
+−<br />
+k<br />
+2<br />
+2<br />
+\frac{1-k^{2}}{2}<br />
+×<br />
+\times<br />
+(80,918 chars of reasoning)<br />
+Figure 13<br />
+:<br />
+Reasoning collapse: algebraic death loop. On a probability problem, ACT cleanly identifies the geometric structure, while IL generates over 80,000 characters of circular algebraic manipulation before giving up with an incorrect answer. The IL model correctly solves the<br />
+k<br />
+=<br />
+1<br />
+k=1<br />
+special case early on but cannot generalize, endlessly rederiving and contradicting its own intermediate results.<br />
 ACT avoids reasoning collapse because it optimizes for outcome correctness via RL rather than imitating behavioral patterns. Since the RL training signal rewards correct critical judgments regardless of response format or length, ACT not only acquires agentic skills but also fully preserves and even strengthens the original model’s deep reasoning capacity, compared to IL, which tends to overwrite general reasoning capabilities with domain-specific action patterns through supervised fine-tuning on short, action-centric sequences.</p>
+</blockquote>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">

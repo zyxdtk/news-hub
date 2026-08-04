@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,2466 +183,2467 @@
         </div>
         
         <div class="fulltext-content">
-<p>ClawGym: A Scalable Framework for Building Effective Claw Agents
-Fei Bai
-1*
-Huatong Song
-1*
-Shuang Sun
-1*
-Daixuan Cheng
-1
-Yike Yang
-1
-Chuan Hao
-2
-Renyuan Li
-2
-Feng Chang
-2
-Yuan Wei
-2
-Ran Tao
-2
-Bryan Dai
-2
-Jian Yang
-3
-Wayne Xin Zhao
-1
-†
-\dagger
-1
-Gaoling School of Artificial Intelligence
-Renmin University of China
-2
-IQuest Research
-3
-Beihang University
-*
-Equal contributors alphabetically ordered
-†
-\dagger
-Corresponding Author
-Email:
-{feibai,songhuatong123,sunshuang}@ruc.edu.cn
-,
-batmanfly@gmail.com
-Abstract
-Claw-style environments support multi-step workflows over local files, tools, and persistent workspace states. However, scalable development around these environments remains constrained by the absence of a systematic framework, especially one for synthesizing verifiable training data and integrating it with agent training and diagnostic evaluation.
-To address this challenge, we present
-ClawGym
-, a scalable framework that supports the full lifecycle of Claw-style personal agent development.
-Concretely, we construct
-ClawGym-SynData
-, a diverse dataset of 13.5K filtered tasks synthesized from persona-driven intents and skill-grounded operations, paired with realistic mock workspaces and hybrid verification mechanisms.
-We then train a family of capable Claw-style models, termed
-ClawGym-Agents
-, through supervised fine-tuning on black-box rollout trajectories, and further explore reinforcement learning via a lightweight pipeline that parallelizes rollouts across per-task sandboxes.
-To support reliable evaluation, we further construct
-ClawGym-Bench
-, a benchmark of 200 instances calibrated through automated filtering and human-LLM review.
-Relevant resources will be soon released at
-https://github.com/ClawGym
-.
-1
-Introduction
-Recent advancements in autonomous agent frameworks, such as OpenClaw
-[
-openclaw2026
-]
-, have fundamentally reshaped how AI integrates with daily digital life and are increasingly used to tackle real-world tasks. Unlike traditional chatbots confined to isolated dialog boxes
-[
-zhu2025evolutionary
-]
-, these systems are deployed directly within users’ computer environments
-[
-cheng2026computerenvironmentselicitgeneral
-]
-, where they can invoke tools, manage local file systems, and interact with rich web-enabled services.
-This paradigm bridges the gap between machine intelligence and digital execution, sparking a new wave of applications in which users “raise” digital agents to perform concrete, multi-step tasks in their real-world daily workflows
-[
-ma2026skillclaw
-]
-.
-Despite the impressive capabilities of OpenClaw and similar systems
-[
-qwenpaw2026
-,
-nanobot2026
-]
-, autonomous agents still struggle to reliably handle many everyday digital tasks, even when powered by the most advanced large language models (LLMs)
-[
-zhao2023survey
-]
-.
-This limitation becomes even more pronounced for less capable LLMs, which often fail to follow multi-step instructions, select appropriate tools, or recover from execution errors in the OpenClaw environment.
-The gap reflects the distinctive nature of Claw-style tasks.
-Unlike static text-based reasoning tasks such as AIME
-[
-aime2026
-]
-, which are well specified and solvable through pure reasoning
-[
-bai2025effectivecodeintegratedreasoning
-]
-, Claw-style tasks are grounded in local workspace states, requiring agents to reason over existing artifacts, execute tools, and update the workspace through multi-step interactions.
-They also differ from conventional agentic benchmarks such as SWE-Bench-Verified
-[
-sweb-verified
-]
-and BrowseComp
-[
-wei2025browsecomp
-]
-, which typically provide more structured and observable agent loops or environments
-[
-sun2025simpledeepsearcherdeepinformationseeking
-,
-arpo
-,
-bai2025effectivecodeintegratedreasoning
-]
-.
-In Claw-style settings, agents instead operate through opaque system interfaces, where they must handle ambiguous instructions, unexpected workspace states, tool execution errors, and long-horizon dependencies across sessions.
-Accordingly, these properties call for workspace-grounded evaluation beyond static reasoning and structured agent-loop benchmarks.
-Recognizing these challenges, recent studies have sought to improve personal agents through either specialized training algorithms
-[
-clawr1-2026
-,
-xia2026metaclaw
-]
-or evaluation benchmarks
-[
-ye2026claw
-,
-Ding_WildClawBench
-]
-.
-On the training side, specialized algorithms
-[
-clawr1-2026
-,
-xia2026metaclaw
-]
-and online learning frameworks
-[
-wang2026openclawrl
-]
-have been proposed to extract supervision or feedback signals from daily user interactions, enabling agents to improve through continued use.
-On the evaluation side, dedicated benchmarks
-[
-ye2026claw
-,
-Ding_WildClawBench
-,
-meng2026clawmarklivingworldbenchmarkmultiturn
-,
-pinchbench2026
-]
-have been constructed across diverse daily tasks, providing valuable resources for assessing personal agent capabilities.
-Nevertheless, existing studies are often limited by the lack of large-scale Claw-style task data grounded in users’ workspaces. Compared with static text-based tasks and structured agent benchmarks
-[
-aime2026
-,
-sweb-verified
-,
-wei2025browsecomp
-]
-, Claw-style agent tasks introduce distinct challenges for large-scale data synthesis, driven by three key factors.
-First, they need to capture personalized requirements across different professions and routines, making it difficult to define sufficiently representative task settings that cover a broad range of realistic scenarios
-[
-patwardhan2025gdpvalevaluatingaimodel
-]
-. Second, their long-horizon nature often involves sequences of file operations, tool calls, workspace updates, and intermediate validation, which poses substantial verifiability challenges for automated assessment
-[
-sun2025scaling
-]
-. Third, their grounding in local workspaces necessitates realistic mock workspaces and task-specific artifacts that provide meaningful execution contexts
-[
-xie2024osworld
-,
-bonatti2024windows
-]
-. Given the limited availability of Claw-style task data, it remains underexplored how to develop systematic frameworks that support both agent training in Claw-style environments and broader benchmark construction. This gap hinders progress towards more capable environment-grounded agent systems.
-In light of this challenge, we propose
-ClawGym
-, a data-centric framework designed to systematically unify task synthesis, agent training, and performance evaluation for developing Claw-style personal agents. At the core of our approach lies a dual-route data synthesis strategy that generates both diverse and verifiable tasks. Specifically, the persona-driven top-down pipeline grounds tasks in high-level user personas and scenario intents, while the skill-grounded bottom-up pipeline composes multi-step workflows from concrete, executable capabilities. To ensure execution realism, we automatically instantiate workspace-grounded environments by generating task-specific mock files and auxiliary resources. We further implement a hybrid verification protocol that combines deterministic code-based checkers with qualitative rubric-based verifiers, providing robust judgment for each task.
-Following this dual-route approach, we synthesize and curate 13.5K Claw-style tasks within the OpenClaw framework.
-Collectively, these tasks constitute
-ClawGym-SynData
-, a large-scale synthesized dataset for training Claw-style agents.
-The availability of such data further enables the design of suitable agent training algorithms. Building on this synthesized task pool, we develop
-ClawGym-Agents
-, a family of agent models trained on Claw-style task data by collecting and filtering high-fidelity interaction trajectories through large-scale black-box rollouts on the OpenClaw harness, followed by supervised fine-tuning (SFT) to improve LLM performance within the OpenClaw framework. Furthermore, we explore reinforcement learning (RL) through a lightweight sandbox-parallel pipeline.
-To assess the effectiveness of our approach, we construct a reliable evaluation benchmark, termed
-ClawGym-Bench
-, by selecting discriminative tasks from ClawGym-SynData (excluding those used in the training set). This selection process adopts a rigorous pipeline that combines rollout-based difficulty calibration with LLM-assisted human review. Only samples that pass both automated assessments and human review are retained as benchmark instances, establishing a robust diagnostic platform for evaluating agent performance in Claw-style scenarios.
-When evaluating our approach on ClawGym-Bench alongside another public benchmark, PinchBench, we empirically find that smaller LLMs trained on our synthesized data achieve substantial improvements in performing OpenClaw tasks: Qwen3-8B improves by 38.90% on PinchBench and 43.46% on ClawGym-Bench. Larger LLMs also show clear gains, with Qwen3-30B-A3B improving by 54.68% on PinchBench and 25.96% on ClawGym-Bench. Beyond aggregate performance, we further conduct behavioral analyses of Claw-style agents, offering insights for future research on robust environment-grounded agent development.
-In summary, we propose ClawGym, a scalable framework that integrates data synthesis, agent training, and performance evaluation for building effective Claw agents.
-Our work aims to advance research on Claw-style agents.
-The contributions of ClawGym are threefold:
-•
-ClawGym-SynData
-:
-We release the first large-scale synthesized dataset for Claw agents, containing 13.5K executable tasks. Its automated synthesis pipeline combines persona-driven intents with skill-grounded operations, enabling scalable generation of diverse, verifiable, and claw-style training data.
-•
-ClawGym-Agents
-: We collect high-quality trajectories via black-box rollouts on OpenClaw and perform supervised fine-tuning to obtain a family of capable Claw agents; we further explore reinforcement learning via a lightweight RL pipeline with sandbox parallelism, delivering consistent gains.
-•
-ClawGym-Bench
-:
-We construct a benchmark of 200 instances across six categories for evaluating Claw agents, with reliability ensured through difficulty-aware filtering and human-LLM review. The benchmark reveals clear capability gaps among Claw agents across different model scales.
-2
-Preliminary
-In this section, we first present the task definition and then briefly introduce the framework overview.
-2.1
-Task Definition
-In our work, a Claw-style agent task is an environment-grounded instruction-execution problem. The agent is provided with a user instruction and an initial workspace, and it may utilize available computer tools within that workspace to perform work in an effort to satisfy the user’s request. Formally, a task instance is denoted as:
-τ
-=
-⟨
-p
-,
-s
-0
-,
-𝒜
-,
-ℱ
-,
-𝒱
-τ
-⟩
-,
-\tau=\langle p,s_{0},\mathcal{A},\mathcal{F},\mathcal{V}_{\tau}\rangle,
-(1)
-where
-p
-p
-is the user instruction,
-𝒜
-\mathcal{A}
-is the set of actions available to the agent,
-ℱ
-\mathcal{F}
-describes how tool execution updates the environment state, and
-𝒱
-τ
-\mathcal{V}_{\tau}
-is the task-specific verifier.
-Input.
-The input to the agent consists of two parts: the user instruction
-p
-p
-and the initial environment state
-s
-0
-s_{0}
-.
-The instruction
-p
-p
-describes the user’s goal, such as organizing files, extracting information, editing documents, generating reports, or configuring software.
-The environment state
-s
-0
-s_{0}
-provides the concrete workspace for the task.
-It may include local files and folders, web-accessible interfaces, configuration files, and other workspace artifacts.
-The agent can interact with the environment through actions from the available action space
-𝒜
-\mathcal{A}
-.
-Each action corresponds to a tool call or executable operation, such as reading a file, writing an output file, moving or deleting files, running a script, querying the system, or interacting with a web page.
-Together,
-p
-p
-,
-s
-0
-s_{0}
-, and
-𝒜
-\mathcal{A}
-specify both what the agent needs to accomplish and what operations it can use.
-Output.
-To solve the task, the agent produces a trajectory composed of
-action and observation segments:
-ξ
-=
-(
-A
-1
-,
-O
-1
-,
-A
-2
-,
-O
-2
-,
-…
-,
-A
-K
-,
-O
-K
-)
-,
-\xi=(A_{1},O_{1},A_{2},O_{2},\ldots,A_{K},O_{K}),
-(2)
-where each action segment
-A
-k
-=
-(
-a
-k
-,
-1
-,
-…
-,
-a
-k
-,
-m
-k
-)
-A_{k}=(a_{k,1},\ldots,a_{k,m_{k}})
-contains one or more consecutive executable
-actions with
-a
-k
-,
-i
-∈
-𝒜
-a_{k,i}\in\mathcal{A}
-, and each observation segment
-O
-k
-=
-(
-o
-k
-,
-1
-,
-…
-,
-o
-k
-,
-n
-k
-)
-O_{k}=(o_{k,1},\ldots,o_{k,n_{k}})
-contains one or more environment observations.
-This segment-level formulation captures non-alternating interaction patterns in
-Claw-style execution, where an agent may issue multiple tool calls before
-receiving or processing the corresponding feedback. Standard strict
-action-observation alternation is a special case where
-m
-k
-=
-n
-k
-=
-1
-m_{k}=n_{k}=1
-for all
-k
-k
-.
-Let
-(
-a
-1
-,
-…
-,
-a
-H
-)
-(a_{1},\ldots,a_{H})
-denote the flattened sequence of executable actions in
-ξ
-\xi
-, where
-H
-=
-∑
-k
-=
-1
-K
-m
-k
-H=\sum_{k=1}^{K}m_{k}
-. After each executable action, the workspace
-state may update as
-s
-t
-=
-ℱ
-​
-(
-s
-t
-−
-1
-,
-a
-t
-)
-,
-t
-=
-1
-,
-…
-,
-H
-.
-s_{t}=\mathcal{F}(s_{t-1},a_{t}),\quad t=1,\ldots,H.
-(3)
-After
-H
-H
-executable actions, the agent reaches a final environment state
-s
-H
-s_{H}
-.
-The agent may also return a natural language response
-y
-y
-, such as a completion
-confirmation, a progress summary, or an explanation of failure. However, for
-Claw-style agent tasks, the primary output is the final environment state
-s
-H
-s_{H}
-,
-rather than merely the final text response. This final state may contain newly
-created files, modified documents, reorganized directories, generated reports, or
-other persistent workspace changes.
-Verification Criteria.
-A task is considered successfully completed if the final environment state satisfies the user’s original instruction.
-Given the initial state
-s
-0
-s_{0}
-, the final state
-s
-H
-s_{H}
-, and the optional final response
-y
-y
-, the task-specific verifier assigns a score:
-v
-=
-𝒱
-τ
-​
-(
-s
-0
-,
-s
-H
-,
-y
-)
-,
-v
-∈
-[
-0
-,
-1
-]
-.
-v=\mathcal{V}_{\tau}(s_{0},s_{H},y),\quad v\in[0,1].
-(4)
-The task receives full credit when
-v
-=
-1
-v=1
-.
-In principle, a complete evaluation may also consider whether the agent’s intermediate actions are safe, efficient, and robust to errors.
-However, such trajectory-level properties are difficult to verify consistently for open-ended environment-based tasks, because different agents may complete the same task through different valid action sequences.
-Therefore, this work primarily focuses on final-state correctness, while leaving more detailed assessment of action safety, efficiency, and error recovery to future work.
-The verifier
-𝒱
-τ
-\mathcal{V}_{\tau}
-can be instantiated using code-based, rubric-based verification, or a combination of both
-[
-qwenclawbench1.1
-]
-.
-Code-based checkers examine deterministic workspace properties, such as whether required files exist, whether output schemas are valid, whether computed values are correct, and whether generated artifacts satisfy task-specific constraints.
-Rubric-based verification complements these checks by assessing qualitative aspects that are harder to capture with executable code, such as clarity, completeness, usefulness, faithfulness, and alignment with user intent.
-Example.
-Consider the instruction: “
-Find all CSV files in the project folder whose filenames contain the word ‘sales’, merge their rows into a single CSV file, add a column named ‘source_file’ indicating which file each row comes from, and save the result as ‘sales_report.csv’ in the output folder.
-”
-Here,
-p
-p
-is the user-specified task prompt,
-s
-0
-s_{0}
-contains the original project folder and available files, and
-𝒜
-\mathcal{A}
-includes file-system operations and CSV-processing tools.
-The agent must execute a trajectory
-ξ
-\xi
-that identifies the relevant CSV files, reads their contents, validates their compatible schemas, merges the rows, records the source filename for each row, and saves the final file to the required location.
-The task is successfully completed if
-𝒱
-τ
-\mathcal{V}_{\tau}
-confirms the final state
-s
-H
-s_{H}
-contains a correct ‘
-sales_report.csv
-’ file at the specified path.
-Figure 1
-:
-Overview of the ClawGym-SynData pipeline, which generates tasks from persona-driven and skill-grounded sources, prepares task resources, designs hybrid verification, filters samples through quality assessment, and constructs training and benchmark data.
-2.2
-Framework Overview
-The
-ClawGym
-framework comprises three main components. First,
-ClawGym-SynData
-provides a carefully constructed synthesized dataset of 13.5K training tasks, with an automated synthesis process that enables large-scale data generation. Second,
-ClawGym-Agents
-trains a family of Claw agents on high-quality trajectories collected from synthesized tasks through black-box rollouts using the OpenClaw harness. Third,
-ClawGym-Bench
-offers a benchmark of 200 task instances for evaluating Claw-style agents, with carefully assessed reliability. Together, these components provide a foundation for advancing research on environment-grounded instruction-execution agents.
-In what follows, we introduce ClawGym-SynData, ClawGym-Agents, and ClawGym-Bench in Sections
-3
-,
-4
-, and
-5
-, respectively.
-3
-ClawGym-SynData: Scaling Effective Task Synthesis for Claw Agents
-Our data synthesis framework is designed to generate scalable, high-quality datasets for Claw agents, addressing the lack of effective training data.
-The synthesis process consists of four main stages: 1)
-Task Generation
-, which follows two synergistic pipelines:
-persona-driven top-down synthesis
-, producing tasks grounded in diverse user scenarios, and
-skill-grounded bottom-up synthesis
-, constructing tasks by combining individual OpenClaw skills
-[
-clawhub2026
-]
-into realistic, multi-step workflows; 2)
-Resource Preparation
-, which creates lightweight auxiliary files and workspace artifacts needed to execute the tasks; 3)
-Verification Design
-, generating code-based and rubric-based checks; and 4)
-Automated Quality Assessment
-, evaluating task and verification quality. By combining these stages, ClawGym-SynData achieves both scenario diversity and execution realism, enabling the creation of datasets at a scale sufficient for large-scale training and benchmark construction while maintaining verifiable quality.
-3.1
-Task Generation
-3.1.1
-Persona-Driven Top-Down Synthesis
-Persona-driven top-down synthesis generates diverse and practical Claw agent tasks from high-level user contexts. The pipeline first creates task seeds by synthesizing personalized user profiles, scenario categories, and atomic action sets. These task seeds specify who the user is, what type of scenario the task belongs to, and what operations the agent may need to perform. An LLM then expands each task seed into a concrete, multi-step task. Here, “top-down” indicates that the task is gradually contextualized by first generating user contexts, then instantiated and enriched with details. This design emphasizes practical needs and scenario diversity while keeping the generated tasks grounded in feasible agent operations.
-Seed Formulation.
-In the first step, we construct a task seed that determines the high-level context and operational scope of a synthesized task.
-Specifically, each seed is formed by combining a user persona
-u
-∈
-𝒰
-u\in\mathcal{U}
-, a scenario category
-c
-∈
-𝒞
-c\in\mathcal{C}
-, and a set of basic operations
-𝒢
-=
-{
-g
-1
-,
-g
-2
-,
-…
-,
-g
-n
-}
-\mathcal{G}=\{g_{1},g_{2},\dots,g_{n}\}
-:
-z
-=
-(
-u
-,
-c
-,
-𝒢
-)
-.
-z=(u,c,\mathcal{G}).
-(5)
-Here,
-u
-u
-specifies the intended user background, including the user’s goals, preferences, and working context;
-c
-c
-specifies the scenario type of the task; and
-𝒢
-\mathcal{G}
-specifies the basic operations that the generated instruction should involve.
-Personas are sampled from a diverse collection of user profiles, covering different occupations, workflows, preferences, and daily needs.
-The scenario taxonomy contains 9 major classes and 43 subcategories, from which one subcategory is selected for each seed.
-The atomic-operation taxonomy contains 7 categories and 26 distinct operations, covering representative Claw-style activities such as web information retrieval, file processing, document editing, data analysis, script execution, and result reporting.
-By combining these three sources, the pipeline produces task seeds that are both diverse and operationally grounded.
-The persona and scenario category encourage realistic user-facing task intents, while the selected basic operations constrain the later generated instruction to actions that can plausibly be carried out in a Claw-style workspace.
-Seed-Guided Task Instruction Generation.
-In the second step, we instantiate a task-generation prompt template with the task seed
-z
-z
-.
-Given
-z
-=
-(
-u
-,
-c
-,
-𝒢
-)
-z=(u,c,\mathcal{G})
-, the prompt template
-π
-​
-(
-⋅
-)
-\pi(\cdot)
-is used to condition a task generator
-ℳ
-task
-\mathcal{M}_{\mathrm{task}}
-(
-i.e.,
-GPT-5) to generate the user-facing task instruction:
-p
-=
-ℳ
-task
-​
-(
-π
-​
-(
-z
-)
-)
-,
-p=\mathcal{M}_{\mathrm{task}}(\pi(z)),
-(6)
-where
-p
-p
-corresponds to the instruction component in the task definition, specifying the user’s goal, context, expected operations, and output requirements.
-This formulation reflects the top-down nature of the pipeline: the persona
-u
-u
-and scenario category
-c
-c
-determine the task direction, while the selected basic operations
-𝒢
-\mathcal{G}
-constrain the instruction to plausible workspace operations.
-Different combinations of personas, categories, and operation sets therefore produce diverse concrete user requests, which capture realistic daily workflows and are later paired with
-s
-0
-s_{0}
-and
-𝒱
-τ
-\mathcal{V}_{\tau}
-to form complete Claw-style task instances.
-3.1.2
-Skill-Grounded Bottom-Up Synthesis
-Unlike the persona-driven top-down pipeline, which starts from user contexts and scenario intentions, the skill-grounded bottom-up pipeline starts from concrete capabilities already implemented in OpenClaw skills. We collect raw skills from ClawHub
-[
-clawhub2026
-]
-, where each skill is typically organized as a directory containing files such as
-SKILL.md
-,
-README.md
-, or other usage descriptions. Each skill is treated not as a complete task, but as a reusable capability unit for constructing environment-grounded workflows. The purpose of this pipeline is to identify skills suitable for task synthesis, normalize capability descriptions, and compose them into practical task specifications. In this way, synthesized tasks are grounded in OpenClaw operations while allowing diverse user needs and scenarios to emerge from skill composition.
-Skill Annotation and Filtering.
-Given a raw skill collection
-𝒦
-=
-{
-k
-i
-}
-i
-=
-1
-N
-\mathcal{K}=\{k_{i}\}_{i=1}^{N}
-, we first use a powerful LLM (
-i.e.,
-MiniMax-M2.5) to convert each skill into a structured annotation with a skill annotator
-ℳ
-ann
-\mathcal{M}_{\mathrm{ann}}
-:
-α
-i
-=
-ℳ
-ann
-​
-(
-ρ
-​
-(
-k
-i
-)
-)
-\alpha_{i}=\mathcal{M}_{\mathrm{ann}}(\rho(k_{i}))
-,
-where
-ρ
-​
-(
-⋅
-)
-\rho(\cdot)
-is the annotation prompt, and
-α
-i
-\alpha_{i}
-summarizes the key information needed for task synthesis, including the skill’s summary, core content, usage constraints, input-output characteristics, and a binary synthesizability label
-y
-i
-∈
-{
-0
-,
-1
-}
-y_{i}\in\{0,1\}
-.
-The label
-y
-i
-=
-1
-y_{i}=1
-indicates that the skill is suitable for reliable task synthesis under our setting, while
-y
-i
-=
-0
-y_{i}=0
-indicates that it should be filtered out, for example because it depends on unavailable credentials, lacks sufficient task-relevant details, or is incompatible with the target task format.
-We then retain the synthesizable skills as:
-𝒦
-+
-=
-{
-(
-k
-i
-,
-α
-i
-)
-∣
-k
-i
-∈
-𝒦
-,
-y
-i
-=
-1
-}
-.
-\mathcal{K}^{+}=\{(k_{i},\alpha_{i})\mid k_{i}\in\mathcal{K},\ y_{i}=1\}.
-(7)
-This annotation serves two primary purposes: filtering out skills unsuitable for reliable task synthesis under our target setting and providing normalized capability descriptions for the task generator (
-i.e.,
-GPT-5). Specifically, we annotate approximately 30K raw OpenClaw skills and retain 16K synthesizable skills after filtering, which are then used for downstream task synthesis.
-Skill-Composition Task Construction.
-After filtering, we construct each task from one primary skill and a set of randomly sampled supporting skills. The primary skill defines the central capability and main objective of the task, while the supporting skills introduce auxiliary operations or contextual requirements. In our implementation, each task uses one primary skill and up to three optional supporting skills. The selected skill bundle is provided to a generation model to produce a user-facing task instruction:
-p
-=
-ℳ
-task
-​
-(
-π
-​
-(
-k
-main
-,
-𝒦
-support
-)
-)
-,
-p=\mathcal{M}_{\mathrm{task}}\big(\pi(k_{\mathrm{main}},\mathcal{K}_{\mathrm{support}})\big),
-(8)
-where
-k
-main
-k_{\mathrm{main}}
-denotes the primary skill,
-𝒦
-support
-\mathcal{K}_{\mathrm{support}}
-denotes the supporting skill set, and
-π
-​
-(
-⋅
-)
-\pi(\cdot)
-is the task-construction prompt. In this process, the task generator (
-i.e.,
-GPT-5) can condition on the original skill content together with its annotation, so that the generated instruction remains grounded in concrete operational details, usage constraints, and input-output requirements. We also support using the annotated core content instead of the raw skill document, which abstracts the skill into a more general capability and helps introduce controlled task diversity. The generated instruction describes the user request, required resources, expected behaviors, and verification targets in a unified format. Since each task is constructed from one primary skill and optional supporting skills, the generated instruction can combine a clear main objective with auxiliary operations, encouraging multi-step coordination across capabilities while remaining grounded in executable OpenClaw operations.
-3.2
-Resource Preparation
-Claw-style tasks often require concrete files to establish the initial workspace state.
-Given the synthesized instruction
-p
-p
-, resource preparation constructs the file-based component of
-s
-0
-s_{0}
-.
-Instead of relying on real user files or large external datasets, we generate lightweight mock files tailored to each task, such as documents to summarize, tables to analyze, configuration files to inspect, records to reorganize, or reference materials that constrain the expected output.
-For each instruction, we first identify its file requirements, including filenames, directory paths, formats, key fields, and content constraints.
-These requirements are represented as a resource specification:
-f
-=
-{
-(
-l
-i
-,
-t
-i
-,
-d
-i
-)
-}
-i
-=
-1
-m
-,
-f=\{(l_{i},t_{i},d_{i})\}_{i=1}^{m},
-(9)
-where
-l
-i
-l_{i}
-denotes the file path,
-t
-i
-t_{i}
-denotes the file type, and
-d
-i
-d_{i}
-denotes the file content specification. We then use an LLM-based resource generator (
-i.e.,
-GPT-5) to materialize f into concrete files and place them at the specified workspace paths.
-The generated files are designed to be task-specific and verifiable.
-For text or markdown files, the content provides the entities, constraints, and references needed by the instruction.
-For structured files such as JSON, CSV, or YAML, we generate explicit schemas, tables, fields, and values, so that later checkers can recompute required statistics or validate output consistency against the inputs.
-This controlled construction makes each task self-contained, reproducible, and consistent with its verifier, while avoiding privacy risks and uncertainty from real user files.
-3.3
-Verification Design
-After a Claw agent executes a task, a central challenge is to determine whether the task has been completed correctly.
-Unlike text-only reasoning and conventional agentic benchmarks with binary reward distributions, Claw tasks are executed in a workspace-grounded environment, where success may depend on generated files, modified artifacts, data transformations, structured outputs, or final responses.
-These requirements are heterogeneous: some can be checked deterministically, while others require qualitative judgment.
-To address this, we design a hybrid verification scheme consisting of code-based verification and rubric-based verification
-[
-pinchbench2026
-]
-.
-Code-based verification targets objective and executable requirements, such as whether required files are created, whether structured outputs follow the specified schema, or whether computed values are correct.
-Rubric-based verification complements it by assessing qualitative requirements that are difficult to formalize as deterministic checks, such as clarity, completeness and style. We use an LLM-based verifier generator (
-i.e.,
-GPT-5) to produce both the executable checkers and rubric rules for each synthesized task.
-Code-Based Verification.
-For each synthesized task, we generate an executable checker to verify objective requirements.
-These requirements are decomposed into a set of atomic verification points:
-𝒞
-=
-{
-c
-1
-,
-c
-2
-,
-…
-,
-c
-m
-}
-,
-\mathcal{C}=\{c_{1},c_{2},\dots,c_{m}\},
-(10)
-where each
-c
-i
-c_{i}
-corresponds to a deterministic condition, such as the existence of an output file, the correctness of a JSON field, the validity of a computed statistic, or the presence of required content in a generated document.
-Since some task requirements are implicit in the provided files rather than explicitly stated in the user instruction, the checker also performs cross-validation between the input resources and the generated outputs.
-For example, it may recompute statistics from an input CSV, verify that an output report includes all eligible records from a source file, or ensure that generated artifacts are consistent with constraints defined in a configuration file.
-Given the instruction
-p
-p
-, the initial and final workspace states
-s
-0
-,
-s
-H
-s_{0},s_{H}
-, and the optional final response
-y
-y
-, each verification point returns a binary score:
-b
-i
-=
-𝕀
-​
-[
-c
-i
-​
-(
-p
-,
-s
-0
-,
-s
-H
-,
-y
-)
-=
-true
-]
-,
-b
-i
-∈
-{
-0
-,
-1
-}
-.
-b_{i}=\mathbb{I}\!\left[c_{i}(p,s_{0},s_{H},y)=\mathrm{true}\right],\qquad b_{i}\in\{0,1\}.
-(11)
-The code-based verification score is then computed as the normalized average over all objective checks:
-s
-code
-=
-1
-m
-​
-∑
-i
-=
-1
-m
-b
-i
-.
-s_{\mathrm{code}}=\frac{1}{m}\sum_{i=1}^{m}b_{i}.
-(12)
-This score measures how well the agent satisfies the deterministic requirements of the task, including both explicitly stated output constraints and implicit conditions derived from task resources.
-Rubric-Based Verification.
-Some task requirements cannot be reliably judged by executable code alone.
-For example, a task may require a message to be professional in tone, a report to be concise and well organized, or a summary to faithfully preserve key information without overclaiming.
-To evaluate such qualitative aspects, we generate a set of rubric rules:
-ℛ
-=
-{
-r
-1
-,
-r
-2
-,
-…
-,
-r
-n
-}
-.
-\mathcal{R}=\{r_{1},r_{2},\dots,r_{n}\}.
-(13)
-Each rule
-r
-j
-r_{j}
-defines a specific quality dimension and assigns an ordinal score:
-q
-j
-=
-score
-j
-​
-[
-r
-j
-​
-(
-p
-,
-s
-0
-,
-s
-H
-,
-y
-)
-]
-,
-q
-j
-∈
-{
-0
-,
-0.25
-,
-0.5
-,
-0.75
-,
-1.0
-}
-,
-q_{j}=\mathrm{score}_{j}\!\left[r_{j}(p,s_{0},s_{H},y)\right],\qquad q_{j}\in\{0,0.25,0.5,0.75,1.0\},
-(14)
-where
-r
-j
-r_{j}
-denotes the
-j
-j
--th rubric criterion and
-score
-j
-​
-(
-⋅
-)
-\mathrm{score}_{j}(\cdot)
-maps the verifier’s judgment to one of the predefined discrete scores.
-The rubric-based score is computed as a normalized weighted average:
-s
-rubric
-=
-∑
-j
-=
-1
-n
-w
-j
-​
-q
-j
-∑
-j
-=
-1
-n
-w
-j
-,
-s_{\mathrm{rubric}}=\frac{\sum_{j=1}^{n}w_{j}q_{j}}{\sum_{j=1}^{n}w_{j}},
-(15)
-where
-w
-j
-w_{j}
-denotes the weight of rubric rule
-r
-j
-r_{j}
-.
-By default, all rubric rules use equal weights unless task-specific weighting is required.
-This score captures qualitative completion quality that complements deterministic code checks.
-Score Aggregation.
-The final task score depends on the available verification signals.
-For tasks with only code-based verification, the final score is directly given by:
-s
-task
-=
-s
-code
-.
-s_{\mathrm{task}}=s_{\mathrm{code}}.
-(16)
-For tasks with both code-based and rubric-based verification, we combine the two scores as:
-s
-task
-=
-λ
-​
-s
-code
-+
-(
-1
-−
-λ
-)
-​
-s
-rubric
-,
-s_{\mathrm{task}}=\lambda s_{\mathrm{code}}+(1-\lambda)s_{\mathrm{rubric}},
-(17)
-where
-λ
-∈
-[
-0
-,
-1
-]
-\lambda\in[0,1]
-controls the relative importance of objective and subjective verification.
-In our implementation, we set
-λ
-=
-0.7
-\lambda=0.7
-for hybrid verification, assigning greater weight to code-based checks.
-This choice is justified because Claw task completion is often most reliably evidenced by concrete and reproducible workspace changes, such as generated files, structured outputs, and data transformations.
-The rubric component, weighted by
-0.3
-0.3
-, complements these deterministic checks by assessing qualitative requirements that are difficult to formalize in code.
-This hybrid design prioritizes objectively verifiable task outcomes while still covering higher-level quality requirements in workspace-grounded evaluation.
-3.4
-Automated Quality Assessment
-After task synthesis and verification design, we perform automated quality assessment to filter low-quality samples before using them for training or evaluation. This stage evaluates two aspects: the quality of the synthesized task and the reliability of its verification artifacts. Task quality focuses on whether the task is reasonable, self-contained, executable, and clearly specified, while verification quality examines whether the generated code checker and rubric rules can correctly and comprehensively assess task completion. The latter is especially challenging for Claw-style tasks, whose outcomes are often heterogeneous workspace-grounded artifacts, such as modified files, structured data, generated reports, scripts, or user-facing messages, rather than short final answers. Moreover, unlike software-engineering tasks with manually curated reference implementations or test suites from GitHub, Claw tasks require task-specific verifiers to be synthesized automatically. Based on this observation, we design a fine-grained assessment procedure that jointly examines task validity and verification reliability, aiming to identify ambiguous tasks, misaligned checkers, and unreliable evaluation signals.
-3.4.1
-Task Quality Assessment
-Task quality assessment aims to identify synthesized tasks that are redundant, infeasible, or poorly calibrated. We mainly assess each task from three aspects: novelty, reasonableness, and difficulty. These dimensions jointly measure whether the task adds new coverage, can be executed in a practical Claw-style workspace, and has an appropriate complexity level.
-Novelty.
-We first measure task novelty using cosine similarity between task embeddings. For a newly generated task, we compute its maximum similarity to those in the retained task pool. If the similarity score is below a threshold, the task is considered sufficiently novel and retained; otherwise, it is treated as overly similar and filtered out. This step helps reduce redundant task patterns and ensures that large-scale synthesis improves not only dataset size, but also coverage of distinct task scenarios.
-Plausibility.
-We use a powerful LLM (
-i.e.,
-GPT-5.4
-[
-openai2026gpt54
-]
-) judge to assess task plausibility as a binary decision. The judge determines whether each task is clear, internally consistent, and realistic as a Claw-style user request. In particular, it checks whether the task relies on unavailable or imaginary environment components, such as non-existent system tools, unsupported services, or unrealistic software integrations. Tasks with plausibility issues are removed to avoid unnatural, unstable, or poorly grounded samples.
-Difficulty.
-We also use an LLM (
-i.e.,
-GPT-5.4) judge to estimate task difficulty. This assessment reflects the expected completion complexity, including the number of required steps, operation diversity, and the amount of planning or cross-resource reasoning required. Difficulty scores characterize the task distribution and help maintain a balanced mixture of simple, moderate, and challenging samples.
-3.4.2
-Verification Quality Assessment
-We further assess the generated verification artifacts, including code-based and rubric-based checkers. This step is critical because the verifier directly determines how task completion is measured. An incorrect checker invalidates evaluation, an overly lenient checker may inflate scores by rewarding superficial outputs such as merely creating a file, and an overly strict checker may penalize valid solutions by enforcing requirements beyond the task. To address these issues, we apply automated checks for verifier executability and alignment with task requirements. For code-based verification, we examine whether the checker runs correctly, covers core objective requirements, and avoids being too permissive or too restrictive. For rubric-based verification, we check whether they complement the code checker by targeting qualitative aspects difficult to verify deterministically, rather than duplicating code-verifiable requirements.
-Code Assessment.
-For code-based verification, we assess both the executability and task alignment of the generated checker.
-1)
-Executable sanity check.
-We first ensure that the checker is syntactically valid and can run without errors. To detect overly permissive checkers, we reconstruct the task’s initial workspace by placing the required mock input files at their specified paths, but without providing any agent-produced outputs. The checker is then executed on this initial state. If it already assigns a non-trivial score before the task is attempted, the checker is considered unsuitable, since it may reward superficial conditions or fail to distinguish task completion from the initial workspace state.
-2)
-Task-checker alignment review.
-We then use a strong LLM judge (
-i.e.,
-GPT-5.4) to review the checker against the task instruction and input files along two dimensions: requirement coverage and over-strictness. Requirement coverage measures whether the checker verifies the core objective requirements of the task, including both explicit instructions and implicit constraints derived from the input files. Over-strictness measures whether the checker enforces conditions beyond the task specification, such as unnecessary formatting, exact wording, or extra fields. A high-quality checker should cover as many objective task requirements as possible while avoiding constraints not required by the task.
-Rubric Assessment.
-For rubric-based verification, we use a strong LLM judge (
-i.e.,
-GPT-5.4) to assess whether the generated rubric provides complementary evaluation signals to the code checker. Since code-based verification already covers deterministic and objectively checkable requirements, the rubric should focus on qualitative aspects that are difficult to verify through executable checks, such as tone, clarity, organization, faithfulness, and completeness of explanation. The judge reviews the task instruction, input files, code checker, and rubric rules to identify whether any rubric rule merely duplicates code-verifiable requirements. Such overlap can overweight simple objective constraints and reduce the value of the rubric component. A high-quality rubric should therefore complement the checker by covering subjective or high-level quality dimensions that are important for task completion but not reliably captured by code.
-((a))
-Scenario category distribution.
-((b))
-Atomic action distribution.
-Figure 2
-:
-Task distribution of persona-driven synthesis.
-Figure (a) shows the distribution of user-facing scenario categories, while Figure (b) shows the distribution of atomic actions required by the generated tasks. Together, they characterize both the topical diversity and executable-operation diversity of the synthesized tasks.
-Table 1:
-Category distribution of the annotated skills collected for synthesis.
-Category
-MCP Tools
-Prompts
-Workflows
-Dev Tools
-Data &amp; APIs
-Security
-Automation
-Other
-Total
-Count
-411
-565
-1972
-3906
-4236
-993
-1221
-3533
-16837
-Percentage
-2.44%
-3.36%
-11.71%
-23.20%
-25.16%
-5.90%
-7.25%
-20.98%
-100.00%
-3.5
-Synthesized Task Analysis
-Table 2:
-Human-sampled quality analysis on 50 randomly sampled training tasks. Each metric is scored on a 1–5 scale.
-Metric
-Avg Score
-Task Reasonableness
-4.46
-Execution Feasibility
-3.50
-Resource Consistency
-4.36
-Verification Quality
-3.92
-Overall
-4.06
-Persona-Driven and Skill-Grounded Task Distribution.
-We analyze the task distributions produced by the two synthesis approaches to examine their coverage and diversity.
-For persona-driven synthesis, Figure
-2
-reports the distributions of scenario categories and atomic actions.
-The generated tasks cover a broad range of user-facing scenarios, with no single category dominating the distribution; even the largest category accounts for only 12.5% of the tasks.
-The atomic-action distribution also shows diverse executable operations, including information acquisition, workspace inspection, data extraction, computation, message drafting, and report writing.
-These results suggest that persona-driven synthesis produces tasks that are diverse in both scenario coverage and required operations.
-For skill-grounded synthesis, we analyze the 16K synthesizable skills retained after filtering. Table
-1
-summarizes the category distribution of the annotated skills used for synthesis.
-The skills cover diverse capability categories, with Data &amp; APIs and Dev Tools forming the largest groups, followed by Workflows, Automation, Security, Prompts, and MCP Tools.
-This distribution indicates that skill-grounded synthesis is anchored in a broad executable capability space rather than a narrow set of operations.
-Together, the two synthesis approaches are synergistic: persona-driven synthesis expands user-scenario diversity, while skill-grounded synthesis strengthens operational grounding through reusable skills.
-Human-Sampled Task Quality Analysis.
-To assess the quality of the synthesized training data, we randomly sample 50 task instances and conduct human evaluation along four dimensions: task reasonableness, execution feasibility, resource consistency, and verification quality.
-These dimensions assess whether the task is clear and realistic, executable under the provided workspace, consistent with its mock resources, and paired with an appropriate verifier.
-Each dimension is scored on a 1–5 scale, and the results are reported in Table
-2
-.
-The sampled tasks receive positive ratings across both task-side and verifier-side dimensions, with an overall average score of 4.06.
-Task reasonableness and resource consistency score particularly high, indicating that the sampled tasks are generally coherent and well matched with their resources.
-Execution feasibility is relatively lower but still positive, reflecting the non-trivial environment assumptions and multi-step execution complexity of some tasks.
-Overall, these results suggest that the synthesized data maintains a reasonable level of coherence, executability, and verifiability, making it suitable for constructing agent-training trajectories.
-4
-ClawGym-Agents: Training Claw Agents with Synthesized Tasks
-This section details the process of leveraging ClawGym-SynData to construct high-quality training trajectories, which are subsequently used to develop the ClawGym-Agents. Given the task specifications and the automatically instantiated workspaces introduced in previous sections, we first collect realistic agent-environment interaction traces through large-scale black-box rollouts on OpenClaw. We then aggregate and clean the raw interaction logs, select high-quality trajectories according to verifier scores, and finally use the resulting dataset to conduct multi-turn SFT.
-4.1
-Black-Box Rollout
-The training paradigm for Claw agents diverges from that of traditional search
-[
-song2025r1_2
-,
-li2025webthinkerempoweringlargereasoning
-]
-or coding
-[
-sun2026swe
-,
-song2026swe
-]
-agents. While conventional agentic training
-[
-song2025r1
-]
-relies on explicit agentloops that govern agent-environment interactions in a predefined format, frameworks like OpenClaw operate as highly encapsulated systems. Consequently, internal execution details, such as context management and subagent sessions, remain completely opaque.
-To collect authentic OpenClaw trajectories at scale, we adopt a black-box rollout strategy that directly leverages the OpenClaw harness. Rather than implementing a separate agent loop or constructing an external harness to approximate OpenClaw’s interaction protocol, we execute tasks through OpenClaw itself, thereby preserving its original control flow, tool interface, and agent-environment interaction semantics. Specifically, we deploy multiple OpenClaw Docker environments on a distributed cluster and treat each instance as an executable black-box system. For each synthesized task, we assign the task specification and its associated workspace materials to a designated Docker container, where the initial environment is constructed and the task is solved by invoking the OpenClaw runtime.
-During execution, OpenClaw controls the agent to interact with the local environment through tool calls and textual observations. To record these interactions without modifying the agent logic, we introduce a proxy layer that intercepts each request and response exchanged during the rollout. This proxy captures the complete multi-turn interaction stream, including model inputs, model outputs, tool invocations, and environment feedback. As a result, we obtain OpenClaw rollout trajectories that faithfully reflect how the agent solves tasks in realistic local environments. These raw trajectories serve as the foundation for subsequent data aggregation, filtering, and training.
-We leverage MiniMax-M2.5
-[
-minimax_m25
-]
-and GLM-5.1
-[
-glm_51
-]
-as teacher models to conduct rollouts, constructing a training corpus by mixing trajectories distilled from both models for subsequent data processing and fine-tuning.
-4.2
-Trajectory Aggregation and Selection
-After collecting black-box rollout logs, we aggregate raw interaction records into complete trajectories. Since the proxy captures requests at the granularity of individual model calls, a single task execution may correspond to multiple partially overlapping request traces. We reconstruct trajectories by grouping requests that share identical message prefixes and concatenating subsequent interaction turns, thereby recovering coherent multi-turn sequences from fragmented OpenClaw logs.
-In practice, we observe that long-running OpenClaw sessions may explicitly insert auxiliary prompts, such as cron or heartbeat messages, into the conversation. These prompts are used to maintain session activity or initiate secondary interaction branches, but they do not directly contribute to solving the target task. Therefore, during aggregation, we remove such systematic reminders and retain only the interaction segments that are relevant to task execution. In addition, we filter out trajectories involving unsupported tools. For example, some tools, such as canvas-related operations, are not available on the remote rollout infrastructure and are not required by our synthesized tasks. Removing trajectories containing such tool calls prevents spurious tool-call failures from introducing unnecessary noise into the training data.
-We then perform trajectory selection based on verifier scores. Unlike conventional program-repair or question-answering tasks, where rewards are often binary, our hybrid verification protocol produces continuous scores in
-[
-0
-,
-1
-]
-[0,1]
-by combining code-based and rubric-based verifiers. Consequently, standard best-of-
-N
-N
-filtering strategies
-[
-song2026swe
-]
-designed for binary success signals may become directly inapplicable. We therefore adopt a simple yet robust reward-threshold-based filtering strategy: after ensuring that a trajectory corresponds to a valid and complete interaction process, we retain it for training only if its final score exceeds a predefined reward threshold. This selection rule prioritizes trajectories that demonstrate sufficiently high task completion quality while avoiding excessive dependence on a binary success criterion, ultimately yielding a final dataset of 24.5K high-fidelity interaction trajectories for SFT. Section
-6.3
-further analyzes the impact of different reward thresholds on the downstream performance of the trained agents.
-After reward-threshold-based filtering, we summarize the interaction and tool-use statistics of the selected trajectories.
-As shown in Table
-3
-, each selected trajectory contains 13.00 interaction rounds and 18.67K tokens on average, indicating that the retained data consists of non-trivial multi-turn executions rather than short single-turn responses.
-The selected trajectories also include 15.82 tool calls and 3.25 distinct tool types on average, suggesting frequent workspace interaction and coordination across multiple operation types.
-These statistics show that the filtered trajectories provide rich Claw-style supervision involving planning, workspace inspection, tool execution, and observation-driven adjustment.
-Table 3:
-Interaction and tool-use statistics of selected trajectories after filtering. These trajectories are generated using both Minimax-M2.5 and GLM-5.1.
-Avg. Rounds
-Avg. Tokens
-Avg. Tool Calls
-Avg. Tool Types
-Overall
-13.00
-18.67K
-15.82
-3.25
-4.3
-Agentic Training for Claw Agents
-Using the filtered trajectories, we perform multi-turn SFT on the Qwen3-series
-[
-yang2025qwen3technicalreport
-]
-, including Qwen3-4B-2507-Instruct, Qwen3-8B, and Qwen3-30B-A3B-2507-Instruct. Since Claw tasks often require long-horizon interaction with local files, tools, and environment feedback, the resulting trajectories can substantially exceed the context length used in standard instruction tuning. For Qwen3-8B, whose native context window is 32K tokens, we apply YaRN
-[
-peng2023yarnefficientcontextwindow
-]
-to extend the maximum context length to 64K tokens, enabling the model to better capture long-range dependencies across multi-turn agent trajectories.
-During training, we adopt a multi-turn loss masking strategy tailored to agentic interaction data. Specifically, tokens corresponding to environment feedback produced by Docker-based execution are excluded from the supervised loss. This prevents the model from learning to imitate deterministic execution outputs or tool-returned observations, which are not actions generated by the policy. Instead, the optimization objective focuses on the model-generated parts of the trajectory, including reasoning, decision making, and tool-call generation. This design encourages the model to learn how to act within the environment rather than memorize the environment’s responses.
-Through this procedure, we obtain
-ClawGym-Agents
-trained on our synthesized high-quality task trajectories, namely ClawGym-4B, ClawGym-8B, and ClawGym-30B-A3B. These trained models possess improved capabilities when deployed to serve as Claw agents.
-4.4
-Reinforcement Learning with Sandbox-Parallel Rollouts
-Beyond supervised fine-tuning, we further explore reinforcement learning for Claw-style agents through a lightweight sandbox-parallel pipeline. The pipeline keeps the OpenClaw agent loop as a black box and virtualizes each task into an independent sandbox containing its own root filesystem, workspace, gateway, and verifier
-[
-cheng2026computerenvironmentselicitgeneral
-]
-. Our design has three practical advantages: (i)
-sandbox-parallel rollout
-, which allows many task rollouts to run concurrently without interfering with each other; (ii)
-low infrastructure dependency
-, enabled by interchangeable Docker-based and Docker-free sandbox backends for different cluster settings; and (iii)
-outcome-reward-only training
-, where the code verifier provides the reward signal directly, avoiding auxiliary reward models or process-level supervision.
-We conduct RL from two starting points with different capabilities: Qwen3-4B-2507-Instruct, a vanilla instruct model without ClawGym fine-tuning, and ClawGym-30B-A3B, a SFT model initialized from Qwen3-30B-A3B-2507-Instruct, using ClawGym-SynData. For training, we sample 2,000 tasks from ClawGym-SynData and balance the selection to preserve diversity across required tools. We optimize the policy with GRPO
-[
-deepseekmath
-]
-using the following hyperparameters: learning rate 1e-6, train batch size 8, rollouts per prompt 8, training steps 100, rollout temperature 0.7, maximum response length 64K tokens.
-Across both starting points, our RL training improves evaluation performance over the corresponding baseline. The gain on the vanilla 4B model shows that RL training can improve Claw-style agents even without prior SFT, while the improvement on ClawGym-30B-A3B indicates that the same recipe remains useful after supervised agent training. These results suggest that lightweight sandbox-parallel rollouts provide a practical RL path for further improving Claw-style agents.
-Figure 3
-:
-RL training curves on ClawGym-Bench. Scores are computed using only code-based verifiers with weight 1.0, without rubric-based judgment.
-5
-ClawGym-Bench: A Reliable Benchmark for Claw Agents
-Reliable evaluation is as important as rigorous training for developing Claw agents. However, it requires more stringent quality control, as it directly measures and compares different models through accurate performance scores. Therefore, we construct
-ClawGym-Bench
-from the synthesized task pool through a rigorously designed multi-stage selection process.
-This process reduces noisy samples and yields a more reliable benchmark for evaluating Claw agents on workspace-grounded tasks, including file operations, data processing, document editing, code execution, and other realistic computer-use workflows.
-5.1
-Benchmark Construction
-We construct ClawGym-Bench from the synthesized task pool after the general task-quality and verifier-quality assessments described above. Since benchmark samples are used for evaluation rather than large-scale training, we apply a stricter construction process that focuses on difficulty calibration, verifier reliability, and coverage of diverse workspace-grounded scenarios.
-Difficulty-Aware Filtering.
-We denote by
-𝒟
-cand
-\mathcal{D}_{\mathrm{cand}}
-the set of synthesized tasks that remain after task-quality and verifier-quality filtering in Section
-3.4
-. To further select suitable benchmark samples, we perform rollout-based difficulty filtering on this candidate pool. For each task
-τ
-∈
-𝒟
-cand
-\tau\in\mathcal{D}_{\mathrm{cand}}
-, we run
-n
-=
-4
-n=4
-rollouts with both a strong LLM agent and a smaller LLM agent, and compute their average completion scores as
-s
-¯
-strong
-​
-(
-τ
-)
-\bar{s}_{\mathrm{strong}}(\tau)
-and
-s
-¯
-small
-​
-(
-τ
-)
-\bar{s}_{\mathrm{small}}(\tau)
-, respectively. These scores provide an empirical estimate of whether the task is solvable, whether it is too easy, and whether it can distinguish agents with different capabilities.
-Specifically, a task is retained only if it satisfies the following criteria:
-{
-s
-¯
-strong
-​
-(
-τ
-)
-≥
-0.2
-,
-s
-¯
-small
-​
-(
-τ
-)
-≤
-0.6
-,
-s
-¯
-strong
-​
-(
-τ
-)
-&gt;
-s
-¯
-small
-​
-(
-τ
-)
-.
-\left\{\begin{aligned} \bar{s}_{\mathrm{strong}}(\tau)&amp;\geq 0.2,\\
-\bar{s}_{\mathrm{small}}(\tau)&amp;\leq 0.6,\\
-\bar{s}_{\mathrm{strong}}(\tau)&amp;&gt;\bar{s}_{\mathrm{small}}(\tau).\end{aligned}\right.
-(18)
-The first condition removes tasks that are too difficult or unstable even for the strong agent, while the second filters out tasks that are already easy for the smaller agent. The third condition ensures that the strong agent performs better than the smaller one, indicating that the task reflects a meaningful capability gap. This rollout-based filtering helps ClawGym-Bench avoid both trivial and unrealistically difficult samples, while retaining tasks that are suitable for discriminative evaluation.
-LLM-Assisted Human Review.
-After automated filtering and difficulty-aware selection, the remaining candidates undergo a final human-LLM collaborative review before being included in the benchmark.
-A Claw benchmark instance consists of multiple interdependent components, including the task instruction, input resources, executable checkers, and optional rubric rules.
-Reviewing all these components purely manually is inefficient and may still overlook subtle issues, especially when checker logic depends on constraints hidden in the input files or when task-verifier alignment requires code-level reasoning.
-To make this stage more effective, we use a frontier LLM (
-i.e.,
-GPT-5.4) to perform a detailed diagnostic review.
-The model examines the task instruction, input files, code checker, and rubric rules, then reports potential problems and suggests concrete revisions.
-Its review focuses on whether the task is clear and feasible, whether the input resources support the intended task, whether the checker is executable and appropriately strict, and whether the rubric complements rather than duplicates code-based verification.
-Human reviewers then act as final decision makers: they examine the LLM feedback, determine whether the identified issues are valid, decide whether to accept, revise, or reject each candidate, and add missing details when necessary.
-This review process combines the diagnostic strength of frontier LLMs with human oversight, improving review efficiency while keeping final decisions under human control.
-Benchmark Composition.
-The final benchmark contains 200 tasks retained after difficulty-aware filtering and Human-LLM review. Each benchmark instance includes a user instruction, task-specific mock resources, and the corresponding verifier. Among these tasks, 156 are evaluated purely by code-based checkers, while 44 use hybrid verification that combines code-based checks with rubric-based judgment for qualitative requirements. We compute the final score of each task using the verification aggregation defined in Equation
-17
-. The benchmark covers 6 task categories, with the category definitions and proportions summarized in Table
-4
-. This composition allows ClawGym-Bench to evaluate agents across a diverse set of workspace-grounded scenarios, including file manipulation, data analysis, document editing, script execution, and communication-oriented workflows.
-Table 4:
-Category distribution of ClawGym-Bench.
-Category
-Description
-#Tasks
-Productivity and Collaboration
-Routine office work, messaging, scheduling, coordination, and
-collaborative
-workflows.
-44
-Systems and Automation
-System inspection, workflow automation, operational
-execution
-, and environment-level handling.
-42
-Analysis and Reasoning
-Data analysis, evaluation, decision support, problem solving, and
-technical
-reasoning.
-35
-Content and Domain Support
-Professional-domain assistance, external-facing writing,
-reporting
-, and communication tasks.
-28
-Planning and Knowledge
-Information collection, knowledge organization, retrieval,
-synthesis
-, and planning-oriented work.
-26
-Software Development
-Code implementation, debugging, testing, refactoring, and
-software
-engineering workflows.
-25
-All
-200
-5.2
-Evaluation Protocol
-ClawGym-Bench evaluates agents in a harness-based workspace setting: each task is initialized with its mock resources, the agent interacts with the workspace, and the final state is scored by the corresponding verifier using Equation
-17
-. Since such execution-based evaluation is substantially more expensive than text-only scoring, the benchmark is designed to emphasize two properties that directly affect evaluation reliability:
-evaluation stability
-and
-verifiable solvability
-.
-Evaluation Stability.
-A practical benchmark for Claw agents should yield stable results under repeated harness-based evaluation. This property is particularly important because each Claw evaluation involves multi-turn interaction in the harness, long execution contexts, and frequent tool calls, making repeated evaluation substantially more costly than text-only benchmarking. To examine stability, we evaluate models of different sizes on a fixed subset of 50 benchmark tasks, sampled in a category-balanced manner to cover diverse task types. Each model is evaluated 5 times under the same harness setting, with identical workspace initialization, mock resources, and verification artifacts. As shown in Table
-5
-, the standard deviations across repeated runs are small (
-≤
-\leq
-1%), indicating that ClawGym-Bench supports reliable model comparison without requiring many repeated runs solely to average out randomness.
-Table 5:
-Stability analysis under repeated harness-based evaluation.
-Model
-Runs
-Mean Score(%)
-Std.(%)
-Qwen3-8B
-5
-36.4
-0.3
-Qwen3-30B-A3B
-5
-42.6
-1.0
-Verifiable Solvability.
-Each benchmark task is checked to ensure that it admits at least one feasible path to the full score. This property is important because a task should not be impossible to fully solve due to flaws in the task instruction, missing or inconsistent input resources, or overly strict verification code. During benchmark construction, we verify this property either through successful strong-agent rollouts or through human-constructed reference completions. In both cases, the final workspace state is evaluated by the corresponding verifier to confirm that the task can receive full credit. This check helps ensure that failures on ClawGym-Bench reflect limitations of the evaluated agent rather than artifacts of infeasible task design, invalid input files, or unreachable verification.
-6
-Experiment
-In this section, we evaluate the proposed ClawGym framework by extensively examining the data quality, training effectiveness, and benchmark reliability.
-6.1
-Experimental Settings
-Evaluation Datasets and Metrics.
-We evaluate all models on ClawGym-Bench and PinchBench
-[
-pinchbench2026
-]
-using a hybrid evaluation protocol that combines code-based verification with rubric-based judgment. For ClawGym-Bench tasks whose verifier contains only code checks, we directly use the corresponding code-based verifier for automated assessment, with a weight of 1.0; this score is taken as the final task score. For tasks whose verifier contains both code checks and rubrics, we assign a weight of 0.7 to the code-based component and 0.3 to the rubric-based component, as described in Section
-3.3
-. For PinchBench, we use the task set released on April 10, 2026, excluding multimodal tasks and retaining 30 tasks in total. Each PinchBench task is evaluated using the verifier provided in the original benchmark specification. The rubric-based judgments are conducted using GPT-5.4 as the judge model, and the corresponding prompts are provided in Appendix
-A
-.
-Evaluated Models.
-We evaluate a broad set of models spanning both proprietary and open-weight systems. The proprietary frontier models include Claude-4.7-Opus
-[
-anthropic_claude_opus_4_7
-]
-, Claude-4.6-Opus
-[
-anthropic_claude_opus_4_6
-]
-, Claude-4.6-Sonnet
-[
-anthropic_claude_sonnet_4_6
-]
-, Gemini-3-Flash
-[
-google2026gemini3flash
-]
-, and GPT-5.4
-[
-openai2026gpt54
-]
-. The open-weight frontier models include DeepSeek-V3.2
-[
-liu2025deepseek
-]
-, GLM-5.1
-[
-glm_51
-]
-, MiniMax-M2.7
-[
-minimax2026m27
-]
-, Kimi-K2.6
-[
-kimi_k26
-]
-, and Qwen3.5-Plus
-[
-qwen_35_plus
-]
-. We further evaluate models from the Qwen3-series
-[
-yang2025qwen3technicalreport
-]
-, as well as ClawGym-Agents obtained by using Qwen3-series models as backbone models and fine-tuning them on ClawGym-SynData. For all evaluated models, trajectories are collected through black-box rollouts in the original OpenClaw environments. For the Qwen-series models, we adopt generation configurations tailored to their respective model specifications, while all other models are evaluated through direct API calls. The context length is uniformly set to 64K tokens.
-6.2
-Main Results
-We organize the evaluation of ClawGym around three main questions.
-First, we examine whether training on ClawGym-SynData improves compact open-weight models and narrows their gap with stronger agents.
-Second, we assess whether ClawGym-Bench provides a sufficiently discriminative evaluation across model scales and task categories.
-Third, we test whether the resulting ClawGym-Agents generalize beyond the synthesized task distribution by evaluating them on the external PinchBench benchmark.
-Table
-6
-summarizes the overall results.
-Table 6:
-Performance comparison of different models on ClawGym-Bench and PinchBench. The best and second-best Pass@1 results within each model group are highlighted in
-bold
-and
-underlined
-, respectively. Results marked with
-∗
-are taken directly from the official websites.
-Model
-Pinch-
-Bench
-ClawGym-Bench
-Product.
-&amp; Collab.
-Systems
-&amp; Auto.
-Analysis
-&amp; Reason.
-Content
-&amp; Domain
-Planning
-&amp; Knowl.
-Software
-Dev.
-Avg.
-Proprietary Frontier Models
-Claude-4.7-Opus
-79.40
-73.02
-74.28
-80.14
-80.98
-81.04
-82.04
-77.81
-Claude-4.6-Sonnet
-79.30
-∗
-70.44
-68.04
-76.27
-74.59
-74.21
-73.40
-72.40
-Claude-4.6-Opus
-75.30
-∗
-68.02
-63.49
-73.23
-74.40
-73.38
-82.90
-71.43
-Gemini-3-Flash
-88.70
-∗
-68.70
-68.06
-68.89
-78.87
-80.68
-84.04
-73.50
-GPT-5.4
-68.30
-∗
-76.00
-66.56
-73.83
-76.19
-68.51
-82.40
-73.49
-Open-Weight Frontier Models
-DeepSeek-V3.2
-60.80
-∗
-64.45
-64.43
-71.97
-72.30
-66.66
-70.34
-67.90
-GLM-5.1
-76.40
-70.95
-64.11
-71.71
-75.99
-74.09
-73.86
-71.12
-MiniMax-M2.7
-80.90
-∗
-63.98
-60.11
-63.96
-63.42
-68.72
-64.10
-63.72
-Kimi-K2.6
-66.50
-67.16
-55.99
-72.56
-72.84
-71.56
-82.47
-69.05
-Qwen3.5-Plus
-78.70
-67.34
-66.56
-74.27
-73.07
-71.79
-72.10
-70.35
-Compact Open-Weight Models
-Qwen3-8B
-54.50
-37.46
-29.06
-30.40
-41.12
-44.47
-30.69
-35.02
-Qwen3-32B
-49.40
-40.68
-36.21
-37.84
-47.16
-49.29
-33.11
-40.32
-Qwen3-30A3B
-55.60
-42.47
-42.09
-45.04
-51.95
-45.98
-46.24
-45.11
-Qwen3-235A23B
-60.60
-53.66
-52.27
-47.18
-61.39
-67.33
-49.23
-54.48
-ClawGym-4B
-76.40
-45.21
-46.60
-47.51
-48.99
-52.25
-48.27
-47.73
-ClawGym-8B
-75.70
-49.47
-46.83
-46.35
-55.37
-52.29
-54.78
-50.24
-ClawGym-30A3B
-86.00
-52.98
-50.97
-64.64
-61.46
-57.90
-56.13
-56.82
-∙
-\bullet
-Effectiveness of Synthesized Data.
-Training on our synthesized data yields substantial performance gains for compact open-weight backbones. As shown in Table
-6
-, ClawGym-4B, 8B, and 30A3B achieve average scores of 47.73, 50.24, and 56.82 on ClawGym-Bench, respectively, consistently outperforming their Qwen baselines. Notably, ClawGym-30A3B surpasses the much larger Qwen3-235B-A23B, suggesting that high-quality, agent-specific interaction data can partially compensate for the limitations of model scale. Furthermore, on PinchBench, ClawGym-30A3B achieves a score of 86.00, which is highly competitive even when compared to the scores reported for several proprietary frontier models. These results indicate that our synthesis pipeline effectively equips smaller models with specialized agentic capabilities, narrowing the performance gap between compact and large-scale backbones in these scenarios.
-∙
-\bullet
-Discriminative Capacity of ClawGym-Bench.
-ClawGym-Bench provides discriminative signals across both task categories and model capability levels.
-Across categories, no single agent dominates all dimensions; while Claude-4.7-Opus achieves the highest overall average, GPT-5.4 excels in
-Product. &amp; Collab.
-and Gemini-3-Flash leads in
-Software Dev.
-This category-wise variation indicates that different benchmark categories probe distinct agent capabilities and can expose model-specific strengths.
-Regarding model-level performance, the average scores establish a clear hierarchy ranging from 35.02 for Qwen3-8B to 77.81 for Claude-4.7-Opus, which demonstrates a high degree of granularity in distinguishing between models.
-Collectively, these results indicate that ClawGym-Bench is both challenging and discriminative across model scales and task categories.
-∙
-\bullet
-Generalization beyond Synthesized Scenarios.
-The robust performance of ClawGym-Agents on PinchBench demonstrates the strong generalizability of our ClawGym framework. Since these models were supervised exclusively by ClawGym-SynData, their success on an external benchmark indicates that the data effectively facilitates the acquisition of transferable agentic principles. The fact that these gains are not restricted to the synthesized task distribution suggests that the models are internalizing core functional logic rather than merely overfitting to specific patterns within ClawGym-SynData. These results validate our synthesized data as a scalable and high-fidelity supervision source, capable of equipping agents with the robustness required for diverse, real-world computer-use scenarios.
-6.3
-Experimental Analysis
-In this section, we conduct a series of empirical analyses to investigate the key factors contributing to the performance of ClawGym-Agents SFT. Specifically, we evaluate the synergy between our dual synthesis strategies, analyze the training dynamics and convergence patterns, and examine the impact of reward-based trajectory filtering protocols.
-Synergy of Synthesis Strategies.
-To assess the necessity of persona-driven top-down synthesis and skill-grounded bottom-up synthesis, we compare models trained on trajectories collected from different task sources.
-Only Persona-driven
-and
-Only Skill-grounded
-use trajectories from the corresponding strategy alone, while
-Mixed Synthesis
-combines both sources.
-As shown in Table
-7
-, models trained with mixed synthesis outperform those trained with either strategy alone, highlighting the synergy between top-down intent diversity and bottom-up operational grounding. Specifically, the persona-driven strategy ensures a broad coverage of realistic user scenarios, while the skill-grounded strategy anchors tasks in the agent’s actual functional boundaries. By combining these, the model learns to bridge the gap between abstract user needs and concrete tool execution, leading to better generalization across diverse tasks.
-Table 7
-:
-Synergy between Persona-Driven and Skill-Grounded Synthesis Strategies.
-Base Model
-Training Data Source
-ClawGym-Bench
-PinchBench
-Qwen3-8B
-Only Persona-driven
-49.44
-73.51
-Only Skill-grounded
-49.06
-68.23
-Mixed Synthesis
-50.24
-75.68
-Qwen3-30A3B
-Only Persona-driven
-53.65
-84.92
-Only Skill-grounded
-52.27
-80.05
-Mixed Synthesis
-56.82
-86.00
-Training Dynamics and Convergence.
-To investigate how the volume of training exposure affects model performance, we analyze the training dynamics across 5 epochs (103 steps per epoch), evaluating checkpoints every 60 steps. As shown in Figure
-4
-, both ClawGym-Bench and PinchBench exhibit significant gains over the base model (step 0), validating the high quality of our synthesized trajectories. Notably, performance peaks at the conclusion of the third epoch (step 309), after which we observe a slight but steady decline. This trend suggests that identifying the optimal training scale is crucial; while initial exposure allows the model to effectively internalize agent-specific capabilities, excessive iterations lead to marginal over-fitting on the synthesized data distribution.
-Figure 4
-:
-Effect of training trajectory scale on SFT Model using ClawGym-SynData.
-Impact of Reward Thresholding
-As discussed in Section
-4.2
-, we adopt a simple reward-based thresholding strategy to select trajectories for agentic training. Since our hybrid verifier yields continuous scores in
-[
-0
-,
-1
-]
-[0,1]
-, the choice of threshold directly governs the trade-off between task completion fidelity and data coverage. To identify the optimal threshold, we evaluate performance across a range from 0.4 to 0.9. As shown in
-Figure
-5
-, a threshold of 0.5 yields the best results on both benchmarks, marking a critical equilibrium between execution completeness and data diversity. While lower thresholds introduce trajectories with insufficient task fulfillment that may degrade the supervision signal, excessively high thresholds prune valuable behavioral variety. Specifically, overly stringent filtering may discard trajectories that, despite imperfect completion scores, demonstrate essential recovery patterns or partial strategies for complex, heterogeneous tasks. These results indicate that calibrated filtering is essential for ensuring high completion fidelity while preserving the diversity necessary for robust agentic generalization. However, the optimal threshold remains an empirical design choice under the current pipeline. In future work, we plan to investigate more principled selection methods for continuous verifier scores.
-Figure 5
-:
-Effect of trajectory filtering reward threshold on SFT Model ClawGym-SynData.
-7
-Behavioral Analysis of Claw Agents
-Claw-style tasks require agents to use local files and tools, process execution feedback, and update persistent workspaces. They involve interdependent abilities such as tool-use appropriateness, long-horizon execution robustness, and fine-grained instruction following. We compare GPT-5.4 and Qwen3-30B-A3B (30A3) on ClawGym-Bench cases to identify effective execution patterns and common failures, offering insights for future data synthesis, training, and evaluation.
-Case 1: Tool-Use Appropriateness
-Task requirement.
-Generate two CI artifact audit reports from all JSON exports under
-input/ci-artifacts/*.json
-. The agent must group artifacts by repository
-and artifact name, compute size statistics, count missing sizes and critical
-instances, normalize repository identifiers, and write
-output/audit/report.json
-and
-output/audit/report_filtered.json
-. The filtered report must use the regex
-(coverage|test-results)
-.
-GPT-5.4: Reliable Tool Workflow
-The higher-scoring trajectory uses tools as a staged computation pipeline. It first
-expands the file pattern, then inspects the JSON structure, and finally runs a Python
-aggregation script to compute both reports from the underlying records. The printed
-summaries expose key quantities required by the verifier.
-exec: list input/ci-artifacts/*.json
-output: gadgets.json, gizmos.json,
-widgets.json
-exec: inspect JSON shape with python3
-output: keys = repository,
-total_count, artifacts
-output: LISTKEY artifacts len 3 / 5
-exec: run Python aggregation script
-write output/audit/report.json
-write output/audit/report_filtered.json
-FULL summary:
-files_scanned = 3
-records_scanned = 11
-records_missing_size = 1
-groups = 7
-critical_instances = 2
-FILTERED summary:
-artifact_match = (coverage|test-results)
-groups = 3
-critical_instances = 0
-reward = 1.000
-30A3: Brittle Tool Use
-The weaker trajectory is not a no-op. After an invalid wildcard read fails, it
-recovers by using
-find
-and reads the three JSON files. However, the later
-workflow does not establish a comparably reliable aggregation-and-verification
-process, leading to only partial satisfaction of the exact report checks.
-read input/ci-artifacts/*.json
-Tool error:
-ENOENT,
-wildcard not expanded
-exec: find input/ci-artifacts
--name ’*.json’ | sort
-output: gadgets.json, gizmos.json,
-widgets.json
-read input/ci-artifacts/gadgets.json
-read input/ci-artifacts/gizmos.json
-read input/ci-artifacts/widgets.json
-...
-write output/audit/report.json
-write output/audit/report_filtered.json
-Unresolved issues:
-exact summary fields
-group ordering / counts
-filtered report semantics
-critical-instance checks
-reward = 0.308
-Figure 6
-:
-The stronger trajectory builds a computation-and-verification pipeline, while the weaker one remains brittle in report aggregation despite recovering from an initial tool error.
-Case 2: Long-Horizon Execution Robustness
-Task requirement.
-Build a local automation for support-ticket batches under
-input/inbox/*.jsonl
-.
-For each batch, the agent must generate ticket rewrites, batch metrics, team
-notifications, and an idempotent state file at
-out/state/processed_batches.json
-. The automation must process the two
-provided examples and remain safe to rerun.
-Here,
-batch-04-15
-and
-batch-04-16
-abbreviate the two provided
-support-ticket input files.
-GPT-5.4: Recovery and Closure
-The stronger trajectory encounters errors, but treats them as recoverable execution
-feedback. After missing optional memory files and later hitting an
-exec
-preflight refusal, it switches to a safer workflow, resets only the state file,
-reruns the processor, and verifies that the second run does not duplicate work.
-read MEMORY.md
-Recoverable error:
-ENOENT
-list input/inbox
-read batch-04-15.jsonl
-read batch-04-16.jsonl
-write process_support_batches.py
-exec: python3 process_support_batches.py
-check generated rewrites/metrics/notifications
-edit: preserve API, UTC, README,
-CONTRIBUTING, CSV, CLI
-exec: complex cleanup command
-Recoverable error:
-preflight refused
-fallback: write state = []
-exec: python3 process_support_batches.py
-exec: python3 process_support_batches.py
-read processed_batches.json
-output: two batches, no duplicates
-reward = 1.000
-30A3: Error Accumulation and Dead-End
-The weaker trajectory does not convert tool failures into a stable recovery plan.
-After repeated missing-file errors and an approval-related dead-end, the workflow
-fails to converge to a complete runnable automation. As a result, the required
-per-batch artifacts and idempotent state tracking are largely missing.
-attempt to inspect workspace files
-Unresolved error:
-repeated missing files
-...
-attempt partial setup actions
-...
-Dead-end:
-approval request blocks progress
-/approve ... allow-once
-...
-Missing:
-complete rewrites
-Missing:
-metrics summaries
-Missing:
-team notifications
-Missing:
-valid idempotent state
-reward = 0.067
-Figure 7
-:
-A representative case of error recovery in long-horizon execution. The stronger trajectory recovers from tool failures and completes an idempotent workflow, while the weaker trajectory accumulates unresolved errors and fails to reach stable completion.
-Tool-Use Appropriateness.
-In Claw-style environments, task success depends not only on invoking tools, but also on using them coherently within an execution workflow. Figure
-6
-illustrates this distinction in a CI artifact audit task. The stronger trajectory expands the file pattern, inspects the JSON schema, and runs a Python aggregation script to compute the reports, forming a discovery-inspection-computation-verification pipeline. The weaker trajectory recovers from an invalid wildcard read by using
-find
-and reading the matched files, but does not turn this recovery into a reliable computation process. Consequently, its outputs remain brittle in summary fields, group counts, filtering semantics, and critical-instance checks. This case shows that tool-use appropriateness goes beyond selecting valid tools: reliable agents must compose exploration, computation, feedback, and verification toward the final objective.
-Case 3: Fine-Grained Instruction Following
-Task requirement.
-Generate a reorder plan from
-input/inventory.csv
-and
-input/bulk_discounts.csv
-. The reorder list must include only rows where
-Quantity &lt;= ReorderPoint
-, compute
-TargetStock
-,
-OrderQty
-,
-and
-LineTotal
-exactly, aggregate supplier orders, and create one JSON file
-per supplier under
-output/orders/
-.
-GPT-5.4: Rule-Consistent Generation
-The stronger trajectory computes the outputs from the input tables and verifies the
-generated artifacts. It filters rows by the stated reorder condition, aggregates
-supplier totals, and creates the complete supplier-level JSON set.
-read input/inventory.csv
-read input/bulk_discounts.csv
-exec: compute reorder plan from CSVs
-keep only Quantity &lt;= ReorderPoint
-apply supplier discount rules
-write output/reorder_list.csv
-write output/supplier_orders.csv
-write output/orders/*.json
-orders files:
-Acme_Office.json
-CleanWorks.json
-Global_Stationery.json
-Paper_Plus_Co.json
-reward = 1.000
-30A3: Plausible but Flawed Output
-The weaker trajectory writes structured CSV and JSON files, so the result appears
-reasonable at a glance. However, it fails to follow the core filtering rule:
-output/reorder_list.csv
-should contain only items whose current quantity is
-not above the reorder point, but several included rows violate this condition.
-write output/reorder_list.csv
-...
-Required rule:
-include row only if
-Quantity &lt;= ReorderPoint
-Actual output violates rule:
-Presentation Folders: 12 &gt; 10
-Correction Tape: 9 &gt; 7
-Disinfectant Wipes: 8 &gt; 5
-Why this is wrong:
-these items already exceed their
-reorder points, so they should not
-appear in the reorder list
-write output/supplier_orders.csv
-Propagated error:
-supplier totals include invalid rows
-write output/orders/*.json
-Propagated error:
-per-supplier order files inherit
-the invalid reorder items
-reward = 0.429
-Figure 8
-:
-A representative case of fine-grained requirement satisfaction. The weaker trajectory produces plausible reorder artifacts but violates the required
-Quantity &lt;= ReorderPoint
-filtering rule, causing invalid rows to propagate into downstream supplier outputs.
-Long-Horizon Execution Robustness.
-Long-horizon Claw tasks require agents to coordinate many dependent steps, including reading files, running scripts, generating artifacts, checking intermediate outputs, and preserving workspace state across reruns. In such settings, robustness is not defined by whether every action is correct from the beginning, but by whether the agent can interpret feedback, recover from disruptions, and continue along a valid solution path without losing task context. This is important because early failures often affect later artifacts and become visible in the final workspace state. Figure
-7
-illustrates this behavior in a support-ticket automation task. GPT-5.4 encounters a missing optional memory file, treats it as non-blocking, and proceeds to inspect the inbox files. When a cleanup command is rejected by the execution guard, it avoids repeating the failing action, resets the relevant state file, reruns the processor, and verifies that the processed-batch state contains the two expected batches without duplication. In contrast, 30A3 accumulates unresolved errors and reaches an approval-related dead end, leaving the required rewrites, metrics summaries, notifications, and idempotent state incomplete. This case shows that long-horizon robustness depends on maintaining coherent progress under execution feedback, so that local disruptions are corrected before they compound into incomplete task execution.
-Fine-Grained Instruction Following.
-Claw-style tasks often contain small but consequential constraints, including filtering rules, output schemas, numeric formulas, and cross-file consistency requirements. Because agents must produce persistent artifacts such as CSV, JSON, Markdown, or scripts, merely creating the requested files does not guarantee task correctness; the artifacts must also satisfy the detailed conditions implied by the instruction and input resources. Figure
-8
-shows this issue in a reorder-plan task. GPT-5.4 first applies the required condition
-Quantity &lt;= ReorderPoint
-and then computes downstream supplier outputs from the filtered records. In contrast, 30A3 generates plausible CSV and JSON files but includes invalid items whose quantities exceed their reorder points. These filtering errors propagate into supplier totals and order files, causing the final workspace to appear complete while violating core requirements. This case shows that reliable Claw agents must preserve detailed constraints across generated artifacts and derived outputs, motivating finer-grained supervision over intermediate decisions, artifact contents, and cross-file consistency.
-8
-Conclusion
-In this paper, we present ClawGym, a scalable framework that streamlines the end-to-end development pipeline for personal agents by integrating task synthesis, trajectory collection, agent training, and evaluation within Claw-style environments. The framework first introduces a twofold synthesis approach that combines top-to-bottom topic-driven generation with bottom-to-top skill composition, supported by automated environment construction and hybrid verification mechanisms. This synthesis stage produces 13.5K task samples, forming ClawGym-SynData. Building on these synthesized tasks, we then collect 24.5K interaction trajectories on the OpenClaw harness to train ClawGym-Agents. Additionally, we explore the potential of RL through a lightweight sandbox-parallel pipeline. For rigorous evaluation, we further establish ClawGym-Bench, a human-verified benchmark consisting of 200 high-quality instances. Our experiments demonstrate that SFT on synthesized data significantly improves performance across model scales. Specifically, Qwen3-8B achieves gains of 38.90% on PinchBench and 43.46% on ClawGym-Bench, while Qwen3-30B-A3B shows improvements of 54.68% and 25.96%, respectively.
-Furthermore, our behavioral analyses characterize how Claw agents act in environment-grounded tasks, revealing key limitations and highlighting directions for future research on Claw agent development.
-References
-Appendix A
-Evaluation Prompt
-Rubric-Based Judge
-⬇
-#
-System
-prompt
-:
-You
-are
-a
-strict
-rubric
--
-based
-evaluator
-.
-Use
-only
-the
-user
-prompt
-content
-.
-Do
-not
-call
-tools
-,
-browse
-,
-inspect
-files
-,
-or
-ask
-for
-more
-context
-.
-Your
-response
-may
-include
-concise
-analysis
-,
-but
-it
-must
-end
-with
-exactly
-one
-standalone
-JSON
-object
-with
-keys
-‘
-scores
-‘
-and
-‘
-notes
-‘.
-#
-User
-prompt
-:
-You
-are
-grading
-an
-OpenClaw
-agent
-result
-.
-You
-must
-not
-call
-,
-request
-,
-or
-simulate
-any
-tools
-.
-Do
-not
-browse
-,
-list
-directories
-,
-open
-files
-,
-inspect
-the
-workspace
-,
-or
-ask
-for
-more
-context
-.
-Grade
-only
-from
-the
-task
-,
-final
-output
-files
-,
-optional
-transcript
-evidence
-,
-and
-rubrics
-included
-in
-this
-prompt
-.
-Before
-giving
-the
-final
-judgement
-,
-provide
-concise
-analysis
-explaining
-how
-the
-final
-outputs
-satisfy
-or
-fail
-each
-rubric
-criterion
-.
-Your
-final
-judgement
-must
-end
-with
-exactly
-one
-standalone
-JSON
-object
-and
-nothing
-else
-after
-it
-.
-The
-final
-JSON
-object
-must
-contain
-exactly
-two
-keys
-:
-‘
-scores
-‘
-and
-‘
-notes
-‘.
--
-‘
-scores
-‘
-must
-map
-every
-rubric
-id
-(‘
-criterion_1
-‘,
-‘
-criterion_2
-‘,
-...)
-to
-one
-numeric
-score
-chosen
-from
-that
-rubric
-’
-s
-allowed
-score
-anchors
-.
--
-‘
-notes
-‘
-must
-be
-a
-concise
-string
-summarizing
-the
-main
-reasons
-for
-the
-assigned
-scores
-.
-Do
-not
-include
-any
-overall
-score
-in
-the
-final
-JSON
-.
-Do
-not
-compute
-or
-report
-the
-final
-aggregated
-score
-.
-Score
-aggregation
-will
-be
-handled
-separately
-by
-post
--
-processing
-.
-##
-User
-Task
-{{
-USER_TASK
-}}
-##
-Final
-Output
-Files
-{{
-FINAL_OUTPUT_FILES
-}}
-##
-Additional
-Changed
-Workspace
-Files
-{{
-ADDITIONAL_CHANGED_WORKSPACE_FILES
-}}
-##
-Transcript
-{{
-TRANSCRIPT_OPTIONAL
-}}
-##
-Rubric
-{{
-RUBRIC
+<p>ClawGym: A Scalable Framework for Building Effective Claw Agents<br />
+Fei Bai<br />
+1<em><br />
+Huatong Song<br />
+1</em><br />
+Shuang Sun<br />
+1*<br />
+Daixuan Cheng<br />
+1<br />
+Yike Yang<br />
+1<br />
+Chuan Hao<br />
+2<br />
+Renyuan Li<br />
+2<br />
+Feng Chang<br />
+2<br />
+Yuan Wei<br />
+2<br />
+Ran Tao<br />
+2<br />
+Bryan Dai<br />
+2<br />
+Jian Yang<br />
+3<br />
+Wayne Xin Zhao<br />
+1<br />
+†<br />
+\dagger<br />
+1<br />
+Gaoling School of Artificial Intelligence<br />
+Renmin University of China<br />
+2<br />
+IQuest Research<br />
+3<br />
+Beihang University<br />
+*<br />
+Equal contributors alphabetically ordered<br />
+†<br />
+\dagger<br />
+Corresponding Author<br />
+Email:<br />
+{feibai,songhuatong123,sunshuang}@ruc.edu.cn<br />
+,<br />
+batmanfly@gmail.com<br />
+Abstract<br />
+Claw-style environments support multi-step workflows over local files, tools, and persistent workspace states. However, scalable development around these environments remains constrained by the absence of a systematic framework, especially one for synthesizing verifiable training data and integrating it with agent training and diagnostic evaluation.<br />
+To address this challenge, we present<br />
+ClawGym<br />
+, a scalable framework that supports the full lifecycle of Claw-style personal agent development.<br />
+Concretely, we construct<br />
+ClawGym-SynData<br />
+, a diverse dataset of 13.5K filtered tasks synthesized from persona-driven intents and skill-grounded operations, paired with realistic mock workspaces and hybrid verification mechanisms.<br />
+We then train a family of capable Claw-style models, termed<br />
+ClawGym-Agents<br />
+, through supervised fine-tuning on black-box rollout trajectories, and further explore reinforcement learning via a lightweight pipeline that parallelizes rollouts across per-task sandboxes.<br />
+To support reliable evaluation, we further construct<br />
+ClawGym-Bench<br />
+, a benchmark of 200 instances calibrated through automated filtering and human-LLM review.<br />
+Relevant resources will be soon released at<br />
+https://github.com/ClawGym<br />
+.<br />
+1<br />
+Introduction<br />
+Recent advancements in autonomous agent frameworks, such as OpenClaw<br />
+[<br />
+openclaw2026<br />
+]<br />
+, have fundamentally reshaped how AI integrates with daily digital life and are increasingly used to tackle real-world tasks. Unlike traditional chatbots confined to isolated dialog boxes<br />
+[<br />
+zhu2025evolutionary<br />
+]<br />
+, these systems are deployed directly within users’ computer environments<br />
+[<br />
+cheng2026computerenvironmentselicitgeneral<br />
+]<br />
+, where they can invoke tools, manage local file systems, and interact with rich web-enabled services.<br />
+This paradigm bridges the gap between machine intelligence and digital execution, sparking a new wave of applications in which users “raise” digital agents to perform concrete, multi-step tasks in their real-world daily workflows<br />
+[<br />
+ma2026skillclaw<br />
+]<br />
+.<br />
+Despite the impressive capabilities of OpenClaw and similar systems<br />
+[<br />
+qwenpaw2026<br />
+,<br />
+nanobot2026<br />
+]<br />
+, autonomous agents still struggle to reliably handle many everyday digital tasks, even when powered by the most advanced large language models (LLMs)<br />
+[<br />
+zhao2023survey<br />
+]<br />
+.<br />
+This limitation becomes even more pronounced for less capable LLMs, which often fail to follow multi-step instructions, select appropriate tools, or recover from execution errors in the OpenClaw environment.<br />
+The gap reflects the distinctive nature of Claw-style tasks.<br />
+Unlike static text-based reasoning tasks such as AIME<br />
+[<br />
+aime2026<br />
+]<br />
+, which are well specified and solvable through pure reasoning<br />
+[<br />
+bai2025effectivecodeintegratedreasoning<br />
+]<br />
+, Claw-style tasks are grounded in local workspace states, requiring agents to reason over existing artifacts, execute tools, and update the workspace through multi-step interactions.<br />
+They also differ from conventional agentic benchmarks such as SWE-Bench-Verified<br />
+[<br />
+sweb-verified<br />
+]<br />
+and BrowseComp<br />
+[<br />
+wei2025browsecomp<br />
+]<br />
+, which typically provide more structured and observable agent loops or environments<br />
+[<br />
+sun2025simpledeepsearcherdeepinformationseeking<br />
+,<br />
+arpo<br />
+,<br />
+bai2025effectivecodeintegratedreasoning<br />
+]<br />
+.<br />
+In Claw-style settings, agents instead operate through opaque system interfaces, where they must handle ambiguous instructions, unexpected workspace states, tool execution errors, and long-horizon dependencies across sessions.<br />
+Accordingly, these properties call for workspace-grounded evaluation beyond static reasoning and structured agent-loop benchmarks.<br />
+Recognizing these challenges, recent studies have sought to improve personal agents through either specialized training algorithms<br />
+[<br />
+clawr1-2026<br />
+,<br />
+xia2026metaclaw<br />
+]<br />
+or evaluation benchmarks<br />
+[<br />
+ye2026claw<br />
+,<br />
+Ding_WildClawBench<br />
+]<br />
+.<br />
+On the training side, specialized algorithms<br />
+[<br />
+clawr1-2026<br />
+,<br />
+xia2026metaclaw<br />
+]<br />
+and online learning frameworks<br />
+[<br />
+wang2026openclawrl<br />
+]<br />
+have been proposed to extract supervision or feedback signals from daily user interactions, enabling agents to improve through continued use.<br />
+On the evaluation side, dedicated benchmarks<br />
+[<br />
+ye2026claw<br />
+,<br />
+Ding_WildClawBench<br />
+,<br />
+meng2026clawmarklivingworldbenchmarkmultiturn<br />
+,<br />
+pinchbench2026<br />
+]<br />
+have been constructed across diverse daily tasks, providing valuable resources for assessing personal agent capabilities.<br />
+Nevertheless, existing studies are often limited by the lack of large-scale Claw-style task data grounded in users’ workspaces. Compared with static text-based tasks and structured agent benchmarks<br />
+[<br />
+aime2026<br />
+,<br />
+sweb-verified<br />
+,<br />
+wei2025browsecomp<br />
+]<br />
+, Claw-style agent tasks introduce distinct challenges for large-scale data synthesis, driven by three key factors.<br />
+First, they need to capture personalized requirements across different professions and routines, making it difficult to define sufficiently representative task settings that cover a broad range of realistic scenarios<br />
+[<br />
+patwardhan2025gdpvalevaluatingaimodel<br />
+]<br />
+. Second, their long-horizon nature often involves sequences of file operations, tool calls, workspace updates, and intermediate validation, which poses substantial verifiability challenges for automated assessment<br />
+[<br />
+sun2025scaling<br />
+]<br />
+. Third, their grounding in local workspaces necessitates realistic mock workspaces and task-specific artifacts that provide meaningful execution contexts<br />
+[<br />
+xie2024osworld<br />
+,<br />
+bonatti2024windows<br />
+]<br />
+. Given the limited availability of Claw-style task data, it remains underexplored how to develop systematic frameworks that support both agent training in Claw-style environments and broader benchmark construction. This gap hinders progress towards more capable environment-grounded agent systems.<br />
+In light of this challenge, we propose<br />
+ClawGym<br />
+, a data-centric framework designed to systematically unify task synthesis, agent training, and performance evaluation for developing Claw-style personal agents. At the core of our approach lies a dual-route data synthesis strategy that generates both diverse and verifiable tasks. Specifically, the persona-driven top-down pipeline grounds tasks in high-level user personas and scenario intents, while the skill-grounded bottom-up pipeline composes multi-step workflows from concrete, executable capabilities. To ensure execution realism, we automatically instantiate workspace-grounded environments by generating task-specific mock files and auxiliary resources. We further implement a hybrid verification protocol that combines deterministic code-based checkers with qualitative rubric-based verifiers, providing robust judgment for each task.<br />
+Following this dual-route approach, we synthesize and curate 13.5K Claw-style tasks within the OpenClaw framework.<br />
+Collectively, these tasks constitute<br />
+ClawGym-SynData<br />
+, a large-scale synthesized dataset for training Claw-style agents.<br />
+The availability of such data further enables the design of suitable agent training algorithms. Building on this synthesized task pool, we develop<br />
+ClawGym-Agents<br />
+, a family of agent models trained on Claw-style task data by collecting and filtering high-fidelity interaction trajectories through large-scale black-box rollouts on the OpenClaw harness, followed by supervised fine-tuning (SFT) to improve LLM performance within the OpenClaw framework. Furthermore, we explore reinforcement learning (RL) through a lightweight sandbox-parallel pipeline.<br />
+To assess the effectiveness of our approach, we construct a reliable evaluation benchmark, termed<br />
+ClawGym-Bench<br />
+, by selecting discriminative tasks from ClawGym-SynData (excluding those used in the training set). This selection process adopts a rigorous pipeline that combines rollout-based difficulty calibration with LLM-assisted human review. Only samples that pass both automated assessments and human review are retained as benchmark instances, establishing a robust diagnostic platform for evaluating agent performance in Claw-style scenarios.<br />
+When evaluating our approach on ClawGym-Bench alongside another public benchmark, PinchBench, we empirically find that smaller LLMs trained on our synthesized data achieve substantial improvements in performing OpenClaw tasks: Qwen3-8B improves by 38.90% on PinchBench and 43.46% on ClawGym-Bench. Larger LLMs also show clear gains, with Qwen3-30B-A3B improving by 54.68% on PinchBench and 25.96% on ClawGym-Bench. Beyond aggregate performance, we further conduct behavioral analyses of Claw-style agents, offering insights for future research on robust environment-grounded agent development.<br />
+In summary, we propose ClawGym, a scalable framework that integrates data synthesis, agent training, and performance evaluation for building effective Claw agents.<br />
+Our work aims to advance research on Claw-style agents.<br />
+The contributions of ClawGym are threefold:<br />
+•<br />
+ClawGym-SynData<br />
+:<br />
+We release the first large-scale synthesized dataset for Claw agents, containing 13.5K executable tasks. Its automated synthesis pipeline combines persona-driven intents with skill-grounded operations, enabling scalable generation of diverse, verifiable, and claw-style training data.<br />
+•<br />
+ClawGym-Agents<br />
+: We collect high-quality trajectories via black-box rollouts on OpenClaw and perform supervised fine-tuning to obtain a family of capable Claw agents; we further explore reinforcement learning via a lightweight RL pipeline with sandbox parallelism, delivering consistent gains.<br />
+•<br />
+ClawGym-Bench<br />
+:<br />
+We construct a benchmark of 200 instances across six categories for evaluating Claw agents, with reliability ensured through difficulty-aware filtering and human-LLM review. The benchmark reveals clear capability gaps among Claw agents across different model scales.<br />
+2<br />
+Preliminary<br />
+In this section, we first present the task definition and then briefly introduce the framework overview.<br />
+2.1<br />
+Task Definition<br />
+In our work, a Claw-style agent task is an environment-grounded instruction-execution problem. The agent is provided with a user instruction and an initial workspace, and it may utilize available computer tools within that workspace to perform work in an effort to satisfy the user’s request. Formally, a task instance is denoted as:<br />
+τ<br />
+=<br />
+⟨<br />
+p<br />
+,<br />
+s<br />
+0<br />
+,<br />
+𝒜<br />
+,<br />
+ℱ<br />
+,<br />
+𝒱<br />
+τ<br />
+⟩<br />
+,<br />
+\tau=\langle p,s_{0},\mathcal{A},\mathcal{F},\mathcal{V}<em>{\tau}\rangle,<br />
+(1)<br />
+where<br />
+p<br />
+p<br />
+is the user instruction,<br />
+𝒜<br />
+\mathcal{A}<br />
+is the set of actions available to the agent,<br />
+ℱ<br />
+\mathcal{F}<br />
+describes how tool execution updates the environment state, and<br />
+𝒱<br />
+τ<br />
+\mathcal{V}</em>{\tau}<br />
+is the task-specific verifier.<br />
+Input.<br />
+The input to the agent consists of two parts: the user instruction<br />
+p<br />
+p<br />
+and the initial environment state<br />
+s<br />
+0<br />
+s_{0}<br />
+.<br />
+The instruction<br />
+p<br />
+p<br />
+describes the user’s goal, such as organizing files, extracting information, editing documents, generating reports, or configuring software.<br />
+The environment state<br />
+s<br />
+0<br />
+s_{0}<br />
+provides the concrete workspace for the task.<br />
+It may include local files and folders, web-accessible interfaces, configuration files, and other workspace artifacts.<br />
+The agent can interact with the environment through actions from the available action space<br />
+𝒜<br />
+\mathcal{A}<br />
+.<br />
+Each action corresponds to a tool call or executable operation, such as reading a file, writing an output file, moving or deleting files, running a script, querying the system, or interacting with a web page.<br />
+Together,<br />
+p<br />
+p<br />
+,<br />
+s<br />
+0<br />
+s_{0}<br />
+, and<br />
+𝒜<br />
+\mathcal{A}<br />
+specify both what the agent needs to accomplish and what operations it can use.<br />
+Output.<br />
+To solve the task, the agent produces a trajectory composed of<br />
+action and observation segments:<br />
+ξ<br />
+=<br />
+(<br />
+A<br />
+1<br />
+,<br />
+O<br />
+1<br />
+,<br />
+A<br />
+2<br />
+,<br />
+O<br />
+2<br />
+,<br />
+…<br />
+,<br />
+A<br />
+K<br />
+,<br />
+O<br />
+K<br />
+)<br />
+,<br />
+\xi=(A_{1},O_{1},A_{2},O_{2},\ldots,A_{K},O_{K}),<br />
+(2)<br />
+where each action segment<br />
+A<br />
+k<br />
+=<br />
+(<br />
+a<br />
+k<br />
+,<br />
+1<br />
+,<br />
+…<br />
+,<br />
+a<br />
+k<br />
+,<br />
+m<br />
+k<br />
+)<br />
+A_{k}=(a_{k,1},\ldots,a_{k,m_{k}})<br />
+contains one or more consecutive executable<br />
+actions with<br />
+a<br />
+k<br />
+,<br />
+i<br />
+∈<br />
+𝒜<br />
+a_{k,i}\in\mathcal{A}<br />
+, and each observation segment<br />
+O<br />
+k<br />
+=<br />
+(<br />
+o<br />
+k<br />
+,<br />
+1<br />
+,<br />
+…<br />
+,<br />
+o<br />
+k<br />
+,<br />
+n<br />
+k<br />
+)<br />
+O_{k}=(o_{k,1},\ldots,o_{k,n_{k}})<br />
+contains one or more environment observations.<br />
+This segment-level formulation captures non-alternating interaction patterns in<br />
+Claw-style execution, where an agent may issue multiple tool calls before<br />
+receiving or processing the corresponding feedback. Standard strict<br />
+action-observation alternation is a special case where<br />
+m<br />
+k<br />
+=<br />
+n<br />
+k<br />
+=<br />
+1<br />
+m_{k}=n_{k}=1<br />
+for all<br />
+k<br />
+k<br />
+.<br />
+Let<br />
+(<br />
+a<br />
+1<br />
+,<br />
+…<br />
+,<br />
+a<br />
+H<br />
+)<br />
+(a_{1},\ldots,a_{H})<br />
+denote the flattened sequence of executable actions in<br />
+ξ<br />
+\xi<br />
+, where<br />
+H<br />
+=<br />
+∑<br />
+k<br />
+=<br />
+1<br />
+K<br />
+m<br />
+k<br />
+H=\sum_{k=1}^{K}m_{k}<br />
+. After each executable action, the workspace<br />
+state may update as<br />
+s<br />
+t<br />
+=<br />
+ℱ<br />
+​<br />
+(<br />
+s<br />
+t<br />
+−<br />
+1<br />
+,<br />
+a<br />
+t<br />
+)<br />
+,<br />
+t<br />
+=<br />
+1<br />
+,<br />
+…<br />
+,<br />
+H<br />
+.<br />
+s_{t}=\mathcal{F}(s_{t-1},a_{t}),\quad t=1,\ldots,H.<br />
+(3)<br />
+After<br />
+H<br />
+H<br />
+executable actions, the agent reaches a final environment state<br />
+s<br />
+H<br />
+s_{H}<br />
+.<br />
+The agent may also return a natural language response<br />
+y<br />
+y<br />
+, such as a completion<br />
+confirmation, a progress summary, or an explanation of failure. However, for<br />
+Claw-style agent tasks, the primary output is the final environment state<br />
+s<br />
+H<br />
+s_{H}<br />
+,<br />
+rather than merely the final text response. This final state may contain newly<br />
+created files, modified documents, reorganized directories, generated reports, or<br />
+other persistent workspace changes.<br />
+Verification Criteria.<br />
+A task is considered successfully completed if the final environment state satisfies the user’s original instruction.<br />
+Given the initial state<br />
+s<br />
+0<br />
+s_{0}<br />
+, the final state<br />
+s<br />
+H<br />
+s_{H}<br />
+, and the optional final response<br />
+y<br />
+y<br />
+, the task-specific verifier assigns a score:<br />
+v<br />
+=<br />
+𝒱<br />
+τ<br />
+​<br />
+(<br />
+s<br />
+0<br />
+,<br />
+s<br />
+H<br />
+,<br />
+y<br />
+)<br />
+,<br />
+v<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+.<br />
+v=\mathcal{V}<em>{\tau}(s</em>{0},s_{H},y),\quad v\in[0,1].<br />
+(4)<br />
+The task receives full credit when<br />
+v<br />
+=<br />
+1<br />
+v=1<br />
+.<br />
+In principle, a complete evaluation may also consider whether the agent’s intermediate actions are safe, efficient, and robust to errors.<br />
+However, such trajectory-level properties are difficult to verify consistently for open-ended environment-based tasks, because different agents may complete the same task through different valid action sequences.<br />
+Therefore, this work primarily focuses on final-state correctness, while leaving more detailed assessment of action safety, efficiency, and error recovery to future work.<br />
+The verifier<br />
+𝒱<br />
+τ<br />
+\mathcal{V}<em>{\tau}<br />
+can be instantiated using code-based, rubric-based verification, or a combination of both<br />
+[<br />
+qwenclawbench1.1<br />
+]<br />
+.<br />
+Code-based checkers examine deterministic workspace properties, such as whether required files exist, whether output schemas are valid, whether computed values are correct, and whether generated artifacts satisfy task-specific constraints.<br />
+Rubric-based verification complements these checks by assessing qualitative aspects that are harder to capture with executable code, such as clarity, completeness, usefulness, faithfulness, and alignment with user intent.<br />
+Example.<br />
+Consider the instruction: “<br />
+Find all CSV files in the project folder whose filenames contain the word ‘sales’, merge their rows into a single CSV file, add a column named ‘source_file’ indicating which file each row comes from, and save the result as ‘sales_report.csv’ in the output folder.<br />
+”<br />
+Here,<br />
+p<br />
+p<br />
+is the user-specified task prompt,<br />
+s<br />
+0<br />
+s</em>{0}<br />
+contains the original project folder and available files, and<br />
+𝒜<br />
+\mathcal{A}<br />
+includes file-system operations and CSV-processing tools.<br />
+The agent must execute a trajectory<br />
+ξ<br />
+\xi<br />
+that identifies the relevant CSV files, reads their contents, validates their compatible schemas, merges the rows, records the source filename for each row, and saves the final file to the required location.<br />
+The task is successfully completed if<br />
+𝒱<br />
+τ<br />
+\mathcal{V}<em>{\tau}<br />
+confirms the final state<br />
+s<br />
+H<br />
+s</em>{H}<br />
+contains a correct ‘<br />
+sales_report.csv<br />
+’ file at the specified path.<br />
+Figure 1<br />
+:<br />
+Overview of the ClawGym-SynData pipeline, which generates tasks from persona-driven and skill-grounded sources, prepares task resources, designs hybrid verification, filters samples through quality assessment, and constructs training and benchmark data.<br />
+2.2<br />
+Framework Overview<br />
+The<br />
+ClawGym<br />
+framework comprises three main components. First,<br />
+ClawGym-SynData<br />
+provides a carefully constructed synthesized dataset of 13.5K training tasks, with an automated synthesis process that enables large-scale data generation. Second,<br />
+ClawGym-Agents<br />
+trains a family of Claw agents on high-quality trajectories collected from synthesized tasks through black-box rollouts using the OpenClaw harness. Third,<br />
+ClawGym-Bench<br />
+offers a benchmark of 200 task instances for evaluating Claw-style agents, with carefully assessed reliability. Together, these components provide a foundation for advancing research on environment-grounded instruction-execution agents.<br />
+In what follows, we introduce ClawGym-SynData, ClawGym-Agents, and ClawGym-Bench in Sections<br />
+3<br />
+,<br />
+4<br />
+, and<br />
+5<br />
+, respectively.<br />
+3<br />
+ClawGym-SynData: Scaling Effective Task Synthesis for Claw Agents<br />
+Our data synthesis framework is designed to generate scalable, high-quality datasets for Claw agents, addressing the lack of effective training data.<br />
+The synthesis process consists of four main stages: 1)<br />
+Task Generation<br />
+, which follows two synergistic pipelines:<br />
+persona-driven top-down synthesis<br />
+, producing tasks grounded in diverse user scenarios, and<br />
+skill-grounded bottom-up synthesis<br />
+, constructing tasks by combining individual OpenClaw skills<br />
+[<br />
+clawhub2026<br />
+]<br />
+into realistic, multi-step workflows; 2)<br />
+Resource Preparation<br />
+, which creates lightweight auxiliary files and workspace artifacts needed to execute the tasks; 3)<br />
+Verification Design<br />
+, generating code-based and rubric-based checks; and 4)<br />
+Automated Quality Assessment<br />
+, evaluating task and verification quality. By combining these stages, ClawGym-SynData achieves both scenario diversity and execution realism, enabling the creation of datasets at a scale sufficient for large-scale training and benchmark construction while maintaining verifiable quality.<br />
+3.1<br />
+Task Generation<br />
+3.1.1<br />
+Persona-Driven Top-Down Synthesis<br />
+Persona-driven top-down synthesis generates diverse and practical Claw agent tasks from high-level user contexts. The pipeline first creates task seeds by synthesizing personalized user profiles, scenario categories, and atomic action sets. These task seeds specify who the user is, what type of scenario the task belongs to, and what operations the agent may need to perform. An LLM then expands each task seed into a concrete, multi-step task. Here, “top-down” indicates that the task is gradually contextualized by first generating user contexts, then instantiated and enriched with details. This design emphasizes practical needs and scenario diversity while keeping the generated tasks grounded in feasible agent operations.<br />
+Seed Formulation.<br />
+In the first step, we construct a task seed that determines the high-level context and operational scope of a synthesized task.<br />
+Specifically, each seed is formed by combining a user persona<br />
+u<br />
+∈<br />
+𝒰<br />
+u\in\mathcal{U}<br />
+, a scenario category<br />
+c<br />
+∈<br />
+𝒞<br />
+c\in\mathcal{C}<br />
+, and a set of basic operations<br />
+𝒢<br />
+=<br />
+{<br />
+g<br />
+1<br />
+,<br />
+g<br />
+2<br />
+,<br />
+…<br />
+,<br />
+g<br />
+n<br />
+}<br />
+\mathcal{G}={g_{1},g_{2},\dots,g_{n}}<br />
+:<br />
+z<br />
+=<br />
+(<br />
+u<br />
+,<br />
+c<br />
+,<br />
+𝒢<br />
+)<br />
+.<br />
+z=(u,c,\mathcal{G}).<br />
+(5)<br />
+Here,<br />
+u<br />
+u<br />
+specifies the intended user background, including the user’s goals, preferences, and working context;<br />
+c<br />
+c<br />
+specifies the scenario type of the task; and<br />
+𝒢<br />
+\mathcal{G}<br />
+specifies the basic operations that the generated instruction should involve.<br />
+Personas are sampled from a diverse collection of user profiles, covering different occupations, workflows, preferences, and daily needs.<br />
+The scenario taxonomy contains 9 major classes and 43 subcategories, from which one subcategory is selected for each seed.<br />
+The atomic-operation taxonomy contains 7 categories and 26 distinct operations, covering representative Claw-style activities such as web information retrieval, file processing, document editing, data analysis, script execution, and result reporting.<br />
+By combining these three sources, the pipeline produces task seeds that are both diverse and operationally grounded.<br />
+The persona and scenario category encourage realistic user-facing task intents, while the selected basic operations constrain the later generated instruction to actions that can plausibly be carried out in a Claw-style workspace.<br />
+Seed-Guided Task Instruction Generation.<br />
+In the second step, we instantiate a task-generation prompt template with the task seed<br />
+z<br />
+z<br />
+.<br />
+Given<br />
+z<br />
+=<br />
+(<br />
+u<br />
+,<br />
+c<br />
+,<br />
+𝒢<br />
+)<br />
+z=(u,c,\mathcal{G})<br />
+, the prompt template<br />
+π<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\pi(\cdot)<br />
+is used to condition a task generator<br />
+ℳ<br />
+task<br />
+\mathcal{M}<em>{\mathrm{task}}<br />
+(<br />
+i.e.,<br />
+GPT-5) to generate the user-facing task instruction:<br />
+p<br />
+=<br />
+ℳ<br />
+task<br />
+​<br />
+(<br />
+π<br />
+​<br />
+(<br />
+z<br />
+)<br />
+)<br />
+,<br />
+p=\mathcal{M}</em>{\mathrm{task}}(\pi(z)),<br />
+(6)<br />
+where<br />
+p<br />
+p<br />
+corresponds to the instruction component in the task definition, specifying the user’s goal, context, expected operations, and output requirements.<br />
+This formulation reflects the top-down nature of the pipeline: the persona<br />
+u<br />
+u<br />
+and scenario category<br />
+c<br />
+c<br />
+determine the task direction, while the selected basic operations<br />
+𝒢<br />
+\mathcal{G}<br />
+constrain the instruction to plausible workspace operations.<br />
+Different combinations of personas, categories, and operation sets therefore produce diverse concrete user requests, which capture realistic daily workflows and are later paired with<br />
+s<br />
+0<br />
+s_{0}<br />
+and<br />
+𝒱<br />
+τ<br />
+\mathcal{V}<em>{\tau}<br />
+to form complete Claw-style task instances.<br />
+3.1.2<br />
+Skill-Grounded Bottom-Up Synthesis<br />
+Unlike the persona-driven top-down pipeline, which starts from user contexts and scenario intentions, the skill-grounded bottom-up pipeline starts from concrete capabilities already implemented in OpenClaw skills. We collect raw skills from ClawHub<br />
+[<br />
+clawhub2026<br />
+]<br />
+, where each skill is typically organized as a directory containing files such as<br />
+SKILL.md<br />
+,<br />
+README.md<br />
+, or other usage descriptions. Each skill is treated not as a complete task, but as a reusable capability unit for constructing environment-grounded workflows. The purpose of this pipeline is to identify skills suitable for task synthesis, normalize capability descriptions, and compose them into practical task specifications. In this way, synthesized tasks are grounded in OpenClaw operations while allowing diverse user needs and scenarios to emerge from skill composition.<br />
+Skill Annotation and Filtering.<br />
+Given a raw skill collection<br />
+𝒦<br />
+=<br />
+{<br />
+k<br />
+i<br />
+}<br />
+i<br />
+=<br />
+1<br />
+N<br />
+\mathcal{K}={k</em>{i}}<em>{i=1}^{N}<br />
+, we first use a powerful LLM (<br />
+i.e.,<br />
+MiniMax-M2.5) to convert each skill into a structured annotation with a skill annotator<br />
+ℳ<br />
+ann<br />
+\mathcal{M}</em>{\mathrm{ann}}<br />
+:<br />
+α<br />
+i<br />
+=<br />
+ℳ<br />
+ann<br />
+​<br />
+(<br />
+ρ<br />
+​<br />
+(<br />
+k<br />
+i<br />
+)<br />
+)<br />
+\alpha_{i}=\mathcal{M}<em>{\mathrm{ann}}(\rho(k</em>{i}))<br />
+,<br />
+where<br />
+ρ<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\rho(\cdot)<br />
+is the annotation prompt, and<br />
+α<br />
+i<br />
+\alpha_{i}<br />
+summarizes the key information needed for task synthesis, including the skill’s summary, core content, usage constraints, input-output characteristics, and a binary synthesizability label<br />
+y<br />
+i<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+y_{i}\in{0,1}<br />
+.<br />
+The label<br />
+y<br />
+i<br />
+=<br />
+1<br />
+y_{i}=1<br />
+indicates that the skill is suitable for reliable task synthesis under our setting, while<br />
+y<br />
+i<br />
+=<br />
+0<br />
+y_{i}=0<br />
+indicates that it should be filtered out, for example because it depends on unavailable credentials, lacks sufficient task-relevant details, or is incompatible with the target task format.<br />
+We then retain the synthesizable skills as:<br />
+𝒦<br />
++<br />
+=<br />
+{<br />
+(<br />
+k<br />
+i<br />
+,<br />
+α<br />
+i<br />
+)<br />
+∣<br />
+k<br />
+i<br />
+∈<br />
+𝒦<br />
+,<br />
+y<br />
+i<br />
+=<br />
+1<br />
+}<br />
+.<br />
+\mathcal{K}^{+}={(k_{i},\alpha_{i})\mid k_{i}\in\mathcal{K},\ y_{i}=1}.<br />
+(7)<br />
+This annotation serves two primary purposes: filtering out skills unsuitable for reliable task synthesis under our target setting and providing normalized capability descriptions for the task generator (<br />
+i.e.,<br />
+GPT-5). Specifically, we annotate approximately 30K raw OpenClaw skills and retain 16K synthesizable skills after filtering, which are then used for downstream task synthesis.<br />
+Skill-Composition Task Construction.<br />
+After filtering, we construct each task from one primary skill and a set of randomly sampled supporting skills. The primary skill defines the central capability and main objective of the task, while the supporting skills introduce auxiliary operations or contextual requirements. In our implementation, each task uses one primary skill and up to three optional supporting skills. The selected skill bundle is provided to a generation model to produce a user-facing task instruction:<br />
+p<br />
+=<br />
+ℳ<br />
+task<br />
+​<br />
+(<br />
+π<br />
+​<br />
+(<br />
+k<br />
+main<br />
+,<br />
+𝒦<br />
+support<br />
+)<br />
+)<br />
+,<br />
+p=\mathcal{M}<em>{\mathrm{task}}\big(\pi(k</em>{\mathrm{main}},\mathcal{K}<em>{\mathrm{support}})\big),<br />
+(8)<br />
+where<br />
+k<br />
+main<br />
+k</em>{\mathrm{main}}<br />
+denotes the primary skill,<br />
+𝒦<br />
+support<br />
+\mathcal{K}<em>{\mathrm{support}}<br />
+denotes the supporting skill set, and<br />
+π<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\pi(\cdot)<br />
+is the task-construction prompt. In this process, the task generator (<br />
+i.e.,<br />
+GPT-5) can condition on the original skill content together with its annotation, so that the generated instruction remains grounded in concrete operational details, usage constraints, and input-output requirements. We also support using the annotated core content instead of the raw skill document, which abstracts the skill into a more general capability and helps introduce controlled task diversity. The generated instruction describes the user request, required resources, expected behaviors, and verification targets in a unified format. Since each task is constructed from one primary skill and optional supporting skills, the generated instruction can combine a clear main objective with auxiliary operations, encouraging multi-step coordination across capabilities while remaining grounded in executable OpenClaw operations.<br />
+3.2<br />
+Resource Preparation<br />
+Claw-style tasks often require concrete files to establish the initial workspace state.<br />
+Given the synthesized instruction<br />
+p<br />
+p<br />
+, resource preparation constructs the file-based component of<br />
+s<br />
+0<br />
+s</em>{0}<br />
+.<br />
+Instead of relying on real user files or large external datasets, we generate lightweight mock files tailored to each task, such as documents to summarize, tables to analyze, configuration files to inspect, records to reorganize, or reference materials that constrain the expected output.<br />
+For each instruction, we first identify its file requirements, including filenames, directory paths, formats, key fields, and content constraints.<br />
+These requirements are represented as a resource specification:<br />
+f<br />
+=<br />
+{<br />
+(<br />
+l<br />
+i<br />
+,<br />
+t<br />
+i<br />
+,<br />
+d<br />
+i<br />
+)<br />
+}<br />
+i<br />
+=<br />
+1<br />
+m<br />
+,<br />
+f={(l_{i},t_{i},d_{i})}<em>{i=1}^{m},<br />
+(9)<br />
+where<br />
+l<br />
+i<br />
+l</em>{i}<br />
+denotes the file path,<br />
+t<br />
+i<br />
+t_{i}<br />
+denotes the file type, and<br />
+d<br />
+i<br />
+d_{i}<br />
+denotes the file content specification. We then use an LLM-based resource generator (<br />
+i.e.,<br />
+GPT-5) to materialize f into concrete files and place them at the specified workspace paths.<br />
+The generated files are designed to be task-specific and verifiable.<br />
+For text or markdown files, the content provides the entities, constraints, and references needed by the instruction.<br />
+For structured files such as JSON, CSV, or YAML, we generate explicit schemas, tables, fields, and values, so that later checkers can recompute required statistics or validate output consistency against the inputs.<br />
+This controlled construction makes each task self-contained, reproducible, and consistent with its verifier, while avoiding privacy risks and uncertainty from real user files.<br />
+3.3<br />
+Verification Design<br />
+After a Claw agent executes a task, a central challenge is to determine whether the task has been completed correctly.<br />
+Unlike text-only reasoning and conventional agentic benchmarks with binary reward distributions, Claw tasks are executed in a workspace-grounded environment, where success may depend on generated files, modified artifacts, data transformations, structured outputs, or final responses.<br />
+These requirements are heterogeneous: some can be checked deterministically, while others require qualitative judgment.<br />
+To address this, we design a hybrid verification scheme consisting of code-based verification and rubric-based verification<br />
+[<br />
+pinchbench2026<br />
+]<br />
+.<br />
+Code-based verification targets objective and executable requirements, such as whether required files are created, whether structured outputs follow the specified schema, or whether computed values are correct.<br />
+Rubric-based verification complements it by assessing qualitative requirements that are difficult to formalize as deterministic checks, such as clarity, completeness and style. We use an LLM-based verifier generator (<br />
+i.e.,<br />
+GPT-5) to produce both the executable checkers and rubric rules for each synthesized task.<br />
+Code-Based Verification.<br />
+For each synthesized task, we generate an executable checker to verify objective requirements.<br />
+These requirements are decomposed into a set of atomic verification points:<br />
+𝒞<br />
+=<br />
+{<br />
+c<br />
+1<br />
+,<br />
+c<br />
+2<br />
+,<br />
+…<br />
+,<br />
+c<br />
+m<br />
+}<br />
+,<br />
+\mathcal{C}={c_{1},c_{2},\dots,c_{m}},<br />
+(10)<br />
+where each<br />
+c<br />
+i<br />
+c_{i}<br />
+corresponds to a deterministic condition, such as the existence of an output file, the correctness of a JSON field, the validity of a computed statistic, or the presence of required content in a generated document.<br />
+Since some task requirements are implicit in the provided files rather than explicitly stated in the user instruction, the checker also performs cross-validation between the input resources and the generated outputs.<br />
+For example, it may recompute statistics from an input CSV, verify that an output report includes all eligible records from a source file, or ensure that generated artifacts are consistent with constraints defined in a configuration file.<br />
+Given the instruction<br />
+p<br />
+p<br />
+, the initial and final workspace states<br />
+s<br />
+0<br />
+,<br />
+s<br />
+H<br />
+s_{0},s_{H}<br />
+, and the optional final response<br />
+y<br />
+y<br />
+, each verification point returns a binary score:<br />
+b<br />
+i<br />
+=<br />
+𝕀<br />
+​<br />
+[<br />
+c<br />
+i<br />
+​<br />
+(<br />
+p<br />
+,<br />
+s<br />
+0<br />
+,<br />
+s<br />
+H<br />
+,<br />
+y<br />
+)<br />
+=<br />
+true<br />
+]<br />
+,<br />
+b<br />
+i<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+.<br />
+b_{i}=\mathbb{I}!\left[c_{i}(p,s_{0},s_{H},y)=\mathrm{true}\right],\qquad b_{i}\in{0,1}.<br />
+(11)<br />
+The code-based verification score is then computed as the normalized average over all objective checks:<br />
+s<br />
+code<br />
+=<br />
+1<br />
+m<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+1<br />
+m<br />
+b<br />
+i<br />
+.<br />
+s_{\mathrm{code}}=\frac{1}{m}\sum_{i=1}^{m}b_{i}.<br />
+(12)<br />
+This score measures how well the agent satisfies the deterministic requirements of the task, including both explicitly stated output constraints and implicit conditions derived from task resources.<br />
+Rubric-Based Verification.<br />
+Some task requirements cannot be reliably judged by executable code alone.<br />
+For example, a task may require a message to be professional in tone, a report to be concise and well organized, or a summary to faithfully preserve key information without overclaiming.<br />
+To evaluate such qualitative aspects, we generate a set of rubric rules:<br />
+ℛ<br />
+=<br />
+{<br />
+r<br />
+1<br />
+,<br />
+r<br />
+2<br />
+,<br />
+…<br />
+,<br />
+r<br />
+n<br />
+}<br />
+.<br />
+\mathcal{R}={r_{1},r_{2},\dots,r_{n}}.<br />
+(13)<br />
+Each rule<br />
+r<br />
+j<br />
+r_{j}<br />
+defines a specific quality dimension and assigns an ordinal score:<br />
+q<br />
+j<br />
+=<br />
+score<br />
+j<br />
+​<br />
+[<br />
+r<br />
+j<br />
+​<br />
+(<br />
+p<br />
+,<br />
+s<br />
+0<br />
+,<br />
+s<br />
+H<br />
+,<br />
+y<br />
+)<br />
+]<br />
+,<br />
+q<br />
+j<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+0.25<br />
+,<br />
+0.5<br />
+,<br />
+0.75<br />
+,<br />
+1.0<br />
+}<br />
+,<br />
+q_{j}=\mathrm{score}<em>{j}!\left[r</em>{j}(p,s_{0},s_{H},y)\right],\qquad q_{j}\in{0,0.25,0.5,0.75,1.0},<br />
+(14)<br />
+where<br />
+r<br />
+j<br />
+r_{j}<br />
+denotes the<br />
+j<br />
+j<br />
+-th rubric criterion and<br />
+score<br />
+j<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\mathrm{score}<em>{j}(\cdot)<br />
+maps the verifier’s judgment to one of the predefined discrete scores.<br />
+The rubric-based score is computed as a normalized weighted average:<br />
+s<br />
+rubric<br />
+=<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+n<br />
+w<br />
+j<br />
+​<br />
+q<br />
+j<br />
+∑<br />
+j<br />
+=<br />
+1<br />
+n<br />
+w<br />
+j<br />
+,<br />
+s</em>{\mathrm{rubric}}=\frac{\sum_{j=1}^{n}w_{j}q_{j}}{\sum_{j=1}^{n}w_{j}},<br />
+(15)<br />
+where<br />
+w<br />
+j<br />
+w_{j}<br />
+denotes the weight of rubric rule<br />
+r<br />
+j<br />
+r_{j}<br />
+.<br />
+By default, all rubric rules use equal weights unless task-specific weighting is required.<br />
+This score captures qualitative completion quality that complements deterministic code checks.<br />
+Score Aggregation.<br />
+The final task score depends on the available verification signals.<br />
+For tasks with only code-based verification, the final score is directly given by:<br />
+s<br />
+task<br />
+=<br />
+s<br />
+code<br />
+.<br />
+s_{\mathrm{task}}=s_{\mathrm{code}}.<br />
+(16)<br />
+For tasks with both code-based and rubric-based verification, we combine the two scores as:<br />
+s<br />
+task<br />
+=<br />
+λ<br />
+​<br />
+s<br />
+code<br />
++<br />
+(<br />
+1<br />
+−<br />
+λ<br />
+)<br />
+​<br />
+s<br />
+rubric<br />
+,<br />
+s_{\mathrm{task}}=\lambda s_{\mathrm{code}}+(1-\lambda)s_{\mathrm{rubric}},<br />
+(17)<br />
+where<br />
+λ<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+\lambda\in[0,1]<br />
+controls the relative importance of objective and subjective verification.<br />
+In our implementation, we set<br />
+λ<br />
+=<br />
+0.7<br />
+\lambda=0.7<br />
+for hybrid verification, assigning greater weight to code-based checks.<br />
+This choice is justified because Claw task completion is often most reliably evidenced by concrete and reproducible workspace changes, such as generated files, structured outputs, and data transformations.<br />
+The rubric component, weighted by<br />
+0.3<br />
+0.3<br />
+, complements these deterministic checks by assessing qualitative requirements that are difficult to formalize in code.<br />
+This hybrid design prioritizes objectively verifiable task outcomes while still covering higher-level quality requirements in workspace-grounded evaluation.<br />
+3.4<br />
+Automated Quality Assessment<br />
+After task synthesis and verification design, we perform automated quality assessment to filter low-quality samples before using them for training or evaluation. This stage evaluates two aspects: the quality of the synthesized task and the reliability of its verification artifacts. Task quality focuses on whether the task is reasonable, self-contained, executable, and clearly specified, while verification quality examines whether the generated code checker and rubric rules can correctly and comprehensively assess task completion. The latter is especially challenging for Claw-style tasks, whose outcomes are often heterogeneous workspace-grounded artifacts, such as modified files, structured data, generated reports, scripts, or user-facing messages, rather than short final answers. Moreover, unlike software-engineering tasks with manually curated reference implementations or test suites from GitHub, Claw tasks require task-specific verifiers to be synthesized automatically. Based on this observation, we design a fine-grained assessment procedure that jointly examines task validity and verification reliability, aiming to identify ambiguous tasks, misaligned checkers, and unreliable evaluation signals.<br />
+3.4.1<br />
+Task Quality Assessment<br />
+Task quality assessment aims to identify synthesized tasks that are redundant, infeasible, or poorly calibrated. We mainly assess each task from three aspects: novelty, reasonableness, and difficulty. These dimensions jointly measure whether the task adds new coverage, can be executed in a practical Claw-style workspace, and has an appropriate complexity level.<br />
+Novelty.<br />
+We first measure task novelty using cosine similarity between task embeddings. For a newly generated task, we compute its maximum similarity to those in the retained task pool. If the similarity score is below a threshold, the task is considered sufficiently novel and retained; otherwise, it is treated as overly similar and filtered out. This step helps reduce redundant task patterns and ensures that large-scale synthesis improves not only dataset size, but also coverage of distinct task scenarios.<br />
+Plausibility.<br />
+We use a powerful LLM (<br />
+i.e.,<br />
+GPT-5.4<br />
+[<br />
+openai2026gpt54<br />
+]<br />
+) judge to assess task plausibility as a binary decision. The judge determines whether each task is clear, internally consistent, and realistic as a Claw-style user request. In particular, it checks whether the task relies on unavailable or imaginary environment components, such as non-existent system tools, unsupported services, or unrealistic software integrations. Tasks with plausibility issues are removed to avoid unnatural, unstable, or poorly grounded samples.<br />
+Difficulty.<br />
+We also use an LLM (<br />
+i.e.,<br />
+GPT-5.4) judge to estimate task difficulty. This assessment reflects the expected completion complexity, including the number of required steps, operation diversity, and the amount of planning or cross-resource reasoning required. Difficulty scores characterize the task distribution and help maintain a balanced mixture of simple, moderate, and challenging samples.<br />
+3.4.2<br />
+Verification Quality Assessment<br />
+We further assess the generated verification artifacts, including code-based and rubric-based checkers. This step is critical because the verifier directly determines how task completion is measured. An incorrect checker invalidates evaluation, an overly lenient checker may inflate scores by rewarding superficial outputs such as merely creating a file, and an overly strict checker may penalize valid solutions by enforcing requirements beyond the task. To address these issues, we apply automated checks for verifier executability and alignment with task requirements. For code-based verification, we examine whether the checker runs correctly, covers core objective requirements, and avoids being too permissive or too restrictive. For rubric-based verification, we check whether they complement the code checker by targeting qualitative aspects difficult to verify deterministically, rather than duplicating code-verifiable requirements.<br />
+Code Assessment.<br />
+For code-based verification, we assess both the executability and task alignment of the generated checker.<br />
+1)<br />
+Executable sanity check.<br />
+We first ensure that the checker is syntactically valid and can run without errors. To detect overly permissive checkers, we reconstruct the task’s initial workspace by placing the required mock input files at their specified paths, but without providing any agent-produced outputs. The checker is then executed on this initial state. If it already assigns a non-trivial score before the task is attempted, the checker is considered unsuitable, since it may reward superficial conditions or fail to distinguish task completion from the initial workspace state.<br />
+2)<br />
+Task-checker alignment review.<br />
+We then use a strong LLM judge (<br />
+i.e.,<br />
+GPT-5.4) to review the checker against the task instruction and input files along two dimensions: requirement coverage and over-strictness. Requirement coverage measures whether the checker verifies the core objective requirements of the task, including both explicit instructions and implicit constraints derived from the input files. Over-strictness measures whether the checker enforces conditions beyond the task specification, such as unnecessary formatting, exact wording, or extra fields. A high-quality checker should cover as many objective task requirements as possible while avoiding constraints not required by the task.<br />
+Rubric Assessment.<br />
+For rubric-based verification, we use a strong LLM judge (<br />
+i.e.,<br />
+GPT-5.4) to assess whether the generated rubric provides complementary evaluation signals to the code checker. Since code-based verification already covers deterministic and objectively checkable requirements, the rubric should focus on qualitative aspects that are difficult to verify through executable checks, such as tone, clarity, organization, faithfulness, and completeness of explanation. The judge reviews the task instruction, input files, code checker, and rubric rules to identify whether any rubric rule merely duplicates code-verifiable requirements. Such overlap can overweight simple objective constraints and reduce the value of the rubric component. A high-quality rubric should therefore complement the checker by covering subjective or high-level quality dimensions that are important for task completion but not reliably captured by code.<br />
+((a))<br />
+Scenario category distribution.<br />
+((b))<br />
+Atomic action distribution.<br />
+Figure 2<br />
+:<br />
+Task distribution of persona-driven synthesis.<br />
+Figure (a) shows the distribution of user-facing scenario categories, while Figure (b) shows the distribution of atomic actions required by the generated tasks. Together, they characterize both the topical diversity and executable-operation diversity of the synthesized tasks.<br />
+Table 1:<br />
+Category distribution of the annotated skills collected for synthesis.<br />
+Category<br />
+MCP Tools<br />
+Prompts<br />
+Workflows<br />
+Dev Tools<br />
+Data &amp; APIs<br />
+Security<br />
+Automation<br />
+Other<br />
+Total<br />
+Count<br />
+411<br />
+565<br />
+1972<br />
+3906<br />
+4236<br />
+993<br />
+1221<br />
+3533<br />
+16837<br />
+Percentage<br />
+2.44%<br />
+3.36%<br />
+11.71%<br />
+23.20%<br />
+25.16%<br />
+5.90%<br />
+7.25%<br />
+20.98%<br />
+100.00%<br />
+3.5<br />
+Synthesized Task Analysis<br />
+Table 2:<br />
+Human-sampled quality analysis on 50 randomly sampled training tasks. Each metric is scored on a 1–5 scale.<br />
+Metric<br />
+Avg Score<br />
+Task Reasonableness<br />
+4.46<br />
+Execution Feasibility<br />
+3.50<br />
+Resource Consistency<br />
+4.36<br />
+Verification Quality<br />
+3.92<br />
+Overall<br />
+4.06<br />
+Persona-Driven and Skill-Grounded Task Distribution.<br />
+We analyze the task distributions produced by the two synthesis approaches to examine their coverage and diversity.<br />
+For persona-driven synthesis, Figure<br />
+2<br />
+reports the distributions of scenario categories and atomic actions.<br />
+The generated tasks cover a broad range of user-facing scenarios, with no single category dominating the distribution; even the largest category accounts for only 12.5% of the tasks.<br />
+The atomic-action distribution also shows diverse executable operations, including information acquisition, workspace inspection, data extraction, computation, message drafting, and report writing.<br />
+These results suggest that persona-driven synthesis produces tasks that are diverse in both scenario coverage and required operations.<br />
+For skill-grounded synthesis, we analyze the 16K synthesizable skills retained after filtering. Table<br />
+1<br />
+summarizes the category distribution of the annotated skills used for synthesis.<br />
+The skills cover diverse capability categories, with Data &amp; APIs and Dev Tools forming the largest groups, followed by Workflows, Automation, Security, Prompts, and MCP Tools.<br />
+This distribution indicates that skill-grounded synthesis is anchored in a broad executable capability space rather than a narrow set of operations.<br />
+Together, the two synthesis approaches are synergistic: persona-driven synthesis expands user-scenario diversity, while skill-grounded synthesis strengthens operational grounding through reusable skills.<br />
+Human-Sampled Task Quality Analysis.<br />
+To assess the quality of the synthesized training data, we randomly sample 50 task instances and conduct human evaluation along four dimensions: task reasonableness, execution feasibility, resource consistency, and verification quality.<br />
+These dimensions assess whether the task is clear and realistic, executable under the provided workspace, consistent with its mock resources, and paired with an appropriate verifier.<br />
+Each dimension is scored on a 1–5 scale, and the results are reported in Table<br />
+2<br />
+.<br />
+The sampled tasks receive positive ratings across both task-side and verifier-side dimensions, with an overall average score of 4.06.<br />
+Task reasonableness and resource consistency score particularly high, indicating that the sampled tasks are generally coherent and well matched with their resources.<br />
+Execution feasibility is relatively lower but still positive, reflecting the non-trivial environment assumptions and multi-step execution complexity of some tasks.<br />
+Overall, these results suggest that the synthesized data maintains a reasonable level of coherence, executability, and verifiability, making it suitable for constructing agent-training trajectories.<br />
+4<br />
+ClawGym-Agents: Training Claw Agents with Synthesized Tasks<br />
+This section details the process of leveraging ClawGym-SynData to construct high-quality training trajectories, which are subsequently used to develop the ClawGym-Agents. Given the task specifications and the automatically instantiated workspaces introduced in previous sections, we first collect realistic agent-environment interaction traces through large-scale black-box rollouts on OpenClaw. We then aggregate and clean the raw interaction logs, select high-quality trajectories according to verifier scores, and finally use the resulting dataset to conduct multi-turn SFT.<br />
+4.1<br />
+Black-Box Rollout<br />
+The training paradigm for Claw agents diverges from that of traditional search<br />
+[<br />
+song2025r1_2<br />
+,<br />
+li2025webthinkerempoweringlargereasoning<br />
+]<br />
+or coding<br />
+[<br />
+sun2026swe<br />
+,<br />
+song2026swe<br />
+]<br />
+agents. While conventional agentic training<br />
+[<br />
+song2025r1<br />
+]<br />
+relies on explicit agentloops that govern agent-environment interactions in a predefined format, frameworks like OpenClaw operate as highly encapsulated systems. Consequently, internal execution details, such as context management and subagent sessions, remain completely opaque.<br />
+To collect authentic OpenClaw trajectories at scale, we adopt a black-box rollout strategy that directly leverages the OpenClaw harness. Rather than implementing a separate agent loop or constructing an external harness to approximate OpenClaw’s interaction protocol, we execute tasks through OpenClaw itself, thereby preserving its original control flow, tool interface, and agent-environment interaction semantics. Specifically, we deploy multiple OpenClaw Docker environments on a distributed cluster and treat each instance as an executable black-box system. For each synthesized task, we assign the task specification and its associated workspace materials to a designated Docker container, where the initial environment is constructed and the task is solved by invoking the OpenClaw runtime.<br />
+During execution, OpenClaw controls the agent to interact with the local environment through tool calls and textual observations. To record these interactions without modifying the agent logic, we introduce a proxy layer that intercepts each request and response exchanged during the rollout. This proxy captures the complete multi-turn interaction stream, including model inputs, model outputs, tool invocations, and environment feedback. As a result, we obtain OpenClaw rollout trajectories that faithfully reflect how the agent solves tasks in realistic local environments. These raw trajectories serve as the foundation for subsequent data aggregation, filtering, and training.<br />
+We leverage MiniMax-M2.5<br />
+[<br />
+minimax_m25<br />
+]<br />
+and GLM-5.1<br />
+[<br />
+glm_51<br />
+]<br />
+as teacher models to conduct rollouts, constructing a training corpus by mixing trajectories distilled from both models for subsequent data processing and fine-tuning.<br />
+4.2<br />
+Trajectory Aggregation and Selection<br />
+After collecting black-box rollout logs, we aggregate raw interaction records into complete trajectories. Since the proxy captures requests at the granularity of individual model calls, a single task execution may correspond to multiple partially overlapping request traces. We reconstruct trajectories by grouping requests that share identical message prefixes and concatenating subsequent interaction turns, thereby recovering coherent multi-turn sequences from fragmented OpenClaw logs.<br />
+In practice, we observe that long-running OpenClaw sessions may explicitly insert auxiliary prompts, such as cron or heartbeat messages, into the conversation. These prompts are used to maintain session activity or initiate secondary interaction branches, but they do not directly contribute to solving the target task. Therefore, during aggregation, we remove such systematic reminders and retain only the interaction segments that are relevant to task execution. In addition, we filter out trajectories involving unsupported tools. For example, some tools, such as canvas-related operations, are not available on the remote rollout infrastructure and are not required by our synthesized tasks. Removing trajectories containing such tool calls prevents spurious tool-call failures from introducing unnecessary noise into the training data.<br />
+We then perform trajectory selection based on verifier scores. Unlike conventional program-repair or question-answering tasks, where rewards are often binary, our hybrid verification protocol produces continuous scores in<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+[0,1]<br />
+by combining code-based and rubric-based verifiers. Consequently, standard best-of-<br />
+N<br />
+N<br />
+filtering strategies<br />
+[<br />
+song2026swe<br />
+]<br />
+designed for binary success signals may become directly inapplicable. We therefore adopt a simple yet robust reward-threshold-based filtering strategy: after ensuring that a trajectory corresponds to a valid and complete interaction process, we retain it for training only if its final score exceeds a predefined reward threshold. This selection rule prioritizes trajectories that demonstrate sufficiently high task completion quality while avoiding excessive dependence on a binary success criterion, ultimately yielding a final dataset of 24.5K high-fidelity interaction trajectories for SFT. Section<br />
+6.3<br />
+further analyzes the impact of different reward thresholds on the downstream performance of the trained agents.<br />
+After reward-threshold-based filtering, we summarize the interaction and tool-use statistics of the selected trajectories.<br />
+As shown in Table<br />
+3<br />
+, each selected trajectory contains 13.00 interaction rounds and 18.67K tokens on average, indicating that the retained data consists of non-trivial multi-turn executions rather than short single-turn responses.<br />
+The selected trajectories also include 15.82 tool calls and 3.25 distinct tool types on average, suggesting frequent workspace interaction and coordination across multiple operation types.<br />
+These statistics show that the filtered trajectories provide rich Claw-style supervision involving planning, workspace inspection, tool execution, and observation-driven adjustment.<br />
+Table 3:<br />
+Interaction and tool-use statistics of selected trajectories after filtering. These trajectories are generated using both Minimax-M2.5 and GLM-5.1.<br />
+Avg. Rounds<br />
+Avg. Tokens<br />
+Avg. Tool Calls<br />
+Avg. Tool Types<br />
+Overall<br />
+13.00<br />
+18.67K<br />
+15.82<br />
+3.25<br />
+4.3<br />
+Agentic Training for Claw Agents<br />
+Using the filtered trajectories, we perform multi-turn SFT on the Qwen3-series<br />
+[<br />
+yang2025qwen3technicalreport<br />
+]<br />
+, including Qwen3-4B-2507-Instruct, Qwen3-8B, and Qwen3-30B-A3B-2507-Instruct. Since Claw tasks often require long-horizon interaction with local files, tools, and environment feedback, the resulting trajectories can substantially exceed the context length used in standard instruction tuning. For Qwen3-8B, whose native context window is 32K tokens, we apply YaRN<br />
+[<br />
+peng2023yarnefficientcontextwindow<br />
+]<br />
+to extend the maximum context length to 64K tokens, enabling the model to better capture long-range dependencies across multi-turn agent trajectories.<br />
+During training, we adopt a multi-turn loss masking strategy tailored to agentic interaction data. Specifically, tokens corresponding to environment feedback produced by Docker-based execution are excluded from the supervised loss. This prevents the model from learning to imitate deterministic execution outputs or tool-returned observations, which are not actions generated by the policy. Instead, the optimization objective focuses on the model-generated parts of the trajectory, including reasoning, decision making, and tool-call generation. This design encourages the model to learn how to act within the environment rather than memorize the environment’s responses.<br />
+Through this procedure, we obtain<br />
+ClawGym-Agents<br />
+trained on our synthesized high-quality task trajectories, namely ClawGym-4B, ClawGym-8B, and ClawGym-30B-A3B. These trained models possess improved capabilities when deployed to serve as Claw agents.<br />
+4.4<br />
+Reinforcement Learning with Sandbox-Parallel Rollouts<br />
+Beyond supervised fine-tuning, we further explore reinforcement learning for Claw-style agents through a lightweight sandbox-parallel pipeline. The pipeline keeps the OpenClaw agent loop as a black box and virtualizes each task into an independent sandbox containing its own root filesystem, workspace, gateway, and verifier<br />
+[<br />
+cheng2026computerenvironmentselicitgeneral<br />
+]<br />
+. Our design has three practical advantages: (i)<br />
+sandbox-parallel rollout<br />
+, which allows many task rollouts to run concurrently without interfering with each other; (ii)<br />
+low infrastructure dependency<br />
+, enabled by interchangeable Docker-based and Docker-free sandbox backends for different cluster settings; and (iii)<br />
+outcome-reward-only training<br />
+, where the code verifier provides the reward signal directly, avoiding auxiliary reward models or process-level supervision.<br />
+We conduct RL from two starting points with different capabilities: Qwen3-4B-2507-Instruct, a vanilla instruct model without ClawGym fine-tuning, and ClawGym-30B-A3B, a SFT model initialized from Qwen3-30B-A3B-2507-Instruct, using ClawGym-SynData. For training, we sample 2,000 tasks from ClawGym-SynData and balance the selection to preserve diversity across required tools. We optimize the policy with GRPO<br />
+[<br />
+deepseekmath<br />
+]<br />
+using the following hyperparameters: learning rate 1e-6, train batch size 8, rollouts per prompt 8, training steps 100, rollout temperature 0.7, maximum response length 64K tokens.<br />
+Across both starting points, our RL training improves evaluation performance over the corresponding baseline. The gain on the vanilla 4B model shows that RL training can improve Claw-style agents even without prior SFT, while the improvement on ClawGym-30B-A3B indicates that the same recipe remains useful after supervised agent training. These results suggest that lightweight sandbox-parallel rollouts provide a practical RL path for further improving Claw-style agents.<br />
+Figure 3<br />
+:<br />
+RL training curves on ClawGym-Bench. Scores are computed using only code-based verifiers with weight 1.0, without rubric-based judgment.<br />
+5<br />
+ClawGym-Bench: A Reliable Benchmark for Claw Agents<br />
+Reliable evaluation is as important as rigorous training for developing Claw agents. However, it requires more stringent quality control, as it directly measures and compares different models through accurate performance scores. Therefore, we construct<br />
+ClawGym-Bench<br />
+from the synthesized task pool through a rigorously designed multi-stage selection process.<br />
+This process reduces noisy samples and yields a more reliable benchmark for evaluating Claw agents on workspace-grounded tasks, including file operations, data processing, document editing, code execution, and other realistic computer-use workflows.<br />
+5.1<br />
+Benchmark Construction<br />
+We construct ClawGym-Bench from the synthesized task pool after the general task-quality and verifier-quality assessments described above. Since benchmark samples are used for evaluation rather than large-scale training, we apply a stricter construction process that focuses on difficulty calibration, verifier reliability, and coverage of diverse workspace-grounded scenarios.<br />
+Difficulty-Aware Filtering.<br />
+We denote by<br />
+𝒟<br />
+cand<br />
+\mathcal{D}<em>{\mathrm{cand}}<br />
+the set of synthesized tasks that remain after task-quality and verifier-quality filtering in Section<br />
+3.4<br />
+. To further select suitable benchmark samples, we perform rollout-based difficulty filtering on this candidate pool. For each task<br />
+τ<br />
+∈<br />
+𝒟<br />
+cand<br />
+\tau\in\mathcal{D}</em>{\mathrm{cand}}<br />
+, we run<br />
+n<br />
+=<br />
+4<br />
+n=4<br />
+rollouts with both a strong LLM agent and a smaller LLM agent, and compute their average completion scores as<br />
+s<br />
+¯<br />
+strong<br />
+​<br />
+(<br />
+τ<br />
+)<br />
+\bar{s}<em>{\mathrm{strong}}(\tau)<br />
+and<br />
+s<br />
+¯<br />
+small<br />
+​<br />
+(<br />
+τ<br />
+)<br />
+\bar{s}</em>{\mathrm{small}}(\tau)<br />
+, respectively. These scores provide an empirical estimate of whether the task is solvable, whether it is too easy, and whether it can distinguish agents with different capabilities.<br />
+Specifically, a task is retained only if it satisfies the following criteria:<br />
+{<br />
+s<br />
+¯<br />
+strong<br />
+​<br />
+(<br />
+τ<br />
+)<br />
+≥<br />
+0.2<br />
+,<br />
+s<br />
+¯<br />
+small<br />
+​<br />
+(<br />
+τ<br />
+)<br />
+≤<br />
+0.6<br />
+,<br />
+s<br />
+¯<br />
+strong<br />
+​<br />
+(<br />
+τ<br />
+)</p>
+<blockquote>
+<p>s<br />
+¯<br />
+small<br />
+​<br />
+(<br />
+τ<br />
+)<br />
+.<br />
+\left{\begin{aligned} \bar{s}<em>{\mathrm{strong}}(\tau)&amp;\geq 0.2,\<br />
+\bar{s}</em>{\mathrm{small}}(\tau)&amp;\leq 0.6,\<br />
+\bar{s}<em>{\mathrm{strong}}(\tau)&amp;&gt;\bar{s}</em>{\mathrm{small}}(\tau).\end{aligned}\right.<br />
+(18)<br />
+The first condition removes tasks that are too difficult or unstable even for the strong agent, while the second filters out tasks that are already easy for the smaller agent. The third condition ensures that the strong agent performs better than the smaller one, indicating that the task reflects a meaningful capability gap. This rollout-based filtering helps ClawGym-Bench avoid both trivial and unrealistically difficult samples, while retaining tasks that are suitable for discriminative evaluation.<br />
+LLM-Assisted Human Review.<br />
+After automated filtering and difficulty-aware selection, the remaining candidates undergo a final human-LLM collaborative review before being included in the benchmark.<br />
+A Claw benchmark instance consists of multiple interdependent components, including the task instruction, input resources, executable checkers, and optional rubric rules.<br />
+Reviewing all these components purely manually is inefficient and may still overlook subtle issues, especially when checker logic depends on constraints hidden in the input files or when task-verifier alignment requires code-level reasoning.<br />
+To make this stage more effective, we use a frontier LLM (<br />
+i.e.,<br />
+GPT-5.4) to perform a detailed diagnostic review.<br />
+The model examines the task instruction, input files, code checker, and rubric rules, then reports potential problems and suggests concrete revisions.<br />
+Its review focuses on whether the task is clear and feasible, whether the input resources support the intended task, whether the checker is executable and appropriately strict, and whether the rubric complements rather than duplicates code-based verification.<br />
+Human reviewers then act as final decision makers: they examine the LLM feedback, determine whether the identified issues are valid, decide whether to accept, revise, or reject each candidate, and add missing details when necessary.<br />
+This review process combines the diagnostic strength of frontier LLMs with human oversight, improving review efficiency while keeping final decisions under human control.<br />
+Benchmark Composition.<br />
+The final benchmark contains 200 tasks retained after difficulty-aware filtering and Human-LLM review. Each benchmark instance includes a user instruction, task-specific mock resources, and the corresponding verifier. Among these tasks, 156 are evaluated purely by code-based checkers, while 44 use hybrid verification that combines code-based checks with rubric-based judgment for qualitative requirements. We compute the final score of each task using the verification aggregation defined in Equation<br />
+17<br />
+. The benchmark covers 6 task categories, with the category definitions and proportions summarized in Table<br />
+4<br />
+. This composition allows ClawGym-Bench to evaluate agents across a diverse set of workspace-grounded scenarios, including file manipulation, data analysis, document editing, script execution, and communication-oriented workflows.<br />
+Table 4:<br />
+Category distribution of ClawGym-Bench.<br />
+Category<br />
+Description</p>
+</blockquote>
+<h1>Tasks</h1>
+<p>Productivity and Collaboration<br />
+Routine office work, messaging, scheduling, coordination, and<br />
+collaborative<br />
+workflows.<br />
+44<br />
+Systems and Automation<br />
+System inspection, workflow automation, operational<br />
+execution<br />
+, and environment-level handling.<br />
+42<br />
+Analysis and Reasoning<br />
+Data analysis, evaluation, decision support, problem solving, and<br />
+technical<br />
+reasoning.<br />
+35<br />
+Content and Domain Support<br />
+Professional-domain assistance, external-facing writing,<br />
+reporting<br />
+, and communication tasks.<br />
+28<br />
+Planning and Knowledge<br />
+Information collection, knowledge organization, retrieval,<br />
+synthesis<br />
+, and planning-oriented work.<br />
+26<br />
+Software Development<br />
+Code implementation, debugging, testing, refactoring, and<br />
+software<br />
+engineering workflows.<br />
+25<br />
+All<br />
+200<br />
+5.2<br />
+Evaluation Protocol<br />
+ClawGym-Bench evaluates agents in a harness-based workspace setting: each task is initialized with its mock resources, the agent interacts with the workspace, and the final state is scored by the corresponding verifier using Equation<br />
+17<br />
+. Since such execution-based evaluation is substantially more expensive than text-only scoring, the benchmark is designed to emphasize two properties that directly affect evaluation reliability:<br />
+evaluation stability<br />
+and<br />
+verifiable solvability<br />
+.<br />
+Evaluation Stability.<br />
+A practical benchmark for Claw agents should yield stable results under repeated harness-based evaluation. This property is particularly important because each Claw evaluation involves multi-turn interaction in the harness, long execution contexts, and frequent tool calls, making repeated evaluation substantially more costly than text-only benchmarking. To examine stability, we evaluate models of different sizes on a fixed subset of 50 benchmark tasks, sampled in a category-balanced manner to cover diverse task types. Each model is evaluated 5 times under the same harness setting, with identical workspace initialization, mock resources, and verification artifacts. As shown in Table<br />
+5<br />
+, the standard deviations across repeated runs are small (<br />
+≤<br />
+\leq<br />
+1%), indicating that ClawGym-Bench supports reliable model comparison without requiring many repeated runs solely to average out randomness.<br />
+Table 5:<br />
+Stability analysis under repeated harness-based evaluation.<br />
+Model<br />
+Runs<br />
+Mean Score(%)<br />
+Std.(%)<br />
+Qwen3-8B<br />
+5<br />
+36.4<br />
+0.3<br />
+Qwen3-30B-A3B<br />
+5<br />
+42.6<br />
+1.0<br />
+Verifiable Solvability.<br />
+Each benchmark task is checked to ensure that it admits at least one feasible path to the full score. This property is important because a task should not be impossible to fully solve due to flaws in the task instruction, missing or inconsistent input resources, or overly strict verification code. During benchmark construction, we verify this property either through successful strong-agent rollouts or through human-constructed reference completions. In both cases, the final workspace state is evaluated by the corresponding verifier to confirm that the task can receive full credit. This check helps ensure that failures on ClawGym-Bench reflect limitations of the evaluated agent rather than artifacts of infeasible task design, invalid input files, or unreachable verification.<br />
+6<br />
+Experiment<br />
+In this section, we evaluate the proposed ClawGym framework by extensively examining the data quality, training effectiveness, and benchmark reliability.<br />
+6.1<br />
+Experimental Settings<br />
+Evaluation Datasets and Metrics.<br />
+We evaluate all models on ClawGym-Bench and PinchBench<br />
+[<br />
+pinchbench2026<br />
+]<br />
+using a hybrid evaluation protocol that combines code-based verification with rubric-based judgment. For ClawGym-Bench tasks whose verifier contains only code checks, we directly use the corresponding code-based verifier for automated assessment, with a weight of 1.0; this score is taken as the final task score. For tasks whose verifier contains both code checks and rubrics, we assign a weight of 0.7 to the code-based component and 0.3 to the rubric-based component, as described in Section<br />
+3.3<br />
+. For PinchBench, we use the task set released on April 10, 2026, excluding multimodal tasks and retaining 30 tasks in total. Each PinchBench task is evaluated using the verifier provided in the original benchmark specification. The rubric-based judgments are conducted using GPT-5.4 as the judge model, and the corresponding prompts are provided in Appendix<br />
+A<br />
+.<br />
+Evaluated Models.<br />
+We evaluate a broad set of models spanning both proprietary and open-weight systems. The proprietary frontier models include Claude-4.7-Opus<br />
+[<br />
+anthropic_claude_opus_4_7<br />
+]<br />
+, Claude-4.6-Opus<br />
+[<br />
+anthropic_claude_opus_4_6<br />
+]<br />
+, Claude-4.6-Sonnet<br />
+[<br />
+anthropic_claude_sonnet_4_6<br />
+]<br />
+, Gemini-3-Flash<br />
+[<br />
+google2026gemini3flash<br />
+]<br />
+, and GPT-5.4<br />
+[<br />
+openai2026gpt54<br />
+]<br />
+. The open-weight frontier models include DeepSeek-V3.2<br />
+[<br />
+liu2025deepseek<br />
+]<br />
+, GLM-5.1<br />
+[<br />
+glm_51<br />
+]<br />
+, MiniMax-M2.7<br />
+[<br />
+minimax2026m27<br />
+]<br />
+, Kimi-K2.6<br />
+[<br />
+kimi_k26<br />
+]<br />
+, and Qwen3.5-Plus<br />
+[<br />
+qwen_35_plus<br />
+]<br />
+. We further evaluate models from the Qwen3-series<br />
+[<br />
+yang2025qwen3technicalreport<br />
+]<br />
+, as well as ClawGym-Agents obtained by using Qwen3-series models as backbone models and fine-tuning them on ClawGym-SynData. For all evaluated models, trajectories are collected through black-box rollouts in the original OpenClaw environments. For the Qwen-series models, we adopt generation configurations tailored to their respective model specifications, while all other models are evaluated through direct API calls. The context length is uniformly set to 64K tokens.<br />
+6.2<br />
+Main Results<br />
+We organize the evaluation of ClawGym around three main questions.<br />
+First, we examine whether training on ClawGym-SynData improves compact open-weight models and narrows their gap with stronger agents.<br />
+Second, we assess whether ClawGym-Bench provides a sufficiently discriminative evaluation across model scales and task categories.<br />
+Third, we test whether the resulting ClawGym-Agents generalize beyond the synthesized task distribution by evaluating them on the external PinchBench benchmark.<br />
+Table<br />
+6<br />
+summarizes the overall results.<br />
+Table 6:<br />
+Performance comparison of different models on ClawGym-Bench and PinchBench. The best and second-best Pass@1 results within each model group are highlighted in<br />
+bold<br />
+and<br />
+underlined<br />
+, respectively. Results marked with<br />
+∗<br />
+are taken directly from the official websites.<br />
+Model<br />
+Pinch-<br />
+Bench<br />
+ClawGym-Bench<br />
+Product.<br />
+&amp; Collab.<br />
+Systems<br />
+&amp; Auto.<br />
+Analysis<br />
+&amp; Reason.<br />
+Content<br />
+&amp; Domain<br />
+Planning<br />
+&amp; Knowl.<br />
+Software<br />
+Dev.<br />
+Avg.<br />
+Proprietary Frontier Models<br />
+Claude-4.7-Opus<br />
+79.40<br />
+73.02<br />
+74.28<br />
+80.14<br />
+80.98<br />
+81.04<br />
+82.04<br />
+77.81<br />
+Claude-4.6-Sonnet<br />
+79.30<br />
+∗<br />
+70.44<br />
+68.04<br />
+76.27<br />
+74.59<br />
+74.21<br />
+73.40<br />
+72.40<br />
+Claude-4.6-Opus<br />
+75.30<br />
+∗<br />
+68.02<br />
+63.49<br />
+73.23<br />
+74.40<br />
+73.38<br />
+82.90<br />
+71.43<br />
+Gemini-3-Flash<br />
+88.70<br />
+∗<br />
+68.70<br />
+68.06<br />
+68.89<br />
+78.87<br />
+80.68<br />
+84.04<br />
+73.50<br />
+GPT-5.4<br />
+68.30<br />
+∗<br />
+76.00<br />
+66.56<br />
+73.83<br />
+76.19<br />
+68.51<br />
+82.40<br />
+73.49<br />
+Open-Weight Frontier Models<br />
+DeepSeek-V3.2<br />
+60.80<br />
+∗<br />
+64.45<br />
+64.43<br />
+71.97<br />
+72.30<br />
+66.66<br />
+70.34<br />
+67.90<br />
+GLM-5.1<br />
+76.40<br />
+70.95<br />
+64.11<br />
+71.71<br />
+75.99<br />
+74.09<br />
+73.86<br />
+71.12<br />
+MiniMax-M2.7<br />
+80.90<br />
+∗<br />
+63.98<br />
+60.11<br />
+63.96<br />
+63.42<br />
+68.72<br />
+64.10<br />
+63.72<br />
+Kimi-K2.6<br />
+66.50<br />
+67.16<br />
+55.99<br />
+72.56<br />
+72.84<br />
+71.56<br />
+82.47<br />
+69.05<br />
+Qwen3.5-Plus<br />
+78.70<br />
+67.34<br />
+66.56<br />
+74.27<br />
+73.07<br />
+71.79<br />
+72.10<br />
+70.35<br />
+Compact Open-Weight Models<br />
+Qwen3-8B<br />
+54.50<br />
+37.46<br />
+29.06<br />
+30.40<br />
+41.12<br />
+44.47<br />
+30.69<br />
+35.02<br />
+Qwen3-32B<br />
+49.40<br />
+40.68<br />
+36.21<br />
+37.84<br />
+47.16<br />
+49.29<br />
+33.11<br />
+40.32<br />
+Qwen3-30A3B<br />
+55.60<br />
+42.47<br />
+42.09<br />
+45.04<br />
+51.95<br />
+45.98<br />
+46.24<br />
+45.11<br />
+Qwen3-235A23B<br />
+60.60<br />
+53.66<br />
+52.27<br />
+47.18<br />
+61.39<br />
+67.33<br />
+49.23<br />
+54.48<br />
+ClawGym-4B<br />
+76.40<br />
+45.21<br />
+46.60<br />
+47.51<br />
+48.99<br />
+52.25<br />
+48.27<br />
+47.73<br />
+ClawGym-8B<br />
+75.70<br />
+49.47<br />
+46.83<br />
+46.35<br />
+55.37<br />
+52.29<br />
+54.78<br />
+50.24<br />
+ClawGym-30A3B<br />
+86.00<br />
+52.98<br />
+50.97<br />
+64.64<br />
+61.46<br />
+57.90<br />
+56.13<br />
+56.82<br />
+∙<br />
+\bullet<br />
+Effectiveness of Synthesized Data.<br />
+Training on our synthesized data yields substantial performance gains for compact open-weight backbones. As shown in Table<br />
+6<br />
+, ClawGym-4B, 8B, and 30A3B achieve average scores of 47.73, 50.24, and 56.82 on ClawGym-Bench, respectively, consistently outperforming their Qwen baselines. Notably, ClawGym-30A3B surpasses the much larger Qwen3-235B-A23B, suggesting that high-quality, agent-specific interaction data can partially compensate for the limitations of model scale. Furthermore, on PinchBench, ClawGym-30A3B achieves a score of 86.00, which is highly competitive even when compared to the scores reported for several proprietary frontier models. These results indicate that our synthesis pipeline effectively equips smaller models with specialized agentic capabilities, narrowing the performance gap between compact and large-scale backbones in these scenarios.<br />
+∙<br />
+\bullet<br />
+Discriminative Capacity of ClawGym-Bench.<br />
+ClawGym-Bench provides discriminative signals across both task categories and model capability levels.<br />
+Across categories, no single agent dominates all dimensions; while Claude-4.7-Opus achieves the highest overall average, GPT-5.4 excels in<br />
+Product. &amp; Collab.<br />
+and Gemini-3-Flash leads in<br />
+Software Dev.<br />
+This category-wise variation indicates that different benchmark categories probe distinct agent capabilities and can expose model-specific strengths.<br />
+Regarding model-level performance, the average scores establish a clear hierarchy ranging from 35.02 for Qwen3-8B to 77.81 for Claude-4.7-Opus, which demonstrates a high degree of granularity in distinguishing between models.<br />
+Collectively, these results indicate that ClawGym-Bench is both challenging and discriminative across model scales and task categories.<br />
+∙<br />
+\bullet<br />
+Generalization beyond Synthesized Scenarios.<br />
+The robust performance of ClawGym-Agents on PinchBench demonstrates the strong generalizability of our ClawGym framework. Since these models were supervised exclusively by ClawGym-SynData, their success on an external benchmark indicates that the data effectively facilitates the acquisition of transferable agentic principles. The fact that these gains are not restricted to the synthesized task distribution suggests that the models are internalizing core functional logic rather than merely overfitting to specific patterns within ClawGym-SynData. These results validate our synthesized data as a scalable and high-fidelity supervision source, capable of equipping agents with the robustness required for diverse, real-world computer-use scenarios.<br />
+6.3<br />
+Experimental Analysis<br />
+In this section, we conduct a series of empirical analyses to investigate the key factors contributing to the performance of ClawGym-Agents SFT. Specifically, we evaluate the synergy between our dual synthesis strategies, analyze the training dynamics and convergence patterns, and examine the impact of reward-based trajectory filtering protocols.<br />
+Synergy of Synthesis Strategies.<br />
+To assess the necessity of persona-driven top-down synthesis and skill-grounded bottom-up synthesis, we compare models trained on trajectories collected from different task sources.<br />
+Only Persona-driven<br />
+and<br />
+Only Skill-grounded<br />
+use trajectories from the corresponding strategy alone, while<br />
+Mixed Synthesis<br />
+combines both sources.<br />
+As shown in Table<br />
+7<br />
+, models trained with mixed synthesis outperform those trained with either strategy alone, highlighting the synergy between top-down intent diversity and bottom-up operational grounding. Specifically, the persona-driven strategy ensures a broad coverage of realistic user scenarios, while the skill-grounded strategy anchors tasks in the agent’s actual functional boundaries. By combining these, the model learns to bridge the gap between abstract user needs and concrete tool execution, leading to better generalization across diverse tasks.<br />
+Table 7<br />
+:<br />
+Synergy between Persona-Driven and Skill-Grounded Synthesis Strategies.<br />
+Base Model<br />
+Training Data Source<br />
+ClawGym-Bench<br />
+PinchBench<br />
+Qwen3-8B<br />
+Only Persona-driven<br />
+49.44<br />
+73.51<br />
+Only Skill-grounded<br />
+49.06<br />
+68.23<br />
+Mixed Synthesis<br />
+50.24<br />
+75.68<br />
+Qwen3-30A3B<br />
+Only Persona-driven<br />
+53.65<br />
+84.92<br />
+Only Skill-grounded<br />
+52.27<br />
+80.05<br />
+Mixed Synthesis<br />
+56.82<br />
+86.00<br />
+Training Dynamics and Convergence.<br />
+To investigate how the volume of training exposure affects model performance, we analyze the training dynamics across 5 epochs (103 steps per epoch), evaluating checkpoints every 60 steps. As shown in Figure<br />
+4<br />
+, both ClawGym-Bench and PinchBench exhibit significant gains over the base model (step 0), validating the high quality of our synthesized trajectories. Notably, performance peaks at the conclusion of the third epoch (step 309), after which we observe a slight but steady decline. This trend suggests that identifying the optimal training scale is crucial; while initial exposure allows the model to effectively internalize agent-specific capabilities, excessive iterations lead to marginal over-fitting on the synthesized data distribution.<br />
+Figure 4<br />
+:<br />
+Effect of training trajectory scale on SFT Model using ClawGym-SynData.<br />
+Impact of Reward Thresholding<br />
+As discussed in Section<br />
+4.2<br />
+, we adopt a simple reward-based thresholding strategy to select trajectories for agentic training. Since our hybrid verifier yields continuous scores in<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+[0,1]<br />
+, the choice of threshold directly governs the trade-off between task completion fidelity and data coverage. To identify the optimal threshold, we evaluate performance across a range from 0.4 to 0.9. As shown in<br />
+Figure<br />
+5<br />
+, a threshold of 0.5 yields the best results on both benchmarks, marking a critical equilibrium between execution completeness and data diversity. While lower thresholds introduce trajectories with insufficient task fulfillment that may degrade the supervision signal, excessively high thresholds prune valuable behavioral variety. Specifically, overly stringent filtering may discard trajectories that, despite imperfect completion scores, demonstrate essential recovery patterns or partial strategies for complex, heterogeneous tasks. These results indicate that calibrated filtering is essential for ensuring high completion fidelity while preserving the diversity necessary for robust agentic generalization. However, the optimal threshold remains an empirical design choice under the current pipeline. In future work, we plan to investigate more principled selection methods for continuous verifier scores.<br />
+Figure 5<br />
+:<br />
+Effect of trajectory filtering reward threshold on SFT Model ClawGym-SynData.<br />
+7<br />
+Behavioral Analysis of Claw Agents<br />
+Claw-style tasks require agents to use local files and tools, process execution feedback, and update persistent workspaces. They involve interdependent abilities such as tool-use appropriateness, long-horizon execution robustness, and fine-grained instruction following. We compare GPT-5.4 and Qwen3-30B-A3B (30A3) on ClawGym-Bench cases to identify effective execution patterns and common failures, offering insights for future data synthesis, training, and evaluation.<br />
+Case 1: Tool-Use Appropriateness<br />
+Task requirement.<br />
+Generate two CI artifact audit reports from all JSON exports under<br />
+input/ci-artifacts/<em>.json<br />
+. The agent must group artifacts by repository<br />
+and artifact name, compute size statistics, count missing sizes and critical<br />
+instances, normalize repository identifiers, and write<br />
+output/audit/report.json<br />
+and<br />
+output/audit/report_filtered.json<br />
+. The filtered report must use the regex<br />
+(coverage|test-results)<br />
+.<br />
+GPT-5.4: Reliable Tool Workflow<br />
+The higher-scoring trajectory uses tools as a staged computation pipeline. It first<br />
+expands the file pattern, then inspects the JSON structure, and finally runs a Python<br />
+aggregation script to compute both reports from the underlying records. The printed<br />
+summaries expose key quantities required by the verifier.<br />
+exec: list input/ci-artifacts/</em>.json<br />
+output: gadgets.json, gizmos.json,<br />
+widgets.json<br />
+exec: inspect JSON shape with python3<br />
+output: keys = repository,<br />
+total_count, artifacts<br />
+output: LISTKEY artifacts len 3 / 5<br />
+exec: run Python aggregation script<br />
+write output/audit/report.json<br />
+write output/audit/report_filtered.json<br />
+FULL summary:<br />
+files_scanned = 3<br />
+records_scanned = 11<br />
+records_missing_size = 1<br />
+groups = 7<br />
+critical_instances = 2<br />
+FILTERED summary:<br />
+artifact_match = (coverage|test-results)<br />
+groups = 3<br />
+critical_instances = 0<br />
+reward = 1.000<br />
+30A3: Brittle Tool Use<br />
+The weaker trajectory is not a no-op. After an invalid wildcard read fails, it<br />
+recovers by using<br />
+find<br />
+and reads the three JSON files. However, the later<br />
+workflow does not establish a comparably reliable aggregation-and-verification<br />
+process, leading to only partial satisfaction of the exact report checks.<br />
+read input/ci-artifacts/<em>.json<br />
+Tool error:<br />
+ENOENT,<br />
+wildcard not expanded<br />
+exec: find input/ci-artifacts<br />
+-name ’</em>.json’ | sort<br />
+output: gadgets.json, gizmos.json,<br />
+widgets.json<br />
+read input/ci-artifacts/gadgets.json<br />
+read input/ci-artifacts/gizmos.json<br />
+read input/ci-artifacts/widgets.json<br />
+...<br />
+write output/audit/report.json<br />
+write output/audit/report_filtered.json<br />
+Unresolved issues:<br />
+exact summary fields<br />
+group ordering / counts<br />
+filtered report semantics<br />
+critical-instance checks<br />
+reward = 0.308<br />
+Figure 6<br />
+:<br />
+The stronger trajectory builds a computation-and-verification pipeline, while the weaker one remains brittle in report aggregation despite recovering from an initial tool error.<br />
+Case 2: Long-Horizon Execution Robustness<br />
+Task requirement.<br />
+Build a local automation for support-ticket batches under<br />
+input/inbox/<em>.jsonl<br />
+.<br />
+For each batch, the agent must generate ticket rewrites, batch metrics, team<br />
+notifications, and an idempotent state file at<br />
+out/state/processed_batches.json<br />
+. The automation must process the two<br />
+provided examples and remain safe to rerun.<br />
+Here,<br />
+batch-04-15<br />
+and<br />
+batch-04-16<br />
+abbreviate the two provided<br />
+support-ticket input files.<br />
+GPT-5.4: Recovery and Closure<br />
+The stronger trajectory encounters errors, but treats them as recoverable execution<br />
+feedback. After missing optional memory files and later hitting an<br />
+exec<br />
+preflight refusal, it switches to a safer workflow, resets only the state file,<br />
+reruns the processor, and verifies that the second run does not duplicate work.<br />
+read MEMORY.md<br />
+Recoverable error:<br />
+ENOENT<br />
+list input/inbox<br />
+read batch-04-15.jsonl<br />
+read batch-04-16.jsonl<br />
+write process_support_batches.py<br />
+exec: python3 process_support_batches.py<br />
+check generated rewrites/metrics/notifications<br />
+edit: preserve API, UTC, README,<br />
+CONTRIBUTING, CSV, CLI<br />
+exec: complex cleanup command<br />
+Recoverable error:<br />
+preflight refused<br />
+fallback: write state = []<br />
+exec: python3 process_support_batches.py<br />
+exec: python3 process_support_batches.py<br />
+read processed_batches.json<br />
+output: two batches, no duplicates<br />
+reward = 1.000<br />
+30A3: Error Accumulation and Dead-End<br />
+The weaker trajectory does not convert tool failures into a stable recovery plan.<br />
+After repeated missing-file errors and an approval-related dead-end, the workflow<br />
+fails to converge to a complete runnable automation. As a result, the required<br />
+per-batch artifacts and idempotent state tracking are largely missing.<br />
+attempt to inspect workspace files<br />
+Unresolved error:<br />
+repeated missing files<br />
+...<br />
+attempt partial setup actions<br />
+...<br />
+Dead-end:<br />
+approval request blocks progress<br />
+/approve ... allow-once<br />
+...<br />
+Missing:<br />
+complete rewrites<br />
+Missing:<br />
+metrics summaries<br />
+Missing:<br />
+team notifications<br />
+Missing:<br />
+valid idempotent state<br />
+reward = 0.067<br />
+Figure 7<br />
+:<br />
+A representative case of error recovery in long-horizon execution. The stronger trajectory recovers from tool failures and completes an idempotent workflow, while the weaker trajectory accumulates unresolved errors and fails to reach stable completion.<br />
+Tool-Use Appropriateness.<br />
+In Claw-style environments, task success depends not only on invoking tools, but also on using them coherently within an execution workflow. Figure<br />
+6<br />
+illustrates this distinction in a CI artifact audit task. The stronger trajectory expands the file pattern, inspects the JSON schema, and runs a Python aggregation script to compute the reports, forming a discovery-inspection-computation-verification pipeline. The weaker trajectory recovers from an invalid wildcard read by using<br />
+find<br />
+and reading the matched files, but does not turn this recovery into a reliable computation process. Consequently, its outputs remain brittle in summary fields, group counts, filtering semantics, and critical-instance checks. This case shows that tool-use appropriateness goes beyond selecting valid tools: reliable agents must compose exploration, computation, feedback, and verification toward the final objective.<br />
+Case 3: Fine-Grained Instruction Following<br />
+Task requirement.<br />
+Generate a reorder plan from<br />
+input/inventory.csv<br />
+and<br />
+input/bulk_discounts.csv<br />
+. The reorder list must include only rows where<br />
+Quantity &lt;= ReorderPoint<br />
+, compute<br />
+TargetStock<br />
+,<br />
+OrderQty<br />
+,<br />
+and<br />
+LineTotal<br />
+exactly, aggregate supplier orders, and create one JSON file<br />
+per supplier under<br />
+output/orders/<br />
+.<br />
+GPT-5.4: Rule-Consistent Generation<br />
+The stronger trajectory computes the outputs from the input tables and verifies the<br />
+generated artifacts. It filters rows by the stated reorder condition, aggregates<br />
+supplier totals, and creates the complete supplier-level JSON set.<br />
+read input/inventory.csv<br />
+read input/bulk_discounts.csv<br />
+exec: compute reorder plan from CSVs<br />
+keep only Quantity &lt;= ReorderPoint<br />
+apply supplier discount rules<br />
+write output/reorder_list.csv<br />
+write output/supplier_orders.csv<br />
+write output/orders/</em>.json<br />
+orders files:<br />
+Acme_Office.json<br />
+CleanWorks.json<br />
+Global_Stationery.json<br />
+Paper_Plus_Co.json<br />
+reward = 1.000<br />
+30A3: Plausible but Flawed Output<br />
+The weaker trajectory writes structured CSV and JSON files, so the result appears<br />
+reasonable at a glance. However, it fails to follow the core filtering rule:<br />
+output/reorder_list.csv<br />
+should contain only items whose current quantity is<br />
+not above the reorder point, but several included rows violate this condition.<br />
+write output/reorder_list.csv<br />
+...<br />
+Required rule:<br />
+include row only if<br />
+Quantity &lt;= ReorderPoint<br />
+Actual output violates rule:<br />
+Presentation Folders: 12 &gt; 10<br />
+Correction Tape: 9 &gt; 7<br />
+Disinfectant Wipes: 8 &gt; 5<br />
+Why this is wrong:<br />
+these items already exceed their<br />
+reorder points, so they should not<br />
+appear in the reorder list<br />
+write output/supplier_orders.csv<br />
+Propagated error:<br />
+supplier totals include invalid rows<br />
+write output/orders/*.json<br />
+Propagated error:<br />
+per-supplier order files inherit<br />
+the invalid reorder items<br />
+reward = 0.429<br />
+Figure 8<br />
+:<br />
+A representative case of fine-grained requirement satisfaction. The weaker trajectory produces plausible reorder artifacts but violates the required<br />
+Quantity &lt;= ReorderPoint<br />
+filtering rule, causing invalid rows to propagate into downstream supplier outputs.<br />
+Long-Horizon Execution Robustness.<br />
+Long-horizon Claw tasks require agents to coordinate many dependent steps, including reading files, running scripts, generating artifacts, checking intermediate outputs, and preserving workspace state across reruns. In such settings, robustness is not defined by whether every action is correct from the beginning, but by whether the agent can interpret feedback, recover from disruptions, and continue along a valid solution path without losing task context. This is important because early failures often affect later artifacts and become visible in the final workspace state. Figure<br />
+7<br />
+illustrates this behavior in a support-ticket automation task. GPT-5.4 encounters a missing optional memory file, treats it as non-blocking, and proceeds to inspect the inbox files. When a cleanup command is rejected by the execution guard, it avoids repeating the failing action, resets the relevant state file, reruns the processor, and verifies that the processed-batch state contains the two expected batches without duplication. In contrast, 30A3 accumulates unresolved errors and reaches an approval-related dead end, leaving the required rewrites, metrics summaries, notifications, and idempotent state incomplete. This case shows that long-horizon robustness depends on maintaining coherent progress under execution feedback, so that local disruptions are corrected before they compound into incomplete task execution.<br />
+Fine-Grained Instruction Following.<br />
+Claw-style tasks often contain small but consequential constraints, including filtering rules, output schemas, numeric formulas, and cross-file consistency requirements. Because agents must produce persistent artifacts such as CSV, JSON, Markdown, or scripts, merely creating the requested files does not guarantee task correctness; the artifacts must also satisfy the detailed conditions implied by the instruction and input resources. Figure<br />
+8<br />
+shows this issue in a reorder-plan task. GPT-5.4 first applies the required condition<br />
+Quantity &lt;= ReorderPoint<br />
+and then computes downstream supplier outputs from the filtered records. In contrast, 30A3 generates plausible CSV and JSON files but includes invalid items whose quantities exceed their reorder points. These filtering errors propagate into supplier totals and order files, causing the final workspace to appear complete while violating core requirements. This case shows that reliable Claw agents must preserve detailed constraints across generated artifacts and derived outputs, motivating finer-grained supervision over intermediate decisions, artifact contents, and cross-file consistency.<br />
+8<br />
+Conclusion<br />
+In this paper, we present ClawGym, a scalable framework that streamlines the end-to-end development pipeline for personal agents by integrating task synthesis, trajectory collection, agent training, and evaluation within Claw-style environments. The framework first introduces a twofold synthesis approach that combines top-to-bottom topic-driven generation with bottom-to-top skill composition, supported by automated environment construction and hybrid verification mechanisms. This synthesis stage produces 13.5K task samples, forming ClawGym-SynData. Building on these synthesized tasks, we then collect 24.5K interaction trajectories on the OpenClaw harness to train ClawGym-Agents. Additionally, we explore the potential of RL through a lightweight sandbox-parallel pipeline. For rigorous evaluation, we further establish ClawGym-Bench, a human-verified benchmark consisting of 200 high-quality instances. Our experiments demonstrate that SFT on synthesized data significantly improves performance across model scales. Specifically, Qwen3-8B achieves gains of 38.90% on PinchBench and 43.46% on ClawGym-Bench, while Qwen3-30B-A3B shows improvements of 54.68% and 25.96%, respectively.<br />
+Furthermore, our behavioral analyses characterize how Claw agents act in environment-grounded tasks, revealing key limitations and highlighting directions for future research on Claw agent development.<br />
+References<br />
+Appendix A<br />
+Evaluation Prompt<br />
+Rubric-Based Judge<br />
+⬇</p>
+<h1></h1>
+<p>System<br />
+prompt<br />
+:<br />
+You<br />
+are<br />
+a<br />
+strict<br />
+rubric<br />
+-<br />
+based<br />
+evaluator<br />
+.<br />
+Use<br />
+only<br />
+the<br />
+user<br />
+prompt<br />
+content<br />
+.<br />
+Do<br />
+not<br />
+call<br />
+tools<br />
+,<br />
+browse<br />
+,<br />
+inspect<br />
+files<br />
+,<br />
+or<br />
+ask<br />
+for<br />
+more<br />
+context<br />
+.<br />
+Your<br />
+response<br />
+may<br />
+include<br />
+concise<br />
+analysis<br />
+,<br />
+but<br />
+it<br />
+must<br />
+end<br />
+with<br />
+exactly<br />
+one<br />
+standalone<br />
+JSON<br />
+object<br />
+with<br />
+keys<br />
+‘<br />
+scores<br />
+‘<br />
+and<br />
+‘<br />
+notes<br />
+‘.</p>
+<h1></h1>
+<p>User<br />
+prompt<br />
+:<br />
+You<br />
+are<br />
+grading<br />
+an<br />
+OpenClaw<br />
+agent<br />
+result<br />
+.<br />
+You<br />
+must<br />
+not<br />
+call<br />
+,<br />
+request<br />
+,<br />
+or<br />
+simulate<br />
+any<br />
+tools<br />
+.<br />
+Do<br />
+not<br />
+browse<br />
+,<br />
+list<br />
+directories<br />
+,<br />
+open<br />
+files<br />
+,<br />
+inspect<br />
+the<br />
+workspace<br />
+,<br />
+or<br />
+ask<br />
+for<br />
+more<br />
+context<br />
+.<br />
+Grade<br />
+only<br />
+from<br />
+the<br />
+task<br />
+,<br />
+final<br />
+output<br />
+files<br />
+,<br />
+optional<br />
+transcript<br />
+evidence<br />
+,<br />
+and<br />
+rubrics<br />
+included<br />
+in<br />
+this<br />
+prompt<br />
+.<br />
+Before<br />
+giving<br />
+the<br />
+final<br />
+judgement<br />
+,<br />
+provide<br />
+concise<br />
+analysis<br />
+explaining<br />
+how<br />
+the<br />
+final<br />
+outputs<br />
+satisfy<br />
+or<br />
+fail<br />
+each<br />
+rubric<br />
+criterion<br />
+.<br />
+Your<br />
+final<br />
+judgement<br />
+must<br />
+end<br />
+with<br />
+exactly<br />
+one<br />
+standalone<br />
+JSON<br />
+object<br />
+and<br />
+nothing<br />
+else<br />
+after<br />
+it<br />
+.<br />
+The<br />
+final<br />
+JSON<br />
+object<br />
+must<br />
+contain<br />
+exactly<br />
+two<br />
+keys<br />
+:<br />
+‘<br />
+scores<br />
+‘<br />
+and<br />
+‘<br />
+notes<br />
+‘.<br />
+-<br />
+‘<br />
+scores<br />
+‘<br />
+must<br />
+map<br />
+every<br />
+rubric<br />
+id<br />
+(‘<br />
+criterion_1<br />
+‘,<br />
+‘<br />
+criterion_2<br />
+‘,<br />
+...)<br />
+to<br />
+one<br />
+numeric<br />
+score<br />
+chosen<br />
+from<br />
+that<br />
+rubric<br />
+’<br />
+s<br />
+allowed<br />
+score<br />
+anchors<br />
+.<br />
+-<br />
+‘<br />
+notes<br />
+‘<br />
+must<br />
+be<br />
+a<br />
+concise<br />
+string<br />
+summarizing<br />
+the<br />
+main<br />
+reasons<br />
+for<br />
+the<br />
+assigned<br />
+scores<br />
+.<br />
+Do<br />
+not<br />
+include<br />
+any<br />
+overall<br />
+score<br />
+in<br />
+the<br />
+final<br />
+JSON<br />
+.<br />
+Do<br />
+not<br />
+compute<br />
+or<br />
+report<br />
+the<br />
+final<br />
+aggregated<br />
+score<br />
+.<br />
+Score<br />
+aggregation<br />
+will<br />
+be<br />
+handled<br />
+separately<br />
+by<br />
+post<br />
+-<br />
+processing<br />
+.</p>
+<h2></h2>
+<p>User<br />
+Task<br />
+{{<br />
+USER_TASK<br />
+}}</p>
+<h2></h2>
+<p>Final<br />
+Output<br />
+Files<br />
+{{<br />
+FINAL_OUTPUT_FILES<br />
+}}</p>
+<h2></h2>
+<p>Additional<br />
+Changed<br />
+Workspace<br />
+Files<br />
+{{<br />
+ADDITIONAL_CHANGED_WORKSPACE_FILES<br />
+}}</p>
+<h2></h2>
+<p>Transcript<br />
+{{<br />
+TRANSCRIPT_OPTIONAL<br />
+}}</p>
+<h2></h2>
+<p>Rubric<br />
+{{<br />
+RUBRIC<br />
 }}</p>
         </div>
         

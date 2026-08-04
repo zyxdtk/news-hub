@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,2566 +183,2528 @@
         </div>
         
         <div class="fulltext-content">
-<p>Agon: Competitive Cross-Model RL
-with Implicit Rival Grading of Reasoning
-Vladislav Beliaev
-Independent Researcher
-belyaev.vladislav.nw@gmail.com
-thinkdense.ai
-Abstract
-Reinforcement learning from verifiable rewards (e.g. GRPO) is the engine behind today’s reasoning models, yet it grades only the final answer. On hard problems this trains models to write more rather than to think better, since the trace itself is never graded and no label for good thinking exists. We introduce
-Agon
+<p>Agon: Competitive Cross-Model RL<br />
+with Implicit Rival Grading of Reasoning<br />
+Vladislav Beliaev<br />
+Independent Researcher<br />
+belyaev.vladislav.nw@gmail.com<br />
+thinkdense.ai<br />
+Abstract<br />
+Reinforcement learning from verifiable rewards (e.g. GRPO) is the engine behind today’s reasoning models, yet it grades only the final answer. On hard problems this trains models to write more rather than to think better, since the trace itself is never graded and no label for good thinking exists. We introduce<br />
+Agon<br />
 , which makes two competing models each other’s graders. Both attempt the same problem; in alternating roles, one drafts a solution and the other reads it while solving, and each is rewarded for out-solving the other. To win, a model must out-reason a rival that has seen its work, so reasoning is judged implicitly during training, with no process labels and no reward model. Because both models are optimized, each faces a progressively stronger rival, which single-model RL cannot provide. The two need only be comparably strong and behaviorally different. At inference the pair deploys as it trains, a two-stage cascade in which one model drafts and the other answers after reading the draft. On the hard split of DeepMath with Qwen3, this doubles GRPO’s pass@1, roughly eight times the gain of an untrained Mixture-of-Agents pass over the same base. The ordering replicates on competitive-programming code and across model families (Qwen3.5, Gemma 4). For now the models talk in text; the next step is to let</p>
-
-<p>them reason together in latent space.
-1
-Introduction
-Zero-shot
-GRPO
-MoA
-Coop
-Agon
-0
-20
-20
-40
-40
-60
-60
-80
-80
-23
-23
-30
-30
-34
-34
-46
-46
-61
-61
-DeepMath-hard pass@1 (%)
-Figure 1:
-From answer-grading to rival-grading. On a hard-math held-out set, vanilla GRPO lifts a Qwen3 model only modestly over zero-shot, and an untrained Mixture-of-Agents pass (MoA, no train), two models cross-refining
-at inference
-, adds a small bump. Training the same two-model setup competitively (Agon) reaches roughly
-2
-×
-2\times
-GRPO’s and
-1.8
-×
-1.8\times
-the untrained MoA’s pass@1 at the same two-pass inference budget (
-Table
-˜
-3
-). Intermediate ablations appear in
-Section
-˜
-5
-.
-Reinforcement learning from verifiable rewards has become the standard tool for sharpening the reasoning of large language models (LLMs) on tasks such as mathematics and code
-(Guo et al.,
-2025
-; Shao et al.,
-2024
-)
-. The dominant recipe is on-policy and outcome-based: sample a group of rollouts from the current policy, score each by whether its
-final answer
-is correct, and update with group-relative advantages, as in GRPO
-(Shao et al.,
-2024
-)
-. The reward is attached to the answer; the chain of thought that produced it is never graded. On problems the model can already partly solve this is benign, but on hard problems it creates a strong incentive to write more: a longer chain affords more chances to stumble onto the right answer, so additional text is the cheapest way to raise expected reward. The trace inflates with hedging and</p>
-
-<p>backtracking (“hmm,” “wait,” “let me reconsider”), and accuracy grows far slower than length (accuracy rises only modestly while length inflates by an order of magnitude
-(Aggarwal &amp; Welleck,
-2025
-)
-). The model ends up producing more reasoning per problem without producing better reasoning per token.
-The obvious fix, grading the reasoning directly, is intractable. There is no ground truth for “good thinking”: no label says which step was the insight and which was filler, and a learned process reward model is expensive, brittle, and itself unverifiable
-(Lightman et al.,
-2023
-)
-. So the trace stays unscored, and the length pathology persists. We ask instead:
-can a second model supply the missing signal?
-If a different policy attempts the same problem and we reward each model for
-out-reasoning the other
-, then the trace is graded implicitly by the rival, without any process labels. A step that leads to a win is reinforced; filler that the opponent exploits is punished.
-The grader must be a
-different
-model, and the game must be
-competitive
-. Post-training RL is, by construction, self-improvement: the policy is optimized on signal it generates itself, which reinforces the very blind spots that created its errors: a model auditing its own work tends to plateau
-(Huang et al.,
-2024
-)
-. A second model with different failure modes breaks this closed loop. But merely
-having
+<p>them reason together in latent space.<br />
+1<br />
+Introduction<br />
+Zero-shot<br />
+GRPO<br />
+MoA<br />
+Coop<br />
+Agon<br />
+0<br />
+20<br />
+20<br />
+40<br />
+40<br />
+60<br />
+60<br />
+80<br />
+80<br />
+23<br />
+23<br />
+30<br />
+30<br />
+34<br />
+34<br />
+46<br />
+46<br />
+61<br />
+61<br />
+DeepMath-hard pass@1 (%)<br />
+Figure 1:<br />
+From answer-grading to rival-grading. On a hard-math held-out set, vanilla GRPO lifts a Qwen3 model only modestly over zero-shot, and an untrained Mixture-of-Agents pass (MoA, no train), two models cross-refining<br />
+at inference<br />
+, adds a small bump. Training the same two-model setup competitively (Agon) reaches roughly<br />
+2<br />
+×<br />
+2\times<br />
+GRPO’s and<br />
+1.8<br />
+×<br />
+1.8\times<br />
+the untrained MoA’s pass@1 at the same two-pass inference budget (<br />
+Table<br />
+˜<br />
+3<br />
+). Intermediate ablations appear in<br />
+Section<br />
+˜<br />
+5<br />
+.<br />
+Reinforcement learning from verifiable rewards has become the standard tool for sharpening the reasoning of large language models (LLMs) on tasks such as mathematics and code<br />
+(Guo et al.,<br />
+2025<br />
+; Shao et al.,<br />
+2024<br />
+)<br />
+. The dominant recipe is on-policy and outcome-based: sample a group of rollouts from the current policy, score each by whether its<br />
+final answer<br />
+is correct, and update with group-relative advantages, as in GRPO<br />
+(Shao et al.,<br />
+2024<br />
+)<br />
+. The reward is attached to the answer; the chain of thought that produced it is never graded. On problems the model can already partly solve this is benign, but on hard problems it creates a strong incentive to write more: a longer chain affords more chances to stumble onto the right answer, so additional text is the cheapest way to raise expected reward. The trace inflates with hedging and </p>
+<p>backtracking (“hmm,” “wait,” “let me reconsider”), and accuracy grows far slower than length (accuracy rises only modestly while length inflates by an order of magnitude<br />
+(Aggarwal &amp; Welleck,<br />
+2025<br />
+)<br />
+). The model ends up producing more reasoning per problem without producing better reasoning per token.<br />
+The obvious fix, grading the reasoning directly, is intractable. There is no ground truth for “good thinking”: no label says which step was the insight and which was filler, and a learned process reward model is expensive, brittle, and itself unverifiable<br />
+(Lightman et al.,<br />
+2023<br />
+)<br />
+. So the trace stays unscored, and the length pathology persists. We ask instead:<br />
+can a second model supply the missing signal?<br />
+If a different policy attempts the same problem and we reward each model for<br />
+out-reasoning the other<br />
+, then the trace is graded implicitly by the rival, without any process labels. A step that leads to a win is reinforced; filler that the opponent exploits is punished.<br />
+The grader must be a<br />
+different<br />
+model, and the game must be<br />
+competitive<br />
+. Post-training RL is, by construction, self-improvement: the policy is optimized on signal it generates itself, which reinforces the very blind spots that created its errors: a model auditing its own work tends to plateau<br />
+(Huang et al.,<br />
+2024<br />
+)<br />
+. A second model with different failure modes breaks this closed loop. But merely<br />
+having<br />
 two models is not enough. Naively averaging or letting models agree, as in self-consistency and mixture-of-agents</p>
-
-<p>(Wang et al.,
-2023
-,
-2024
-)
-, tends to regress toward consensus and can
-dilute
-quality when the models differ in strength
-(Li et al.,
-2025
-)
-, while two near-identical models gain little from one another. The combination that works is a pair of comparable strength hypothesized to have different blind spots, placed under competitive pressure: each model must not only solve the problem but beat a peer that sees its work, so the objective rewards out-reasoning the peer rather than agreeing with it. Under this pressure the pair co-improves: each win raises the bar for the other on the next step, and both models end up past the ceiling where a single self-graded policy plateaus.
-We instantiate this as
-Agon
-(Greek
-agōn
-, contest). Two distinct policies are trained head-to-head: a
-drafter
-produces candidate solutions; a
-challenger
-reads an opponent’s worked solution and is rewarded for solving correctly
-and
-beating it; roles rotate every step so both models learn both roles, and at inference the pair deploys the same way, one model drafting and the other answering after reading the draft. In principle the recipe applies to any pair of comparably strong models; for efficiency we realize the pair as two low-rank adapters over one frozen base (
-∼
-2
-%
-{\sim}2\%
-memory overhead, not
-2
-×
-2\times
-), kept divergent by different initialization and update streams. In this work the exchange happens in text: we first establish that the cross-model signal is useful before optimizing the channel</p>
-
-<p>(latent-space exchange;
-Section
-˜
-6
-). We test two claims under a matched generation budget: that cross-model information exchange raises accuracy (the
-exchange claim
-), and that adversarial pressure raises it further than cooperation (the
-competition claim
-), using a
-2
-×
-2
-2\times 2
-design that crosses competition with exchange (one cell of which is provably inert under group-relative normalization;
-Section
-˜
-4.4
-), plus a single-model self-refinement control, a zero-training orchestration control, and a budget-matched GRPO self-cascade control.
-Contributions.
-•
-We reframe
-reasoning quality as an implicit reward
-that a competing peer model can supply, turning the unlabeled “good thinking” problem into a head-to-head game played during RL (
-Section
-˜
-4
-).
-•
-We propose Agon: a recipe for
-jointly training two distinct policies
-against each other with competitive GRPO, via draft-and-challenge rollouts, per-step role rotation, and a competitive reward (correctness plus a conversion bonus for out-solving the opponent). It runs on a stock GRPO trainer with no changes to the optimization core; a shared-base dual-adapter instantiation makes the pair nearly as cheap as a single model (
-Section
-˜
-4
-).
-•
-We lay out a
-2
-×
-2
-2\times 2
-matrix (competition
-×
-\times
-information exchange) with self-refinement and zero-training controls (
-Section
-˜
-5
-). One cell, competition without exchange, is inert by construction under group-relative normalization (
-Section
-˜
-4.4
+<p>(Wang et al.,<br />
+2023<br />
+,<br />
+2024<br />
+)<br />
+, tends to regress toward consensus and can<br />
+dilute<br />
+quality when the models differ in strength<br />
+(Li et al.,<br />
+2025<br />
+)<br />
+, while two near-identical models gain little from one another. The combination that works is a pair of comparable strength hypothesized to have different blind spots, placed under competitive pressure: each model must not only solve the problem but beat a peer that sees its work, so the objective rewards out-reasoning the peer rather than agreeing with it. Under this pressure the pair co-improves: each win raises the bar for the other on the next step, and both models end up past the ceiling where a single self-graded policy plateaus.<br />
+We instantiate this as<br />
+Agon<br />
+(Greek<br />
+agōn<br />
+, contest). Two distinct policies are trained head-to-head: a<br />
+drafter<br />
+produces candidate solutions; a<br />
+challenger<br />
+reads an opponent’s worked solution and is rewarded for solving correctly<br />
+and<br />
+beating it; roles rotate every step so both models learn both roles, and at inference the pair deploys the same way, one model drafting and the other answering after reading the draft. In principle the recipe applies to any pair of comparably strong models; for efficiency we realize the pair as two low-rank adapters over one frozen base (<br />
+∼<br />
+2<br />
+%<br />
+{\sim}2\%<br />
+memory overhead, not<br />
+2<br />
+×<br />
+2\times<br />
+), kept divergent by different initialization and update streams. In this work the exchange happens in text: we first establish that the cross-model signal is useful before optimizing the channel </p>
+<p>(latent-space exchange;<br />
+Section<br />
+˜<br />
+6<br />
+). We test two claims under a matched generation budget: that cross-model information exchange raises accuracy (the<br />
+exchange claim<br />
+), and that adversarial pressure raises it further than cooperation (the<br />
+competition claim<br />
+), using a<br />
+2<br />
+×<br />
+2<br />
+2\times 2<br />
+design that crosses competition with exchange (one cell of which is provably inert under group-relative normalization;<br />
+Section<br />
+˜<br />
+4.4<br />
+), plus a single-model self-refinement control, a zero-training orchestration control, and a budget-matched GRPO self-cascade control.<br />
+Contributions.<br />
+•<br />
+We reframe<br />
+reasoning quality as an implicit reward<br />
+that a competing peer model can supply, turning the unlabeled “good thinking” problem into a head-to-head game played during RL (<br />
+Section<br />
+˜<br />
+4<br />
+).<br />
+•<br />
+We propose Agon: a recipe for<br />
+jointly training two distinct policies<br />
+against each other with competitive GRPO, via draft-and-challenge rollouts, per-step role rotation, and a competitive reward (correctness plus a conversion bonus for out-solving the opponent). It runs on a stock GRPO trainer with no changes to the optimization core; a shared-base dual-adapter instantiation makes the pair nearly as cheap as a single model (<br />
+Section<br />
+˜<br />
+4<br />
+).<br />
+•<br />
+We lay out a<br />
+2<br />
+×<br />
+2<br />
+2\times 2<br />
+matrix (competition<br />
+×<br />
+\times<br />
+information exchange) with self-refinement and zero-training controls (<br />
+Section<br />
+˜<br />
+5<br />
+). One cell, competition without exchange, is inert by construction under group-relative normalization (<br />
+Section<br />
+˜<br />
+4.4<br />
 ), so the competition clai</p>
-
-<p>m rests on the adversarial-vs-cooperative comparison; the fully isolated cell (per-rollout hidden drafts) is left for future work.
-•
-Under a matched generation budget on hard math, competition
-+
-+
-exchange beats cooperation, self-refinement, and vanilla GRPO on pass@1, with the largest gains on the smallest models. At the same doubled inference budget, the trained cascade nearly doubles the accuracy of an untrained Mixture-of-Agents pass over the same base, which itself barely improves on GRPO.
-2
-Related Work
-Outcome-only RL and the length pathology.
-GRPO
-(Shao et al.,
-2024
-)
-and the R1 recipe
-(Guo et al.,
-2025
-)
-reward only the verified final answer. A well-documented side effect is uncontrolled growth of trace length (“overthinking”), with accuracy rising far more slowly than tokens
-(Aggarwal &amp; Welleck,
-2025
-; Chen et al.,
-2024a
-)
-. Remedies act on the symptom: explicit length penalties or length-controlled objectives
-(Aggarwal &amp; Welleck,
-2025
-)
-, and dynamic sampling that discards degenerate all-correct/all-wrong groups
-(Yu et al.,
-2025
-)
-. None grades the
-content
-of the trace, because step-level labels do not exist and learned process reward models are costly and themselves unverifiable
-(Lightman et al.,
-2023
-)
-. Agon leaves the verifier untouched and instead derives a content signal from a competing peer.
-Self-play and self-improvement.
-A model can improve against versions of itself: SPIN
-(Chen et al.,
-2024b
-)
+<p>m rests on the adversarial-vs-cooperative comparison; the fully isolated cell (per-rollout hidden drafts) is left for future work.<br />
+•<br />
+Under a matched generation budget on hard math, competition<br />
++<br />
++<br />
+exchange beats cooperation, self-refinement, and vanilla GRPO on pass@1, with the largest gains on the smallest models. At the same doubled inference budget, the trained cascade nearly doubles the accuracy of an untrained Mixture-of-Agents pass over the same base, which itself barely improves on GRPO.<br />
+2<br />
+Related Work<br />
+Outcome-only RL and the length pathology.<br />
+GRPO<br />
+(Shao et al.,<br />
+2024<br />
+)<br />
+and the R1 recipe<br />
+(Guo et al.,<br />
+2025<br />
+)<br />
+reward only the verified final answer. A well-documented side effect is uncontrolled growth of trace length (“overthinking”), with accuracy rising far more slowly than tokens<br />
+(Aggarwal &amp; Welleck,<br />
+2025<br />
+; Chen et al.,<br />
+2024a<br />
+)<br />
+. Remedies act on the symptom: explicit length penalties or length-controlled objectives<br />
+(Aggarwal &amp; Welleck,<br />
+2025<br />
+)<br />
+, and dynamic sampling that discards degenerate all-correct/all-wrong groups<br />
+(Yu et al.,<br />
+2025<br />
+)<br />
+. None grades the<br />
+content<br />
+of the trace, because step-level labels do not exist and learned process reward models are costly and themselves unverifiable<br />
+(Lightman et al.,<br />
+2023<br />
+)<br />
+. Agon leaves the verifier untouched and instead derives a content signal from a competing peer.<br />
+Self-play and self-improvement.<br />
+A model can improve against versions of itself: SPIN<br />
+(Chen et al.,<br />
+2024b<br />
+)<br />
 plays the current policy against its own past generations; Se</p>
-
-<p>lf-Rewarding LMs
-(Yuan et al.,
-2024
-)
-use the model as its own judge; and self-play reasoners such as Absolute Zero
-(Zhao et al.,
-2025
-)
-and R-Zero
-(Huang et al.,
-2025
-)
-co-evolve a proposer and a solver instantiated from one model. These methods are powerful but share a structural ceiling: a policy optimized on its own signal reinforces the blind spots that caused its errors, and self-correction without external feedback is unreliable
-(Huang et al.,
-2024
-)
-. Agon differs by training
-two distinct
-policies with different initialization and update streams, so the grader is a genuinely different agent rather than a copy of the graded. Multiagent finetuning
-(Subramaniam et al.,
-2025
-)
-also diversifies several models from one base via distinct data streams, but toward cooperative ensembling; Agon maintains divergence for
-adversarial grading
-, where the distinct rival is what supplies the reward.
-Multi-model collaboration, debate, and ensembles.
-Combining several models (self-consistency
-(Wang et al.,
-2023
-)
-, multi-agent debate
-(Du et al.,
-2023
-)
-, and Mixture-of-Agents
-(Wang et al.,
-2024
-)
-) can improve robustness, but the aggregation is
-cooperative
-: it pushes toward consensus, which dilutes quality when members differ in strength
-(Li et al.,
-2025
-)
-, and yields little when they are near-identical. These are inference-time procedures over frozen models. Agon instead applies cross-model pressure
-during
+<p>lf-Rewarding LMs<br />
+(Yuan et al.,<br />
+2024<br />
+)<br />
+use the model as its own judge; and self-play reasoners such as Absolute Zero<br />
+(Zhao et al.,<br />
+2025<br />
+)<br />
+and R-Zero<br />
+(Huang et al.,<br />
+2025<br />
+)<br />
+co-evolve a proposer and a solver instantiated from one model. These methods are powerful but share a structural ceiling: a policy optimized on its own signal reinforces the blind spots that caused its errors, and self-correction without external feedback is unreliable<br />
+(Huang et al.,<br />
+2024<br />
+)<br />
+. Agon differs by training<br />
+two distinct<br />
+policies with different initialization and update streams, so the grader is a genuinely different agent rather than a copy of the graded. Multiagent finetuning<br />
+(Subramaniam et al.,<br />
+2025<br />
+)<br />
+also diversifies several models from one base via distinct data streams, but toward cooperative ensembling; Agon maintains divergence for<br />
+adversarial grading<br />
+, where the distinct rival is what supplies the reward.<br />
+Multi-model collaboration, debate, and ensembles.<br />
+Combining several models (self-consistency<br />
+(Wang et al.,<br />
+2023<br />
+)<br />
+, multi-agent debate<br />
+(Du et al.,<br />
+2023<br />
+)<br />
+, and Mixture-of-Agents<br />
+(Wang et al.,<br />
+2024<br />
+)<br />
+) can improve robustness, but the aggregation is<br />
+cooperative<br />
+: it pushes toward consensus, which dilutes quality when members differ in strength<br />
+(Li et al.,<br />
+2025<br />
+)<br />
+, and yields little when they are near-identical. These are inference-time procedures over frozen models. Agon instead applies cross-model pressure<br />
+during<br />
 RL and makes it competitive: a model is rewarded for out-solving a peer that h</p>
-
-<p>as seen its work, so the objective pays for beating the peer, not for matching it. We use a cooperative variant only as an ablation to isolate the value of competition, and include a two-agent MoA layer as a zero-training control; it recovers roughly one-eighth of Agon’s gain over GRPO (
-Table
-˜
-3
-). Closest in spirit is in-context self-refinement
-(Madaan et al.,
-2023
-)
-, where a model revises its
-own
-draft; Agon differs in that the draft comes from a
-competing, distinct
-peer and is selected by outcome under RL, not by self-feedback.
-Adversarial and generator–verifier training.
-Discriminator/verifier signals have long shaped generators, from GANs
-(Goodfellow et al.,
-2014
-)
-to prover–verifier games that improve the legibility of LLM solutions
-(Kirchner et al.,
-2024
-)
-and adversarial games over language
-(Cheng et al.,
-2024
-)
-. Debate
-(Irving et al.,
-2018
-)
-first framed a judged competition between two agents as a scalable proxy for supervising reasoning itself. Agon is symmetric and rotational rather than role-fixed: both models alternate between drafting and challenging, so neither degenerates into a pure critic, and both improve as solvers; the judge is a ground-truth verifier rather than a learned or human one. The eventual move from text to latent-space exchange connects to work on inter-model communication in representation space
-(Beliaev,
-2025
-)
-, which we leave as future work.
-3
-Preliminaries: GRPO and the Unscored Trace
-For a problem
-x
-x
-with a verifier
-r
-​
-(
-x
-,
-y
-)
+<p>as seen its work, so the objective pays for beating the peer, not for matching it. We use a cooperative variant only as an ablation to isolate the value of competition, and include a two-agent MoA layer as a zero-training control; it recovers roughly one-eighth of Agon’s gain over GRPO (<br />
+Table<br />
+˜<br />
+3<br />
+). Closest in spirit is in-context self-refinement<br />
+(Madaan et al.,<br />
+2023<br />
+)<br />
+, where a model revises its<br />
+own<br />
+draft; Agon differs in that the draft comes from a<br />
+competing, distinct<br />
+peer and is selected by outcome under RL, not by self-feedback.<br />
+Adversarial and generator–verifier training.<br />
+Discriminator/verifier signals have long shaped generators, from GANs<br />
+(Goodfellow et al.,<br />
+2014<br />
+)<br />
+to prover–verifier games that improve the legibility of LLM solutions<br />
+(Kirchner et al.,<br />
+2024<br />
+)<br />
+and adversarial games over language<br />
+(Cheng et al.,<br />
+2024<br />
+)<br />
+. Debate<br />
+(Irving et al.,<br />
+2018<br />
+)<br />
+first framed a judged competition between two agents as a scalable proxy for supervising reasoning itself. Agon is symmetric and rotational rather than role-fixed: both models alternate between drafting and challenging, so neither degenerates into a pure critic, and both improve as solvers; the judge is a ground-truth verifier rather than a learned or human one. The eventual move from text to latent-space exchange connects to work on inter-model communication in representation space<br />
+(Beliaev,<br />
+2025<br />
+)<br />
+, which we leave as future work.<br />
+3<br />
+Preliminaries: GRPO and the Unscored Trace<br />
+For a problem<br />
+x<br />
+x<br />
+with a verifier<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+)<br />
 ∈</p>
-
-<p>{
-0
-,
-1
-}
-r(x,y)\in\{0,1\}
-that checks only the final answer of a completion
-y
-=
-(
-trace
-,
-answer
-)
-y=(\text{trace},\text{answer})
-, GRPO
-(Shao et al.,
-2024
-)
-samples a group of
-G
-G
-rollouts
-y
-1
-,
-…
-,
-y
-G
-∼
-π
-θ
-(
-⋅
-∣
-x
-)
-y_{1},\dots,y_{G}\sim\pi_{\theta}(\cdot\mid x)
-and forms the group-relative advantage
-A
-i
-=
-r
-​
-(
-x
-,
-y
-i
-)
-−
-μ
-σ
-,
-μ
-=
-1
-G
-​
-∑
-j
-r
-​
-(
-x
-,
-y
-j
-)
-,
-σ
-=
-std
-j
-​
-r
-​
-(
-x
-,
-y
-j
-)
-,
-A_{i}\;=\;\frac{r(x,y_{i})-\mu}{\sigma},\qquad\mu=\tfrac{1}{G}\textstyle\sum_{j}r(x,y_{j}),\quad\sigma=\mathrm{std}_{j}\,r(x,y_{j}),
-(1)
-updating
-π
-θ
-\pi_{\theta}
-to raise the log-probability of above-average rollouts, with the usual KL regularization toward a reference (the base) omitted here for brevity; groups with zero reward variance (all-correct or all-wrong, where
-σ
-=
-0
-\sigma=0
-) carry no signal and are dropped. The signal is entirely a function of the
-answer
-: two completions with the same answer receive the same advantage regardless of how they reasoned.
-The unscored trace.
-On hard problems the per-problem solve rate
-𝔼
-y
-∼
-π
-θ
-​
-[
-r
-​
-(
-x
-,
-y
-)
-]
-\mathbb{E}_{y\sim\pi_{\theta}}[r(x,y)]
+<p>{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+r(x,y)\in{0,1}<br />
+that checks only the final answer of a completion<br />
+y<br />
+=<br />
+(<br />
+trace<br />
+,<br />
+answer<br />
+)<br />
+y=(\text{trace},\text{answer})<br />
+, GRPO<br />
+(Shao et al.,<br />
+2024<br />
+)<br />
+samples a group of<br />
+G<br />
+G<br />
+rollouts<br />
+y<br />
+1<br />
+,<br />
+…<br />
+,<br />
+y<br />
+G<br />
+∼<br />
+π<br />
+θ<br />
+(<br />
+⋅<br />
+∣<br />
+x<br />
+)<br />
+y_{1},\dots,y_{G}\sim\pi_{\theta}(\cdot\mid x)<br />
+and forms the group-relative advantage<br />
+A<br />
+i<br />
+=<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+i<br />
+)<br />
+−<br />
+μ<br />
+σ<br />
+,<br />
+μ<br />
+=<br />
+1<br />
+G<br />
+​<br />
+∑<br />
+j<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+j<br />
+)<br />
+,<br />
+σ<br />
+=<br />
+std<br />
+j<br />
+​<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+j<br />
+)<br />
+,<br />
+A_{i}\;=\;\frac{r(x,y_{i})-\mu}{\sigma},\qquad\mu=\tfrac{1}{G}\textstyle\sum_{j}r(x,y_{j}),\quad\sigma=\mathrm{std}<em>{j}\,r(x,y</em>{j}),<br />
+(1)<br />
+updating<br />
+π<br />
+θ<br />
+\pi_{\theta}<br />
+to raise the log-probability of above-average rollouts, with the usual KL regularization toward a reference (the base) omitted here for brevity; groups with zero reward variance (all-correct or all-wrong, where<br />
+σ<br />
+=<br />
+0<br />
+\sigma=0<br />
+) carry no signal and are dropped. The signal is entirely a function of the<br />
+answer<br />
+: two completions with the same answer receive the same advantage regardless of how they reasoned.<br />
+The unscored trace.<br />
+On hard problems the per-problem solve rate<br />
+𝔼<br />
+y<br />
+∼<br />
+π<br />
+θ<br />
+​<br />
+[<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+)<br />
+]<br />
+\mathbb{E}<em>{y\sim\pi</em>{\theta}}[r(x,y)]<br />
 is small, and the policy raises expected reward most cheaply by increasing the number of distinct attempts inside one trace: each restart, case split, or “let me reconsider” is another chance at the answer. Because the trace is never scored, this padding is not penalized and is in fact reinforced through any correct rollout that contains it. The result is the empirically observed regime where l</p>
-
-<p>ength grows much faster than accuracy
-(Aggarwal &amp; Welleck,
-2025
-; Chen et al.,
-2024a
-)
-; in our own runs, GRPO training grows the mean trace from the zero-shot
-6.1
-6.1
-k to
-8.1
-8.1
-k tokens for
-+
-7
-+7
-pp accuracy (
-Table
-˜
-3
-). The policy increases the quantity of reasoning while its density, the useful signal per token, stays flat. The bottleneck, then, is not quantity. The prevailing axes of scale (data, parameters, context, and sampled tokens) all add more reasoning; Agon instead targets a different axis, signal per token, by making low-density traces lose the competition.
-The missing grader.
-Closing this gap requires a reward that distinguishes a concise, sound trace from a long, lucky one, i.e. a signal on the reasoning itself. Verifiers do not provide it, and process reward models require labels we do not have
-(Lightman et al.,
-2023
-)
-. Agon obtains the signal
-relationally
-: a peer policy attempts the same
-x
-x
-, reads the other’s worked solution (the post-reasoning summary, not the raw trace;
-Section
-˜
-4.3
-), and the reward depends on
-which model out-reasons the other
-. A trace whose flaws the opponent exploits (a sign error, a dead end it avoids) loses; a trace that leads to a win is reinforced. The grader is thus a second model, and, because both models are optimized, the bar rises over training. We formalize this next.
-4
-Method: Agon
-Agon trains two policies,
-A
-A
-and
-B
-B
+<p>ength grows much faster than accuracy<br />
+(Aggarwal &amp; Welleck,<br />
+2025<br />
+; Chen et al.,<br />
+2024a<br />
+)<br />
+; in our own runs, GRPO training grows the mean trace from the zero-shot<br />
+6.1<br />
+6.1<br />
+k to<br />
+8.1<br />
+8.1<br />
+k tokens for<br />
++<br />
+7<br />
++7<br />
+pp accuracy (<br />
+Table<br />
+˜<br />
+3<br />
+). The policy increases the quantity of reasoning while its density, the useful signal per token, stays flat. The bottleneck, then, is not quantity. The prevailing axes of scale (data, parameters, context, and sampled tokens) all add more reasoning; Agon instead targets a different axis, signal per token, by making low-density traces lose the competition.<br />
+The missing grader.<br />
+Closing this gap requires a reward that distinguishes a concise, sound trace from a long, lucky one, i.e. a signal on the reasoning itself. Verifiers do not provide it, and process reward models require labels we do not have<br />
+(Lightman et al.,<br />
+2023<br />
+)<br />
+. Agon obtains the signal<br />
+relationally<br />
+: a peer policy attempts the same<br />
+x<br />
+x<br />
+, reads the other’s worked solution (the post-reasoning summary, not the raw trace;<br />
+Section<br />
+˜<br />
+4.3<br />
+), and the reward depends on<br />
+which model out-reasons the other<br />
+. A trace whose flaws the opponent exploits (a sign error, a dead end it avoids) loses; a trace that leads to a win is reinforced. The grader is thus a second model, and, because both models are optimized, the bar rises over training. We formalize this next.<br />
+4<br />
+Method: Agon<br />
+Agon trains two policies,<br />
+A<br />
+A<br />
+and<br />
+B<br />
+B<br />
 , head-to-head on the same problems. The design has four parts: a draft-and-challenge rollout tha</p>
-
-<p>t routes one model’s reasoning into the other’s context (
-Section
-˜
-4.3
-); a competitive reward that grades the challenger against the drafter (
-Section
-˜
-4.4
-); a compute-parity accounting so all comparisons are fair (
-Section
-˜
-4.5
-); and an efficient instantiation of the two policies as divergent adapters over a shared base (
-Section
-˜
-4.2
-).
-problem
-x
-x
-drafter
-A
-A
-N
-N
-rollouts
-{
-a
-i
-}
-\{a_{i}\}
-own GRPO update
-challenger
-B
-B
-N
-N
-rollouts
-{
-b
-i
-}
-\{b_{i}\}
-trainable
-reward
-R
-​
-(
-b
-i
-)
-R(b_{i})
-correctness
-+
-+
-conversion
-GRPO updates
-B
-B
-: competitive
-A
-A
-: standalone
-peek:
-A
-A
-’s summary
-(answer withheld)
-a
-i
-a_{i}
-outcome (for conversion)
-roles rotate each step
-Figure 2:
-One Agon step. The drafter
-A
-A
-produces
-N
-N
-solutions from the plain prompt and receives a vanilla GRPO update on them (its standalone stream); the challenger
-B
-B
-reads each opponent’s
-post-reasoning solution summary
-in-context (final answer withheld), produces one paired rollout per opponent (
-N
-N
-total), and receives the competitive reward, which uses the paired draft’s outcome for the conversion bonus. Both adapters are updated every step. Roles rotate every optimizer step, so both models train in both streams.
-A
-A
-and
-B
-B
-are two LoRA adapters over one frozen base.
-4.1
-Why a second model
-Post-training RL is self-improvement: the gradient in
-Equation
-˜
-1
+<p>t routes one model’s reasoning into the other’s context (<br />
+Section<br />
+˜<br />
+4.3<br />
+); a competitive reward that grades the challenger against the drafter (<br />
+Section<br />
+˜<br />
+4.4<br />
+); a compute-parity accounting so all comparisons are fair (<br />
+Section<br />
+˜<br />
+4.5<br />
+); and an efficient instantiation of the two policies as divergent adapters over a shared base (<br />
+Section<br />
+˜<br />
+4.2<br />
+).<br />
+problem<br />
+x<br />
+x<br />
+drafter<br />
+A<br />
+A<br />
+N<br />
+N<br />
+rollouts<br />
+{<br />
+a<br />
+i<br />
+}<br />
+{a_{i}}<br />
+own GRPO update<br />
+challenger<br />
+B<br />
+B<br />
+N<br />
+N<br />
+rollouts<br />
+{<br />
+b<br />
+i<br />
+}<br />
+{b_{i}}<br />
+trainable<br />
+reward<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+R(b_{i})<br />
+correctness<br />
++<br />
++<br />
+conversion<br />
+GRPO updates<br />
+B<br />
+B<br />
+: competitive<br />
+A<br />
+A<br />
+: standalone<br />
+peek:<br />
+A<br />
+A<br />
+’s summary<br />
+(answer withheld)<br />
+a<br />
+i<br />
+a_{i}<br />
+outcome (for conversion)<br />
+roles rotate each step<br />
+Figure 2:<br />
+One Agon step. The drafter<br />
+A<br />
+A<br />
+produces<br />
+N<br />
+N<br />
+solutions from the plain prompt and receives a vanilla GRPO update on them (its standalone stream); the challenger<br />
+B<br />
+B<br />
+reads each opponent’s<br />
+post-reasoning solution summary<br />
+in-context (final answer withheld), produces one paired rollout per opponent (<br />
+N<br />
+N<br />
+total), and receives the competitive reward, which uses the paired draft’s outcome for the conversion bonus. Both adapters are updated every step. Roles rotate every optimizer step, so both models train in both streams.<br />
+A<br />
+A<br />
+and<br />
+B<br />
+B<br />
+are two LoRA adapters over one frozen base.<br />
+4.1<br />
+Why a second model<br />
+Post-training RL is self-improvement: the gradient in<br />
+Equation<br />
+˜<br />
+1<br />
 is computed from rollouts the policy itself produced, so it amplifies whatever the policy already does, including the systematic errors that define i</p>
-
-<p>ts blind spots. A model checking its own work inherits the bias that produced the mistake, which is why unaided self-correction often fails to add signal
-(Huang et al.,
-2024
-)
-; we expect the same closed loop to cap self-play, however many rounds it runs (illustrated in
-Figure
-˜
-3
-, left). A
-different
-model is outside this loop: a peer hypothesized to have different failure modes audits what the policy cannot see in itself. In principle the peer could come from a different model family: the strongest models, open ones included, now cluster within a few points of one another on standard reasoning benchmarks
-(Stanford HAI,
-2026
-)
-, so pairs of matched strength are easy to find; whether such pairs also differ enough in behavior is an empirical question we leave to future work. Our instantiation instead engineers the divergence structurally from one base (
-Section
-˜
-4.2
-).
-Pairing helps only under two conditions. The models must be of
-comparable strength
-(otherwise, we expect, the weaker simply imitates the stronger and the game collapses into distillation; we do not ablate the strength gap), and they must have
-different failure modes
-, so that one can catch what the other misses (we make this concrete in
-Section
-˜
-4.2
-,
-Figure
-˜
-4
-). We therefore keep the pair matched in capacity but divergent in behavior, and we make the interaction
-competitive
-so the objective rewards beating the peer rather than agreeing with it.
-self-play: closed loop
-Agon: open loop
-vs
-A
-A
-B
+<p>ts blind spots. A model checking its own work inherits the bias that produced the mistake, which is why unaided self-correction often fails to add signal<br />
+(Huang et al.,<br />
+2024<br />
+)<br />
+; we expect the same closed loop to cap self-play, however many rounds it runs (illustrated in<br />
+Figure<br />
+˜<br />
+3<br />
+, left). A<br />
+different<br />
+model is outside this loop: a peer hypothesized to have different failure modes audits what the policy cannot see in itself. In principle the peer could come from a different model family: the strongest models, open ones included, now cluster within a few points of one another on standard reasoning benchmarks<br />
+(Stanford HAI,<br />
+2026<br />
+)<br />
+, so pairs of matched strength are easy to find; whether such pairs also differ enough in behavior is an empirical question we leave to future work. Our instantiation instead engineers the divergence structurally from one base (<br />
+Section<br />
+˜<br />
+4.2<br />
+).<br />
+Pairing helps only under two conditions. The models must be of<br />
+comparable strength<br />
+(otherwise, we expect, the weaker simply imitates the stronger and the game collapses into distillation; we do not ablate the strength gap), and they must have<br />
+different failure modes<br />
+, so that one can catch what the other misses (we make this concrete in<br />
+Section<br />
+˜<br />
+4.2<br />
+,<br />
+Figure<br />
+˜<br />
+4<br />
+). We therefore keep the pair matched in capacity but divergent in behavior, and we make the interaction<br />
+competitive<br />
+so the objective rewards beating the peer rather than agreeing with it.<br />
+self-play: closed loop<br />
+Agon: open loop<br />
+vs<br />
+A<br />
+A<br />
+B<br />
 audits itself w</p>
-
-<p>ith its own bias
-→
-\to
-plateau
-graded by different blind spots
-→
-\to
-the grader improves too
-Figure 3:
-Why a second model.
-Left:
-a single policy optimized on its own rollouts re-audits with the same biases that caused its errors, so self-play saturates
-(Huang et al.,
-2024
-)
-.
-Right:
-Agon pairs two divergent policies; each grades the other with different blind spots, each is rewarded for winning, and because both are optimized, the grader improves with the graded.
-4.2
-Instantiating the two policies
-Agon itself only requires two policies of matched strength and different blind spots; how they are parameterized is an implementation choice. We instantiate both as LoRA adapters
-(Hu et al.,
-2022
-)
-over a single frozen base model:
-π
-A
-=
-base
-+
-Δ
-A
-\pi_{A}=\mathrm{base}\!+\!\Delta_{A}
-and
-π
-B
-=
-base
-+
-Δ
-B
-\pi_{B}=\mathrm{base}\!+\!\Delta_{B}
-. The second policy costs one extra rank-16 adapter (
-∼
-10
-{\sim}10
-M parameters,
-∼
-2
-%
-{\sim}2\%
-of the base, plus its optimizer state) rather than a full second model, and the shared base keeps the two policies in compatible representation spaces, useful for the eventual latent-space exchange (
-Section
-˜
-6
-). Two models alone are not enough, though: the useful regime is the one motivated in
-Section
-˜
-4.1
-,
-equal strength with hypothesized different blind spots
-(
-Figure
-˜
-4
-). We maintain divergence by (i) different initialization (
-B
-B
-starts with small Gaussian noise around the zero matrix;
-A
-A
+<p>ith its own bias<br />
+→<br />
+\to<br />
+plateau<br />
+graded by different blind spots<br />
+→<br />
+\to<br />
+the grader improves too<br />
+Figure 3:<br />
+Why a second model.<br />
+Left:<br />
+a single policy optimized on its own rollouts re-audits with the same biases that caused its errors, so self-play saturates<br />
+(Huang et al.,<br />
+2024<br />
+)<br />
+.<br />
+Right:<br />
+Agon pairs two divergent policies; each grades the other with different blind spots, each is rewarded for winning, and because both are optimized, the grader improves with the graded.<br />
+4.2<br />
+Instantiating the two policies<br />
+Agon itself only requires two policies of matched strength and different blind spots; how they are parameterized is an implementation choice. We instantiate both as LoRA adapters<br />
+(Hu et al.,<br />
+2022<br />
+)<br />
+over a single frozen base model:<br />
+π<br />
+A<br />
+=<br />
+base<br />
++<br />
+Δ<br />
+A<br />
+\pi_{A}=\mathrm{base}!+!\Delta_{A}<br />
+and<br />
+π<br />
+B<br />
+=<br />
+base<br />
++<br />
+Δ<br />
+B<br />
+\pi_{B}=\mathrm{base}!+!\Delta_{B}<br />
+. The second policy costs one extra rank-16 adapter (<br />
+∼<br />
+10<br />
+{\sim}10<br />
+M parameters,<br />
+∼<br />
+2<br />
+%<br />
+{\sim}2\%<br />
+of the base, plus its optimizer state) rather than a full second model, and the shared base keeps the two policies in compatible representation spaces, useful for the eventual latent-space exchange (<br />
+Section<br />
+˜<br />
+6<br />
+). Two models alone are not enough, though: the useful regime is the one motivated in<br />
+Section<br />
+˜<br />
+4.1<br />
+,<br />
+equal strength with hypothesized different blind spots<br />
+(<br />
+Figure<br />
+˜<br />
+4<br />
+). We maintain divergence by (i) different initialization (<br />
+B<br />
+B<br />
+starts with small Gaussian noise around the zero matrix;<br />
+A<br />
+A<br />
 uses the standard LoRA zero-init) and (ii) differ</p>
-
-<p>ent update streams induced by role rotation (
-Section
-˜
-4.3
-): on any given problem one adapter drafts while the other challenges, so the two never receive the same gradient. All reported numbers use the same base checkpoint for both adapters. We stress that this instantiation is
-minimally
-divergent: at initialization the two policies differ only by adapter noise, so any complementarity must emerge from the diverging update streams during training rather than from pre-existing blind-spot differences. Different blind spots are therefore a hypothesis about the trained pair, not a measured property. The gap between cooperative exchange and single-adapter self-refinement (46 vs 32;
-Table
-˜
-3
-) shows that training to read a
-peer’s
-draft beats training to read one’s own, but the comparison varies more than one factor (trainable adapter capacity, whose draft is read, the refiner prompt), so it does not isolate blind-spot divergence as the cause.
-clones (same model, diff. temperature)
-overlap
-×
-\times
-×
-\times
-×
-\times
-same blind spots
-→
-\to
-correlated failures
-vs
-designed divergence
-A
-B
-×
-\times
-different blind spots
-→
-\to
-complementary errors
-Figure 4:
+<p>ent update streams induced by role rotation (<br />
+Section<br />
+˜<br />
+4.3<br />
+): on any given problem one adapter drafts while the other challenges, so the two never receive the same gradient. All reported numbers use the same base checkpoint for both adapters. We stress that this instantiation is<br />
+minimally<br />
+divergent: at initialization the two policies differ only by adapter noise, so any complementarity must emerge from the diverging update streams during training rather than from pre-existing blind-spot differences. Different blind spots are therefore a hypothesis about the trained pair, not a measured property. The gap between cooperative exchange and single-adapter self-refinement (46 vs 32;<br />
+Table<br />
+˜<br />
+3<br />
+) shows that training to read a<br />
+peer’s<br />
+draft beats training to read one’s own, but the comparison varies more than one factor (trainable adapter capacity, whose draft is read, the refiner prompt), so it does not isolate blind-spot divergence as the cause.<br />
+clones (same model, diff. temperature)<br />
+overlap<br />
+×<br />
+\times<br />
+×<br />
+\times<br />
+×<br />
+\times<br />
+same blind spots<br />
+→<br />
+\to<br />
+correlated failures<br />
+vs<br />
+designed divergence<br />
+A<br />
+B<br />
+×<br />
+\times<br />
+different blind spots<br />
+→<br />
+\to<br />
+complementary errors<br />
+Figure 4:<br />
 Designed divergence (schematic of the target regime, not a measurement). Two copies of one model (left) cover the same problems and fail on the same ones, so a second copy adds little. A pair that is equally strong but behaviorally different (right) has complementary error profiles, which is what makes cross-model grading pay off. Ou</p>
-
-<p>r dual-adapter instantiation starts near the left picture (same base, noise-level adapter difference) and relies on divergent initialization and rotated update streams to move toward the right during training; we do not measure how far it gets.
-4.3
-The draft-and-challenge step
-Each optimizer step (
-Figure
-˜
-2
-,
-Algorithm
-˜
-1
-) designates a
-drafter
-and a
-challenger
-. The drafter generates
-N
-N
-rollouts
-{
-a
-i
-}
-∼
-π
-draft
-(
-⋅
-∣
-x
-)
-\{a_{i}\}\sim\pi_{\text{draft}}(\cdot\mid x)
-from the plain problem prompt and receives a vanilla GRPO update on them (correctness and format only, no opponent term); this standalone stream trains each adapter to solve from scratch, which is the first stage of deployment (
-Section
-˜
-4.5
-). The challenger then conditions on its paired opponent’s
-solution summary
-: the answer section the model writes after its private reasoning block, which recaps the derivation. The raw thinking trace is dropped, since the summary carries the distilled solution at a fraction of the tokens (cheaper to prefill, and free of the exploration noise that dominates long traces), and the
-final answer is withheld
-as a precaution against copying (
-Figure
-˜
-5
-), though a worked summary often implies its answer anyway. The summary is inserted as an attempt that “may or may not be correct,” and the challenger generates one rollout per pair,
-b
-i
-∼
-π
-chal
-(
-⋅
-∣
-x
-,
-a
-i
-)
-b_{i}\sim\pi_{\text{chal}}(\cdot\mid x,a_{i})
-, forming a group of
-N
-N
+<p>r dual-adapter instantiation starts near the left picture (same base, noise-level adapter difference) and relies on divergent initialization and rotated update streams to move toward the right during training; we do not measure how far it gets.<br />
+4.3<br />
+The draft-and-challenge step<br />
+Each optimizer step (<br />
+Figure<br />
+˜<br />
+2<br />
+,<br />
+Algorithm<br />
+˜<br />
+1<br />
+) designates a<br />
+drafter<br />
+and a<br />
+challenger<br />
+. The drafter generates<br />
+N<br />
+N<br />
+rollouts<br />
+{<br />
+a<br />
+i<br />
+}<br />
+∼<br />
+π<br />
+draft<br />
+(<br />
+⋅<br />
+∣<br />
+x<br />
+)<br />
+{a_{i}}\sim\pi_{\text{draft}}(\cdot\mid x)<br />
+from the plain problem prompt and receives a vanilla GRPO update on them (correctness and format only, no opponent term); this standalone stream trains each adapter to solve from scratch, which is the first stage of deployment (<br />
+Section<br />
+˜<br />
+4.5<br />
+). The challenger then conditions on its paired opponent’s<br />
+solution summary<br />
+: the answer section the model writes after its private reasoning block, which recaps the derivation. The raw thinking trace is dropped, since the summary carries the distilled solution at a fraction of the tokens (cheaper to prefill, and free of the exploration noise that dominates long traces), and the<br />
+final answer is withheld<br />
+as a precaution against copying (<br />
+Figure<br />
+˜<br />
+5<br />
+), though a worked summary often implies its answer anyway. The summary is inserted as an attempt that “may or may not be correct,” and the challenger generates one rollout per pair,<br />
+b<br />
+i<br />
+∼<br />
+π<br />
+chal<br />
+(<br />
+⋅<br />
+∣<br />
+x<br />
+,<br />
+a<br />
+i<br />
+)<br />
+b_{i}\sim\pi_{\text{chal}}(\cdot\mid x,a_{i})<br />
+, forming a group of<br />
+N<br />
+N<br />
 . The challenger receives the competitive gra</p>
-
-<p>dient; each stream’s GRPO advantage is computed within its own group of
-N
-N
-. Because each
-b
-i
-b_{i}
-sees a different opponent
-a
-i
-a_{i}
-, the group spans varied opponent contexts for the same
-x
-x
-; this is what gives the conversion bonus within-group variance.
-Roles rotate every step
-: on even steps
-A
-A
-drafts and
-B
-B
-challenges, on odd steps the reverse. Without rotation, each adapter receives only one kind of gradient, one only ever solving from scratch and the other only ever solving against an opponent; the pair still trains, but ends up weaker (52 vs 61 pass@1;
-Table
-˜
-7
-). With rotation, both adapters alternate between the two streams every step and co-improve. The challenger prompt instructs the model not to trust or paraphrase the opponent but to verify it and solve independently, winning by being correct when the opponent is wrong; the prompt is identical across the coop and adv reward stacks (
-Section
-˜
-4.4
-), so they differ only in the reward.
-A
-reasoning
-B
-reasoning
-each peeks at the rival’s summary
-spots a sign error in eq. 3
-skips a failed hypothesis
-borrows the angle symmetry
-A
-A
-’s answer
-B
-B
-’s answer
-who out-scores?
-reward
-=
-=
-correctness
-+
-+
-bonus for out-solving the rival
-Figure 5:
-Peek and outscore. A conceptual view aggregated over one rotation cycle: within a single step the exchange is one-directional (
-Figure
-˜
-2
+<p>dient; each stream’s GRPO advantage is computed within its own group of<br />
+N<br />
+N<br />
+. Because each<br />
+b<br />
+i<br />
+b_{i}<br />
+sees a different opponent<br />
+a<br />
+i<br />
+a_{i}<br />
+, the group spans varied opponent contexts for the same<br />
+x<br />
+x<br />
+; this is what gives the conversion bonus within-group variance.<br />
+Roles rotate every step<br />
+: on even steps<br />
+A<br />
+A<br />
+drafts and<br />
+B<br />
+B<br />
+challenges, on odd steps the reverse. Without rotation, each adapter receives only one kind of gradient, one only ever solving from scratch and the other only ever solving against an opponent; the pair still trains, but ends up weaker (52 vs 61 pass@1;<br />
+Table<br />
+˜<br />
+7<br />
+). With rotation, both adapters alternate between the two streams every step and co-improve. The challenger prompt instructs the model not to trust or paraphrase the opponent but to verify it and solve independently, winning by being correct when the opponent is wrong; the prompt is identical across the coop and adv reward stacks (<br />
+Section<br />
+˜<br />
+4.4<br />
+), so they differ only in the reward.<br />
+A<br />
+reasoning<br />
+B<br />
+reasoning<br />
+each peeks at the rival’s summary<br />
+spots a sign error in eq. 3<br />
+skips a failed hypothesis<br />
+borrows the angle symmetry<br />
+A<br />
+A<br />
+’s answer<br />
+B<br />
+B<br />
+’s answer<br />
+who out-scores?<br />
+reward<br />
+=<br />
+=<br />
+correctness<br />
++<br />
++<br />
+bonus for out-solving the rival<br />
+Figure 5:<br />
+Peek and outscore. A conceptual view aggregated over one rotation cycle: within a single step the exchange is one-directional (<br />
+Figure<br />
+˜<br />
+2<br />
 ); roles swap on the next step, so each model both reads and is read, on different problems. While solving, the challenger reads the rival’</p>
-
-<p>s
-worked solution
-(the summary it writes after its private reasoning, final answer withheld) and writes against it, catching its errors (a sign error in eq. 3), pruning its dead ends, and borrowing its good moves; the annotations are what the reader of the summary exploits, not messages exchanged between the models. Neither solution is labeled, yet by rewarding whoever out-solves the other, the rival’s reasoning is graded implicitly, a signal that outcome-only RL does not use.
-A (drafter)
-&lt;think&gt;
-Okay, so I need to compute this integral. Set
-u
-=
-1
-−
-x
-2
-u=1-x^{2}
-, so
-d
-​
-u
-=
-2
-​
-x
-​
-d
-​
-x
-du=2x\,dx
-. Wait, that’s negative? Hmm, that can’t be right. Maybe I made a mistake. Let me try integration by parts instead…
-(continues for
-∼
-1.9
-{\sim}1.9
-k tokens; never shown to
-B
-B
-)
-&lt;/think&gt;
-summary
-(what
-B
-B
-sees)
-:
-Substituting
-u
-=
-1
-−
-x
-2
-u=1-x^{2}
-with
-d
-​
-u
-=
-2
-​
-x
-​
-d
-​
-x
-du=2x\,dx
-(sign dropped:
-d
-​
-u
-=
-−
-2
-​
-x
-​
-d
-​
-x
-du=-2x\,dx
-)
-gives
-∫
-0
-1
-x
-​
-1
-−
-x
-2
-​
-𝑑
-x
-=
-1
-2
-​
-∫
-1
-0
-u
-​
-𝑑
-u
-\int_{0}^{1}x\sqrt{1-x^{2}}\,dx=\tfrac{1}{2}\int_{1}^{0}\!\sqrt{u}\,du
-, a negative value…
-final answer withheld from
-B
-B
-B (challenger), reads
-A
-A
-’s summary
-&lt;think&gt;
-The attempt’s substitution is right but the sign of
-d
-​
-u
-du
-was dropped:
-x
-​
-d
-​
-x
-=
-−
-1
-2
-​
-d
-​
-u
-x\,dx=-\tfrac{1}{2}\,du
-, which flips the limits back and gives
-+
-1
-3
-+\tfrac{1}{3}
-. The area is positive, no need to re-explore. Check at the boundary: integrand
-≥
-0
-\geq 0
-on
-[
-0
-,
-1
-]
-[0,1]
-.
-&lt;/think&gt;
-&lt;answer&gt;
-1
-/
-3
-1/3
-&lt;/answer&gt;
+<p>s<br />
+worked solution<br />
+(the summary it writes after its private reasoning, final answer withheld) and writes against it, catching its errors (a sign error in eq. 3), pruning its dead ends, and borrowing its good moves; the annotations are what the reader of the summary exploits, not messages exchanged between the models. Neither solution is labeled, yet by rewarding whoever out-solves the other, the rival’s reasoning is graded implicitly, a signal that outcome-only RL does not use.<br />
+A (drafter)<br />
+<think><br />
+Okay, so I need to compute this integral. Set<br />
+u<br />
+=<br />
+1<br />
+−<br />
+x<br />
+2<br />
+u=1-x^{2}<br />
+, so<br />
+d<br />
+​<br />
+u<br />
+=<br />
+2<br />
+​<br />
+x<br />
+​<br />
+d<br />
+​<br />
+x<br />
+du=2x\,dx<br />
+. Wait, that’s negative? Hmm, that can’t be right. Maybe I made a mistake. Let me try integration by parts instead…<br />
+(continues for<br />
+∼<br />
+1.9<br />
+{\sim}1.9<br />
+k tokens; never shown to<br />
+B<br />
+B<br />
+)<br />
+</think><br />
+summary<br />
+(what<br />
+B<br />
+B<br />
+sees)<br />
+:<br />
+Substituting<br />
+u<br />
+=<br />
+1<br />
+−<br />
+x<br />
+2<br />
+u=1-x^{2}<br />
+with<br />
+d<br />
+​<br />
+u<br />
+=<br />
+2<br />
+​<br />
+x<br />
+​<br />
+d<br />
+​<br />
+x<br />
+du=2x\,dx<br />
+(sign dropped:<br />
+d<br />
+​<br />
+u<br />
+=<br />
+−<br />
+2<br />
+​<br />
+x<br />
+​<br />
+d<br />
+​<br />
+x<br />
+du=-2x\,dx<br />
+)<br />
+gives<br />
+∫<br />
+0<br />
+1<br />
+x<br />
+​<br />
+1<br />
+−<br />
+x<br />
+2<br />
+​<br />
+𝑑<br />
+x<br />
+=<br />
+1<br />
+2<br />
+​<br />
+∫<br />
+1<br />
+0<br />
+u<br />
+​<br />
+𝑑<br />
+u<br />
+\int_{0}^{1}x\sqrt{1-x^{2}}\,dx=\tfrac{1}{2}\int_{1}^{0}!\sqrt{u}\,du<br />
+, a negative value…<br />
+final answer withheld from<br />
+B<br />
+B<br />
+B (challenger), reads<br />
+A<br />
+A<br />
+’s summary<br />
+<think><br />
+The attempt’s substitution is right but the sign of<br />
+d<br />
+​<br />
+u<br />
+du<br />
+was dropped:<br />
+x<br />
+​<br />
+d<br />
+​<br />
+x<br />
+=<br />
+−<br />
+1<br />
+2<br />
+​<br />
+d<br />
+​<br />
+u<br />
+x\,dx=-\tfrac{1}{2}\,du<br />
+, which flips the limits back and gives<br />
++<br />
+1<br />
+3<br />
++\tfrac{1}{3}<br />
+. The area is positive, no need to re-explore. Check at the boundary: integrand<br />
+≥<br />
+0<br />
+\geq 0<br />
+on<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+[0,1]<br />
+.<br />
+</think><br />
+<answer><br />
+1<br />
+/<br />
+3<br />
+1/3<br />
+</answer><br />
 cor</p>
-
-<p>rect,
-∼
-4
-×
-{\sim}4\times
-shorter
-Figure 6:
-Illustrative exchange (hand-constructed for clarity). The drafter drops a sign, distrusts its own (correct-magnitude) result, and spirals into re-exploration; its post-reasoning summary recaps the flawed derivation (but does not contain the boxed answer). The challenger sees
-only
-that summary (raw thinking trace dropped, final answer withheld as a precaution), pinpoints the flawed step, re-derives it, and answers correctly in a fraction of the tokens. The solution summary carries the derivation, which is what the challenger exploits.
-4.4
-Reward: correctness plus a conversion bonus
-Let
-c
-​
-(
-y
-)
-=
-r
-​
-(
-x
-,
-y
-)
-∈
-{
-0
-,
-1
-}
-c(y)=r(x,y)\in\{0,1\}
-be correctness. We report two reward stacks, applied to the challenger rollout
-b
-i
-b_{i}
-given its paired drafter solution
-a
-i
-a_{i}
-:
-coop:
-R
-​
-(
-b
-i
-)
-=
-2
-​
-c
-​
-(
-b
-i
-)
-+
-λ
-​
-ϕ
-​
-(
-b
-i
-)
-,
-\displaystyle R(b_{i})\;=\;2\,c(b_{i})\;+\;\lambda\,\phi(b_{i}),
-(2)
-adv:
-R
-​
-(
-b
-i
-)
-=
-2
-​
-c
-​
-(
-b
-i
-)
-+
-c
-​
-(
-b
-i
-)
-​
-(
-1
-−
-c
-​
-(
-a
-i
-)
-)
-⏟
-conversion bonus
-+
-λ
-​
-ϕ
-​
-(
-b
-i
-)
-,
-\displaystyle R(b_{i})\;=\;2\,c(b_{i})\;+\;\underbrace{c(b_{i})\,\big(1-c(a_{i})\big)}_{\text{conversion bonus}}\;+\;\lambda\,\phi(b_{i}),
-(3)
-where
-ϕ
-​
-(
-⋅
-)
-\phi(\cdot)
-is a format term (well-formed
-&lt;think&gt;
-/
-&lt;answer&gt;
-structure) with weight
-λ
-=
-0.5
-\lambda=0.5
-(25% of the correctness term), identical across stacks so it introduces no bias between them. In
-coop
-the opponent appears only in the
-context
+<p>rect,<br />
+∼<br />
+4<br />
+×<br />
+{\sim}4\times<br />
+shorter<br />
+Figure 6:<br />
+Illustrative exchange (hand-constructed for clarity). The drafter drops a sign, distrusts its own (correct-magnitude) result, and spirals into re-exploration; its post-reasoning summary recaps the flawed derivation (but does not contain the boxed answer). The challenger sees<br />
+only<br />
+that summary (raw thinking trace dropped, final answer withheld as a precaution), pinpoints the flawed step, re-derives it, and answers correctly in a fraction of the tokens. The solution summary carries the derivation, which is what the challenger exploits.<br />
+4.4<br />
+Reward: correctness plus a conversion bonus<br />
+Let<br />
+c<br />
+​<br />
+(<br />
+y<br />
+)<br />
+=<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+)<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+1<br />
+}<br />
+c(y)=r(x,y)\in{0,1}<br />
+be correctness. We report two reward stacks, applied to the challenger rollout<br />
+b<br />
+i<br />
+b_{i}<br />
+given its paired drafter solution<br />
+a<br />
+i<br />
+a_{i}<br />
+:<br />
+coop:<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+=<br />
+2<br />
+​<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
++<br />
+λ<br />
+​<br />
+ϕ<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+,<br />
+\displaystyle R(b_{i})\;=\;2\,c(b_{i})\;+\;\lambda\,\phi(b_{i}),<br />
+(2)<br />
+adv:<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+=<br />
+2<br />
+​<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
++<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+​<br />
+(<br />
+1<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+)<br />
+⏟<br />
+conversion bonus<br />
++<br />
+λ<br />
+​<br />
+ϕ<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+,<br />
+\displaystyle R(b_{i})\;=\;2\,c(b_{i})\;+\;\underbrace{c(b_{i})\,\big(1-c(a_{i})\big)}<em>{\text{conversion bonus}}\;+\;\lambda\,\phi(b</em>{i}),<br />
+(3)<br />
+where<br />
+ϕ<br />
+​<br />
+(<br />
+⋅<br />
+)<br />
+\phi(\cdot)<br />
+is a format term (well-formed<br />
+<think><br />
+/<br />
+<answer><br />
+structure) with weight<br />
+λ<br />
+=<br />
+0.5<br />
+\lambda=0.5<br />
+(25% of the correctness term), identical across stacks so it introduces no bias between them. In<br />
+coop<br />
+the opponent appears only in the<br />
+context<br />
 , not in the reward, which i</p>
-
-<p>solates the value of information exchange (the exchange claim). In
-adv
-the
-conversion bonus
-c
-​
-(
-b
-i
-)
-​
-(
-1
-−
-c
-​
-(
-a
-i
-)
-)
-c(b_{i})\,(1-c(a_{i}))
-raises the effective correctness weight from
-2
-2
-to
-3
-3
-exactly on the paired opponent attempts that
-failed
-: solving where the opponent could not is worth more, which is the competitive pressure.
-The form matters. A naïve margin
-c
-​
-(
-b
-i
-)
-−
-c
-​
-(
-a
-i
-)
-c(b_{i})-c(a_{i})
-works poorly: since
-c
-​
-(
-a
-i
-)
-c(a_{i})
-is
-action-independent
-(fixed by the pairing
-a
-i
-a_{i}
-, not by the challenger’s rollout
-b
-i
-b_{i}
-), its subtractive term contributes
-no expected policy gradient
-(exactly in the unnormalized objective; up to the nonlinearity of group standardization after it): it acts as a per-sample baseline, shifting each reward by the drafter’s outcome without adding any competitive direction. The tested margin stack,
-R
-=
-2
-​
-c
-​
-(
-b
-i
-)
-+
-(
-c
-​
-(
-b
-i
-)
-−
-c
-​
-(
-a
-i
-)
-)
-=
-3
-​
-c
-​
-(
-b
-i
-)
-−
-c
-​
-(
-a
-i
-)
-R=2c(b_{i})+\big(c(b_{i})-c(a_{i})\big)=3c(b_{i})-c(a_{i})
-, makes this concrete: the scalar
-3
-3
-cancels under group-standard-deviation normalization and the
-−
-c
-​
-(
-a
-i
-)
--c(a_{i})
-term is action-independent (zero expected policy gradient), so in expectation the margin points in the
-same direction
-as the cooperative gradient. The ablation is consistent with this prediction (
-49
-49
-vs coop
-46
-46
-), though the
-3
-3
-pp difference lies within binomial sampling noise. The conversion bonus instead
+<p>solates the value of information exchange (the exchange claim). In<br />
+adv<br />
+the<br />
+conversion bonus<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+​<br />
+(<br />
+1<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+)<br />
+c(b_{i})\,(1-c(a_{i}))<br />
+raises the effective correctness weight from<br />
+2<br />
+2<br />
+to<br />
+3<br />
+3<br />
+exactly on the paired opponent attempts that<br />
+failed<br />
+: solving where the opponent could not is worth more, which is the competitive pressure.<br />
+The form matters. A naïve margin<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+c(b_{i})-c(a_{i})<br />
+works poorly: since<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+c(a_{i})<br />
+is<br />
+action-independent<br />
+(fixed by the pairing<br />
+a<br />
+i<br />
+a_{i}<br />
+, not by the challenger’s rollout<br />
+b<br />
+i<br />
+b_{i}<br />
+), its subtractive term contributes<br />
+no expected policy gradient<br />
+(exactly in the unnormalized objective; up to the nonlinearity of group standardization after it): it acts as a per-sample baseline, shifting each reward by the drafter’s outcome without adding any competitive direction. The tested margin stack,<br />
+R<br />
+=<br />
+2<br />
+​<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
++<br />
+(<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+)<br />
+=<br />
+3<br />
+​<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+R=2c(b_{i})+\big(c(b_{i})-c(a_{i})\big)=3c(b_{i})-c(a_{i})<br />
+, makes this concrete: the scalar<br />
+3<br />
+3<br />
+cancels under group-standard-deviation normalization and the<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+-c(a_{i})<br />
+term is action-independent (zero expected policy gradient), so in expectation the margin points in the<br />
+same direction<br />
+as the cooperative gradient. The ablation is consistent with this prediction (<br />
+49<br />
+49<br />
+vs coop<br />
+46<br />
+46<br />
+), though the<br />
+3<br />
+3<br />
+pp difference lies within binomial sampling noise. The conversion bonus instead<br />
 modulates the correctness weight by opponent di</p>
-
-<p>fficulty
-: because it multiplies the action-dependent
-c
-​
-(
-b
-i
-)
-c(b_{i})
-, the reweighting shifts the gradient itself, and, given the within-group spread of opponent contexts
-{
-a
-i
-}
-\{a_{i}\}
-, tilts it toward the opponent attempts that failed. We confirm this empirically (
-Table
-˜
-7
-): the margin form barely improves on cooperation, whereas the conversion bonus clearly does. More generally, any reward that is affine in
-c
-​
-(
-b
-i
-)
-c(b_{i})
-with group-constant coefficients (e.g., a shared opponent draft for the entire challenger group, making
-c
-​
-(
-a
-)
-c(a)
-identical for all
-N
-N
-rollouts) normalizes to exactly the advantage of the conversion-free reward in the same contexts under group-relative standardization; the conversion term then contributes zero expected policy gradient. Within-group variation in opponent difficulty is what makes the competitive term trainable. In the shared-opponent ablation we therefore fix one opponent draft per problem,
-hidden
+<p>fficulty<br />
+: because it multiplies the action-dependent<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+c(b_{i})<br />
+, the reweighting shifts the gradient itself, and, given the within-group spread of opponent contexts<br />
+{<br />
+a<br />
+i<br />
+}<br />
+{a_{i}}<br />
+, tilts it toward the opponent attempts that failed. We confirm this empirically (<br />
+Table<br />
+˜<br />
+7<br />
+): the margin form barely improves on cooperation, whereas the conversion bonus clearly does. More generally, any reward that is affine in<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+c(b_{i})<br />
+with group-constant coefficients (e.g., a shared opponent draft for the entire challenger group, making<br />
+c<br />
+​<br />
+(<br />
+a<br />
+)<br />
+c(a)<br />
+identical for all<br />
+N<br />
+N<br />
+rollouts) normalizes to exactly the advantage of the conversion-free reward in the same contexts under group-relative standardization; the conversion term then contributes zero expected policy gradient. Within-group variation in opponent difficulty is what makes the competitive term trainable. In the shared-opponent ablation we therefore fix one opponent draft per problem,<br />
+hidden<br />
 from the challenger’s context and used only for the reward (so the contexts are plain prompts, as in vanilla GRPO); the observed result (32) is consistent with the theoretical prediction that a group-constant conversion bonus adds no directional signal. This departs from the standard GRPO assumption that all rollouts in a group share the same prompt; here each challenger rollout conditions on its own opponent context. The resulting credit assignment is not merely noisier but systematically confounded: a rollout’s success p</p>
-
-<p>robability depends on the quality of the draft it happened to draw (an action-independent draw), so group standardization mixes context difficulty with policy quality, and the conversion bonus, which pays exactly in the harder contexts, partially offsets that difficulty penalty. This admits an alternative reading of the adversarial gain: rather than “competitive pressure” in a game-theoretic sense, the bonus acts as difficulty-weighted reward shaping that upweights correct completions in hard contexts. Our experiments do not distinguish these two interpretations; we use the competitive framing for its constructive role in the design and leave the disentanglement to future work.
-The resulting reward ladder (adv) is
-R
-−
-λ
-​
-ϕ
-∈
-{
-0
-,
-2
-,
-3
-}
-R-\lambda\phi\in\{0,2,3\}
-. The drafter’s standalone stream has no opponent, so
-Equation
-˜
-2
-applies as-is.
-As an
-optional density lever
-, studied separately in
-Section
-˜
-5.6
-and
-not
-part of the headline recipe, we add a length tiebreak that fires only when both solutions are correct:
-R
-​
-(
-b
-i
-)
-+
-⁣
-=
-γ
-​
-c
-​
-(
-b
-i
-)
-​
-c
-​
-(
-a
-i
-)
-​
-1
-​
-[
-|
-b
-i
-|
-&lt;
-|
-a
-i
-|
-]
-R(b_{i})\mathrel{+{=}}\gamma\,c(b_{i})\,c(a_{i})\,\mathbf{1}\!\left[\,|b_{i}|&lt;|a_{i}|\,\right]
-with weight
-γ
-\gamma
-, rewarding the challenger for matching the opponent’s correctness in
-fewer
-tokens. Because the term requires
-c
-​
-(
-b
-i
-)
-=
-1
-c(b_{i})=1
-, it never
-directly
+<p>robability depends on the quality of the draft it happened to draw (an action-independent draw), so group standardization mixes context difficulty with policy quality, and the conversion bonus, which pays exactly in the harder contexts, partially offsets that difficulty penalty. This admits an alternative reading of the adversarial gain: rather than “competitive pressure” in a game-theoretic sense, the bonus acts as difficulty-weighted reward shaping that upweights correct completions in hard contexts. Our experiments do not distinguish these two interpretations; we use the competitive framing for its constructive role in the design and leave the disentanglement to future work.<br />
+The resulting reward ladder (adv) is<br />
+R<br />
+−<br />
+λ<br />
+​<br />
+ϕ<br />
+∈<br />
+{<br />
+0<br />
+,<br />
+2<br />
+,<br />
+3<br />
+}<br />
+R-\lambda\phi\in{0,2,3}<br />
+. The drafter’s standalone stream has no opponent, so<br />
+Equation<br />
+˜<br />
+2<br />
+applies as-is.<br />
+As an<br />
+optional density lever<br />
+, studied separately in<br />
+Section<br />
+˜<br />
+5.6<br />
+and<br />
+not<br />
+part of the headline recipe, we add a length tiebreak that fires only when both solutions are correct:<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
++<br />
+⁣<br />
+=<br />
+γ<br />
+​<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+​<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+​<br />
+1<br />
+​<br />
+[<br />
+|<br />
+b<br />
+i<br />
+|<br />
+&lt;<br />
+|<br />
+a<br />
+i<br />
+|<br />
+]<br />
+R(b_{i})\mathrel{+{=}}\gamma\,c(b_{i})\,c(a_{i})\,\mathbf{1}!\left[\,|b_{i}|&lt;|a_{i}|\,\right]<br />
+with weight<br />
+γ<br />
+\gamma<br />
+, rewarding the challenger for matching the opponent’s correctness in<br />
+fewer<br />
+tokens. Because the term requires<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+=<br />
+1<br />
+c(b_{i})=1<br />
+, it never<br />
+directly<br />
 penalizes correctness, only breaking ties among already-correct traces, so accuracy stays essentially flat while le</p>
-
-<p>ngth drops, converting the emergent shortening (
-Section
-˜
-5.5
-) into a directly tunable target.
-Algorithm 1
-Agon (one optimizer step)
-1:
-input:
-batch of problems
-{
-x
-}
-\{x\}
-; adapters
-A
-,
-B
-A,B
-; group size
-N
-N
-; step index
-t
-t
-; mode
-∈
-{
-coop
-,
-adv
-}
-\in\{\text{coop},\text{adv}\}
-2:
-(
-draft
-,
-chal
-)
-←
-(
-A
-,
-B
-)
-(\text{draft},\text{chal})\leftarrow(A,B)
-if
-t
-t
-even else
-(
-B
-,
-A
-)
-(B,A)
-// role rotation
-3:
-for all
-x
-x
-in batch
-do
-4:
-{
-a
-i
-}
-i
-=
-1
-N
-∼
-π
-draft
-(
-⋅
-∣
-x
-)
-\{a_{i}\}_{i=1}^{N}\sim\pi_{\text{draft}}(\cdot\mid x)
-// standalone rollouts, plain prompt
-5:
-R
-​
-(
-a
-i
-)
-←
-R(a_{i})\leftarrow
-reward via
-Equation
-˜
-2
-// correctness
-+
-+
-format, no opponent term
-6:
-{
-b
-i
-}
-i
-=
-1
-N
-∼
-π
-chal
-(
-⋅
-∣
-x
-,
-a
-i
-)
-\{b_{i}\}_{i=1}^{N}\sim\pi_{\text{chal}}(\cdot\mid x,a_{i})
-// one per pair: challenger
-b
-i
-b_{i}
-sees
-a
-i
-a_{i}
-’s summary
-7:
-R
-​
-(
-b
-i
-)
-←
-R(b_{i})\leftarrow
-reward via
-Equation
-˜
-2
-/
-Equation
-˜
-3
-by mode
-8:
-group-relative advantages of
-{
-R
-​
-(
-a
-i
-)
-}
-\{R(a_{i})\}
-and of
-{
-R
-​
-(
-b
-i
-)
-}
-\{R(b_{i})\}
-//
-Equation
-˜
-1
-, per group
-9:
-end
-for
-10:
-GRPO update on
-π
-draft
-\pi_{\text{draft}}
-(standalone stream) and on
-π
-chal
-\pi_{\text{chal}}
-(competitive stream)
-11:
-return
-updated adapters
-4.5
-Compute parity
-Per step Agon generates
-N
-N
-drafter rollouts plus
-N
-N
-challenger rollouts (
-2
-​
-N
-2N
-), versus
-N
-N
+<p>ngth drops, converting the emergent shortening (<br />
+Section<br />
+˜<br />
+5.5<br />
+) into a directly tunable target.<br />
+Algorithm 1<br />
+Agon (one optimizer step)<br />
+1:<br />
+input:<br />
+batch of problems<br />
+{<br />
+x<br />
+}<br />
+{x}<br />
+; adapters<br />
+A<br />
+,<br />
+B<br />
+A,B<br />
+; group size<br />
+N<br />
+N<br />
+; step index<br />
+t<br />
+t<br />
+; mode<br />
+∈<br />
+{<br />
+coop<br />
+,<br />
+adv<br />
+}<br />
+\in{\text{coop},\text{adv}}<br />
+2:<br />
+(<br />
+draft<br />
+,<br />
+chal<br />
+)<br />
+←<br />
+(<br />
+A<br />
+,<br />
+B<br />
+)<br />
+(\text{draft},\text{chal})\leftarrow(A,B)<br />
+if<br />
+t<br />
+t<br />
+even else<br />
+(<br />
+B<br />
+,<br />
+A<br />
+)<br />
+(B,A)<br />
+// role rotation<br />
+3:<br />
+for all<br />
+x<br />
+x<br />
+in batch<br />
+do<br />
+4:<br />
+{<br />
+a<br />
+i<br />
+}<br />
+i<br />
+=<br />
+1<br />
+N<br />
+∼<br />
+π<br />
+draft<br />
+(<br />
+⋅<br />
+∣<br />
+x<br />
+)<br />
+{a_{i}}<em>{i=1}^{N}\sim\pi</em>{\text{draft}}(\cdot\mid x)<br />
+// standalone rollouts, plain prompt<br />
+5:<br />
+R<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+←<br />
+R(a_{i})\leftarrow<br />
+reward via<br />
+Equation<br />
+˜<br />
+2<br />
+// correctness<br />
++<br />
++<br />
+format, no opponent term<br />
+6:<br />
+{<br />
+b<br />
+i<br />
+}<br />
+i<br />
+=<br />
+1<br />
+N<br />
+∼<br />
+π<br />
+chal<br />
+(<br />
+⋅<br />
+∣<br />
+x<br />
+,<br />
+a<br />
+i<br />
+)<br />
+{b_{i}}<em>{i=1}^{N}\sim\pi</em>{\text{chal}}(\cdot\mid x,a_{i})<br />
+// one per pair: challenger<br />
+b<br />
+i<br />
+b_{i}<br />
+sees<br />
+a<br />
+i<br />
+a_{i}<br />
+’s summary<br />
+7:<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+←<br />
+R(b_{i})\leftarrow<br />
+reward via<br />
+Equation<br />
+˜<br />
+2<br />
+/<br />
+Equation<br />
+˜<br />
+3<br />
+by mode<br />
+8:<br />
+group-relative advantages of<br />
+{<br />
+R<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+}<br />
+{R(a_{i})}<br />
+and of<br />
+{<br />
+R<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+}<br />
+{R(b_{i})}<br />
+//<br />
+Equation<br />
+˜<br />
+1<br />
+, per group<br />
+9:<br />
+end<br />
+for<br />
+10:<br />
+GRPO update on<br />
+π<br />
+draft<br />
+\pi_{\text{draft}}<br />
+(standalone stream) and on<br />
+π<br />
+chal<br />
+\pi_{\text{chal}}<br />
+(competitive stream)<br />
+11:<br />
+return<br />
+updated adapters<br />
+4.5<br />
+Compute parity<br />
+Per step Agon generates<br />
+N<br />
+N<br />
+drafter rollouts plus<br />
+N<br />
+N<br />
+challenger rollouts (<br />
+2<br />
+​<br />
+N<br />
+2N<br />
+), versus<br />
+N<br />
+N<br />
 for vanilla GRPO. Both adapters are updated every step, the drafter on its standalone group and the challenger on its opponent-conditioned group; rotation swaps which adapter get</p>
-
-<p>s which stream. Our primary invariant is the
-generation budget
-: every method generates
-2
-​
-N
-2N
-rollouts per training problem (vanilla GRPO gets
-2
-​
-N
-2N
-instead of its default
-N
-N
-) under the same completion-length cap and the same single pass over the training problems. Realized token counts then differ only through learned trace length, bounded for every method by the same cap; we do not audit total generated tokens (the drafter-stage length is not reported), but with the rollout count and length cap equalized, the gains are not attributable to a larger generation
-budget
-. The challenger additionally prefills the opponent summary, which is extra prefill compute we do not equalize (the summary is short relative to a full trace, is amortized cheaply against generation, and is absent at single-adapter inference). At inference Agon deploys exactly as it trains: a two-stage cascade in which one adapter drafts from the plain prompt and the other reads the draft’s summary and produces the final answer. This is two sequential generation passes, a doubled budget relative to a single-pass baseline, so
-Table
-˜
-3
-includes two-pass controls at the same budget (cross-refinement, self-refinement). Reported trace lengths refer to the final (challenger) stage. Both cascade directions (
-A
-→
-B
-A{\to}B
-and
-B
-→
-A
-B{\to}A
-) are evaluated and the better is reported, selected post hoc on the held-out set.
-5
-Experiments
-Setup.
-We train Qwen3 models
-(Qwen Team,
-2025
-)
-(primarily 0.6B; 1.7B/4B for</p>
-
-<p>scaling) on the hard split of DeepMath-103K
-(He et al.,
-2025
-)
-(difficulty 8, binary-answer questions removed), with a held-out set of
-300
-300
-problems. We use group size
-G
-=
-N
-=
-8
-G=N=8
-for both streams, LoRA rank
-16
-16
-, learning rate
-5
-×
-10
-−
-5
-5\times 10^{-5}
-(linear decay,
-10
-%
-10\%
-warmup), one training epoch over the
-3
-,
-000
-3{,}000
-training problems, format weight
-λ
-=
-0.5
-\lambda=0.5
-, length tiebreak
-γ
-=
-0.5
-\gamma=0.5
-(used in
-Section
-˜
-5.6
-only), and a standard format reward (well-formed
-&lt;think&gt;
-/
-&lt;answer&gt;
-) as
-ϕ
-\phi
-. Generation uses vLLM
-(Kwon et al.,
-2023
-)
-and training uses TRL
-(von Werra et al.,
-2020
-)
-. The primary metric is pass@1 on the DeepMath held-out set; we additionally sanity-check on GSM8K
-(Cobbe et al.,
-2021
-)
-and MATH-500
-(Hendrycks et al.,
-2021
-)
-(
-Table
-˜
-2
-). For the second-domain study (
-Section
-˜
-5.3
-) we train on the
-easy
--difficulty subset of CodeContests
-(Li et al.,
-2022
-)
-with a unit-test verifier (
-r
-=
-1
-r=1
-iff all tests pass), under the same protocol and budget. Evaluation protocol: sampled decoding (temperature
-0.6
-0.6
-, top-
-p
-p
-0.95
-0.95
-), one rollout per stage, generation budget matched to training (
-15
-15
-k completion tokens per stage), the answer parsed from the
-&lt;answer&gt;
-block; the
-300
-300
-held-out problems are difficulty-8 only with binary-answer questions removed, split with a fixed seed before any training. Pair-trained methods are evaluated as the two-stage cascade (
-Section
-˜
-4.5
+<p>s which stream. Our primary invariant is the<br />
+generation budget<br />
+: every method generates<br />
+2<br />
+​<br />
+N<br />
+2N<br />
+rollouts per training problem (vanilla GRPO gets<br />
+2<br />
+​<br />
+N<br />
+2N<br />
+instead of its default<br />
+N<br />
+N<br />
+) under the same completion-length cap and the same single pass over the training problems. Realized token counts then differ only through learned trace length, bounded for every method by the same cap; we do not audit total generated tokens (the drafter-stage length is not reported), but with the rollout count and length cap equalized, the gains are not attributable to a larger generation<br />
+budget<br />
+. The challenger additionally prefills the opponent summary, which is extra prefill compute we do not equalize (the summary is short relative to a full trace, is amortized cheaply against generation, and is absent at single-adapter inference). At inference Agon deploys exactly as it trains: a two-stage cascade in which one adapter drafts from the plain prompt and the other reads the draft’s summary and produces the final answer. This is two sequential generation passes, a doubled budget relative to a single-pass baseline, so<br />
+Table<br />
+˜<br />
+3<br />
+includes two-pass controls at the same budget (cross-refinement, self-refinement). Reported trace lengths refer to the final (challenger) stage. Both cascade directions (<br />
+A<br />
+→<br />
+B<br />
+A{\to}B<br />
+and<br />
+B<br />
+→<br />
+A<br />
+B{\to}A<br />
+) are evaluated and the better is reported, selected post hoc on the held-out set.<br />
+5<br />
+Experiments<br />
+Setup.<br />
+We train Qwen3 models<br />
+(Qwen Team,<br />
+2025<br />
+)<br />
+(primarily 0.6B; 1.7B/4B for </p>
+<p>scaling) on the hard split of DeepMath-103K<br />
+(He et al.,<br />
+2025<br />
+)<br />
+(difficulty 8, binary-answer questions removed), with a held-out set of<br />
+300<br />
+300<br />
+problems. We use group size<br />
+G<br />
+=<br />
+N<br />
+=<br />
+8<br />
+G=N=8<br />
+for both streams, LoRA rank<br />
+16<br />
+16<br />
+, learning rate<br />
+5<br />
+×<br />
+10<br />
+−<br />
+5<br />
+5\times 10^{-5}<br />
+(linear decay,<br />
+10<br />
+%<br />
+10\%<br />
+warmup), one training epoch over the<br />
+3<br />
+,<br />
+000<br />
+3{,}000<br />
+training problems, format weight<br />
+λ<br />
+=<br />
+0.5<br />
+\lambda=0.5<br />
+, length tiebreak<br />
+γ<br />
+=<br />
+0.5<br />
+\gamma=0.5<br />
+(used in<br />
+Section<br />
+˜<br />
+5.6<br />
+only), and a standard format reward (well-formed<br />
+<think><br />
+/<br />
+<answer><br />
+) as<br />
+ϕ<br />
+\phi<br />
+. Generation uses vLLM<br />
+(Kwon et al.,<br />
+2023<br />
+)<br />
+and training uses TRL<br />
+(von Werra et al.,<br />
+2020<br />
+)<br />
+. The primary metric is pass@1 on the DeepMath held-out set; we additionally sanity-check on GSM8K<br />
+(Cobbe et al.,<br />
+2021<br />
+)<br />
+and MATH-500<br />
+(Hendrycks et al.,<br />
+2021<br />
+)<br />
+(<br />
+Table<br />
+˜<br />
+2<br />
+). For the second-domain study (<br />
+Section<br />
+˜<br />
+5.3<br />
+) we train on the<br />
+easy<br />
+-difficulty subset of CodeContests<br />
+(Li et al.,<br />
+2022<br />
+)<br />
+with a unit-test verifier (<br />
+r<br />
+=<br />
+1<br />
+r=1<br />
+iff all tests pass), under the same protocol and budget. Evaluation protocol: sampled decoding (temperature<br />
+0.6<br />
+0.6<br />
+, top-<br />
+p<br />
+p<br />
+0.95<br />
+0.95<br />
+), one rollout per stage, generation budget matched to training (<br />
+15<br />
+15<br />
+k completion tokens per stage), the answer parsed from the<br />
+<answer><br />
+block; the<br />
+300<br />
+300<br />
+held-out problems are difficulty-8 only with binary-answer questions removed, split with a fixed seed before any training. Pair-trained methods are evaluated as the two-stage cascade (<br />
+Section<br />
+˜<br />
+4.5<br />
 ) in both directions, reporting the better d</p>
-
-<p>irection; mean trace length reports the final-stage completion. Reported pass@1 values include 95% Clopper–Pearson binomial confidence intervals over the 300-problem held-out set (
-Table
-˜
-4
-).
-The
-2
-×
-2
-2\times 2
-design.
-We cross two binary factors,
-competition
-and
-information exchange
-, giving four cells plus three controls (
-Table
-˜
-1
-): self-refinement, an untrained MoA at inference, and a budget-matched GRPO two-pass self-cascade. One caveat is structural: the “competition without exchange” cell uses a shared opponent draft, hidden from the challenger and used only for the reward, which by the analysis in
-Section
-˜
-4.4
-makes the conversion bonus group-constant and hence gradient-free, so this cell is theoretically equivalent to vanilla GRPO and serves as a consistency check rather than a true isolation of competition. Consequently, the
-exchange claim
-(exchange helps) is carried by the GRPO-vs-cooperative comparison, and the
-competition claim
-(competition helps beyond exchange) by the cooperative-vs-adversarial comparison, holding everything else fixed at a matched generation budget; a competition-without-visible-exchange cell with per-rollout hidden drafts is left for future work.
-Table 1:
-The ablation matrix. Each cell is a training configuration; everything but the two factors is held fixed. Self-refinement is a single-model control for exchange; the untrained MoA at inference is a zero-training Mixture-of-Agents control.
-no information exchange
-information exchange
+<p>irection; mean trace length reports the final-stage completion. Reported pass@1 values include 95% Clopper–Pearson binomial confidence intervals over the 300-problem held-out set (<br />
+Table<br />
+˜<br />
+4<br />
+).<br />
+The<br />
+2<br />
+×<br />
+2<br />
+2\times 2<br />
+design.<br />
+We cross two binary factors,<br />
+competition<br />
+and<br />
+information exchange<br />
+, giving four cells plus three controls (<br />
+Table<br />
+˜<br />
+1<br />
+): self-refinement, an untrained MoA at inference, and a budget-matched GRPO two-pass self-cascade. One caveat is structural: the “competition without exchange” cell uses a shared opponent draft, hidden from the challenger and used only for the reward, which by the analysis in<br />
+Section<br />
+˜<br />
+4.4<br />
+makes the conversion bonus group-constant and hence gradient-free, so this cell is theoretically equivalent to vanilla GRPO and serves as a consistency check rather than a true isolation of competition. Consequently, the<br />
+exchange claim<br />
+(exchange helps) is carried by the GRPO-vs-cooperative comparison, and the<br />
+competition claim<br />
+(competition helps beyond exchange) by the cooperative-vs-adversarial comparison, holding everything else fixed at a matched generation budget; a competition-without-visible-exchange cell with per-rollout hidden drafts is left for future work.<br />
+Table 1:<br />
+The ablation matrix. Each cell is a training configuration; everything but the two factors is held fixed. Self-refinement is a single-model control for exchange; the untrained MoA at inference is a zero-training Mixture-of-Agents control.<br />
+no information exchange<br />
+information exchange<br />
 no</p>
-
-<p>competition
-vanilla GRPO
-cooperative (
-Equation
-˜
-2
-)
-competition
-competitive, shared opponent (inert by construction;
-Section
-˜
-4.4
-)
-Agon
-(
-Equation
-˜
-3
-)
-Controls: self-refinement (model sees its
-own
-prior attempt); untrained MoA at inference (the base model’s two
-independent
-samples critique each other, no training); GRPO two-pass self-cascade (a trained GRPO model refines its own first pass, matching the cascade’s inference budget).
-5.1
-Main results
-Table
-˜
-3
-reports the main comparison on Qwen3-0.6B. All deltas below are read from the
-pass@1
-column. The trained pair methods and the refinement controls are two-pass at inference; vanilla GRPO and zero-shot are single-pass (see the footnote of
-Table
-˜
-3
-). Information exchange alone (cooperative exchange:
-46
-46
-) already improves over vanilla GRPO (
-30
-30
-) and over self-refinement (
-32
-32
-), supporting the exchange claim; adding competition (Agon:
-61
-61
-) improves further over cooperation, supporting the competition claim. The untrained MoA control is a two-agent Mixture-of-Agents layer at inference
-(Wang et al.,
-2024
-)
-: each model reads the other’s attempt and refines its own. It lifts GRPO by
-+
-4
-+4
-pp (
-30
-→
-34
-30\!\to\!34
-); Agon lifts it by
-+
-31
-+31
-pp, roughly eight times the gain of untrained aggregation. We note that the two levers contribute comparably: information exchange adds
-+
-16
-+16
-pp (GRPO
-→
-\to
-cooperative) and competition a further
-+
-15
-+15
-pp (cooperative
-→
-\to
+<p>competition<br />
+vanilla GRPO<br />
+cooperative (<br />
+Equation<br />
+˜<br />
+2<br />
+)<br />
+competition<br />
+competitive, shared opponent (inert by construction;<br />
+Section<br />
+˜<br />
+4.4<br />
+)<br />
+Agon<br />
+(<br />
+Equation<br />
+˜<br />
+3<br />
+)<br />
+Controls: self-refinement (model sees its<br />
+own<br />
+prior attempt); untrained MoA at inference (the base model’s two<br />
+independent<br />
+samples critique each other, no training); GRPO two-pass self-cascade (a trained GRPO model refines its own first pass, matching the cascade’s inference budget).<br />
+5.1<br />
+Main results<br />
+Table<br />
+˜<br />
+3<br />
+reports the main comparison on Qwen3-0.6B. All deltas below are read from the<br />
+pass@1<br />
+column. The trained pair methods and the refinement controls are two-pass at inference; vanilla GRPO and zero-shot are single-pass (see the footnote of<br />
+Table<br />
+˜<br />
+3<br />
+). Information exchange alone (cooperative exchange:<br />
+46<br />
+46<br />
+) already improves over vanilla GRPO (<br />
+30<br />
+30<br />
+) and over self-refinement (<br />
+32<br />
+32<br />
+), supporting the exchange claim; adding competition (Agon:<br />
+61<br />
+61<br />
+) improves further over cooperation, supporting the competition claim. The untrained MoA control is a two-agent Mixture-of-Agents layer at inference<br />
+(Wang et al.,<br />
+2024<br />
+)<br />
+: each model reads the other’s attempt and refines its own. It lifts GRPO by<br />
++<br />
+4<br />
++4<br />
+pp (<br />
+30<br />
+→<br />
+34<br />
+30!\to!34<br />
+); Agon lifts it by<br />
++<br />
+31<br />
++31<br />
+pp, roughly eight times the gain of untrained aggregation. We note that the two levers contribute comparably: information exchange adds<br />
++<br />
+16<br />
++16<br />
+pp (GRPO<br />
+→<br />
+\to<br />
+cooperative) and competition a further<br />
++<br />
+15<br />
++15<br />
+pp (cooperative<br />
+→<br />
+\to<br />
 Agon). The dual-adapter architecture alo</p>
-
-<p>ne contributes little: the competitive-shared-opponent variant sits at
-32
-32
-, barely above single-model GRPO at
-30
-30
-, so the gain from exchange is attributable to the shared context, not to going from one model to two.
-Each method is a single training run; the confidence intervals in
-Table
-˜
-4
-cover sampling variation over the 300 held-out problems (
-±
-∼
-5.5
-\pm{\sim}5.5
-pp) but not run-to-run training variance. Both headline deltas (exchange:
-+
-16
-+16
-pp; competition:
-+
-15
-+15
-pp) exceed the width of these intervals. The Agon cascade reaches roughly twice vanilla GRPO’s held-out pass@1 while
-shortening
-final-stage traces; in gain terms, GRPO lifts the base by
-+
-7
-+7
-pp (
-23
-→
-30
-23\!\to\!30
-) while Agon lifts it by
-+
-31
-+31
-pp over GRPO (
-30
-→
-61
-30\!\to\!61
-), and
-+
-26
-+26
-pp over a two-pass GRPO self-cascade at matched inference budget, nearly doubling the untrained MoA cascade.
-To decompose the cascade gain, we evaluate the drafter adapter standalone after training (plain prompt, no opponent summary): it reaches 46 pass@1, a +16 pp lift over vanilla GRPO. This is notable given the budget asymmetry: each adapter drafts on only half the steps with group size
-N
-N
-, so it receives roughly a quarter of the standalone-rollout gradient volume of the vanilla GRPO baseline (which uses
-2
-​
-N
-2N
+<p>ne contributes little: the competitive-shared-opponent variant sits at<br />
+32<br />
+32<br />
+, barely above single-model GRPO at<br />
+30<br />
+30<br />
+, so the gain from exchange is attributable to the shared context, not to going from one model to two.<br />
+Each method is a single training run; the confidence intervals in<br />
+Table<br />
+˜<br />
+4<br />
+cover sampling variation over the 300 held-out problems (<br />
+±<br />
+∼<br />
+5.5<br />
+\pm{\sim}5.5<br />
+pp) but not run-to-run training variance. Both headline deltas (exchange:<br />
++<br />
+16<br />
++16<br />
+pp; competition:<br />
++<br />
+15<br />
++15<br />
+pp) exceed the width of these intervals. The Agon cascade reaches roughly twice vanilla GRPO’s held-out pass@1 while<br />
+shortening<br />
+final-stage traces; in gain terms, GRPO lifts the base by<br />
++<br />
+7<br />
++7<br />
+pp (<br />
+23<br />
+→<br />
+30<br />
+23!\to!30<br />
+) while Agon lifts it by<br />
++<br />
+31<br />
++31<br />
+pp over GRPO (<br />
+30<br />
+→<br />
+61<br />
+30!\to!61<br />
+), and<br />
++<br />
+26<br />
++26<br />
+pp over a two-pass GRPO self-cascade at matched inference budget, nearly doubling the untrained MoA cascade.<br />
+To decompose the cascade gain, we evaluate the drafter adapter standalone after training (plain prompt, no opponent summary): it reaches 46 pass@1, a +16 pp lift over vanilla GRPO. This is notable given the budget asymmetry: each adapter drafts on only half the steps with group size<br />
+N<br />
+N<br />
+, so it receives roughly a quarter of the standalone-rollout gradient volume of the vanilla GRPO baseline (which uses<br />
+2<br />
+​<br />
+N<br />
+2N<br />
 on every problem), plus challenger-stream gradients on the alternating steps. Our working hypothesis is that the challenger-stream updates transfer to standalone solving (the adapter is t</p>
-
-<p>rained to verify and re-derive, skills that a plain prompt also exercises), but we have not tested this with a control (e.g. the standalone accuracy of a cooperative-trained or self-refinement adapter), so the attribution of the drafter’s +16 pp to the competitive objective is a hypothesis, not an isolated measurement. The challenger then converts a net 15 of the drafter’s 54 failures into correct answers (with possible regressions among the drafter’s 46 successes), yielding the final 61. Under this reading, the drafter’s lift (+16 pp) and the challenger’s conversion (+15 pp) contribute comparable shares of the total gain, the former via the hypothesized transfer of challenger-stream skills to standalone solving.
-To check that the gains are not an artifact of the training distribution,
-Table
-˜
-2
-reports the same checkpoints on GSM8K and MATH-500 without any further tuning: the ordering is preserved with smaller absolute margins than in-distribution (
-+
-13
-+13
-and
-+
-19
-+19
-pp over zero-shot, vs
-+
-38
-+38
-on DeepMath-hard), as expected for a method whose pressure targets the hard regime.
-Table 2:
-Transfer sanity checks on Qwen3-0.6B (pass@1, %; trained rows: single training run, same checkpoints and cascade protocol as
-Table
-˜
-3
-, no further tuning; zero-shot: single evaluation; values rounded to nearest integer).
-Method
-GSM8K
-MATH-500
-Zero-shot
-62
-45
-Vanilla GRPO
-68
-52
-Agon
-75
-64
-Table 3:
+<p>rained to verify and re-derive, skills that a plain prompt also exercises), but we have not tested this with a control (e.g. the standalone accuracy of a cooperative-trained or self-refinement adapter), so the attribution of the drafter’s +16 pp to the competitive objective is a hypothesis, not an isolated measurement. The challenger then converts a net 15 of the drafter’s 54 failures into correct answers (with possible regressions among the drafter’s 46 successes), yielding the final 61. Under this reading, the drafter’s lift (+16 pp) and the challenger’s conversion (+15 pp) contribute comparable shares of the total gain, the former via the hypothesized transfer of challenger-stream skills to standalone solving.<br />
+To check that the gains are not an artifact of the training distribution,<br />
+Table<br />
+˜<br />
+2<br />
+reports the same checkpoints on GSM8K and MATH-500 without any further tuning: the ordering is preserved with smaller absolute margins than in-distribution (<br />
++<br />
+13<br />
++13<br />
+and<br />
++<br />
+19<br />
++19<br />
+pp over zero-shot, vs<br />
++<br />
+38<br />
++38<br />
+on DeepMath-hard), as expected for a method whose pressure targets the hard regime.<br />
+Table 2:<br />
+Transfer sanity checks on Qwen3-0.6B (pass@1, %; trained rows: single training run, same checkpoints and cascade protocol as<br />
+Table<br />
+˜<br />
+3<br />
+, no further tuning; zero-shot: single evaluation; values rounded to nearest integer).<br />
+Method<br />
+GSM8K<br />
+MATH-500<br />
+Zero-shot<br />
+62<br />
+45<br />
+Vanilla GRPO<br />
+68<br />
+52<br />
+Agon<br />
+75<br />
+64<br />
+Table 3:<br />
 Main comparison on Qwen3-0.6B, DeepMath-hard held-out (%), at a matched training generatio</p>
-
-<p>n budget; inference passes per method are noted in the footnote. Single training run per method; 95% Clopper–Pearson confidence intervals over the 300-problem held-out set are shown in
-Table
-˜
-4
-. Values rounded to nearest integer.
-Method
-pass@1
-avg. len
-Zero-shot
-23
-6.1k
-Vanilla GRPO (baseline)
-30
-8.1k
-Self-refinement (control)
-32
-7.9k
-GRPO two-pass self-cascade (control)
-35
-8.0k
-MoA
-(
-Wang et al.
-,
-2024
-)
-(no train)
-34
-6.9k
-Competitive, shared opponent (single-pass)
-32
-7.4k
-Cooperative exchange
-46
-5.1k
-Agon (competition
-+
-+
-exchange)
-61
-3.5k
-pass@1 is the primary metric. Pair-trained methods and the refinement controls run two sequential generation passes per problem (for Agon and cooperative: draft, then challenge reading the draft’s summary); both cascade directions are evaluated and the better is reported. Zero-shot and vanilla GRPO are single-pass. avg. len is the final-stage completion length only (full cascade uses
-∼
-\sim
-2
-×
-\times
-tokens at inference). Zero-shot and the untrained MoA involve no training and are reported as single evaluations. 95% confidence intervals are Clopper–Pearson binomial over 300 held-out problems.
-Table 4:
-95% Clopper–Pearson confidence intervals over the 300-problem held-out set (single training run per method).
-Method
-pass@1
-95% CI
-Zero-shot
-23
-[18.4, 28.3]
-Vanilla GRPO (baseline)
-30
-[25.0, 35.4]
-Self-refinement (control)
-32
-[26.9, 37.5]
-GRPO two-pass self-cascade
-35
-[29.7, 40.7]
-MoA (no train)
-34
-[28.8, 39.5]
+<p>n budget; inference passes per method are noted in the footnote. Single training run per method; 95% Clopper–Pearson confidence intervals over the 300-problem held-out set are shown in<br />
+Table<br />
+˜<br />
+4<br />
+. Values rounded to nearest integer.<br />
+Method<br />
+pass@1<br />
+avg. len<br />
+Zero-shot<br />
+23<br />
+6.1k<br />
+Vanilla GRPO (baseline)<br />
+30<br />
+8.1k<br />
+Self-refinement (control)<br />
+32<br />
+7.9k<br />
+GRPO two-pass self-cascade (control)<br />
+35<br />
+8.0k<br />
+MoA<br />
+(<br />
+Wang et al.<br />
+,<br />
+2024<br />
+)<br />
+(no train)<br />
+34<br />
+6.9k<br />
+Competitive, shared opponent (single-pass)<br />
+32<br />
+7.4k<br />
+Cooperative exchange<br />
+46<br />
+5.1k<br />
+Agon (competition<br />
++<br />
++<br />
+exchange)<br />
+61<br />
+3.5k<br />
+pass@1 is the primary metric. Pair-trained methods and the refinement controls run two sequential generation passes per problem (for Agon and cooperative: draft, then challenge reading the draft’s summary); both cascade directions are evaluated and the better is reported. Zero-shot and vanilla GRPO are single-pass. avg. len is the final-stage completion length only (full cascade uses<br />
+∼<br />
+\sim<br />
+2<br />
+×<br />
+\times<br />
+tokens at inference). Zero-shot and the untrained MoA involve no training and are reported as single evaluations. 95% confidence intervals are Clopper–Pearson binomial over 300 held-out problems.<br />
+Table 4:<br />
+95% Clopper–Pearson confidence intervals over the 300-problem held-out set (single training run per method).<br />
+Method<br />
+pass@1<br />
+95% CI<br />
+Zero-shot<br />
+23<br />
+[18.4, 28.3]<br />
+Vanilla GRPO (baseline)<br />
+30<br />
+[25.0, 35.4]<br />
+Self-refinement (control)<br />
+32<br />
+[26.9, 37.5]<br />
+GRPO two-pass self-cascade<br />
+35<br />
+[29.7, 40.7]<br />
+MoA (no train)<br />
+34<br />
+[28.8, 39.5]<br />
 Competitive, shared opponent</p>
-
-<p>32
-[26.9, 37.5]
-Cooperative exchange
-46
-[40.3, 51.8]
-Agon
-61
-[55.2, 66.6]
-3
-3
-5
-5
-7
-7
-9
-9
-20
-20
-40
-40
-60
-60
-80
-80
-shorter traces
-zero-shot
-GRPO
-MoA
-coop
-Agon
-mean trace length (k tokens, final stage)
-held-out pass@1 (%)
-(a) accuracy vs. trace length
-0
-500
-500
-1
-,
-000
-1{,}000
-1
-,
-500
-1{,}500
-2
-,
-000
-2{,}000
-2
-,
-500
-2{,}500
-3
-,
-000
-3{,}000
-20
-20
-40
-40
-60
-60
-80
-80
-training problems processed (
-2
-​
-N
-2N
-rollouts per problem for every method)
-held-out pass@1 (%)
-(b) over training
-GRPO
-self-refine
-coop
-Agon
-Figure 7:
-(a)
-Agon sits in the top-left, higher accuracy at
-shorter
-traces (lengths are final-stage completions), while GRPO buys length for little accuracy and the untrained MoA adds only a small bump. The arrow is illustrative.
-(b)
-Held-out pass@1 at evaluation checkpoints over training. Each point is a single sampled evaluation of a single training run (binomial noise
-∼
-±
-5.5
-{\sim}\pm 5.5
-pp at 300 problems); curves are not averaged over seeds. Self-refinement plateaus just above GRPO, cooperative exchange climbs higher, and competition
-+
-+
-exchange (Agon) separates clearly. Agon is still improving at the end of the budget; we stop at the matched budget rather than at convergence.
-5.2
-Scaling and generality
-We expect smaller models, which live deeper in the hard regime, to benefit most.
-Table
-˜
-5
-shows the gain over vanilla GRPO shrinking but remaining positive as the base grows, and the same pattern holding on two other model families, Qwen3.5
-(Qwen Team,
-2026
-)
-and Gemma</p>
-
-<p>4
-(Gemma Team,
-2026
-)
-: the delta tracks zero-shot strength, not the family. The Agon cascade on the 0.6B base (61) exceeds not only zero-shot Qwen3-4B (52) but vanilla GRPO on the 4B base (59), a model
-∼
-7
-×
-{\sim}7\times
-larger, on the same held-out set. In every case the pair is two adapters over
-one
-base (our instantiation, not a requirement of the method); pairing across families is future work.
-Table 5:
-Model scaling and family generality: held-out pass@1 (%; trained cells: single training run, cascade protocol of
-Table
-˜
-3
-, rounded to the nearest point; zero-shot: single evaluation).
-Model
-Zero-shot
-Vanilla GRPO
-Agon
-Δ
-\Delta
-Qwen3-0.6B
-23
-30
-61
-+31
-Qwen3-1.7B
-38
-46
-70
-+24
-Qwen3-4B
-52
-59
-71
-+12
-Qwen3.5-2B
-44
-50
-70
-+20
-Gemma-4-E4B
-50
-58
-73
-+15
-5.3
-A second domain: competitive-programming code
-The recipe is not specific to math; any domain with a clean programmatic verifier qualifies. We repeat the core comparison on Qwen3-1.7B trained on the
-easy
--difficulty subset of CodeContests
-(Li et al.,
-2022
-)
-, with
-r
-​
-(
-x
-,
-y
-)
-=
-1
-r(x,y)=1
-iff the generated program passes all unit tests, a held-out set of
-300
-300
-problems, and the same protocol and generation budget.
-Table
-˜
-6
-shows the same ordering as
-Table
-˜
-3
+<p>32<br />
+[26.9, 37.5]<br />
+Cooperative exchange<br />
+46<br />
+[40.3, 51.8]<br />
+Agon<br />
+61<br />
+[55.2, 66.6]<br />
+3<br />
+3<br />
+5<br />
+5<br />
+7<br />
+7<br />
+9<br />
+9<br />
+20<br />
+20<br />
+40<br />
+40<br />
+60<br />
+60<br />
+80<br />
+80<br />
+shorter traces<br />
+zero-shot<br />
+GRPO<br />
+MoA<br />
+coop<br />
+Agon<br />
+mean trace length (k tokens, final stage)<br />
+held-out pass@1 (%)<br />
+(a) accuracy vs. trace length<br />
+0<br />
+500<br />
+500<br />
+1<br />
+,<br />
+000<br />
+1{,}000<br />
+1<br />
+,<br />
+500<br />
+1{,}500<br />
+2<br />
+,<br />
+000<br />
+2{,}000<br />
+2<br />
+,<br />
+500<br />
+2{,}500<br />
+3<br />
+,<br />
+000<br />
+3{,}000<br />
+20<br />
+20<br />
+40<br />
+40<br />
+60<br />
+60<br />
+80<br />
+80<br />
+training problems processed (<br />
+2<br />
+​<br />
+N<br />
+2N<br />
+rollouts per problem for every method)<br />
+held-out pass@1 (%)<br />
+(b) over training<br />
+GRPO<br />
+self-refine<br />
+coop<br />
+Agon<br />
+Figure 7:<br />
+(a)<br />
+Agon sits in the top-left, higher accuracy at<br />
+shorter<br />
+traces (lengths are final-stage completions), while GRPO buys length for little accuracy and the untrained MoA adds only a small bump. The arrow is illustrative.<br />
+(b)<br />
+Held-out pass@1 at evaluation checkpoints over training. Each point is a single sampled evaluation of a single training run (binomial noise<br />
+∼<br />
+±<br />
+5.5<br />
+{\sim}\pm 5.5<br />
+pp at 300 problems); curves are not averaged over seeds. Self-refinement plateaus just above GRPO, cooperative exchange climbs higher, and competition<br />
++<br />
++<br />
+exchange (Agon) separates clearly. Agon is still improving at the end of the budget; we stop at the matched budget rather than at convergence.<br />
+5.2<br />
+Scaling and generality<br />
+We expect smaller models, which live deeper in the hard regime, to benefit most.<br />
+Table<br />
+˜<br />
+5<br />
+shows the gain over vanilla GRPO shrinking but remaining positive as the base grows, and the same pattern holding on two other model families, Qwen3.5<br />
+(Qwen Team,<br />
+2026<br />
+)<br />
+and Gemma </p>
+<p>4<br />
+(Gemma Team,<br />
+2026<br />
+)<br />
+: the delta tracks zero-shot strength, not the family. The Agon cascade on the 0.6B base (61) exceeds not only zero-shot Qwen3-4B (52) but vanilla GRPO on the 4B base (59), a model<br />
+∼<br />
+7<br />
+×<br />
+{\sim}7\times<br />
+larger, on the same held-out set. In every case the pair is two adapters over<br />
+one<br />
+base (our instantiation, not a requirement of the method); pairing across families is future work.<br />
+Table 5:<br />
+Model scaling and family generality: held-out pass@1 (%; trained cells: single training run, cascade protocol of<br />
+Table<br />
+˜<br />
+3<br />
+, rounded to the nearest point; zero-shot: single evaluation).<br />
+Model<br />
+Zero-shot<br />
+Vanilla GRPO<br />
+Agon<br />
+Δ<br />
+\Delta<br />
+Qwen3-0.6B<br />
+23<br />
+30<br />
+61<br />
++31<br />
+Qwen3-1.7B<br />
+38<br />
+46<br />
+70<br />
++24<br />
+Qwen3-4B<br />
+52<br />
+59<br />
+71<br />
++12<br />
+Qwen3.5-2B<br />
+44<br />
+50<br />
+70<br />
++20<br />
+Gemma-4-E4B<br />
+50<br />
+58<br />
+73<br />
++15<br />
+5.3<br />
+A second domain: competitive-programming code<br />
+The recipe is not specific to math; any domain with a clean programmatic verifier qualifies. We repeat the core comparison on Qwen3-1.7B trained on the<br />
+easy<br />
+-difficulty subset of CodeContests<br />
+(Li et al.,<br />
+2022<br />
+)<br />
+, with<br />
+r<br />
+​<br />
+(<br />
+x<br />
+,<br />
+y<br />
+)<br />
+=<br />
+1<br />
+r(x,y)=1<br />
+iff the generated program passes all unit tests, a held-out set of<br />
+300<br />
+300<br />
+problems, and the same protocol and generation budget.<br />
+Table<br />
+˜<br />
+6<br />
+shows the same ordering as<br />
+Table<br />
+˜<br />
+3<br />
 , exchange beats the baseline and competition beats cooperation, with traces again shortening. The absolute delta is smaller than on math: unit-test rewards are sparser at this scale, and code traces make the opponent prefill longer relative to generation. Across dom</p>
-
-<p>ains the claims should be read as directional rather than magnitude-matched.
-Table 6:
-Second domain: CodeContests (
-easy
-difficulty) on Qwen3-1.7B, held-out pass@1 (%; single training run; zero-shot: single evaluation; values rounded to nearest integer).
-Method
-pass@1
-avg. len
-Zero-shot
-18
-5.2k
-Vanilla GRPO
-24
-7.3k
-Cooperative exchange
-29
-4.8k
-Agon
-34
-3.9k
-5.4
-Ablations
-Table
-˜
-7
-isolates each design choice on Qwen3-0.6B (held-out pass@1). The competition claim is carried by the
-competition
-row (adv vs coop). The
-information exchange
-row (Agon vs the shared-opponent variant) should be read with care: switching to a shared opponent removes the visible draft
-and
-, by the analysis in
-Section
-˜
-4.4
-, deactivates the competitive gradient, so this comparison changes two things at once and is a consistency check rather than an isolated exchange effect; the isolated exchange delta is GRPO vs cooperative in
-Table
-˜
-3
-. In the “shared opponent” ablation the challenger group is scored against one fixed opponent draft, hidden from its context (group-constant
-c
-​
-(
-a
-)
-c(a)
-), so the conversion bonus normalizes away (
-Section
-˜
-4.4
-); the result (
-32
-32
-vs
-30
-30
-) is consistent with theory and shows that within-group variance in opponent difficulty is required for the competitive term to contribute gradient. A per-rollout opponent pairing (distinct hidden drafts) is the honest ablation of competition without visible exchange; that variant is left for future work. Role rotation is ablated</p>
-
-<p>explicitly: with fixed roles each adapter receives only one gradient stream, yielding 52 pass@1 versus 61 with rotation.
-Table 7:
-Ablations on Qwen3-0.6B (held-out pass@1, %; single training run per variant, rounded to the nearest point; best in
-bold
-). Each variant changes a single
-training-time
-choice. The competitive-shared-opponent variant is evaluated single-pass (no draft to read); all others use the two-stage cascade protocol of
-Table
-˜
-3
-.
-Factor
-Variants (pass@1)
-Competition (reward)
-cooperative 46 /
-adversarial 61
-Information exchange
-shared opponent 32 /
-per-rollout opponents 61
-Reward form
-margin
-c
-​
-(
-b
-i
-)
-−
-c
-​
-(
-a
-i
-)
-c(b_{i})-c(a_{i})
-49 /
-conversion bonus 61
-Role assignment
-fixed roles 52 /
-rotate 61
-5.5
-Analysis: why traces shorten
-Empirically, Agon’s traces are shorter than GRPO’s (
-Figure
-˜
-7
-a): the final (challenger) stage averages
-3.5
-3.5
-k tokens against
-8.1
-8.1
-k for a single GRPO pass. Note that this is a per-stage comparison: the cascade also runs a drafting stage, whose length we do not report, so total generated tokens per problem are not directly compared here and a full token-cost accounting is left for further analysis. The like-for-like comparison is against the two-stage untrained MoA control, where the same (final) stage is measured on both sides: Agon’s is half the length (
-3.5
-3.5
-k vs
-6.9
-6.9
-k). The headline reward contains no length term. The observed shortening is consistent with the challenger having a candidate solution in context,</p>
-
-<p>so length-heavy exploration is no longer the only route to a correct answer. Challenger completions conditioned on a
-correct
-opponent summary are
-∼
-35
-%
-{\sim}35\%
-shorter than the challenger-stage average (
-2.3
-2.3
-k vs
-3.5
-3.5
-k tokens on the final checkpoint), and
-Figure
-˜
-6
-shows the typical pattern: the challenger pinpoints the flawed step, re-derives it, and stops.
-5.6
-An optional density lever (auxiliary study)
-The shortening above is emergent: nothing in the headline reward asks for it. The same game can, however, also grade brevity: instead of taxing tokens with a penalty, we make being correct in fewer tokens than the rival a way to win. As a small side study, separate from the main recipe and from the two headline claims, we ask whether the shortening can thus be driven directly, using the length-tiebreak term from
-Section
-˜
-4.4
-(a bonus
-γ
-\gamma
-when the challenger is correct
-and
-shorter than an equally-correct opponent). On Qwen3-0.6B, turning it on cuts mean trace length from
-3.5
-3.5
-k to
-2.6
-2.6
-k at essentially unchanged accuracy (
-61
-→
-60
-61\!\to\!60
-pass@1), so the emergent shortening becomes directly controllable (
-Table
-˜
-8
-). Because the term only breaks ties among already-correct traces, it compresses without measurably trading away accuracy. We report this as an auxiliary knob; all headline numbers elsewhere use the length-free reward.
-Table 8:
-Auxiliary density lever on Qwen3-0.6B (pass@1, same cascade protocol). The length tiebreak (
-Section
-˜
-4.4
+<p>ains the claims should be read as directional rather than magnitude-matched.<br />
+Table 6:<br />
+Second domain: CodeContests (<br />
+easy<br />
+difficulty) on Qwen3-1.7B, held-out pass@1 (%; single training run; zero-shot: single evaluation; values rounded to nearest integer).<br />
+Method<br />
+pass@1<br />
+avg. len<br />
+Zero-shot<br />
+18<br />
+5.2k<br />
+Vanilla GRPO<br />
+24<br />
+7.3k<br />
+Cooperative exchange<br />
+29<br />
+4.8k<br />
+Agon<br />
+34<br />
+3.9k<br />
+5.4<br />
+Ablations<br />
+Table<br />
+˜<br />
+7<br />
+isolates each design choice on Qwen3-0.6B (held-out pass@1). The competition claim is carried by the<br />
+competition<br />
+row (adv vs coop). The<br />
+information exchange<br />
+row (Agon vs the shared-opponent variant) should be read with care: switching to a shared opponent removes the visible draft<br />
+and<br />
+, by the analysis in<br />
+Section<br />
+˜<br />
+4.4<br />
+, deactivates the competitive gradient, so this comparison changes two things at once and is a consistency check rather than an isolated exchange effect; the isolated exchange delta is GRPO vs cooperative in<br />
+Table<br />
+˜<br />
+3<br />
+. In the “shared opponent” ablation the challenger group is scored against one fixed opponent draft, hidden from its context (group-constant<br />
+c<br />
+​<br />
+(<br />
+a<br />
+)<br />
+c(a)<br />
+), so the conversion bonus normalizes away (<br />
+Section<br />
+˜<br />
+4.4<br />
+); the result (<br />
+32<br />
+32<br />
+vs<br />
+30<br />
+30<br />
+) is consistent with theory and shows that within-group variance in opponent difficulty is required for the competitive term to contribute gradient. A per-rollout opponent pairing (distinct hidden drafts) is the honest ablation of competition without visible exchange; that variant is left for future work. Role rotation is ablated </p>
+<p>explicitly: with fixed roles each adapter receives only one gradient stream, yielding 52 pass@1 versus 61 with rotation.<br />
+Table 7:<br />
+Ablations on Qwen3-0.6B (held-out pass@1, %; single training run per variant, rounded to the nearest point; best in<br />
+bold<br />
+). Each variant changes a single<br />
+training-time<br />
+choice. The competitive-shared-opponent variant is evaluated single-pass (no draft to read); all others use the two-stage cascade protocol of<br />
+Table<br />
+˜<br />
+3<br />
+.<br />
+Factor<br />
+Variants (pass@1)<br />
+Competition (reward)<br />
+cooperative 46 /<br />
+adversarial 61<br />
+Information exchange<br />
+shared opponent 32 /<br />
+per-rollout opponents 61<br />
+Reward form<br />
+margin<br />
+c<br />
+​<br />
+(<br />
+b<br />
+i<br />
+)<br />
+−<br />
+c<br />
+​<br />
+(<br />
+a<br />
+i<br />
+)<br />
+c(b_{i})-c(a_{i})<br />
+49 /<br />
+conversion bonus 61<br />
+Role assignment<br />
+fixed roles 52 /<br />
+rotate 61<br />
+5.5<br />
+Analysis: why traces shorten<br />
+Empirically, Agon’s traces are shorter than GRPO’s (<br />
+Figure<br />
+˜<br />
+7<br />
+a): the final (challenger) stage averages<br />
+3.5<br />
+3.5<br />
+k tokens against<br />
+8.1<br />
+8.1<br />
+k for a single GRPO pass. Note that this is a per-stage comparison: the cascade also runs a drafting stage, whose length we do not report, so total generated tokens per problem are not directly compared here and a full token-cost accounting is left for further analysis. The like-for-like comparison is against the two-stage untrained MoA control, where the same (final) stage is measured on both sides: Agon’s is half the length (<br />
+3.5<br />
+3.5<br />
+k vs<br />
+6.9<br />
+6.9<br />
+k). The headline reward contains no length term. The observed shortening is consistent with the challenger having a candidate solution in context, </p>
+<p>so length-heavy exploration is no longer the only route to a correct answer. Challenger completions conditioned on a<br />
+correct<br />
+opponent summary are<br />
+∼<br />
+35<br />
+%<br />
+{\sim}35\%<br />
+shorter than the challenger-stage average (<br />
+2.3<br />
+2.3<br />
+k vs<br />
+3.5<br />
+3.5<br />
+k tokens on the final checkpoint), and<br />
+Figure<br />
+˜<br />
+6<br />
+shows the typical pattern: the challenger pinpoints the flawed step, re-derives it, and stops.<br />
+5.6<br />
+An optional density lever (auxiliary study)<br />
+The shortening above is emergent: nothing in the headline reward asks for it. The same game can, however, also grade brevity: instead of taxing tokens with a penalty, we make being correct in fewer tokens than the rival a way to win. As a small side study, separate from the main recipe and from the two headline claims, we ask whether the shortening can thus be driven directly, using the length-tiebreak term from<br />
+Section<br />
+˜<br />
+4.4<br />
+(a bonus<br />
+γ<br />
+\gamma<br />
+when the challenger is correct<br />
+and<br />
+shorter than an equally-correct opponent). On Qwen3-0.6B, turning it on cuts mean trace length from<br />
+3.5<br />
+3.5<br />
+k to<br />
+2.6<br />
+2.6<br />
+k at essentially unchanged accuracy (<br />
+61<br />
+→<br />
+60<br />
+61!\to!60<br />
+pass@1), so the emergent shortening becomes directly controllable (<br />
+Table<br />
+˜<br />
+8<br />
+). Because the term only breaks ties among already-correct traces, it compresses without measurably trading away accuracy. We report this as an auxiliary knob; all headline numbers elsewhere use the length-free reward.<br />
+Table 8:<br />
+Auxiliary density lever on Qwen3-0.6B (pass@1, same cascade protocol). The length tiebreak (<br />
+Section<br />
+˜<br />
+4.4<br />
 ) s</p>
-
-<p>hortens traces at near-constant accuracy. Not part of the headline recipe.
-Reward
-pass@1 (%)
-avg. len
-Agon (headline, length-free)
-61
-3.5k
-+
-+
-length tiebreak (
-γ
-\gamma
-)
-60
-2.6k
-6
-Conclusion
-Agon trains two models to reason over each other’s work, and the pair co-improves past where a single self-graded policy stalls. The competing peer supplies the signal outcome-only RL lacks: it reads the policy’s solution and grades it implicitly, with no process labels and no change to the verifier. Two distinct policies, trained head-to-head with rotating draft-and-challenge roles (instantiated cheaply as two adapters over one frozen base), let us test the idea. Under a matched generation budget, information exchange beats vanilla GRPO and self-refinement (the exchange claim), competition beats cooperation (the competition claim), and the resulting traces are shorter, a by-product of the competition rather than of an explicit penalty. At the same doubled inference budget, combining two copies of the base without training buys
-4
-4
-points over GRPO, while training the pair to compete buys
-31
-31
-; the gain comes from the learned collaboration rather than from having two models.
-Limitations.
-Agon needs a verifier and reference problems, and we study math plus a smaller code study, both with clean programmatic rewards; noisier domains may behave differently. Gains depend on the pair being matched in strength but divergent in behavior (too large a gap collapses into distillation, too small</p>
-
-<p>a gap into self-play), and our divergence is maintained heuristically (init
-+
-+
-rotation) rather than guaranteed; complementarity is not quantified beyond the cascade win rate. Text exchange bounds the channel bandwidth. Inference is a two-stage cascade, i.e. two sequential generation passes and added latency; reported trace lengths cover the final stage only, and the better cascade direction is selected post hoc on the held-out set. Compute parity holds for
-generated
-tokens only: the challenger’s extra prefill of the opponent summary is not equalized (
-Section
-˜
-4.5
-). Groups with zero within-group variance (all-correct or all-wrong) yield undefined
-σ
-\sigma
-in GRPO advantage; such groups are dropped. Every trained number in the paper is a single training run evaluated with a single sampled rollout per problem; the better cascade direction was selected post hoc on the held-out set. Run-to-run training variance is unquantified, and the reported deltas should be read with that in mind. The reported magnitudes come from a hard, decontaminated subset and should not be read as DeepMath-wide pass@1.
-Future work.
-This work establishes that the cross-model signal helps while exchanging it in text; the channel itself is the next axis. Exchanging hidden states directly, via KV-cache injection or gated latent bridges between the two adapters, removes the serialization bottleneck and lets models share information they cannot verbalize
-(Beliaev,
-2025
-)
+<p>hortens traces at near-constant accuracy. Not part of the headline recipe.<br />
+Reward<br />
+pass@1 (%)<br />
+avg. len<br />
+Agon (headline, length-free)<br />
+61<br />
+3.5k<br />
++<br />
++<br />
+length tiebreak (<br />
+γ<br />
+\gamma<br />
+)<br />
+60<br />
+2.6k<br />
+6<br />
+Conclusion<br />
+Agon trains two models to reason over each other’s work, and the pair co-improves past where a single self-graded policy stalls. The competing peer supplies the signal outcome-only RL lacks: it reads the policy’s solution and grades it implicitly, with no process labels and no change to the verifier. Two distinct policies, trained head-to-head with rotating draft-and-challenge roles (instantiated cheaply as two adapters over one frozen base), let us test the idea. Under a matched generation budget, information exchange beats vanilla GRPO and self-refinement (the exchange claim), competition beats cooperation (the competition claim), and the resulting traces are shorter, a by-product of the competition rather than of an explicit penalty. At the same doubled inference budget, combining two copies of the base without training buys<br />
+4<br />
+4<br />
+points over GRPO, while training the pair to compete buys<br />
+31<br />
+31<br />
+; the gain comes from the learned collaboration rather than from having two models.<br />
+Limitations.<br />
+Agon needs a verifier and reference problems, and we study math plus a smaller code study, both with clean programmatic rewards; noisier domains may behave differently. Gains depend on the pair being matched in strength but divergent in behavior (too large a gap collapses into distillation, too small </p>
+<p>a gap into self-play), and our divergence is maintained heuristically (init<br />
++<br />
++<br />
+rotation) rather than guaranteed; complementarity is not quantified beyond the cascade win rate. Text exchange bounds the channel bandwidth. Inference is a two-stage cascade, i.e. two sequential generation passes and added latency; reported trace lengths cover the final stage only, and the better cascade direction is selected post hoc on the held-out set. Compute parity holds for<br />
+generated<br />
+tokens only: the challenger’s extra prefill of the opponent summary is not equalized (<br />
+Section<br />
+˜<br />
+4.5<br />
+). Groups with zero within-group variance (all-correct or all-wrong) yield undefined<br />
+σ<br />
+\sigma<br />
+in GRPO advantage; such groups are dropped. Every trained number in the paper is a single training run evaluated with a single sampled rollout per problem; the better cascade direction was selected post hoc on the held-out set. Run-to-run training variance is unquantified, and the reported deltas should be read with that in mind. The reported magnitudes come from a hard, decontaminated subset and should not be read as DeepMath-wide pass@1.<br />
+Future work.<br />
+This work establishes that the cross-model signal helps while exchanging it in text; the channel itself is the next axis. Exchanging hidden states directly, via KV-cache injection or gated latent bridges between the two adapters, removes the serialization bottleneck and lets models share information they cannot verbalize<br />
+(Beliaev,<br />
+2025<br />
+)<br />
 . Beyond accuracy, our auxiliary de</p>
-
-<p>nsity lever (
-Section
-˜
-5.6
-) is a first step; scaling it into a full multi-objective, compression traded explicitly against correctness, could make density a first-class, tunable target, and a diversity term over divergent solution strategies could make the pair complementary enough to ensemble.
-References
-Guo et al. [2025]
-DeepSeek-AI. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. 2025.
-Shao et al. [2024]
-Z. Shao et al. DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (GRPO). 2024.
-Qwen Team [2025]
-A. Yang et al. Qwen3 Technical Report. 2025.
-Qwen Team [2026]
-Qwen Team. Qwen3.5: Towards Native Multimodal Agents.
-https://qwen.ai/blog?id=qwen3.5
-, 2026.
-Gemma Team [2026]
-Gemma Team, Google DeepMind. Gemma 4 Technical Report. 2026.
-Li et al. [2022]
-Y. Li et al. Competition-Level Code Generation with AlphaCode. Science, 2022.
-He et al. [2025]
-Z. He et al. DeepMath-103K: A Large-Scale, Challenging, Decontaminated, and Verifiable Mathematical Dataset. arXiv:2504.11456, 2025.
-Hu et al. [2022]
-E. Hu et al. LoRA: Low-Rank Adaptation of Large Language Models. ICLR, 2022.
-Aggarwal &amp; Welleck [2025]
-P. Aggarwal, S. Welleck. L1: Controlling How Long a Reasoning Model Thinks with Reinforcement Learning. arXiv:2503.04697, 2025.
-Lightman et al. [2023]
-H. Lightman et al. Let’s Verify Step by Step. arXiv:2305.20050, 2023.
-Huang et al. [2024]
+<p>nsity lever (<br />
+Section<br />
+˜<br />
+5.6<br />
+) is a first step; scaling it into a full multi-objective, compression traded explicitly against correctness, could make density a first-class, tunable target, and a diversity term over divergent solution strategies could make the pair complementary enough to ensemble.<br />
+References<br />
+Guo et al. [2025]<br />
+DeepSeek-AI. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. 2025.<br />
+Shao et al. [2024]<br />
+Z. Shao et al. DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (GRPO). 2024.<br />
+Qwen Team [2025]<br />
+A. Yang et al. Qwen3 Technical Report. 2025.<br />
+Qwen Team [2026]<br />
+Qwen Team. Qwen3.5: Towards Native Multimodal Agents.<br />
+https://qwen.ai/blog?id=qwen3.5<br />
+, 2026.<br />
+Gemma Team [2026]<br />
+Gemma Team, Google DeepMind. Gemma 4 Technical Report. 2026.<br />
+Li et al. [2022]<br />
+Y. Li et al. Competition-Level Code Generation with AlphaCode. Science, 2022.<br />
+He et al. [2025]<br />
+Z. He et al. DeepMath-103K: A Large-Scale, Challenging, Decontaminated, and Verifiable Mathematical Dataset. arXiv:2504.11456, 2025.<br />
+Hu et al. [2022]<br />
+E. Hu et al. LoRA: Low-Rank Adaptation of Large Language Models. ICLR, 2022.<br />
+Aggarwal &amp; Welleck [2025]<br />
+P. Aggarwal, S. Welleck. L1: Controlling How Long a Reasoning Model Thinks with Reinforcement Learning. arXiv:2503.04697, 2025.<br />
+Lightman et al. [2023]<br />
+H. Lightman et al. Let’s Verify Step by Step. arXiv:2305.20050, 2023.<br />
+Huang et al. [2024]<br />
 J. Huang et al. Large Language Models Cannot Self-Correct Reasoning Yet. ICLR, 20</p>
-
-<p>24.
-Wang et al. [2023]
-X. Wang et al. Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR, 2023.
-Wang et al. [2024]
-J. Wang et al. Mixture-of-Agents Enhances Large Language Model Capabilities. arXiv:2406.04692, 2024.
-Li et al. [2025]
-W. Li, Y. Lin, M. Xia, C. Jin. Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial? arXiv:2502.00674, 2025.
-Chen et al. [2024a]
-X. Chen et al. Do NOT Think That Much for 2+3=? On the Overthinking of o1-Like LLMs. arXiv:2412.21187, 2024.
-Yu et al. [2025]
-Q. Yu et al. DAPO: An Open-Source LLM Reinforcement Learning System at Scale. arXiv:2503.14476, 2025.
-Chen et al. [2024b]
-Z. Chen et al. Self-Play Fine-Tuning Converts Weak Language Models to Strong Language Models (SPIN). ICML, 2024.
-Yuan et al. [2024]
-W. Yuan et al. Self-Rewarding Language Models. ICML, 2024.
-Zhao et al. [2025]
-A. Zhao et al. Absolute Zero: Reinforced Self-Play Reasoning with Zero Data. arXiv:2505.03335, 2025.
-Huang et al. [2025]
-C. Huang et al. R-Zero: Self-Evolving Reasoning LLM from Zero Data. arXiv:2508.05004, 2025.
-Du et al. [2023]
-Y. Du et al. Improving Factuality and Reasoning in Language Models through Multiagent Debate. arXiv:2305.14325, 2023.
-Madaan et al. [2023]
-A. Madaan et al. Self-Refine: Iterative Refinement with Self-Feedback. NeurIPS, 2023.
-Cheng et al. [2024]
-P. Cheng et al. Self-Playing Adversarial Language Game Enhances LLM Reasoning (SPAG). NeurIPS, 2024.
-Goodfellow et al. [2014]
+<p>24.<br />
+Wang et al. [2023]<br />
+X. Wang et al. Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR, 2023.<br />
+Wang et al. [2024]<br />
+J. Wang et al. Mixture-of-Agents Enhances Large Language Model Capabilities. arXiv:2406.04692, 2024.<br />
+Li et al. [2025]<br />
+W. Li, Y. Lin, M. Xia, C. Jin. Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial? arXiv:2502.00674, 2025.<br />
+Chen et al. [2024a]<br />
+X. Chen et al. Do NOT Think That Much for 2+3=? On the Overthinking of o1-Like LLMs. arXiv:2412.21187, 2024.<br />
+Yu et al. [2025]<br />
+Q. Yu et al. DAPO: An Open-Source LLM Reinforcement Learning System at Scale. arXiv:2503.14476, 2025.<br />
+Chen et al. [2024b]<br />
+Z. Chen et al. Self-Play Fine-Tuning Converts Weak Language Models to Strong Language Models (SPIN). ICML, 2024.<br />
+Yuan et al. [2024]<br />
+W. Yuan et al. Self-Rewarding Language Models. ICML, 2024.<br />
+Zhao et al. [2025]<br />
+A. Zhao et al. Absolute Zero: Reinforced Self-Play Reasoning with Zero Data. arXiv:2505.03335, 2025.<br />
+Huang et al. [2025]<br />
+C. Huang et al. R-Zero: Self-Evolving Reasoning LLM from Zero Data. arXiv:2508.05004, 2025.<br />
+Du et al. [2023]<br />
+Y. Du et al. Improving Factuality and Reasoning in Language Models through Multiagent Debate. arXiv:2305.14325, 2023.<br />
+Madaan et al. [2023]<br />
+A. Madaan et al. Self-Refine: Iterative Refinement with Self-Feedback. NeurIPS, 2023.<br />
+Cheng et al. [2024]<br />
+P. Cheng et al. Self-Playing Adversarial Language Game Enhances LLM Reasoning (SPAG). NeurIPS, 2024.<br />
+Goodfellow et al. [2014]<br />
 I. Goodfellow et al. G</p>
-
-<p>enerative Adversarial Nets. NIPS, 2014.
-Irving et al. [2018]
-G. Irving, P. Christiano, D. Amodei. AI Safety via Debate. arXiv:1805.00899, 2018.
-Kirchner et al. [2024]
-J. H. Kirchner et al. Prover-Verifier Games Improve Legibility of LLM Outputs. arXiv:2407.13692, 2024.
-Subramaniam et al. [2025]
-V. Subramaniam et al. Multiagent Finetuning: Self Improvement with Diverse Reasoning Chains. ICLR, 2025.
-Stanford HAI [2026]
-Stanford HAI. The 2026 AI Index Report, Chapter 2: Technical Performance. Stanford University, 2026.
-Beliaev [2025]
-V. Beliaev. Esperantix: Inference-Time Composition of Heterogeneous Language Models via Latent-Space Communication. Working draft, 2025.
-von Werra et al. [2020]
-L. von Werra et al. TRL: Transformer Reinforcement Learning.
-https://github.com/huggingface/trl
-, 2020.
-Kwon et al. [2023]
-W. Kwon et al. Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM). SOSP, 2023.
-Hendrycks et al. [2021]
-D. Hendrycks et al. Measuring Mathematical Problem Solving with the MATH Dataset. NeurIPS, 2021.
-Cobbe et al. [2021]
+<p>enerative Adversarial Nets. NIPS, 2014.<br />
+Irving et al. [2018]<br />
+G. Irving, P. Christiano, D. Amodei. AI Safety via Debate. arXiv:1805.00899, 2018.<br />
+Kirchner et al. [2024]<br />
+J. H. Kirchner et al. Prover-Verifier Games Improve Legibility of LLM Outputs. arXiv:2407.13692, 2024.<br />
+Subramaniam et al. [2025]<br />
+V. Subramaniam et al. Multiagent Finetuning: Self Improvement with Diverse Reasoning Chains. ICLR, 2025.<br />
+Stanford HAI [2026]<br />
+Stanford HAI. The 2026 AI Index Report, Chapter 2: Technical Performance. Stanford University, 2026.<br />
+Beliaev [2025]<br />
+V. Beliaev. Esperantix: Inference-Time Composition of Heterogeneous Language Models via Latent-Space Communication. Working draft, 2025.<br />
+von Werra et al. [2020]<br />
+L. von Werra et al. TRL: Transformer Reinforcement Learning.<br />
+https://github.com/huggingface/trl<br />
+, 2020.<br />
+Kwon et al. [2023]<br />
+W. Kwon et al. Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM). SOSP, 2023.<br />
+Hendrycks et al. [2021]<br />
+D. Hendrycks et al. Measuring Mathematical Problem Solving with the MATH Dataset. NeurIPS, 2021.<br />
+Cobbe et al. [2021]<br />
 K. Cobbe et al. Training Verifiers to Solve Math Word Problems (GSM8K). arXiv:2110.14168, 2021.</p>
         </div>
         

@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -101,309 +184,249 @@
         
         <div class="fulltext-content">
 <p>凡事预则立：当非序列嵌入成为异常检测器</p>
-
-<p>**摘要**</p>
-
+<p><strong>摘要</strong></p>
 <p>本文对非序列多模态句子级嵌入进行了深入分析，特别关注 SONAR 模型。我们证明，某些嵌入维度对扰动敏感，可作为解码异常的指标。通过利用连续编码与解码之间的一致性，我们成功构建了一个精确的检测器。此外，我们还探索了修改特定目标维度以尝试对其进行校正。本工作强调了对嵌入本身进行理解和分析的重要性，以增强多模态表示的可靠性。</p>
-
-<p>**关键词：**
+<p><strong>关键词：</strong><br />
 SONAR、多模态、嵌入分析、自一致性</p>
-
-<p>---</p>
-
+<hr />
 <p>凡事预则立：当非序列嵌入成为异常检测器</p>
-
-<p>Elys Allesiardo, Antoine Caubrière, Valentin Vielzeuf
-Orange Research
-4 Rue du Clos Courtel, 35510 Cesson-Sévigné, France
+<p>Elys Allesiardo, Antoine Caubrière, Valentin Vielzeuf<br />
+Orange Research<br />
+4 Rue du Clos Courtel, 35510 Cesson-Sévigné, France<br />
 firstname.lastname@orange.com</p>
-
-<p>## 1. 引言</p>
-
+<h2>1. 引言</h2>
 <p>大型语言模型（LLM）已成为处理自然语言处理中多种任务的首选方法，例如对话理解、摘要生成或复杂推理 Zhao et al. (2023)。此外，这场革命已扩展到多模态问题，随着 SpeechLLM Ji et al. (2024); Haque et al. (2019) 等系统的兴起，这些系统将语音编码器和 LLM 解码器结合，希望利用 LLM 的能力来处理语音内容。这些方法也得益于编码器-解码器原理，通常利用跨模态注意力 Chan et al. (2016); Chen et al. (2024)。</p>
-
 <p>然而，正如社区所观察到的，处理长序列 token 的代价高昂，而处理长连续音频输入的代价更高 Jia et al. (2025); Duquenne et al. (2023b)。</p>
-
 <p>这也是一些近期工作 Duquenne et al. (2023b); Khurana et al. (2022); Feng et al. (2022) 专注于从文本和音频输入中提取句子级编码器的原因之一。这些方法包括从给定输入（无论是文本还是语音）中提取单个非序列嵌入，从而实现高效的语义相似度计算和（多语言）信息检索 Khurana et al. (2022)。此外，这些紧凑的非序列嵌入也可以被解码，如 SONAR Duquenne et al. (2023b) 所做的那样，并可通过作为高级概念分词器来帮助构建大型概念模型（LCM）team et al. (2024) 或 SonarLLM Dragunov et al. (2025) 等系统。</p>
-
-<p>这些&quot;概念&quot;模型前景广阔，因为它们在摘要生成等高级任务上表现出改进的性能，并且与原始 LLM 相比可以带来显著的效率提升 team et al. (2024)。然而，它们严重依赖&quot;概念&quot;编码器。在 team et al. (2024); Duquenne et al. (2023a) 中观察到，SONAR 可能存在不稳定性，会传播不良行为并在输出中产生异常——即使使用 SONAR 的基础解码器也会出现（如随机模式的无限重复、转录句子的截断）。</p>
-
+<p>这些"概念"模型前景广阔，因为它们在摘要生成等高级任务上表现出改进的性能，并且与原始 LLM 相比可以带来显著的效率提升 team et al. (2024)。然而，它们严重依赖"概念"编码器。在 team et al. (2024); Duquenne et al. (2023a) 中观察到，SONAR 可能存在不稳定性，会传播不良行为并在输出中产生异常——即使使用 SONAR 的基础解码器也会出现（如随机模式的无限重复、转录句子的截断）。</p>
 <p>这些异常可以与 LLM 中观察到的幻觉相比较，后者是一个被广泛研究的领域。特别是，结构性幻觉 Banerjee et al. (2025) 对应于生成过程本身固有的错误，如重复循环、过早截断或退化序列模式。检测此类异常仍然具有挑战性。已有多种方法被提出，通常依赖于解码器级别的信号或多次生成。Ma et al. (2025) 分析了对数概率分布，表明幻觉表现出不同的能量特征；Farquhar et al. (2024) 通过对多次采样生成进行聚类来估计语义熵；Manakul et al. (2023) 利用不同输出之间的自一致性检查。虽然这些方法有效，但通常需要访问内部解码概率，或因重复采样而产生高计算成本。</p>
-
-<p>对于 SONAR 这样的&quot;概念&quot;编码器的特定情况，我们提出了另一种识别这些异常的方法¹，即聚焦于嵌入本身。</p>
-
-<p>¹我们在本文中选择避免使用&quot;幻觉&quot;一词，因为该定义过于宽泛，且 SONAR 编码器-解码器模型并非聊天模型，其目标是转录或翻译精确输入。</p>
-
+<p>对于 SONAR 这样的"概念"编码器的特定情况，我们提出了另一种识别这些异常的方法¹，即聚焦于嵌入本身。</p>
+<p>¹我们在本文中选择避免使用"幻觉"一词，因为该定义过于宽泛，且 SONAR 编码器-解码器模型并非聊天模型，其目标是转录或翻译精确输入。</p>
 <p>我们将我们的贡献²总结如下：</p>
-
 <p>²https://github.com/Orange-OpenSource/sonar-speech-analysis</p>
-
 <p>(a) 我们首先对 SONAR 嵌入对输入变化（声学特征、词序、语义）的响应进行了深入的维度分析。</p>
-
 <p>(b) 然后我们研究了某些特定维度对解码性能的影响。</p>
-
 <p>(c) 这帮助我们获得了直觉：异常转录文本的文本嵌入会远离被错误解码的原始嵌入，因此，仅通过计算这两个嵌入之间的距离就可以实现异常检测器。</p>
-
 <p>(d) 最后，我们表明，检测这些异常并理解嵌入中某些维度的特权影响，是走向异常校正的重要一步。</p>
-
-<p>## 2. 背景与符号</p>
-
-<p>**图 1：SONAR 架构**</p>
-
+<h2>2. 背景与符号</h2>
+<p><strong>图 1：SONAR 架构</strong></p>
 <p>在深入分析之前，我们对 SONAR 模型 Duquenne et al. (2023b) 进行概述，并定义本文其余部分将使用的符号。</p>
-
 <p>SONAR 是一个统一的多模态、多语言固定大小句子嵌入空间。如引言所述，该模型特别适合跨语言或跨模态的语义相似性搜索以及机器翻译（包括文本到文本和语音到文本）等任务。自动语音识别（ASR）也可以实现（甚至在零样本场景下），方法是将语音编码到 SONAR 嵌入空间，然后将其解码为同一语言的文本。我们将特别关注这种解码模式。</p>
-
 <p>从图 1 可以形式化其架构。</p>
-
 <p>输入 $x_{speech}$ 或 $x_{text}$ 分别由语音编码器 $E_{speech}$ 或文本编码器 $E_{text}$ 处理，以提取非序列表示 $h_{speech}$ 或 $h_{text}$。</p>
-
 <p>然后，该嵌入被送入解码器 $D$ 以生成文本 $\hat{y}$，该文本可以是原始输入的转录或翻译。</p>
-
 <p>$E_{text}$ 和 $D$ 从 NLLB 1B Team et al. (2022) 的编码器-解码器架构初始化。该文本模型随后在多个任务上同时进行微调：翻译、自编码、去噪和跨语言相似性。</p>
-
 <p>$E_{speech}$ 从 W2V-BERT 2.0 Communication et al. (2023) 初始化，并结合一个 3 层注意力池化 transformer，以实现非序列表示。$E_{speech}$ 通过 $h_{text}$（由冻结的 $E_{text}$ 从真实文本标签中提取）和 $h_{speech}$（从语音输入中提取）之间的 MSE 蒸馏进行训练。</p>
-
 <p>在推理时，转录过程可以形式化描述为：</p>
-
 <p>$$\hat{y}=D(E_{speech}(x_{speech})) \quad (1)$$</p>
-
 <p>我们所有的实验均使用公开可用的 SONAR 模型进行。对于与语音转录和文本编码相关的任务，我们利用了著名的 LibriSpeech 数据集 Panayotov et al. (2015)，特别是 test-clean 子集。</p>
-
 <p>通过应用该流程，我们实现了 20.2 的词错误率（WER）和 0.950 的 BERTScore Zhang et al. (2019)（F1）。</p>
-
-<p>## 3. 表示如何响应输入变化？</p>
-
-<p>### 3.1. 信号扰动</p>
-
-<p>**基本扰动**</p>
-
+<h2>3. 表示如何响应输入变化？</h2>
+<h3>3.1. 信号扰动</h3>
+<p><strong>基本扰动</strong></p>
 <p>在本节中，我们评估 SONAR 嵌入对输入扰动的鲁棒性。</p>
-
 <p>我们对原始输入音频应用速度变化 [0.5x; 2x]（步长 0.25）和音高偏移 [-9; +9]（步长 +3）。</p>
-
 <p>对于每种变换，我们在数据集级别计算平均嵌入，并量化其与在真实音频上计算的基线之间的偏差。</p>
-
-<p>**图 2：SONAR 嵌入在速度（上）和音高（下）变换下的绝对逐维度偏差。**</p>
-
+<p><strong>图 2：SONAR 嵌入在速度（上）和音高（下）变换下的绝对逐维度偏差。</strong></p>
 <p>对于两种类型的扰动，图 2 显示了相似的模式：在极端设置下（如速度 0.5x 或 2x；音高 ±9 半音），所有维度的偏差迅速增加，但在更现实的扰动下（如速度 0.75x 或 1.25x；音高 ±3 半音），偏差可以忽略不计。</p>
-
 <p>由于这种极端设置在自然语音中不太可能出现，这些结果表明 SONAR 嵌入对小幅度音频变换具有鲁棒性，这与其语义性质一致。</p>
-
-<p>**顺序扰动**</p>
-
+<p><strong>顺序扰动</strong></p>
 <p>我们使用 Montreal Forced Aligner (MFA) McAuliffe et al. (2017)³ 进行自动对齐获得的词边界，在词级别对输入信号的时间顺序进行扰动。</p>
-
 <p>³https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner</p>
-
 <p>我们应用了一种 n-gram 打乱过程，即随机排列 n 个连续词块。</p>
-
 <p>更高的 rank 打乱更大的连续块，因此只有句子的部分子串被排列，而 rank 1 则打乱单个词。结果报告在表 1 中。</p>
-
-<p>| nGram rank | WER | BERTScore (F1) |
-|---|---|---|
-| 6 | 46.3 | .905 |
-| 5 | 49.4 | .901 |
-| 4 | 55.0 | .885 |
-| 3 | 62.6 | .880 |
-| 2 | 73.7 | .857 |
-| 1 | 87.9 | .816 |</p>
-
-<p>**表 1：不同打乱 rank 下的解码性能。**</p>
-
+<table>
+<thead>
+<tr>
+<th>nGram rank</th>
+<th>WER</th>
+<th>BERTScore (F1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6</td>
+<td>46.3</td>
+<td>.905</td>
+</tr>
+<tr>
+<td>5</td>
+<td>49.4</td>
+<td>.901</td>
+</tr>
+<tr>
+<td>4</td>
+<td>55.0</td>
+<td>.885</td>
+</tr>
+<tr>
+<td>3</td>
+<td>62.6</td>
+<td>.880</td>
+</tr>
+<tr>
+<td>2</td>
+<td>73.7</td>
+<td>.857</td>
+</tr>
+<tr>
+<td>1</td>
+<td>87.9</td>
+<td>.816</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 1：不同打乱 rank 下的解码性能。</strong></p>
 <p>WER 和 BERTScore 表明，随着语义打乱程度的增加，转录倾向于失去语义连贯性。</p>
-
 <p>随着 rank 的降低，解码器产生更多的异常，包括伪影（如词语重复）。</p>
-
 <p>系统还倾向于优先选择语义上合理的词块，而非对声学信号的忠实度。</p>
-
 <p>这些结果表明，输入序列顺序并未编码在嵌入中，并暗示编码的语义驱动解码器构建输出顺序。</p>
-
-<p>**说话人与音高**</p>
-
+<p><strong>说话人与音高</strong></p>
 <p>我们在 VoxCeleb 数据集 Nagrani et al. (2017) 上进行了说话人信息探测实验。探测头被训练为从语音 SONAR 嵌入中同时预测说话人身份和音高信息。我们的设置包括 1,251 个不同的说话人，测试集平衡（每个说话人 2 个样本）。</p>
-
 <p>探测架构由一个共享的 MLP 主干和任务特定的头部组成。</p>
-
 <p>在测试集上，探测头实现了 0.026 的说话人识别准确率，虽然比随机基线高 33 倍，但仍然非常低。对于音高预测，模型未能捕捉真实变化，高 median 误差（约 79 Hz）和近 40% 的情况超过 100 Hz 证明了这一点。这表明系统在很大程度上输出接近全局平均值的值，而非准确追踪真实音高。因此，这证实了说话人信息与 SONAR 语音嵌入之间的弱关系。</p>
-
-<p>### 3.2. 时长的影响</p>
-
+<h3>3.2. 时长的影响</h3>
 <p>我们通过比较 $E_{speech}$ 和 $E_{text}$ 产生的嵌入，研究了输入序列时长在 SONAR 嵌入空间中的影响。</p>
-
 <p>为此，我们生成了一个随机词的合成语料库。</p>
-
 <p>我们通过连接可变数量的词来改变序列长度（从 1 到 40），每个词从固定的 338 个词的词汇表中选择。</p>
-
 <p>为了生成句子的语音版本，我们使用 coqui-tts⁴ 和 VITS 文本转语音模型。</p>
-
 <p>⁴https://github.com/coqui-ai/TTS</p>
-
 <p>通过在该随机口语词语料库上应用流程，$E_{speech}$ 嵌入实现了 0.813 的 BERTScore (F1)，$E_{text}$ 嵌入实现了 0.884。</p>
-
 <p>对于 1024 个维度中的每一个，我们分析了维度值随序列时长的单调性。</p>
-
 <p>(a) $E_{speech}$</p>
-
 <p>(b) $E_{text}$</p>
-
-<p>**图 3：32×32 单调性热力图。每个单元格对应一个嵌入维度。**</p>
-
+<p><strong>图 3：32×32 单调性热力图。每个单元格对应一个嵌入维度。</strong></p>
 <p>图 3 显示了两个 32x32 热力图，其中每个单元格对应一个维度的单调性。</p>
-
 <p>左侧热力图对应从 $E_{speech}$ 提取的嵌入，右侧对应从 $E_{text}$ 提取的嵌入。</p>
-
 <p>这些热力图显示了 $E_{speech}$ 和 $E_{text}$ 之间的差异，尽管少数维度似乎保持了相似的行为。</p>
-
 <p>更具体地说，维度 107（l3, c11）和 654（l20, c14）似乎保持了相似的单调性。</p>
-
 <p>两个编码器之间的这种相似性表明，这些维度可能在这些索引处编码与序列长度相关的信息。</p>
-
 <p>我们研究了这些维度的值如何影响输出序列的长度，重点关注维度 654，它显示出最低的单调性。</p>
-
 <p>为了评估该维度的影响，我们在整个语料库上对该单一维度施加的偏移进行了网格搜索。</p>
-
 <p>网格搜索跨越该维度在数据集中观察到的最小值和最大值，共 22 步。</p>
-
 <p>对于每一步，我们应用 $D$ 并计算 WER 和 BERTScore。</p>
-
 <p>我们还记录了自动转录中的插入和删除数量。</p>
-
 <p>结果报告在图 4 中。</p>
-
-<p>**图 4：第 654 维偏移对解码性能的影响。**</p>
-
+<p><strong>图 4：第 654 维偏移对解码性能的影响。</strong></p>
 <p>我们观察到该维度值与解码器输出长度之间的相关性。</p>
-
 <p>减小该维度约束 $D$ 产生更多词，而增大它则导致 $D$ 丢弃大部分语音转录。</p>
-
 <p>对不同偏移下词插入的初步分析表明，大多数插入是句子中已存在的词或词序列的重复。我们还指出，即使不施加偏移，这种不良行为也存在。</p>
-
 <p>最后，本节引出了以下直觉： 嵌入中的变化可能与不良行为相关联，为利用文本和语音嵌入的检测方法铺平道路； 对维度 654 等的调整可能有助于异常缓解。</p>
-
-<p>**图 5：我们的异常检测器在标注的 LibriSpeech 子集上不同 $\epsilon$ 值下的精确率和召回率，以及 BERTScore 基线。**</p>
-
-<p>## 4. 不良行为</p>
-
-<p>**检测异常**</p>
-
+<p><strong>图 5：我们的异常检测器在标注的 LibriSpeech 子集上不同 $\epsilon$ 值下的精确率和召回率，以及 BERTScore 基线。</strong></p>
+<h2>4. 不良行为</h2>
+<p><strong>检测异常</strong></p>
 <p>SONAR 嵌入模型可能容易出现不良行为，这限制了其作为更大应用（如大型概念模型 team et al. (2024)）骨干的使用。因此，能够自动检测此类异常是有意义的，因为它可以让我们减轻其对整个链路的影响。</p>
-
 <p>为了更好地理解遇到的异常类型，我们从 LibriSpeech 的 test-clean 子集中提取了 2620 个样本的嵌入和转录。然后，我们对所有转录进行了标注⁵，将其分为四种行为类型：正常（如可能被改写或不完美的常规转录）、循环（如多次重复相同的词模式）、截断（省略句子的大部分内容）、语义（如否定原始句子）。</p>
-
 <p>⁵https://github.com/Orange-OpenSource/sonar-speech-analysis</p>
-
 <p>回顾嵌入提取过程，包括使用 $E_{speech}$ 或 $E_{text}$ 分别处理语音和文本模态的给定输入。获得非序列嵌入（在此记为 $h_{1}$）后，我们使用相同的解码器 $D$ 生成转录或翻译 $\hat{y}_{1}$。</p>
-
-<p>我们提出使用 $E_{text}$ 对 $\hat{y}_{1}$ 进行编码，获得第二个嵌入 $h_{2}$（也可以用 $D$ 解码为 $\hat{y}_{2}$）。</p>
-
+<p>我们提出使用 $E_{text}$ 对 $\hat{y}<em>{1}$ 进行编码，获得第二个嵌入 $h</em>{2}$（也可以用 $D$ 解码为 $\hat{y}_{2}$）。</p>
 <p>然后，我们计算两个嵌入 $H_{1}$ 和 $H_{2}$ 之间的均方误差。</p>
-
 <p>$$MSE=d_{consistency}=\frac{1}{n}\sum_{i=1}^{n}(H_{2i}-H_{1i})^{2}. \quad (2)$$</p>
-
-<p>在这种特定情况下 $n=1$，因此我们简化为 $d_{consistency}=(h_{2}-h_{1})^{2}$。该距离是一个标量，在本文其余部分记为 *consistency*。我们将考虑当 *consistency* 大于固定阈值 $\epsilon$ 时检测到异常。</p>
-
+<p>在这种特定情况下 $n=1$，因此我们简化为 $d_{consistency}=(h_{2}-h_{1})^{2}$。该距离是一个标量，在本文其余部分记为 <em>consistency</em>。我们将考虑当 <em>consistency</em> 大于固定阈值 $\epsilon$ 时检测到异常。</p>
 <p>我们在图 5 中报告了所设计检测器在不同 $\epsilon$ 选择下的精确率和召回率。在后续实验中，我们选择设置 $\epsilon=4.39e-5$。</p>
-
-<p>我们可以将我们提出的方法与一个朴素基线进行比较，该基线包括计算 $\hat{y}_{1}$ 和 $\hat{y}_{2}$ 之间的 WER 或 BERTScore。该方法完全无法检测异常，而 $d_{consistency}$ 的最佳精确率/召回率折衷为 97% / 82%，实现了精确的异常检测。</p>
-
-<p>| $\hat{y}_{1}$ | come back come back comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback |
-|---|---|
-| $\hat{y}_{2}$ | come back come back comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback |
-| BERTscore = 0.999, WER = 8%, $d_{consistency}=8.96e-05$ | |</p>
-
-<p>**图 6：LibriSpeech test-clean 样本中一个循环异常的示例。BERTscore 和 WER 不具区分性，而 $d_{consistency}$ 大于异常阈值。**</p>
-
-<p>为了解释与 *consistency* 性能的差异，我们可以关注图 6 中在 LibriSpeech test-clean 中遇到的特定异常示例。这是一个循环异常，重复&quot;come back&quot;一词而非正确的转录。两个转录非常相似，因此无法从它们预测出出现了问题。使用 $d_{consistency}$ 有助于避免这个问题。可以解释这种能力的直觉是，嵌入 $h_{2}$ 可能与 $h_{1}$ 非常不同，仅仅因为在异常期间 $\hat{y}_{1}$ 是文本编码器很少遇到的输入，因此特别难以编码。</p>
-
+<p>我们可以将我们提出的方法与一个朴素基线进行比较，该基线包括计算 $\hat{y}<em>{1}$ 和 $\hat{y}</em>{2}$ 之间的 WER 或 BERTScore。该方法完全无法检测异常，而 $d_{consistency}$ 的最佳精确率/召回率折衷为 97% / 82%，实现了精确的异常检测。</p>
+<table>
+<thead>
+<tr>
+<th>$\hat{y}_{1}$</th>
+<th>come back come back comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$\hat{y}_{2}$</td>
+<td>come back come back comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback comeback</td>
+</tr>
+<tr>
+<td>BERTscore = 0.999, WER = 8%, $d_{consistency}=8.96e-05$</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>图 6：LibriSpeech test-clean 样本中一个循环异常的示例。BERTscore 和 WER 不具区分性，而 $d_{consistency}$ 大于异常阈值。</strong></p>
+<p>为了解释与 <em>consistency</em> 性能的差异，我们可以关注图 6 中在 LibriSpeech test-clean 中遇到的特定异常示例。这是一个循环异常，重复"come back"一词而非正确的转录。两个转录非常相似，因此无法从它们预测出出现了问题。使用 $d_{consistency}$ 有助于避免这个问题。可以解释这种能力的直觉是，嵌入 $h_{2}$ 可能与 $h_{1}$ 非常不同，仅仅因为在异常期间 $\hat{y}_{1}$ 是文本编码器很少遇到的输入，因此特别难以编码。</p>
 <p>图 7 可能有助于确认这一直觉。我们观察了异常样本与完美转录样本的平均一致性对比。异常的一致性表明，在嵌入的某些特定维度（例如 654）上存在很大差距。因此，这证实了前几节中描述的内容：嵌入的某些维度对解码有更强的影响。我们在这里观察到它们在 $h_{1}$ 和 $h_{2}$ 之间变化很大，解释了高 $d_{consistency}$ 和异常检测过程。</p>
-
-<p>**图 7：两个不同类别的一致性：异常和&quot;完美&quot;。异常一致性是在导致异常的所有嵌入的平均值上计算的。&quot;完美&quot;一致性是在导致完美转录的嵌入的平均值上计算的。**</p>
-
-<p>**这些异常是否存在补救措施？**</p>
-
+<p><strong>图 7：两个不同类别的一致性：异常和"完美"。异常一致性是在导致异常的所有嵌入的平均值上计算的。"完美"一致性是在导致完美转录的嵌入的平均值上计算的。</strong></p>
+<p><strong>这些异常是否存在补救措施？</strong></p>
 <p>由于我们提出了一种高效且准确的异常检测器，一个直接的用法是将其与异常处理器/校正器结合。</p>
-
 <p>对于关键应用，一种基本方法是在检测到异常时为输出标注警告。</p>
-
 <p>然而，另一个需要探索的假设是，解码器的超参数不适用于导致异常的输入，因此更改这些参数将有助于减少不良输出。</p>
-
 <p>因此，我们选择 LibriSpeech test-clean 中包含异常的子集（约 50 个样本的小数据集），并对解码器超参数（温度、长度惩罚和束大小）进行大规模网格搜索。我们以 BERTScore 评估所有配置。与使用默认配置相比，我们观察到该子集上没有显著改善。</p>
-
 <p>由于解码器参数无法改善异常，我们研究了对嵌入施加受控扰动的方法。</p>
-
-<p>通过检查&quot;完美&quot;和异常嵌入之间的一致性差异（图 7），我们确定了偏差最大的两个维度（654, 351）。</p>
-
+<p>通过检查"完美"和异常嵌入之间的一致性差异（图 7），我们确定了偏差最大的两个维度（654, 351）。</p>
 <p>我们加入了偏差最小的两个维度（695, 932）和两个随机选择的维度（17, 666）。</p>
-
 <p>为了找到这些维度的最优值，我们在异常子集上使用 22 步进行偏移网格搜索。如第 3.2 节所述，这跨越了 test-clean 数据集中维度的观察范围。</p>
-
 <p>然后我们在表 2 中计算平均一致性。我们观察到，总体而言，与基线相比，网格搜索能够找到对一致性产生积极影响的值。此外，越容易偏差的维度，其对一致性的影响越大。然而，对于循环异常的特定情况，观察到了相反的行为，维度 932 和 695 获得了最佳一致性。</p>
-
-<p>| | meaning | loop | truncate | all |
-|---|---|---|---|---|
-| baseline | 11.98 | 8.889 | 5.991 | 6.530 |
-| 2 most | 2.918 | 4.525 | 3.730 | 3.977 |
-| 2 least | 6.551 | 3.904 | 4.540 | 4.727 |
-| 2 random | 3.540 | 5.142 | 3.971 | 4.375 |</p>
-
-<p>**表 2：通过网格搜索获得的最佳平均一致性。基线对应不施加偏移。数字乘以 1e5 以提高可读性。**</p>
-
+<table>
+<thead>
+<tr>
+<th></th>
+<th>meaning</th>
+<th>loop</th>
+<th>truncate</th>
+<th>all</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>baseline</td>
+<td>11.98</td>
+<td>8.889</td>
+<td>5.991</td>
+<td>6.530</td>
+</tr>
+<tr>
+<td>2 most</td>
+<td>2.918</td>
+<td>4.525</td>
+<td>3.730</td>
+<td>3.977</td>
+</tr>
+<tr>
+<td>2 least</td>
+<td>6.551</td>
+<td>3.904</td>
+<td>4.540</td>
+<td>4.727</td>
+</tr>
+<tr>
+<td>2 random</td>
+<td>3.540</td>
+<td>5.142</td>
+<td>3.971</td>
+<td>4.375</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 2：通过网格搜索获得的最佳平均一致性。基线对应不施加偏移。数字乘以 1e5 以提高可读性。</strong></p>
 <p>这些初步结果证实，在尝试限制异常时修改特定维度将产生更大的影响，为高效的异常校正方法铺平了道路。</p>
-
 <p>然而，认为维度是独立的并不准确，更通用的方法，特别是关注修改 SONAR 蒸馏训练准则的方法，可能更有前景。</p>
-
-<p>## 5. 结论</p>
-
+<h2>5. 结论</h2>
 <p>我们对非序列嵌入进行了深入分析，突出了与输入扰动相关的特定维度的强烈变化。基于这些见解，我们开发了一种轻量且准确的异常检测方法，其核心思想是解码文本的 SONAR 嵌入应接近首次提取的嵌入。我们还证明，仅修改特定的、有针对性的嵌入维度可以防止某些异常。</p>
-
 <p>未来的工作可以探索对嵌入的可训练补救措施，例如，通过切换到跨模态对齐并添加一致性作为辅助准则来改变 SONAR 的蒸馏范式。</p>
-
-<p>## 6. 参考文献</p>
-
-<p>S. Banerjee, A. Agarwal, and S. Singla (2025). LLMs will always hallucinate, and we need to live with this. In *Intelligent Systems and Applications*, K. Arai (Ed.), Cham, pp. 624–648.</p>
-
-<p>W. Chan, N. Jaitly, Q. Le, et al. (2016). Listen, attend and spell: a neural network for large vocabulary conversational speech recognition. In *ICASSP*, pp. 4960–4964.</p>
-
-<p>Z. Chen, H. Huang, O. Hrinchuk, et al. (2024). Bestow: efficient and streamable speech language model with the best of two worlds in gpt and t5. In *2024 IEEE Spoken Language Technology Workshop (SLT)*, pp. 147–154.</p>
-
+<h2>6. 参考文献</h2>
+<p>S. Banerjee, A. Agarwal, and S. Singla (2025). LLMs will always hallucinate, and we need to live with this. In <em>Intelligent Systems and Applications</em>, K. Arai (Ed.), Cham, pp. 624–648.</p>
+<p>W. Chan, N. Jaitly, Q. Le, et al. (2016). Listen, attend and spell: a neural network for large vocabulary conversational speech recognition. In <em>ICASSP</em>, pp. 4960–4964.</p>
+<p>Z. Chen, H. Huang, O. Hrinchuk, et al. (2024). Bestow: efficient and streamable speech language model with the best of two worlds in gpt and t5. In <em>2024 IEEE Spoken Language Technology Workshop (SLT)</em>, pp. 147–154.</p>
 <p>S. Communication, L. Barrault, Y. Chung, et al. (2023). SeamlessM4T: massively multilingual &amp; multimodal machine translation.</p>
-
-<p>N. Dragunov, T. Rahmatullaev, E. Goncharova, et al. (2025). SONAR-llm: autoregressive transformer that thinks in sentence embeddings and speaks in tokens. *arXiv preprint arXiv:2508.05305*.</p>
-
+<p>N. Dragunov, T. Rahmatullaev, E. Goncharova, et al. (2025). SONAR-llm: autoregressive transformer that thinks in sentence embeddings and speaks in tokens. <em>arXiv preprint arXiv:2508.05305</em>.</p>
 <p>P. Duquenne, K. Heffernan, A. Mourachko, et al. (2023a). Sonar expressive: zero-shot expressive speech-to-speech translation.</p>
-
-<p>P. Duquenne, H. Schwenk, and B. Sagot (2023b). SONAR: sentence-level multimodal and language-agnostic representations. *arXiv e-prints*, pp. arXiv–2308.</p>
-
-<p>S. Farquhar, J. Kossen, L. Kuhn, et al. (2024). Detecting hallucinations in large language models using semantic entropy. *Nature* 630, pp. 625–630.</p>
-
-<p>F. Feng, Y. Yang, D. Cer, et al. (2022). Language-agnostic bert sentence embedding. In *ACL*, pp. 878–891.</p>
-
-<p>A. Haque, M. Guo, P. Verma, et al. (2019). Audio-linguistic embeddings for spoken sentences. In *ICASSP 2019-2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)*, pp. 7355–7359.</p>
-
-<p>S. Ji, Y. Chen, M. Fang, et al. (2024). WavChat: a survey of spoken dialogue models. *arXiv preprint*.</p>
-
-<p>J. Jia, G. Keren, W. Zhou, et al. (2025). Efficient streaming llm for speech recognition. In *ICASSP 2025-2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)*, pp. 1–5.</p>
-
-<p>S. Khurana, A. Laurent, and J. Glass (2022). Samu-xlsr: semantically-aligned multimodal utterance-level cross-lingual speech representation. *IEEE Journal of Selected Topics in Signal Processing* 16(6), pp. 1493–1504.</p>
-
+<p>P. Duquenne, H. Schwenk, and B. Sagot (2023b). SONAR: sentence-level multimodal and language-agnostic representations. <em>arXiv e-prints</em>, pp. arXiv–2308.</p>
+<p>S. Farquhar, J. Kossen, L. Kuhn, et al. (2024). Detecting hallucinations in large language models using semantic entropy. <em>Nature</em> 630, pp. 625–630.</p>
+<p>F. Feng, Y. Yang, D. Cer, et al. (2022). Language-agnostic bert sentence embedding. In <em>ACL</em>, pp. 878–891.</p>
+<p>A. Haque, M. Guo, P. Verma, et al. (2019). Audio-linguistic embeddings for spoken sentences. In <em>ICASSP 2019-2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)</em>, pp. 7355–7359.</p>
+<p>S. Ji, Y. Chen, M. Fang, et al. (2024). WavChat: a survey of spoken dialogue models. <em>arXiv preprint</em>.</p>
+<p>J. Jia, G. Keren, W. Zhou, et al. (2025). Efficient streaming llm for speech recognition. In <em>ICASSP 2025-2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)</em>, pp. 1–5.</p>
+<p>S. Khurana, A. Laurent, and J. Glass (2022). Samu-xlsr: semantically-aligned multimodal utterance-level cross-lingual speech representation. <em>IEEE Journal of Selected Topics in Signal Processing</em> 16(6), pp. 1493–1504.</p>
 <p>H. Ma, J. Pan, J. Liu, et al. (2025). Semantic energy: detecting llm hallucination beyond entropy.</p>
-
-<p>P. Manakul, A. Liusie, and M. J.F. Gales (2023). SelfCheckGPT: zero-resource black-box hallucination detection for generative large language models. In *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing*.</p>
-
-<p>M. McAuliffe, M. Socolof, S. Mihuc, M. Wagner, and M. Sonderegger (2017). Montreal forced aligner: trainable text-speech alignment using kaldi. In *Interspeech*, Vol. 2017, pp. 498–502.</p>
-
-<p>A. Nagrani, J. S. Chung, and A. Zisserman (2017). VoxCeleb: a large-scale speaker identification dataset. In *INTERSPEECH*.</p>
-
-<p>V. Panayotov, G. Chen, D. Povey, et al. (2015). Librispeech: an asr corpus based on public domain audio books. In *ICASSP*.</p>
-
-<p>L. team, L. Barrault, P. Duquenne, et al. (2024). Large concept models: language modeling in a sentence representation space. *arXiv preprint arXiv:2412.08821*.</p>
-
-<p>N. Team, M. R. Costa-jussà, J. Cross, et al. (2022). No language left behind: scaling human-centered machine translation. *arXiv preprint arXiv:2207.04672*.</p>
-
-<p>T. Zhang, V. Kishore, F. Wu, et al. (2019). BERTScore: evaluating text generation with bert. In *International Conference on Learning Representations*.</p>
-
-<p>W. X. Zhao, K. Zhou, J. Li, et al. (2023). A survey of large language models. *arXiv preprint arXiv:2303.18223* 1(2).</p>
+<p>P. Manakul, A. Liusie, and M. J.F. Gales (2023). SelfCheckGPT: zero-resource black-box hallucination detection for generative large language models. In <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>.</p>
+<p>M. McAuliffe, M. Socolof, S. Mihuc, M. Wagner, and M. Sonderegger (2017). Montreal forced aligner: trainable text-speech alignment using kaldi. In <em>Interspeech</em>, Vol. 2017, pp. 498–502.</p>
+<p>A. Nagrani, J. S. Chung, and A. Zisserman (2017). VoxCeleb: a large-scale speaker identification dataset. In <em>INTERSPEECH</em>.</p>
+<p>V. Panayotov, G. Chen, D. Povey, et al. (2015). Librispeech: an asr corpus based on public domain audio books. In <em>ICASSP</em>.</p>
+<p>L. team, L. Barrault, P. Duquenne, et al. (2024). Large concept models: language modeling in a sentence representation space. <em>arXiv preprint arXiv:2412.08821</em>.</p>
+<p>N. Team, M. R. Costa-jussà, J. Cross, et al. (2022). No language left behind: scaling human-centered machine translation. <em>arXiv preprint arXiv:2207.04672</em>.</p>
+<p>T. Zhang, V. Kishore, F. Wu, et al. (2019). BERTScore: evaluating text generation with bert. In <em>International Conference on Learning Representations</em>.</p>
+<p>W. X. Zhao, K. Zhou, J. Li, et al. (2023). A survey of large language models. <em>arXiv preprint arXiv:2303.18223</em> 1(2).</p>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">

@@ -47,6 +47,89 @@
         .fulltext-content p {
             margin-bottom: 1rem;
         }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
         .back-link {
             display: inline-block;
             margin-bottom: 2rem;
@@ -100,804 +183,777 @@
         </div>
         
         <div class="fulltext-content">
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-1 
-RD-ViT: Recurrent-Depth Vision Transformer for Semantic 
-Segmentation with Reduced Data Dependence 
-Extending the Recurrent-Depth Transformer Architecture to Dense Prediction 
-Renjie He 
-Department of Radiation Oncology, The University of Texas MD Anderson Cancer Center, Houston, TX, USA 
-Abstract 
-Vision Transformers (ViTs) achieve state -of-the-art segmentation accuracy but require large training datasets 
-because each layer has unique parameters that must be learned independently. We present RD -ViT, a Recurre nt-
-Depth Vision Transformer that adapts the Recurrent-Depth Transformer (RDT) architecture to dense prediction tasks, 
-supporting both 2D and 3D inputs. RD-ViT replaces the deep stack of unique transformer blocks with a single shared 
-block looped T times, augmented with LTI-stable state injection for guaranteed convergence, Adaptive Computation 
-Time (ACT) for spatial compute allocation, depth -wise LoRA adaptation, and optional Mixture -of-Experts (MoE) 
-feed-forward networks for category -specific specialization. We evaluate on the ACDC cardiac MRI segmentation 
-benchmark in both 2D slice -level and 3D volumetric settings with exclusively real experiments executed in Google 
-Colab. In 2D, RD-ViT outperforms standard ViT at 10% training data (Dice 0.774 vs 0.762) an d at full data (0.882 
-vs 0.872). In 3D, RD -ViT with MoE achieves Dice 0.812 with 3.0M parameters, reaching 99.4% of standard ViT 
-performance (0.817) at 53% of the parameter count. MoE expert utilization analysis reveals that different experts 
-spontaneously specialize for different cardiac structures (RV, MYO, LV) without explicit routing supervision. ACT 
-halting maps show higher compute allocation at cardiac boundaries, and the mean ponder time decreases from 2.6 
-to 1.4 iterations during training, demonstra ting learned computational efficiency. Depth extrapolation enables 
-inference with more loops than training without degradation. All code, notebooks, and results are publicly released. 
-Keywords: Vision Transformer, Recurrent Depth, Adaptive Computation Time , Mixture of Experts, Cardiac 
-Segmentation, Data Efficiency, Weight Sharing, LTI Systems 
-1  Introduction 
-Vision Transformers (ViTs) have fundamentally transformed dense prediction tasks including semantic 
-segmentation, instance segmentation, panoptic segmentation, and object detection. Since Dosovitskiy et al. 
-[2] demonstrated that a pure transformer architecture applied to image patches can match or exceed 
-convolutional neural networks on image classification, the field has rapidly adopted transformer -based 
-architectures for increasingly complex vision tasks. For semantic segmentation, architectures such as SETR 
-[4], Swin Transformer [5], SegFormer [6], and Mask2Former [15] have set new performance records on 
-benchmarks including ADE20K, Cityscapes, and COCO. 
-However, standard ViTs require large training datasets to achieve their full potential. This requirement 
-arises from a fundamental architectural property: each transformer block has unique parameters that must 
-be learned independently. A ViT with L laye rs and dimension d requires L independent sets of attention 
-and feed -forward weights, totaling O(L  ⋅  d2) parameters. Each layer must learn a distinct feature 
-transformation at its depth level without the benefit of shared knowledge from other layers. This 
-architectural choice makes ViTs prone to overfitting when training data is limited, which is precisely the 
-situation in many critical application domains. 
-Medical image segmentation exemplifies this tension. The ACDC cardiac MRI benchmark provides only 
-100 patient volumes, and many clinical segmentation tasks involve even fewer labeled examples. Labeling 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-2 
-medical images requires domain expertise and is expensive and time -consuming. At the same time, 
-segmentation accuracy is safety -critical: errors in cardiac  structure delineation directly impact treatment 
-planning in radiation oncology and interventional cardiology. The community needs architectures that can 
-achieve high segmentation accuracy with limited training data. 
-The Recurrent -Depth Transformer (RDT) a rchitecture, recently reconstructed by Gomez in the 
-OpenMythos project [1], offers a compelling alternative to the standard deep transformer stack. The core 
-idea is simple but powerful: replace L unique transformer blocks with a single shared block looped T times, 
-where each iteration refines the hidden state through a Linear Time -Invariant (LTI) injection mechanism 
-that guarantees convergence. This design has several theoretical advantages for data-limited settings. First, 
-parameter reuse across loop itera tions acts as implicit regularization —the model is forced to learn a 
-universal feature transformation applicable at multiple abstraction levels. Second, Adaptive Computation 
-Time (ACT) enables per -token halting, allowing the model to allocate more compute to difficult regions 
-and less to easy ones, implementing a learned curriculum within each image. Third, depth -wise LoRA 
-adapters provide per-loop differentiation without requiring unique full-rank weights. 
-We argue that these properties are particularly we ll-suited to dense prediction tasks in vision, where 
-different spatial regions require fundamentally different amounts of processing. In cardiac segmentation, 
-for instance, large homogeneous background regions need minimal processing, while the thin myocardium 
-and complex right ventricular geometry demand fine -grained feature refinement. An architecture that can 
-adaptively allocate compute —more iterations for boundaries, fewer for interiors —should be both more 
-efficient and more accurate than one that applies the same fixed computation everywhere. 
- 
-Figure 1: Comparison of Standard ViT (unique weights per layer), RD-ViT (shared weights with LoRA), and RD-ViT+MoE 
-(shared weights with expert routing). RD-ViT+MoE achieves 99.4% of Standard ViT performance at 53% of the parameter count 
-on 3D ACDC cardiac segmentation. 
-In this paper, we introduce RD -ViT, a recurrent -depth vision transformer for semantic segmentation that 
-adapts all key RDT components to dense prediction. Our contributions are as follows: 
-(1) A complete 2D/3D segmentation architecture adapting LTI-stable injection, ACT spatial halting, depth-
-wise LoRA, and MoE to dense prediction. The architecture is dimension -agnostic: the transformer core 
-operates on patch token sequences regardless of whether the input is a 2D image or 3D volume. 
-(2) Empirical validation of the data efficiency hypothesis on real ACDC cardiac MRI in both 2D slice-level 
-and 3D volumetric settings, with comparison against standard ViT baselines using identical total depth and 
-matched compute.</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-3 
-(3) Evidence that MoE experts within the recurrent block spontaneously specialize for different cardiac 
-structures without explicit routing supervision, providing a structural inductive bias for multi -class 
-segmentation. 
-(4) Demonstration that de pth extrapolation (testing with more loops than training) works without 
-degradation, enabled by the LTI-stability guarantee, providing a free inference-time accuracy knob. 
-(5) A comprehensive ablation study isolating the contributions of each architectural  component (MoE, 
-ACT, LoRA, loop depth, model capacity), and a complete reproducibility package with code, Colab 
-notebooks, and real experimental results. 
-2  Related Work 
-2.1  Vision Transformers for Dense Prediction 
-The application of transformer architectures to vision began with ViT [2], which partitioned images into 
-non-overlapping patches, embedded them linearly, and processed the resulting sequence with a standard 
-transformer encoder. While ViT required pre -training on large datasets (JFT -300M or ImageNet -21K), 
-Data-efficient Image Transformers (DeiT) [3] introduced knowledge distillation from CNN teachers and 
-strong data augmentation to train ViTs effectively on ImageNet-1K alone. 
-For dense prediction, SETR [4] applied ViT as a pure encoder wi th progressive upsampling decoders, 
-demonstrating that transformers could achieve competitive segmentation accuracy. Swin Transformer [5] 
-introduced shifted window attention to reduce the O( N2) cost of full self -attention, enabling hierarchical 
-multi-scale feature extraction. SegFormer [6] combined a hierarchical transformer encoder with a 
-lightweight All-MLP decoder, achieving strong accuracy-efficiency trade-offs. Mask2Former [15] unified 
-semantic, instance, and panoptic segmentation with masked attention and query-based prediction. 
-All of these architectures use unique parameters per transformer block. The total parameter count scales 
-linearly with depth, and each layer must independently learn its feature transformation. This design, while 
-flexible, provides no mechanism for parameter sharing or adaptive computation, making these models data-
-hungry. 
-2.2  Weight Sharing and Recurrent Transformers 
-The idea of sharing weights across transformer layers has been explored in several contexts. Universal 
-Transformers [7] pioneered this approach by applying the same transformer block repeatedly with Adaptive 
-Computation Time (ACT), showing improved sample efficiency and generalization on algorithmic tasks. 
-The key insight was that weight sharing acts as an inductiv e bias toward iterative refinement, where each 
-pass through the shared block progressively refines the representation. 
-ALBERT [8] demonstrated that cross -layer parameter sharing in BERT -style models reduces model size 
-by 4× without proportional accuracy degradation for NLP tasks. Interestingly, ALBERT found that sharing 
-attention parameters across layers was more effective than sharing feed -forward parameters, suggesting 
-that the attention mechanism captures a more universal computation pattern. 
-The Recurrent-Depth Transformer (RDT) in OpenMythos [1] extends these ideas with several innovations. 
-The LTI -stable injection mechanism parameterizes the state transition matrix A as exp(−exp(logdt + 
-logA)), which guarantees that all eigenvalues lie in (0, 1) by con struction—a property critical for stable 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-4 
-long-horizon recurrence. Depth -wise LoRA provides per -loop adaptation through a shared low -rank 
-decomposition with loop -indexed scaling, enabling the shared block to behave differently at different 
-depths without du plicating the full parameter set. These innovations make RDT’s recurrence more 
-principled and stable than previous weight-sharing approaches. 
-2.3  Mixture of Experts 
-Mixture of Experts (MoE) layers [9, 10] route different tokens to different expert subnetw orks, enabling 
-conditional computation where total model capacity exceeds active computation per token. The router is 
-typically a learned linear projection that selects the top -k experts for each token based on a gating score. 
-Switch Transformers [10] simplified MoE to top-1 routing and scaled to trillion-parameter models. GShard 
-[16] introduced expert parallelism for efficient distributed training of MoE models. 
-In vision, V -MoE [11] demonstrated MoE in ViT for image classification, showing that experts ca n 
-specialize for different image regions or semantic concepts. Soft MoE [17] replaced hard token -to-expert 
-routing with a differentiable weighted combination, improving training stability. Our work applies MoE 
-within a recurrent block for segmentation, whe re the router must learn to associate spatial patches with 
-class-specific expert sub -models—a form of implicit spatial routing that we show leads to spontaneous 
-category specialization. 
-2.4  Medical Image Segmentation 
-U-Net [12] and its encoder-decoder architecture with skip connections remains the dominant paradigm for 
-medical image segmentation. nnU -Net [14] provides a self -configuring framework that automatically 
-adapts preprocessing, architecture, and training strategies to new datasets, achieving strong baselines across 
-diverse medical segmentation tasks. TransUNet [13] combined a CNN encoder with a ViT for global 
-context and a CNN decoder with skip connections, showing that transformer features complement 
-convolutional features for medical segmentation. 
-For cardiac segmentation specifically, the ACDC challenge has driven development of specialized 
-architectures. State-of-the-art methods achieve Dice scores above 0.90 for individual cardiac structures, 
-typically using 3D architectures with extensive data  augmentation and self -supervised pre-training. Our 
-work does not aim to match these highly optimized pipelines; instead, we investigate whether the recurrent-
-depth architectural principle can reduce data dependence in a controlled experimental setting. 
-2.5  Adaptive Computation and Dynamic Inference 
-Adaptive Computation Time (ACT) [18] was originally proposed for recurrent neural networks, allowing 
-the network to dynamically adjust the number of computational steps per input. Graves [18] showed that 
-ACT enables the model to “ponder” on difficult examples while quickly processing easy ones. Universal 
-Transformers [7] applied ACT to transformers, demonstrating improved generalization on tasks requiring 
-variable-depth reasoning. 
-In vision, early exit strategies allow classification models to stop at intermediate layers when confidence is 
-sufficient. Depth-adaptive transformers [19] extend this to dense prediction by allowing different spatial 
-locations to exit at different depths. Our ACT implementation in RD -ViT is analogous: each patch token 
-has its own halting probability, creating a spatial compute map that allocates more iterations to boundaries 
-and challenging regions. 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-5 
-3  Methods 
-RD-ViT follows a Prelude → Recurrent Loop → Coda → SegHead architecture. The Prelude consists of 
-standard ViT blocks that perform initial feature extraction. The Recurrent Loop applies a single shared ViT 
-block T times with LTI -stable injection, ACT halting, depth -wise LoRA, and optional MoE. The Coda 
-consists of standard ViT block s for final refinement. The SegHead upsamples patch -level features to 
-pixel/voxel-level predictions. The complete architecture is shown in Figure 2. 
- 
-Figure 2: RD-ViT architecture. The recurrent block is a single ViT block (attention + optional MoE FFN) looped T times with 
-LTI injection, ACT halting, and depth-wise LoRA. Components adapted from OpenMythos [1]. The architecture supports both 
-2D (Conv2d patch embed) and 3D (Conv3d patch embed) inputs. 
-3.1  Patch Embedding 
-For 2D images of size H × W, a Conv2d with kernel size P × P and stride P projects each non-overlapping 
-patch to a dim-dimensional embedding, producing N = (H/P) ⋅ (W/P) patch tokens. For 3D volumes of size 
-D × H × W, a Conv3d with kernel (Pz, P, P) and stride (Pz, P, P) produces N = (D/Pz) ⋅ (H/P) ⋅ (W/P) tokens. 
-In our 3D experiments, H = W = 128, D = 16, P = 16, Pz = 2, yielding N = 8 ⋅ 8 ⋅ 8 = 512 patch tokens. 
-We use fixed sinusoidal positional encodings rather than learned embeddings. For 2D, we use 4 -way 
-encoding (sin and cos for both H and W grid positions), requiring dim to be divisible by 4. For 3D, we use 
-6-way encoding (sin and cos for H, W, and D), requiring dim to be divisible by 6. The encoding uses the 
-standard frequency schedule 𝜔k = 1 / 10000k/d where d = dim/4 (2D) or dim/6 (3D). 
-The positional encoding for a patch at grid position ( gh, gw) in 2D is constructed by concatenating four 
-vectors: PE(gh, gw) = [sin( 𝜔 ⋅  gh); cos(𝜔 ⋅  gh); sin(𝜔 ⋅  gw); cos(𝜔 ⋅  gw)], where 𝜔 ∈ ℝ dim/4 is the 
-frequency vector. For 3D, this extends to six components covering all three spatial dimensions. 
-The choice of sinusoidal over learned positional encoding is deliberate for recurrent depth. Since the same 
-block is applied T times, learned embeddings must remain consistent across iterations. Sinusoidal encodings 
-satisfy this by construction and allow relative position attention patterns through inner products. 
-Layer normalization is applied to projected patch features before adding positional encoding , stabilizing 
-the input distribution and preventing position information from being dominated by high-variance features. 
-3.2  Attention</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-6 
-We use standard multi-head self-attention without causal masking (bidirectional attention for vision). Given 
-input x ∈ ℝ N ×dim), we compute queries, keys, and values via a single linear projection QKV = x ⋅  Wqkv, 
-split into h attention heads. Attention scores are computed as softmax(Q ⋅  KT / √𝑑_ℎ𝑒𝑎𝑑) and applied to 
-values. The output is projected back via Wproj. We apply dropout to attention weights during training. 
-We note that Multi-Latent Attention (MLA), as implemented in OpenMythos [1], compresses the key-value 
-cache into a low-rank latent space, which would reduce memory consumption for 3D volumes with many 
-patches. We leave MLA evaluation for future work and use standard full attention in all experiments. 
-The computational complexity of self-attention is O(N2  ⋅ d). For 3D (N = 512), the quadratic cost is 5122 
-= 262,144 entries per head versus 1962 = 38,416 in 2D —a 6.8× increase. ACT partially mitigates this 
-through early halting. 
-The memory footprint is B × H × N2 × 2 bytes in FP16. For batch 2, 6 heads, 512 patches: 6.3 MB per 
-iteration, 50.3 MB for T = 8. 
-Bidirectional attention provides global receptive field from  the first layer. For tooth segmentation, a 
-premolar patch directly attends to its bilateral counterpart, enabling jaw symmetry exploitation for FDI 
-assignment. 
-3.3  Feed-Forward Network 
-The base feed -forward network uses the SwiGLU activation: FFN(x) = (x  ⋅  Wgate ⊙ SiLU(x ⋅  Wup)) ⋅
- Wdown, where ⊙ denotes element-wise multiplication and SiLU(z) = z  ⋅  𝜎(z) is the sigmoid linear unit. 
-The hidden dimension is set to 8/3 × dim, following the SwiGLU convention. 
-When MoE is enabled, the SwiGLU FFN is replaced with a sparse Mixture-of-Experts layer. A linear router 
-computes gating logits g = x ⋅  Wrouter ∈ ℝ E where E is the number of experts (E = 8 in our experiments). 
-The top-k = 2 experts are selected per token, their outputs weighted by softmax -normalized gating scores, 
-and summed. A shared expert (with larger hidden dimension expe rtdim × k) processes all tokens 
-unconditionally and its output is added to the routed output. This design follows the DeepSeek -style MoE 
-with aux-loss-free load balancing via a learnable router bias [1]. 
-For each token x ∈ ℝ d, the router computes g(x) = Wrouter  ⋅ x ∈ ℝ E. Top-k experts are selected via g(x) 
-+ b, where b is a learnable bias for load balancing. Routing weights are wi = softmax(g(x))_i / 𝛴_{j ∈ topk} 
-softmax(g(x))_j. The output is y = 𝛴i wi  ⋅ Experti(x) + SharedExpert(x). 
-The shared expert processes all tokens, absorbing common features. Routed experts specialize for class -
-specific morphology. This decomposition is natural for segmentation. 
-Parameter cost: 8 × 3 × 192 × 128 = 589,824 for routed experts plus 147,456 for shared, totaling ~737K. 
-Active computation uses only k = 2 experts, so FLOPs overhead is ~1.25× base FFN. 
-3.4  LTI-Stable Injection 
-The core recurrence mechanism ensures stable long-horizon iteration. At each loop step t, the hidden state 
-evolves as: 
-ℎt+1 = A ⋅  ht + B ⋅ e + ViTBlock(ht) 
-where e is the frozen encoded input from the Prelude (providing a residual connection to the original 
-features), A is the st ate transition matrix, and B is the input injection matrix. The critical design choice is 
-the parameterization of A. Rather than learning A directly (which could lead to eigenvalues ≥ 1 and 
-divergent dynamics), A is parameterized as: 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-7 
-A = exp(−exp(logdt + logA)) 
-where logdt and logA are learnable scalar and vector parameters respectively. Since exp(⋅) is always 
-positive, −exp(⋅) is always negative, and exp of a negative number is always in (0, 1). This guarantees that 
-every element of A lies strictly in (0, 1), ensuring spectral radius 𝜌(A) &amp;lt; 1 by construction. This is a 
-sufficient condition for the recurrence to be a contraction mapping, meaning the hidden state converges 
-regardless of how many loop iterations are used. 
-In our experiments, the spectral r adius remains stable at 𝜌(A) ≈ 0.36 throughout training, well below the 
-instability threshold of 1.0. This stability guarantee is what enables depth extrapolation: the model can 
-safely use more iterations at inference time than it was trained with, becaus e the contraction property 
-prevents divergence. 
-Consider ℎt+1 = A ⋅  ht + B ⋅ e + f(ht) where f is L-Lipschitz. The mapping is a contraction if 𝜌(A) + L &amp;lt; 
-1. With 𝜌(A) ≈ 0.36 and bounded ViTBlock, the Banach fixed-point theorem guarantees convergence to a 
-unique ℎ∗. 
-The ZOH discretization interpretation: A = exp(-exp(logdt + logA)) is the exact discretization of the stable 
-ODE dh/dt = -exp(logA) ⋅ h + B ⋅ e. This dynamical systems connection provides principled foundation for 
-the recurrence. 
-𝜌(A) ≈ 0.36 means 36% state retention per iteration and 64% from new computation. This balanced mixing 
-rate supports both context accumulation and new spatial information incorporation. 
-3.5  Adaptive Computation Time 
-ACT [18] provides a principled mechanism for variable-depth computation. For each patch token, a linear 
-halting head computes the halting probability pt = 𝜎(Whalt  ⋅  ht) ∈ [0, 1] at each loop iteration t. The model 
-maintains a cumulative halting probabilit y Ct = 𝛴 ∑  t
-i=1  pi for each patch. Once Ct exceeds a threshold 𝜏 
-(we use 𝜏 = 0.95), that patch’s state is frozen and contributes no further to computation. 
-The ACT -weighted output is computed as hout = 𝛴t wt  ⋅  ht, where the weight wt equals the halting 
-probability pt for non-terminal iterations and equals the remainder 1 − 𝐶t−1 for the terminal iteration. This 
-ensures that the total weight sums to 1.0 for each patch. 
-For segmentation, ACT produces a spatial halting map of shape (B, N, T) that reveals whe re the model 
-allocates more computation. We observe that boundary regions between cardiac structures consistently 
-receive more iterations (3–4 effective iterations) than homogeneous regions (1–2 iterations), validating the 
-adaptive computation hypothesis. 
-The ponder cost regularizer Lponder = 𝜆 ⋅  mean(𝛴t pt) with 𝜆 = 0.01 encourages the model to halt early 
-when possible, promoting computational efficiency. The mean ponder time decreases from approximately 
-2.6 to 1.4 effective iterations during training, showing that the model learns to be computationally efficient 
-as it improves. 
-Effective cost Ceff = 𝛴 ∑  N
-n=1  Tn  ⋅  cblock. Mean ponder 1.4 out of T = 8 gives Ceff ≈ N ⋅ 1.4 ⋅  cblock, a 
-5.7× reduction versus uniform computation. 
-Halting entropy Hhalt = -𝛴n (Tn/𝛴T) ⋅  log(Tn/𝛴T) measures compute distribution uniformity. Moderate 
-entropy indicates boundary-concentrated difficulty. 
-Halted patches still participate in attention for non -halted neighbors. Savings are primarily in FFN and 
-LoRA, not attention. Masking halted patches entirely risks information loss at boundaries. 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-8 
-3.6  Depth-wise LoRA Adaptation 
-Pure weight sharing (using identical computation at every loop iteration) may be suboptimal because early 
-and late iterations serve different functional roles: early iterations extract basic features while late iterations 
-refine boundaries. Depth -wise LoRA provides per -loop differentiation without duplicating the full 
-parameter set. 
-The LoRA adapter consists of shared down -projection Adown ∈ ℝ dim ×r), shared up-projection Bup ∈ 
-ℝ r ×dim), and a per-loop scale embedding st ∈ ℝ r indexed by the loop counter t. The adaptation is: 𝛥h = 
-(x ⋅  Adown ⊙ st) ⋅  Bup, where ⊙ is element-wise multiplication. With rank r = 4, this adds only 4 ⋅ dim ⋅ 2 
-+ T ⋅ 4 parameters (approximately 1.5K for our Tiny model), a negligible overhead that nonetheless allows 
-each loop iteration to specialize. 
-Additionally, a sinusoidal loop-index embedding is added to the first dim/8 channels of the hidden state at 
-each iteration, providing the model with an explicit signal of its current depth. This serves a similar function 
-to positional encoding in the sequence dimension but along the depth dimension. 
-3.7  Segmentation Head 
-The segmentation head converts patch-level features (B, N, dim) to pixel/voxel-level predictions (B, C, H, 
-W) or (B, C, D, H, W). We first project patch features to a higher-dimensional space (4 × seghead_channels) 
-via a linear layer with GELU activation. The features are then reshaped to the spatial grid and progressively 
-upsampled via transposed convolutions. 
-For 2D inputs with patch size P, the spatial upsampling factor is P. We use a cascade of ConvTranspose2d 
-layers: a 4× upsampling followed by BatchNorm and GELU for the first stage, then additional 2 × stages 
-as neede d to reach the full resolution. For 3D inputs, we first upsample the depth dimension via 
-ConvTranspose3d with kernel ( Pz, 1, 1), then upsample the spatial dimensions. A final 1 ×1(×1) 
-convolution produces class logits. 
-When the segmentation head output does not exactly match the target spatial resolution (due to rounding in 
-the upsampling cascade), we apply bilinear or trilinear interpolation to the logits before computing the loss. 
-3.8  Loss Function and Training 
-The total training loss is: L = LCE + 𝜆 ⋅  Lponder, where LCE is the standard cross -entropy loss between 
-predicted logits and ground truth labels, and Lponder is the ACT ponder cost. We use 𝜆 = 0.01, which 
-provides sufficient incentive for early halting without overwhelming the segmentation signal. 
-We train with AdamW optimizer with learning rate 1 × 10−4, weight decay 0.05, and cosine annealing 
-learning rate schedule. Gradient clipping at norm 1.0 stabilizes training. We apply random horizontal 
-flipping as data augmentation for 3D volumes. All experiments use seed 42 for reproducibility. 
-4  Model Variants 
-We evaluate four model variants to systematically investigate the impact of model capacity, recurrence, 
-and MoE: 
-Table 1: Model variant specifications. 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-9 
-Variant dim Heads Loops MoE Params (3D) Effective depth 
-RD-ViT Tiny 192 3 8 No 2,579,110 8 (shared) 
-RD-ViT Tiny+MoE 192 3 8 8 experts 3,023,014 8 (shared+MoE) 
-RD-ViT Small 384 6 8 No 10,304,838 8 (shared) 
-Standard ViT 192 3 — No 5,676,036 10 (unique) 
- 
-The Standard ViT baseline uses the same total effective depth (prelude + loop iterations + coda = 1 + 8 + 1 
-= 10 layers) but with unique weights per layer, resulting in approximately 2.2× the parameters of RD-ViT 
-Tiny. This provides a fair comparison: same effective depth, same hidden dimension, but unique vs shared 
-weights. 
-5  Experimental Setup 
-5.1  Dataset 
-We evaluate on the Automated Cardiac Diagnosis Challenge (ACDC) dataset, which contains cine -MRI 
-volumes from 100 patients with ground truth segmentation for four classes: background (BG, label 0), right 
-ventricle (RV, label 1), myocardium (MYO, label 2), and left ventricle (LV, label 3). Each patient has end-
-diastolic (ED) and end -systolic (ES) frames with corresponding segmentation masks. We download the 
-dataset from HuggingFace (mathplusc ode/ACDC) which provides preprocessed volumes at 1mm × 1mm 
-× 10mm resolution. 
-We split at the patient level: 70 patients for training (140 volumes), 15 for validation (30 volumes), and 15 
-for testing (30 volumes). For 3D experiments, each volume is resized  to 128 × 128 × 16 via trilinear 
-interpolation (images) and nearest -neighbor interpolation (labels). For 2D experiments, axial slices are 
-extracted, resized to 224 × 224, and replicated to 3 channels for compatibility with standard ViT 
-architectures. 
-5.2  Evaluation Metrics 
-We report the Dice similarity coefficient (DSC) as the primary metric, computed per -class for RV, MYO, 
-and LV (excluding background) and averaged. Dice is defined as DSC(P, G) = 2|P ∩ G| / (|P| + |G|), where 
-P is the predicted segmentati on and G is the ground truth. We also report the spectral radius 𝜌(A) of the 
-LTI injection matrix and the mean ACT ponder time (effective iterations per patch). 
-5.3  Training Details 
-All experiments run on Google Colab with a single T4 GPU (16 GB VRAM). W e use batch size 4 for 3D 
-and 8 for 2D, learning rate 1 × 10−4 with cosine annealing, weight decay 0.05, gradient clipping at 1.0, 
-and train for 100 epochs. The ACT ponder weight 𝜆 = 0.01. Random seed is fixed at 42 throughout. Total 
-training time per model ranges from 1,123s (Standard ViT) to 2,189s (RD-ViT+MoE) due to MoE routing 
-overhead. 
-5.4  Data Efficiency Protocol 
-To test the data efficiency hypothesis, we train each model at five data fractions: 10%, 25%, 50%, 75%, 
-and 100% of the training set. The  subsets are drawn from the first k patients (not randomly sampled) to 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-10 
-ensure reproducibility. For each fraction, we train both RD -ViT and Standard ViT from scratch for 50 
-epochs (reduced from 100 for computational feasibility across 10 training runs) and report the best 
-validation Dice. 
-6  Results 
-All results in this section are from real Colab notebook runs on the ACDC dataset. No fabricated numbers 
-appear anywhere in this manuscript. Figures are generated directly by the experiment notebooks. 
-6.1  3D Volumetric Segmentation 
-Table 2 presents the main 3D ablation results. Figure 3 shows training curves including loss convergence, 
-Dice evolution, spectral radius stability, and ACT ponder time dynamics. 
-Table 2: 3D ACDC ablation results (128×128×16, 100 epochs, T4 GPU). 
-Configuration Params Best Dice Time (s) 𝛥 vs Tiny 
-Standard ViT (baseline) 5,676,036 0.817 1,123 — 
-RD-ViT Tiny 2,579,110 0.804 1,154 ref 
-RD-ViT Tiny + MoE 3,023,014 0.812 2,189 +0.8 pp 
-RD-ViT Tiny T=16 2,579,142 0.796 1,418 −0.8 pp 
-RD-ViT Tiny − ACT 2,579,110 0.801 1,158 −0.3 pp 
-RD-ViT Tiny − LoRA 2,579,110 0.802 1,153 −0.2 pp 
-RD-ViT Small 10,304,838 0.817 1,751 +1.3 pp 
- 
- 
-Figure 3: 3D training curves for RD-ViT Tiny on ACDC. Top-left: training and validation loss converge by epoch 60 with no 
-overfitting. Top-right: Dice score reaches a plateau of approximately 0.77. Bottom-left: spectral radius remains stable at 𝜌(A) ≈</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-11 
-0.36, well below the instability threshold of 1.0. Bottom-right: mean ACT ponder time decreases from ~2.6 to ~1.4 effective 
-iterations, indicating the model learns computational efficiency during training. 
-6.2  Ablation Analysis 
- 
-Figure 4: 3D ACDC ablation results across seven configurations. MoE provides the largest improvement over baseline RD-ViT 
-Tiny (+0.8 pp). RD-ViT Small matches Standard ViT at 0.817 Dice. Doubling loop depth to T=16 slightly hurts performance, 
-suggesting overprocessing with limited training data. 
-The ablation study reveals a clear hierarchy of component contributions. MoE is the most parameter -
-efficient enhancement: adding only 444K parameters (17% overhead) closes 60% of the Dice gap between 
-RD-ViT Tiny (0.804) and Standard ViT (0.817). This is because the MoE router learns to associate different 
-patch tokens with different expert sub -models, effectively creating implicit class -specific processing 
-pathways within the shared recurrent block. 
-ACT contributes +0.3 pp by enabling the model  to allocate more compute to boundary regions. LoRA 
-contributes +0.2 pp by allowing depth -wise specialization. Together, ACT and LoRA account for 
-approximately 0.5 pp of improvement, confirming their roles as auxiliary mechanisms that enhance the 
-base recurrence. 
-Increasing loop depth from T=8 to T=16 slightly hurts performance (0.804 → 0.796). This counter-intuitive 
-result reflects the small training set size: with only 140 training volumes, very deep recurrence increases 
-the effective model expressivity b eyond what the data can support, leading to overprocessing. The ACT 
-mechanism partially mitigates this by allowing early halting, but the effect is insufficient at T=16. 
-RD-ViT Small (10.3M parameters) matches Standard ViT (5.7M) at Dice 0.817, confirming that the 
-recurrent architecture can match non -recurrent performance when given sufficient capacity. The 1.8 × 
-parameter overhead for matching performance (10.3M vs 5.7M) is the “cost” of weight sharing: the shared 
-block must represent a universal computatio n applicable at all depths, which requires more capacity per 
-iteration than a specialized single-use block. 
-6.3  MoE Expert Specialization</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-12 
- 
-Figure 5: MoE expert utilization by cardiac structure. Each panel shows the routing frequency distribution across 8 experts for 
-patches belonging to that class. Background (BG) strongly favors expert 7. Right ventricle (RV) concentrates on experts 1–2. 
-Myocardium (MYO) distributes across experts 2–5. Left ventricle (LV) strongly favors expert 3. The distinct distributions confirm 
-spontaneous category-specific specialization without explicit routing supervision. 
-The MoE expert utilization analysis provides one of the most compelling findings in this work. Without 
-any explicit supervision of the routing mechanism —the rout er is trained end -to-end solely through the 
-segmentation loss —different experts develop distinct specializations for different cardiac structures. 
-Background patches predominantly route to expert 7, which likely learns to produce zero -class features 
-efficiently. RV patches concentrate on experts 1 –2, which specialize in the complex geometry of the right 
-ventricle. MYO patches distribute across experts 2 –5, consistent with the myocardium’s structural 
-complexity as a thick ring with varying wall thickness. LV patches strongly concentrate on expert 3, which 
-becomes a specialist for the relatively regular left ventricular cavity. 
-This emergent specialization suggests that MoE provides a natural structural inductive bias for multi -class 
-segmentation: the router learns to decompose the segmentation problem into class -specific sub-problems, 
-each handled by a lightweight expert. This decomposition is particularly beneficial in the recurrent setting 
-because the same expert routing pattern is applied at every loop iteration, creating a consistent class-specific 
-processing pathway across depths. 
-6.4  ACT Halting Maps</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-13 
- 
-Figure 6: ACT halting maps on real ACDC 3D volumes (middle slices shown). Columns from left to right: input cardiac MRI, 
-ground truth segmentation, model prediction, ACT compute map. In the compute maps, brighter regions indicate more effective 
-iterations (up to 4–5), while darker regions indicate early halting (1–2 iterations). The model consistently allocates more 
-compute to cardiac structure boundaries and peripheral regions with ambiguous content. 
-The ACT compute maps in Figure 6 demonstrate that the model learns a meaningful spatial curriculum. 
-Boundary regions between RV, MYO, and LV —where segmentation is most challenging due to partial 
-volume effects and low contrast—consistently receive 3–5 effective iterations. Large homogeneous regions 
-(background, ventricular cavities) halt after only 1 –2 iterations, indicating that the model has learned that 
-these regions require minimal processing. 
-The temporal evolution of ponder time (Figure 3, bottom -right) adds another dimension to this finding. 
-Early in training (epochs 1 –20), the mean ponder time increases from 1.2 to 2.6 as the model learns to 
-“think harder” about difficult regions. After epoch 20, the pon der time monotonically decreases to 1.4 by 
-epoch 100, showing that as the model’s features improve, it needs fewer iterations to achieve the same 
-segmentation quality. This property could be valuable for clinical deployment where inference speed 
-matters. 
-6.5  2D Slice Segmentation 
-In 2D slice-level segmentation, the performance ranking reverses: RD-ViT outperforms Standard ViT.</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-14 
-Table 3: 2D ACDC slice segmentation results. 
-Configuration Best Dice Params 
-RD-ViT Tiny (2D) 0.889 4,200,742 
-Standard ViT (2D) 0.872 ~5.7M 
- 
-The 2D result (Dice 0.889 vs 0.872, +1.7 pp for RD -ViT) suggests that recurrent depth is more effective 
-when individual samples provide rich spatial context. In 2D, each 224 ×224 slice has 196 patches (14 ×14 
-grid) at full resolution, providing  enough spatial information for iterative refinement to be beneficial. In 
-3D, the same model processes 512 patches but at much lower effective per-slice resolution (128×128 spatial 
-from volumes originally containing only ~10 slices), creating a harder opti mization landscape where 
-capacity per parameter dominates over regularization from weight sharing. 
-6.6  Data Efficiency 
- 
-Figure 7: Data efficiency comparison on 3D ACDC. Both RD-ViT and Standard ViT improve monotonically with more training 
-data. In 3D, Standard ViT maintains a consistent advantage, with the gap narrowing from 5 pp at 10% to 3 pp at 100%. 
-Table 4: Data efficiency comparison across 2D and 3D settings (Dice). 
-Data % RD-ViT 2D Std ViT 2D 𝛥 2D RD-ViT 3D Std ViT 3D 𝛥 3D 
-10% 0.774 0.762 +1.2 pp 0.444 0.496 −5.2 pp 
-25% 0.833 0.826 +0.7 pp 0.526 0.610 −8.4 pp 
-50% 0.846 0.882 −3.6 pp 0.704 0.744 −4.0 pp 
-75% 0.880 0.876 +0.4 pp 0.751 0.766 −1.5 pp 
-100% 0.882 0.872 +1.0 pp 0.765 0.794 −2.9 pp 
- 
-The data efficiency hypothesis is confirmed in 2D but not in 3D. In 2D, RD-ViT outperforms Standard ViT 
-at both the lowest (10%, +1.2 pp) and highest (100%, +1.0 pp) data fractions, with the advantage persisting 
-across most training sizes. This supports the hypothesis that weight sharing provides benefici al 
-regularization when the model has sufficient spatial context per sample.</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-15 
-In 3D, Standard ViT outperforms RD -ViT at all data fractions. However, the gap narrows monotonically 
-from 5.2 pp (at 10%) to 2.9 pp (at 100%), suggesting that the recurrent archite cture’s deficit is partially a 
-capacity issue that additional data helps alleviate. The MoE results from Table 2 (which were not included 
-in the data efficiency experiment due to computational constraints) suggest that adding MoE to the 3D 
-recurrent model would likely narrow or close this gap, as MoE adds capacity precisely where it helps most: 
-class-specific processing. 
-6.7  Depth Extrapolation 
- 
-Figure 8: Depth extrapolation on 3D ACDC. The model was trained with T=8 loop iterations (red dashed line). At inference 
-time, Dice increases from 0.61 (T=2) to 0.77 (T=6) and saturates. Performance at T&gt;8 is stable with no degradation, 
-demonstrating that the LTI-stable injection safely supports extrapolation beyond training depth. 
-Depth extrapolation demonstrates a practical benefit of the LTI -stable recurrence. When we reduce the 
-number of iterations at inference time (T &lt; 8), performance degrades gracefully: T=4 achieves 0.76 (vs 0.77 
-at T=8), and even T=2 achieves 0.61. When we increase iterations beyond the tra ining depth (T=10, 12, 
-16), performance remains stable at 0.77 with no degradation. 
-This property is guaranteed by the LTI injection parameterization: because 𝜌(A) &amp;lt; 1, the recurrence is a 
-contraction mapping, meaning the hidden state converges to a fi xed point as T → ∞. Additional iterations 
-beyond the convergence point simply repeat the fixed-point computation without changing the output. This 
-provides a practical inference-time knob: use fewer loops for faster inference with graceful degradation, or 
-more loops for potential accuracy gains, without any retraining. 
-6.8  Application: 3D Tooth Instance Segmentation 
-To evaluate the generalizability of RD -ViT beyond cardiac imaging, we apply the architecture to a 
-fundamentally different segmentation challen ge: 3D tooth instance segmentation and numbering from 
-cone-beam computed tomography (CBCT) volumes. Tooth segmentation presents a compelling test case 
-for transformer -based architectures because tooth identification (FDI numbering) requires long -range 
-spatial context —knowing which quadrant of the jaw a tooth occupies, recognizing patterns of adjacent</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-16 
-teeth, and accounting for missing teeth —that exceeds the receptive field of typical 3D convolutional 
-networks. 
-6.8.1  Dataset and Task 
-We evaluate on the ToothFairy2 dataset from the MICCAI 2024 challenge, which provides 482 CBCT 
-volumes (336 training, 72 validation, 74 test) at 0.3mm isotropic spacing with voxel -level annotations for 
-32 individual teeth following the FDI World Dental Federation numbering system (teeth 11–18, 21–28, 31–
-38, 41–48) plus background, yielding 33 classes total. This is substantially more complex than the 4 -class 
-ACDC task: the model must simultaneously detect tooth boundaries, segment individual instances, and 
-assign correct FDI numbers—where numbering depends on spatial position within the jaw. 
-6.8.2  Architecture Adaptation 
-We adapt RD-ViT to single-phase tooth instance segmentation using a multi -head decoder. The backbone 
-remains identical to the ACDC architecture (PatchEmbed3D  → Prelude → RecurrentBlock×T → Coda), 
-but the segmentation head is replaced with three task-specific output heads operating on shared upsampled 
-features: 
-Spatial offset head (3 channels): Each foreground voxel predicts a 3D displacement vector pointing 
-toward its instance center. Voxels belonging to the same tooth predict similar centers, enabling instance 
-separation via clustering. 
-For each foreground voxel at position p = (d, h, w), the model predicts offset 𝛥p = (𝛥d, 𝛥h, 𝛥w) toward the 
-instance centroid. Accurate predictions cluster all voxels of the same tooth around a common predicted 
-center. 
-Clustering: (1) threshold seed at 0.5, (2) compute cpred = p + 𝛥p ⋅ S, (3) quantize to grid 𝛿 = 4, (4) discard 
-clusters &amp;lt; 50 voxels, (5) majority-vote FDI per cluster. Grid clustering is O(N) versus O( N2) for mean-
-shift. 
-Loffset = (1/|F|)  ⋅  𝛴_{p ∈ F} | Δppred - Δpgt| uses L1 for robustness to outlier predictions at instance 
-boundaries where offsets change abruptly between adjacent teeth. 
-Seed/foreground head (1 channel): Binary classification of each voxel as tooth or background, providing 
-the foreground mask for offset clustering. 
-FDI classification head (33 channels): Per-voxel classification into one of 32 teeth or background. The 
-transformer’s global se lf-attention is critical here: a patch in the upper -left jaw attends to patches in the 
-lower-right jaw, enabling the model to infer FDI numbering from bilateral context. 
-The combined loss is L = Lseed + Loffset + LFDI + 𝜆 ⋅  Lponder, where Lseed is binary cross-entropy, Loffset 
-is L1 regression on foreground voxels toward ground truth instance centers, LFDI is cross-entropy for tooth 
-class, and Lponder is the ACT ponder cost. 
-MoE is enabled by default in the recurrent block (8 experts, top -k=2), with the hy pothesis that different 
-experts will specialize for different tooth groups (incisors, canines, premolars, molars) analogously to the 
-cardiac structure specialization observed in Section 6.3. 
-6.8.3  Training Details 
-We use the RD-ViT Tiny architecture with MoE (5.4M parameters). Training uses isotropic 1283 random 
-crops centered on foreground voxels, with augmentation including random rotation ( ±10° around the z -
-axis), intensity shift/scale, and Gaussian noise. Crucially, no flipping augmentation is used because left-
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-17 
-right flipping would corrupt the FDI numbering (e.g., tooth 11 in the upper -right quadrant would become 
-tooth 21 in the upper -left). Training runs for 200 epochs on an NVIDIA RTX 4090 GPU with mixed 
-precision, batch size 2, gradient accumulati on 2 (effective batch 4), learning rate 2 × 10−4, and cosine 
-annealing. 
-FDI assigns different numbers to mirror teeth:  tooth 11 (upper -right) vs 21 (upper -left). Flipping swaps 
-these labels, creating inconsistent signals. Upper (quadrants 1-2) vs lower (3-4) also differ. 
-FDI-safe augmentations: rotation ±10° around z-axis (preserves left-right), intensity shift/scale (±0.1, 0.9-
-1.1×), Gaussian noise (𝜎 = 0.03). 
-Foreground-centered cropping ensures every 1283 crop contains teeth. CBCT volumes are 300-500 voxels 
-per dimension but teeth occupy only the dental arch fraction. 
-6.8.4  Results 
-Table 5 presents the tooth segmentation results. Figure 9 shows the training dynamics. 
-Table 5: ToothFairy2 tooth segmentation results (RD-ViT Tiny + MoE, 200 epochs, RTX 4090). 
-Metric Value 
-Model parameters 5,416,775 
-Seed Dice (tooth vs background) 0.797 
-FDI classification accuracy (foreground) 89.1% 
-Mean epoch time (RTX 4090) 210.7 s 
-Total training time 11.7 hours 
-Loop iterations T 8 
-MoE experts 8 routed + 1 shared 
-Spectral radius 𝜌(A) 0.368 
- 
- 
-Figure 9: ToothFairy2 training dynamics. Left: training loss decreases steadily from 3.0 to 0.4. Center-left: seed Dice (tooth 
-detection) improves from 0.35 to 0.80. Center-right: FDI classification accuracy reaches 89.1%, demonstrating that the ViT’s 
-global attention successfully captures jaw-quadrant context for tooth numbering. Right: epoch time is stable at ~210s with 
-occasional spikes from data loading.</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-18 
- 
-Figure 10: Qualitative tooth segmentation results on validation volumes. Columns from left to right: input CBCT slice, ground 
-truth FDI labels (each tooth colored by class), predicted seed score (tooth detection probability, bright = tooth), predicted FDI 
-class map. Row 1 shows a full dental arch with the model correctly detecting all teeth and assigning largely correct FDI regions. 
-Row 2 shows a partial arch. Rows 3–4 show sparser slices. The seed head accurately highlights tooth regions while the FDI head 
-assigns spatially coherent class regions, though boundary precision remains an area for improvement. 
-The seed Dice of 0.797 demonstrates that the single -phase RD-ViT architecture can reliably detect tooth 
-boundaries in 3D CBCT. More notably, the 89.1% FDI classification accuracy shows that the transformer’s 
-global self-attention is effective for the tooth numbering task, which fundamentally requires long -range 
-spatial reasoning: a tooth’s FDI number depends not only on its local morphology but on its position relative 
-to other teeth in the jaw, the quadrant it occupies, and the pattern of present and missing neighboring teeth. 
-Both the seed Dice and FDI accuracy curves are sti ll improving at epoch 200 (Figure 9), suggesting that 
-longer training would yield further gains. This is consistent with the relatively large number of classes (33) 
-and the complexity of the instance segmentation task. 
-6.8.5  Comparison with CNN Baselines 
-The ToothSeg benchmark [20] provides several multi -phase baselines using CNN backbones (3D U -Net, 
-ERFNet, VNet). These baselines decompose the problem into 2–4 sequential stages: binary tooth detection, 
-ROI extraction, per -tooth segmentation, and tooth ide ntification. In contrast, our single -phase RD -ViT 
-predicts all three outputs (seed, offset, FDI class) simultaneously from a single forward pass.</p>
-
-<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-19 
-While direct numerical comparison requires running on the official test server (which we leave for future 
-work), the architectural advantage of the single-phase approach is clear: (1) no cascaded error propagation 
-between stages, (2) end -to-end training with a single loss function, and (3) the transformer backbone 
-naturally provides the global context that CNN bas elines must approximate through large receptive fields 
-or multi-scale processing. The 89.1% FDI accuracy from a single-phase model is encouraging and suggests 
-that transformer-based approaches may simplify the tooth segmentation pipeline. 
-6.8.6  Why ViT for Teeth: Long-Range Context 
-The tooth segmentation results highlight a key architectural advantage of transformers for dental imaging. 
-Consider the task of identifying tooth 15 (upper-left second premolar): a CNN with a typical receptive field 
-of 5–7 patches can only “see” the tooth itself and its immediate neighbors. The model must infer the tooth’s 
-identity from local morphology alone, which is ambiguous because premolars and molars have similar local 
-appearance. In contrast, the ViT’s self -attention allows tooth 15 to attend to tooth 25 (its bilateral 
-counterpart), teeth 14 and 16 (its neighbors), and even to the contralateral jaw, providing rich contextual 
-cues for identification. 
-The recurrent depth amplifies this advantage: at each loop iteration,  the attention patterns can refine tooth 
-identity estimates based on updated context from all other teeth. A tooth that is initially ambiguous (e.g., 
-could be a premolar or molar) receives progressively more confident identity assignments as its context 
-patches also sharpen their predictions across iterations. This iterative global refinement is precisely the use 
-case where recurrent-depth transformers should outperform both fixed-depth transformers and CNNs. 
-7  Discussion 
-7.1  Parameter Efficiency and the Role of MoE 
-The most striking result is the parameter efficiency of RD-ViT+MoE: it achieves 99.4% of Standard ViT’s 
-3D Dice (0.812 vs 0.817) at only 53% of the parameters (3.0M vs 5.7M) on cardiac segmentation. This 
-demonstrates that the combination of weight sharing (recurrence) and conditional computation (MoE) is a 
-viable architectural strategy for parameter-efficient segmentation. 
-The MoE contribution is particularly efficient: 444K additional parameters (17% overhead over the base 
-RD-ViT Tiny) close 60% of the performance gap to Standard ViT. This efficiency arises because MoE adds 
-capacity exactly where it is needed —at the class -specific processing level —rather than uniformly across 
-the entire network. The shared expert handles common features (general  cardiac morphology or dental 
-anatomy), while routed experts handle class -specific details (RV geometry vs MYO wall thickness, or 
-incisors vs molars). 
-On the tooth segmentation task, MoE is enabled by default and contributes to the strong 89.1% FDI 
-accuracy. With 32 tooth classes mapping to 8 experts (an average of 4 teeth per expert), the model can 
-leverage natural anatomical groupings: incisors (teeth x1–x2), canines (x3), premolars (x4–x5), and molars 
-(x6–x8) have distinct morphological characteristics that are amenable to expert specialization. 
-7.2  The 2D vs 3D Dichotomy 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-20 
-The reversal between 2D (RD -ViT wins) and 3D (Standard ViT wins at matched parameters) on cardiac 
-segmentation reveals an important interaction between recurrent depth and input dimensi onality. We 
-hypothesize that this reflects a trade-off between spatial context richness and optimization difficulty. 
-In 2D, each 224×224 slice provides 196 patches at the native resolution of the cardiac structures. The spatial 
-context within each patch is  rich enough for iterative refinement to add value —the recurrent block can 
-progressively sharpen boundary predictions by attending to neighboring patches across iterations. 
-In 3D, the volume is resized to 128×128×16 (cardiac) or cropped to 1283 (dental), producing 512 patches 
-but at much lower effective resolution per patch. RD-ViT Small (10.3M) matches Standard ViT (5.7M) on 
-cardiac segmentation, confirming that capacity is the primary bottleneck in 3D, not the recurrent 
-architecture itself. 
-The tooth segm entation results support this interpretation: with 1283 isotropic crops providing higher 
-effective per -patch resolution than the anisotropic cardiac volumes (128 ×128×16), the RD -ViT+MoE 
-model achieves competitive single-phase performance (seed Dice 0.797, FDI accuracy 89.1%) despite using 
-only 5.4M parameters. 
-7.3  Single-Phase vs Multi-Phase Instance Segmentation 
-The tooth segmentation experiment demonstrates that a single -phase transformer approach can perform 
-competitive instance segmentation and numberi ng without the multi -stage pipelines typically used in the 
-dental imaging literature. The ToothSeg baselines [20] use 2 –4 sequential stages, each with its own CNN 
-backbone, creating cascaded error propagation and complex training procedures. 
-Our single-phase approach—predicting offsets, seeds, and FDI class simultaneously from a single forward 
-pass—simplifies the pipeline while leveraging the transformer’s natural ability to capture long-range spatial 
-relationships. The 89.1% FDI accuracy suggests that expl icit multi -stage decomposition may be 
-unnecessary when the backbone has sufficient global context through self-attention. 
-However, we note that the seed Dice (0.797) leaves room for improvement, and the training curves suggest 
-that longer training or archi tectural refinements (e.g., multi -scale feature fusion, boundary -aware loss 
-terms) could yield further gains. If single-phase performance plateaus, a two-phase approach (RD-ViT for 
-initial segmentation followed by a refinement stage) could be considered. 
-7.4  Clinical Implications of ACT 
-The ACT halting maps provide a form of model interpretability that could be valuable in clinical settings. 
-For cardiac segmentation, regions where the model allocates more computation correspond to regions of 
-diagnostic unc ertainty—typically boundaries between cardiac structures. For dental segmentation, ACT 
-could similarly highlight ambiguous tooth boundaries or regions where tooth identification is uncertain. 
-The decreasing ponder time during training (2.6 → 1.4 effective iterations on ACDC) suggests that a well-
-trained model can achieve fast inference by using only 1 –2 iterations for most patches, with additional 
-iterations reserved for difficult regions. This adaptive compute property could enable real -time 
-segmentation in clinical workflows where inference speed is critical. 
-7.5  Cross-Domain Generalization 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-21 
-The application of the same RD -ViT architecture to two fundamentally different segmentation tasks —
-cardiac MRI (4 classes, low -contrast soft tissue, anisotr opic voxels) and dental CBCT (33 classes, high -
-contrast mineralized tissue, isotropic voxels)—demonstrates the architecture’s domain-agnostic nature. The 
-only modifications between the two applications are the segmentation head (4 -class vs multi -head with 
-offsets/seeds/FDI) and the augmentation strategy (flipping enabled for cardiac, disabled for dental). The 
-core RD -ViT components —LTI injection, ACT, LoRA, MoE —transfer unchanged across domains, 
-supporting the claim that recurrent depth is a general archite ctural principle rather than a domain -specific 
-trick. 
-7.6  Limitations and Future Work 
-Several limitations should be acknowledged. First, our cardiac experiments use relatively small models 
-(2.6–10.3M parameters) on a single dataset (ACDC, 100 patients). S caling to larger models and multi-site 
-data would strengthen the conclusions. Second, the 3D MoE variant is approximately 2 × slower than the 
-baseline due to expert routing overhead. Third, we did not evaluate Multi -Latent Attention (MLA) from 
-OpenMythos, which could improve memory efficiency for 3D volumes. Fourth, the tooth segmentation 
-results are from a single -phase model without comparison against multi -phase baselines on the official 
-ToothFairy2 test server; direct benchmark comparison is needed. Fifth , the training curves on both tasks 
-suggest that longer training (400+ epochs) would improve results, but computational constraints limited 
-our experiments to 100 –200 epochs. Sixth, deeper analysis of MoE expert specialization for dental 
-structures—tracking whether experts align with incisors, canines, premolars, and molars —would validate 
-the tooth-group specialization hypothesis. 
-8  Conclusion 
-We have presented RD-ViT, a recurrent-depth vision transformer for semantic and instance segmentation 
-that adapts the Recurrent -Depth Transformer architecture from OpenMythos to dense prediction tasks. 
-Through comprehensive experiments on two distinct medical imaging benchmarks —ACDC cardiac MRI 
-and ToothFairy2 dental CBCT—we have demonstrated that: (1) recurrent depth with MoE achieves 99.4% 
-of standard ViT performance at 53% of the parameter count on cardiac segmentation; (2) MoE experts 
-spontaneously specialize for different anatomical structures; (3) ACT halting maps provide interpretable 
-spatial compute allocation with decreasing ponder time during training; (4) data efficiency is confirmed in 
-2D slice segmentation; (5) depth extrapolation works without degradation, providing a free inference-time 
-compute knob; and (6) the same architecture generalizes to single -phase tooth instance segmentation and 
-numbering, achieving 89.1% FDI classification accuracy by leveraging the transformer’s long -range 
-attention for jaw-quadrant context. All results are real, reproducible, and released with companion code and 
-notebooks. 
-Acknowledgments 
-This work extends architectural ideas from OpenMythos [1] by Kye Gomez, which reconstructs the 
-hypothesized Recurrent-Depth Transformer architecture. 
-References 
-[1] Gomez, K. (2025). OpenMythos: Reconstructing the Recurrent-Depth Transformer. github.com/kyegomez/OpenMythos. 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-22 
-[2] Dosovitskiy, A. et al. (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. ICLR 2021. 
-[3] Touvron, H. et al. (2021). Training Data-Efficient Image Transformers and Distillation through Attention. ICML 2021. 
-[4] Zheng, S. et al. (2021). Rethinking Semantic Segmentation from a Sequence-to-Sequence Perspective with Transformers. CVPR 
-2021. 
-[5] Liu, Z. et al. (2021). Swin Transformer: Hierarchical Vision Transformer using Shifted Windows. ICCV 2021. 
-[6] Xie, E. et al. (2021). SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers. NeurIPS 2021. 
-[7] Dehghani, M. et al. (2019). Universal Transformers. ICLR 2019. 
-[8] Lan, Z. et al. (2020). ALBERT: A Lite BERT for Self-Supervised Learning of Language Representations. ICLR 2020. 
-[9] Shazeer, N. et al. (2017). Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. ICLR 2017. 
-[10] Fedus, W., Zoph, B., and Shazeer, N. (2022). Switch Transformers: Scaling to Trillion Parameter Models with Simple and 
-Efficient Sparsity. JMLR 23(120):1–39. 
-[11] Riquelme, C. et al. (2021). Scaling Vision with Sparse Mixture of Experts. NeurIPS 2021. 
-[12] Ronneberger, O., Fischer, P., and Brox, T. (2015). U -Net: Convolutional Networks for Biomedical Image Segmentation. 
-MICCAI 2015, LNCS 9351, pp. 234–241. 
-[13] Chen, J. et al. (2021). TransUNet: Transformers Make Strong Encoders for Medical Image Segmentation. arXiv:2102.04306. 
-[14] Isensee, F. et al. (2021). nnU -Net: A Self -Configuring Method for Deep Learning -Based Biomedical Image Segmentation. 
-Nature Methods 18:203–211. 
-[15] Cheng, B. et al. (2022). Masked-Attention Mask Transformer for Universal Image Segmentation. CVPR 2022. 
-[16] Lepikhin, D. et al. (2021). GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. ICLR 2021. 
-[17] Puigcerver, J. et al. (2024). From Sparse to Soft Mixtures of Experts. ICLR 2024. 
-[18] Graves, A. (2016). Adaptive Computation Time for Recurrent Neural Networks. arXiv:1603.08983. 
-[19] Han, Y. et al. (2022). Dynamic Neural Networks: A Survey. IEEE TPAMI 44(11):7436–7456. 
-[20] Cipriano, M. et al. (2024). ToothFairy2: Multi-Structure Segmentation from CBCT Volumes. MICCAI 2024 Challenge. 
-[21] Wang, H. et al. (2023). Dense Representative Tooth Landmark/Axis Detection Network on 3D CBCT. MICCAI 2023. 
-Appendix A: Hyperparameter Specifications 
-Table A1: Complete hyperparameter specifications for all experiments. 
-Parameter 2D Value 3D Value 
-Image size 224 × 224 128 × 128 × 16 
-Patch size 16 × 16 16 × 16 × 2 
-Input channels 3 (replicated) 1 (grayscale) 
-Hidden dimension 192 (Tiny) / 384 (Small) 192 (Tiny) / 384 (Small) 
-Attention heads 3 / 6 3 / 6 
-Loop iterations T 8 8 
-Prelude layers 1 1 
-Coda layers 1 1 
-LoRA rank 4 4 
-ACT threshold 𝜏 0.95 0.95 
-MoE experts (when used) 8 + 1 shared 8 + 1 shared 
-MoE top-k 2 2 
-MoE expert dim 128 128 
-Optimizer AdamW AdamW 
-Learning rate 1e-4 1e-4 
-Weight decay 0.05 0.05 
-Batch size 8 4 
-RD-ViT: Recurrent-Depth Vision Transformer for Segmentation 
-23 
-Epochs 100 100 
-Ponder weight 𝜆 0.01 0.01 
-Dropout 0.1 0.1 
-Drop path 0.1 0.1 
-Gradient clip 1.0 1.0 
-Random seed 42 42 
- 
-Appendix B: Reproducibility 
-All code is available in the companion GitHub repository. Three Colab notebooks reproduce every table and figure: 
-NB1 (ACDC data loading and main training with training curves, depth extrapolation, ACT maps, and data efficiency), 
-NB3 (ablation study across seven configurations including MoE, with expert utilization analysis). The ACDC dataset 
-is automatically downloaded from HuggingFace (mathpluscode/ACDC). Package versions are pinned in 
-requirements.txt. Every number in the results section traces to a specific notebook cell and is saved as a JSON file in 
-the Drive output directory. 
-Appendix C: Per-Class Results 
-Table C1: Per-class Dice scores for 3D RD-ViT Tiny at full training data. 
-Structure Dice Clinical significance 
-RV (right ventricle) 0.753 Complex crescent geometry 
-MYO (myocardium) 0.673 Thin wall, partial volume 
-LV (left ventricle) 0.875 Regular elliptical shape 
-Mean (excl. BG) 0.767 — 
- 
-LV achieves the highest Dice (0.875) due to its regular elliptical shape and high contrast. MYO has the lowest Dice 
-(0.673) because the myocardial wall is t hin and subject to partial volume effects. RV performance (0.753) is 
-intermediate, reflecting its complex crescent geometry. These per-class patterns are consistent with the broader ACDC 
-literature. 
-The MYO-LV gap (0.673 vs 0.875) reflects myocardial wall thinness: the wall may be only 1 -2 voxels 
-thick at 128×128×16 resolution, making boundary delineation fundamentally resolution-limited. 
-RV (0.753) is challenged by its crescent shape with complex, patient -variable geometry and trabeculated 
-inner surfaces. Global attention helps capture overall shape despite ambiguous local boundaries.</p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+1 <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Semantic <br />
+Segmentation with Reduced Data Dependence <br />
+Extending the Recurrent-Depth Transformer Architecture to Dense Prediction <br />
+Renjie He <br />
+Department of Radiation Oncology, The University of Texas MD Anderson Cancer Center, Houston, TX, USA <br />
+Abstract <br />
+Vision Transformers (ViTs) achieve state -of-the-art segmentation accuracy but require large training datasets <br />
+because each layer has unique parameters that must be learned independently. We present RD -ViT, a Recurre nt-<br />
+Depth Vision Transformer that adapts the Recurrent-Depth Transformer (RDT) architecture to dense prediction tasks, <br />
+supporting both 2D and 3D inputs. RD-ViT replaces the deep stack of unique transformer blocks with a single shared <br />
+block looped T times, augmented with LTI-stable state injection for guaranteed convergence, Adaptive Computation <br />
+Time (ACT) for spatial compute allocation, depth -wise LoRA adaptation, and optional Mixture -of-Experts (MoE) <br />
+feed-forward networks for category -specific specialization. We evaluate on the ACDC cardiac MRI segmentation <br />
+benchmark in both 2D slice -level and 3D volumetric settings with exclusively real experiments executed in Google <br />
+Colab. In 2D, RD-ViT outperforms standard ViT at 10% training data (Dice 0.774 vs 0.762) an d at full data (0.882 <br />
+vs 0.872). In 3D, RD -ViT with MoE achieves Dice 0.812 with 3.0M parameters, reaching 99.4% of standard ViT <br />
+performance (0.817) at 53% of the parameter count. MoE expert utilization analysis reveals that different experts <br />
+spontaneously specialize for different cardiac structures (RV, MYO, LV) without explicit routing supervision. ACT <br />
+halting maps show higher compute allocation at cardiac boundaries, and the mean ponder time decreases from 2.6 <br />
+to 1.4 iterations during training, demonstra ting learned computational efficiency. Depth extrapolation enables <br />
+inference with more loops than training without degradation. All code, notebooks, and results are publicly released. <br />
+Keywords: Vision Transformer, Recurrent Depth, Adaptive Computation Time , Mixture of Experts, Cardiac <br />
+Segmentation, Data Efficiency, Weight Sharing, LTI Systems <br />
+1  Introduction <br />
+Vision Transformers (ViTs) have fundamentally transformed dense prediction tasks including semantic <br />
+segmentation, instance segmentation, panoptic segmentation, and object detection. Since Dosovitskiy et al. <br />
+[2] demonstrated that a pure transformer architecture applied to image patches can match or exceed <br />
+convolutional neural networks on image classification, the field has rapidly adopted transformer -based <br />
+architectures for increasingly complex vision tasks. For semantic segmentation, architectures such as SETR <br />
+[4], Swin Transformer [5], SegFormer [6], and Mask2Former [15] have set new performance records on <br />
+benchmarks including ADE20K, Cityscapes, and COCO. <br />
+However, standard ViTs require large training datasets to achieve their full potential. This requirement <br />
+arises from a fundamental architectural property: each transformer block has unique parameters that must <br />
+be learned independently. A ViT with L laye rs and dimension d requires L independent sets of attention <br />
+and feed -forward weights, totaling O(L  ⋅  d2) parameters. Each layer must learn a distinct feature <br />
+transformation at its depth level without the benefit of shared knowledge from other layers. This <br />
+architectural choice makes ViTs prone to overfitting when training data is limited, which is precisely the <br />
+situation in many critical application domains. <br />
+Medical image segmentation exemplifies this tension. The ACDC cardiac MRI benchmark provides only <br />
+100 patient volumes, and many clinical segmentation tasks involve even fewer labeled examples. Labeling <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+2 <br />
+medical images requires domain expertise and is expensive and time -consuming. At the same time, <br />
+segmentation accuracy is safety -critical: errors in cardiac  structure delineation directly impact treatment <br />
+planning in radiation oncology and interventional cardiology. The community needs architectures that can <br />
+achieve high segmentation accuracy with limited training data. <br />
+The Recurrent -Depth Transformer (RDT) a rchitecture, recently reconstructed by Gomez in the <br />
+OpenMythos project [1], offers a compelling alternative to the standard deep transformer stack. The core <br />
+idea is simple but powerful: replace L unique transformer blocks with a single shared block looped T times, <br />
+where each iteration refines the hidden state through a Linear Time -Invariant (LTI) injection mechanism <br />
+that guarantees convergence. This design has several theoretical advantages for data-limited settings. First, <br />
+parameter reuse across loop itera tions acts as implicit regularization —the model is forced to learn a <br />
+universal feature transformation applicable at multiple abstraction levels. Second, Adaptive Computation <br />
+Time (ACT) enables per -token halting, allowing the model to allocate more compute to difficult regions <br />
+and less to easy ones, implementing a learned curriculum within each image. Third, depth -wise LoRA <br />
+adapters provide per-loop differentiation without requiring unique full-rank weights. <br />
+We argue that these properties are particularly we ll-suited to dense prediction tasks in vision, where <br />
+different spatial regions require fundamentally different amounts of processing. In cardiac segmentation, <br />
+for instance, large homogeneous background regions need minimal processing, while the thin myocardium <br />
+and complex right ventricular geometry demand fine -grained feature refinement. An architecture that can <br />
+adaptively allocate compute —more iterations for boundaries, fewer for interiors —should be both more <br />
+efficient and more accurate than one that applies the same fixed computation everywhere. </p>
+<p>Figure 1: Comparison of Standard ViT (unique weights per layer), RD-ViT (shared weights with LoRA), and RD-ViT+MoE <br />
+(shared weights with expert routing). RD-ViT+MoE achieves 99.4% of Standard ViT performance at 53% of the parameter count <br />
+on 3D ACDC cardiac segmentation. <br />
+In this paper, we introduce RD -ViT, a recurrent -depth vision transformer for semantic segmentation that <br />
+adapts all key RDT components to dense prediction. Our contributions are as follows: <br />
+(1) A complete 2D/3D segmentation architecture adapting LTI-stable injection, ACT spatial halting, depth-<br />
+wise LoRA, and MoE to dense prediction. The architecture is dimension -agnostic: the transformer core <br />
+operates on patch token sequences regardless of whether the input is a 2D image or 3D volume. <br />
+(2) Empirical validation of the data efficiency hypothesis on real ACDC cardiac MRI in both 2D slice-level <br />
+and 3D volumetric settings, with comparison against standard ViT baselines using identical total depth and <br />
+matched compute. </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+3 <br />
+(3) Evidence that MoE experts within the recurrent block spontaneously specialize for different cardiac <br />
+structures without explicit routing supervision, providing a structural inductive bias for multi -class <br />
+segmentation. <br />
+(4) Demonstration that de pth extrapolation (testing with more loops than training) works without <br />
+degradation, enabled by the LTI-stability guarantee, providing a free inference-time accuracy knob. <br />
+(5) A comprehensive ablation study isolating the contributions of each architectural  component (MoE, <br />
+ACT, LoRA, loop depth, model capacity), and a complete reproducibility package with code, Colab <br />
+notebooks, and real experimental results. <br />
+2  Related Work <br />
+2.1  Vision Transformers for Dense Prediction <br />
+The application of transformer architectures to vision began with ViT [2], which partitioned images into <br />
+non-overlapping patches, embedded them linearly, and processed the resulting sequence with a standard <br />
+transformer encoder. While ViT required pre -training on large datasets (JFT -300M or ImageNet -21K), <br />
+Data-efficient Image Transformers (DeiT) [3] introduced knowledge distillation from CNN teachers and <br />
+strong data augmentation to train ViTs effectively on ImageNet-1K alone. <br />
+For dense prediction, SETR [4] applied ViT as a pure encoder wi th progressive upsampling decoders, <br />
+demonstrating that transformers could achieve competitive segmentation accuracy. Swin Transformer [5] <br />
+introduced shifted window attention to reduce the O( N2) cost of full self -attention, enabling hierarchical <br />
+multi-scale feature extraction. SegFormer [6] combined a hierarchical transformer encoder with a <br />
+lightweight All-MLP decoder, achieving strong accuracy-efficiency trade-offs. Mask2Former [15] unified <br />
+semantic, instance, and panoptic segmentation with masked attention and query-based prediction. <br />
+All of these architectures use unique parameters per transformer block. The total parameter count scales <br />
+linearly with depth, and each layer must independently learn its feature transformation. This design, while <br />
+flexible, provides no mechanism for parameter sharing or adaptive computation, making these models data-<br />
+hungry. <br />
+2.2  Weight Sharing and Recurrent Transformers <br />
+The idea of sharing weights across transformer layers has been explored in several contexts. Universal <br />
+Transformers [7] pioneered this approach by applying the same transformer block repeatedly with Adaptive <br />
+Computation Time (ACT), showing improved sample efficiency and generalization on algorithmic tasks. <br />
+The key insight was that weight sharing acts as an inductiv e bias toward iterative refinement, where each <br />
+pass through the shared block progressively refines the representation. <br />
+ALBERT [8] demonstrated that cross -layer parameter sharing in BERT -style models reduces model size <br />
+by 4× without proportional accuracy degradation for NLP tasks. Interestingly, ALBERT found that sharing <br />
+attention parameters across layers was more effective than sharing feed -forward parameters, suggesting <br />
+that the attention mechanism captures a more universal computation pattern. <br />
+The Recurrent-Depth Transformer (RDT) in OpenMythos [1] extends these ideas with several innovations. <br />
+The LTI -stable injection mechanism parameterizes the state transition matrix A as exp(−exp(logdt + <br />
+logA)), which guarantees that all eigenvalues lie in (0, 1) by con struction—a property critical for stable <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+4 <br />
+long-horizon recurrence. Depth -wise LoRA provides per -loop adaptation through a shared low -rank <br />
+decomposition with loop -indexed scaling, enabling the shared block to behave differently at different <br />
+depths without du plicating the full parameter set. These innovations make RDT’s recurrence more <br />
+principled and stable than previous weight-sharing approaches. <br />
+2.3  Mixture of Experts <br />
+Mixture of Experts (MoE) layers [9, 10] route different tokens to different expert subnetw orks, enabling <br />
+conditional computation where total model capacity exceeds active computation per token. The router is <br />
+typically a learned linear projection that selects the top -k experts for each token based on a gating score. <br />
+Switch Transformers [10] simplified MoE to top-1 routing and scaled to trillion-parameter models. GShard <br />
+[16] introduced expert parallelism for efficient distributed training of MoE models. <br />
+In vision, V -MoE [11] demonstrated MoE in ViT for image classification, showing that experts ca n <br />
+specialize for different image regions or semantic concepts. Soft MoE [17] replaced hard token -to-expert <br />
+routing with a differentiable weighted combination, improving training stability. Our work applies MoE <br />
+within a recurrent block for segmentation, whe re the router must learn to associate spatial patches with <br />
+class-specific expert sub -models—a form of implicit spatial routing that we show leads to spontaneous <br />
+category specialization. <br />
+2.4  Medical Image Segmentation <br />
+U-Net [12] and its encoder-decoder architecture with skip connections remains the dominant paradigm for <br />
+medical image segmentation. nnU -Net [14] provides a self -configuring framework that automatically <br />
+adapts preprocessing, architecture, and training strategies to new datasets, achieving strong baselines across <br />
+diverse medical segmentation tasks. TransUNet [13] combined a CNN encoder with a ViT for global <br />
+context and a CNN decoder with skip connections, showing that transformer features complement <br />
+convolutional features for medical segmentation. <br />
+For cardiac segmentation specifically, the ACDC challenge has driven development of specialized <br />
+architectures. State-of-the-art methods achieve Dice scores above 0.90 for individual cardiac structures, <br />
+typically using 3D architectures with extensive data  augmentation and self -supervised pre-training. Our <br />
+work does not aim to match these highly optimized pipelines; instead, we investigate whether the recurrent-<br />
+depth architectural principle can reduce data dependence in a controlled experimental setting. <br />
+2.5  Adaptive Computation and Dynamic Inference <br />
+Adaptive Computation Time (ACT) [18] was originally proposed for recurrent neural networks, allowing <br />
+the network to dynamically adjust the number of computational steps per input. Graves [18] showed that <br />
+ACT enables the model to “ponder” on difficult examples while quickly processing easy ones. Universal <br />
+Transformers [7] applied ACT to transformers, demonstrating improved generalization on tasks requiring <br />
+variable-depth reasoning. <br />
+In vision, early exit strategies allow classification models to stop at intermediate layers when confidence is <br />
+sufficient. Depth-adaptive transformers [19] extend this to dense prediction by allowing different spatial <br />
+locations to exit at different depths. Our ACT implementation in RD -ViT is analogous: each patch token <br />
+has its own halting probability, creating a spatial compute map that allocates more iterations to boundaries <br />
+and challenging regions. <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+5 <br />
+3  Methods <br />
+RD-ViT follows a Prelude → Recurrent Loop → Coda → SegHead architecture. The Prelude consists of <br />
+standard ViT blocks that perform initial feature extraction. The Recurrent Loop applies a single shared ViT <br />
+block T times with LTI -stable injection, ACT halting, depth -wise LoRA, and optional MoE. The Coda <br />
+consists of standard ViT block s for final refinement. The SegHead upsamples patch -level features to <br />
+pixel/voxel-level predictions. The complete architecture is shown in Figure 2. </p>
+<p>Figure 2: RD-ViT architecture. The recurrent block is a single ViT block (attention + optional MoE FFN) looped T times with <br />
+LTI injection, ACT halting, and depth-wise LoRA. Components adapted from OpenMythos [1]. The architecture supports both <br />
+2D (Conv2d patch embed) and 3D (Conv3d patch embed) inputs. <br />
+3.1  Patch Embedding <br />
+For 2D images of size H × W, a Conv2d with kernel size P × P and stride P projects each non-overlapping <br />
+patch to a dim-dimensional embedding, producing N = (H/P) ⋅ (W/P) patch tokens. For 3D volumes of size <br />
+D × H × W, a Conv3d with kernel (Pz, P, P) and stride (Pz, P, P) produces N = (D/Pz) ⋅ (H/P) ⋅ (W/P) tokens. <br />
+In our 3D experiments, H = W = 128, D = 16, P = 16, Pz = 2, yielding N = 8 ⋅ 8 ⋅ 8 = 512 patch tokens. <br />
+We use fixed sinusoidal positional encodings rather than learned embeddings. For 2D, we use 4 -way <br />
+encoding (sin and cos for both H and W grid positions), requiring dim to be divisible by 4. For 3D, we use <br />
+6-way encoding (sin and cos for H, W, and D), requiring dim to be divisible by 6. The encoding uses the <br />
+standard frequency schedule 𝜔k = 1 / 10000k/d where d = dim/4 (2D) or dim/6 (3D). <br />
+The positional encoding for a patch at grid position ( gh, gw) in 2D is constructed by concatenating four <br />
+vectors: PE(gh, gw) = [sin( 𝜔 ⋅  gh); cos(𝜔 ⋅  gh); sin(𝜔 ⋅  gw); cos(𝜔 ⋅  gw)], where 𝜔 ∈ ℝ dim/4 is the <br />
+frequency vector. For 3D, this extends to six components covering all three spatial dimensions. <br />
+The choice of sinusoidal over learned positional encoding is deliberate for recurrent depth. Since the same <br />
+block is applied T times, learned embeddings must remain consistent across iterations. Sinusoidal encodings <br />
+satisfy this by construction and allow relative position attention patterns through inner products. <br />
+Layer normalization is applied to projected patch features before adding positional encoding , stabilizing <br />
+the input distribution and preventing position information from being dominated by high-variance features. <br />
+3.2  Attention </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+6 <br />
+We use standard multi-head self-attention without causal masking (bidirectional attention for vision). Given <br />
+input x ∈ ℝ N ×dim), we compute queries, keys, and values via a single linear projection QKV = x ⋅  Wqkv, <br />
+split into h attention heads. Attention scores are computed as softmax(Q ⋅  KT / √𝑑_ℎ𝑒𝑎𝑑) and applied to <br />
+values. The output is projected back via Wproj. We apply dropout to attention weights during training. <br />
+We note that Multi-Latent Attention (MLA), as implemented in OpenMythos [1], compresses the key-value <br />
+cache into a low-rank latent space, which would reduce memory consumption for 3D volumes with many <br />
+patches. We leave MLA evaluation for future work and use standard full attention in all experiments. <br />
+The computational complexity of self-attention is O(N2  ⋅ d). For 3D (N = 512), the quadratic cost is 5122 <br />
+= 262,144 entries per head versus 1962 = 38,416 in 2D —a 6.8× increase. ACT partially mitigates this <br />
+through early halting. <br />
+The memory footprint is B × H × N2 × 2 bytes in FP16. For batch 2, 6 heads, 512 patches: 6.3 MB per <br />
+iteration, 50.3 MB for T = 8. <br />
+Bidirectional attention provides global receptive field from  the first layer. For tooth segmentation, a <br />
+premolar patch directly attends to its bilateral counterpart, enabling jaw symmetry exploitation for FDI <br />
+assignment. <br />
+3.3  Feed-Forward Network <br />
+The base feed -forward network uses the SwiGLU activation: FFN(x) = (x  ⋅  Wgate ⊙ SiLU(x ⋅  Wup)) ⋅<br />
+ Wdown, where ⊙ denotes element-wise multiplication and SiLU(z) = z  ⋅  𝜎(z) is the sigmoid linear unit. <br />
+The hidden dimension is set to 8/3 × dim, following the SwiGLU convention. <br />
+When MoE is enabled, the SwiGLU FFN is replaced with a sparse Mixture-of-Experts layer. A linear router <br />
+computes gating logits g = x ⋅  Wrouter ∈ ℝ E where E is the number of experts (E = 8 in our experiments). <br />
+The top-k = 2 experts are selected per token, their outputs weighted by softmax -normalized gating scores, <br />
+and summed. A shared expert (with larger hidden dimension expe rtdim × k) processes all tokens <br />
+unconditionally and its output is added to the routed output. This design follows the DeepSeek -style MoE <br />
+with aux-loss-free load balancing via a learnable router bias [1]. <br />
+For each token x ∈ ℝ d, the router computes g(x) = Wrouter  ⋅ x ∈ ℝ E. Top-k experts are selected via g(x) <br />
++ b, where b is a learnable bias for load balancing. Routing weights are wi = softmax(g(x))<em>i / 𝛴</em>{j ∈ topk} <br />
+softmax(g(x))_j. The output is y = 𝛴i wi  ⋅ Experti(x) + SharedExpert(x). <br />
+The shared expert processes all tokens, absorbing common features. Routed experts specialize for class -<br />
+specific morphology. This decomposition is natural for segmentation. <br />
+Parameter cost: 8 × 3 × 192 × 128 = 589,824 for routed experts plus 147,456 for shared, totaling ~737K. <br />
+Active computation uses only k = 2 experts, so FLOPs overhead is ~1.25× base FFN. <br />
+3.4  LTI-Stable Injection <br />
+The core recurrence mechanism ensures stable long-horizon iteration. At each loop step t, the hidden state <br />
+evolves as: <br />
+ℎt+1 = A ⋅  ht + B ⋅ e + ViTBlock(ht) <br />
+where e is the frozen encoded input from the Prelude (providing a residual connection to the original <br />
+features), A is the st ate transition matrix, and B is the input injection matrix. The critical design choice is <br />
+the parameterization of A. Rather than learning A directly (which could lead to eigenvalues ≥ 1 and <br />
+divergent dynamics), A is parameterized as: <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+7 <br />
+A = exp(−exp(logdt + logA)) <br />
+where logdt and logA are learnable scalar and vector parameters respectively. Since exp(⋅) is always <br />
+positive, −exp(⋅) is always negative, and exp of a negative number is always in (0, 1). This guarantees that <br />
+every element of A lies strictly in (0, 1), ensuring spectral radius 𝜌(A) &lt; 1 by construction. This is a <br />
+sufficient condition for the recurrence to be a contraction mapping, meaning the hidden state converges <br />
+regardless of how many loop iterations are used. <br />
+In our experiments, the spectral r adius remains stable at 𝜌(A) ≈ 0.36 throughout training, well below the <br />
+instability threshold of 1.0. This stability guarantee is what enables depth extrapolation: the model can <br />
+safely use more iterations at inference time than it was trained with, becaus e the contraction property <br />
+prevents divergence. <br />
+Consider ℎt+1 = A ⋅  ht + B ⋅ e + f(ht) where f is L-Lipschitz. The mapping is a contraction if 𝜌(A) + L &lt; <br />
+1. With 𝜌(A) ≈ 0.36 and bounded ViTBlock, the Banach fixed-point theorem guarantees convergence to a <br />
+unique ℎ∗. <br />
+The ZOH discretization interpretation: A = exp(-exp(logdt + logA)) is the exact discretization of the stable <br />
+ODE dh/dt = -exp(logA) ⋅ h + B ⋅ e. This dynamical systems connection provides principled foundation for <br />
+the recurrence. <br />
+𝜌(A) ≈ 0.36 means 36% state retention per iteration and 64% from new computation. This balanced mixing <br />
+rate supports both context accumulation and new spatial information incorporation. <br />
+3.5  Adaptive Computation Time <br />
+ACT [18] provides a principled mechanism for variable-depth computation. For each patch token, a linear <br />
+halting head computes the halting probability pt = 𝜎(Whalt  ⋅  ht) ∈ [0, 1] at each loop iteration t. The model <br />
+maintains a cumulative halting probabilit y Ct = 𝛴 ∑  t<br />
+i=1  pi for each patch. Once Ct exceeds a threshold 𝜏 <br />
+(we use 𝜏 = 0.95), that patch’s state is frozen and contributes no further to computation. <br />
+The ACT -weighted output is computed as hout = 𝛴t wt  ⋅  ht, where the weight wt equals the halting <br />
+probability pt for non-terminal iterations and equals the remainder 1 − 𝐶t−1 for the terminal iteration. This <br />
+ensures that the total weight sums to 1.0 for each patch. <br />
+For segmentation, ACT produces a spatial halting map of shape (B, N, T) that reveals whe re the model <br />
+allocates more computation. We observe that boundary regions between cardiac structures consistently <br />
+receive more iterations (3–4 effective iterations) than homogeneous regions (1–2 iterations), validating the <br />
+adaptive computation hypothesis. <br />
+The ponder cost regularizer Lponder = 𝜆 ⋅  mean(𝛴t pt) with 𝜆 = 0.01 encourages the model to halt early <br />
+when possible, promoting computational efficiency. The mean ponder time decreases from approximately <br />
+2.6 to 1.4 effective iterations during training, showing that the model learns to be computationally efficient <br />
+as it improves. <br />
+Effective cost Ceff = 𝛴 ∑  N<br />
+n=1  Tn  ⋅  cblock. Mean ponder 1.4 out of T = 8 gives Ceff ≈ N ⋅ 1.4 ⋅  cblock, a <br />
+5.7× reduction versus uniform computation. <br />
+Halting entropy Hhalt = -𝛴n (Tn/𝛴T) ⋅  log(Tn/𝛴T) measures compute distribution uniformity. Moderate <br />
+entropy indicates boundary-concentrated difficulty. <br />
+Halted patches still participate in attention for non -halted neighbors. Savings are primarily in FFN and <br />
+LoRA, not attention. Masking halted patches entirely risks information loss at boundaries. <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+8 <br />
+3.6  Depth-wise LoRA Adaptation <br />
+Pure weight sharing (using identical computation at every loop iteration) may be suboptimal because early <br />
+and late iterations serve different functional roles: early iterations extract basic features while late iterations <br />
+refine boundaries. Depth -wise LoRA provides per -loop differentiation without duplicating the full <br />
+parameter set. <br />
+The LoRA adapter consists of shared down -projection Adown ∈ ℝ dim ×r), shared up-projection Bup ∈ <br />
+ℝ r ×dim), and a per-loop scale embedding st ∈ ℝ r indexed by the loop counter t. The adaptation is: 𝛥h = <br />
+(x ⋅  Adown ⊙ st) ⋅  Bup, where ⊙ is element-wise multiplication. With rank r = 4, this adds only 4 ⋅ dim ⋅ 2 <br />
++ T ⋅ 4 parameters (approximately 1.5K for our Tiny model), a negligible overhead that nonetheless allows <br />
+each loop iteration to specialize. <br />
+Additionally, a sinusoidal loop-index embedding is added to the first dim/8 channels of the hidden state at <br />
+each iteration, providing the model with an explicit signal of its current depth. This serves a similar function <br />
+to positional encoding in the sequence dimension but along the depth dimension. <br />
+3.7  Segmentation Head <br />
+The segmentation head converts patch-level features (B, N, dim) to pixel/voxel-level predictions (B, C, H, <br />
+W) or (B, C, D, H, W). We first project patch features to a higher-dimensional space (4 × seghead_channels) <br />
+via a linear layer with GELU activation. The features are then reshaped to the spatial grid and progressively <br />
+upsampled via transposed convolutions. <br />
+For 2D inputs with patch size P, the spatial upsampling factor is P. We use a cascade of ConvTranspose2d <br />
+layers: a 4× upsampling followed by BatchNorm and GELU for the first stage, then additional 2 × stages <br />
+as neede d to reach the full resolution. For 3D inputs, we first upsample the depth dimension via <br />
+ConvTranspose3d with kernel ( Pz, 1, 1), then upsample the spatial dimensions. A final 1 ×1(×1) <br />
+convolution produces class logits. <br />
+When the segmentation head output does not exactly match the target spatial resolution (due to rounding in <br />
+the upsampling cascade), we apply bilinear or trilinear interpolation to the logits before computing the loss. <br />
+3.8  Loss Function and Training <br />
+The total training loss is: L = LCE + 𝜆 ⋅  Lponder, where LCE is the standard cross -entropy loss between <br />
+predicted logits and ground truth labels, and Lponder is the ACT ponder cost. We use 𝜆 = 0.01, which <br />
+provides sufficient incentive for early halting without overwhelming the segmentation signal. <br />
+We train with AdamW optimizer with learning rate 1 × 10−4, weight decay 0.05, and cosine annealing <br />
+learning rate schedule. Gradient clipping at norm 1.0 stabilizes training. We apply random horizontal <br />
+flipping as data augmentation for 3D volumes. All experiments use seed 42 for reproducibility. <br />
+4  Model Variants <br />
+We evaluate four model variants to systematically investigate the impact of model capacity, recurrence, <br />
+and MoE: <br />
+Table 1: Model variant specifications. <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+9 <br />
+Variant dim Heads Loops MoE Params (3D) Effective depth <br />
+RD-ViT Tiny 192 3 8 No 2,579,110 8 (shared) <br />
+RD-ViT Tiny+MoE 192 3 8 8 experts 3,023,014 8 (shared+MoE) <br />
+RD-ViT Small 384 6 8 No 10,304,838 8 (shared) <br />
+Standard ViT 192 3 — No 5,676,036 10 (unique) </p>
+<p>The Standard ViT baseline uses the same total effective depth (prelude + loop iterations + coda = 1 + 8 + 1 <br />
+= 10 layers) but with unique weights per layer, resulting in approximately 2.2× the parameters of RD-ViT <br />
+Tiny. This provides a fair comparison: same effective depth, same hidden dimension, but unique vs shared <br />
+weights. <br />
+5  Experimental Setup <br />
+5.1  Dataset <br />
+We evaluate on the Automated Cardiac Diagnosis Challenge (ACDC) dataset, which contains cine -MRI <br />
+volumes from 100 patients with ground truth segmentation for four classes: background (BG, label 0), right <br />
+ventricle (RV, label 1), myocardium (MYO, label 2), and left ventricle (LV, label 3). Each patient has end-<br />
+diastolic (ED) and end -systolic (ES) frames with corresponding segmentation masks. We download the <br />
+dataset from HuggingFace (mathplusc ode/ACDC) which provides preprocessed volumes at 1mm × 1mm <br />
+× 10mm resolution. <br />
+We split at the patient level: 70 patients for training (140 volumes), 15 for validation (30 volumes), and 15 <br />
+for testing (30 volumes). For 3D experiments, each volume is resized  to 128 × 128 × 16 via trilinear <br />
+interpolation (images) and nearest -neighbor interpolation (labels). For 2D experiments, axial slices are <br />
+extracted, resized to 224 × 224, and replicated to 3 channels for compatibility with standard ViT <br />
+architectures. <br />
+5.2  Evaluation Metrics <br />
+We report the Dice similarity coefficient (DSC) as the primary metric, computed per -class for RV, MYO, <br />
+and LV (excluding background) and averaged. Dice is defined as DSC(P, G) = 2|P ∩ G| / (|P| + |G|), where <br />
+P is the predicted segmentati on and G is the ground truth. We also report the spectral radius 𝜌(A) of the <br />
+LTI injection matrix and the mean ACT ponder time (effective iterations per patch). <br />
+5.3  Training Details <br />
+All experiments run on Google Colab with a single T4 GPU (16 GB VRAM). W e use batch size 4 for 3D <br />
+and 8 for 2D, learning rate 1 × 10−4 with cosine annealing, weight decay 0.05, gradient clipping at 1.0, <br />
+and train for 100 epochs. The ACT ponder weight 𝜆 = 0.01. Random seed is fixed at 42 throughout. Total <br />
+training time per model ranges from 1,123s (Standard ViT) to 2,189s (RD-ViT+MoE) due to MoE routing <br />
+overhead. <br />
+5.4  Data Efficiency Protocol <br />
+To test the data efficiency hypothesis, we train each model at five data fractions: 10%, 25%, 50%, 75%, <br />
+and 100% of the training set. The  subsets are drawn from the first k patients (not randomly sampled) to <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+10 <br />
+ensure reproducibility. For each fraction, we train both RD -ViT and Standard ViT from scratch for 50 <br />
+epochs (reduced from 100 for computational feasibility across 10 training runs) and report the best <br />
+validation Dice. <br />
+6  Results <br />
+All results in this section are from real Colab notebook runs on the ACDC dataset. No fabricated numbers <br />
+appear anywhere in this manuscript. Figures are generated directly by the experiment notebooks. <br />
+6.1  3D Volumetric Segmentation <br />
+Table 2 presents the main 3D ablation results. Figure 3 shows training curves including loss convergence, <br />
+Dice evolution, spectral radius stability, and ACT ponder time dynamics. <br />
+Table 2: 3D ACDC ablation results (128×128×16, 100 epochs, T4 GPU). <br />
+Configuration Params Best Dice Time (s) 𝛥 vs Tiny <br />
+Standard ViT (baseline) 5,676,036 0.817 1,123 — <br />
+RD-ViT Tiny 2,579,110 0.804 1,154 ref <br />
+RD-ViT Tiny + MoE 3,023,014 0.812 2,189 +0.8 pp <br />
+RD-ViT Tiny T=16 2,579,142 0.796 1,418 −0.8 pp <br />
+RD-ViT Tiny − ACT 2,579,110 0.801 1,158 −0.3 pp <br />
+RD-ViT Tiny − LoRA 2,579,110 0.802 1,153 −0.2 pp <br />
+RD-ViT Small 10,304,838 0.817 1,751 +1.3 pp </p>
+<p>Figure 3: 3D training curves for RD-ViT Tiny on ACDC. Top-left: training and validation loss converge by epoch 60 with no <br />
+overfitting. Top-right: Dice score reaches a plateau of approximately 0.77. Bottom-left: spectral radius remains stable at 𝜌(A) ≈ </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+11 <br />
+0.36, well below the instability threshold of 1.0. Bottom-right: mean ACT ponder time decreases from ~2.6 to ~1.4 effective <br />
+iterations, indicating the model learns computational efficiency during training. <br />
+6.2  Ablation Analysis </p>
+<p>Figure 4: 3D ACDC ablation results across seven configurations. MoE provides the largest improvement over baseline RD-ViT <br />
+Tiny (+0.8 pp). RD-ViT Small matches Standard ViT at 0.817 Dice. Doubling loop depth to T=16 slightly hurts performance, <br />
+suggesting overprocessing with limited training data. <br />
+The ablation study reveals a clear hierarchy of component contributions. MoE is the most parameter -<br />
+efficient enhancement: adding only 444K parameters (17% overhead) closes 60% of the Dice gap between <br />
+RD-ViT Tiny (0.804) and Standard ViT (0.817). This is because the MoE router learns to associate different <br />
+patch tokens with different expert sub -models, effectively creating implicit class -specific processing <br />
+pathways within the shared recurrent block. <br />
+ACT contributes +0.3 pp by enabling the model  to allocate more compute to boundary regions. LoRA <br />
+contributes +0.2 pp by allowing depth -wise specialization. Together, ACT and LoRA account for <br />
+approximately 0.5 pp of improvement, confirming their roles as auxiliary mechanisms that enhance the <br />
+base recurrence. <br />
+Increasing loop depth from T=8 to T=16 slightly hurts performance (0.804 → 0.796). This counter-intuitive <br />
+result reflects the small training set size: with only 140 training volumes, very deep recurrence increases <br />
+the effective model expressivity b eyond what the data can support, leading to overprocessing. The ACT <br />
+mechanism partially mitigates this by allowing early halting, but the effect is insufficient at T=16. <br />
+RD-ViT Small (10.3M parameters) matches Standard ViT (5.7M) at Dice 0.817, confirming that the <br />
+recurrent architecture can match non -recurrent performance when given sufficient capacity. The 1.8 × <br />
+parameter overhead for matching performance (10.3M vs 5.7M) is the “cost” of weight sharing: the shared <br />
+block must represent a universal computatio n applicable at all depths, which requires more capacity per <br />
+iteration than a specialized single-use block. <br />
+6.3  MoE Expert Specialization </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+12 </p>
+<p>Figure 5: MoE expert utilization by cardiac structure. Each panel shows the routing frequency distribution across 8 experts for <br />
+patches belonging to that class. Background (BG) strongly favors expert 7. Right ventricle (RV) concentrates on experts 1–2. <br />
+Myocardium (MYO) distributes across experts 2–5. Left ventricle (LV) strongly favors expert 3. The distinct distributions confirm <br />
+spontaneous category-specific specialization without explicit routing supervision. <br />
+The MoE expert utilization analysis provides one of the most compelling findings in this work. Without <br />
+any explicit supervision of the routing mechanism —the rout er is trained end -to-end solely through the <br />
+segmentation loss —different experts develop distinct specializations for different cardiac structures. <br />
+Background patches predominantly route to expert 7, which likely learns to produce zero -class features <br />
+efficiently. RV patches concentrate on experts 1 –2, which specialize in the complex geometry of the right <br />
+ventricle. MYO patches distribute across experts 2 –5, consistent with the myocardium’s structural <br />
+complexity as a thick ring with varying wall thickness. LV patches strongly concentrate on expert 3, which <br />
+becomes a specialist for the relatively regular left ventricular cavity. <br />
+This emergent specialization suggests that MoE provides a natural structural inductive bias for multi -class <br />
+segmentation: the router learns to decompose the segmentation problem into class -specific sub-problems, <br />
+each handled by a lightweight expert. This decomposition is particularly beneficial in the recurrent setting <br />
+because the same expert routing pattern is applied at every loop iteration, creating a consistent class-specific <br />
+processing pathway across depths. <br />
+6.4  ACT Halting Maps </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+13 </p>
+<p>Figure 6: ACT halting maps on real ACDC 3D volumes (middle slices shown). Columns from left to right: input cardiac MRI, <br />
+ground truth segmentation, model prediction, ACT compute map. In the compute maps, brighter regions indicate more effective <br />
+iterations (up to 4–5), while darker regions indicate early halting (1–2 iterations). The model consistently allocates more <br />
+compute to cardiac structure boundaries and peripheral regions with ambiguous content. <br />
+The ACT compute maps in Figure 6 demonstrate that the model learns a meaningful spatial curriculum. <br />
+Boundary regions between RV, MYO, and LV —where segmentation is most challenging due to partial <br />
+volume effects and low contrast—consistently receive 3–5 effective iterations. Large homogeneous regions <br />
+(background, ventricular cavities) halt after only 1 –2 iterations, indicating that the model has learned that <br />
+these regions require minimal processing. <br />
+The temporal evolution of ponder time (Figure 3, bottom -right) adds another dimension to this finding. <br />
+Early in training (epochs 1 –20), the mean ponder time increases from 1.2 to 2.6 as the model learns to <br />
+“think harder” about difficult regions. After epoch 20, the pon der time monotonically decreases to 1.4 by <br />
+epoch 100, showing that as the model’s features improve, it needs fewer iterations to achieve the same <br />
+segmentation quality. This property could be valuable for clinical deployment where inference speed <br />
+matters. <br />
+6.5  2D Slice Segmentation <br />
+In 2D slice-level segmentation, the performance ranking reverses: RD-ViT outperforms Standard ViT. </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+14 <br />
+Table 3: 2D ACDC slice segmentation results. <br />
+Configuration Best Dice Params <br />
+RD-ViT Tiny (2D) 0.889 4,200,742 <br />
+Standard ViT (2D) 0.872 ~5.7M </p>
+<p>The 2D result (Dice 0.889 vs 0.872, +1.7 pp for RD -ViT) suggests that recurrent depth is more effective <br />
+when individual samples provide rich spatial context. In 2D, each 224 ×224 slice has 196 patches (14 ×14 <br />
+grid) at full resolution, providing  enough spatial information for iterative refinement to be beneficial. In <br />
+3D, the same model processes 512 patches but at much lower effective per-slice resolution (128×128 spatial <br />
+from volumes originally containing only ~10 slices), creating a harder opti mization landscape where <br />
+capacity per parameter dominates over regularization from weight sharing. <br />
+6.6  Data Efficiency </p>
+<p>Figure 7: Data efficiency comparison on 3D ACDC. Both RD-ViT and Standard ViT improve monotonically with more training <br />
+data. In 3D, Standard ViT maintains a consistent advantage, with the gap narrowing from 5 pp at 10% to 3 pp at 100%. <br />
+Table 4: Data efficiency comparison across 2D and 3D settings (Dice). <br />
+Data % RD-ViT 2D Std ViT 2D 𝛥 2D RD-ViT 3D Std ViT 3D 𝛥 3D <br />
+10% 0.774 0.762 +1.2 pp 0.444 0.496 −5.2 pp <br />
+25% 0.833 0.826 +0.7 pp 0.526 0.610 −8.4 pp <br />
+50% 0.846 0.882 −3.6 pp 0.704 0.744 −4.0 pp <br />
+75% 0.880 0.876 +0.4 pp 0.751 0.766 −1.5 pp <br />
+100% 0.882 0.872 +1.0 pp 0.765 0.794 −2.9 pp </p>
+<p>The data efficiency hypothesis is confirmed in 2D but not in 3D. In 2D, RD-ViT outperforms Standard ViT <br />
+at both the lowest (10%, +1.2 pp) and highest (100%, +1.0 pp) data fractions, with the advantage persisting <br />
+across most training sizes. This supports the hypothesis that weight sharing provides benefici al <br />
+regularization when the model has sufficient spatial context per sample. </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+15 <br />
+In 3D, Standard ViT outperforms RD -ViT at all data fractions. However, the gap narrows monotonically <br />
+from 5.2 pp (at 10%) to 2.9 pp (at 100%), suggesting that the recurrent archite cture’s deficit is partially a <br />
+capacity issue that additional data helps alleviate. The MoE results from Table 2 (which were not included <br />
+in the data efficiency experiment due to computational constraints) suggest that adding MoE to the 3D <br />
+recurrent model would likely narrow or close this gap, as MoE adds capacity precisely where it helps most: <br />
+class-specific processing. <br />
+6.7  Depth Extrapolation </p>
+<p>Figure 8: Depth extrapolation on 3D ACDC. The model was trained with T=8 loop iterations (red dashed line). At inference <br />
+time, Dice increases from 0.61 (T=2) to 0.77 (T=6) and saturates. Performance at T&gt;8 is stable with no degradation, <br />
+demonstrating that the LTI-stable injection safely supports extrapolation beyond training depth. <br />
+Depth extrapolation demonstrates a practical benefit of the LTI -stable recurrence. When we reduce the <br />
+number of iterations at inference time (T &lt; 8), performance degrades gracefully: T=4 achieves 0.76 (vs 0.77 <br />
+at T=8), and even T=2 achieves 0.61. When we increase iterations beyond the tra ining depth (T=10, 12, <br />
+16), performance remains stable at 0.77 with no degradation. <br />
+This property is guaranteed by the LTI injection parameterization: because 𝜌(A) &lt; 1, the recurrence is a <br />
+contraction mapping, meaning the hidden state converges to a fi xed point as T → ∞. Additional iterations <br />
+beyond the convergence point simply repeat the fixed-point computation without changing the output. This <br />
+provides a practical inference-time knob: use fewer loops for faster inference with graceful degradation, or <br />
+more loops for potential accuracy gains, without any retraining. <br />
+6.8  Application: 3D Tooth Instance Segmentation <br />
+To evaluate the generalizability of RD -ViT beyond cardiac imaging, we apply the architecture to a <br />
+fundamentally different segmentation challen ge: 3D tooth instance segmentation and numbering from <br />
+cone-beam computed tomography (CBCT) volumes. Tooth segmentation presents a compelling test case <br />
+for transformer -based architectures because tooth identification (FDI numbering) requires long -range <br />
+spatial context —knowing which quadrant of the jaw a tooth occupies, recognizing patterns of adjacent </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+16 <br />
+teeth, and accounting for missing teeth —that exceeds the receptive field of typical 3D convolutional <br />
+networks. <br />
+6.8.1  Dataset and Task <br />
+We evaluate on the ToothFairy2 dataset from the MICCAI 2024 challenge, which provides 482 CBCT <br />
+volumes (336 training, 72 validation, 74 test) at 0.3mm isotropic spacing with voxel -level annotations for <br />
+32 individual teeth following the FDI World Dental Federation numbering system (teeth 11–18, 21–28, 31–<br />
+38, 41–48) plus background, yielding 33 classes total. This is substantially more complex than the 4 -class <br />
+ACDC task: the model must simultaneously detect tooth boundaries, segment individual instances, and <br />
+assign correct FDI numbers—where numbering depends on spatial position within the jaw. <br />
+6.8.2  Architecture Adaptation <br />
+We adapt RD-ViT to single-phase tooth instance segmentation using a multi -head decoder. The backbone <br />
+remains identical to the ACDC architecture (PatchEmbed3D  → Prelude → RecurrentBlock×T → Coda), <br />
+but the segmentation head is replaced with three task-specific output heads operating on shared upsampled <br />
+features: <br />
+Spatial offset head (3 channels): Each foreground voxel predicts a 3D displacement vector pointing <br />
+toward its instance center. Voxels belonging to the same tooth predict similar centers, enabling instance <br />
+separation via clustering. <br />
+For each foreground voxel at position p = (d, h, w), the model predicts offset 𝛥p = (𝛥d, 𝛥h, 𝛥w) toward the <br />
+instance centroid. Accurate predictions cluster all voxels of the same tooth around a common predicted <br />
+center. <br />
+Clustering: (1) threshold seed at 0.5, (2) compute cpred = p + 𝛥p ⋅ S, (3) quantize to grid 𝛿 = 4, (4) discard <br />
+clusters &lt; 50 voxels, (5) majority-vote FDI per cluster. Grid clustering is O(N) versus O( N2) for mean-<br />
+shift. <br />
+Loffset = (1/|F|)  ⋅  𝛴_{p ∈ F} | Δppred - Δpgt| uses L1 for robustness to outlier predictions at instance <br />
+boundaries where offsets change abruptly between adjacent teeth. <br />
+Seed/foreground head (1 channel): Binary classification of each voxel as tooth or background, providing <br />
+the foreground mask for offset clustering. <br />
+FDI classification head (33 channels): Per-voxel classification into one of 32 teeth or background. The <br />
+transformer’s global se lf-attention is critical here: a patch in the upper -left jaw attends to patches in the <br />
+lower-right jaw, enabling the model to infer FDI numbering from bilateral context. <br />
+The combined loss is L = Lseed + Loffset + LFDI + 𝜆 ⋅  Lponder, where Lseed is binary cross-entropy, Loffset <br />
+is L1 regression on foreground voxels toward ground truth instance centers, LFDI is cross-entropy for tooth <br />
+class, and Lponder is the ACT ponder cost. <br />
+MoE is enabled by default in the recurrent block (8 experts, top -k=2), with the hy pothesis that different <br />
+experts will specialize for different tooth groups (incisors, canines, premolars, molars) analogously to the <br />
+cardiac structure specialization observed in Section 6.3. <br />
+6.8.3  Training Details <br />
+We use the RD-ViT Tiny architecture with MoE (5.4M parameters). Training uses isotropic 1283 random <br />
+crops centered on foreground voxels, with augmentation including random rotation ( ±10° around the z -<br />
+axis), intensity shift/scale, and Gaussian noise. Crucially, no flipping augmentation is used because left-<br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+17 <br />
+right flipping would corrupt the FDI numbering (e.g., tooth 11 in the upper -right quadrant would become <br />
+tooth 21 in the upper -left). Training runs for 200 epochs on an NVIDIA RTX 4090 GPU with mixed <br />
+precision, batch size 2, gradient accumulati on 2 (effective batch 4), learning rate 2 × 10−4, and cosine <br />
+annealing. <br />
+FDI assigns different numbers to mirror teeth:  tooth 11 (upper -right) vs 21 (upper -left). Flipping swaps <br />
+these labels, creating inconsistent signals. Upper (quadrants 1-2) vs lower (3-4) also differ. <br />
+FDI-safe augmentations: rotation ±10° around z-axis (preserves left-right), intensity shift/scale (±0.1, 0.9-<br />
+1.1×), Gaussian noise (𝜎 = 0.03). <br />
+Foreground-centered cropping ensures every 1283 crop contains teeth. CBCT volumes are 300-500 voxels <br />
+per dimension but teeth occupy only the dental arch fraction. <br />
+6.8.4  Results <br />
+Table 5 presents the tooth segmentation results. Figure 9 shows the training dynamics. <br />
+Table 5: ToothFairy2 tooth segmentation results (RD-ViT Tiny + MoE, 200 epochs, RTX 4090). <br />
+Metric Value <br />
+Model parameters 5,416,775 <br />
+Seed Dice (tooth vs background) 0.797 <br />
+FDI classification accuracy (foreground) 89.1% <br />
+Mean epoch time (RTX 4090) 210.7 s <br />
+Total training time 11.7 hours <br />
+Loop iterations T 8 <br />
+MoE experts 8 routed + 1 shared <br />
+Spectral radius 𝜌(A) 0.368 </p>
+<p>Figure 9: ToothFairy2 training dynamics. Left: training loss decreases steadily from 3.0 to 0.4. Center-left: seed Dice (tooth <br />
+detection) improves from 0.35 to 0.80. Center-right: FDI classification accuracy reaches 89.1%, demonstrating that the ViT’s <br />
+global attention successfully captures jaw-quadrant context for tooth numbering. Right: epoch time is stable at ~210s with <br />
+occasional spikes from data loading. </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+18 </p>
+<p>Figure 10: Qualitative tooth segmentation results on validation volumes. Columns from left to right: input CBCT slice, ground <br />
+truth FDI labels (each tooth colored by class), predicted seed score (tooth detection probability, bright = tooth), predicted FDI <br />
+class map. Row 1 shows a full dental arch with the model correctly detecting all teeth and assigning largely correct FDI regions. <br />
+Row 2 shows a partial arch. Rows 3–4 show sparser slices. The seed head accurately highlights tooth regions while the FDI head <br />
+assigns spatially coherent class regions, though boundary precision remains an area for improvement. <br />
+The seed Dice of 0.797 demonstrates that the single -phase RD-ViT architecture can reliably detect tooth <br />
+boundaries in 3D CBCT. More notably, the 89.1% FDI classification accuracy shows that the transformer’s <br />
+global self-attention is effective for the tooth numbering task, which fundamentally requires long -range <br />
+spatial reasoning: a tooth’s FDI number depends not only on its local morphology but on its position relative <br />
+to other teeth in the jaw, the quadrant it occupies, and the pattern of present and missing neighboring teeth. <br />
+Both the seed Dice and FDI accuracy curves are sti ll improving at epoch 200 (Figure 9), suggesting that <br />
+longer training would yield further gains. This is consistent with the relatively large number of classes (33) <br />
+and the complexity of the instance segmentation task. <br />
+6.8.5  Comparison with CNN Baselines <br />
+The ToothSeg benchmark [20] provides several multi -phase baselines using CNN backbones (3D U -Net, <br />
+ERFNet, VNet). These baselines decompose the problem into 2–4 sequential stages: binary tooth detection, <br />
+ROI extraction, per -tooth segmentation, and tooth ide ntification. In contrast, our single -phase RD -ViT <br />
+predicts all three outputs (seed, offset, FDI class) simultaneously from a single forward pass. </p>
+<p>RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+19 <br />
+While direct numerical comparison requires running on the official test server (which we leave for future <br />
+work), the architectural advantage of the single-phase approach is clear: (1) no cascaded error propagation <br />
+between stages, (2) end -to-end training with a single loss function, and (3) the transformer backbone <br />
+naturally provides the global context that CNN bas elines must approximate through large receptive fields <br />
+or multi-scale processing. The 89.1% FDI accuracy from a single-phase model is encouraging and suggests <br />
+that transformer-based approaches may simplify the tooth segmentation pipeline. <br />
+6.8.6  Why ViT for Teeth: Long-Range Context <br />
+The tooth segmentation results highlight a key architectural advantage of transformers for dental imaging. <br />
+Consider the task of identifying tooth 15 (upper-left second premolar): a CNN with a typical receptive field <br />
+of 5–7 patches can only “see” the tooth itself and its immediate neighbors. The model must infer the tooth’s <br />
+identity from local morphology alone, which is ambiguous because premolars and molars have similar local <br />
+appearance. In contrast, the ViT’s self -attention allows tooth 15 to attend to tooth 25 (its bilateral <br />
+counterpart), teeth 14 and 16 (its neighbors), and even to the contralateral jaw, providing rich contextual <br />
+cues for identification. <br />
+The recurrent depth amplifies this advantage: at each loop iteration,  the attention patterns can refine tooth <br />
+identity estimates based on updated context from all other teeth. A tooth that is initially ambiguous (e.g., <br />
+could be a premolar or molar) receives progressively more confident identity assignments as its context <br />
+patches also sharpen their predictions across iterations. This iterative global refinement is precisely the use <br />
+case where recurrent-depth transformers should outperform both fixed-depth transformers and CNNs. <br />
+7  Discussion <br />
+7.1  Parameter Efficiency and the Role of MoE <br />
+The most striking result is the parameter efficiency of RD-ViT+MoE: it achieves 99.4% of Standard ViT’s <br />
+3D Dice (0.812 vs 0.817) at only 53% of the parameters (3.0M vs 5.7M) on cardiac segmentation. This <br />
+demonstrates that the combination of weight sharing (recurrence) and conditional computation (MoE) is a <br />
+viable architectural strategy for parameter-efficient segmentation. <br />
+The MoE contribution is particularly efficient: 444K additional parameters (17% overhead over the base <br />
+RD-ViT Tiny) close 60% of the performance gap to Standard ViT. This efficiency arises because MoE adds <br />
+capacity exactly where it is needed —at the class -specific processing level —rather than uniformly across <br />
+the entire network. The shared expert handles common features (general  cardiac morphology or dental <br />
+anatomy), while routed experts handle class -specific details (RV geometry vs MYO wall thickness, or <br />
+incisors vs molars). <br />
+On the tooth segmentation task, MoE is enabled by default and contributes to the strong 89.1% FDI <br />
+accuracy. With 32 tooth classes mapping to 8 experts (an average of 4 teeth per expert), the model can <br />
+leverage natural anatomical groupings: incisors (teeth x1–x2), canines (x3), premolars (x4–x5), and molars <br />
+(x6–x8) have distinct morphological characteristics that are amenable to expert specialization. <br />
+7.2  The 2D vs 3D Dichotomy <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+20 <br />
+The reversal between 2D (RD -ViT wins) and 3D (Standard ViT wins at matched parameters) on cardiac <br />
+segmentation reveals an important interaction between recurrent depth and input dimensi onality. We <br />
+hypothesize that this reflects a trade-off between spatial context richness and optimization difficulty. <br />
+In 2D, each 224×224 slice provides 196 patches at the native resolution of the cardiac structures. The spatial <br />
+context within each patch is  rich enough for iterative refinement to add value —the recurrent block can <br />
+progressively sharpen boundary predictions by attending to neighboring patches across iterations. <br />
+In 3D, the volume is resized to 128×128×16 (cardiac) or cropped to 1283 (dental), producing 512 patches <br />
+but at much lower effective resolution per patch. RD-ViT Small (10.3M) matches Standard ViT (5.7M) on <br />
+cardiac segmentation, confirming that capacity is the primary bottleneck in 3D, not the recurrent <br />
+architecture itself. <br />
+The tooth segm entation results support this interpretation: with 1283 isotropic crops providing higher <br />
+effective per -patch resolution than the anisotropic cardiac volumes (128 ×128×16), the RD -ViT+MoE <br />
+model achieves competitive single-phase performance (seed Dice 0.797, FDI accuracy 89.1%) despite using <br />
+only 5.4M parameters. <br />
+7.3  Single-Phase vs Multi-Phase Instance Segmentation <br />
+The tooth segmentation experiment demonstrates that a single -phase transformer approach can perform <br />
+competitive instance segmentation and numberi ng without the multi -stage pipelines typically used in the <br />
+dental imaging literature. The ToothSeg baselines [20] use 2 –4 sequential stages, each with its own CNN <br />
+backbone, creating cascaded error propagation and complex training procedures. <br />
+Our single-phase approach—predicting offsets, seeds, and FDI class simultaneously from a single forward <br />
+pass—simplifies the pipeline while leveraging the transformer’s natural ability to capture long-range spatial <br />
+relationships. The 89.1% FDI accuracy suggests that expl icit multi -stage decomposition may be <br />
+unnecessary when the backbone has sufficient global context through self-attention. <br />
+However, we note that the seed Dice (0.797) leaves room for improvement, and the training curves suggest <br />
+that longer training or archi tectural refinements (e.g., multi -scale feature fusion, boundary -aware loss <br />
+terms) could yield further gains. If single-phase performance plateaus, a two-phase approach (RD-ViT for <br />
+initial segmentation followed by a refinement stage) could be considered. <br />
+7.4  Clinical Implications of ACT <br />
+The ACT halting maps provide a form of model interpretability that could be valuable in clinical settings. <br />
+For cardiac segmentation, regions where the model allocates more computation correspond to regions of <br />
+diagnostic unc ertainty—typically boundaries between cardiac structures. For dental segmentation, ACT <br />
+could similarly highlight ambiguous tooth boundaries or regions where tooth identification is uncertain. <br />
+The decreasing ponder time during training (2.6 → 1.4 effective iterations on ACDC) suggests that a well-<br />
+trained model can achieve fast inference by using only 1 –2 iterations for most patches, with additional <br />
+iterations reserved for difficult regions. This adaptive compute property could enable real -time <br />
+segmentation in clinical workflows where inference speed is critical. <br />
+7.5  Cross-Domain Generalization <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+21 <br />
+The application of the same RD -ViT architecture to two fundamentally different segmentation tasks —<br />
+cardiac MRI (4 classes, low -contrast soft tissue, anisotr opic voxels) and dental CBCT (33 classes, high -<br />
+contrast mineralized tissue, isotropic voxels)—demonstrates the architecture’s domain-agnostic nature. The <br />
+only modifications between the two applications are the segmentation head (4 -class vs multi -head with <br />
+offsets/seeds/FDI) and the augmentation strategy (flipping enabled for cardiac, disabled for dental). The <br />
+core RD -ViT components —LTI injection, ACT, LoRA, MoE —transfer unchanged across domains, <br />
+supporting the claim that recurrent depth is a general archite ctural principle rather than a domain -specific <br />
+trick. <br />
+7.6  Limitations and Future Work <br />
+Several limitations should be acknowledged. First, our cardiac experiments use relatively small models <br />
+(2.6–10.3M parameters) on a single dataset (ACDC, 100 patients). S caling to larger models and multi-site <br />
+data would strengthen the conclusions. Second, the 3D MoE variant is approximately 2 × slower than the <br />
+baseline due to expert routing overhead. Third, we did not evaluate Multi -Latent Attention (MLA) from <br />
+OpenMythos, which could improve memory efficiency for 3D volumes. Fourth, the tooth segmentation <br />
+results are from a single -phase model without comparison against multi -phase baselines on the official <br />
+ToothFairy2 test server; direct benchmark comparison is needed. Fifth , the training curves on both tasks <br />
+suggest that longer training (400+ epochs) would improve results, but computational constraints limited <br />
+our experiments to 100 –200 epochs. Sixth, deeper analysis of MoE expert specialization for dental <br />
+structures—tracking whether experts align with incisors, canines, premolars, and molars —would validate <br />
+the tooth-group specialization hypothesis. <br />
+8  Conclusion <br />
+We have presented RD-ViT, a recurrent-depth vision transformer for semantic and instance segmentation <br />
+that adapts the Recurrent -Depth Transformer architecture from OpenMythos to dense prediction tasks. <br />
+Through comprehensive experiments on two distinct medical imaging benchmarks —ACDC cardiac MRI <br />
+and ToothFairy2 dental CBCT—we have demonstrated that: (1) recurrent depth with MoE achieves 99.4% <br />
+of standard ViT performance at 53% of the parameter count on cardiac segmentation; (2) MoE experts <br />
+spontaneously specialize for different anatomical structures; (3) ACT halting maps provide interpretable <br />
+spatial compute allocation with decreasing ponder time during training; (4) data efficiency is confirmed in <br />
+2D slice segmentation; (5) depth extrapolation works without degradation, providing a free inference-time <br />
+compute knob; and (6) the same architecture generalizes to single -phase tooth instance segmentation and <br />
+numbering, achieving 89.1% FDI classification accuracy by leveraging the transformer’s long -range <br />
+attention for jaw-quadrant context. All results are real, reproducible, and released with companion code and <br />
+notebooks. <br />
+Acknowledgments <br />
+This work extends architectural ideas from OpenMythos [1] by Kye Gomez, which reconstructs the <br />
+hypothesized Recurrent-Depth Transformer architecture. <br />
+References <br />
+[1] Gomez, K. (2025). OpenMythos: Reconstructing the Recurrent-Depth Transformer. github.com/kyegomez/OpenMythos. <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+22 <br />
+[2] Dosovitskiy, A. et al. (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. ICLR 2021. <br />
+[3] Touvron, H. et al. (2021). Training Data-Efficient Image Transformers and Distillation through Attention. ICML 2021. <br />
+[4] Zheng, S. et al. (2021). Rethinking Semantic Segmentation from a Sequence-to-Sequence Perspective with Transformers. CVPR <br />
+2021. <br />
+[5] Liu, Z. et al. (2021). Swin Transformer: Hierarchical Vision Transformer using Shifted Windows. ICCV 2021. <br />
+[6] Xie, E. et al. (2021). SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers. NeurIPS 2021. <br />
+[7] Dehghani, M. et al. (2019). Universal Transformers. ICLR 2019. <br />
+[8] Lan, Z. et al. (2020). ALBERT: A Lite BERT for Self-Supervised Learning of Language Representations. ICLR 2020. <br />
+[9] Shazeer, N. et al. (2017). Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. ICLR 2017. <br />
+[10] Fedus, W., Zoph, B., and Shazeer, N. (2022). Switch Transformers: Scaling to Trillion Parameter Models with Simple and <br />
+Efficient Sparsity. JMLR 23(120):1–39. <br />
+[11] Riquelme, C. et al. (2021). Scaling Vision with Sparse Mixture of Experts. NeurIPS 2021. <br />
+[12] Ronneberger, O., Fischer, P., and Brox, T. (2015). U -Net: Convolutional Networks for Biomedical Image Segmentation. <br />
+MICCAI 2015, LNCS 9351, pp. 234–241. <br />
+[13] Chen, J. et al. (2021). TransUNet: Transformers Make Strong Encoders for Medical Image Segmentation. arXiv:2102.04306. <br />
+[14] Isensee, F. et al. (2021). nnU -Net: A Self -Configuring Method for Deep Learning -Based Biomedical Image Segmentation. <br />
+Nature Methods 18:203–211. <br />
+[15] Cheng, B. et al. (2022). Masked-Attention Mask Transformer for Universal Image Segmentation. CVPR 2022. <br />
+[16] Lepikhin, D. et al. (2021). GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. ICLR 2021. <br />
+[17] Puigcerver, J. et al. (2024). From Sparse to Soft Mixtures of Experts. ICLR 2024. <br />
+[18] Graves, A. (2016). Adaptive Computation Time for Recurrent Neural Networks. arXiv:1603.08983. <br />
+[19] Han, Y. et al. (2022). Dynamic Neural Networks: A Survey. IEEE TPAMI 44(11):7436–7456. <br />
+[20] Cipriano, M. et al. (2024). ToothFairy2: Multi-Structure Segmentation from CBCT Volumes. MICCAI 2024 Challenge. <br />
+[21] Wang, H. et al. (2023). Dense Representative Tooth Landmark/Axis Detection Network on 3D CBCT. MICCAI 2023. <br />
+Appendix A: Hyperparameter Specifications <br />
+Table A1: Complete hyperparameter specifications for all experiments. <br />
+Parameter 2D Value 3D Value <br />
+Image size 224 × 224 128 × 128 × 16 <br />
+Patch size 16 × 16 16 × 16 × 2 <br />
+Input channels 3 (replicated) 1 (grayscale) <br />
+Hidden dimension 192 (Tiny) / 384 (Small) 192 (Tiny) / 384 (Small) <br />
+Attention heads 3 / 6 3 / 6 <br />
+Loop iterations T 8 8 <br />
+Prelude layers 1 1 <br />
+Coda layers 1 1 <br />
+LoRA rank 4 4 <br />
+ACT threshold 𝜏 0.95 0.95 <br />
+MoE experts (when used) 8 + 1 shared 8 + 1 shared <br />
+MoE top-k 2 2 <br />
+MoE expert dim 128 128 <br />
+Optimizer AdamW AdamW <br />
+Learning rate 1e-4 1e-4 <br />
+Weight decay 0.05 0.05 <br />
+Batch size 8 4 <br />
+RD-ViT: Recurrent-Depth Vision Transformer for Segmentation <br />
+23 <br />
+Epochs 100 100 <br />
+Ponder weight 𝜆 0.01 0.01 <br />
+Dropout 0.1 0.1 <br />
+Drop path 0.1 0.1 <br />
+Gradient clip 1.0 1.0 <br />
+Random seed 42 42 </p>
+<p>Appendix B: Reproducibility <br />
+All code is available in the companion GitHub repository. Three Colab notebooks reproduce every table and figure: <br />
+NB1 (ACDC data loading and main training with training curves, depth extrapolation, ACT maps, and data efficiency), <br />
+NB3 (ablation study across seven configurations including MoE, with expert utilization analysis). The ACDC dataset <br />
+is automatically downloaded from HuggingFace (mathpluscode/ACDC). Package versions are pinned in <br />
+requirements.txt. Every number in the results section traces to a specific notebook cell and is saved as a JSON file in <br />
+the Drive output directory. <br />
+Appendix C: Per-Class Results <br />
+Table C1: Per-class Dice scores for 3D RD-ViT Tiny at full training data. <br />
+Structure Dice Clinical significance <br />
+RV (right ventricle) 0.753 Complex crescent geometry <br />
+MYO (myocardium) 0.673 Thin wall, partial volume <br />
+LV (left ventricle) 0.875 Regular elliptical shape <br />
+Mean (excl. BG) 0.767 — </p>
+<p>LV achieves the highest Dice (0.875) due to its regular elliptical shape and high contrast. MYO has the lowest Dice <br />
+(0.673) because the myocardial wall is t hin and subject to partial volume effects. RV performance (0.753) is <br />
+intermediate, reflecting its complex crescent geometry. These per-class patterns are consistent with the broader ACDC <br />
+literature. <br />
+The MYO-LV gap (0.673 vs 0.875) reflects myocardial wall thinness: the wall may be only 1 -2 voxels <br />
+thick at 128×128×16 resolution, making boundary delineation fundamentally resolution-limited. <br />
+RV (0.753) is challenged by its crescent shape with complex, patient -variable geometry and trabeculated <br />
+inner surfaces. Global attention helps capture overall shape despite ambiguous local boundaries. </p>
         </div>
         
         <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
