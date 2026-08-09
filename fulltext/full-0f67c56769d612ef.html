@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用于多轮迭代推理的链式递归语言模型 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">用于多轮迭代推理的链式递归语言模型</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.05124" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Chained Recursive Language Models for Multi-Iteration Reasoning</h4>
+            <p><strong>中文摘要：</strong> 本文提出了链式递归语言模型，一种用于多轮迭代推理的架构。该模型通过多次调用同一个基础模型作为全新推理根，避免了长上下文推理中的状态管理负担。每个根接收原始问题及由前驱根生成的纯文本摘要、黑板和持久化工件，而非完整对话历史。这种机制允许后续根检查、纠正和扩展现有工件，从而提高长上下文提取、计数和多跳推理任务的准确性。实验表明，该方法在多个基准上显著提升了准确率，尽管增加了计算成本。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>用于多轮迭代推理的链式递归语言模型<br />
+Purbesh Mittra<br />
+马里兰大学<br />
+pmitra@umd.edu<br />
+&amp;Sennur Ulukusa<br />
+马里兰大学<br />
+ulukus@umd.edu</p>
+<p>摘要<br />
+大型语言模型（LLM）的长上下文推理通常受到这样一个事实的限制：单次推理轨迹必须同时探索上下文、存储中间状态、验证证据并产生最终答案。这在需要提取、计数、排序或多跳推理的任务中变得尤为困难，因为早期的错误可能会一直传播到最终响应。在这项工作中，我们提出了链式递归语言模型（Chained RLM），这是一种推理时架构，其中相同的基础模型作为一系列全新的推理根被重复调用。每个根接收原始问题和上下文，但不继承完整的对话历史。相反，它接收一个紧凑的纯文本摘要、一个纯文本黑板，以及由前驱根写入的一些持久化任务特定工件。其动机是通过将任务切分为部分任务来管理上下文，而不是进行一次大型推理响应；在每个阶段的计算中，中间工件可以由同一模型的后续全新推理进行检查、纠正和扩展。我们描述了该系统的系统模型、交接机制、工件工作空间和评估协议。我们研究了在何种情况下，即使使用递归工具调用，全新上下文工件延续也能比直接 LLM 回答带来可测量的准确率提升。</p>
+<p>1 引言<br />
+最近，大型语言模型（LLM）的长上下文推理已成为构建智能体系统的一个核心方向，这些系统可以在大型文档、代码库、转录文本和多步骤数据上工作（Plaat 等，2025）。最直接的想法是将所有必要信息（包括提示词）放入上下文中，并要求 LLM 直接对其进行推理。这种简单的方法很强大，但它有一些重要的局限性：整个问题解决过程必须在一个交互轨迹内完成。模型必须阅读上下文，识别相关证据，跟踪未解决的假设，执行任何计算或工具使用，并决定答案何时准备好。在短上下文中，这通常足够了。然而，在长上下文中，模型很容易丢失工作结构。它可能进行浅层提取，忘记已经检查过的内容，或者在真正的审计发生之前就敲定答案。这也被称为上下文腐烂（Hong 等，2025）。</p>
+<p>有几种现有的改进推理时推理的想法。思维链提示引发中间推理轨迹（Wei 等，2022），自一致性采样多条推理路径（Wang 等，2022），思维树通过深思熟虑的搜索探索替代方案（Yao 等，2023）。使用工具的语言智能体（如 ReAct）将推理与行动交织在一起，以从外部环境中收集证据（Yao 等，2022）。基于记忆的系统（如 MemGPT）通过在记忆层级之间移动信息来管理活动上下文窗口之外的信息（Packer 等，2023）。Reflexion 将先前尝试的言语反馈存储为情景记忆缓冲区（Shinn 等，2023）。MOTIF（Mitra 和 Ulukus，2025）将任务分解为多个模块并迭代解决它们。递归语言模型（Zhang 等，2025）在总上下文路径中调用上下文的不同部分进行带工具使用的递归模型调用。这些方法都有一个共同的缺点：对于困难的推理任务，单次前向传递通常不是正确的方法。</p>
+<p>在这项工作中，我们探索了一个不同但相关的方向。我们不是要求一次模型调用解决整个问题，而是以线性链的形式多次调用同一个递归语言模型：链式 RLM。我们将每次 RLM 调用称为一个根。一个根是同一个模型和基于递归上下文的工具调用环境的全新实例。它接收原始问题和上下文，但只接收来自先前根的紧凑连续状态。这种连续状态被有意设计得很简单：一个纯文本摘要、一个纯文本黑板，以及一组保存在磁盘上的纯文本工件。原始的前驱轨迹也被保存，但它们不会自动注入到每个提示中。只有当当前的摘要或工件不足时，后续的根才会检查它们。</p>
+<p>这种基于工件的架构背后的关键直觉是，长上下文推理对上下文大小的状态管理是一种负担。一个模型可能有足够的上下文长度来查看整个文档，但仍然无法维持一个干净的工作状态来引导其推理走向正确的流程。我们的假设是，持久化工件可以在推理阶段之间提供更稳定的接口。例如，在计数任务中，根 0 可以构建一个候选事件账本。根 1 可以检查并纠正这个账本，而不是从头重复整个提取过程。然后根 2 可以审计最终计数并回答。如果这有效，该链就充当了分阶段数据分析管道的推理时模拟，其中中间输出是可见和可编辑的。</p>
+<p>我们的系统未经训练。它不使用强化学习，默认情况下也不使用专门的验证器。它依赖于在全新根中调用同一个 LLM，连续性通过人类可读的文本传递。然而，在此架构之上使用不同的 RL 环境，可以使模型更熟悉链式 RLM 结构。</p>
+<p>我们的贡献总结如下：<br />
+• 我们提出了链式 RLM，这是一种线性推理时架构，其中同一个模型通过多个全新根解决长上下文任务。<br />
+• 我们引入了一种基于纯文本摘要、黑板和下一动作字段的简化交接机制，避免了 JSON 或主机解析的状态。<br />
+• 我们引入了一个纯文本工件工作空间，根在其中创建、读取和维护任务特定的证据账本、推导、审计和检查表。<br />
+• 我们定义了一个系统模型和评估协议，用于在受控的模型和任务设置下将链式 RLM 与常规 LLM 基线进行比较。</p>
+<p>图 1：具有 3 次 RLM 调用的链式 RLM 架构。</p>
+<p>2 背景和相关工作<br />
+LLM 推理通常通过增加更多的推理时结构来改进。思维链提示（Wei 等，2022）表明，中间推理轨迹可以提高推理问题的性能。自一致性（Wang 等，2022）通过对多条解决路径进行采样并选择最一致的答案，进一步改进了这一点。思维树（Yao 等，2023）通过将推理状态作为可搜索单元来推广这一想法。这些方法主要将推理视为文本上的搜索或采样问题。</p>
+<p>另一条工作线将语言模型视为可以与外部工具或环境交互的智能体。ReAct（Yao 等，2022）将推理轨迹和行动交织在一起，允许模型查询外部信息源或执行环境步骤。DSPy（Khattab 等，2023）提供了一个编程模型，用于将语言模型调用组合成结构化管道，这与我们的实现视角密切相关。在我们的工作中，每个根都是一个使用工具的 RLM 风格模块，可以检查变量、运行代码、调用子 LLM 并写入工件。</p>
+<p>记忆是长上下文任务的另一个重要组件。检索增强生成（Lewis 等，2020）将参数化模型知识与外部非参数化记忆相结合。MemGPT（Packer 等，2023）将长上下文交互构建为记忆管理问题，信息在活动上下文和较长期存储之间移动。Reflexion（Shinn 等，2023）存储先前尝试的言语反馈，然后使用这种记忆来改进后续尝试。MOTIF（Mitra 和 Ulukus，2025）将提示分解为多个任务模块并迭代解决它们，其中任务的准确性在最终答案表述时被考虑。</p>
+<p>递归语言模型（RLM）将长提示视为外部环境，允许根模型检查、分解并递归调用自身处理相关输入部分（Zhang 等，2025）。这在不改变模型权重的情况下改进了长上下文推理，但全局工作状态仍然主要存在于一个编排轨迹内。早期的提取或聚合错误因此可能成为后续步骤继续使用的陈旧假设。链式 RLM 通过将纯文本摘要、黑板和持久化工件传递给同一模型的全新根来解决这一限制，使中间状态更容易检查、编辑和审计。</p>
+<p>链式 RLM 可以被描述为 RLM 架构加上链式记忆结构。它与 RLM 的一个重要区别是：记忆不仅仅是检索存储。它是一组由模型本身动态生成的任务特定工件，并指示后续根保留、编辑和审计它们。其动机是单个 LLM 轨迹可能会在内部变得陈旧。一旦模型写下了中间结论，它可能会继续依赖它，即使该结论是由薄弱的提取或错误的事件定义产生的。一个全新的根提供了一个自然的机会，将工件作为外部对象重新阅读。在这个意义上，链式 RLM 是一种创建检查点边界的方法，当前工作状态可以在新上下文中由同一模型进行检查。</p>
+<p>3 系统模型<br />
+我们考虑一个由一对 $(q,c)$ 表示的长上下文任务，其中 $q$ 是用户问题，$c$ 是原始上下文。上下文可以是文档、转录文本、表格、代码库或合成的长上下文实例。常规 LLM 基线直接产生答案：<br />
+$$ y\sim f_{\theta}(q,c), \quad (1) $$<br />
+其中 $f_{\theta}$ 是参数为 $\theta$ 的 LLM。在实践中，提示可能包含任务指令和输出格式约束。但所有推理都发生在一次 LLM 调用中。</p>
+<p>在链式 RLM 中，如图 1 所示，我们定义了一个根序列 $r=0,1,\ldots,R-1$，其中 $R$ 是最大链长度。每个根使用相同的基础模型 $f_{\theta}$ 并接收相同的原始问题和上下文 $(q,c)$。唯一变化的输入是链状态 $s_{r}$：<br />
+$$ o_{r}\sim f_{\theta}(q,c,s_{r};\mathcal{T}), \quad (2) $$<br />
+其中 $\mathcal{T}$ 表示可用工具，$o_{r}$ 是最终答案或到下一个根的交接。</p>
+<p>链状态 $s_{r}$ 由以下组成：<br />
+$$ s_{r}=\left(B_{r},A_{r},H_{r},E_{r}\right), \quad (3) $$<br />
+其中 $B_{r}$ 是当前的纯文本黑板，$A_{r}$ 是根可用的工件集，$H_{r}$ 是紧凑的前驱交接摘要，$E_{r}$ 是来自先前原始轨迹的可选近期工作摘录。每个根的原始轨迹单独保存为 $T_{r}$，但默认不放入提示中。只有当摘要或工件不足、矛盾或不受支持时，后续根才能检查 $i&lt;r$ 的 $T_{i}$。</p>
+<p>3.1 根<br />
+根是一个全新的 RLM 调用，可以访问类似 Python REPL 的环境。根可以检查原始上下文、运行代码、打印中间输出、写入工件、读取工件，并提交最终答案或交接。重要的设计选择是，后续根不继承先前根的对话历史。它有相同的原始输入，但只有经过筛选的连续状态。这旨在减少陈旧推理的影响，同时保留有用的工作。</p>
+<p>3.2 黑板<br />
+黑板是纯文本工作记忆。它包含当前最佳答案、已验证的事实、假设、未决问题、矛盾、证据指针和可重用的程序。主机不将黑板解析为结构化字段。这是故意的简化。黑板是为下一个全新根编写的，而不是为主机程序编写的。</p>
+<p>3.3 工件<br />
+工件是由根创建的持久纯文本文件。它们可以是候选账本、提取表、推导、审计笔记或验证检查表。与黑板不同，工件可以很详细。工件的类型和数量由根 RLM 本身生成。例如，计数任务可能使用一个工件，每个候选事件一行。后续根应在纠正、扩展或审计工件的同时保留其结构。这样，工件就成了延续的主要对象。</p>
+<p>3.4 交接<br />
+如果一个根没有产生最终答案，它就提交一个交接。交接是纯文本的，恰好有三个部分。但是，可以添加可选的第四部分近期工作摘录。</p>
+<p>交接格式：<br />
+如果你不提交 FINAL，请提交以下纯文本格式：<br />
+HANDOFF:<br />
+SUMMARY:<br />
+这个根做了什么，发现了什么，以及目前相信什么。</p>
+<p>BLACKBOARD:<br />
+下一个根的当前紧凑工作状态。</p>
+<p>NEXT:<br />
+下一个根的一个具体下一步行动。它必须说明要检查或计算什么，以及为什么它可以改变、验证或证伪答案。<br />
+Recent Work Excerpt.<br />
+如果存在，将其仅视为原始草稿流。它不是权威的。在依赖它们之前，根据黑板、工件、原始上下文或完整原始轨迹验证重要声明。<br />
+Final Format.<br />
+如果答案有充分支持，提交：<br />
+FINAL: <answer><br />
+如果这是最后一个根，提交最佳支持的 FINAL 答案。</p>
+<p>我们不使用 JSON、XML、YAML 或主机解析的模式进行交接。这避免了使架构依赖于脆弱的格式约束，并使连续状态更接近研究人员如何给未来的自己写笔记。</p>
+<p>3.5 整体系统提示<br />
+任何根 LLM 调用的整体系统提示如下：<br />
+Chained RLM Root Instruction<br />
+你是同一任务和同一底层 LLM/模型的全新根。<br />
+原始问题和上下文对每个根可用。除了纯文本黑板、工件、前驱摘要和可选的近期工作摘录外，先前的交互历史不存在。<br />
+迭代使用 Python REPL。变量 problem、context 和 chain_info 已经可用。首先检查 chain_info 或调用 chain_status()；任务特定规则在那里。使用简短的代码步骤。准备好后调用 SUBMIT。<br />
+Chain Rules<br />
+1. 首先使用黑板和工件。<br />
+2. 使用工具/代码执行一个有界的有用步骤。<br />
+3. 你必须在 FINAL 或 HANDOFF 之前写入或更新一个纯文本工件。<br />
+4. 根 0 选择工件结构；后续根保留并更新它。<br />
+5. 对于长上下文提取、计数或排序任务，根 0 通常在创建候选行后 HANDOFF。只有在存在审计过的工件后才 FINAL。<br />
+6. 在 FINAL 之前，审计工件中的任何相关实体映射、事件定义、排序和计数逻辑。<br />
+7. 只有在有支持或这是最后一个根时才 FINAL。<br />
+8. 否则使用 SUMMARY、BLACKBOARD 和 NEXT 作为纯文本 HANDOFF。</p>
+<p>Blackboard.<br />
+黑板是纯文本。主机不解析它。保持简短、可审计，并对下一个节点中同一 LLM 的全新副本有用。<br />
+推荐的黑板内容：<br />
+• 当前最佳答案<br />
+• 已验证的事实<br />
+• 假设/假说<br />
+• 未决问题<br />
+• 矛盾<br />
+• 证据指针<br />
+• 程序/可重用检查<br />
+• 工件名称、目的、结构、信任状态和所做的更改</p>
+<p>不要将黑板编码为 JSON。如果一个事实很重要，清楚地写下来并引用它的来源。如果缺少证据，明确说明。</p>
+<p>Artifacts.<br />
+工件是跨根的持久共享工作记忆。它们不是草稿文件。它们允许后续全新节点中的同一 LLM/模型在不阅读整个原始轨迹的情况下检查和改进证据。<br />
+工件用于对黑板来说太详细的任务特定证据：索引、候选账本、表格、审计笔记、推导、提取程序、矛盾日志或验证检查表。<br />
+模型根据问题选择工件名称和格式。首选纯 .txt 或 .tsv。不要使用 JSON、XML、YAML、markdown 表格或代码围栏。<br />
+每个根在提交 HANDOFF 或 FINAL 之前必须创建或更新至少一个特定于问题的纯文本工件。<br />
+根 0 必须选择初始工件集和结构。<br />
+每个后续根必须首先调用 list_artifacts()，阅读相关工件，保留现有结构，更新/纠正/审计/扩展该结构内的信息，并准确报告 BLACKBOARD 中发生了什么变化。<br />
+维护意味着在不牺牲工件结构的情况下更改或纠正工件信息。如果必须更改结构，编写一个命名清晰的取代工件，解释旧结构失败的原因，并在 BLACKBOARD 中记录迁移。</p>
+<p>4 方法论<br />
+4.1 根执行<br />
+每个根从检查链状态开始。它读取黑板和工件清单，然后决定当前工件状态是否足以回答。如果任务是长上下文提取、计数或排序任务，鼓励第一个根创建候选行并交接，除非它已经有审计过的工件。鼓励后续根在开始新的提取之前阅读现有工件。这个指令很重要，因为否则模型可能只是重做浅层分析，这违背了链式的目的。</p>
+<p>4.2 工件介导的交接<br />
+这种架构的核心机制是推理链的工件介导交接。假设任务要求在长转录文本中找出最常见的事件类型。直接 LLM 可能会计算表面字符串或幻觉出一个类别。在链式 RLM 中，典型的期望行为如下：<br />
+1. 根 0 提取候选事件并写入工件并列出工件名称。<br />
+2. 根 1 读取工件，审计实体映射和事件定义，并纠正行。<br />
+3. 根 2 从审计过的工件中重新计算计数并提交最终答案。</p>
+<p>这不需要主机理解任务。主机只存储文本。LLM 本身选择工件格式并在根之间维护它。它使系统在长期任务解决中表现得更通用，而不是一个专门的求解器。</p>
+<p>4.3 最终化<br />
+在提交最终答案之前，指示根审计工件中的任何相关实体映射、事件定义、排序和计数逻辑。这是一般指令，不是特定于基准的。它适用于许多答案依赖于从长上下文中提取和聚合证据的任务。最后一个根被强制提交最佳支持的最终答案，但当仍然存在重要不确定性时，非最终根应该交接。完整算法如算法 1 所示。</p>
+<p>算法 1 链式递归语言模型<br />
+1: LLM $f_{\theta}$；问题 $q$；上下文 $c$；最大根数 $R$；工具集 $\mathcal{T}$<br />
+2: 将黑板 $B_{0}$ 初始化为纯文本<br />
+3: 初始化工件集 $A_{0} \leftarrow \emptyset$<br />
+4: 初始化前驱摘要 $H_{0} \leftarrow \emptyset$<br />
+5: for $r=0,1,\ldots,R-1$ do<br />
+6: 构建链状态 $s_{r}=(B_{r},A_{r},H_{r},E_{r})$<br />
+7: 运行全新根 $o_{r}\sim f_{\theta}(q,c,s_{r};\mathcal{T})$<br />
+8: 将原始轨迹 $T_{r}$ 保存到磁盘<br />
+9: if $o_{r}$ 是 Final then<br />
+10: return 最终答案 $y_{r}$<br />
+11: else if $o_{r}$ 是 Handoff then<br />
+12: 解析纯文本 Summary、Blackboard 和 Next<br />
+13: 从交接文本更新黑板 $B_{r+1}$<br />
+14: 保留根 $r$ 写入的工件 $A_{r+1}$<br />
+15: 将紧凑交接摘要附加到 $H_{r+1}$<br />
+16: 可选地附加有界的近期工作摘录 $E_{r+1}$<br />
+17: end if<br />
+18: end for<br />
+19: return 最后一个根的最佳支持最终答案</p>
+<p>5 实验<br />
+5.1 设置<br />
+我们在长上下文任务上评估链式 RLM，这些任务的答案无法通过单次短模式匹配可靠地获得。候选基准系列包括多跳检索、长上下文聚合、计数和有序事件提取。对于每个基准，我们比较：<br />
+• 常规 LLM：直接从问题和上下文进行预测。<br />
+• 链式 RLM：提出的全新根工件介导系统。</p>
+<p>两个系统都使用相同的基础模型：GPT-5-mini。对于链式 RLM，我们记录最大链长度、每个根的最大迭代次数、每个根的最大子 LLM 调用次数以及是否启用缓存。为了公平比较，最终实验还包括一个计算匹配的设置，但在第一个版本中，我们使用直接 LLM 基线作为干净的低复杂度参考点。</p>
+<p>5.2 评估指标<br />
+主要指标是精确任务准确率。由于 LLM 是随机采样的，基准中准确率测量有多种定义。对于我们的工作，我们使用最简单的 pass@1 准确率（Chen 等，2021），它衡量第一次尝试得到正确答案的概率。定义为：<br />
+$$ \text{Pass@1 accuracy}=\frac{\text{# correct answers}}{\text{# questions}}=\frac{1}{L}\sum_{j=1}^{L}\mathbb{I}<em>{j}, \quad (4) $$<br />
+其中 $L$ 是基准中的问题总数；如果第 $j$ 个问题的框定答案在模型的响应中，则 $\mathbb{I}</em>{j}=1$，否则为 $0$。</p>
+<p>我们还测量使用的平均根数、交接次数和每个任务的推理成本。这些次要指标对于确定基线 LLM 和链式 RLM 架构之间的准确率和资源权衡至关重要。</p>
+<p>表 1：每个选定基准报告的准确率指标。<br />
+基准 | 常规 LLM (GPT-5-mini) 工具调用 | 链式 RLM (使用 GPT-5-mini)<br />
+RULER | 87% | 92%<br />
+BABILong | 44% | 59%<br />
+LongBench v2 | 41% | 52%<br />
+OOLONG-real | 14% | 38%</p>
+<p>表 2：常规 LLM 和链式 RLM 的平均资源使用情况。Token 和成本值根据 GPT-5-mini 的当前 API 定价计算。<br />
+基准 | 方法 | 平均根调用次数 | 平均交接次数 | 平均输入 Token | 平均输出 Token | 每个任务的平均成本<br />
+RULER | 常规 LLM | 1.0 | 0.0 | 38k | 4k | $0.11<br />
+RULER | 链式 RLM | 1.8 | 0.8 | 68k | 11k | $0.21<br />
+BABILong | 常规 LLM | 1.0 | 0.0 | 52k | 6k | $0.13<br />
+BABILong | 链式 RLM | 2.7 | 1.7 | 104k | 21k | $0.32<br />
+LongBench v2 | 常规 LLM | 1.0 | 0.0 | 47k | 5k | $0.12<br />
+LongBench v2 | 链式 RLM | 2.4 | 1.4 | 91k | 20k | $0.29<br />
+OOLONG-real | 常规 LLM | 1.0 | 0.0 | 58k | 8k | $0.14<br />
+OOLONG-real | 链式 RLM | 3.4 | 2.4 | 132k | 35k | $0.44<br />
+平均 | 常规 LLM | 1.0 | 0.0 | 48.8k | 5.8k | $0.125<br />
+平均 | 链式 RLM | 2.6 | 1.6 | 98.8k | 21.8k | $0.315</p>
+<p>5.3 与常规 LLM 的比较<br />
+我们在四个长上下文基准上将链式 RLM 与常规 LLM 基线进行比较：RULER（Hsieh 等，2024）、BABILong（Kuratov 等，2024）、LongBench v2（Bai 等，2025）和 OOLONG-real（Bertsch 等，2025）。两种方法都使用 GPT-5-mini 作为基础模型，并接收相同的问题和上下文。常规基线在单次推理轨迹中解决任务，而链式 RLM 被允许使用通过纯文本交接、黑板和持久任务工件连接的多个全新根。</p>
+<p>表 1 显示，链式 RLM 在所有四个基准上都提高了准确率，比常规 LLM 基线平均绝对提高了 13.75 个百分点。链式系统更准确，但改进在基准之间不均衡。在 RULER 上的增益相对较小，其中许多任务可以通过直接检索或局部推理来解决。相比之下，在 BABILong、LongBench v2，尤其是 OOLONG-real 上的改进要大得多，在这些任务中，模型必须保留部分证据、比较上下文远处的部分的事件，或者在回答之前聚合许多小的观察结果。这表明，当主要困难不是简单地找到一个相关跨度，而是在长推理过程中维持可靠的中间状态时，链式 RLM 最有用。</p>
+<p>表 2 突出了相应的平均资源使用情况。链式 RLM 更昂贵，因为它使用更多的根调用、交接和 token。额外的根为系统提供了机会，将部分工作外部化到工件中，审计先前的结论，并从紧凑状态继续，而不是仅依赖一次长生成的隐藏状态。因此，成本增加是由于使中间推理更健壮和可解释的代价。</p>
+<p>因此，结果显示了一个实际的权衡。对于较简单的或主要基于检索的任务，常规 LLM 可能已经足够，链式可能无法证明其额外成本的合理性。对于需要长上下文记录保存、多步聚合或仔细保留部分决策的任务，额外的计算可以产生更大的准确率提升。</p>
+<p>6 讨论和局限性<br />
+当前的架构是故意简单的，但这也造成了局限性。首先，主机不强制根在最终化之前必须读取工件。这保持了方法的通用性，但可能允许过早的答案。其次，工件质量依赖于模型。如果根 0 写入了有缺陷的事件定义，后续根可能会保留那个错误的结构而不是纠正它。第三，整个链可能会漂移，即后续根可能会忽略一个好的工件并从更差的状态重新开始。另一个限制是计算。链式系统比直接 LLM 基线使用更多的模型调用。因此，任何增益都必须与额外的推理成本一起解释。</p>
+<p>7 结论<br />
+在这项工作中，我们提出了链式递归语言模型（Chained RLM），这是一种用于多轮迭代推理的推理时架构，其中同一个模型通过一系列全新根调用解决任务。系统只传递纯文本连续状态：摘要、黑板和工件。原始的前驱轨迹单独保存，仅在需要时检查。这使得持久化工件让多轮迭代推理更像分阶段分析，其中中间工作可以由后续的全新模型调用进行审计和改进。我们定义了系统模型、交接机制、工件工作空间以及针对常规 LLM 的初始评估协议。我们表明，工件介导的全新上下文延续是对原始工具调用递归 LLM 架构的一种改进。</p>
+<p>参考文献<br />
+Y. Bai, S. Tu, J. Zhang, H. Peng, X. Wang, X. Lv, S. Cao, J. Xu, L. Hou, Y. Dong, et al. (2025) Longbench v2: towards deeper understanding and reasoning on realistic long-context multitasks. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 3639–3664. Cited by: §5.3.<br />
+A. Bertsch, A. Pratapa, T. Mitamura, G. Neubig, and M. R. Gormley (2025) Oolong: evaluating long context reasoning and aggregation capabilities. arXiv preprint arXiv:2511.02817. Cited by: §5.3.<br />
+M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. D. O. Pinto, J. Kaplan, H. Edwards, Y. Burda, N. Joseph, G. Brockman, et al. (2021) Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374. Cited by: §5.2.<br />
+K. Hong, A. Troynikov, and J. Huber (2025) Context rot: how increasing input tokens impacts llm performance. URL https://research. trychroma. com/context-rot, retrieved October 20, pp. 2025. Cited by: §1.<br />
+C. Hsieh, S. Sun, S. Kriman, S. Acharya, D. Rekesh, F. Jia, Y. Zhang, and B. Ginsburg (2024) RULER: what’s the real context size of your long-context language models?. arXiv preprint arXiv:2404.06654. Cited by: §5.3.<br />
+O. Khattab, A. Singhvi, P. Maheshwari, Z. Zhang, K. Santhanam, S. Vardhamanan, S. Haq, A. Sharma, T. T. Joshi, H. Moazam, et al. (2023) Dspy: compiling declarative language model calls into self-improving pipelines. arXiv preprint arXiv:2310.03714. Cited by: §2.<br />
+Y. Kuratov, A. Bulatov, P. Anokhin, I. Rodkin, D. Sorokin, A. Sorokin, and M. Burtsev (2024) Babilong: testing the limits of llms with long context reasoning-in-a-haystack. Advances in Neural Information Processing Systems 37, pp. 106519–106554. Cited by: §5.3.<br />
+P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal, H. Küttler, M. Lewis, W. Yih, T. Rocktäschel, et al. (2020) Retrieval-augmented generation for knowledge-intensive nlp tasks. Advances in neural information processing systems 33, pp. 9459–9474. Cited by: §2.<br />
+P. Mitra and S. Ulukus (2025) MOTIF: modular thinking via reinforcement fine-tuning in llms. arXiv preprint arXiv:2507.02851. Cited by: §1, §2.<br />
+C. Packer, V. Fang, S. Patil, K. Lin, S. Wooders, and J. Gonzalez (2023) MemGPT: towards llms as operating systems.. Cited by: §1, §2.<br />
+A. Plaat, M. van Duijn, N. Van Stein, M. Preuss, P. van der Putten, and K. J. Batenburg (2025) Agentic large language models, a survey. Journal of Artificial Intelligence Research 84. Cited by: §1.<br />
+N. Shinn, F. Cassano, A. Gopinath, K. Narasimhan, and S. Yao (2023) Reflexion: language agents with verbal reinforcement learning. Advances in neural information processing systems 36, pp. 8634–8652. Cited by: §1, §2.<br />
+X. Wang, J. Wei, D. Schuurmans, Q. Le, E. Chi, S. Narang, A. Chowdhery, and D. Zhou (2022) Self-consistency improves chain of thought reasoning in language models. arXiv preprint arXiv:2203.11171. Cited by: §1, §2.<br />
+J. Wei, X. Wang, D. Schuurmans, M. Bosma, F. Xia, E. Chi, Q. V. Le, D. Zhou, et al. (2022) Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems 35, pp. 24824–24837. Cited by: §1, §2.<br />
+S. Yao, D. Yu, J. Zhao, I. Shafran, T. Griffiths, Y. Cao, and K. Narasimhan (2023) Tree of thoughts: deliberate problem solving with large language models. Advances in neural information processing systems 36, pp. 11809–11822. Cited by: §1, §2.<br />
+S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao (2022) React: synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629. Cited by: §1, §2.<br />
+A. L. Zhang, T. Kraska, and O. Khattab (2025) Recursive language models. arXiv preprint arXiv:2512.24601. Cited by: §1, §2.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 大型语言模型, 长上下文推理, 递归语言模型, 多轮迭代推理, 工件介导交接</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
