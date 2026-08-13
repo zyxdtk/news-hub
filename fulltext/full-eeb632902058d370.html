@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchAgent v2：数据预取竞赛案例研究 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">ArchAgent v2：数据预取竞赛案例研究</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-10</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.09874" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：ArchAgent v2: A Case Study with the Data Prefetching Championship</h4>
+            <p><strong>中文摘要：</strong> 本文提出了 ArchAgent v2 框架，将自动化微架构搜索扩展至多级数据预取。针对设计空间庞大和硬件预算严格等挑战，引入了级联进化搜索和硬件可实现性反馈回路。在 DPC4 竞赛规则下，该系统自动设计的三级预取器性能超越人工设计的冠军方案 BertiGO，实现 3.8% 的 IPC 加速。此外，通过对超 1.2 万个候选设计的剖析，揭示了进化智能体探索微架构设计空间的机制与规律。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>ArchAgent v2：数据预取竞赛案例研究<br />
+Abraham Gonzalez¹, Raghav Gupta²†, Akanksha Jain¹, Hanna Alam¹, Alexander Novikov³, Po-Sen Huang³, Matej Balog³, Marvin Eisenberger³, Sergey Shirobokov³, Ngân Vũ³, Hank Levy¹, Borivoje Nikolić², Sagar Karandikar²†, Martin Dixon¹, Parthasarathy Ranganathan¹</p>
+<p>¹ Google<br />
+² 加州大学伯克利分校<br />
+³ Google DeepMind</p>
+<p>{abegonzalez, avjain, hannaalam, mgdixon, hanklevy, parthas}@google.com<br />
+raghavgupta@berkeley.edu, {bora, sagark}@eecs.berkeley.edu<br />
+{anovikov, posenhuang, matejb, meisenberger, shirobokov, nganvu}@google.com</p>
+<p>† 作者在 Google 任职期间完成了部分工作。</p>
+<p><strong>摘要</strong><br />
+智能体人工智能在自动化算法设计方面展现出了巨大潜力，但由于庞大的搜索空间、严格的硬件预算和漫长的模拟时间，将类似技术扩展到计算机微架构发现仍然具有挑战性。在本研究中，我们提出了 ArchAgent v2，这是一个将自动化微架构搜索扩展到多级数据预取的框架。最初的 ArchAgent 在竞赛环境中成功发现了单级缓存替换策略，但它无法扩展到设计空间和自由度更大的多级预取。为了克服这一点，我们为 ArchAgent 引入了两个新内容：一个是级联进化搜索，它通过在单个缓存级别上顺序进化和冻结预取器来细分设计空间；另一个是硬件可实现性反馈回路，它将实时大小估计直接嵌入到进化过程中。在第四届数据预取锦标赛（DPC4）的相同规则下评估，ArchAgent v2 自动设计了一个三级预取器，其性能优于获胜的手工设计解决方案，进一步证明了自动化智能体发现是计算机架构师的有用工具。我们发现的策略在总体上实现了比基准 3.8% 的几何平均 IPC 加速，比之前的冠军 BertiGO 提高了 0.3%。在低带宽单核配置上，我们的策略产生了 4.6% 的性能加速，而 BertiGO 仅为 2.6%。然而，由于模拟延迟阻碍了进化速度，多核进化仍然是一个重大挑战。最后，我们对 ArchAgent 超过 12,000 个候选设计的进化进行了性能分析，为自动化进化智能体如何探索和合成复杂的微架构逻辑提供了关键见解。</p>
+<p><strong>I 引言</strong></p>
+<p>图 1：级联分治进化搜索。</p>
+<p>智能体人工智能（AI）的最新进展推动了自动化算法设计的重大突破。在计算机系统社区中，闭环机器学习框架越来越多地被部署用于自动化优化和构思。具体而言，ArchAgent 框架 [16] 通过构建用于计算机微架构的闭环进化系统，开创了自主微架构发现的先河。通过将基于大语言模型（LLM）的代码生成智能体（即 AlphaEvolve [28]）与 ChampSim 模拟器 [13] 耦合，ArchAgent 迭代地生成硬件策略，在基于轨迹的模拟中对其进行评估，并利用进化策略的性能反馈来指导后续变异。</p>
+<p>虽然 ArchAgent 成功发现了单级缓存替换策略，但它无法扩展到更大的架构问题，例如多级预取器，这些问题呈现出更高的自由度和更严格的物理硬件约束。特别是，将此类系统应用于多级数据预取会在三个架构维度上增加难度。首先，设计空间组合爆炸，因为预取器必须在跟踪程序和系统级上下文的同时计算目标地址和最佳时序。其次，多级预取引入了额外的复杂性维度：在所有三个级别同时进化预取器会产生一个非单调搜索空间，其中一级的性能提升变异可能会完全使另一级的增益无效。最后，预取器必须遵守严格的、独立的物理存储预算（例如，L1D 中的 32KB 状态），这在现有的高级模拟器（如 ChampSim）中无法可靠地强制执行。</p>
+<p>为了克服这些障碍，我们提出了 ArchAgent v2，引入了两个主要的方法论变更：</p>
+<ul>
+<li><strong>硬件可实现性存储反馈回路</strong>：我们实现了一个自动化接口，计算每个提议预取器的物理存储。超预算的设计在编译期间被拒绝并且不予评估，从而向系统提供负反馈。</li>
+<li><strong>级联进化搜索</strong>：我们不是同时进化所有预取器，而是划分搜索空间。该框架顺序隔离和优化每个缓存级别（L1D、L2 和 LLC）的预取器，在进行全局优化之前使用先前级别的最佳结果来修剪搜索。</li>
+</ul>
+<p>我们使用第四届数据预取锦标赛（DPC4）[6] 的设置评估 ArchAgent v2，从竞赛基准（即 L1D 的 Berti [26]，L2 的 Pythia [7]，LLC 无预取器）开始搜索，并针对官方竞赛得分进行优化。为了防止过拟合，搜索在官方训练工作负载上进行，而最终的预取解决方案在竞赛提供的单独且更长的保留验证集上进行评估。</p>
+<p>ArchAgent v2 自动设计了一套有效的、赢得竞赛的 L1D、L2 和 LLC 预取器。发现的多级预取策略在所有工作负载和配置上实现了比竞赛基准 3.8% 的几何平均 IPC 加速，比赢得冠军的手工设计策略 BertiGO [37] 提高了 0.3%。值得注意的是，在缓存污染和总线争用最严重的低带宽单核配置中，我们的策略比 BertiGO 2.6% 的加速显著高出额外 2%。尽管在单核上取得了巨大胜利，但由于多核反馈仅在进化的最后阶段引入，我们发现的策略在多核设置中表现出有限的增益。由于高模拟延迟和搜索空间复杂度的指数级增加，多核进化搜索对自动化系统仍然具有挑战性。</p>
+<p>为了理解进化智能体如何导航微架构设计空间，我们分析并剖析了 ArchAgent v2 生成的超过 12,000 个预取器。我们发现，重大突破源于大多数架构转变，这些转变需要随后的微小细化来解锁加速。获胜的设计通过动态缩放预取前瞻、基于多个核心/内存信号限制带宽以防止拥塞，以及智能仲裁页内和页间内存流而取得成功。</p>
+<p>总之，本文做出以下贡献：</p>
+<ul>
+<li>我们引入了一种<strong>“级联”分治进化方法</strong>，顺序进化不同缓存级别的子集（例如，先 L1D，然后 L2，再 LLC）。</li>
+<li>我们开发了一个<strong>用于预取器占用的自动化反馈回路</strong>，通过适当的反馈强制执行严格的物理约束。</li>
+<li>我们表明 <strong>ArchAgent v2 发现的预取器实现了比基准 3.8% 的性能提升，比冠军手工设计策略 BertiGO 提高了 0.3%</strong>，在低带宽系统上比基准提高了 4.6%。</li>
+<li>我们展示了对<strong>超过 12,000 个评估想法的分析</strong>，探索了获胜策略进化的一个谱系，描述了此类系统如何探索微架构。</li>
+</ul>
+<p><strong>II 背景</strong></p>
+<p>在本节中，我们首先回顾基于 LLM 的智能体发现系统的一般架构。然后我们讨论最初的 ArchAgent [16] 设计，如图 2 所示，然后概述 ArchAgent v2 优化的 DPC4 数据预取竞赛规则和设置。</p>
+<p>图 2：ArchAgent 系统回顾概述。</p>
+<p><strong>II-A 基于进化智能体 LLM 发现的入门</strong></p>
+<p>随着 LLM 变得更加强大，一类新的用于算法和科学发现的智能体系统（即框架）越来越受欢迎。这些发现系统——从 Google DeepMind 的 AlphaEvolve [28]、SkyDiscover [22]、OpenEvolve [35] 和 ShinkaEvolve [21] 等进化工具，到 ScientistOne [23] 和 Glia/Engram [17, 20] 等更完全智能体的系统——利用 LLM 以编程方式提出、完善和编译针对目标性能指标优化的代码解决方案。与现有的编码框架或更多推理-行动的编码智能体（例如，Google Antigravity [14]、Anthropic Claude Code [4]、OpenAI Codex [29]、OpenCode [38]）不同，这些发现系统通常增加更多的确定性，并利用强化的预指定评估来确保在长时间运行内进行有效的优化。</p>
+<p>虽然最初是为科学算法发现 [28] 和软件系统优化 [11] 开发的，但此类框架最近被提出用于自动化硬件设计和架构协同设计 [16, 3, 8, 34]。关注进化框架（即 [28, 22, 35, 21]），这些框架的核心是一个持续“进化”代码的编排循环。控制器首先从结构化程序数据库中采样——通常通过 MAP-Elites [25] 或基于岛屿的种群 [33, 39] 等质量多样性算法管理——使用先前的实现及其相关指标来为后续迭代提供种子。生成阶段采用 LLM，作为单轮生成器或多轮编码智能体，合成新的候选实现。然后使用用户定义的方法评估这些候选者，并将生成的性能指标返回给控制器以更新程序数据库。这种采样、生成和评估的迭代循环持续进行，直到达到优化目标或搜索超时。为了指导生成步骤，用户提供一个基础提示，详细说明目标问题、执行接口以及任何特定领域的提示以指导搜索。</p>
+<p><strong>II-B ArchAgent v1 概述</strong></p>
+<p>ArchAgent 框架 [16]（ArchAgent v1）是第一个建立在 AlphaEvolve [28] 之上的自动化计算机架构发现系统。最初针对缓存替换，ArchAgent 专注于发现与 ChampSim 微架构模拟器兼容的缓存替换策略的新 C++ 模型实现。为了实现这一点，该框架构建了 LLM 提示，建立专家计算机架构师角色，概述 ChampSim 缓存替换 API 和类结构，并定义严格的硬件存储约束（例如，缓存替换元数据的 48KB 预算）。每个生成的策略随后在全面的工作负载轨迹集中并行评估。模拟器在这些目标工作负载上测量每周期指令数（IPC）的性能。使用这种闭环进化过程，ArchAgent 在一个月的自主搜索内自动发现了高性能策略，在高度优化的单核 SPEC 2006 工作负载上实现了比最先进技术 0.9% 的 IPC 加速，在公开的多核 Google 工作负载轨迹 [15] 上实现了超过 5.3% 的 IPC 加速。</p>
+<p><strong>II-C 第四届数据预取锦标赛和 BertiGO</strong></p>
+<p>数据预取锦标赛（DPC）[6, 18, 2, 1] 成立于 2009 年，旨在通过为社区提供标准化基础设施和轨迹来评估预取想法，从而推进数据预取的最先进技术。第四届锦标赛 DPC4 [6] 于 2026 年举行，它在先前比赛迭代的基础上，扩大了多级预取（在 L1D、L2 和 LLC）的范围，更新了工作负载（涵盖 AI/ML 推理、数据中心级工作负载、复杂的基于图的应用），以及更多的核心配置（单核和多核配置）。预取器在 ChampSim 上评估，这是一个广泛使用的基于学术 C++ 的微架构模拟器。参与者利用通用 API 实现预取器，以访问微架构状态和系统级反馈，其中设计必须遵守每个缓存级别严格的、独立的物理存储限制：L1D 为 32KB，L2 为 128KB，LLC 为 256KB。为了确保解决方案能够推广到不同的操作条件，提交在三种不同的系统配置中进行测试：两种单核配置（一种具有充足的 DRAM 带宽，一种具有受限的 DRAM 带宽）和一种具有充足 DRAM 带宽的多核配置。训练工作负载提供给参与者，但最终提交的排名基于它们在单独的保留评估工作负载套件上的性能。所有锦标赛提交都与最先进的基准进行衡量，该基准由 L1D 级别的 Berti 预取器、L2 级别的 Pythia 预取器和 LLC 无预取器组成。最先进的 DPC4 提交 BertiGO [37] 在此基础上构建，通过向 L1D Berti 引擎引入路径签名跟踪，将集合决斗机制集成到 L2 Pythia 预取器中，并在 LLC 添加自适应下一行预取器。BertiGO 的大部分增益是由 L1D 优化驱动的，L2 和 LLC 更新仅带来微小的性能提升。</p>
+<p><strong>III 用于数据预取的 ArchAgent v2</strong></p>
+<p>为了发现多级预取器，我们从两个方面扩展了 ArchAgent：添加（1）硬件可实现性反馈回路，以及（2）级联分治方法论，将问题分解为更小的可处理问题。</p>
+<p><strong>III-A 硬件可实现性存储反馈回路</strong></p>
+<p>图 3：示例存储预算限制提示。</p>
+<p>虽然 ChampSim 模拟器提供了测量 IPC 等指标的机制，但它不提供测量提议预取器硬件成本（即面积或功耗成本）的机制。通常对于 DPC4 等需要严格存储预算（L1D 为 32KB，L2 为 128KB，LLC 为 256KB 预取器）的竞赛，这种面积成本是在算法完成后由硬件架构师手动估计不同组件的大小并获得总体大小来估计的。然而，自动化代码生成的一个主要挑战是 LLM 优化器通常仅针对性能指标进行优化，提出违反物理硬件约束的复杂算法。为了在进化过程中强制执行这些竞赛存储预算，我们在 ArchAgent 中集成了硬件可实现性面积反馈。首先，像 ArchAgent v1 一样，我们用精确的存储限制提示 LLM，以便想法在概率上遵守存储限制。接下来，我们为每个预取器实现了一个自定义模拟器接口函数 <code>prefetcher_size()</code>，它根据策略的状态计算其存储占用，并返回以字节为单位的整数大小。我们使用初始文献为每个基准预取器（例如，Berti 和 Pythia）填写此函数，使用 C++ 参数和代码在运行时得出总体大小。在编译和模拟期间，评估检查每个预取器的 <code>prefetcher_size()</code> 函数，并根据竞赛大小要求进行检查。如果候选策略超过允许的预算，它将被立即拒绝。最后，我们更新了提示，如图 3 所示，以指导 LLM 同时更新预取器逻辑和预取器大小函数，确保大小计算与实现更改保持同步。通过离线 LLM 评判，ArchAgent 的代码生成步骤能够忠实地遵守正确更新逻辑和大小函数，同时对最终输出进行手动检查以确保大小正确。这些添加结合起来使 LLM 能够在整个进化过程中更好地遵守每个预取器的存储预算，通过可实现性的一个方面限制可行的想法。</p>
+<p><strong>III-B 级联进化搜索</strong></p>
+<p>同时优化三个预取器与缓慢的 ChampSim 模拟（评估每次更改最多或超过 12 小时）相结合，引入了一个极其庞大且缓慢的搜索空间，导致 ArchAgent v1 难以取得有意义的进展。为了解决这个问题，我们将设计空间划分为“级联”式的分治进化过程，其中每个预取器被孤立进化，然后在所有预取器之间进行全局优化，分多个阶段进行。此外，我们通过在进化单个预取器时将搜索限制为仅优化单核配置来减少设计空间。只有当所有预取器都优化后，我们才将多核配置引入搜索空间。此方法论如图 4 所示。该策略可以分解为两个一般阶段：首先按顺序优化每个预取器级别，然后全局优化所有预取器。</p>
+<p>图 4：进化搜索“级联”方法论。</p>
+<p><strong>III-B1 单个预取器优化</strong></p>
+<p>首先，我们孤立地进化每个预取器，将较低级别的最佳结果重用作为下一级别的初始化。此外，我们仅使用单核 ChampSim 工作负载配置进行进化，同等权衡低带宽和高带宽配置。设置如下：</p>
+<ol>
+<li><strong>L1D 优化</strong>：我们首先仅进化 L1D 预取器（从 Berti 开始），保持基准 L2（即 Pythia）和 LLC（即无）预取器静态。</li>
+<li><strong>L2 优化</strong>：接下来，一旦 L1D 预取器性能开始趋于平缓，我们选择性能最佳的 L1D 候选者，冻结其实现，然后仅进化 L2 预取器（从 Pythia 开始）。</li>
+<li><strong>LLC 优化</strong>：在 L2 优化收敛后，我们然后冻结最佳的 L1D 和 L2 预取器候选者，然后仅进化 LLC 预取器。</li>
+</ol>
+<p>虽然这选择性地优化了 L1D，然后是 L2，然后是 LLC，但这符合先前的直觉，即工作负载更易于 L1D 预取器优化（如 DPC4 提交中所见）。这种 L1D 主导的优化与之前的获胜者 BertiGO 的改进相匹配，后者是 L1D 主导的。</p>
+<p><strong>III-B2 全局优化所有预取器</strong></p>
+<p>在单个预取器优化运行的同时，产生了两个新的进化运行，以对提出的算法进行全局优化。这些运行的目标是进一步一起优化所有预取器，而不是单独优化，以允许预取器之间的协同改进。这是通过先前运行的数据库完成的，该数据库存储了任何进化运行中先前成功的最佳结果，分两部分：</p>
+<ol>
+<li><strong>单核跨预取器优化</strong>：首先，所有预取器同时被优化，种子来自每个单独优化运行的最佳预取器，仅在单核 ChampSim 工作负载上。此外，在随机间隔，生成新预取器候选者的提示被注入来自其他单独优化运行（例如，仅 L1D）的性能最佳的候选者及其谱系/摘要，同时它们正在运行。这允许上游单个预取器运行继续运行和优化，同时影响组合进化。此外，在这次运行中，我们对低带宽单核配置进行了双重加权（例如，<code>geomean(lowBW, lowBW, highBW)</code>），以鼓励进化优化低带宽配置。这样做是为了给多核工作负载提供一个代理，避免缓慢的多核模拟速度，因为多核配置类似于低带宽单核配置，将其带宽跨多个核心分配。</li>
+<li><strong>多核跨预取器优化</strong>：然后为了产生最终的预取器候选者集合，我们从跨预取器优化中提取了最佳预取器，并在单核和多核配置下进一步并发进化它们。与其他跨预取器优化类似，在随机间隔，提示被注入来自所有其他运行（包括单个预取器优化和单核跨预取器优化）的性能最佳的候选者。该策略降低了每步 LLM 推理的复杂性，并将搜索工作优先放在接近核心的缓存级别上，那里具有最高的延迟隐藏潜力。</li>
+</ol>
+<p><strong>III-C 训练/进化与验证方法论</strong></p>
+<p>表 I：训练/进化和模拟方法论。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">配置</th>
+<th style="text-align: left;">阶段</th>
+<th style="text-align: left;">指令（百万）</th>
+<th style="text-align: left;">总计</th>
+<th style="text-align: left;">预热</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">单核</td>
+<td style="text-align: left;">训练/进化</td>
+<td style="text-align: left;">60</td>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">完整验证</td>
+<td style="text-align: left;">200</td>
+<td style="text-align: left;">50</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">多核</td>
+<td style="text-align: left;">训练/进化</td>
+<td style="text-align: left;">12.5</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">完整验证</td>
+<td style="text-align: left;">50</td>
+<td style="text-align: left;">20</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<p>我们使用现有的竞赛基准来评估每个候选策略。具体而言，我们在进化搜索阶段（训练/进化）期间在减少的指令轨迹长度上评估候选者，并在长指令轨迹上验证最终选择，以确保最优性和通用性。表 I 描述了所使用的训练和评估方法论。在进化期间，单核在 1500 万条指令预热后运行 6000 万条指令，多核在 500 万条指令预热后运行 1250 万条指令。相比之下，完整验证分别运行 2 亿条指令（5000 万条预热）和 5000 万条指令（2000 万条预热）。根据锦标赛指南，单核基准单独评估。对于多核配置，在训练期间，我们生成了 100 种混合工作负载的随机组合（例如，SPEC17 和 Graph 工作负载混合），以在多样化和异构资源争用下评估策略。最终评估使用了单核和多核轨迹的锦标赛评估集，其中包括单核配置的未见工作负载和多核配置的新轨迹混合，以验证泛化能力。这种用于训练和验证的轨迹长度和工作负载的混合确保了生成策略的鲁棒性。我们期望扩展训练集以覆盖更多工作负载将产生更大的鲁棒性。</p>
+<p><strong>IV 进化的多级预取算法</strong></p>
+<p>我们描述并评估了获胜的生成多级预取器策略，使用第 III 节的方法论，在两个月的进化时间内击败了 DPC4 SoTA 策略。</p>
+<p><strong>IV-A 预取器描述</strong></p>
+<p>在本小节中，我们详细描述了 L1D、L2 和 LLC 预取器组件。生成的预取器集合遵循两个关键设计原则。首先，它添加了<strong>新引擎来跟踪基准未捕获的模式</strong>，例如，全局步长、不规则增量和时间预取。其次，它引入了<strong>新的仲裁机制来选择预取引擎并调节激进程度</strong>。每个预取器遵守每个缓存的竞赛存储预算；L1D 为 31.1 KB（满 32 KB），L2 为 110.0 KB（满 128 KB），LLC 为 230.3 KB（满 256 KB）。表 II 进一步细分了每个预取器每个组件使用的存储。</p>
+<p>表 II：进化预取器的存储细分。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">结构</th>
+<th style="text-align: left;">细分</th>
+<th style="text-align: left;">KB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>L1D</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">当前页表</td>
+<td style="text-align: left;">63e × 277b</td>
+<td style="text-align: left;">2.1</td>
+</tr>
+<tr>
+<td style="text-align: left;">先前请求表</td>
+<td style="text-align: left;">1024e × 28b</td>
+<td style="text-align: left;">3.5</td>
+</tr>
+<tr>
+<td style="text-align: left;">先前预取表</td>
+<td style="text-align: left;">512e × 57b</td>
+<td style="text-align: left;">3.6</td>
+</tr>
+<tr>
+<td style="text-align: left;">记录页表</td>
+<td style="text-align: left;">1024e × 135b</td>
+<td style="text-align: left;">16.9</td>
+</tr>
+<tr>
+<td style="text-align: left;">IP 表</td>
+<td style="text-align: left;">1024e × 10b</td>
+<td style="text-align: left;">1.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">全局步长跟踪器</td>
+<td style="text-align: left;">128e × 110b</td>
+<td style="text-align: left;">1.7</td>
+</tr>
+<tr>
+<td style="text-align: left;">全局增量历史表</td>
+<td style="text-align: left;">512e × 20b</td>
+<td style="text-align: left;">1.3</td>
+</tr>
+<tr>
+<td style="text-align: left;">RL 仲裁器</td>
+<td style="text-align: left;">512e × 12b</td>
+<td style="text-align: left;">0.8</td>
+</tr>
+<tr>
+<td style="text-align: left;">杂项寄存器</td>
+<td style="text-align: left;">–</td>
+<td style="text-align: left;">0.04</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L1D 总计</strong></td>
+<td style="text-align: left;"><strong>限制：32KB</strong></td>
+<td style="text-align: left;"><strong>31.1</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L2</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">Q 值存储</td>
+<td style="text-align: left;">5fts. × 18acts. × 16b</td>
+<td style="text-align: left;">99.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">签名表</td>
+<td style="text-align: left;">128e × 300b</td>
+<td style="text-align: left;">4.7</td>
+</tr>
+<tr>
+<td style="text-align: left;">预取跟踪器</td>
+<td style="text-align: left;">128e × 403b</td>
+<td style="text-align: left;">6.3</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>L2 总计</strong></td>
+<td style="text-align: left;"><strong>限制：128KB</strong></td>
+<td style="text-align: left;"><strong>110.0</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LLC</strong></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr>
+<td style="text-align: left;">步长表</td>
+<td style="text-align: left;">2048e × 67b</td>
+<td style="text-align: left;">16.8</td>
+</tr>
+<tr>
+<td style="text-align: left;">标记地址表</td>
+<td style="text-align: left;">12288e × 41b</td>
+<td style="text-align: left;">61.5</td>
+</tr>
+<tr>
+<td style="text-align: left;">全局事件历史</td>
+<td style="text-align: left;">32768e × 38b</td>
+<td style="text-align: left;">152.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>LLC 总计</strong></td>
+<td style="text-align: left;"><strong>限制：256KB</strong></td>
+<td style="text-align: left;"><strong>230.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>IV-A1 L1D 预取器</strong></p>
+<p>图 5：L1 修改的高级概述。虚线表示新增/修改的组件。</p>
+<p>进化的 L1D 预取器如图 5 所示，通过结合全局步长跟踪器（GST）和全局增量历史表（GDHT）来补充 Berti 的本地增量跟踪系统，从而增强了基准 Berti 设计。此外，添加了强化学习（RL）仲裁器以在引擎之间选择预取候选者。</p>
+<ul>
+<li><strong>全局引擎</strong>：虽然基准 Berti 预取器在捕获页边界内的本地、每个 IP 模式方面很有效，但它不捕获跨越物理页面的跨 IP 空间流。为了弥补这一差距，添加了两个引擎：全局步长跟踪器（GST）覆盖线性步长流，全局增量历史表（GDHT）覆盖不遵循常规步长模式的不规则页面级跳转。</li>
+<li><strong>仲裁</strong>：引入了 RL 仲裁器，用于在来自三个不同预取引擎的候选者之间进行选择。仲裁器使用全局路径，从 PC 和滑动增量历史上下文窗口来评估不同的引擎。添加了额外的元数据，将长延迟驱逐直接链接回发出它们的特定引擎，允许仲裁器根据实时缓存效用准确地奖励或惩罚 GST 和 GDHT 引擎。为了防止总线拥塞和缓存抖动，还使用实时内存带宽阈值来动态限制仲裁器的激进程度。</li>
+</ul>
+<p><strong>IV-A2 L2 预取器</strong></p>
+<p>图 6：L2 修改的高级概述。虚线表示新增/修改的组件。</p>
+<p>进化的 L2 预取器在没有重大更改的情况下完善了 Pythia 基准，重点是补充 L1D 预取器。ArchAgent 没有进行大规模重组，而是升级了 RL 特征表示和动作空间特征，如图 6 所示。</p>
+<ul>
+<li><strong>上下文、动作和池化升级</strong>：Pythia 的 RL 框架升级了额外特征（从 2 个增加到 5 个特征），并将可用的动作步长选择扩展到 18 个选择（从 15 个）。5 个活动特征扩展到覆盖本地程序上下文（例如，仅使用一个 PC 或带有增量的 PC）以及 PC 历史（例如，使用最后 4 个 PC、增量和偏移量）。18 个动作选择是通过硬编码动作空间来创建的，主要生成正负 2 的幂次内存步长，有助于覆盖流式、步长和矩阵访问模式的许多变体。最后，ArchAgent 切换到带有置信度阈值的求和池化，以帮助减少不熟悉或非步长访问模式期间的缓存污染和 DRAM 流量。</li>
+<li><strong>带宽限制</strong>：在高内存流量下，限制器限制预取突发度并强制执行更高的置信度以发送预取。此外，在这些高流量状态下增强了奖励反馈，以强制减少总线拥塞。</li>
+</ul>
+<p><strong>IV-A3 LLC 预取器</strong></p>
+<p>图 7：LLC 修改的高级概述。虚线表示新增/修改的组件。</p>
+<p>图 8：ArchAgent 的策略与基准/SoTA 预取器（即 EDP [27]、Global Berti [32] 和 BertiGO [37]）的比较。</p>
+<p>图 9：在不同的工作负载套件和单核 ChampSim 锦标赛配置上测量的 ArchAgent 策略。</p>
+<p>图 10：使用多核 ChampSim 锦标赛配置在不同工作负载套件上测量的 ArchAgent 策略。</p>
+<p>在 LLC 级别，添加了两个预取生成器，如图 7 所示。第一个预取生成器记录并重放不规则的、指针追踪的未命中序列。第二个预取生成器检测规则的线性和步长访问模式。两个预取生成器也根据实时 DRAM 带宽调节预取度。这些由一个滑动增量跟踪窗口仲裁，该窗口监视最近的缓存内存未命中并计算唯一步长距离的数学比率。如果内存请求是有序的并遵循简单的重复步骤，它使用标准的规则线性和步长引擎。如果请求高度“混乱”，它切换到历史序列引擎。</p>
+<p><strong>IV-B 评估</strong></p>
+<p>图 8 显示了先前多级 SoTA 预取器与 ArchAgent 进化的预取器（即预取策略）相比的 DPC4 得分。总体而言，与基准相比，我们看到几何平均 IPC 加速有 3.8% 的性能提升，赢得了竞赛。当直接与之前的 SoTA DPC4 锦标赛获胜者 BertiGO 相比时，我们看到 0.3% 的提升。查看不同的核心数和带宽配置，我们看到整体性能改进来自于更好的单核性能，但以多核性能为代价。这是由于级联在工作流程中优先考虑单核性能，然后稍后优化多核性能。相对于 BertiGO 的增益来自于对单核工作负载的这种优化，特别是在低带宽设置中（比 SoTA 高出 2% 以上），但以多核性能为代价（AI 生成的策略在多核中损失约 1.5%）。在此图中，多核性能评估使用每个套件 4 核混合运行（即 4 个轨迹都来自一个套件，例如 SPEC17）和跨套件运行（即 4 个轨迹每个套件 1 个，例如，1 个来自 SPEC17、Graph、Google 和 AI-ML）。</p>
+<p>图 9 显示了分为工作负载套件的单核配置的性能。在这里，我们看到进化的多级预取器在低带宽和高带宽配置下的 Graph 和 Google 工作负载中比先前的 SoTA 获胜者表现更好，而在其他工作负载（如 AI-ML 和 SPEC）中相对于 BertiGO 有喜忧参半的增益。通常，对于进化的策略，低带宽配置的获胜幅度更大。</p>
+<p>图 10 显示了分为不同工作负载的多核配置的性能。在此图中，“总体”分组仅表示跨套件使用 4 核混合，而套件级评估使用同一套件内的 4 核混合运行。在这里，尽管最终预取器在总体混合中失败，但相对于先前的 SoTA，改进来自于 Google 和 AI-ML 工作负载。</p>
+<p><strong>V 剖析 ArchAgent v2 进化</strong></p>
+<p>为了理解预取器的进化轨迹，本节广泛剖析了单核工作负载上 L1D 预取器的第一次——也是运行时间最长的——进化。重要的是，这种进化只是我们级联方法的第一步，因此在此进化结束时产生的预取器并不对应于所有级联步骤结束时进化的 L1D 预取器。我们回答以下问题：</p>
+<p><strong>V-A 评估了多少个预取器？</strong></p>
+<p>图 11：评估想法的成功与失败。</p>
+<p>图 11 显示在第一次进化的生命周期内评估了超过 12,000 个候选预取器。这些分为两大类：有效并有助于改进的预取器，以及无助于改进的预取器（包括编译不正确、性能低下的设计等）。对于这次特定的进化，想法在这两个类别中平均分配。鉴于进化的规模，我们得出结论，<strong>ArchAgent 可以并行迭代比人类多得多的想法</strong>。然而，高失败率也表明进化循环中存在低效性。</p>
+<p><strong>V-B 生成的预取器有多大差异？</strong></p>
+<p>图 12：随时间变化的得分和热图。</p>
+<p>图 12 显示了设计随时间的性能差异。Y 轴显示提议预取器与竞赛基准（L1D 的 Berti 和 L2 的 Pythia）相比的几何平均 IPC，而 X 轴显示时间。红线是任何时间点进化的最佳结果，下面的热图（浅灰色点）显示了整个进化生命周期内进行的评估。点强度告诉我们在该时间有多少评估导致了相同的指标。热图显示<strong>设计在性能上显示出高方差</strong>。尽管总体最佳随时间增加，ArchAgent v2 仍然详尽地尝试了许多从好到坏的想法。中值/平均趋势线表明，平均提议仍然围绕基准分布。这表明虽然<strong>产生好想法的概率随时间增加</strong>，但平均提议的轨迹并没有改善，这再次表明进化循环中存在低效性。</p>
+<p><strong>V-C 智能体是如何得出这些最终想法的？</strong></p>
+<p>接下来，我们跟踪智能体的轨迹，以了解它是如何得出本次进化的最终最佳 L1D 预取器算法结果的。我们将看到，这次进化中的许多想法及其起源都贡献给了最终的预取器设计。由于描述和跟踪数千个预取器设计是不切实际的，我们定义了智能体所做设计修改的分类法，分为 LLM 为获得性能增益所做工作的“内容”及其认为可行/有价值的“原因”。这些类型的分类法类似于帮助诊断进化算法为何失败的其他工作 [31, 10]。我们重用 [31] 提供的“内容”分类法，而“原因”分类法是通过对所有想法的离线分析创建的，如表 III 和表 IV 所示。对于以下分析，LLM 评判分析了智能体所做的特定更改，并为每个分类法类别分配了一个百分比（例如，50% 归因于“架构更改” vs. 50% 归因于“超参数调整”）。</p>
+<p>表 III：“内容”分类法。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">类别</th>
+<th style="text-align: left;">描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">错误修复</td>
+<td style="text-align: left;">纠正错误或恢复预期行为而不添加功能。</td>
+</tr>
+<tr>
+<td style="text-align: left;">外部依赖</td>
+<td style="text-align: left;">由外部库、环境或 API 表面驱动的更改。</td>
+</tr>
+<tr>
+<td style="text-align: left;">架构更改</td>
+<td style="text-align: left;">对布局、拓扑、引擎框架或核心逻辑管道的根本性更改。</td>
+</tr>
+<tr>
+<td style="text-align: left;">组合</td>
+<td style="text-align: left;">将多个现有模块或预取器组合在一起工作。</td>
+</tr>
+<tr>
+<td style="text-align: left;">局部细化</td>
+<td style="text-align: left;">在没有新结构的情况下调整或微调现有的放置、映射或逻辑约束。</td>
+</tr>
+<tr>
+<td style="text-align: left;">修剪</td>
+<td style="text-align: left;">删除未使用的表、反馈逻辑、死代码或冗余组件。</td>
+</tr>
+<tr>
+<td style="text-align: left;">重构</td>
+<td style="text-align: left;">在不改变执行性能或底层逻辑的情况下进行代码重构。</td>
+</tr>
+<tr>
+<td style="text-align: left;">效率</td>
+<td style="text-align: left;">针对周期延迟、执行吞吐量或开销减少的优化。</td>
+</tr>
+<tr>
+<td style="text-align: left;">超参数调整</td>
+<td style="text-align: left;">调整常量阈值、衰减率或静态参数。</td>
+</tr>
+<tr>
+<td style="text-align: left;">其他</td>
+<td style="text-align: left;">任何不完全符合上述定义的结构修改的分类。</td>
+</tr>
+</tbody>
+</table>
+<p>表 IV：“原因”分类法。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">类别</th>
+<th style="text-align: left;">描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">带宽管理</td>
+<td style="text-align: left;">根据内存流量调整预取激进程度以避免拥塞。</td>
+</tr>
+<tr>
+<td style="text-align: left;">执行历史消歧</td>
+<td style="text-align: left;">使用执行历史/路径来分离重叠的访问模式。</td>
+</tr>
+<tr>
+<td style="text-align: left;">模式检测扩展</td>
+<td style="text-align: left;">升级逻辑以捕获更长、更宽或跨页的访问模式。</td>
+</tr>
+<tr>
+<td style="text-align: left;">缓存污染缓解</td>
+<td style="text-align: left;">添加置信度过滤以阻止不准确的预取替换有用数据。</td>
+</tr>
+<tr>
+<td style="text-align: left;">多级协调</td>
+<td style="text-align: left;">使所有预取器协同工作而不是冲突/重复工作。</td>
+</tr>
+<tr>
+<td style="text-align: left;">硬件效率</td>
+<td style="text-align: left;">优化逻辑和存储以适应物理面积和时序约束。</td>
+</tr>
+<tr>
+<td style="text-align: left;">算法调整</td>
+<td style="text-align: left;">在不改变核心设计的情况下调整参数、计数器或阈值。</td>
+</tr>
+<tr>
+<td style="text-align: left;">其他</td>
+<td style="text-align: left;">任何不完全符合上述定义的动机的分类。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>V-C1 所有想法的细分</strong></p>
+<p>在所有贡献了最终想法的想法中，我们看到 50% 的更改是“架构更改”，还有一长尾的其他类别的其他更改。这表明 ArchAgent 生成了各种类型的更改，这些更改混合到更高性能的更改中。分析它产生更改的“原因”导致了更均匀的混合。首先，我们看到“模式检测”在所有想法中占主导地位，约 35%。在剩余的想法中，大多数想法源于 LLM 对“硬件效率”、“执行历史消歧”、“带宽管理”和“缓存污染”的思考，各约 14%。这表明 LLM 在给定来自模拟器的反馈的情况下，能够推断出足够多的关于工作负载、执行历史等信息，以做出合理的优化。我们期望随着提供更多上下文（例如，更多指标或工作负载分析），我们可以进一步完善更改的内容和原因。</p>
+<p><strong>V-C2 主谱系细分</strong></p>
+<p>接下来，我们查看主谱系沿线的想法，主谱系定义为最佳程序回到初始程序基准的进化路径。图 13 显示了主谱系相对于“内容”分类法的细分。如果一个点有多个与之关联的类别，我们仅显示主要的。注意，主谱系没有单调递增的性能。这表明一个想法可能不会产生任何性能收益，直到它被细化或与其他更改组合。</p>
+<p>图 13：带注释的主谱系。</p>
+<p>对于主谱系，我们看到 65% 的修改是“架构更改”，较少的“组合”和“局部细化”，表明较大的更改具有更大的影响。最大的性能提升是一个“架构更改”，在中间（大约第 20 到 30 天）比其父代提供了 4% 的提升。如前所述，这可能会产生误导，因为此时来自其他类似岛屿群体的多个得分较高的程序在此处结合。分析这一跳跃的父代，我们看到注入提示的三个主要父程序导致了这一大跳跃：</p>
+<ul>
+<li>名为“共振感知动态仲裁器”，该父代提供了最高的性能提升（比主谱系的父代超过 4.5% 的 IPC 提升）。此更改结合了先前关于全局步长和时间预测器的想法，在发出预取之前检查两者的预测是否匹配。如果确定预取是推测性的，则将预取重定向到更高的缓存级别，以避免替换正在使用的 L1D 缓存行。</li>
+<li>名为“路径感知仲裁预取器”，该父代比主谱系的父代提供了 4.3% 的 IPC 提升。这增加了额外的 PC 信息异或（XORing）到预测器表键中以减少混叠。</li>
+<li>名为“不应期掩码预取过滤器”，该父代比主谱系的父代提供了 4% 的 IPC 提升。这为预取请求添加了一个过滤器，暂时阻止重复请求，直到有较低需求的访问或程序阶段更改。</li>
+</ul>
+<p>这些先前的想法集合随着时间的推移在此主谱系之外的其他程序数据库组中独立发展，但在此时被进化数据库选择并组合。</p>
+<p><strong>V-D 顶级想法是什么？</strong></p>
+<p>为了分解单一的顶级更改，我们进一步细分了导致最终进化输出的整个有向无环图。这允许理解图 13 中单一的大跳跃是如何受到核心想法影响的，因为顶级想法不一定对应于导致更改的主要想法。使用自定义图遍历算法，我们可以递归地将单一的顶级想法分解为子顶级想法。这是通过从最佳程序开始递归查看谱系来完成的。首先，我们检查主谱系并聚类顶级想法（相对于它们的父代）。在聚类的顶级想法中，我们查看每个想法的父代，并由 LLM 评判确定哪些父代导致了主要影响。在这些父代中，我们然后将其视为一个新的谱系，并重复聚类循环。在贡献了最终最佳程序的所有顶级想法中，我们在表 V 中展示了顶级想法，相对于它们相对于父代想法的 IPC 增益。</p>
+<p>表 V：顶级想法细分。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">相对父代的增益</th>
+<th style="text-align: left;">名称</th>
+<th style="text-align: left;">概述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">11.0%</td>
+<td style="text-align: left;">速度感知增量引擎</td>
+<td style="text-align: left;">添加“速度”监视（测量指令退休）以通过添加新的“全局增量表”来缩放预取前瞻距离。</td>
+</tr>
+<tr>
+<td style="text-align: left;">10.9%</td>
+<td style="text-align: left;">执行速度 Berti 预取器</td>
+<td style="text-align: left;">添加“速度”监视（测量指令退休和未命中延迟）以通过每个条目添加掩码来缩放预取前瞻距离。</td>
+</tr>
+<tr>
+<td style="text-align: left;">7.7%</td>
+<td style="text-align: left;">反馈引导步长预取器</td>
+<td style="text-align: left;">用新的两级表替换旧表，该表更好地跟踪页内与页间步长，此外还适应带宽。</td>
+</tr>
+<tr>
+<td style="text-align: left;">4.6%</td>
+<td style="text-align: left;">认知基因组混合</td>
+<td style="text-align: left;">添加额外的分支路径和 PC 的异或以索引预取表，“速度”监视（指令退休），每个预取表的额外掩码（以过滤无效的前瞻）以及其他较小的更改。</td>
+</tr>
+<tr>
+<td style="text-align: left;">4.5%</td>
+<td style="text-align: left;">上下文奖励基于仲裁</td>
+<td style="text-align: left;">使用“速度”监视（指令上下文、退休率和内存带宽）在页内/页间和步长预取器之间添加仲裁器。</td>
+</tr>
+</tbody>
+</table>
+<p>在这些想法中，我们看到了五个主要贡献：</p>
+<ul>
+<li><strong>执行历史和路径签名消歧</strong><ul>
+<li>内容：将全局分支路径历史与 PC 进行异或以索引预取表。</li>
+<li>原因：有助于消除指令混叠。</li>
+</ul>
+</li>
+<li><strong>通过深度掩码修剪缓解缓存污染</strong><ul>
+<li>内容：每个跟踪条目添加一个位向量“深度掩码”，以避免更长的无效前瞻预取。</li>
+<li>原因：防止在循环边界附近导致缓存污染的过度推测。此修剪跟踪每个前瞻深度的历史准确性，并动态截断深度预取，保证高精度而不驱逐正在使用的行。</li>
+</ul>
+</li>
+<li><strong>多级协调和缓存层次路由</strong><ul>
+<li>内容：将高置信度预取路由到 L1D，同时将推测性或深度前瞻预取转移到较低级别的缓存。</li>
+<li>原因：高距离预取对于隐藏 DRAM 延迟很有价值，但对小型 L1D 缓存有危险，因此将推测性预取路由到 L2/LLC 可以提前预热较低的内存层次结构，而不会替换关键的 L1 数据。</li>
+</ul>
+</li>
+<li><strong>瞬时相位转换抑制</strong><ul>
+<li>内容：使用指令退休率的更高阶导数来检测程序相位偏移。</li>
+<li>原因：当代码在相位之间转换时（例如，从指针追踪到线性扫描），避免触发陈旧的预取。</li>
+</ul>
+</li>
+<li><strong>硬件可实现性和面积/时序修剪</strong><ul>
+<li>内容：用较小的表替换单一的大型表，并在它们之间进行仲裁。</li>
+<li>原因：避免添加可能无法满足 1 周期 L1 命中时序和面积预算的单一大型表。</li>
+</ul>
+</li>
+</ul>
+<p>图 14 可视化了通过表示为有向无环图的进化运行中顶级想法所在的位置。编号节点代表顶级想法，编号基于相对于其父代给出了多少改进（例如，#3 是第三好的顶级想法）。小的白色节点代表最佳想法之间的一个或多个中间节点，这些节点将不同的分支/谱系连接在一起。</p>
+<p>图 14：想法在整个进化过程中的分布位置。</p>
+<p>在这里，我们看到子顶级想法来自整个进化过程中的许多不同分支。一些最好的顶级想法（即 #2 和 #3）是多个分支的种子，表明它们的重要性以及在所有分支中的广泛影响。</p>
+<p><strong>VI 相关工作和讨论</strong></p>
+<p>这项工作与正在进行的改进现有用于优化的智能体框架以及 LLM 改进的工作相辅相成。我们期望随着向较新的 LLM 提供更多的推理和上下文，这两个领域的改进将更迅速、更高效地产生更大的收益。在这项工作中，我们专注于使用 AlphaEvolve [28]，因为这项工作是 ArchAgent 原始框架的扩展。此类智能体工具在计算机架构领域的使用越来越受欢迎。自 2025 年 11 月发布 ArchAgent [3] 以来，在计算机架构领域的优化 [8] 和全规模设计 [34, 12] 方面都出现了更多的工作。随着该领域更多专用研讨会和会议的激增 [5, 24] 以及 LLM/框架的改进，我们期望未来会有更多此类智能体工作的发展。这项工作建立在原始 ArchAgent 系列工作之上，但对于未来围绕计算机架构构建的任何框架具有普遍的见解。对于预取器设计和优化工作，有很长的人类创建预取器的历史。这项工作不是专注于任何特定的生成设计，而是强调 ArchAgent 可以自动生成具有竞争力的预取器设计，并展示了这样一个例子。虽然生成的预取器能够击败先前的 SoTA 预取器设计，但需要更多的工作才能使该工具发出重大的新颖进步。首先，在生成的 L1D 预取器中，其基于 RL 的仲裁（与独立的 RL 预取器 [7, 30] 相比）、GST 的可变步长跟踪器（与恒定步长跟踪相比）以及添加的额外长寿命跟踪元数据（与先前在数据到达时使用奖励的工作 [9, 36] 相比）提供的新颖性有限。其次，在 LLC 预取器设计中，仲裁器具有渐进的新颖性，因为它能够计算一段时间内发生了多少唯一步骤以进行更准确的仲裁，而相比之下，先前的工作使用简单的命中/未命中阈值 [19]。这些更改通常强调 LLM 工具作为优秀合成器的优势，将多个领域结合在一起，同时提供的新颖性有限。</p>
+<p><strong>VII 结论</strong></p>
+<p>在本文中，我们扩展了 ArchAgent v1，以在第四届数据预取锦标赛的背景下构建和优化数据预取算法。通过提供更多的硬件可实现性面积反馈并将问题分解为分治级联，我们表明这种 ArchAgent v2 方法能够在竞赛环境中击败人类推导的获胜策略。我们表明，这种方法能够提供比竞赛基准 3.8% 的性能提升，并以 0.3% 的优势击败现有的最先进获胜者 BertiGO。此外，我们分析了其中一个级联进化的超过 12,000 个想法，描述了顶级想法的广度及其产生影响的原因，让我们得以一窥这些智能体进化发现工具如何探索广阔的设计空间。随着 AI、LLM 及其用于科学发现的框架的改进，这项工作展示了 AI 增强的计算机架构发现的一个例子。</p>
+<p><strong>参考文献</strong></p>
+<p>[1] A. Alameldeen and S. Pugsley. External Links: Link. Cited by: §II-C.<br />
+[2] A. R. Alameldeen and E. Rotenberg. The first jilp data prefetching championship (dpc-1). External Links: Link. Cited by: §II-C.<br />
+[3] Anonymous (2025). ArchAgent: agentic AI-driven computer architecture discovery. Note: OpenReview Anonymous PreprintSubmission Number 714. External Links: Link. Cited by: §II-A, §VI.<br />
+[4] Anthropic. External Links: Link. Cited by: §II-A.<br />
+[5] B. Asgari, T. D. Doudali, Q. Huang, A. Jain, G. Jeong, T. St. John, P. Panda, S. Pandey, S. Subramanian, N. J. Yadwadkar, and A. Yazdanbakhsh. MLArchSys 2026 home. External Links: Link. Cited by: §VI.<br />
+[6] R. Bera, K. Kanellopoulos, and O. Mutlu. Home. External Links: Link. Cited by: §I, §II-C.<br />
+[7] R. Bera, K. Kanellopoulos, A. Nori, T. Shahroodi, S. Subramoney, and O. Mutlu (2021). Pythia: a customizable hardware prefetching framework using online reinforcement learning. In MICRO-54: 54th Annual IEEE/ACM International Symposium on Microarchitecture, pp. 1121–1137. Cited by: §I, §VI.<br />
+[8] A. Blasberg, V. Kypriotis, and D. Skarlatos (2026). Agentic architect: an agentic ai framework for architecture design exploration and optimization. arXiv preprint arXiv:2604.25083. Cited by: §II-A, §VI.<br />
+[9] C. Block, G. Gerogiannis, and J. Torrellas (2025). Micro-mama: multi-agent reinforcement learning for multicore prefetching. In Proceedings of the 58th IEEE/ACM International Symposium on Microarchitecture, MICRO ’25, New York, NY, USA, pp. 884–898. External Links: ISBN 9798400715730, Link, Document. Cited by: §VI.<br />
+[10] M. Cemri, M. Z. Pan, S. Yang, L. A. Agrawal, B. Chopra, R. Tiwari, K. Keutzer, A. Parameswaran, D. Klein, K. Ramchandran, et al. (2026). Why do multi-agent llm systems fail?. Advances in Neural Information Processing Systems 38. Cited by: §V-C.<br />
+[11] A. Cheng, S. Liu, M. Pan, Z. Li, B. Wang, A. Krentsel, T. Xia, M. Cemri, J. Park, S. Yang, J. Chen, L. Agrawal, A. Desai, J. Xing, K. Sen, M. Zaharia, and I. Stoica (2025). Barbarians at the gate: how ai is upending systems research. arXiv preprint arXiv:2510.06189. External Links: 2510.06189, Link. Cited by: §II-A.<br />
+[12] A. Cui, F. Hermida-Rivera, J. Toubes, R. Gupta, J. Fang, C. L. Zhang, E. Schwarz, J. Kim, Y. S. Shao, B. Nikolic, C. W. Fletcher, and S. Karandikar (2026). CHIA: an open-source framework for principled, agentic ai-driven hardware/software co-design research. External Links: 2606.27350, Link. Cited by: §VI.<br />
+[13] N. Gober, G. Chacon, L. Wang, P. V. Gratz, D. A. Jimenez, E. Teran, S. Pugsley, and J. Kim (2022). The championship simulator: architectural simulation for education and competition. arXiv preprint arXiv:2210.14324. Cited by: §I.<br />
+[14] Google. External Links: Link. Cited by: §II-A.<br />
+[15] Google. Google workload traces version 2. Note: https://console.cloud.google.com/storage/browser/external-traces-v2 Accessed: 2025-11-13. Cited by: §II-B.<br />
+[16] R. Gupta, A. Jain, A. Gonzalez, A. Novikov, P. Huang, M. Balog, M. Eisenberger, S. Shirobokov, N. Vũ, M. Dixon, et al. (2026). ArchAgent: agentic ai-driven computer architecture discovery. arXiv preprint arXiv:2602.22425. Cited by: §I, §II-A, §II-B, §II.<br />
+[17] P. Hamadanian, P. Karimi, A. Nasr-Esfahany, K. Noorbakhsh, J. Chandler, A. ParandehGheibi, M. Alizadeh, and H. Balakrishnan (2026). Glia: a human-inspired ai for automated systems design and optimization. External Links: 2510.27176, Link. Cited by: §II-A.<br />
+[18] Hparch. External Links: Link. Cited by: §II-C.<br />
+[19] A. Jain and C. Lin (2013). Linearizing irregular memory accesses for improved correlated prefetching. In Proceedings of the 46th Annual IEEE/ACM International Symposium on Microarchitecture, MICRO-46, New York, NY, USA, pp. 247–259. External Links: ISBN 9781450326384, Link, Document. Cited by: §VI.<br />
+[20] P. Karimi, K. Noorbakhsh, M. Alizadeh, and H. Balakrishnan (2026). Improving coherence and persistence in agentic ai for system optimization. External Links: 2603.21321, Link. Cited by: §II-A.<br />
+[21] R. T. Lange, Y. Imajuku, and E. Cetin (2025). Shinkaevolve: towards open-ended and sample-efficient program evolution. arXiv preprint arXiv:2509.19349. Cited by: §II-A, §II-A.<br />
+[22] S. Liu, M. Cemri, S. Agarwal, A. Krentsel, A. Naren, Q. Mang, Z. Li, A. Gupta, M. Maheswaran, A. Cheng, et al. (2026). SkyDiscover: a flexible, adaptive framework for ai-driven scientific and algorithmic discovery. In Proceedings of the ACM Conference on AI and Agentic Systems, pp. 1223–1227. Cited by: §II-A, §II-A.<br />
+[23] R. Meng, B. Dalvi Mishra, J. Chen, C. Li, P. Goyal, M. Parmar, Y. Song, Y. Song, R. Sinha, P. Ranganathan, B. Gokturk, J. Yoon, and T. Pfister (2026). ScientistOne: towards human-level autonomous research via chain-of-evidence. arXiv preprint. Cited by: §II-A.<br />
+[24] A. Mirhosseini and Y. Liu. IEEE international conference on llm-aided design, 2026. External Links: Link. Cited by: §VI.<br />
+[25] J. Mouret and J. Clune (2015). Illuminating search spaces by mapping elites. External Links: 1504.04909, Link. Cited by: §II-A.<br />
+[26] A. Navarro-Torres, B. Panda, J. Alastruey-Benedé, P. Ibáñez, V. Viñals-Yúfera, and A. Ros (2022). Berti: an accurate local-delta data prefetcher. In 2022 55th IEEE/ACM International Symposium on Microarchitecture (MICRO), pp. 975–991. Cited by: §I.<br />
+[27] A. Navarro-Torres, S. Singh, B. Panda, and A. Ros (2026-02). The entangling data prefetcher. 4th Data Prefetching Championship. Cited by: Figure 8, Figure 8.<br />
+[28] A. Novikov, N. Vũ, M. Eisenberger, E. Dupont, P. Huang, A. Z. Wagner, S. Shirobokov, B. Kozlovskii, F. J. R. Ruiz, A. Mehrabian, M. P. Kumar, A. See, S. Chaudhuri, G. Holland, A. Davies, S. Nowozin, P. Kohli, and M. Balog (2025). AlphaEvolve: a coding agent for scientific and algorithmic discovery. arXiv preprint arXiv:2506.13131. External Links: 2506.13131, Link. Cited by: §I, §II-A, §II-A, §II-B, §VI.<br />
+[29] OpenAI. External Links: Link. Cited by: §II-A.<br />
+[30] L. Peled, S. Mannor, U. Weiser, and Y. Etsion (2015). Semantic locality and context-based prefetching using reinforcement learning. In Proceedings of the 42nd Annual International Symposium on Computer Architecture, ISCA ’15, New York, NY, USA, pp. 285–297. External Links: ISBN 9781450334020, Link, Document. Cited by: §VI.<br />
+[31] N. Pelleriti, S. H. Nelaturu, Z. Zhou, Z. Li, M. Zimmer, B. Han, and S. Pokutta (2026). What do evolutionary coding agents evolve?. External Links: 2605.20086, Link. Cited by: §V-C.<br />
+[32] G. Posluns and M. C. Jeffrey (2026-02). Global berti: simultaneous streaming and spatial prefetching. 4th Data Prefetching Championship. Cited by: Figure 8, Figure 8.<br />
+[33] B. Romera-Paredes, M. Barekatain, A. Novikov, M. Balog, M. P. Kumar, E. Dupont, F. J. R. Ruiz, J. S. Ellenberg, P. Wang, O. Fawzi, P. Kohli, and A. Fawzi (2024-01). Mathematical discoveries from program search with large language models. Nat. 625(7995), pp. 468–475. External Links: Link. Cited by: §II-A.<br />
+[34] K. Sankaralingam (2026). Computer architecture’s alphazero moment: automated discovery in an encircled world. External Links: 2604.03312, Link. Cited by: §II-A, §VI.<br />
+[35] A. Sharma (2025). OpenEvolve: an open-source evolutionary coding agent. GitHub. External Links: Link. Cited by: §II-A, §II-A.<br />
+[36] M. H. Siddiqui, F. Guzman, Y. Wu, and R. Ann (2025). Coordinated reinforcement learning prefetching architecture for multicore systems. External Links: 2509.10719, Link. Cited by: §VI.<br />
+[37] S. Singh, A. Torres, and A. Ros (2026). Pushing the limits of the berti prefetcher. 4th Data Prefetching Championship (DPC4). Cited by: §I, §II-C, Figure 8, Figure 8.<br />
+[38] SST and OpenCode Contributors (2026). OpenCode: the open-source ai coding agent. Note: Accessed: 2026-07-31. External Links: Link. Cited by: §II-A.<br />
+[39] R. Tanese (1989). Distributed genetic algorithms for function optimization. University of Michigan. Cited by: §II-A.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 微架构发现, 数据预取, 进化算法, 智能体AI, 硬件设计自动化</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

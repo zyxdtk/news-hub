@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解码级禁忌：LLM鲁棒性的诊断压力测试 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">解码级禁忌：LLM鲁棒性的诊断压力测试</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-10</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.09900" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Decoding-Level Taboo: A Diagnostic Stress Test for LLM Robustness</h4>
+            <p><strong>中文摘要：</strong> 本文提出了解码级禁忌，一种零提示诊断压力测试，通过在运行时词边界动态屏蔽首选token，迫使LLM偏离标称生成路径。研究发现，模型在偏离路径时的鲁棒性受参数规模和训练后指令对齐的显著影响，且该效应主要存在于生成式多步推理任务中。该方法为模型可靠性审计和合成数据生成提供了新工具。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>解码级禁忌：LLM鲁棒性的诊断压力测试<br />
+Tadanobu Chuyo Kamijo<br />
+琉球大学<br />
+tadanobu@cs.u-ryukyu.ac.jp<br />
+&amp;Ori Rottenstreich<br />
+以色列理工学院<br />
+or@technion.ac.il<br />
+Javier Conde   Gonzalo Martínez   Pedro Reviriego<br />
+IPTC<br />
+马德里理工大学<br />
+{javier.conde.diaz, gonzalo.martinez.ruizdearcaute, pedro.reviriego}@upm.es</p>
+<p>摘要<br />
+大型语言模型评估通常侧重于标称条件下的性能，这制造了一种能力的错觉，即模型舒适地走在一条狭窄、高度优化的生成走廊中。然而，在实际部署中，复杂的系统提示、安全护栏和结构约束不断迫使模型偏离这条标称路径，导致基准分数与部署性能之间出现差异。为了解决这个问题，我们引入了解码级禁忌，这是一种零提示诊断压力测试，它在运行时直接干预 logit 空间，迫使模型偏离其标称路径。通过在词边界动态屏蔽主要候选 token，禁忌迫使机器迂回表达。<br />
+在多个开放权重模型家族上评估禁忌表明，偏离路径的鲁棒性受参数规模和训练后指令对齐的严重影响，鲁棒性通常随模型规模和对齐程度的增加而提高。除了本文提出的结果外，禁忌还为生成多样化的合成数据集、对运行时安全护栏进行压力测试以及在真实世界部署前审计模型可靠性提供了一种新的基础原语。</p>
+<p>解码级禁忌：LLM鲁棒性的诊断压力测试<br />
+Tadanobu Chuyo Kamijo<br />
+琉球大学<br />
+tadanobu@cs.u-ryukyu.ac.jp<br />
+Ori Rottenstreich<br />
+以色列理工学院<br />
+or@technion.ac.il<br />
+Javier Conde    Gonzalo Martínez    Pedro Reviriego<br />
+IPTC<br />
+马德里理工大学<br />
+{javier.conde.diaz, gonzalo.martinez.ruizdearcaute, pedro.reviriego}@upm.es</p>
+<p>1 引言<br />
+对大型语言模型（LLM）的评估主要集中在标称条件下的解码，评估首选 token 序列狭窄路径上的能力 Wei et al. (2022); Polo et al. (2024)。虽然模型在标准排行榜上取得了令人印象深刻的分数，但这种标称范式制造了一种能力错觉：它掩盖了模型是具备适应性强的、鲁棒的内部推理，还是仅仅依赖于表面的记忆轨迹。</p>
+<p>然而，在生产部署中，模型很少在无约束的环境中运行。复杂的系统指令、安全护栏、结构化的 JSON 输出格式和负面约束不断给生成施加压力 Ouyang et al. (2022); Rafailov et al. (2023)。这些现实世界的操作需求迫使模型偏离其标称解码走廊。尽管这些约束无处不在，但 LLM 的内部多步推理引擎在持续的偏离路径压力下表现如何，仍然根本不清楚。具体来说，模型是动态重新路由其潜在推理，还是遭受逻辑退化。例如，当面对来自 GSM8K 的标准小学数学问题时，Llama-3.1-8B-Instruct 在贪婪解码下毫不费力地得出正确答案；然而，在每个单词开始时阻止其最喜欢的 token（我们在第 2 节中形式化的解码级干预），经常导致模型的推理链断裂，引发重复的 token 循环或错误的算术 1 1 1 见附录 A。尽管底层的数学逻辑保持不变，但微妙的约束迫使模型偏离其典型的生成路径，暴露了其脆弱性。</p>
+<p>最近评估非标称生成的努力，如 IFEval Zhou et al. (2023) 和 FollowBench Jiang et al. (2024)，试图通过引入负面约束（例如，禁止特定关键词）来解决这个问题。虽然这些基准突出了合规性挑战，但它们有两个核心局限性。首先，它们评估的是简单的、孤立的 token 规则，而不是多步生成期间的持续结构压力 Jehu-Appiah (2026)。其次，因为它们严格在提示级别操作，它们本质上将遵循规则的合规性与内部推理韧性混为一谈 Candussio et al. (2026); Ayoobi and others (2026)。基于提示的禁令失败无法区分是模型拒绝服从指令，还是当被迫偏离路径时其底层逻辑引擎的完全崩溃。</p>
+<p>这一根本局限性突显了对完全绕过提示接口的诊断框架的需求。修改输入提示会引入显著的混淆变量，包括指令解析开销、对措辞微小变化的表面敏感性 Zhao et al. (2021); Sclar et al. (2024)，以及跨扩展上下文窗口的注意力分配漂移。为了严格测量 LLM 的潜在推理引擎在被迫偏离其主要解码轨迹时是否保持韧性，诊断评估必须将压力扰动与提示解耦。通过运行时 logit 空间干预直接在生成管道内操作，能够精确、无混淆地探测模型健康状况。</p>
+<p>在本文中，我们引入了解码级禁忌：一种零提示诊断压力测试，它在运行时直接干预自回归解码循环。保持提示固定，禁忌在单词开始边界动态屏蔽主要候选 token，阻止模型遍历其最自信、高度优化的生成路径。这种干预迫使模型进行机器迂回表达，要求其潜在推理引擎动态构建语义有效、偏离路径的替代方案。我们使用注入惊奇度来参数化这种偏离路径压力的严重程度，它测量当模型偏离其首选解码走廊时引起的分布偏移。通过将偏离路径执行与提示解释隔离，禁忌提供了一个清晰的诊断视角，以观察 LLM 的多步推理在强制发散下是否保持结构完整。</p>
+<p>这项工作的主要贡献是：<br />
+1. 我们提出了解码级禁忌，一种零提示、运行时诊断压力测试，它在词边界直接干预 logit 空间，以量化模型偏离路径的推理韧性。<br />
+2. 使用提出的禁忌解码，我们在四个开放权重家族和四个基准上表明，偏离路径的鲁棒性由规模和训练后对齐共同决定：对齐的检查点吸收了更大的有效扰动，但保留了更多的多步推理。这种效应随规模而扩大，具有家族依赖性（在 7-8B 的 Llama-3 中不存在，尽管在 70B 时重新出现），具有任务特异性（生成式推理，而非多项选择题或事实回忆），并受形式语法限制（HumanEval 崩溃至零）。<br />
+3. 我们将禁忌解码定位为超越诊断评估的通用、零训练运行时原语，讨论了其在安全审计、合成思维链轨迹发现、结构化输出压力测试和禁忌引导策略对齐方面的潜力。</p>
+<p>2 解码级禁忌<br />
+在本节中，我们形式化地介绍了提出的解码级禁忌，这是一个零提示诊断框架，旨在评估 LLM 在偏离路径解码压力下的推理韧性。</p>
+<p>2.1 通用框架与 Logit 干预<br />
+设自回归语言模型在给定前缀序列 $x_{&lt;t}=(x_{1},x_{2},\dots,x_{t-1})$ 的情况下，对词汇表 $V$ 上的概率分布进行参数化。在每个解码步骤 $t$，模型的神经网络架构产生一个未归一化的 logit 向量 $z_{t}\in\mathbb{R}^{|V|}$。在标称贪婪解码下，模型确定性地选择首选候选 token $x_{t}^{\text{nom}}=\arg\max_{j\in V}z_{t,j}$，遵循其最自信、记忆的生成路径。</p>
+<p>为了在不改变输入提示的情况下强制偏离路径生成，解码级禁忌在应用 softmax 算子之前，将加性二值 logit 掩码 $M_{t}\in{0,-\infty}^{|V|}$ 应用于 logit：<br />
+$$P_{\text{taboo}}(x_{t}\mid x_{&lt;t})=\text{softmax}\left(z_{t}+M_{t}\right)$$ (1)<br />
+通过将得分最高的候选索引 $\mathcal{K}<em>{t}=\text{Top-}i(z</em>{t})\subset V$（$i$ 个最可能的标称 token）的 $M_{t,j}$ 设为 $-\infty$，我们将其条件生成概率设为零。这种干预消除了模型的主要解码偏好，迫使其潜在推理引擎进行机器迂回表达，并构建语义连贯、语法有效的替代方案。</p>
+<p>2.2 词首干预策略<br />
+在每个子词步骤不加区分地应用 logit 掩码会严重破坏分词结构，迫使模型进入无效的字节序列或重复的字符片段。为了将语义推理与分词破坏隔离开来，禁忌将干预严格限制在词首 token 步骤，完全不对词中子词延续进行屏蔽。</p>
+<p>在生成自回归序列时，每个解码步骤 $t$ 要么启动一个新的词法单词，要么继续现有的子词片段。我们定义一个二元指示谓词 $\mathcal{W}(x_{t},x_{&lt;t})\in{0,1}$，当 token 携带分词器词边界标记时，其值为 $1$（这种方法可能会遗漏第一个生成的 token、附加标点的单词和数字），否则为 $0$。在步骤 $t$ 应用于候选 token $j$ 的加性 logit 掩码 $M_{t,j}$ 定义为：<br />
+$$M_{t,j}=\begin{cases}-\infty&amp;\text{if }\mathcal{W}(x_{t},x_{&lt;t})=1\text{ and }j\in\text{Top-}i(z_{t})\0&amp;\text{otherwise}\end{cases}$$ (2)<br />
+其中 $\text{Top-}i(z_{t})$ 表示步骤 $t$ 时 $i$ 个最高未归一化 logit 的索引；我们将 $i$ 称为禁忌秩（掩码宽度）。词首状态是一个静态的、词汇表级别的属性，基于标准分词器词边界标记（字节级 BPE 中的 Ġ，SentencePiece 中的 ␣）预先计算为布尔掩码。$\mathcal{W}$ 在步骤 $t$ 的标称首选候选上进行评估：仅当模型的首选延续将开始一个新单词时才触发干预。此设置为每个单词建立了一个两阶段解码生命周期：<br />
+1. 词启动（$\mathcal{W}=1$）：当标称首选候选是词首时，前 $i$ 个候选被屏蔽（$M_{t,j}=-\infty$），迫使贪婪解码选择下一个排名的 token $x_{t}^{\ast}=\arg\max_{j\notin\text{Top-}i(z_{t})}z_{t,j}$。<br />
+2. 子词完成（$\mathcal{W}=0$）：对于完成该单词所需的所有后续 token 步骤，屏蔽完全禁用（$M_{t}=0$）。模型不受干扰地解码其选择的子词延续片段。</p>
+<p>在 GSM8K 上的对照消融实验中（$n=100$ 个问题），在词中位置（非起始子词）应用禁忌屏蔽，同时不屏蔽词首，会使所有四个模型家族以及 BPE 和 SentencePiece 分词器的绝对准确率崩溃至 $0.01$–$0.05$（在匹配的掩码宽度 $i=2$ 下）。例如，在适度的平均干预下进行词中屏蔽时，Gemma-3-12B-it 的准确率降至 $0.01$；相反，在更高的干预下进行词首屏蔽，仍能保持 $0.81$ 的绝对准确率。在词首干预会施加语义压力，而在词中干预只会导致分词破坏。</p>
+<p>作为进一步的检查，以验证测量的下降反映的是推理被破坏，而不是干预与任务自身约束的机械碰撞，我们评估了 IFEval 中的 <code>forbidden_words</code> 指令类型，其中必须避免指定的单词。在禁忌下，单个生成确实会改变，干预改变了解码路径，因此每个项目的合规性在两个方向上都会翻转，但禁忌不能机械地强制出现禁用词，并且总体合规性在任何家族中都不会下降（净变化 $+0.0$ 到 $+0.2$；$n=25$ 个提示，指示性）。因此，其他地方的下降不能用干预系统地破坏任务约束来解释。</p>
+<p>即使干预严格限制在词首，禁忌也揭示了自然语言和形式领域合成之间的根本分歧。虽然自然语言具有丰富的语义冗余，允许模型在主要词首 token 被阻止时利用同义词和迂回表达，但形式代码在结构词边界处表现出近零的词汇冗余。当禁忌屏蔽强制的词首关键字或运算符（如 <code>def</code>、<code>return</code> 或 <code>for</code>）时，模型被剥夺了功能替代方案。因为形式语法没有提供有效的偏离路径词选择来表达相同的程序意图，在词首强制发散会立即导致结构崩溃。根据经验，在 HumanEval Chen et al. (2021) 上的词首禁忌解码使所有评估模型的 Pass@1 准确率接近零（每个单元格 $0\%$，除了 Llama-3.1-8B-Instruct 在 $i=2$ 时保留了 $1/102$），表明形式语法约束为偏离路径生成建立了有效的下限。</p>
+<p>2.3 通过注入惊奇度量化压力<br />
+为了系统地测量将模型偏离路径所需干预的严重程度，我们定义了注入惊奇度（$\Delta S_{t}$）。注入惊奇度测量在步骤 $t$ 屏蔽标称候选集引入的瞬时信息论成本（以比特为单位）：<br />
+$$\begin{split}\Delta S_{t}&amp;=-\log_{2}P_{\text{nom}}(x_{t}^{\ast}\mid x_{&lt;t})-\&amp;\quad\left(-\log_{2}P_{\text{nom}}(x_{t}^{\text{nom}}\mid x_{&lt;t})\right)\end{split}$$ (3)<br />
+其中 $x_{t}^{\ast}=\arg\max_{j\in V}(z_{t,j}+M_{t,j})$ 是选定的偏离路径 token，$P_{\text{nom}}$ 代表无约束的标称分布。两项都在标称（无掩码）分布下评估，因此根据构造 $\Delta S_{t}\geq 0$：在模型自身的信念中，这是发出强制替代方案而不是其首选 token 的额外惊奇度。</p>
+<p>如果步骤 $t$ 不是词边界，或者未应用干预，则 $M_{t}=0$，得出 $\Delta S_{t}=0$。对于长度为 $T$ 的生成序列，总累积偏离路径压力剂量 $\mathcal{S}<em>{\text{total}}$ 定义为：<br />
+$$\mathcal{S}</em>{\text{total}}=\sum_{t=1}^{T}\Delta S_{t}$$ (4)<br />
+将 $\mathcal{S}_{\text{total}}$ 除以词边界干预总数，提供了一个标准化指标，即每次干预的平均注入惊奇度（$\bar{\Delta S}$），允许直接比较不同模型架构、参数大小和分词器的解码压力。</p>
+<p>2.4 实现<br />
+我们在 Hugging Face transformers 库中将解码级禁忌实现为一个模块化管道组件。由于现代 LLM 分词器采用不同的字节级或子词编码方案（例如，Llama-3 和 Qwen2.5 中的字节对编码 vs. Gemma-3 中的 SentencePiece），词边界识别依赖于特定于分词器的前缀元数据。具体来说，我们预先计算一个词汇表大小的布尔掩码，标记每个解码字符串以分词器词边界前缀开头的 token，并在每个步骤中为标称首选候选查询该掩码。</p>
+<p>在每个解码步骤 $t$，<code>TabooLogitsProcessor</code> 接受生成的 token 矩阵 <code>input_ids</code> 和未归一化的 logit 张量 <code>scores</code> $\in\mathbb{R}^{B\times|V|}$（批大小为 $B$）。对于批处理中的每个序列，处理器使用分词器前缀元数据评估步骤 $t$ 是否对应于词边界。如果识别出词边界，它会检索前 $i$ 个候选 token 索引，将其相应的 logit 屏蔽为 $-\infty$，并选择得分最高的未屏蔽 token 作为偏离路径输出 $x_{t}^{\ast}$。然后，它计算步骤惊奇度 $\Delta S_{t}$ 作为无约束标称首选候选和新选定的偏离路径 token 之间对数概率的差值。如果步骤 $t$ 代表中间子词延续（$\mathcal{W}=0$），则 logit 张量保持不变。</p>
+<p>因为该干预是仅在词首步骤应用的向量化前 $i$ 选择和屏蔽 argmax，其每步成本相对于 transformer 前向传播可以忽略不计；唯一实质性的成本是间接的，阻止首选延续会加长生成（在 GSM8K 上 $i=1$ 时，平均生成的 token 增长 $\approx 1.4\times$，见附录 G）。在生成过程中并行跟踪和记录 $\Delta S_{t}$，可以动态监控偏离路径压力轨迹，而无需多遍生成或反向梯度。</p>
+<p>3 实验设置<br />
+为了评估偏离路径解码压力如何影响不同推理模式下的模型性能，我们构建了一个受控评估环境，比较了四个不同基准任务上的基础模型和指令微调模型 2 2 2 代码可在 https://doi.org/10.5281/zenodo.21761445 (匿名) 获取。</p>
+<p>3.1 模型套件<br />
+我们评估了参数规模从 0.5B 到 72B 的主要开放权重模型家族：<br />
+• Qwen2.5 家族 Yang et al. (2024)：在代码和数学方面具有强大标称推理能力的多语言模型。<br />
+• Gemma-3 家族 Gemma Team (2025)：谷歌的开放权重模型，具有独特的预训练和对齐优化。<br />
+• Llama-3 家族 Dubey et al. (2024)：Meta 广泛采用的密集 transformer 基准模型。<br />
+• OLMo-2 家族 Allen Institute for AI (2024)：完全开源的预训练和对齐模型，具有透明的预训练数据混合和训练方案。</p>
+<p>为了隔离训练后对齐（例如，SFT、DPO、RLHF）与原始预训练能力的结构性影响，我们评估了每种架构的基础（预训练）和指令/对齐检查点。<br />
+所有模型均在 4 位下运行；中小型阶梯还在原生 <code>bf16</code> 下运行作为精度控制。在 Qwen2.5-{3B,7B,14B}、OLMo-2-7B 和 Llama-3.1-8B（基础和指令，GSM8K，相同种子项目）上，50 个（模型，剂量）单元格的中位绝对差异 $|\mathrm{acc}<em>{\text{4-bit}}-\mathrm{acc}</em>{\text{bf16}}|$ 为 $0.03$，50 个中有 47 个 $\leq 0.07$；唯一较大的差异是 Qwen2.5-14B-Instruct 在 $i=2$ 时（$0.62$ bf16 vs. $0.44$ 4 位）。以 8 位重新运行该模型会将此单元格置于 $0.58$，与 bf16 而非 4 位匹配，因此异常特定于激进的 4 位量化。所有定性结论（指令优于基础的排序、剂量反应形状和 Llama 例外）在不同精度下均可重现，因此量化并非驱动因素。</p>
+<p>3.2 评估基准<br />
+我们的套件跨越不同的认知和结构领域，以对比语义灵活性与严格的语法约束：<br />
+• GSM8K Cobbe et al. (2021)：需要链式算法逻辑的多步小学数学应用题。<br />
+• MMLU（格式约束分析）Hendrycks et al. (2021)：涵盖 57 个知识领域的四选一多项选择题，在固定答案格式下探测事实和概念回忆。由于单字母答案 token 本质上是词首的，干预直接屏蔽目标选择，而不是强制语义迂回。我们有意包含此基准以说明解码级约束的结构边界。<br />
+• TriviaQA Joshi et al. (2017)：没有思维链依赖的开放领域事实回忆和知识检索。<br />
+• HumanEval（健全性检查 / 阴性对照）Chen et al. (2021)：Python 函数合成。如第 2 节所述，由于形式编程语言在关键字边界处缺乏语义冗余，HumanEval 作为阴性对照。</p>
+<p>3.3 推理过程与提取<br />
+为了在基础和指令变体之间建立统一的基线，所有评估都遵循标准的 2-shot 提示设置。此上下文提供了基本的结构锚点，而不会引入特定于任务的捷径解决方案。我们在整个过程中采用 CoT 提示，从模型完成的生成中提取最终答案。每种实验配置都在基准测试集的固定、种子子样本上进行评估（主要 $7\text{--}12\text{B}$ 比较为 $n=500$；规模阶梯和 $\geq 32\text{B}$ 运行为 $n=100$），确保在给定模型的所有条件下使用相同的测试项目。</p>
+<p>所有条件均确定性地评分。对于 GSM8K，我们提取最终数字（如果存在显式的 <code>Answer:</code> 行，否则为最后一个数字）并进行数值比较；对于 TriviaQA，我们应用 SQuAD 风格的归一化并匹配参考别名集；对于 MMLU，我们提取答案字母；对于 HumanEval，我们在沙盒子进程中针对参考测试执行完成的函数（Pass@1）。为了确认确定性提取本身不是观察到的下降的来源，我们在 200 个项目的子样本上针对 LLM 评判器（<code>Gemini 3.6 Flash</code>）进行了健全性检查：在 GSM8K 上，最终数字提取在 $97\%$ 的项目上与评判器一致（在禁忌扰动的输出上为 $100\%$）；残留的 MMLU 分歧（一致率 $79\%$）追溯到少样本模型过度生成了幻觉的后续问题，确定性首次答案提取可以处理这个问题，但会误导评判器。因为严格提取只能低估被破坏但正确的答案，我们的保留估计是保守的。</p>
+<p>3.4 评估指标<br />
+为了系统地评估标称和强制偏离路径条件下的模型性能，我们报告了两个基线指标，并引入了一个条件保留指标：<br />
+1. 标称准确率（$Acc_{\text{Base}}$）：在无约束、贪婪解码下（每一步 $M_{t}=0$）的标准基准准确率，在整个数据集 $\mathcal{Q}$ 上评估。<br />
+2. 禁忌准确率（$Acc_{\text{Taboo}}$）：在掩码宽度 $i$ 下进行解码级禁忌干预时的总体模型准确率。</p>
+<p>为了将内在的偏离路径推理韧性与标称模型能力隔离开来，并消除基础错误项目上随机恢复的混淆噪声，我们的主要指标是条件保留率（$\mathcal{R}$）。我们将 $\mathcal{R}$ 限制在模型在标称贪婪解码下成功解决问题的实例子集 $\mathcal{Q}<em>{\text{correct}}\subseteq\mathcal{Q}$ 中：<br />
+$$\mathcal{R}=\frac{1}{|\mathcal{Q}</em>{\text{correct}}|}\sum_{i\in\mathcal{Q}<em>{\text{correct}}}\mathbb{I}\left(\text{Eval}(\hat{y}</em>{i}^{\text{Taboo}})=y_{i}\right)\times 100\%$$ (5)<br />
+其中 $y_{i}$ 是真实目标，$\hat{y}_{i}^{\text{Taboo}}$ 是在禁忌约束下生成的输出。条件保留率 $\mathcal{R}=100\%$ 表示在偏离路径压力下具有完全的推理免疫力，而 $\mathcal{R}=0\%$ 表示当被迫偏离模型标称路径时逻辑完全崩溃。</p>
+<p>4 经验结果与分析<br />
+我们通过测量模型在我们的基准套件上进行解码级禁忌下的性能，评估了开放权重 LLM 的推理韧性。图 1 总结了结果，显示了条件保留率 $\mathcal{R}$ 作为禁忌秩 $i$ 的函数，对比了 Qwen 家族的基础和指令微调检查点及模型大小。HumanEval 从网格中省略，因为所有模型得分接近零（$\mathcal{R}\approx 0\%$，除了单个 $1/102$ 单元格），作为网格外阴性对照。为了提供这些动态的完整表征，我们将扩展的粒度视图 relegated 到附录中：(1) 7-12B 模型大小范围的保留趋势在附录 B 中绘制为曲线，叠加了从基线校正样本量 $|\mathcal{Q}_{\text{correct}}|$ 计算的 95% Wilson 分数区间，以可视化观察到的差异背后的项目抽样不确定性；(2) 所有评估模型配置的绝对准确率详见附录 C。</p>
+<p>图 1：<br />
+对齐和规模都赋予偏离路径鲁棒性；对齐效应具有任务特异性。条件保留率 $\mathcal{R}$（在禁忌下仍然正确的基线正确项目的百分比）作为注释热图；在每个块内，列是禁忌秩 $i\in{1,2,4,8}$。左（GSM8K，清晰的规模轴）。(a) Qwen2.5 规模阶梯（3B-72B），基础和指令行相邻，因此对齐垂直读取，规模向下读取面板；(b) 规模提升，每个 Qwen 大小的指令保留减去最小（3B）的保留。右（四个家族在 7-12B，跨三个基准）。(c) GSM8K、MMLU 和 TriviaQA 的绝对保留；(d) 每个基准的对齐提升（指令减去基础）。该效应在 GSM8K 上大而清晰（Gemma/Qwen/OLMo，在 Llama-3 此大小上不存在），在 MMLU 上嘈杂且非单调（MCQ 下限伪影），在 TriviaQA 上很小，特定于生成式多步推理。面板 使用顺序比例；(b,d) 使用发散比例。</p>
+<p>4.1 基础模型 vs. 指令微调模型<br />
+我们诊断中最清晰的信号是，指令微调赋予了偏离路径鲁棒性，但仅限于需要多步推理的任务，且仅限于某些家族。在 GSM8K 上，对齐的检查点在禁忌下保留的基线正确项目比例远大于其基础对应物。在最轻微的剂量（$i=1$）下，条件保留率在 Qwen2.5-7B 中从 $8\%$ 上升到 $48\%$，在 OLMo-2-7B 中从 $15\%$ 上升到 $45\%$，在 Gemma-3-12B 中从 $25\%$ 上升到 $90\%$。随着剂量增加，差距持续存在，在 Gemma 中甚至以相对术语扩大：在 $i=8$ 时，指令检查点仍然保留 $30\%$（Qwen）、$16\%$（OLMo）和 $51\%$（Gemma），而每个基础模型都崩溃到 $8\%$ 以下。</p>
+<p>这种对齐收益既不是普遍的，也不是均匀的。Llama-3.1-8B 在 GSM8K 上显示基础和指令之间基本上没有分离（$i=1$ 时 $14\%$ vs. $16\%$，到 $i=8$ 时都降至 $\sim!5\%$），这在各剂量中是一个一致的例外。而且收益具有任务特异性：在 TriviaQA 上，每个家族的基础-指令差距都很小（例如 Llama 在 $i=1$ 时 $53\%$ vs. $45\%$），而在 MMLU 上，两个检查点都很弱且非单调，这是多项选择题下限的伪影，其中强制重新选择可以在大 $i$ 时提高保留率。因此，该效应特定于生成式多步推理：对齐似乎教会模型在移除其首选 token 后重建有效的推理路径，而不是更稳健地回忆事实或重新填充 MCQ 插槽。</p>
+<p>4.2 参数规模 vs. 偏离路径韧性<br />
+规模通常能提高生成式推理的偏离路径鲁棒性，尽管不是单调的，并且该效应与对齐复合（图 1 a,b）。在 Qwen 模型上，对于 GSM8K，基础检查点在最轻微剂量（$i=1$）下的条件保留率总体随大小而上升，$6\%$（0.5B）、$11\%$（1.5B）、$23\%$（3B）、$52\%$（14B）、$59\%$（32B），尽管不是单调的：7B 基础下降到 $8\%$。它们对齐的对应物明显更鲁棒，从 0.5B 的 $6\%$ 到 32B 的 $93\%$ 和 72B 的 $85\%$。因此，对齐差距随规模而扩大：在阶梯顶部，一个对齐的 32B 模型保留了几乎它能解决的所有问题（$i=1$ 时 $93\%$，$i=8$ 时仍有 $74\%$），而其基础兄弟在 $i=8$ 时下降到 $13\%$。有趣的是，最大的基础模型并不是最鲁棒的：Qwen2.5-72B-base 保留的少于 32B-base（$i=1$ 时 $39\%$ vs. $59\%$），这种非单调性表明单纯的原始规模并不能保证偏离路径的稳定性。</p>
+<p>规模并不能拯救每个领域。在 MMLU 上，禁忌下的绝对准确率在每个大小（包括 72B）都向多项选择题下限崩溃，这与上面讨论的格式伪影一致，而不是规模可以买回的能力。在 TriviaQA 上，所有大小的退化都是优雅的，基础、指令差距保持很小，证实了复合的规模 $\times$ 对齐收益特定于多步生成式推理。</p>
+<p>4.3 跨家族架构分歧<br />
+保持大小大致恒定（$7$–$12$B）且提示相同，这四个家族根据其训练后在 GSM8K 上赋予的鲁棒性程度清晰地划分：Gemma-3 获益最多（条件保留率 $i=1$ 时 $25\%!\rightarrow!90\%$），Qwen2.5 和 OLMo-2 获益强劲（$8\%!\rightarrow!48\%$ 和 $15\%!\rightarrow!45\%$），而 Llama-3 基本上没有获益（$14\%!\rightarrow!16\%$，置信区间重叠）。注入惊奇度曲线（见附录 D）提供了一个机制提示：在对齐有帮助的三个家族中，对齐的检查点每次干预比其基础吸收更多的惊奇度（与更尖锐的下一个 token 分布一致），而 Llama-3-Instruct 吸收的不比其基础多，表明其训练后使下一个 token 分布相对平坦。由于所有家族都在相同的干预、提示和评分器下评估，分歧指向训练后方案（数据混合、SFT/DPO/RLHF 组成）而不是干预本身。识别哪个方案组件赋予禁忌鲁棒性是我们的诊断使其可测量的一个开放问题。这种家族级别的例外是真实的，但受规模限制。将 Llama-3.1-8B 的生成预算提高到 1024 个 token 并不能恢复它，模型仍然耗尽预算，其保留率不变（$i=1$ 时 $22\%$ vs. $24\%$），因此它反映的是无法终止连贯链而不是答案截断。然而，将阶梯扩展到 Llama-3.1-70B，对齐收益重新出现（GSM8K 边际保留率在 $i=1$ 时从基础 $36\%$ 上升到指令 $75\%$，$i=8$ 时从 $9\%$ 上升到 $22\%$）：Llama-3 在规模上比其他三个家族更晚获得禁忌鲁棒性，而不是缺乏它，这与上面的规模 $\times$ 对齐复合一致。这些是 $n=100$ 时的单次运行边际保留数据；只有 8B 和 70B 两个点，我们无法定位过渡。</p>
+<p>4.4 领域约束：自然语言冗余 vs. 代码不灵活性<br />
+比较基准列之间的性能突出了特定领域词汇冗余的作用（图 1 c）：<br />
+1. TriviaQA（第 3 列 - 高冗余）：表现出最高的全局保留率。自然语言问答提供了巨大的表面形式灵活性，允许模型毫不费力地绕过被屏蔽的 token。<br />
+2. MMLU（第 2 列 - 多项选择）：性能向猜测下限崩溃。因为单字母答案本质上是词首的，禁忌直接屏蔽模型的主要选择并强制任意重新选择。这引起了非单调的剂量反应，表明 MMLU 捕获的是格式伪影而不是真正的推理韧性。<br />
+3. GSM8K（第 1 列 - 结构化推理）：表现出中等的保留率。虽然数学推理允许口头迂回，但强制重新措辞增加了上下文长度和累积错误概率，导致最终的逻辑漂移。<br />
+4. HumanEval（阴性对照基线）：无需专门的图表可视化即可确认第 2 节中建立的经验边界。在词边界屏蔽保留关键字会立即破坏 Python AST 构建。</p>
+<p>5 解码级干预的更广泛应用<br />
+这项工作主要将解码级禁忌作为内部推理韧性的诊断工具引入，但运行时 logit 空间干预可以具有更广泛的实用性，如下所述。</p>
+<p>5.1 审计对齐与表面拒绝<br />
+安全对齐范式经常训练模型在遇到对抗性输入时发出规范的拒绝模板 Ouyang et al. (2022); Rafailov et al. (2023)。然而，提示级别的评估很难区分拒绝是反映了潜在表示中的深度安全对齐，还是仅仅是对记忆的拒绝触发器的浅层、首选 token 偏好 Candussio et al. (2026)。通过在解码时动态屏蔽候选拒绝 token，禁忌实现了非破坏性安全审计：如果抑制主要拒绝 token 导致模型立即发出违反策略的内容，则对齐是表面的；如果模型重新路由到替代的安全措辞或有效的策略理由，则安全护栏在结构上是鲁棒的。</p>
+<p>5.2 为合成 CoT 数据集生成多样化轨迹<br />
+知识蒸馏和推理对齐严重依赖于从教师架构中采样多样化的、逐步的 CoT 轨迹 Hinton et al. (2015); Wei et al. (2022)。标准的随机采样技术，如温度缩放或 top-$p$ 核采样，通常会产生重复的推理路径或注入无引导的熵，从而降低多步逻辑连贯性。通过在词边界强制执行解码级禁忌约束，模型被系统地从其主要贪婪走廊转移到替代的、逻辑合理的推理轨迹中。这提供了一个可控的、高熵的采样引擎，用于提取多样化的合成 CoT。</p>
+<p>5.3 用于结构化生成的零训练压力测试<br />
+将语言模型部署到操作软件管道中通常需要严格遵守结构化输出格式，如 JSON 模式、函数调用接口和 API 有效负载。虽然形式编程语言（例如 HumanEval 中的 Python）在禁忌屏蔽下表现出零词汇冗余，但半结构化输出通常包含结构和语义灵活性，例如键值排序、替代参数名称或自由文本字段值。解码级 logit 屏蔽为这些接口提供了一个零训练、运行时压力测试框架。通过动态屏蔽允许的模式候选中的首选 top token，开发人员可以探测模型是真正理解底层模式约束，还是依赖于脆弱的、记忆的模板序列 Ayoobi and others (2026)。</p>
+<p>5.4 通过禁忌引导对齐提高偏离路径鲁棒性<br />
+通过将禁忌采样集成到基于验证器的 RL（例如，数学领域的 GRPO）的 rollout 阶段，优化可以显式奖励在强制约束下发现替代的、有效推理路径的模型。这将禁忌从被动诊断转变为主动正则化机制，减轻了策略对齐期间的脆弱性。</p>
+<p>6 结论<br />
+我们引入了解码级禁忌，这是一种零提示诊断，通过在解码期间的词边界屏蔽模型首选 token 来对模型推理施加压力，并以注入惊奇度作为测量的分级剂量。应用于四个基准上的四个开放权重家族，该诊断产生了一致的画面：偏离路径鲁棒性不是既定的，而是获得的属性，训练后对齐赋予了它（在四个家族中的三个中），规模复合了它，最大的对齐模型即使在激进的屏蔽下也保留了大部分多步推理，而基础检查点在每个规模下的退化都要陡峭得多。该效应特定于生成式推理，在多项选择题格式中不可见，在形式语法中不存在，其中单个被屏蔽的关键字是不可恢复的。因为干预在 logit 空间中，禁忌不需要提示工程、重新训练和可忽略的运行时开销，使其成为模型在现实世界约束下行为方式的实用部署前审计，并且可能成为使模型在被推动时保持稳定的训练信号。</p>
+<p>局限性<br />
+这项对解码级禁忌的初步研究有几个局限性，接下来将简要讨论，概述如何在未来的工作中解决它们：<br />
+• 干预机制和屏蔽规则的范围：我们目前的公式在每个词首对前 $i$ 个候选应用统一的 logit 掩码。然而，禁忌代表了解码干预更广阔设计空间中的单个实例。我们没有探索稀疏或自适应干预，例如仅屏蔽词首边界的子集，基于 token 惊奇度阈值（$\Delta S$）条件触发干预，或屏蔽前 $i$ 排名以外的 token。系统地映射这个更广泛的动态、定向或非 top-$i$ 屏蔽规则景观仍然是未来研究的重要方向。<br />
+• 语言覆盖：本研究中的所有评估任务均 exclusively 用英语进行。因为词边界、子词分词机制和形态结构在不同类型的语言中差异很大，我们关于词边界 logit 干预和恢复动力学的发现可能不能直接推广到非英语或多语言环境。因此，在高等和低资源语言中进行类似实验是有意义的。<br />
+• 模型架构和分词器：虽然我们的经验评估跨越了参数缩放阶梯上的多个自回归开放权重模型家族，但我们的范围限于标准开放权重架构。将动态解码干预扩展到专有闭源系统、混合专家架构或多模态模型仍然是未来的工作。<br />
+• 解码机制：我们的主要实验使用贪婪解码来隔离 logit 干预的直接影响并计算精确的项目级置信区间。为了验证对齐效应不是确定性解码的伪影，我们在温度采样下重新运行了 GSM8K 扫描（$\tau\in{0.7,1.0}$，top-$p=1$，top-$k=0$，每个三个种子），保持禁忌掩码固定并仅采样延续 token。以边际保留率（$Acc_{\text{taboo}}/Acc_{\text{base}}$）衡量，基础 vs 指令差距、其与规模的复合以及 Llama 例外都持续存在：在 $\tau=0.7$ 时，$i=1$ 的保留率为 Gemma-3-12B 的 $41\%!\to!85\%$，Qwen2.5-32B 的 $53\%!\to!91\%$ 和 Qwen2.5-72B 的 $38\%!\to!86\%$，而 Llama-3.1-8B 没有显示指令优势（指令 $\leq$ 基础）；在 $\tau=1.0$ 时模式不变（例如 Qwen2.5-7B $22\%!\to!58\%$）。种子间标准差 $\leq 0.04$。跨采样策略（top-$p$ 核过滤、更高温度和每个家族 $\times$ 规模单元格）的完整表征仍然是未来的工作。<br />
+• 任务分类和格式敏感性：我们的评估套件跨越了不同的认知需求，包括多步定量推理、程序合成和开放领域事实检索。然而，需要评估限制首选 token 选择对其他任务和基准的影响，以更好地理解其影响。<br />
+• 混合精度约束：由于较大参数规模下的内存限制，较大的模型机制在低精度量化下评估，而较小的阶梯变体在原生 <code>bf16</code> 中评估。尽管精度控制实验证实量化噪声落在采样方差内，但跨所有参数规模的完整高精度评估留待未来工作。<br />
+• 小家族计数和多重比较：基础 vs 指令比较跨越了四个家族，有一个家族级别的例外（Llama-3，在 7-8B 时不存在但在 70B 时重新出现）；我们无法区分这反映了其特定的训练后方案还是未建模的混淆，并且我们没有在家族 $\times$ 大小 $\times$ 基准 $\times$ 剂量网格上应用多重比较校正。</p>
+<p>致谢<br />
+我们承认在准备本手稿期间使用了 AI 助手进行起草和格式化支持，并帮助进行实验编码。</p>
+<p>参考文献<br />
+Allen Institute for AI (2024)<br />
+OLMo 2: Open Language Model Family<br />
+.<br />
+arXiv preprint arXiv:2411.02345<br />
+.<br />
+Cited by:<br />
+4th item<br />
+.<br />
+N. Ayoobi<br />
+et al.<br />
+(2026)<br />
+Say anything but this: when tokenizer betrays reasoning in llms<br />
+.<br />
+arXiv preprint arXiv:2601.14658<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§5.3<br />
+.<br />
+S. Candussio, F. Padovani, D. Scalena, and M. Nissim (2026)<br />
+“Don’t say it!”: constraints, compliance, and communication when language models play taboo<br />
+.<br />
+arXiv preprint arXiv:2607.00601<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§5.1<br />
+.<br />
+M. Chen, J. Tworek, H. Jun, Q. Yuan, H. P. d. O. Pinto, J. Kaplan, H. Edwards, Y. Burda, N. Joseph, G. Brockman,<br />
+et al.<br />
+(2021)<br />
+Evaluating large language models trained on code<br />
+.<br />
+arXiv preprint arXiv:2107.03374<br />
+.<br />
+Cited by:<br />
+§2.2<br />
+,<br />
+4th item<br />
+.<br />
+K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano,<br />
+et al.<br />
+(2021)<br />
+Training verifiers to solve math word problems<br />
+.<br />
+arXiv preprint arXiv:2110.14168<br />
+.<br />
+Cited by:<br />
+1st item<br />
+.<br />
+A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Letman, A. Mathur, A. Schelten, A. Yang, A. Fan,<br />
+et al.<br />
+(2024)<br />
+The llama 3 herd of models<br />
+.<br />
+arXiv preprint arXiv:2407.21783<br />
+.<br />
+Cited by:<br />
+3rd item<br />
+.<br />
+Gemma Team (2025)<br />
+Gemma 3 Technical Report<br />
+.<br />
+arXiv preprint arXiv:2502.12345<br />
+.<br />
+Cited by:<br />
+2nd item<br />
+.<br />
+D. Hendrycks, C. Burns, S. Basart, A. Zou, M. Mazeika, D. Song, and J. Steinhardt (2021)<br />
+Measuring massive multitask language understanding<br />
+.<br />
+In<br />
+International Conference on Learning Representations (ICLR)<br />
+,<br />
+Cited by:<br />
+2nd item<br />
+.<br />
+G. Hinton, O. Vinyals, and J. Dean (2015)<br />
+Distilling the knowledge in a neural network<br />
+.<br />
+arXiv preprint arXiv:1503.02531<br />
+.<br />
+Cited by:<br />
+§5.2<br />
+.<br />
+R. Jehu-Appiah (2026)<br />
+Trivial vocabulary bans improve llm reasoning more than deep linguistic constraints<br />
+.<br />
+arXiv preprint arXiv:2604.02699<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+Y. Jiang, Y. Wang, X. Zeng, W. Zhong, L. Li, F. Mi, L. Shang, X. Jiang, Q. Liu, and W. Wang (2024)<br />
+FollowBench: a multi-level fine-grained constraints following benchmark for large language models<br />
+.<br />
+In<br />
+Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)<br />
+,<br />
+pp. 4667–4688<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+M. Joshi, E. Choi, D. S. Weld, and L. Zettlemoyer (2017)<br />
+TriviaQA: a large scale distant supervision dataset for reading comprehension<br />
+.<br />
+arXiv preprint arXiv:1705.03551<br />
+.<br />
+Cited by:<br />
+3rd item<br />
+.<br />
+L. Ouyang, J. Wu, X. Jiang, D. Almeida, C. Wainwright, P. Mishkin, C. Zhang, S. Agarwal, K. Slama, A. Ray, J. Schulman, J. Hilton, F. Kelton, L. Miller, M. Simens, A. Askell, P. Welinder, P. F. Christiano, J. Leike, and R. Lowe (2022)<br />
+Training language models to follow instructions with human feedback<br />
+.<br />
+In<br />
+Advances in Neural Information Processing Systems (NeurIPS)<br />
+,<br />
+Vol.<br />
+35<br />
+,<br />
+pp. 27730–27744<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§5.1<br />
+.<br />
+F. M. Polo, L. Weber, L. Choshen, Y. Sun, G. Xu, and M. Yurochkin (2024)<br />
+TinyBenchmarks: evaluating llms with fewer examples<br />
+.<br />
+arXiv preprint arXiv:2402.14992<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+R. Rafailov, A. Sharma, E. Mitchell, S. Ermon, C. D. Manning, and C. Finn (2023)<br />
+Direct Preference Optimization: Your Language Model is Secretly a Reward Model<br />
+.<br />
+In<br />
+Advances in Neural Information Processing Systems (NeurIPS)<br />
+,<br />
+Vol.<br />
+36<br />
+.<br />
+Cited by:<br />
+§1<br />
+,<br />
+§5.1<br />
+.<br />
+M. Sclar, Y. Choi, Y. Tsvetkov, and A. Suhr (2024)<br />
+Quantifying language models’ sensitivity to spurious features in prompt design<br />
+.<br />
+In<br />
+Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)<br />
+,<br />
+Cited by:<br />
+§1<br />
+.<br />
+J. Wei, M. Bosma, V. Y. Zhao, K. Guu, A. W. Yu, B. Lester, N. Du, A. M. Dai, and Q. V. Le (2022)<br />
+Finetuned Language Models Are Zero-Shot Learners<br />
+.<br />
+In<br />
+International Conference on Learning Representations (ICLR)<br />
+,<br />
+Cited by:<br />
+§1<br />
+,<br />
+§5.2<br />
+.<br />
+A. Yang, B. Yang, B. Hui, B. Zheng, B. Yu, C. Zhou, C. Li, C. Li, D. Liu, F. Huang,<br />
+et al.<br />
+(2024)<br />
+Qwen2.5 Technical Report<br />
+.<br />
+arXiv preprint arXiv:2412.15115<br />
+.<br />
+Cited by:<br />
+1st item<br />
+.<br />
+Z. Zhao, E. Wallace, S. Feng, D. Klein, and S. Singh (2021)<br />
+Calibrate before use: improving few-shot performance of language models<br />
+.<br />
+In<br />
+International Conference on Machine Learning (ICML)<br />
+,<br />
+pp. 12697–12706<br />
+.<br />
+Cited by:<br />
+§1<br />
+.<br />
+J. Zhou, T. Lu, S. Mishra, S. Brahma, S. Basu, Y. Luan, D. Zhou, and L. Hou (2023)<br />
+Instruction-following evaluation for large language models<br />
+.<br />
+arXiv preprint arXiv:2311.07911<br />
+.<br />
+Cited by:<br />
+§1<br />
+.</p>
+<p>附录 A<br />
+禁忌下的定性失败模式<br />
+为了说明偏离路径压力如何降低推理，我们检查了 Llama-3.1-8B-Instruct 在 64 个 GSM8K 项目上的输出，这些项目它在基线下正确解决但在 $i=1$ 的禁忌下失败。失败很少是单一的算术失误；更多时候模型退化，一旦其首选的词首 token 被阻止，就失去了终止连贯思维链的能力。出现了三种反复出现的模式：脱轨（从未发出最终的 <code>Answer:</code> 行）、重复循环（短片段重复直到 token 预算耗尽），以及较少见的自信的错误最终答案。以下是两个代表性案例；基线输出已节略，禁忌输出是模型的逐字延续。</p>
+<p>示例 1（重复循环，gold $=25$）。<br />
+基线（正确）：<br />
+“…the dog eats in $2/3\cdot 30=20$ minutes; the average is $(30+20)/2=25$。” $\rightarrow$ Answer: 25。<br />
+禁忌（$i=1$）：<br />
+链条从未收敛：“…The average is $(2/3)60$. $60/2=30$. $30/2$ is 15. The cat’s time was $(2/3)60$. The average is 30. $60/2=30$. $30/2$ is 15…” [没有 <code>Answer:</code> 行]。</p>
+<p>示例 2（退化扩展）。<br />
+在另一个基线正确的项目上，阻止首选延续使模型进入非终止的加法分解而不是解决方案：“The number 216 can also be written in the following ways: $216$, $200{+}16$, $200{+}10{+}6$, $200{+}10{+}5{+}1$, $200{+}10{+}5{+}1{+}0$, $200{+}10{+}5{+}1{+}0{+}0$, …” [持续到生成预算耗尽]。</p>
+<p>这些退化模式，而不是孤立的算术错误，是 Llama-3 在 GSM8K 上缺失基础-指令差距（第 4.1 节）及其平坦的注入惊奇度响应（图 4）的行为特征。</p>
+<p>附录 B<br />
+带置信区间的条件保留率<br />
+图 2 显示了 7-12B 模型家族的条件保留率，带有 95% Wilson 置信区间，以可视化观察到的趋势背后的项目抽样不确定性。</p>
+<p>图 2：<br />
+跨模型家族和基准的偏离路径推理韧性（代表性检查点，7-12B）。条件保留率 $\mathcal{R}$（每个模型在基线下正确回答的项目，在禁忌下仍然正确的比例）vs. 禁忌秩 $i$。行：模型家族（第 1 行 Qwen2.5，第 2 行 OLMo-2，第 3 行 Gemma-3，第 4 行 Llama-3）。列：GSM8K（数学推理），MMLU（多项选择知识），TriviaQA（事实回忆）。虚线 = 基础，实线 = 指令，误差棒为 95% Wilson 区间；在相同的少样本提示下。在 GSM8K 上，对齐效应大且依赖于家族，但在 Llama-3 中不存在；MMLU 弱且非单调（MCQ 下限伪影）；TriviaQA 差距很小，与效应特定于推理一致。HumanEval 被省略，因为所有模型都崩溃到 $0\%$ Pass@1（阴性对照）。</p>
+<p>附录 C<br />
+整个阶梯的绝对准确率<br />
+图 3 展示了整个模型大小范围的绝对准确率，以提供干预下性能的全面视图。</p>
+<p>图 3：<br />
+整个大小阶梯上的偏离路径鲁棒性。绝对准确率 vs. 禁忌剂量（基线，然后 $i=1,2,4,8$），每个模型大小（viridis：浅 = 小，深 = 大），基础虚线 / 指令实线，跨四个家族（行）和三个基准（列）。我们在这里绘制绝对准确率而不是条件保留率，因为基线准确率在阶梯上相差一个数量级，因此保留率在不同大小之间不可比。在 GSM8K 上，规模和对齐都提升了曲线并复合；MMLU 在每个大小都向多项选择题下限崩溃；TriviaQA 优雅地退化。在 Llama-3 阶梯顶部，指令曲线远高于基础（70B），恢复了 8B 时缺失的对齐收益。</p>
+<p>附录 D<br />
+注入惊奇度 vs. 模型大小和类型<br />
+图 4 报告了每次干预的平均注入惊奇度（$\bar{\Delta S}$）作为禁忌秩 $i$ 的函数，针对三个基准上的基础和指令检查点。有两个规律突显出来。首先，$\bar{\Delta S}$ 随 $i$ 大致对数增长，证实了秩参数表现为分级剂量。其次，对齐的检查点在每个秩上比其基础对应物吸收更多的注入惊奇度（它们的下一个 token 分布更尖锐，因此屏蔽首选候选成本更高），然而，如正文所示，它们保留了更多。因此，对齐优势不能用对齐模型接收更轻的有效剂量来解释；它们承受了更强的扰动，并且仍然保留了更多的推理。Llama-3 再次是例外：其指令检查点吸收的惊奇度不比其基础多（$\bar{\Delta S}$ 曲线重叠或反转），与其在 GSM8K 上缺失的基础-指令差距一致。</p>
+<p>图 4：<br />
+每次干预的平均注入惊奇度 $\bar{\Delta S}$（比特）vs. 禁忌秩 $i$，基础（虚线）vs. 指令（实线），针对 7-12B 的四个家族（行）和三个基准（列）。指令检查点在每个秩上吸收更大的剂量，在 Qwen/OLMo/Gemma 中如此，但在 Llama-3 中不然。</p>
+<p>附录 E<br />
+跨规模的 Llama 对齐效应<br />
+在四个家族中的三个（Qwen2.5、OLMo-2、Gemma-3）中，禁忌下的对齐收益伴随着清晰的机制特征：指令检查点每次干预比其基础吸收更多的注入惊奇度（附录 D），与更尖锐的下一个 token 分布一致。Llama-3 是例外，图 5 显示这在我们测量的两个规模上都成立：在 8B 和 70B 中，Llama-Instruct 吸收的注入惊奇度不比其基础多，在每个秩上略少，因此训练后没有像其他家族那样锐化 Llama 的下一个 token 分布。</p>
+<p>然而，这两个规模在保留率上分歧很大。在 8B 时，基础-指令差距是平坦的（$i=1$ 时 GSM8K 边际保留率 $14\%!\to!16\%$），而在 70B 时，对齐恢复了很大的收益（$36\%!\to!75\%$）。因此，Llama-70B 通过一条不经过分布锐化的路线获得了禁忌鲁棒性：惊奇度特征在两个规模上都是平坦的，但保留收益只出现在 70B。这种惊奇度特征和保留收益之间的分离，在 Llama 中存在，在其他三个家族中不存在，标志着 Llama 对齐效应在机制上是独特的。在没有更尖锐分布的情况下赋予 70B 鲁棒性的是什么，是我们的诊断使其可测量的一个开放问题；分布尖锐度（下一个 token 熵）的直接测量是自然的下一个探针。</p>
+<p>因为 8B 和 70B Llama 变体使用相同的分词器架构和词汇表，观察到的跨规模行为转变不能归因于分词机制或词边界识别伪影。相反，它反映了一个真正的缩放阈值，在这个阈值上，更大的潜在推理引擎成功地在没有依赖分布锐化的情况下导航了偏离路径约束。</p>
+<p>图 5：<br />
+跨规模的 Llama 例外。GSM8K 上每次干预的平均注入惊奇度 $\bar{\Delta S}$（比特）vs. 禁忌秩 $i$，基础（虚线）vs. 指令（实线），针对 Llama-3.1-8B 和 -70B。在两个规模上，指令检查点吸收的惊奇度都不比其基础多（在每个秩上略少），因此对齐没有锐化 Llama 的下一个 token 分布，这与 Qwen/OLMo/Gemma 不同。然而 $i=1$ 时的边际保留率在 8B 时平坦（$14\%!\to!16\%$），在 70B 时强烈为正（$36\%!\to!75\%$）：70B 时的对齐收益没有经过分布锐化。</p>
+<p>附录 F<br />
+准确率 vs. 注入惊奇度<br />
+图 6 显示了绝对准确率与禁忌秩的关系（每个模型的无约束基线作为水平参考），图 7 重新绘制了边际保留率（$Acc_{\text{Taboo}}/Acc_{\text{Base}}$）与测量的注入惊奇度 $\bar{\Delta S}$ 的关系，即与有效剂量而不是标称秩的关系（这里的保留率是从运行摘要中计算的边际比率；与等式 5 不同，它也归功于在禁忌下恢复的项目，但两者密切跟踪）。GSM8K 面板在剂量空间中明确了正文的结论：指令曲线位于基础曲线的上方和右侧，在更高的吸收剂量下保留率更高，因此差距不能用更轻的有效剂量来解释（曲线在剂量轴上仅部分重叠，因此这是指示性的，而不是严格的剂量匹配）。对于 Llama-3，两条曲线在测量范围内重合。</p>
+<p>图 6：<br />
+绝对准确率 vs. 禁忌秩 $i$（细水平线：无约束基线），基础（虚线）vs. 指令（实线），针对 7-12B 模型。</p>
+<p>图 7：<br />
+边际保留率 vs. 测量的注入惊奇度 $\bar{\Delta S}$，针对 7-12B 模型。在 GSM8K 上，指令曲线位于基础曲线的上方和右侧，在更大的吸收剂量下保留率更高，因此对齐效应不是更轻的有效扰动的伪影。</p>
+<p>附录 G<br />
+禁忌下的答案长度扩展<br />
+图 8 说明了生成的答案长度作为禁忌秩函数的相对扩展，提供了迂回表达相关的 token 开销的经验证据。</p>
+<p>图 8：<br />
+禁忌下的答案长度扩展。剂量 $i$ 下的平均生成 token 除以模型自身的基线，在 GSM8K 上，针对 7-12B 的四个家族（基础虚线，指令实线）。指令检查点随着剂量增长花费越来越多的 token（围绕被阻止的延续迂回）：Qwen-7B-Instruct 保持在 $1.6\times$ 附近，而 OLMo-2 和 Gemma-3 在 $i=8$ 时达到 $2.4$–$2.9\times$。等于或低于 $1$ 的比率（Gemma/Llama 基础，Llama 指令）反映模型在基线时已经耗尽 512-token 预算或脱轨而不是扩展。对于 Llama-3.1-8B，这不是截断伪影：在 1024-token 预算下，它仍然在基线时耗尽，其禁忌保留率不变（第 4.3 节），即它在基线时冗长或非终止，而不是在禁忌下被截断。</p>
+<p>附录 H<br />
+计算和复现细节<br />
+所有实验都在配备 NVIDIA A100（40 GB）和 H100（94 GB）GPU 的共享集群上运行，每次运行一个 GPU。高达 14B 的模型在原生 <code>bf16</code> 或 4 位下运行；32B、72B、Gemma-3-27B 和 Llama-3.1-70B 模型在 H100 上以 4 位运行。我们在这里使用 4 位不是为了内存，94 GB H100 可以以 8 位容纳这些模型，而是为了速度：在我们的设置中，<code>int8</code> (LLM.int8) 生成仅以每秒几个 token 的速度运行，使得完整的 8 位扫描不切实际，而 4 位 nf4 以全速解码并在采样方差内匹配 bf16（第 3.1 节）。因此，我们仅使用 8 位作为那里指出的单个异常单元格的抽查。解码使用批大小 8（最大模型为 4），生成上限为 512 个新 token。</p>
+<p>每个条件的成本主要由生成长度而不是干预本身决定。在一个 A100/H100 上的大致挂钟时间：7B 模型在 $n=100$ 时每个条件约 4 分钟（$n=500$ 时约 20 分钟），32B 约 9 分钟，70-72B 模型约 16 分钟。因此，完整的家族/剂量扫描可以在一个通宵会话中完成，而整个研究（主网格、大小阶梯、对照、温度和精度消融）在单个加速器上大约需要几个 GPU 天。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 大语言模型, 鲁棒性评估, 解码干预, 压力测试, 指令对齐</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
