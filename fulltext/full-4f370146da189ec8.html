@@ -1,0 +1,6237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神经网络优化器背后的原理 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">神经网络优化器背后的原理</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-17</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.16760" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：On the Principles Behind Neural Network Optimizers</h4>
+            <p><strong>中文摘要：</strong> 本文探讨了神经网络优化器Adam的理论基础。首先，证明了Adam在依赖批大小的超参数下存在发散与收敛的相变现象。其次，发现Transformer的Hessian矩阵在训练中呈现近块对角及块异质性结构，这解释了Adam优于SGD的原因。基于此，提出了Adam-mini优化器，在保持性能的同时减少50%内存占用。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>文章标题：神经网络优化器背后的原理<br />
+文章内容：<br />
+神经网络优化器背后的原理<br />
+Yushun Zhang<br />
+致谢：<br />
+这是 Y. Zhang 同名博士论文的简写版本。此版本专为 Dantzig 论文竞赛准备，该竞赛有严格的页数限制。因此，我们仅展示主要结果。证明过程被省略，相关工作综述也大幅缩减，在此版本中不打算进行全面回顾。<br />
+致谢：<br />
+本博士论文由以下委员会成员指导：<br />
+Zhi-Quan Luo（导师），Ruoyu Sun（主席），Yinyu Ye，Jim Dai，<br />
+Anthony Man-cho So，Madeleine Udell。学位授予日期为 2026 年 3 月 31 日。<br />
+所属机构：<br />
+中国香港中文大学（深圳）数据科学学院<br />
+电子邮件：<br />
+yushunzhang@link.cuhk.edu.cn<br />
+摘要<br />
+可靠的优化是神经网络（NN）训练的核心，然而现代大语言模型（LLM）的默认优化器 Adam 却建立在脆弱的基础之上。本论文为 Adam 开发了有原则的基础，并推动了新的设计。首先，我们重新审视了 Adam 的发散-收敛争论，并展示了依赖于问题的相变的存在性：在适当选择、依赖于批大小的超参数下，Adam 能够收敛，而在小 $\beta_{2}$ 机制下它可能会发散。其次，我们通过 Hessian 结构研究了为什么 Adam 在 Transformer 上显著优于 SGD。我们发现 Hessian 在训练过程中演化为近块对角形式，并伴随着强烈的块异质性。我们证明了这种结构使得 Adam 的对角预条件器有效。我们进一步表明，这种特殊的 Hessian 结构源于大矩阵变量的连续乘法，并基于随机矩阵理论提供了严格的分析。最后，这些见解启发了 Adam-mini，这是一种新的优化器，在保持性能的同时将 Adam 的内存占用减少了 50%。我们的结果在 Adam 之外也有更广泛的意义：它们揭示了基于矩阵的非凸问题中的新局部结构，并有助于理解和改进最近的 NN 优化器，如 Muon。<br />
+1<br />
+引言<br />
+神经网络（NN），从经典的感知机（MLP）发展到当代的大语言模型（LLM），是现代人工智能（AI）的核心引擎（例如，<br />
+[<br />
+2<br />
+]<br />
+）。<br />
+这些模型的有效性取决于它们从数据中学习复杂模式的能力，这一过程从根本上被定义为一个<br />
+优化<br />
+问题。在本论文中，我们关注以下经验风险最小化问题（ERM），这是训练现代 NN 的标准优化公式：<br />
+minimize<br />
+θ<br />
+∈<br />
+ℝ<br />
+d<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+:=<br />
+1<br />
+n<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+.<br />
+\operatorname<em>{minimize}<em>{\theta\in\mathbb{R}^{d}}\hskip 9.24994pt\ell(\theta):=\frac{1}{n}\sum</em>{i=0}^{n-1}\ell_{i}(\theta).<br />
+(1.1)<br />
+这里，<br />
+θ<br />
+∈<br />
+ℝ<br />
+d<br />
+\theta\in\mathbb{R}^{d}<br />
+表示可训练的 NN 参数，<br />
+n<br />
+∈<br />
+ℕ<br />
+n\in\mathbb{N}<br />
+是划分数据集的 mini-batch 数量，<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\ell_{i}(\theta)<br />
+表示在第<br />
+i<br />
+i<br />
+个 mini-batch 数据上的训练损失。<br />
+为了大规模求解 (<br />
+1.1<br />
+)，需要一个稳定且计算高效的优化器。<br />
+然而，尽管在工业界被广泛部署，当前的 NN 优化器却建立在惊人脆弱的基础之上。<br />
+最突出的例子是 Adam<br />
+[<br />
+27<br />
+]<br />
+。一方面，Adam 已成为现代 NN（包括 LLM，如 Llama 和 DeepSeek 系列<br />
+[<br />
+55<br />
+;<br />
+32<br />
+]<br />
+）最广泛使用的优化器。另一方面，Adam 长期以来因存在“理论缺陷”而受到批评。<br />
+特别是，一篇有影响力的工作<br />
+[<br />
+46<br />
+]<br />
+（ICLR 2018 最佳论文奖得主<br />
+[<br />
+23<br />
+]<br />
+）指出，Adam 甚至在简单的例子上也可能<br />
+发散<br />
+。这一发现引发了对在 AI 模型训练中部署 Adam 的严重担忧，因为发散可能会引发不可预测的训练失败的警报。<br />
+此外，当不顾风险进行部署时，Adam 的经验行为通常超出了现有理论的范畴，因此难以预测。例如，它甚至在简单的随机高斯二次目标上表现不如 GD，但它在更复杂的 Transformer 训练上却始终优于 SGD（见后文第 3 节），而这些截然不同的表现尚未被现有理论很好地解释。所有这些都为在真实 AI 系统中部署优化器带来了巨大的不确定性和担忧。现代训练的<br />
+数百万美元<br />
+规模极大地放大了这种担忧，在这种情况下，即使是未知因素引起的轻微风险在财务上也是无法承受的。<br />
+本论文旨在为当前 NN 优化器开发理论基础和原则性基石。我们主要关注 Adam，同时我们也对某些类别的 NN 中出现的 (<br />
+1.1<br />
+) 中<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+\ell(\theta)<br />
+的特殊 Hessian 结构提供新的理论见解。我们的发现具有超越 Adam 的更广泛意义。例如，它们揭示了基于矩阵的非凸问题中的新局部结构。它们也有助于改进最近的 NN 优化器，如 Muon<br />
+[<br />
+25<br />
+]<br />
+。<br />
+图 1.1.：<br />
+论文概述。我们从一般的非凸目标开始，然后缩小到 NN 中发现的特殊结构。<br />
+本论文分四个阶段进行：首先重新审视 Adam 在一般非凸<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+\ell(\theta)<br />
+（如 (<br />
+1.1<br />
+) 所示）上的基本收敛保证；接着通过将 Adam 的经验行为与某些 NN 中出现的 (<br />
+1.1<br />
+) 的特殊 Hessian 结构联系起来，理解 Adam 的经验行为；深入挖掘找出这种特殊结构何时以及为何在单隐层 NN 上出现；最终将这些见解转化为新的优化器设计。<br />
+具体而言，本论文聚焦于四个问题：<br />
+(i)<br />
+安全性与保证：<br />
+原始 Adam 是发散还是收敛？如果它能收敛，我们应如何选择其超参数以避免发散风险？<br />
+(ii)<br />
+神秘行为：<br />
+SGD（尽管在 CNN 上取得了成功）在 Transformer 上表现远不如 Adam。是什么特殊的问题结构导致了这一差距？<br />
+(iii)<br />
+问题结构：<br />
+NN 的特殊问题结构何时以及为何出现？根本原因是什么？<br />
+(iv)<br />
+设计原则：<br />
+我们能否利用 NN 特有的问题结构来构建更好的优化器？<br />
+通过从经验和理论上研究这些问题，本论文实现了更安全的部署、更可靠的调优，以及对当前优化器和 NN 问题结构的更深入理解。这些结果为当前 NN 优化器建立了理论基础和原则性基石。我们还收集了这些见解，并提出了一种具有原则性设计的新优化器。本论文的一个启示是，优化器行为通常与 NN 的某些特殊内在结构有关——这是经典理论未能完全捕捉的因素。<br />
+在技术方面，我们为 Adam 的收敛结果开发了新的集中度工具，并为 Hessian 结构分析开发了随机矩阵理论中的新解耦方法，这些可能具有独立的意义。<br />
+1.1<br />
+预备知识<br />
+算法 1.1.<br />
+Adam<br />
+1:<br />
+初始化<br />
+m<br />
+0<br />
+m_{0}<br />
+,<br />
+v<br />
+0<br />
+v_{0}<br />
+,<br />
+θ<br />
+1<br />
+\theta_{1}<br />
+。<br />
+2:<br />
+for<br />
+k<br />
+=<br />
+1<br />
+→<br />
+∞<br />
+k=1\to\infty<br />
+do<br />
+3:<br />
+从<br />
+{<br />
+0<br />
+,<br />
+1<br />
+,<br />
+…<br />
+,<br />
+n<br />
+−<br />
+1<br />
+}<br />
+{0,1,\dots,n-1}<br />
+中均匀采样<br />
+τ<br />
+k<br />
+\tau_{k}<br />
+4:<br />
+m<br />
+k<br />
+=<br />
+β<br />
+1<br />
+m<br />
+k<br />
+−<br />
+1<br />
++<br />
+(<br />
+1<br />
+−<br />
+β<br />
+1<br />
+)<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+m_{k}=\beta_{1}m_{k-1}+(1-\beta_{1})\nabla\ell_{\tau_{k}}(\theta_{k})<br />
+5:<br />
+v<br />
+k<br />
+=<br />
+β<br />
+2<br />
+v<br />
+k<br />
+−<br />
+1<br />
++<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+∘<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+v_{k}=\beta_{2}v_{k-1}+(1-\beta_{2})\nabla\ell_{\tau_{k}}(\theta_{k})\circ\nabla\ell_{\tau_{k}}(\theta_{k})<br />
+6:<br />
+θ<br />
+k<br />
++<br />
+1<br />
+=<br />
+θ<br />
+k<br />
+−<br />
+η<br />
+k<br />
+v<br />
+k<br />
++<br />
+ϵ<br />
+∘<br />
+m<br />
+k<br />
+\theta_{k+1}=\theta_{k}-\frac{\eta_{k}}{\sqrt{v_{k}}+\epsilon}\circ m_{k}<br />
+7:<br />
+end<br />
+for<br />
+符号说明。<br />
+在本论文中，我们考虑问题 (<br />
+1.1<br />
+)。<br />
+我们使用<br />
+θ<br />
+\theta<br />
+表示优化变量，在深度学习场景中指 NN 参数。<br />
+我们记<br />
+∇<br />
+ℓ<br />
+i<br />
+\nabla\ell_{i}<br />
+为<br />
+ℓ<br />
+i<br />
+\ell_{i}<br />
+的梯度。Adam 的更新规则在算法<br />
+1.1<br />
+中给出。这里，<br />
+m<br />
+m<br />
+和<br />
+v<br />
+v<br />
+分别表示由超参数<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+\beta_{1},\beta_{2}\in[0,1]<br />
+控制的 1 阶和 2 阶动量。乘积<br />
+∘<br />
+\circ<br />
+、除法和平方根算子均为逐元素操作。我们记<br />
+θ<br />
+k<br />
+,<br />
+m<br />
+k<br />
+,<br />
+v<br />
+k<br />
+∈<br />
+ℝ<br />
+d<br />
+\theta_{k},m_{k},v_{k}\in\mathbb{R}^{d}<br />
+分别为<br />
+θ<br />
+,<br />
+m<br />
+,<br />
+v<br />
+\theta,m,v<br />
+在第<br />
+k<br />
+k<br />
+次迭代时的值。在实践中，<br />
+ϵ<br />
+\epsilon<br />
+用于数值稳定性，通常选为<br />
+10<br />
+−<br />
+8<br />
+10^{-8}<br />
+。在我们的理论中，我们允许<br />
+ϵ<br />
+\epsilon<br />
+为任意非负常数，包括<br />
+0<br />
+0<br />
+。<br />
+Adam 的普及度。<br />
+在深度学习中，Adam<br />
+[<br />
+27<br />
+]<br />
+是求解 (<br />
+1.1<br />
+) 最受欢迎的算法之一。<br />
+它已被应用于各种机器学习领域，如自然语言处理（NLP）和计算机视觉（CV）（例如，<br />
+[<br />
+56<br />
+;<br />
+19<br />
+]<br />
+）。<br />
+它的影响力也体现在超过 250,000 次的引用上，且这个数字还在快速增长<br />
+[<br />
+47<br />
+]<br />
+。此外，随着 ChatGPT<br />
+[<br />
+39<br />
+]<br />
+的崛起，Adam 已成为训练大语言模型（LLM）的关键算法。据报道，Adam 被用于训练主流 LLM，包括 Llama 系列<br />
+[<br />
+55<br />
+]<br />
+、Qwen 系列<br />
+[<br />
+3<br />
+]<br />
+和 DeepSeek 系列<br />
+[<br />
+32<br />
+]<br />
+等。Adam 显然是 AI 进步背后的主要动力。其影响力最近获得了认可，被授予<br />
+ICLR 2025 时间检验奖<br />
+[<br />
+24<br />
+]<br />
+。<br />
+然而，尽管 Adam 在工业界无处不在，但它建立在惊人脆弱的基础之上，其实际行为仍然知之甚少。我们将在以下章节中回顾主要的理论批评，并展示新的结果和见解。<br />
+论文组织。<br />
+第 2 节重新审视 Adam 的发散-收敛争论，并展示了在依赖于问题的超参数下 Adam 的收敛保证。第 3 节研究 Adam 何时有效，将 Transformer 上的 Adam-SGD 差距与 Hessian 块结构和块异质性联系起来，然后在简化的神经网络中解释这种结构的来源。第 4 节将这些结构见解转化为 Adam-mini，一种在减少 Adam 内存占用的同时保持类似 Adam 性能的新优化器，最后一节进行总结。<br />
+2<br />
+发散还是收敛？Adam 的故事<br />
+本节主要基于：<br />
+•<br />
+Adam Can Converge Without Any Modification On Update Rules.<br />
+Yushun Zhang<br />
+, Congliang Chen, Naichen Shi, Ruoyu Sun, Zhi-Quan Luo.<br />
+Advances in Neural Information Processing Systems (NeurIPS), 2022<br />
+(Spotlight)<br />
+.<br />
+•<br />
+Adam Converges Without Any Modification On Update Rules.<br />
+Yushun Zhang<br />
+, Bingran Li, Congliang Chen, Zhi-Quan Luo, Ruoyu Sun.<br />
+(这是期刊扩展版本。)<br />
+Under Review.<br />
+对 Adam 的一个核心批评来自一篇有影响力的论文<br />
+[<br />
+46<br />
+]<br />
+（ICLR 2018 最佳论文奖得主<br />
+[<br />
+23<br />
+]<br />
+），作者提供了一个例子，表明 Adam 在大范围超参数下发散。<br />
+[<br />
+46<br />
+]<br />
+的一个主要结果指出：<br />
+[<br />
+46<br />
+]<br />
+：对于任何<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+\beta_{1},\beta_{2}<br />
+满足<br />
+0<br />
+≤<br />
+β<br />
+1<br />
+&lt;<br />
+β<br />
+2<br />
+&lt;<br />
+1<br />
+0\leq\beta_{1}&lt;\sqrt{\beta_{2}}&lt;1<br />
+，存在一个问题使得 Adam 发散。<br />
+发散区域如图<br />
+2.1<br />
+(a) 所示。这一发现引发了对在 AI 模型训练中部署 Adam 的严重担忧，因为发散可能会引发不可预测的训练失败的警报。从那时起，人们设计了许多新的变体。例如，AMSGrad<br />
+[<br />
+46<br />
+]<br />
+强制<br />
+v<br />
+k<br />
+v_{k}<br />
+（后文算法<br />
+1.1<br />
+中定义）非减；AdaBound<br />
+[<br />
+34<br />
+]<br />
+施加约束<br />
+v<br />
+k<br />
+∈<br />
+[<br />
+C<br />
+l<br />
+,<br />
+C<br />
+u<br />
+]<br />
+v_{k}\in[C_{l},C_{u}]<br />
+以确保有效步长的有界性。<br />
+另一方面，出乎意料的是，原始 Adam 仍然异常受欢迎。在不对其更新规则进行任何修改的情况下，Adam 在实践中运行良好。由于发散理论的存在，这相当令人惊讶。<br />
+更神秘的是，我们发现通常报告的超参数实际上满足前面所述的发散条件。<br />
+例如，<br />
+27<br />
+声称<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+=<br />
+(<br />
+0.9<br />
+,<br />
+0.999<br />
+)<br />
+(\beta_{1},\beta_{2})=(0.9,0.999)<br />
+是“测试机器学习问题的良好选择”，这确实是深度学习库中的默认设置。<br />
+对于如 GPT-3、Llama 系列和 DeepSeek 系列<br />
+[<br />
+9<br />
+;<br />
+55<br />
+;<br />
+32<br />
+]<br />
+等 LLM，<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+被选为<br />
+(<br />
+0.9<br />
+,<br />
+0.95<br />
+)<br />
+(0.9,0.95)<br />
+。<br />
+所有这些超参数都处于发散区域<br />
+β<br />
+1<br />
+&lt;<br />
+β<br />
+2<br />
+\beta_{1}&lt;\sqrt{\beta_{2}}<br />
+。<br />
+令人惊讶的是，我们没有观察到发散问题，这些超参数取得了良好的性能，并且实际上显示了收敛的迹象。<br />
+为什么 Adam 尽管存在理论发散问题却运行良好？深度学习问题与发散例子之间是否存在不匹配？<br />
+我们仔细研究了发散例子，发现不匹配确实存在。<br />
+特别是，<br />
+[<br />
+46<br />
+]<br />
+在<br />
+选择问题（或准确地说是 mini-batch 数量<br />
+n<br />
+n<br />
+）之前<br />
+选择<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+。<br />
+也就是说，为了构造发散例子，他们针对不同的<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+改变<br />
+n<br />
+n<br />
+。另一方面，在上述 Adam 的实际应用中，从业者在问题（或<br />
+n<br />
+n<br />
+）固定后<br />
+调整超参数<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+。<br />
+(a)<br />
+[<br />
+46<br />
+]<br />
+声称的发散区域<br />
+(b)<br />
+我们的贡献<br />
+(c)<br />
+MNIST<br />
+(d)<br />
+CIFAR-10<br />
+图 2.1.：<br />
+(a)<br />
+：<br />
+[<br />
+46<br />
+]<br />
+声称的 Adam 发散区域。他们先固定<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+，然后选择一个问题来构造发散例子。<br />
+(b)<br />
+：<br />
+我们在<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+相图中贡献的说明。我们在选择<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+之前固定问题。注意这与<br />
+(a)<br />
+的设置不同，因此并不矛盾。<br />
+红色和蓝色区域的边界均依赖于批大小（后文展示）。<br />
+区域的形状遵循我们解析条件的解。虚线满足<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+\beta_{1}=\sqrt{\beta_{2}}<br />
+。<br />
+(c), (d)<br />
+：在 MNIST 和 CIFAR-10 上对<br />
+β<br />
+1<br />
+\beta_{1}<br />
+和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+进行广泛扫描后的训练损失。Adam 的性能与我们在<br />
+(b)<br />
+中的理论描述相吻合。<br />
+鉴于 Adam 的经验成功，我们推测当问题固定时 Adam 可以收敛。<br />
+为了验证这一猜想，我们在 MNIST 和 CIFAR-10 上运行 Adam 进行分类任务，如图<br />
+2.1<br />
+(c) 和 所示。<br />
+虽然 Adam 在红色区域的性能不稳定，我们发现<br />
+它在图<br />
+2.1<br />
+的顶部蓝色区域始终表现良好。<br />
+这似乎表明：当问题固定时，Adam 在适当调整<br />
+β<br />
+1<br />
+\beta_{1}<br />
+和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+后无需修改即可收敛。<br />
+在本节的其余部分，我们从理论上量化了 Adam 在不同<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+下的不同行为。我们证明，原始 Adam 在没有算法修改的情况下，表现出两种定性不同的机制：<br />
+在<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+的安全<br />
+区域，它可证明收敛到临界点的邻域，<br />
+而在危险<br />
+区域它可能发散到无穷大。<br />
+这些结果共同揭示了<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+平面上的发散-收敛相变。<br />
+我们进一步指出，临界边界<br />
+(<br />
+β<br />
+1<br />
+∗<br />
+,<br />
+β<br />
+2<br />
+∗<br />
+)<br />
+(\beta_{1}^{</em>},\beta_{2}^{<em>})<br />
+是依赖于问题的，特别是依赖于<br />
+批大小<br />
+。这为如何调整<br />
+β<br />
+1<br />
+\beta_{1}<br />
+和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+提供了建议：当 Adam 表现不佳时，我们建议将<br />
+β<br />
+2<br />
+\beta_{2}<br />
+与批大小成反比地调大，以超过阈值<br />
+β<br />
+2<br />
+∗<br />
+\beta_{2}^{</em>}<br />
+，然后尝试<br />
+β<br />
+1<br />
+&lt;<br />
+β<br />
+2<br />
+\beta_{1}&lt;\sqrt{\beta_{2}}<br />
+。我们的建议得到了几项经验研究报告的支持，它们观察到应用这些建议后 LLM 训练性能有所提高。<br />
+问题设置。<br />
+在我们的分析中，我们对 ERM 问题 (<br />
+1.1<br />
+) 中的<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\ell_{i}(\theta)<br />
+和<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+\ell(\theta)<br />
+做出以下温和假设。<br />
+假设 2.1<br />
+(Lipschitz 平滑性)<br />
+我们假设<br />
+‖<br />
+∇<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+1<br />
+)<br />
+−<br />
+∇<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+2<br />
+)<br />
+‖<br />
+2<br />
+≤<br />
+L<br />
+​<br />
+‖<br />
+θ<br />
+1<br />
+−<br />
+θ<br />
+2<br />
+‖<br />
+2<br />
+,<br />
+∀<br />
+θ<br />
+1<br />
+,<br />
+θ<br />
+2<br />
+∈<br />
+ℝ<br />
+d<br />
+|\nabla\ell_{i}(\theta_{1})-\nabla\ell_{i}(\theta_{2})|<em>{2}\leq L|\theta</em>{1}-\theta_{2}|<em>{2},\forall\theta</em>{1},\theta_{2}\in\mathbb{R}^{d}<br />
+；<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+\ell(\theta)<br />
+有下界，下界为有限常数<br />
+ℓ<br />
+∗<br />
+\ell^{<em>}<br />
+。<br />
+假设 2.2<br />
+(仿射方差条件)<br />
+我们假设<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+‖<br />
+∇<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+≤<br />
+D<br />
+1<br />
+​<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
++<br />
+D<br />
+0<br />
+,<br />
+∀<br />
+θ<br />
+∈<br />
+ℝ<br />
+d<br />
+\sum_{i=0}^{n-1}\left|\nabla\ell_{i}(\theta)\right|<em>{2}^{2}\leq D</em>{1}|\nabla\ell(\theta)|<em>{2}^{2}+D</em>{0},\forall\theta\in\mathbb{R}^{d}<br />
+，其中<br />
+D<br />
+1<br />
+,<br />
+D<br />
+0<br />
+≥<br />
+0<br />
+D_{1},D_{0}\geq 0<br />
+且不同时为零。<br />
+当<br />
+n<br />
+,<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+n,L,D_{0},<br />
+和<br />
+D<br />
+1<br />
+D_{1}<br />
+预先固定时，我们定义相应的问题类<br />
+ℱ<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+n<br />
+,<br />
+f<br />
+∗<br />
+(<br />
+ℝ<br />
+d<br />
+)<br />
+:=<br />
+{<br />
+ℓ<br />
+(<br />
+θ<br />
+)<br />
+|<br />
+ℓ<br />
+(<br />
+θ<br />
+)<br />
+=<br />
+1<br />
+n<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+ℓ<br />
+i<br />
+(<br />
+θ<br />
+)<br />
+,<br />
+θ<br />
+∈<br />
+ℝ<br />
+d<br />
+且假设<br />
+2.1<br />
+–<br />
+2.2<br />
+在<br />
+(<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+)<br />
+下成立<br />
+}<br />
+.<br />
+\mathcal{F}<em>{L,D</em>{0},D_{1}}^{n,f^{</em>}}(\mathbb{R}^{d})\;:=\;\Bigr{\ell(\theta)\Big|\ \ \ell(\theta)=\tfrac{1}{n}\sum_{i=0}^{n-1}\ell_{i}(\theta),\ \theta\in\mathbb{R}^{d}\ \text{and Assumptions~\ref{assum1}--\ref{assum2} hold with }(L,D_{0},D_{1})\Bigr}.<br />
+(2.1)<br />
+假设<br />
+2.1<br />
+中的 Lipschitz 条件是标准的。<br />
+假设<br />
+2.2<br />
+中的“仿射方差”条件相当普遍。它最初由<br />
+[<br />
+6<br />
+]<br />
+提出，后来被<br />
+[<br />
+8<br />
+]<br />
+以等价形式推广：<br />
+1<br />
+n<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+‖<br />
+∇<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+−<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+=<br />
+1<br />
+n<br />
+​<br />
+(<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+‖<br />
+∇<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+)<br />
+−<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+≤<br />
+(<br />
+D<br />
+1<br />
+−<br />
+n<br />
+)<br />
+n<br />
+​<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
++<br />
+D<br />
+0<br />
+n<br />
+,<br />
+∀<br />
+θ<br />
+∈<br />
+ℝ<br />
+d<br />
+.<br />
+\frac{1}{n}\sum_{i=0}^{n-1}\left|\nabla\ell_{i}(\theta)-\nabla\ell(\theta)\right|<em>{2}^{2}=\frac{1}{n}\left(\sum</em>{i=0}^{n-1}\left|\nabla\ell_{i}(\theta)\right|<em>{2}^{2}\right)-|\nabla\ell(\theta)|</em>{2}^{2}\leq\frac{(D_{1}-n)}{n}|\nabla\ell(\theta)|<em>{2}^{2}+\frac{D</em>{0}}{n},\forall\theta\in\mathbb{R}^{d}.<br />
+(2.2)<br />
+假设<br />
+2.2<br />
+弱于常用的“有界方差条件”，后者要求<br />
+D<br />
+1<br />
+=<br />
+n<br />
+D_{1}=n<br />
+且方差不允许随梯度<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+|\nabla\ell(\theta)|<em>{2}^{2}<br />
+增长。请注意<br />
+D<br />
+1<br />
+=<br />
+n<br />
+D</em>{1}=n<br />
+是相当受限的。<br />
+首先<br />
+，它甚至在凸二次最小化上都不成立，我们在<br />
+[<br />
+67<br />
+]<br />
+的附录 A.2 中提供了证明。<br />
+其次<br />
+，正如我们稍后详述的，它排除了 SignSGD（等价于<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+=<br />
+0<br />
+\beta_{1}=\beta_{2}=0<br />
+的 Adam）的一些发散反例。因此，在<br />
+D<br />
+1<br />
+=<br />
+n<br />
+D_{1}=n<br />
+下的分析可能无法揭示 Adam 的全貌。<br />
+这里，我们允许一般的<br />
+D<br />
+1<br />
+≥<br />
+0<br />
+D_{1}\geq 0<br />
+。假设<br />
+2.2<br />
+也在有影响力的综述<br />
+[<br />
+8<br />
+]<br />
+中被推荐，因为它<br />
+“相对较小”<br />
+且<br />
+“方差允许在任何方向上二次增长”<br />
+。<br />
+我们在<br />
+[<br />
+67<br />
+]<br />
+的第 2.1 节中提供了关于假设 2.2 有效性的更多细节。<br />
+最后，我们强调我们<br />
+没有<br />
+添加有界梯度假设<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+‖<br />
+≤<br />
+G<br />
+|\nabla\ell(\theta)|\leq G<br />
+，这在随机梯度方法的文献中经常使用。<br />
+这对于揭示相变至关重要：在梯度先验有界的情况下，Adam 无法发散，而我们证明这在特定的<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+下是可能发生的。<br />
+2.1<br />
+[<br />
+46<br />
+]<br />
+的简要回顾<br />
+在陈述我们的理论结果之前，我们首先重述<br />
+[<br />
+46<br />
+]<br />
+的反例。<br />
+他们考虑以下一维凸问题：<br />
+minimize<br />
+1<br />
+n<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\operatorname<em>{minimize}\frac{1}{n}\sum_{i=0}^{n-1}\ell_{i}(\theta)<br />
+其中<br />
+θ<br />
+∈<br />
+[<br />
+−<br />
+1<br />
+,<br />
+1<br />
+]<br />
+\theta\in[-1,1]<br />
+,<br />
+n<br />
+≥<br />
+3<br />
+n\geq 3<br />
+:<br />
+ℓ<br />
+i<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+=<br />
+{<br />
+n<br />
+​<br />
+θ<br />
+,<br />
+for<br />
+​<br />
+i<br />
+=<br />
+0<br />
+−<br />
+θ<br />
+,<br />
+otherwise,<br />
+\ell_{i}(\theta)=\left{\begin{array}[]{ll}n\theta,&amp;\text{ for }i=0\<br />
+-\theta,&amp;\text{ otherwise, }\end{array}\right.<br />
+(2.3)<br />
+注意 (<br />
+2.3<br />
+) 同时满足假设<br />
+2.1<br />
+和<br />
+2.2<br />
+（其中<br />
+D<br />
+1<br />
+=<br />
+n<br />
+4<br />
++<br />
+n<br />
+3<br />
+−<br />
+n<br />
+2<br />
+D_{1}=n^{4}+n^{3}-n^{2}<br />
+且<br />
+D<br />
+0<br />
+=<br />
+0<br />
+D_{0}=0<br />
+)，因此我们的假设并没有先验地排除这个反例。<br />
+这是一个可行集为<br />
+θ<br />
+∈<br />
+[<br />
+−<br />
+1<br />
+,<br />
+1<br />
+]<br />
+\theta\in[-1,1]<br />
+的约束问题；最优解为<br />
+θ<br />
+∗<br />
+=<br />
+−<br />
+1<br />
+\theta^{</em>}=-1<br />
+。我们将其主要声明重述如下。<br />
+定理 2.1<br />
+(<br />
+[<br />
+46<br />
+]<br />
+中的定理 2)<br />
+对于任何固定的<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+满足<br />
+β<br />
+1<br />
+&lt;<br />
+β<br />
+2<br />
+\beta_{1}&lt;\sqrt{\beta_{2}}<br />
+，存在一个足够大的<br />
+n<br />
+n<br />
+使得 Adam 应用于函数 (<br />
+2.3<br />
+)（在循环采样下）收敛到次优点<br />
+θ<br />
+=<br />
+1<br />
+\theta=1<br />
+。<br />
+我们简要讨论这个定理的发散条件。如<br />
+[<br />
+46<br />
+]<br />
+附录 B 中的公式 (7) 所述，对于每个固定的<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+，他们需要一个“依赖于<br />
+β<br />
+1<br />
+\beta_{1}<br />
+和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的常数<br />
+n<br />
+n<br />
+”。<br />
+因此，他们需要不同的<br />
+n<br />
+n<br />
+来引起不同<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+的发散。所考虑的问题类在不断变化。<br />
+(a)<br />
+循环更新顺序<br />
+(b)<br />
+随机更新顺序<br />
+(c)<br />
+递减步长<br />
+图 2.2.：<br />
+(a, b)：<br />
+我们重述了<br />
+[<br />
+46<br />
+]<br />
+中的图 1。Adam 的发散在循环和随机更新顺序下都会发生，因此随机化无法防止发散。由于他们考虑的是约束问题，这里的“发散”一词意味着卡在次优解<br />
+θ<br />
+=<br />
+1<br />
+\theta=1<br />
+。在图中，AMSGrad 是一种不同的方法，不是我们的重点。<br />
+(c)：<br />
+递减步长<br />
+η<br />
+k<br />
+=<br />
+1<br />
+k<br />
+\eta_{k}=\frac{1}{\sqrt{k}}<br />
+不能防止发散。<br />
+我们注意到，当使用随机更新顺序代替循环顺序时，这些发散结果也成立，如<br />
+[<br />
+46<br />
+, 定理 3] 所证。因此，随机化不能防止发散。这不同于多块 ADMM 的经典发散-收敛争论，在那种情况下随机化可以作为防止发散的有效补救措施<br />
+[<br />
+12<br />
+;<br />
+51<br />
+]<br />
+。此外，<br />
+[<br />
+46<br />
+]<br />
+的证明使用了<br />
+η<br />
+k<br />
+∝<br />
+1<br />
+k<br />
+\eta_{k}\propto\frac{1}{\sqrt{k}}<br />
+，因此递减步长也不能防止发散。这些说法得到了图<br />
+2.2<br />
+中数值证据的支持。<br />
+为了防止发散，<br />
+46<br />
+建议<br />
+“使用…不同的<br />
+ϵ<br />
+\epsilon<br />
+,<br />
+β<br />
+1<br />
+\beta_{1}<br />
+, 和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+对应每个维度。然而，这违背了自适应方法的目的，因为它需要调整大量参数。”<br />
+在下文中，我们展示了在我们的设置中，无需更改算法或引入新的超参数即可避免这种发散。<br />
+关键是以依赖于问题的方式选择<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+，特别是依赖于 mini-batch 数量<br />
+n<br />
+n<br />
+（等价于批大小）。<br />
+重要的是，这<br />
+不<br />
+需要对<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+进行逐坐标调整——这是<br />
+46<br />
+讨论中提到的一个方向。<br />
+2.2<br />
+主要结果<br />
+首先，我们证明 Adam 在适当的依赖于问题的超参数下收敛。<br />
+定理 2.2<br />
+(大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+下的收敛结果)<br />
+假设算法<br />
+1.1<br />
+满足：<br />
+0<br />
+≤<br />
+β<br />
+1<br />
+&lt;<br />
+β<br />
+2<br />
+&lt;<br />
+1<br />
+0\leq\beta_{1}&lt;\sqrt{\beta_{2}}&lt;1<br />
+；<br />
+β<br />
+2<br />
+\beta_{2}<br />
+满足<br />
+β<br />
+2<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+)<br />
+,<br />
+β<br />
+2<br />
+≥<br />
+γ<br />
+1<br />
+​<br />
+(<br />
+n<br />
+)<br />
+:=<br />
+1<br />
+−<br />
+𝒪<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+β<br />
+1<br />
+n<br />
+n<br />
+5<br />
+)<br />
+\beta_{2}\in[0,1),\beta_{2}\geq{\gamma_{1}(n):=1-\mathcal{O}\left(\frac{1-\beta_{1}^{n}}{n^{5}}\right)}<br />
+；且<br />
+η<br />
+k<br />
+=<br />
+η<br />
+0<br />
+k<br />
+\eta_{k}=\frac{\eta_{0}}{\sqrt{k}}<br />
+。对于任何<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∈<br />
+ℱ<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+n<br />
+,<br />
+f<br />
+∗<br />
+​<br />
+(<br />
+ℝ<br />
+d<br />
+)<br />
+\ell(\theta)\in\mathcal{F}<em>{L,D</em>{0},D_{1}}^{n,f^{*}}(\mathbb{R}^{d})<br />
+，当<br />
+T<br />
+∈<br />
+ℕ<br />
+T\in\mathbb{N}<br />
+足够大时，我们有<br />
+min<br />
+k<br />
+∈<br />
+[<br />
+1<br />
+,<br />
+T<br />
+]<br />
+⁡<br />
+𝔼<br />
+⁡<br />
+[<br />
+min<br />
+⁡<br />
+{<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+D<br />
+0<br />
+,<br />
+‖<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+‖<br />
+2<br />
+2<br />
+​<br />
+d<br />
+​<br />
+D<br />
+1<br />
+}<br />
+]<br />
+=<br />
+𝒪<br />
+⁡<br />
+(<br />
+log<br />
+⁡<br />
+T<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+​<br />
+T<br />
+)<br />
++<br />
+𝒪<br />
+⁡<br />
+(<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+​<br />
+D<br />
+0<br />
+)<br />
+.<br />
+\min_{k\in[1,T]}\mathbb{E}\left[\min\left{\frac{|\nabla\ell(\theta_{k})|<em>{2}^{2}}{\sqrt{D</em>{0}}},\frac{|\nabla\ell(\theta_{k})|<em>{2}}{2\sqrt{dD</em>{1}}}\right}\right]=\mathcal{O}\left(\frac{\log T}{(1-\beta_{2})\sqrt{T}}\right)+\mathcal{O}((1-\beta_{2})\sqrt{D_{0}}).<br />
+(2.4)<br />
+(a)<br />
+批大小 vs.<br />
+β<br />
+2<br />
+\beta_{2}<br />
+(b)<br />
+大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+且<br />
+D<br />
+0</p>
+<blockquote>
+<p>0<br />
+D_{0}&gt;0<br />
+(c)<br />
+大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+且<br />
+D<br />
+0<br />
+=<br />
+0<br />
+D_{0}=0<br />
+图 2.3.：<br />
+(a)：<br />
+Adam 在 MNIST 上不同批大小和<br />
+β<br />
+2<br />
+\beta_{2}<br />
+下的训练损失。趋势与我们的理论一致：当批大小较小时，我们需要更大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+。这里，我们使用默认的<br />
+β<br />
+1<br />
+=<br />
+0.9<br />
+\beta_{1}=0.9<br />
+。<br />
+(b) (c)：<br />
+当<br />
+D<br />
+0</p>
+<p>0<br />
+D_{0}&gt;0<br />
+时，大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的 Adam 收敛到临界点的邻域，当<br />
+D<br />
+0<br />
+=<br />
+0<br />
+D_{0}=0<br />
+时收敛到精确的临界点。我们使用理论中的递减步长<br />
+η<br />
+k<br />
+=<br />
+0.1<br />
+/<br />
+k<br />
+\eta_{k}=0.1/\sqrt{k}<br />
+。 中的标签代表<br />
+[<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+]<br />
+[\beta_{1},\beta_{2}]<br />
+。<br />
+其次，我们证明了一个负面结果，即小<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的 Adam 可能发散，且发散区域也是依赖于问题的。<br />
+小<br />
+β<br />
+2<br />
+\beta_{2}<br />
+Adam 的发散表明“大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+”对于定理<br />
+2.2<br />
+是必要的。值得一提的是，Sign-SGD 是<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+=<br />
+0<br />
+\beta_{1}=\beta_{2}=0<br />
+时 Adam 的特例，因此以下发散结果同样适用于 Sign-SGD。<br />
+定理 2.3<br />
+(小<br />
+β<br />
+2<br />
+\beta_{2}<br />
+下的发散结果)<br />
+对于任何问题类<br />
+ℱ<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+n<br />
+,<br />
+f<br />
+∗<br />
+​<br />
+(<br />
+ℝ<br />
+d<br />
+)<br />
+\mathcal{F}<em>{L,D</em>{0},D_{1}}^{n,f^{<em>}}(\mathbb{R}^{d})<br />
+满足<br />
+n<br />
+≥<br />
+3<br />
+n\geq 3<br />
+,<br />
+D<br />
+1<br />
+≥<br />
+2<br />
+​<br />
+n<br />
+2<br />
+D_{1}\geq 2n^{2}<br />
+, 且<br />
+D<br />
+0<br />
+≥<br />
+0<br />
+D_{0}\geq 0<br />
+，存在一个<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∈<br />
+ℱ<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+n<br />
+,<br />
+f<br />
+∗<br />
+​<br />
+(<br />
+ℝ<br />
+d<br />
+)<br />
+\ell(\theta)\in\mathcal{F}<em>{L,D</em>{0},D_{1}}^{n,f^{</em>}}(\mathbb{R}^{d})<br />
+，使得当<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+满足我们的解析发散条件时，Adam 的迭代点、迭代点的梯度和迭代点的函数值都发散到无穷大。<br />
+区域的大小取决于<br />
+n<br />
+n<br />
+，并且随着<br />
+n<br />
+n<br />
+增长到无穷大，它扩展到整个区域<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+2<br />
+[0,1]^{2}<br />
+。<br />
+(a)<br />
+发散区域<br />
+(b)<br />
+小<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的影响<br />
+(c)<br />
+n<br />
+=<br />
+10<br />
+n=10<br />
+(d)<br />
+n<br />
+=<br />
+50<br />
+n=50<br />
+图 2.4.：<br />
+(a)：<br />
+在我们的<br />
+n<br />
+=<br />
+20<br />
+n=20<br />
+反例上，Adam 在彩色区域发散到无穷大。该区域是通过在<br />
+NumPy<br />
+中求解我们的解析发散条件绘制的。<br />
+蓝色曲线满足<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+\beta_{1}=\sqrt{\beta_{2}}<br />
+。<br />
+(b)：<br />
+当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较小时，Adam 发散到无穷大。 中的标签代表<br />
+[<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+]<br />
+[\beta_{1},\beta_{2}]<br />
+。<br />
+(c, d)<br />
+在我们的反例上，分别在<br />
+n<br />
+=<br />
+10<br />
+n=10<br />
+和<br />
+50<br />
+50<br />
+下运行 50k 次 Adam 迭代后的最优性差距<br />
+|<br />
+θ<br />
+−<br />
+θ<br />
+∗<br />
+|<br />
+|\theta-\theta^{*}|<br />
+。<br />
+我们在定理<br />
+2.3<br />
+中的反例是基于一维二次目标构造的，如下所示。考虑<br />
+f<br />
+⁡<br />
+(<br />
+x<br />
+)<br />
+=<br />
+1<br />
+n<br />
+​<br />
+∑<br />
+i<br />
+=<br />
+0<br />
+n<br />
+−<br />
+1<br />
+f<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+f(x)=\frac{1}{n}\sum_{i=0}^{n-1}f_{i}(x)<br />
+对于<br />
+n<br />
+≥<br />
+3<br />
+n\geq 3<br />
+且<br />
+x<br />
+∈<br />
+ℝ<br />
+x\in\mathbb{R}<br />
+，我们定义<br />
+f<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+f_{i}(x)<br />
+为：<br />
+f<br />
+0<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+{<br />
+(<br />
+1<br />
++<br />
+(<br />
+n<br />
+−<br />
+1<br />
+)<br />
+​<br />
+a<br />
+)<br />
+​<br />
+x<br />
+,<br />
+x<br />
+≥<br />
+−<br />
+1<br />
+(<br />
+1<br />
++<br />
+(<br />
+n<br />
+−<br />
+1<br />
+)<br />
+​<br />
+a<br />
+)<br />
+2<br />
+​<br />
+(<br />
+x<br />
++<br />
+2<br />
+)<br />
+2<br />
+−<br />
+3<br />
++<br />
+3<br />
+​<br />
+(<br />
+n<br />
+−<br />
+1<br />
+)<br />
+​<br />
+a<br />
+2<br />
+,<br />
+x<br />
+&lt;<br />
+−<br />
+1<br />
+,<br />
+f<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+=<br />
+{<br />
+−<br />
+a<br />
+​<br />
+x<br />
+,<br />
+x<br />
+≥<br />
+−<br />
+1<br />
+−<br />
+a<br />
+2<br />
+​<br />
+(<br />
+x<br />
++<br />
+2<br />
+)<br />
+2<br />
++<br />
+3<br />
+​<br />
+a<br />
+2<br />
+,<br />
+x<br />
+&lt;<br />
+−<br />
+1<br />
+​<br />
+for<br />
+i</p>
+<p>0<br />
+,<br />
+f_{0}(x)=\left{\begin{array}[]{ll}\left(1+(n-1)a\right)x,&amp;x\geq-1\<br />
+\frac{\left(1+(n-1)a\right)}{2}(x+2)^{2}-\frac{3+3(n-1)a}{2},&amp;x&lt;-1\end{array}\right.,\hskip 8.50012ptf_{i}(x)=\left{\begin{array}[]{ll}-ax,&amp;x\geq-1\<br />
+-\frac{a}{2}(x+2)^{2}+\frac{3a}{2},&amp;x&lt;-1\end{array}\right.\hskip 8.50012pt\text{for $i&gt;0$,}\vskip-2.84526pt<br />
+(2.5)<br />
+其中<br />
+a</p>
+<p>0<br />
+a&gt;0<br />
+。将所有<br />
+f<br />
+i<br />
+​<br />
+(<br />
+x<br />
+)<br />
+f_{i}(x)<br />
+求和，可以看出：对于任何有限的正<br />
+a</p>
+<p>0<br />
+a&gt;0<br />
+，<br />
+f<br />
+⁡<br />
+(<br />
+x<br />
+)<br />
+f(x)<br />
+属于<br />
+ℱ<br />
+L<br />
+,<br />
+D<br />
+0<br />
+,<br />
+D<br />
+1<br />
+n<br />
+,<br />
+f<br />
+∗<br />
+​<br />
+(<br />
+ℝ<br />
+d<br />
+)<br />
+\mathcal{F}<em>{L,D</em>{0},D_{1}}^{n,f^{<em>}}(\mathbb{R}^{d})<br />
+。例如，当<br />
+a<br />
+=<br />
+1<br />
+/<br />
+(<br />
+n<br />
+−<br />
+1<br />
+)<br />
+2<br />
+a=1/(n-1)^{2}<br />
+时，我们有<br />
+D<br />
+1<br />
+=<br />
+2<br />
+​<br />
+n<br />
+2<br />
+D_{1}=2n^{2}<br />
+，<br />
+D<br />
+0<br />
+=<br />
+0<br />
+D_{0}=0<br />
+，且<br />
+f<br />
+⁡<br />
+(<br />
+x<br />
+)<br />
+f(x)<br />
+有下界，最优<br />
+x<br />
+∗<br />
+=<br />
+−<br />
+2<br />
+x^{</em>}=-2<br />
+。此外，它满足假设<br />
+2.2<br />
+但不满足有界方差（有界方差将<br />
+D<br />
+1<br />
+D_{1}<br />
+限制为<br />
+n<br />
+n<br />
+）。<br />
+函数 (<br />
+2.5<br />
+) 是基于<br />
+[<br />
+46<br />
+]<br />
+修改的，但它允许迭代点和梯度都发散到无穷大。我们注意到 Sign-SGD 是<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+=<br />
+0<br />
+\beta_{1}=\beta_{2}=0<br />
+时 Adam 的特例，因此以下发散结果同样适用于 Sign-SGD。<br />
+将正面结果（定理<br />
+2.2<br />
+）和负面结果（定理<br />
+2.3<br />
+）结合起来，我们确立了 Adam 在改变<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+组合时从发散到收敛的相变。据我们所知，这是对未修改 Adam 的第一个收敛保证，也是文献中报道的<br />
+(<br />
+β<br />
+1<br />
+,<br />
+β<br />
+2<br />
+)<br />
+(\beta_{1},\beta_{2})<br />
+二维平面上的第一个相变，为 Adam 提供了严格的理论保证。<br />
+注 1：收敛到临界点的邻域。<br />
+当<br />
+D<br />
+0</p>
+<p>0<br />
+D_{0}&gt;0<br />
+时，Adam 收敛到临界点的邻域，而不是精确的临界点。我们强调这<br />
+不是<br />
+由于分析的局限性，这种现象在实践中也被观察到：即使对于<br />
+D<br />
+0</p>
+<p>0<br />
+D_{0}&gt;0<br />
+的简单凸二次函数，具有递减步长的 Adam<br />
+无法<br />
+达到恰好为零的梯度（见图<br />
+2.3<br />
+(b)）。<br />
+在不可实现的情况下（<br />
+D<br />
+0</p>
+<p>0<br />
+D_{0}&gt;0<br />
+），收敛到临界点的邻域对于随机方法来说是常见的，包括常数步长 SGD<br />
+[<br />
+35<br />
+;<br />
+7<br />
+;<br />
+60<br />
+;<br />
+61<br />
+;<br />
+33<br />
+]<br />
+和递减步长 RMSProp<br />
+[<br />
+63<br />
+;<br />
+48<br />
+]<br />
+。<br />
+在可实现的情况下（即<br />
+D<br />
+0<br />
+=<br />
+0<br />
+D_{0}=0<br />
+），定理<br />
+2.2<br />
+指出 Adam 可以收敛到临界点。这与我们在图<br />
+2.3<br />
+(c) 中的数值结果相符。定理<br />
+2.2<br />
+中的收敛速率与相同条件下 SGD 的收敛速率相当。<br />
+注 2：<br />
+β<br />
+2<br />
+\beta_{2}<br />
+和批大小。<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的条件：<br />
+β<br />
+2<br />
+≥<br />
+γ<br />
+1<br />
+​<br />
+(<br />
+n<br />
+)<br />
+=<br />
+1<br />
+−<br />
+𝒪<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+β<br />
+1<br />
+n<br />
+n<br />
+5<br />
+)<br />
+\beta_{2}\geq\gamma_{1}(n)=1-\mathcal{O}\left(\frac{1-\beta_{1}^{n}}{n^{5}}\right)<br />
+是依赖于问题的，并且随着 mini-batch 数量<br />
+n<br />
+n<br />
+的增加而增加。这表明当<br />
+n<br />
+n<br />
+大时我们需要更大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+，或者等价地，当批大小（等于<br />
+𝒟<br />
+n<br />
+\frac{\mathcal{D}}{n}<br />
+）小时我们需要更大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+。<br />
+(<br />
+𝒟<br />
+\mathcal{D}<br />
+表示总样本量。)<br />
+这与我们在图<br />
+2.3<br />
+(a) 中的实验一致：在 MNIST 上，较小的批大小<br />
+𝒟<br />
+n<br />
+\frac{\mathcal{D}}{n}<br />
+（等价于较大的<br />
+n<br />
+n<br />
+）需要较大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+才能达到较小的损失。注意，我们并没有声称<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的阈值是紧的。收紧<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的阈值将是一个有趣的未来方向。<br />
+注 3：对 LLM 预训练的指导。<br />
+我们的发散-收敛理论表明，当<br />
+n<br />
+n<br />
+较大时需要更大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+。这等价地表明，当批大小（等于<br />
+𝒟<br />
+n<br />
+\frac{\mathcal{D}}{n}<br />
+）较小时需要更大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+。这一信息可以为 LLM 预训练中的超参数调优提供指导，这一点已得到各种文献的证实。我们列出一些数值证据如下。<br />
+•<br />
+49<br />
+：<br />
+“<br />
+66<br />
+表明较大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+显著改善了小批量训练，且<br />
+38<br />
+强调了在这种机制下缩放<br />
+β<br />
+2<br />
+\beta_{2}<br />
+的重要性。”<br />
+•<br />
+64<br />
+强调<br />
+“较大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+（从 0.95 增加到 0.99 或 0.999）显著改善了小批量训练…与<br />
+[<br />
+66<br />
+]<br />
+的发现一致”<br />
+。<br />
+•<br />
+42<br />
+报告说<br />
+“在小批量下，增大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+（从 0.95 到 0.999）是必不可少的…这与理论工作<br />
+[<br />
+66<br />
+]<br />
+相符。”<br />
+注 4：是否<br />
+β<br />
+2<br />
+\beta_{2}<br />
+越大越好？<br />
+为了确保收敛，定理<br />
+2.2<br />
+指出<br />
+β<br />
+2<br />
+\beta_{2}<br />
+需要大于依赖于批大小的阈值<br />
+β<br />
+2<br />
+∗<br />
+\beta_{2}^{<em>}<br />
+。但在<br />
+[<br />
+β<br />
+2<br />
+∗<br />
+,<br />
+1<br />
+)<br />
+[\beta_{2}^{</em>},1)<br />
+范围内，最优的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+是多少？我们基于当前结果提供初步讨论。<br />
+在定理<br />
+2.2<br />
+中，速率包含常数<br />
+1<br />
+1<br />
+−<br />
+β<br />
+2<br />
+\frac{1}{1-\beta_{2}}<br />
+，当<br />
+β<br />
+2<br />
+→<br />
+1<br />
+\beta_{2}\rightarrow 1<br />
+时它会放大。我们注意到这种依赖性在某种程度上是不可避免的，因为它内嵌于 Adam 的设计中：当<br />
+β<br />
+2<br />
+=<br />
+1<br />
+\beta_{2}=1<br />
+且初始<br />
+v<br />
+0<br />
+=<br />
+0<br />
+v_{0}=0<br />
+时，<br />
+v<br />
+k<br />
+v_{k}<br />
+始终等于<br />
+0<br />
+0<br />
+，Adam 未定义。因此，我们的理论界限自然必须捕捉这种最坏情况的奇异性。然而，只要<br />
+β<br />
+2<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+)<br />
+\beta_{2}\in[0,1)<br />
+，(<br />
+2.4<br />
+) 中的界限仍然严格有界且有效。在如<br />
+β<br />
+2<br />
+=<br />
+0.95<br />
+\beta_{2}=0.95<br />
+或<br />
+0.999<br />
+0.999<br />
+的实际场景中，这对应于 20 或 1000 的有限乘数。<br />
+定理<br />
+2.2<br />
+表明：在收敛范围<br />
+[<br />
+β<br />
+2<br />
+∗<br />
+,<br />
+1<br />
+)<br />
+[\beta_{2}^{<em>},1)<br />
+内，较大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+不一定更好。这与 LLM 中的经验观察趋势一致：当 Adam 在<br />
+β<br />
+2<br />
+=<br />
+0.95<br />
+\beta_{2}=0.95<br />
+下收敛时，较大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+（如<br />
+0.999<br />
+0.999<br />
+）可能会产生更差的性能<br />
+[<br />
+59<br />
+;<br />
+5<br />
+]<br />
+。<br />
+在理论上，寻找最优的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+需要更多的努力，我们将其留作未来的方向。<br />
+在经验上，<br />
+[<br />
+38<br />
+]<br />
+提出了一种启发式策略，对从业者可能有帮助：从流行的选择开始，例如，<br />
+β<br />
+2<br />
+=<br />
+0.95<br />
+\beta_{2}=0.95<br />
+，如果我们要将批大小从<br />
+B<br />
+1<br />
+B_{1}<br />
+缩放到<br />
+B<br />
+2<br />
+B_{2}<br />
+，则将<br />
+β<br />
+2<br />
+\beta_{2}<br />
+更改为<br />
+β<br />
+2<br />
+B<br />
+2<br />
+/<br />
+B<br />
+1<br />
+\beta_{2}^{B_{2}/B_{1}}<br />
+。<br />
+注 5：对 SignSGD 和 Muon 的启示。<br />
+定理<br />
+2.3<br />
+直接暗示 SignSGD（<br />
+β<br />
+1<br />
+=<br />
+β<br />
+2<br />
+=<br />
+0<br />
+\beta_{1}=\beta_{2}=0<br />
+的 Adam）在<br />
+n<br />
+≥<br />
+3<br />
+n\geq 3<br />
+时可能发散。此外，由于 SignSGD 是<br />
+β<br />
+=<br />
+0<br />
+\beta=0<br />
+且矩阵大小为 1 时的 Muon<br />
+[<br />
+25<br />
+]<br />
+，相同的发散也适用于此配置下的 Muon。因此，我们推测在依赖于问题的<br />
+β<br />
+\beta<br />
+下，Muon 也存在发散-收敛相变。<br />
+我们注意到有界方差假设（限制<br />
+D<br />
+1<br />
+=<br />
+n<br />
+D_{1}=n<br />
+）将我们的反例排除在所考虑的函数类之外，在这种情况下，SignSGD 将在<br />
+η<br />
+k<br />
+=<br />
+η<br />
+0<br />
+/<br />
+k<br />
+\eta_{k}=\eta_{0}/\sqrt{k}<br />
+下收敛到临界点的邻域。然而，有界方差下的分析并未揭示 SignSGD 真正的发散行为。我们的反例满足假设<br />
+2.2<br />
+（其中<br />
+D<br />
+1<br />
+≥<br />
+2<br />
+​<br />
+n<br />
+2<br />
+D_{1}\geq 2n^{2}<br />
+）但不满足有界方差，这为放宽它提供了额外的动机。一个引人入胜的开放性问题是是否存在<br />
+D<br />
+1<br />
+∈<br />
+(<br />
+n<br />
+,<br />
+2<br />
+​<br />
+n<br />
+2<br />
+)<br />
+D_{1}\in(n,2n^{2})<br />
+的更多反例。我们将其留待未来研究。<br />
+来自 Adam 作者的致谢。<br />
+最后，我们的结果在<br />
+[ICLR 2025 时间检验奖演讲]<br />
+中被 Adam 作者提及，用于<br />
+[在理论上为 Adam 奠定基础]<br />
+。<br />
+2.3<br />
+定理<br />
+2.2<br />
+中收敛结果的关键引理<br />
+在这里，我们总结定理<br />
+2.2<br />
+背后的主要挑战。<br />
+图 2.5.：<br />
+当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+变化时 Adam 更新方向变化的说明。<br />
+我们的关键见解如图<br />
+2.5<br />
+所示：我们发现当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较大时，Adam 的更新方向<br />
+𝔼<br />
+⁡<br />
+(<br />
+m<br />
+k<br />
+v<br />
+k<br />
+)<br />
+\mathbb{E}\left(\frac{m_{k}}{\sqrt{v_{k}}}\right)<br />
+接近<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+\nabla\ell(\theta_{k})<br />
+（导致收敛），而当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较小时开始偏向相反方向（导致发散）。<br />
+当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较大时<br />
+1<br />
+v<br />
+k<br />
+\frac{1}{\sqrt{v_{k}}}<br />
+的集中效应。<br />
+在技术方面，我们发现当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较大时，<br />
+1<br />
+v<br />
+k<br />
+\frac{1}{\sqrt{v_{k}}}<br />
+集中在<br />
+1<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+k<br />
+)<br />
+\frac{1}{\sqrt{\mathbb{E}<em>{k}(v</em>{k})}}<br />
+周围。特别地，我们证明：<br />
+1<br />
+v<br />
+k<br />
+≈<br />
+1<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+k<br />
+)<br />
+,<br />
+w.h.p., when<br />
+β<br />
+2<br />
+is large.<br />
+\frac{1}{\sqrt{v_{k}}}\approx\frac{1}{\sqrt{\mathbb{E}<em>{k}(v</em>{k})}},\text{ w.h.p., when $\beta_{2}$ is large.}<br />
+(2.6)<br />
+因此，<br />
+−<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+v<br />
+k<br />
+-\frac{\nabla\ell_{\tau_{k}}(\theta_{k})}{\sqrt{v_{k}}}<br />
+在这种情况下成为下降方向，即，<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+v<br />
+k<br />
+)<br />
+≈<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+∇<br />
+ℓ<br />
+τ<br />
+k<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+)<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+k<br />
+)<br />
+=<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+k<br />
+)<br />
+,<br />
+\mathbb{E}<em>{k}\left(\frac{\nabla\ell</em>{\tau_{k}}(\theta_{k})}{\sqrt{v_{k}}}\right)\approx\frac{\mathbb{E}<em>{k}\left(\nabla\ell</em>{\tau_{k}}(\theta_{k})\right)}{\sqrt{\mathbb{E}<em>{k}(v</em>{k})}}=\frac{\nabla\ell(\theta_{k})}{\sqrt{\mathbb{E}<em>{k}(v</em>{k})}},<br />
+它位于梯度方向<br />
+∇<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+k<br />
+)<br />
+\nabla\ell(\theta_{k})<br />
+的对偶锥中。<br />
+为什么大<br />
+β<br />
+2<br />
+\beta_{2}<br />
+有帮助？<br />
+直观地说，这是因为大的<br />
+β<br />
+2<br />
+\beta_{2}<br />
+减慢了<br />
+v<br />
+k<br />
+v_{k}<br />
+的变化，其行为将变得很大程度上可预测。<br />
+处理动量<br />
+m<br />
+k<br />
+m_{k}<br />
+需要额外的努力。我们通过一个新的势函数来处理它，为简洁起见，此处省略细节。<br />
+分析中的主要挑战在于<br />
+v<br />
+k<br />
+v_{k}<br />
+是一个随机变量且出现在分母中。这使得整个系统成为一个随机非线性动态系统，通常难以分析。此外，<br />
+v<br />
+k<br />
+v_{k}<br />
+可能达到 0，这带来了额外的困难。<br />
+我们在引理<br />
+2.1<br />
+中证明 (<br />
+2.6<br />
+)，该结果在<br />
+没有<br />
+对随机梯度施加任何有界性条件的情况下成立。我们通过利用 Adam 的两个特殊性质来证明这一结果：(1) 随机梯度在<br />
+v<br />
+k<br />
+v_{k}<br />
+中具有“几何和”结构。(2) 随机梯度的索引是从有限索引集中均匀采样的。凭借这两个特殊性质，我们发现当<br />
+β<br />
+2<br />
+\beta_{2}<br />
+较大时，<br />
+1<br />
+v<br />
+k<br />
+\frac{1}{\sqrt{v_{k}}}<br />
+的行为在很大程度上是可预测的。<br />
+引理 2.1<br />
+(Adam 预条件器的集中，简化版)。<br />
+考虑与定理<br />
+2.2<br />
+相同的条件。对于任何<br />
+0<br />
+&lt;<br />
+δ<br />
+≤<br />
+1<br />
+4<br />
+​<br />
+n<br />
+0&lt;\delta\leq\frac{1}{4n}<br />
+，存在一个足够大的<br />
+k<br />
+k<br />
+使得以至少<br />
+1<br />
+−<br />
+n<br />
+​<br />
+exp<br />
+⁡<br />
+(<br />
+−<br />
+δ<br />
+2<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+​<br />
+(<br />
+28<br />
+3<br />
+​<br />
+n<br />
++<br />
+8<br />
+3<br />
+​<br />
+δ<br />
+)<br />
+)<br />
+,<br />
+1-n\exp\left(-\frac{\delta^{2}}{(1-\beta_{2})(\frac{28}{3n}+\frac{8}{3}\delta)}\right),<br />
+的概率，我们有以下集中界限：<br />
+C<br />
+lower<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+l<br />
+,<br />
+k<br />
+)<br />
+≤<br />
+1<br />
+v<br />
+l<br />
+,<br />
+k<br />
+≤<br />
+C<br />
+upper<br />
+𝔼<br />
+k<br />
+​<br />
+(<br />
+v<br />
+l<br />
+,<br />
+k<br />
+)<br />
+,<br />
+\frac{C_{\mathrm{lower}}}{\sqrt{\mathbb{E}<em>{k}(v</em>{l,k})}}\leq\frac{1}{\sqrt{v_{l,k}}}\leq\frac{C_{\mathrm{upper}}}{\sqrt{\mathbb{E}<em>{k}(v</em>{l,k})}},<br />
+(2.7)<br />
+其中<br />
+v<br />
+l<br />
+,<br />
+k<br />
+v_{l,k}<br />
+表示<br />
+v<br />
+k<br />
+v_{k}<br />
+的第<br />
+l<br />
+l<br />
+个分量，<br />
+𝔼<br />
+k<br />
+(<br />
+⋅<br />
+)<br />
+=<br />
+𝔼<br />
+(<br />
+⋅<br />
+∣<br />
+ℱ<br />
+k<br />
+)<br />
+\mathbb{E}<em>{k}(\cdot)=\mathbb{E}(\cdot\mid\mathcal{F}</em>{k})<br />
+是条件期望，且<br />
+C<br />
+lower<br />
+,<br />
+C<br />
+upper<br />
+C_{\text{lower}},C_{\text{upper}}<br />
+定义如下，它们都在<br />
+β<br />
+2<br />
+→<br />
+1<br />
+\beta_{2}\rightarrow 1<br />
+时趋于 1。<br />
+C<br />
+lower<br />
+:=<br />
+1<br />
+−<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+4<br />
+​<br />
+n<br />
+(<br />
+1<br />
+−<br />
+2<br />
+​<br />
+n<br />
+​<br />
+δ<br />
+)<br />
+​<br />
+β<br />
+2<br />
+n<br />
+,<br />
+C<br />
+upper<br />
+:=<br />
+(<br />
+1<br />
+−<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+8<br />
+​<br />
+n<br />
+(<br />
+1<br />
+−<br />
+2<br />
+​<br />
+n<br />
+​<br />
+δ<br />
+)<br />
+​<br />
+β<br />
+2<br />
+n<br />
+)<br />
+−<br />
+1<br />
+/<br />
+2<br />
+.<br />
+C_{\text{lower}}:=1-(1-\beta_{2})\frac{4n}{(1-2n\delta)\beta_{2}^{n}},\quad C_{\text{upper}}:=\left(1-(1-\beta_{2})\frac{8n}{(1-2n\delta)\beta_{2}^{n}}\right)^{-1/2}.<br />
+证明思路。<br />
+在技术上，集中结果通过两步建立： 我们将<br />
+1<br />
+/<br />
+v<br />
+k<br />
+1/\sqrt{v_{k}}<br />
+的动力学映射到一系列独立同分布的伯努利随机变量的动力学，这本身是有界的且更容易分析； 我们通过几个解耦步骤将动力学映射回来。步骤 和 允许我们使用有界的伯努利代理来跟踪可能无界的随机变量序列的动力学。严格的集中效应如引理<br />
+2.1<br />
+所示。引理<br />
+2.1<br />
+可作为分析 Adam 类算法的通用工具。<br />
+3<br />
+为什么 Transformer 需要 Adam：对 Hessian 的研究<br />
+本节主要基于：<br />
+•<br />
+Why Transformers Need Adam: A Hessian Perspective.<br />
+Yushun Zhang<br />
+, Congliang Chen, Tian Ding, Ziniu Li, Ruoyu Sun, Zhi-Quan Luo.<br />
+Advances in Neural Information Processing Systems (NeurIPS), 2024.<br />
+•<br />
+Towards Quantifying the Hessian Structure of Neural Networks.<br />
+Zhaorui Dong<br />
+∗<br />
+,<br />
+Yushun Zhang<br />
+∗<br />
+, Jianfeng Yao, Ruoyu Sun<br />
+(</em>: 同等贡献。按字母顺序排列。)<br />
+Minor Revision at the IEEE Transactions on Information Theory.<br />
+•<br />
+Adam-mini: Use Fewer Learning Rates To Gain More.<br />
+Yushun Zhang<br />
+∗<br />
+, Congliang Chen<br />
+∗<br />
+, Ziniu Li, Tian Ding, Chenwei Wu, Diederik P. Kingma, Yinyu Ye, Zhi-Quan Luo, Ruoyu Sun.<br />
+(<em>: 同等贡献。)<br />
+International Conference on Learning Representations (ICLR), 2025.<br />
+收敛结果解释了 Adam 在依赖于问题的调优下可以是安全的，但它没有告诉我们 Adam 何时优于 SGD。事实上，Adam 的实际优势并不是普遍的：Adam 在像 Transformer 这样的复杂现代 NN 上表现明显好于 SGD；在 CNN 上表现与 SGD 相当；同时，在简单的随机高斯二次问题上表现不如 GD（见图<br />
+3.1<br />
+）。这些现象引出了一个问题：Transformer 中的什么特殊结构使得 Adam 有用？<br />
+(a)<br />
+Adam 在高斯二次目标上<br />
+(b)<br />
+Adam 在 Transformer 上<br />
+图 3.1.：<br />
+Adam 的实际优势并不普遍。<br />
+(a)<br />
+Adam 在简单的随机高斯二次问题上表现不如 GD。<br />
+(b)<br />
+Adam 在具有 200M 参数的 Transformer 上表现明显优于 SGD。所有方法都通过广泛的超参数搜索进行了充分调优。<br />
+Adam 作为对角预条件器。<br />
+在本节中，我们将算法<br />
+1.1<br />
+中的 Adam 优化器解释为对角预条件方法：<br />
+θ<br />
+k<br />
++<br />
+1<br />
+=<br />
+θ<br />
+k<br />
+−<br />
+η<br />
+k<br />
+​<br />
+Diag<br />
+⁡<br />
+(<br />
+v<br />
+k<br />
+)<br />
+−<br />
+1<br />
+2<br />
+​<br />
+m<br />
+k<br />
+:=<br />
+θ<br />
+k<br />
+−<br />
+η<br />
+k<br />
+​<br />
+D<br />
+Adam<br />
+−<br />
+1<br />
+2<br />
+​<br />
+m<br />
+k<br />
+,<br />
+\theta_{k+1}=\theta_{k}-\eta_{k}\operatorname{Diag}(v_{k})^{-\frac{1}{2}}m_{k}:=\theta_{k}-\eta_{k}D_{\operatorname{Adam}}^{-\frac{1}{2}}m_{k},<br />
+(3.1)<br />
+其中预条件器<br />
+D<br />
+Adam<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+d<br />
+D_{\operatorname{Adam}}\in\mathbb{R}^{d\times d}<br />
+是对角矩阵。<br />
+在数值线性代数中，对角预条件器的有效性已知取决于<br />
+Hessian 的结构<br />
+——无论它是对角的、三对角的、对角占优的还是其他形式<br />
+[<br />
+20<br />
+;<br />
+52<br />
+;<br />
+43<br />
+;<br />
+16<br />
+]<br />
+。对角预条件器通常在稠密 Hessian 上表现不佳，因为它们无法捕捉主导曲率的非对角耦合。图<br />
+3.1<br />
+(a) 中的随机高斯二次问题在构造上具有稠密的 Hessian，我们推测这种稠密性是 Adam 在该机制下表现不佳的主要原因。<br />
+为了测试这一假设，我们通过改变 Hessian 的结构、大小和条件数，在不同高斯二次设置上数值研究了<br />
+D<br />
+Adam<br />
+D_{\operatorname{Adam}}<br />
+的有效性。我们在图<br />
+3.2<br />
+中的结果揭示了一个清晰的趋势：随着 Hessian 越来越接近对角，Adam 的性能持续提高。这一发现进一步支持了这样一种观点，即对角预条件器与底层 Hessian 结构之间的相互作用是 Adam 性能的关键决定因素。<br />
+(a)<br />
+r<br />
+r<br />
+vs. 维度<br />
+d<br />
+d<br />
+(b)<br />
+r<br />
+r<br />
+vs. 条件数<br />
+κ<br />
+\kappa<br />
+图 3.2.：<br />
+Adam 的预条件器<br />
+D<br />
+Adam<br />
+D_{\text{Adam}}<br />
+在不同 Hessian 结构上的有效性。y 轴记为<br />
+τ<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+\tau\in[0,1]<br />
+，作为 Hessian 对角性的度量；<br />
+τ<br />
+\tau<br />
+值越小，Hessian 越接近对角矩阵。在热图中，黄色对应于<br />
+D<br />
+Adam<br />
+D_{\text{Adam}}<br />
+有效降低 Hessian 条件数的情况，而蓝色表示无效。在不同的 Hessian 大小和条件数下，我们发现当 Hessian 稠密时<br />
+D<br />
+Adam<br />
+D_{\text{Adam}}<br />
+效果较差。<br />
+那么 Transformer 中的什么结构使得 Adam 有用呢？在下文中，我们将展示 NN 和 Transformer 的 Hessian 具有特殊结构：随着训练的进行，它们接近<br />
+近块对角<br />
+结构。此外，Transformer 的 Hessian 不仅是块结构的，而且具有强烈的块异质性。我们将从理论和经验上验证这两个事实共同使得 Adam 优于 SGD。<br />
+单隐层 NN 的 Hessian。<br />
+我们发现 NN 的 Hessian 远非一般的稠密矩阵。让我们从一个单隐层网络开始：<br />
+f<br />
+⁡<br />
+(<br />
+W<br />
+,<br />
+V<br />
+,<br />
+x<br />
+)<br />
+=<br />
+V<br />
+​<br />
+σ<br />
+​<br />
+(<br />
+W<br />
+​<br />
+x<br />
+)<br />
+∈<br />
+ℝ<br />
+C<br />
+,<br />
+f(W,V;x)=V\sigma(Wx)\in\mathbb{R}^{C},<br />
+(3.2)<br />
+其中<br />
+W<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+d<br />
+W\in\mathbb{R}^{m\times d}<br />
+是隐藏权重矩阵，<br />
+V<br />
+∈<br />
+ℝ<br />
+C<br />
+×<br />
+m<br />
+V\in\mathbb{R}^{C\times m}<br />
+是输出权重矩阵，<br />
+σ<br />
+\sigma<br />
+是 ReLU。这里，<br />
+d<br />
+,<br />
+m<br />
+,<br />
+C<br />
+d,m,C<br />
+分别表示输入维度、隐藏维度（即神经元数量）和输出维度（即类别数量）。输出然后被送入交叉熵（CE）损失，我们记为<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+\ell(\theta)<br />
+，其中<br />
+θ<br />
+=<br />
+(<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+⊤<br />
+)<br />
+⊤<br />
+,<br />
+vec<br />
+⁡<br />
+(<br />
+V<br />
+⊤<br />
+)<br />
+⊤<br />
+)<br />
+⊤<br />
+∈<br />
+ℝ<br />
+m<br />
+​<br />
+d<br />
++<br />
+m<br />
+​<br />
+C<br />
+\theta=(\operatorname{vec}(W^{\top})^{\top},\operatorname{vec}(V^{\top})^{\top})^{\top}\in\mathbb{R}^{md+mC}<br />
+，即两个矩阵按行展平。<br />
+我们现在检查这个<br />
+m<br />
+=<br />
+8<br />
+,<br />
+d<br />
+=<br />
+C<br />
+=<br />
+500<br />
+m=8,d=C=500<br />
+的简单单隐层网络上的 Hessian<br />
+∇<br />
+2<br />
+ℓ<br />
+​<br />
+(<br />
+θ<br />
+)<br />
+\nabla^{2}\ell(\theta)<br />
+。如图<br />
+3.3<br />
+所示，Hessian 具有复合结构：<br />
+(a)<br />
+初始化时的 Hessian<br />
+(b)<br />
+50% 步数时的 Hessian<br />
+(c)<br />
+100% 步数时的 Hessian<br />
+(d)<br />
+初始化时的 Hessian<br />
+(e)<br />
+50% 步数时的 Hessian<br />
+(f)<br />
+100% 步数时的 Hessian<br />
+图 3.3.：<br />
+(a-c)：<br />
+在 CE 损失下，高斯合成数据上单隐层网络的 Hessian。在初始化时，我们观察到<br />
+H<br />
+w<br />
+​<br />
+v<br />
+H_{wv}<br />
+中的“块循环”模式，以及<br />
+H<br />
+w<br />
+​<br />
+w<br />
+H_{ww}<br />
+和<br />
+H<br />
+v<br />
+​<br />
+v<br />
+H_{vv}<br />
+中的近块对角结构（总共有<br />
+m<br />
++<br />
+C<br />
+=<br />
+508<br />
+m+C=508<br />
+个块）。我们将其称为<br />
+“块循环块对角矩阵”<br />
+。我们注意到<br />
+H<br />
+w<br />
+​<br />
+v<br />
+H_{wv}<br />
+中的“块循环”模式在训练中消失，而<br />
+H<br />
+w<br />
+​<br />
+w<br />
+H_{ww}<br />
+和<br />
+H<br />
+v<br />
+​<br />
+v<br />
+H_{vv}<br />
+中的近块对角模式被保留。<br />
+(d-f)：<br />
+4 层网络的 Hessian。我们在远距离的层间 Hessian 中观察到额外的稠密块。其他结构与单隐层网络中的类似。<br />
+•<br />
+结构 1：块对角。<br />
+层内 Hessian 子矩阵表现出近块对角模式，其中一个块对应于与一个输出神经元相连的参数，即<br />
+W<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+d<br />
+W\in\mathbb{R}^{m\times d}<br />
+或<br />
+V<br />
+∈<br />
+ℝ<br />
+C<br />
+×<br />
+m<br />
+V\in\mathbb{R}^{C\times m}<br />
+中的一行。该结构在训练中持续存在。在这种情况下，<br />
+m<br />
+=<br />
+8<br />
+m=8<br />
+且<br />
+C<br />
+=<br />
+500<br />
+C=500<br />
+，因此我们分别在隐藏层和输出层观察到 8 和 500 个块。<br />
+•<br />
+结构 2：块循环。<br />
+在随机初始化时，层内 Hessian 子矩阵表现出具有周期条纹的“近块循环”模式。该结构在训练中消失。<br />
+深度 NN 的 Hessian。<br />
+类似的结构也存在于更深的 NN 中，在初始化时具有更丰富的复合结构。我们现在将上述 (<br />
+3.2<br />
+) 扩展到 4 层网络：<br />
+f<br />
+⁡<br />
+(<br />
+W<br />
+,<br />
+V<br />
+,<br />
+x<br />
+)<br />
+=<br />
+W<br />
+4<br />
+​<br />
+σ<br />
+​<br />
+(<br />
+W<br />
+3<br />
+​<br />
+σ<br />
+​<br />
+(<br />
+W<br />
+2<br />
+​<br />
+σ<br />
+​<br />
+(<br />
+W<br />
+1<br />
+​<br />
+x<br />
+)<br />
+)<br />
+)<br />
+∈<br />
+ℝ<br />
+C<br />
+,<br />
+f(W,V;x)=W_{4}\sigma(W_{3}\sigma(W_{2}\sigma(W_{1}x)))\in\mathbb{R}^{C},<br />
+(3.3)<br />
+其中<br />
+W<br />
+1<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+d<br />
+,<br />
+W<br />
+2<br />
+,<br />
+W<br />
+3<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+m<br />
+,<br />
+W<br />
+4<br />
+∈<br />
+ℝ<br />
+C<br />
+×<br />
+m<br />
+W_{1}\in\mathbb{R}^{m\times d},W_{2},W_{3}\in\mathbb{R}^{m\times m},W_{4}\in\mathbb{R}^{C\times m}<br />
+是权重矩阵。当<br />
+d<br />
+=<br />
+m<br />
+=<br />
+C<br />
+=<br />
+500<br />
+d=m=C=500<br />
+时，我们在图<br />
+3.3<br />
+中观察到以下现象：<br />
+•<br />
+结构 1：块对角。<br />
+层内 Hessian 子矩阵表现出近块对角模式，其中一个块对应于与一个输出神经元相关的参数，即<br />
+W<br />
+i<br />
+,<br />
+i<br />
+=<br />
+1<br />
+,<br />
+⋯<br />
+,<br />
+4<br />
+W_{i},i=1,\cdots,4<br />
+中的一行。该结构在训练中持续存在。在这种情况下，<br />
+m<br />
+=<br />
+C<br />
+=<br />
+500<br />
+m=C=500<br />
+，因此我们在每层观察到 500 个块。<br />
+•<br />
+结构 2：块循环。<br />
+在随机初始化时，相邻的层内 Hessian 子矩阵表现出具有周期条纹的“近块循环”模式。该结构在训练中消失。<br />
+•<br />
+结构 3：稠密。<br />
+在随机初始化时，远距离的层间 Hessian 子矩阵表现出稠密模式。该结构在训练中消失。<br />
+我们将关键观察总结如下。<br />
+观察 1。<br />
+浅层和深层 NN 的 Hessian 在初始化时表现为“<br />
+块循环块对角<br />
+”和“<br />
+稠密块循环块对角<br />
+”矩阵。<br />
+观察 2。<br />
+训练倾向于将这些矩阵简化为“近块对角”矩阵，其中一个块对应于权重矩阵中的一行。<br />
+Transformer 的 Hessian。<br />
+在图<br />
+3.4<br />
+中，我们在 Transformer 中观察到类似现象：对于大多数模块（包括 MLP），每个 Hessian 块对应于权重矩阵的一行；对于 Query 和 Key 模块，每个块对应于一个头。这种头结构是注意力头之间固有并行计算的直接结果。<br />
+图 3.4.：<br />
+(a-f)：<br />
+Transformer 中不同模块的 Hessian。<br />
+MSE 损失下线性网络的直观解释。<br />
+在这里，我们提供了关于为什么 NN 的 Hessian 中会出现块结构以及为什么一个块对应于权重矩阵中的一行的简单直观解释。我们揭示了其来源是<br />
+大矩阵变量的连续乘法。<br />
+我们从没有 ReLU 激活的线性 NN 中的一层开始<br />
+y<br />
+=<br />
+W<br />
+​<br />
+x<br />
+=<br />
+[<br />
+w<br />
+1<br />
+⊤<br />
+​<br />
+x<br />
+;<br />
+⋯<br />
+;<br />
+w<br />
+m<br />
+⊤<br />
+​<br />
+x<br />
+]<br />
+y=Wx=[w_{1}^{\top}x;\cdots;w_{m}^{\top}x]<br />
+。一个线性代数事实是：第<br />
+i<br />
+i<br />
+个神经元<br />
+y<br />
+i<br />
+y_{i}<br />
+的变化仅依赖于 W 的第<br />
+i<br />
+i<br />
+行，即<br />
+w<br />
+i<br />
+⊤<br />
+w_{i}^{\top}<br />
+，而不依赖于其他行。这构成了块对角模式的基础：一个块对应于<br />
+W<br />
+W<br />
+的一行。<br />
+上述线性代数事实也有助于解释单隐层线性 NN 情况下的“块循环块对角”模式。<br />
+根据矩阵乘法的定义，有些链接是相连的，有些则不是。如图<br />
+3.5<br />
+所示，任何一对相连的链接在损失中产生乘法关系，从而给出非零的 Hessian 项；而不相连的对给出消失或恰好为零的 Hessian 项。<br />
+我们可以进一步使用这一观察来预测深度线性网络的 Hessian 结构。问题就变成了“在 NN 计算图中任意两个远距离链接之间是否存在连通路径”。对于深度线性网络，答案基本上总是肯定的。这解释了在<br />
+结构 3<br />
+中观察到的稠密模式。<br />
+我们注意到上述讨论对直观理解很有用，但它不是一个严格的论证。此外，它并没有完全解释为什么层内分量在训练过程中会消失。严格的理论需要推导显式的 Hessian 表达式，并随着网络规模的增长分析每个 Hessian 块的渐近谱。<br />
+图 3.5.：<br />
+NN 的 Hessian 结构可以通过其计算图来理解：任何一对相连的链接在损失中产生乘法关系，从而给出非零的 Hessian 项；而不相连的对给出消失或恰好为零的 Hessian 项。<br />
+证明中的主要技术挑战来自 ReLU 非线性和不可分的交叉熵损失。在这种情况下，我们从经验上发现矩阵尺寸需要很大才能抵消非对角信号（见下文图<br />
+3.6<br />
+）。我们将关键见解总结如下。<br />
+关键见解。<br />
+NN 的特殊 Hessian 结构源于<br />
+大矩阵变量<br />
+的连续乘法。<br />
+我们注意到，近块对角 Hessian 最早在<br />
+[<br />
+14<br />
+]<br />
+中在一个简单的 NN 上被经验性地报道，作者将其归因于 CE 损失。我们的发现挑战了这一传统观点，并表明 CE 损失并非关键。相反，矩阵乘积才是主要来源。<br />
+3.1<br />
+严格理论<br />
+我们现在提供关于 (<br />
+3.2<br />
+) 中单隐层 NN Hessian 结构的严格理论。主要的技术挑战来自“非线性”，即 CE 损失和 ReLU 激活。我们引入了随机矩阵理论中的新方法来处理它们。我们揭示了报道的 Hessian 结构来自两种力的混合：根植于矩阵乘法定义的“静力”，以及由训练产生的“动力”。<br />
+“静力”塑造层内结构。<br />
+如上所述，静力源于矩阵乘法，在非线性 NN 中矩阵尺寸需要很大。我们现在陈述随机初始化下的严格声明。我们发现块对角性的程度随输出维度<br />
+C<br />
+C<br />
+增长。这在图<br />
+3.6<br />
+中也有数值观察，其中 Hessian 中的背景噪声随着<br />
+C<br />
+C<br />
+增长而消失。这表明大<br />
+C<br />
+C<br />
+对于该结构是必要的。<br />
+定理 3.1<br />
+(单隐层网络，简化版)<br />
+考虑 (<br />
+3.2<br />
+) 的 Hessian。假设输入数据矩阵<br />
+X<br />
+=<br />
+(<br />
+x<br />
+1<br />
+,<br />
+⋯<br />
+,<br />
+x<br />
+N<br />
+)<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+N<br />
+{X}=({x}<em>{1},\cdots,{x}</em>{N})\in\mathbb{R}^{d\times N}<br />
+的每个元素服从独立同分布<br />
+𝒩<br />
+⁡<br />
+(<br />
+0<br />
+,<br />
+1<br />
+)<br />
+\mathcal{N}(0,1)<br />
+。假设<br />
+W<br />
+W<br />
+和<br />
+V<br />
+V<br />
+中的模型权重由 LeCun 初始化初始化。那么对于任何固定的<br />
+m<br />
+≥<br />
+3<br />
+m\geq 3<br />
+，假设<br />
+d<br />
+,<br />
+N<br />
+→<br />
+∞<br />
+,<br />
+d<br />
+N<br />
+→<br />
+γ<br />
+∈<br />
+(<br />
+0<br />
+,<br />
++<br />
+∞<br />
+)<br />
+d,N\rightarrow\infty,\frac{d}{N}\rightarrow\gamma\in(0,+\infty)<br />
+，有<br />
+lim<br />
+d<br />
+,<br />
+N<br />
+→<br />
+∞<br />
+𝔼<br />
+⁡<br />
+[<br />
+‖<br />
+∂<br />
+2<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∂<br />
+w<br />
+i<br />
+​<br />
+∂<br />
+w<br />
+j<br />
+⊤<br />
+‖<br />
+F<br />
+2<br />
+]<br />
+𝔼<br />
+⁡<br />
+[<br />
+‖<br />
+∂<br />
+2<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∂<br />
+w<br />
+i<br />
+​<br />
+∂<br />
+w<br />
+i<br />
+⊤<br />
+‖<br />
+F<br />
+2<br />
+]<br />
+=<br />
+𝒪<br />
+⁡<br />
+(<br />
+1<br />
+/<br />
+C<br />
+)<br />
+,<br />
+lim<br />
+d<br />
+,<br />
+N<br />
+→<br />
+∞<br />
+𝔼<br />
+⁡<br />
+[<br />
+‖<br />
+∂<br />
+2<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∂<br />
+v<br />
+i<br />
+​<br />
+∂<br />
+v<br />
+j<br />
+⊤<br />
+‖<br />
+F<br />
+2<br />
+]<br />
+𝔼<br />
+⁡<br />
+[<br />
+‖<br />
+∂<br />
+2<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∂<br />
+v<br />
+i<br />
+​<br />
+∂<br />
+v<br />
+i<br />
+⊤<br />
+‖<br />
+F<br />
+2<br />
+]<br />
+=<br />
+𝒪<br />
+⁡<br />
+(<br />
+1<br />
+/<br />
+C<br />
+2<br />
+)<br />
+,<br />
+\lim_{d,N\rightarrow\infty}\frac{\mathbb{E}\left[\bigg|\frac{\partial^{2}\ell(\theta)}{\partial w_{i}\partial w_{j}^{\top}}\bigg|<em>{\operatorname{F}}^{2}\right]}{\mathbb{E}\left[\bigg|\frac{\partial^{2}\ell(\theta)}{\partial w</em>{i}\partial w_{i}^{\top}}\bigg|<em>{\operatorname{F}}^{2}\right]}=\mathcal{O}(1/C),\hskip 9.24994pt\lim</em>{d,N\rightarrow\infty}\frac{\mathbb{E}\left[\bigg|\frac{\partial^{2}\ell(\theta)}{\partial v_{i}\partial v_{j}^{\top}}\bigg|<em>{\operatorname{F}}^{2}\right]}{\mathbb{E}\left[\bigg|\frac{\partial^{2}\ell(\theta)}{\partial v</em>{i}\partial v_{i}^{\top}}\bigg|<em>{\operatorname{F}}^{2}\right]}=\mathcal{O}(1/C^{2}),<br />
+(3.4)<br />
+其中<br />
+C<br />
+C<br />
+表示输出维度，即类别数。<br />
+(a)<br />
+C<br />
+=<br />
+10<br />
+C=10<br />
+(b)<br />
+C<br />
+=<br />
+100<br />
+C=100<br />
+(c)<br />
+C<br />
+=<br />
+1000<br />
+C=1000<br />
+图 3.6.：<br />
+单隐层网络的隐藏层 Hessian<br />
+H<br />
+w<br />
+​<br />
+w<br />
+H</em>{ww}<br />
+。该网络有 8 个隐藏神经元。我们观察到随着<br />
+C<br />
+C<br />
+增加，<br />
+H<br />
+w<br />
+​<br />
+w<br />
+H_{ww}<br />
+中的块对角 Hessian 结构变得更加清晰。<br />
+“动力”擦除层内分量。<br />
+通过对 Hessian 表达式的直接计算，可以看出层内“块循环”分量的幅度与最优性差距成正比。即：<br />
+∂<br />
+2<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+∂<br />
+w<br />
+i<br />
+​<br />
+∂<br />
+v<br />
+j<br />
+⊤<br />
+≈<br />
+[<br />
+0<br />
+⋯<br />
+a<br />
+1<br />
+,<br />
+i<br />
+0<br />
+⋯<br />
+0<br />
+⋮<br />
+⋱<br />
+⋮<br />
+⋮<br />
+⋱<br />
+⋮<br />
+0<br />
+⋯<br />
+a<br />
+d<br />
+,<br />
+i<br />
+0<br />
+⋯<br />
+0<br />
+]<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+m<br />
+,<br />
+and<br />
+​<br />
+a<br />
+d<br />
+′<br />
+,<br />
+i<br />
+=<br />
+𝒪<br />
+⁡<br />
+(<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+)<br />
+,<br />
+d<br />
+′<br />
+∈<br />
+[<br />
+d<br />
+]<br />
+.<br />
+\frac{\partial^{2}\ell(\theta)}{\partial w_{i}\partial v_{j}^{\top}}\approx\left[\begin{array}[]{cccccc}0&amp;\cdots&amp;a_{1,i}&amp;0&amp;\cdots&amp;0\<br />
+\vdots&amp;\ddots&amp;\vdots&amp;\vdots&amp;\ddots&amp;\vdots\<br />
+0&amp;\cdots&amp;a_{d,i}&amp;0&amp;\cdots&amp;0\end{array}\right]\in\mathbb{R}^{d\times m},\text{ and }a_{d^{\prime},i}=\mathcal{O}\left(\ell(\theta)-\ell^{</em>}\right),d^{\prime}\in[d].<br />
+(3.5)<br />
+因此，随着训练的进行，层内分量预计会缩小。证明是直接的，我们在此省略详细的计算。<br />
+上述计算表明，跨层分量的 Hessian 与最优性差距（即<br />
+𝒪<br />
+⁡<br />
+(<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+)<br />
+\mathcal{O}\left(\ell(\theta)-\ell^{<em>}\right)<br />
+）成正比，需要适当的训练才能消失。一旦消失，它反过来又会加速训练过程，从而形成正反馈循环。在经验上，最近的工作<br />
+[<br />
+1<br />
+]<br />
+比较了完整的 Gauss-Newton (GN) 方法与 LLM 预训练中按层近似的 GN 版本，他们发现按层版本在最终性能上的退化可以忽略不计。这表明，当与适当的优化器配对时，跨层 Hessian 的影响可以被忽略。<br />
+定理<br />
+3.1<br />
+的证明思路。<br />
+我们强调证明中的一些关键技术贡献。主要挑战在于刻画<br />
+相关<br />
+随机矩阵乘积<br />
+X<br />
+​<br />
+Λ<br />
+​<br />
+X<br />
+⊤<br />
+X\Lambda X^{\top}<br />
+的极限谱，其中<br />
+X<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+N<br />
+X\in\mathbb{R}^{d\times N}<br />
+的每个元素服从独立同分布高斯分布，而<br />
+Λ<br />
+∈<br />
+ℝ<br />
+N<br />
+×<br />
+N<br />
+\Lambda\in\mathbb{R}^{N\times N}<br />
+是一个<br />
+依赖于<br />
+X<br />
+X<br />
+的对角矩阵。<br />
+相关矩阵乘积是随机矩阵理论中的一个非标准问题。对于我们感兴趣的矩阵，我们发现了一个额外的结构：<br />
+X<br />
+X<br />
+和<br />
+Λ<br />
+\Lambda<br />
+之间的相关性纯粹来自 ReLU 激活和 CE 损失，并且当<br />
+d<br />
+→<br />
+∞<br />
+d\rightarrow\infty<br />
+时它会消失，我们将这种现象称为“渐近独立”。有了这一观察，我们设法通过两步找到<br />
+X<br />
+​<br />
+Λ<br />
+​<br />
+X<br />
+⊤<br />
+X\Lambda X^{\top}<br />
+的极限谱：首先，我们提出基于<br />
+Lindeberg 插值原理<br />
+[<br />
+31<br />
+;<br />
+41<br />
+]<br />
+的解耦策略来解决这种相关性；其次，解耦后，我们应用广义 Marcenko-Pastur (GMP) 定律<br />
+[<br />
+37<br />
+]<br />
+来刻画谱。<br />
+Lindeberg 原理最初是中心极限定理 (CLT)<br />
+[<br />
+31<br />
+]<br />
+的一个优雅证明，通过用高斯变量逐步替换随机变量并证明在某些条件下影响可以忽略不计。Lindeberg 原理也适用于随机矩阵<br />
+[<br />
+11<br />
+;<br />
+21<br />
+;<br />
+41<br />
+]<br />
+。我们发现这种方法对于处理我们情况中的渐近独立很有用。<br />
+我们现在说明我们的证明策略。我们以输出权重<br />
+V<br />
+V<br />
+的第<br />
+i<br />
+i<br />
+行 Hessian 块（记为<br />
+H<br />
+i<br />
+​<br />
+i<br />
+{H}<em>{ii}<br />
+）为例。<br />
+对于<br />
+H<br />
+i<br />
+​<br />
+i<br />
+{H}</em>{ii}<br />
+，它在 CE 损失下有以下表达式：<br />
+H<br />
+i<br />
+​<br />
+i<br />
+=<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+n<br />
+=<br />
+1<br />
+N<br />
+p<br />
+n<br />
+,<br />
+i<br />
+​<br />
+(<br />
+1<br />
+−<br />
+p<br />
+n<br />
+,<br />
+i<br />
+)<br />
+​<br />
+x<br />
+n<br />
+​<br />
+x<br />
+n<br />
+⊤<br />
+,<br />
+p<br />
+n<br />
+,<br />
+i<br />
+:=<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+i<br />
+⊤<br />
+​<br />
+x<br />
+n<br />
+)<br />
+∑<br />
+c<br />
+=<br />
+1<br />
+C<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+c<br />
+⊤<br />
+​<br />
+x<br />
+n<br />
+)<br />
+,<br />
+{H}<em>{ii}=\frac{1}{N}\sum</em>{n=1}^{N}{p}<em>{n,i}(1-{p}</em>{n,i})x_{n}x_{n}^{\top},\hskip 9.24994pt{p}<em>{n,i}:=\frac{\exp({v</em>{i}^{\top}{x}<em>{n}})}{\sum</em>{c=1}^{C}\exp({v_{c}^{\top}{x}<em>{n}})},<br />
+(3.6)<br />
+目标是找到当<br />
+N<br />
+N<br />
+和<br />
+d<br />
+d<br />
+成比例增长时<br />
+‖<br />
+H<br />
+i<br />
+​<br />
+i<br />
+‖<br />
+F<br />
+2<br />
+|{H}</em>{ii}|<em>{\text{F}}^{2}<br />
+的极限。<br />
+•<br />
+步骤 1.<br />
+我们引入以下解耦矩阵<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+=<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+n<br />
+=<br />
+1<br />
+N<br />
+p<br />
+~<br />
+n<br />
+,<br />
+i<br />
+​<br />
+(<br />
+1<br />
+−<br />
+p<br />
+~<br />
+n<br />
+,<br />
+i<br />
+)<br />
+​<br />
+x<br />
+n<br />
+​<br />
+x<br />
+n<br />
+⊤<br />
+,<br />
+p<br />
+~<br />
+n<br />
+,<br />
+i<br />
+:=<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+i<br />
+⊤<br />
+​<br />
+x<br />
+~<br />
+n<br />
+)<br />
+∑<br />
+c<br />
+=<br />
+1<br />
+C<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+c<br />
+⊤<br />
+​<br />
+x<br />
+~<br />
+n<br />
+)<br />
+,<br />
+\widetilde{H}</em>{ii}=\frac{1}{N}\sum_{n=1}^{N}\widetilde{p}<em>{n,i}(1-\widetilde{p}</em>{n,i})x_{n}x_{n}^{\top},\hskip 9.24994pt\widetilde{p}<em>{n,i}:=\frac{\exp({v</em>{i}^{\top}\widetilde{x}<em>{n}})}{\sum</em>{c=1}^{C}\exp({v_{c}^{\top}\widetilde{x}<em>{n}})},<br />
+(3.7)<br />
+其中<br />
+X<br />
+~<br />
+=<br />
+(<br />
+x<br />
+~<br />
+1<br />
+,<br />
+⋯<br />
+,<br />
+x<br />
+~<br />
+N<br />
+)<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+N<br />
+\widetilde{X}=(\widetilde{x}</em>{1},\cdots,\widetilde{x}<em>{N})\in\mathbb{R}^{d\times N}<br />
+是<br />
+X<br />
+X<br />
+的独立副本。目标是证明<br />
+lim<br />
+N<br />
+→<br />
+∞<br />
+(<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+−<br />
+s<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+)<br />
+=<br />
+0<br />
+,<br />
+a.s.<br />
+∀<br />
+z<br />
+∈<br />
+ℂ<br />
++<br />
+,<br />
+\lim</em>{N\rightarrow\infty}\left(s_{{H}<em>{ii}}(z)-s</em>{\widetilde{H}<em>{ii}}(z)\right)=0,\quad\text{a.s.}\quad\forall z\in\mathbb{C}^{+},<br />
+其中<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+s</em>{{H}<em>{ii}}(z)<br />
+表示<br />
+H<br />
+i<br />
+​<br />
+i<br />
+H</em>{ii}<br />
+特征值分布的 Stieltjes 变换<br />
+[<br />
+53<br />
+]<br />
+。<br />
+从标准的测度集中结果来看，<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+,<br />
+s<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+s_{{H}<em>{ii}}(z),s</em>{\widetilde{H}<em>{ii}}(z)<br />
+在<br />
+N<br />
+→<br />
+∞<br />
+N\rightarrow\infty<br />
+时集中在它们的均值附近。因此，只需证明<br />
+lim<br />
+N<br />
+→<br />
+∞<br />
+(<br />
+𝔼<br />
+⁡<br />
+[<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+]<br />
+−<br />
+𝔼<br />
+⁡<br />
+[<br />
+s<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+]<br />
+)<br />
+=<br />
+0<br />
+\lim</em>{N\rightarrow\infty}\left(\mathbb{E}[s_{{H}<em>{ii}}(z)]-\mathbb{E}[s</em>{\widetilde{H}<em>{ii}}(z)]\right)=0<br />
+。<br />
+•<br />
+步骤 2.<br />
+遵循 Lindeberg 原理，我们<br />
+定义矩阵插值过程<br />
+X<br />
+⁡<br />
+(<br />
+t<br />
+)<br />
+=<br />
+t<br />
+​<br />
+X<br />
++<br />
+1<br />
+−<br />
+t<br />
+​<br />
+X<br />
+~<br />
+,<br />
+t<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+.<br />
+X(t)=\sqrt{t}X+\sqrt{1-t}\widetilde{X},\quad t\in[0,1].<br />
+注意<br />
+X<br />
+⁡<br />
+(<br />
+1<br />
+)<br />
+=<br />
+X<br />
+X(1)=X<br />
+且<br />
+X<br />
+⁡<br />
+(<br />
+0<br />
+)<br />
+=<br />
+X<br />
+~<br />
+X(0)=\widetilde{X}<br />
+。然后我们定义<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+t<br />
+)<br />
+=<br />
+1<br />
+N<br />
+​<br />
+∑<br />
+n<br />
+=<br />
+1<br />
+N<br />
+p<br />
+n<br />
+,<br />
+i<br />
+​<br />
+(<br />
+t<br />
+)<br />
+​<br />
+(<br />
+1<br />
+−<br />
+p<br />
+n<br />
+,<br />
+i<br />
+​<br />
+(<br />
+t<br />
+)<br />
+)<br />
+​<br />
+x<br />
+n<br />
+​<br />
+x<br />
+n<br />
+⊤<br />
+,<br />
+where<br />
+​<br />
+p<br />
+n<br />
+,<br />
+i<br />
+​<br />
+(<br />
+t<br />
+)<br />
+:=<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+i<br />
+⊤<br />
+​<br />
+x<br />
+n<br />
+​<br />
+(<br />
+t<br />
+)<br />
+)<br />
+∑<br />
+c<br />
+=<br />
+1<br />
+C<br />
+exp<br />
+⁡<br />
+(<br />
+v<br />
+c<br />
+⊤<br />
+​<br />
+x<br />
+n<br />
+​<br />
+(<br />
+t<br />
+)<br />
+)<br />
+.<br />
+{H}</em>{ii}(t)=\frac{1}{N}\sum_{n=1}^{N}{p}<em>{n,i}(t)(1-{p}</em>{n,i}(t))x_{n}x_{n}^{\top},\quad\text{ where }{p}<em>{n,i}(t):=\frac{\exp({v</em>{i}^{\top}{x}<em>{n}(t)})}{\sum</em>{c=1}^{C}\exp({v_{c}^{\top}{x}<em>{n}(t)})}.<br />
+那么我们有<br />
+𝔼<br />
+⁡<br />
+[<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+−<br />
+s<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+z<br />
+)<br />
+]<br />
+=<br />
+∫<br />
+0<br />
+1<br />
+𝔼<br />
+⁡<br />
+[<br />
+d<br />
+d<br />
+​<br />
+t<br />
+​<br />
+s<br />
+H<br />
+i<br />
+​<br />
+i<br />
+​<br />
+(<br />
+t<br />
+)<br />
+]<br />
+​<br />
+𝑑<br />
+t<br />
+.<br />
+\mathbb{E}\left[s</em>{H_{ii}}(z)-s_{\widetilde{H}<em>{ii}}(z)\right]=\int</em>{0}^{1}\mathbb{E}\left[\frac{d}{dt}s_{H_{ii}}(t)\right]dt.<br />
+(3.8)<br />
+•<br />
+步骤 3.<br />
+然后我们使用 Stein 引理计算 (<br />
+3.8<br />
+) 中的被积函数：对于<br />
+Z<br />
+∼<br />
+𝒩<br />
+⁡<br />
+(<br />
+0<br />
+,<br />
+1<br />
+)<br />
+Z\sim\mathcal{N}(0,1)<br />
+和在无穷远处具有亚指数衰减的可微函数<br />
+f<br />
+:<br />
+ℝ<br />
+→<br />
+ℂ<br />
+f:\mathbb{R}\rightarrow\mathbb{C}<br />
+，我们有：<br />
+𝔼<br />
+⁡<br />
+[<br />
+Z<br />
+​<br />
+f<br />
+​<br />
+(<br />
+Z<br />
+)<br />
+]<br />
+=<br />
+𝔼<br />
+⁡<br />
+[<br />
+f<br />
+′<br />
+​<br />
+(<br />
+Z<br />
+)<br />
+]<br />
+.<br />
+\displaystyle\mathbb{E}[Zf(Z)]=\mathbb{E}[f^{\prime}(Z)].<br />
+(3.9)<br />
+然后我们证明 (<br />
+3.9<br />
+) 的右侧以<br />
+𝒪<br />
+⁡<br />
+(<br />
+1<br />
+/<br />
+N<br />
+)<br />
+\mathcal{O}(1/\sqrt{N})<br />
+的速率衰减到零，其中<br />
+N<br />
+N<br />
+是样本量，因此<br />
+H<br />
+i<br />
+​<br />
+i<br />
+{H}<em>{ii}<br />
+与<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+\widetilde{H}</em>{ii}<br />
+共享相同的极限特征值分布。这一步使用了定理<br />
+3.1<br />
+中高斯数据和初始化的假设。<br />
+我们注意到，如果没有 ReLU 激活和 CE 损失产生的“渐近独立”，步骤 3 将会失败。因此，我们没有解决一般的相关随机矩阵问题；而是仅解决了它的一个特定情况。<br />
+•<br />
+步骤 4.<br />
+将 GMP 定律<br />
+[<br />
+37<br />
+]<br />
+应用于解耦矩阵<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+=<br />
+X<br />
+​<br />
+Λ<br />
+~<br />
+​<br />
+X<br />
+⊤<br />
+\widetilde{H}<em>{ii}=X\widetilde{\Lambda}X^{\top}<br />
+（其中<br />
+Λ<br />
+~<br />
+\widetilde{\Lambda}<br />
+独立于<br />
+X<br />
+X<br />
+），我们得到<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+\widetilde{H}</em>{ii}<br />
+的极限特征值分布。然后我们在 GMP 定律的函数方程中应用泰勒展开得到<br />
+μ<br />
+H<br />
+~<br />
+i<br />
+​<br />
+i<br />
+\mu_{\widetilde{H}<em>{ii}}<br />
+的极限二阶矩，这也是<br />
+‖<br />
+H<br />
+i<br />
+​<br />
+i<br />
+‖<br />
+F<br />
+2<br />
+|{H}</em>{ii}|<em>{\text{F}}^{2}<br />
+的极限。证明完毕。<br />
+3.2<br />
+为什么 Transformer 需要 Adam：块异质性<br />
+基于上述发现，我们简要讨论为什么 Adam 在 Transformer 上有效。我们发现这是 Hessian 中<br />
+结构<br />
+和<br />
+特征值<br />
+共同作用的结果。<br />
+•<br />
+首先，如图<br />
+3.4<br />
+所示，Transformer 与 MLP 共享类似的 Hessian 结构。这是因为： Transformer 也由大矩阵变量的连续乘法组成； 注意力中的头并行操作插入了额外的块对角性来源。<br />
+•<br />
+其次，在图<br />
+3.7<br />
+中，我们报告了 Transformer 中不同的 Hessian 块具有非常不同的特征值分布（即谱），我们将这种现象称为<br />
+块异质性<br />
+。我们稍后将讨论块异质性的来源。<br />
+(a)<br />
+ResNet18<br />
+(b)<br />
+BERT<br />
+(c)<br />
+GPT2-nano<br />
+图 3.7.：<br />
+(a-c)：<br />
+初始化时分块 Hessian 谱之间的 Jensen-Shannon (JS) 距离。我们发现 CNN 中分块谱的 JS 距离明显小于 Transformer 中的 JS 距离。<br />
+通过对 Transformer、CNN、MLP 和二次问题的广泛实验，我们发现 SGD 在没有块异质性的问题（如 CNN）上表现与 Adam 相当，但在存在异质性时表现不如 Adam。直观地说，SGD 表现较差是因为它对所有块应用单一学习率，无法处理块之间的异质性。如果我们使用如<br />
+D<br />
+Adam<br />
+D</em>{\operatorname{Adam}}<br />
+中设计的逐坐标学习率，这种限制就可以得到缓解。<br />
+关于 Adam 在 CNN 上的表现。<br />
+图<br />
+3.7<br />
+表明 CNN 中的分块谱相对同质，这或许可以解释为什么 Adam 在 CNN 上<br />
+≈<br />
+\approx<br />
+SGD。然而，为了严谨起见，我们尚未验证 CNN 是否表现出类似的近块对角 Hessian 结构。事实上，对于给定的参数预算，CNN 中的矩阵维度通常比 Transformer 中的小得多，因此观察类似的 Hessian 结构可能需要以更大的规模训练 CNN。这种验证在计算上是令人望而却步的，我们尚未进行。至此，为什么 Adam 在 CNN 上缺乏优势在很大程度上仍然是个开放问题。两种看似合理的解释是同质谱（假设块结构确实出现在大规模 CNN 中）或稠密 Hessian（如果不出现）——这两者都会破坏<br />
+D<br />
+Adam<br />
+D_{\operatorname{Adam}}<br />
+中的逐坐标学习率。<br />
+Adam 与 GD 的初步理论。<br />
+在二次目标上，我们证明了 Adam 的对角预条件器<br />
+D<br />
+Adam<br />
+D_{\operatorname{Adam}}<br />
+在块异质性下是可证明有效的。我们在定理<br />
+3.2<br />
+中总结了关键结果。Adam 的速率为<br />
+O<br />
+~<br />
+​<br />
+(<br />
+max<br />
+l<br />
+∈<br />
+[<br />
+L<br />
+]<br />
+⁡<br />
+κ<br />
+l<br />
+)<br />
+\tilde{O}\left(\max_{l\in[L]}\kappa_{l}\right)<br />
+，可以比 GD 的速率<br />
+Ω<br />
+⁡<br />
+(<br />
+κ<br />
+)<br />
+\Omega(\kappa)<br />
+更快，其中<br />
+κ<br />
+\kappa<br />
+和<br />
+κ<br />
+l<br />
+\kappa_{l}<br />
+分别表示完整 Hessian 和 Hessian 中第<br />
+l<br />
+l<br />
+个块的条件数。<br />
+定理 3.2<br />
+(二次目标上的 Adam vs. GD，简化版)<br />
+考虑<br />
+min<br />
+θ<br />
+⁡<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+)<br />
+=<br />
+1<br />
+2<br />
+​<br />
+θ<br />
+⊤<br />
+​<br />
+H<br />
+​<br />
+θ<br />
+−<br />
+h<br />
+⊤<br />
+​<br />
+θ<br />
+\min_{\theta}\ell(\theta)=\frac{1}{2}\theta^{\top}H\theta-h^{\top}\theta<br />
+其中<br />
+H<br />
+∈<br />
+ℝ<br />
+d<br />
+×<br />
+d<br />
+H\in\mathbb{R}^{d\times d}<br />
+是正定且块对角的，<br />
+h<br />
+∈<br />
+ℝ<br />
+d<br />
+h\in\mathbb{R}^{d}<br />
+。设<br />
+θ<br />
+Adam<br />
+k<br />
+\theta_{\operatorname{Adam}}^{k}<br />
+和<br />
+θ<br />
+GD<br />
+k<br />
+\theta_{\operatorname{GD}}^{k}<br />
+分别为 GD 和 Adam 在<br />
+k<br />
+k<br />
+步后的输出。对于 Adam，考虑在任何连续分布下的随机初始化，<br />
+β<br />
+1<br />
+=<br />
+0<br />
+\beta_{1}=0<br />
+,<br />
+β<br />
+2<br />
+=<br />
+1<br />
+\beta_{2}=1<br />
+,<br />
+v<br />
+0<br />
+v_{0}<br />
+等于初始梯度，常数步长<br />
+η<br />
+k<br />
+=<br />
+η<br />
+\eta_{k}=\eta<br />
+，我们以概率 1 有以下结果：<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+Adam<br />
+k<br />
++<br />
+1<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+≤<br />
+max<br />
+l<br />
+∈<br />
+[<br />
+L<br />
+]<br />
+⁡<br />
+(<br />
+1<br />
+−<br />
+1<br />
+r<br />
+​<br />
+κ<br />
+l<br />
+)<br />
+​<br />
+(<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+Adam<br />
+k<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+)<br />
+,<br />
+\ell(\theta_{\operatorname{Adam}}^{k+1})-\ell^{</em>}\leq\max_{l\in[L]}\left(1-\frac{1}{r\kappa_{l}}\right)\left(\ell(\theta_{\operatorname{Adam}}^{k})-\ell^{<em>}\right),<br />
+(3.10)<br />
+其中<br />
+r<br />
+r<br />
+是依赖于初始化的常数，<br />
+κ<br />
+l<br />
+\kappa_{l}<br />
+是<br />
+H<br />
+H<br />
+中第<br />
+l<br />
+l<br />
+个块的条件数。<br />
+对于 GD，存在一个块对角矩阵<br />
+H<br />
+H<br />
+,<br />
+h<br />
+h<br />
+和初始点<br />
+θ<br />
+0<br />
+\theta^{0}<br />
+，使得对于任何<br />
+η<br />
+\eta<br />
+，我们有：<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+GD<br />
+k<br />
++<br />
+1<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+≥<br />
+(<br />
+1<br />
+−<br />
+2<br />
+κ<br />
++<br />
+1<br />
+)<br />
+2<br />
+​<br />
+(<br />
+ℓ<br />
+⁡<br />
+(<br />
+θ<br />
+GD<br />
+k<br />
+)<br />
+−<br />
+ℓ<br />
+∗<br />
+)<br />
+,<br />
+\ell(\theta_{\operatorname{GD}}^{k+1})-\ell^{</em>}\geq\left(1-\frac{2}{\kappa+1}\right)^{2}\left(\ell(\theta_{\operatorname{GD}}^{k})-\ell^{*}\right),<br />
+(3.11)<br />
+其中<br />
+κ<br />
+\kappa<br />
+是<br />
+H<br />
+H<br />
+的条件数。<br />
+我们现在比较 Adam 和 GD 的复杂度。<br />
+根据定理<br />
+3.2<br />
+，当<br />
+r<br />
+⋅<br />
+max<br />
+l<br />
+∈<br />
+[<br />
+L<br />
+]<br />
+⁡<br />
+κ<br />
+l<br />
+≤<br />
+κ<br />
+r\cdot\max_{l\in[L]}\kappa_{l}\leq\kappa<br />
+时 Adam 比 GD 快。在具有异质块的二次模型中，<br />
+我们在 1000 次随机试验中的模拟表明，当使用标准高斯随机初始化时，以<br />
+≥<br />
+2<br />
+3<br />
+\geq\frac{2}{3}<br />
+的概率<br />
+r<br />
+≤<br />
+1000<br />
+r\leq 1000<br />
+。由于<br />
+max<br />
+l<br />
+∈<br />
+[<br />
+L<br />
+]<br />
+⁡<br />
+κ<br />
+l<br />
+≈<br />
+1<br />
+\max_{l\in[L]}\kappa_{l}\approx 1<br />
+，我们有<br />
+r<br />
+⋅<br />
+max<br />
+l<br />
+∈<br />
+[<br />
+L<br />
+]<br />
+⁡<br />
+κ<br />
+l<br />
+≤<br />
+1000<br />
+r\cdot\max_{l\in[L]}\kappa_{l}\leq 1000<br />
+（以高概率），大约比<br />
+κ<br />
+=<br />
+5000<br />
+\kappa=5000<br />
+小<br />
+5<br />
+×<br />
+5\times<br />
+。因此在块异质性下，Adam 以高概率比 GD 快<br />
+5<br />
+×<br />
+5\times<br />
+。<br />
+在技术上，定理<br />
+3.2<br />
+证明中的核心发现是：跨块中间特征值的排列影响 Adam 的性能，但不影响 GD 的性能。我们在<br />
+[<br />
+65<br />
+]<br />
+的附录 E 中提供了详细的证明。<br />
+β<br />
+2<br />
+&lt;<br />
+1<br />
+\beta_{2}&lt;1<br />
+下常数步长 Adam 的极限环。<br />
+定理<br />
+3.2<br />
+考虑<br />
+β<br />
+2<br />
+=<br />
+1<br />
+\beta_{2}=1<br />
+。因此，它在任意步<br />
+k</p>
+<p>0<br />
+k&gt;0<br />
+使用<br />
+v<br />
+0<br />
+v_{0}<br />
+（即初始梯度）作为固定预条件器。我们注意到<br />
+β<br />
+2<br />
+=<br />
+1<br />
+\beta_{2}=1<br />
+对于分析常数步长 Adam 的速率是必要的，因为任何<br />
+β<br />
+2<br />
+&lt;<br />
+1<br />
+\beta_{2}&lt;1<br />
+都会在二次目标上引起具有极限环的非收敛<br />
+[<br />
+15<br />
+;<br />
+4<br />
+]<br />
+。这种非收敛是由于常数步长造成的，它与我们在第<br />
+2<br />
+节中的收敛结果并不矛盾，后者考虑的是递减步长。<br />
+关于 Adam 复杂度的更多讨论。<br />
+Adam 的复杂度现在独立于“全局”条件数<br />
+κ<br />
+\kappa<br />
+，这种变化可能带来相对于 GD 的相当大的改进。复杂度的这种改进归因于 Hessian 中的块对角结构及其异质的分块谱。据我们所知，这种改进在现有文献中尚未展示。一个可能的原因是：对于优化界来说，分析（近）块对角 Hessian 结构是罕见的，因为典型问题没有这样的结构。例如，在经典的非线性规划数据集<br />
+[<br />
+29<br />
+]<br />
+中，所有问题都具有非块对角 Hessian。我们建议用不同的视角来表征现代优化问题。我们相信我们的视角是新的，因为它是建立在多个非平凡性质之上的。<br />
+块异质性的来源。<br />
+块异质性的来源后来被部分归因于 数据不平衡<br />
+[<br />
+28<br />
+]<br />
+，这在输出层的 Hessian 中带来了块异质性（<br />
+[<br />
+28<br />
+]<br />
+中的图 8 和命题 2）；以及 架构中的 softmax 算子<br />
+[<br />
+40<br />
+]<br />
+，这在注意力模块的 Hessian 中带来了块异质性。<br />
+更广泛的意义和 Muon。<br />
+我们相信我们的结果具有广泛的意义。<br />
+首先，<br />
+除了 NN，我们的见解可以应用于一大类具有连续矩阵乘积的非凸优化，例如矩阵分解和矩阵补全。这种联系在最近关于矩阵分解的理论工作<br />
+[<br />
+36<br />
+]<br />
+中进行了讨论。<br />
+其次，<br />
+我们的结果也有助于理解为什么 Muon<br />
+[<br />
+25<br />
+]<br />
+在 NN 上表现良好。给定权重矩阵<br />
+W<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+n<br />
+W\in\mathbb{R}^{m\times n}<br />
+及其在第<br />
+k<br />
+k<br />
+步的动量矩阵<br />
+M<br />
+k<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+n<br />
+M_{k}\in\mathbb{R}^{m\times n}<br />
+，Muon 的更新规则如下：<br />
+W<br />
+k<br />
++<br />
+1<br />
+=<br />
+W<br />
+k<br />
+−<br />
+η<br />
+k<br />
+​<br />
+(<br />
+M<br />
+k<br />
+​<br />
+M<br />
+k<br />
+⊤<br />
+)<br />
+−<br />
+1<br />
+2<br />
+​<br />
+M<br />
+k<br />
+=<br />
+W<br />
+k<br />
+−<br />
+η<br />
+k<br />
+​<br />
+I<br />
+m<br />
+​<br />
+M<br />
+k<br />
+​<br />
+(<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+)<br />
+−<br />
+1<br />
+2<br />
+W_{k+1}=W_{k}-\eta_{k}\left(M_{k}M_{k}^{\top}\right)^{-\frac{1}{2}}M_{k}=W_{k}-\eta_{k}\,I_{m}\,M_{k}\left(M_{k}^{\top}M_{k}\right)^{-\frac{1}{2}}<br />
+(3.12)<br />
+在展平的向量形式中，(<br />
+3.12<br />
+) 等价于以下<br />
+块对角预条件器：<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
++<br />
+1<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k+1})<br />
+=<br />
+(<br />
+∗<br />
+)<br />
+\displaystyle\overset{(<em>)}{=}<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
+)<br />
+−<br />
+η<br />
+k<br />
+​<br />
+(<br />
+I<br />
+m<br />
+⊗<br />
+(<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+)<br />
+−<br />
+1<br />
+2<br />
+)<br />
+m<br />
+​<br />
+n<br />
+×<br />
+m<br />
+​<br />
+n<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+M<br />
+k<br />
+)<br />
+,<br />
+\displaystyle\operatorname{vec}(W_{k})-\eta_{k}\left(I_{m}\otimes\left(M_{k}^{\top}M_{k}\right)^{-\frac{1}{2}}\right)<em>{mn\times mn}\operatorname{vec}(M</em>{k}),<br />
+(3.13)<br />
+=<br />
+\displaystyle=<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
+)<br />
+−<br />
+η<br />
+k<br />
+​<br />
+[<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+⋯<br />
+0<br />
+⋱<br />
+0<br />
+⋯<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+]<br />
+m<br />
+​<br />
+n<br />
+×<br />
+m<br />
+​<br />
+n<br />
+−<br />
+1<br />
+2<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+M<br />
+k<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k})-\eta_{k}\begin{bmatrix}M_{k}^{\top}M_{k}&amp;\cdots&amp;0\<br />
+\vdots&amp;\ddots&amp;\vdots\<br />
+0&amp;\cdots&amp;M_{k}^{\top}M_{k}\end{bmatrix}^{-\frac{1}{2}}<em>{mn\times mn}\operatorname{vec}(M</em>{k})<br />
+其中<br />
+(<br />
+∗<br />
+)<br />
+(</em>)<br />
+使用了 Kronecker 积的性质<br />
+(<br />
+A<br />
+⊗<br />
+B<br />
+)<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+C<br />
+)<br />
+=<br />
+vec<br />
+⁡<br />
+(<br />
+A<br />
+​<br />
+C<br />
+​<br />
+B<br />
+)<br />
+(A\otimes B)\operatorname{vec}(C)=\operatorname{vec}(ACB)<br />
+。因此，Muon 可以被视为块对角预条件 GD，其中一个块对应于<br />
+W<br />
+W<br />
+中的一行。块划分与 NN 的 Hessian 结构一致。<br />
+第三，<br />
+我们的发现提倡“按头划分的 Muon”。对于 Transformer，图<br />
+3.4<br />
+建议我们在应用 Muon 更新之前按头划分 Query 和 Key 权重。这为每个头提供了单独的预条件器，从而更好地处理头之间的块异质性。<br />
+这种设计已经过测试并被 DeepSeek 采用，<br />
+并正用于训练他们的下一代模型。<br />
+1)<br />
+1)<br />
+1)<br />
+DeepSeek 采用的证据在随附的 DeepSeek 推荐信中提供。<br />
+与此同时，按头划分的 Muon 设计也被 Kimi K3 模型<br />
+[<br />
+54<br />
+]<br />
+采用，被称为“Per-head Muon”。正如主要贡献者所提到的，这种设计的直观理解是“每个头本质上是相对独立的，不应该耦合在一起<br />
+[<br />
+50<br />
+]<br />
+。”这一直观理解与我们对头级块 Hessian 结构的观察一致。<br />
+4<br />
+Adam-mini：受 Hessian 结构启发的新优化器<br />
+本节主要基于：<br />
+•<br />
+Adam-mini: Use Fewer Learning Rates To Gain More.<br />
+Yushun Zhang<br />
+∗<br />
+, Congliang Chen<br />
+∗<br />
+, Ziniu Li, Tian Ding, Chenwei Wu, Diederik P. Kingma, Yinyu Ye, Zhi-Quan Luo, Ruoyu Sun.<br />
+(<em>: 同等贡献。)<br />
+International Conference on Learning Representations (ICLR), 2025.<br />
+通过收集前几节积累的结果，我们现在提出 Adam-mini，一种在内存占用减少 50% 的情况下实现与 Adam 相当或更好性能的新优化器。这表明我们之前的 Hessian 分析不仅对理解 Adam 有用，还可以直接启发新优化器的设计。<br />
+动机。<br />
+Adam 需要内存来存储其“优化器状态”：1 阶和 2 阶动量<br />
+m<br />
+m<br />
+和<br />
+v<br />
+v<br />
+。这些总共至少占用模型大小<br />
+2<br />
+×<br />
+2\times<br />
+的内存。<br />
+这种内存消耗给 LLM 训练带来了负担：要训练 13B 模型，仅 Adam 就需要约 104 GB 的内存用于<br />
+m<br />
+m<br />
+和<br />
+v<br />
+v<br />
+。这对于高级显卡（如 A100-80GB）来说非常昂贵。为了支持训练，在实践中必须使用<br />
+CPU 卸载和优化器状态分片<br />
+[<br />
+44<br />
+]<br />
+，不幸的是，这会增加延迟并减慢训练速度<br />
+[<br />
+45<br />
+]<br />
+。<br />
+算法 4.1.<br />
+Adam-mini 的一步<br />
+1:<br />
+按 Hessian 结构将参数划分为<br />
+param_blocks<br />
+2:<br />
+for<br />
+param<br />
+in<br />
+param_blocks<br />
+do<br />
+3:<br />
+g<br />
+=<br />
+param.grad<br />
+4:<br />
+m<br />
+=<br />
+(<br />
+1<br />
+−<br />
+β<br />
+1<br />
+)<br />
+∗<br />
+g<br />
++<br />
+β<br />
+1<br />
+∗<br />
+m<br />
+\texttt{m}=(1-\beta_{1})</em>\texttt{g}+\beta_{1}<em>\texttt{m}<br />
+5:<br />
+v<br />
+mean<br />
+=<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+∗<br />
+mean<br />
+​<br />
+(<br />
+g<br />
+⊙<br />
+g<br />
+)<br />
++<br />
+β<br />
+2<br />
+∗<br />
+v<br />
+\texttt{v}<em>{\operatorname{mean}}=(1-\beta</em>{2})</em>\texttt{mean}(\texttt{g}\odot\texttt{g})+\beta_{2}<em>\texttt{v}<br />
+6:<br />
+param<br />
+=<br />
+param<br />
+-<br />
+η<br />
+\eta<br />
+*<br />
+m<br />
+v<br />
+mean<br />
++<br />
+ϵ<br />
+\frac{\texttt{m}}{\sqrt{\texttt{v}<em>{\operatorname{mean}}}+\epsilon}<br />
+7:<br />
+end<br />
+for<br />
+图 4.1.：<br />
+Adam-mini 的说明。Adam-mini 根据 Hessian 结构分配学习率。它使用比 SGD 多但比 Adam 少的学习率。<br />
+Adam-mini 的设计思想。<br />
+我们提议削减 Adam 中的学习率资源，即<br />
+1<br />
+/<br />
+v<br />
+1/\sqrt{v}<br />
+。这是受到第<br />
+3<br />
+节中两个观察的启发。<br />
+•<br />
+首先，第<br />
+3<br />
+节中的发现表明有必要为<br />
+每个块<br />
+使用定制的学习率来处理块异质性。尽管如此，Adam 做的远不止于此：它不仅为每个块，而且为<br />
+每个参数<br />
+分配单独的学习率。<br />
+•<br />
+其次，如图<br />
+3.2<br />
+所示，Adam 在稠密 Hessian 块中并不有效。换句话说，我们发现更多的学习率不一定会带来额外的收益。<br />
+我们的发现意味着，使用比 Adam 少得多的学习率就有可能实现良好的性能。<br />
+剩下的问题是如何高效地找到它们。<br />
+然后我们提出了一种简单的方法来寻找足以实现与 Adam 相当或更好性能的良好学习率：我们首先根据稠密的 Hessian 子块将梯度向量划分为<br />
+B<br />
+B<br />
+个子向量，并将每个子向量称为<br />
+g<br />
+b<br />
+g</em>{b}<br />
+，其中<br />
+b<br />
+∈<br />
+{<br />
+1<br />
+,<br />
+⋯<br />
+,<br />
+B<br />
+}<br />
+b\in{1,\cdots,B}<br />
+。对于每个<br />
+g<br />
+b<br />
+g_{b}<br />
+，我们计算以下量。<br />
+v<br />
+mean<br />
+,<br />
+b<br />
+=<br />
+(<br />
+1<br />
+−<br />
+β<br />
+2<br />
+)<br />
+∗<br />
+mean<br />
+(<br />
+g<br />
+b<br />
+⊙<br />
+g<br />
+b<br />
+)<br />
++<br />
+β<br />
+2<br />
+∗<br />
+v<br />
+b<br />
+,<br />
+b<br />
+=<br />
+1<br />
+,<br />
+⋯<br />
+,<br />
+B<br />
+.<br />
+\displaystyle\boxed{v_{\operatorname{mean},b}=(1-\beta_{2})</em>\texttt{mean}(g_{b}\odot g_{b})+\beta_{2}<em>v_{b},\hskip 9.24994ptb=1,\cdots,B.}<br />
+(4.1)<br />
+然后我们使用<br />
+η<br />
+/<br />
+v<br />
+mean<br />
+,<br />
+b<br />
+\eta/\sqrt{v_{\operatorname{mean},b}}<br />
+作为与<br />
+g<br />
+b<br />
+g_{b}<br />
+相关的块中参数的学习率。我们将该方法称为 Adam-mini。这种设计将 Adam 中<br />
+≥<br />
+99.9<br />
+%<br />
+\geq 99.9\%<br />
+的<br />
+v<br />
+v<br />
+更改为可忽略的标量数量，从而减少了内存。总的来说，它节省了约<br />
+50<br />
+%<br />
+50\%<br />
+的 Adam 优化器状态内存。<br />
+划分原则。<br />
+我们根据 Hessian 结构划分参数。根据图<br />
+3.4<br />
+，这对应于 Transformer 中的两种情况。<br />
+•<br />
+情况 1：<br />
+我们按头<br />
+划分 Query 和 Key 权重矩阵。<br />
+•<br />
+情况 2：<br />
+我们按行<br />
+划分其他权重矩阵，或等价地按输出神经元划分。<br />
+在矩阵形式中，这种划分策略简单且易于实现：给定动量矩阵<br />
+M<br />
+k<br />
+=<br />
+[<br />
+m<br />
+k<br />
+,<br />
+1<br />
+⊤<br />
+m<br />
+k<br />
+,<br />
+m<br />
+⊤<br />
+]<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+n<br />
+M_{k}=\begin{bmatrix}m_{k,1}^{\top}\<br />
+\vdots\<br />
+m_{k,m}^{\top}\end{bmatrix}\in\mathbb{R}^{m\times n}<br />
+，对于<br />
+情况 2<br />
+，我们简单地用<br />
+v<br />
+mean<br />
+∈<br />
+ℝ<br />
+m<br />
+v_{\operatorname{mean}}\in\mathbb{R}^{m}<br />
+对<br />
+M<br />
+k<br />
+M_{k}<br />
+进行按行<br />
+归一化：<br />
+W<br />
+k<br />
++<br />
+1<br />
+\displaystyle W_{k+1}<br />
+=<br />
+\displaystyle=<br />
+W<br />
+k<br />
+−<br />
+η<br />
+k<br />
+​<br />
+[<br />
+v<br />
+mean<br />
+,<br />
+1<br />
+⋯<br />
+0<br />
+⋱<br />
+0<br />
+⋯<br />
+v<br />
+mean<br />
+,<br />
+m<br />
+]<br />
+m<br />
+×<br />
+m<br />
+−<br />
+1<br />
+2<br />
+​<br />
+[<br />
+m<br />
+k<br />
+,<br />
+1<br />
+⊤<br />
+m<br />
+k<br />
+,<br />
+m<br />
+⊤<br />
+]<br />
+m<br />
+×<br />
+n<br />
+=<br />
+[<br />
+m<br />
+k<br />
+,<br />
+1<br />
+⊤<br />
+/<br />
+v<br />
+mean<br />
+,<br />
+1<br />
+m<br />
+k<br />
+,<br />
+m<br />
+⊤<br />
+/<br />
+v<br />
+mean<br />
+,<br />
+m<br />
+]<br />
+m<br />
+×<br />
+n<br />
+.<br />
+\displaystyle W_{k}-\eta_{k}\begin{bmatrix}{\color[rgb]{1,0,0}v_{\operatorname{mean},1}}&amp;\cdots&amp;0\<br />
+\vdots&amp;\ddots&amp;\vdots\<br />
+0&amp;\cdots&amp;{\color[rgb]{0,1,0}v_{\operatorname{mean},m}}\end{bmatrix}^{-\frac{1}{2}}<em>{m\times m}\begin{bmatrix}m</em>{k,1}^{\top}\<br />
+\vdots\<br />
+m_{k,m}^{\top}\end{bmatrix}<em>{m\times n}=\begin{bmatrix}m</em>{k,1}^{\top}/{\color[rgb]{1,0,0}\sqrt{v_{\operatorname{mean},1}}}\<br />
+\vdots\<br />
+m_{k,m}^{\top}/{\color[rgb]{0,1,0}\sqrt{v_{\operatorname{mean},m}}}\end{bmatrix}<em>{m\times n}.<br />
+(4.2)<br />
+类似地，对于<br />
+情况 1<br />
+，我们用<br />
+v<br />
+mean<br />
+∈<br />
+ℝ<br />
+h<br />
+v</em>{\operatorname{mean}}\in\mathbb{R}^{h}<br />
+对<br />
+M<br />
+k<br />
+M_{k}<br />
+进行按头<br />
+归一化，每组由对应单个头的<br />
+m<br />
+/<br />
+h<br />
+m/h<br />
+连续行组成，其中<br />
+h<br />
+h<br />
+表示头的数量。<br />
+我们注意到<br />
+情况 1<br />
+和<br />
+情况 2<br />
+都自然地与分布式设置兼容。由于头和行通常不会跨不同的 GPU 进行分片，计算<br />
+v<br />
+mean<br />
+v_{\operatorname{mean}}<br />
+不需要通信开销。<br />
+经验结果。<br />
+我们在 C4 上使用 Chinchilla 风格的 token 预算<br />
+[<br />
+22<br />
+]<br />
+预训练了从 39M 到 1B 参数的 Llama 2 架构。图<br />
+4.2<br />
+显示，Adam-mini 在计算和模型规模上都与 AdamW 紧密跟踪，同时使用了一半的优化器状态内存。<br />
+图 4.2.：<br />
+Llama 2 从 39M 到 1B 参数的缩放定律实验。Adam-mini 在计算和模型规模上跟踪 AdamW，同时使用<br />
+50<br />
+%<br />
+50\%<br />
+更少的内存占用。<br />
+可复现性、开源和多样性。<br />
+Adam-mini 的有效性已被斯坦福研究人员<br />
+[<br />
+57<br />
+]<br />
+最近的基准测试独立复现，结论是 Adam-mini<br />
+“紧密跟踪 AdamW 的性能”<br />
+且<br />
+“有时甚至比 AdamW 表现更好”<br />
+。<br />
+我们在<br />
+[GitHub]<br />
+上开源了 Adam-mini，并获得了 400+ 星标，以及通过<br />
+[PyPI]<br />
+每月 3000+ 次下载。<br />
+Adam-mini 也被不同的研究人员使用。例如，粒子物理学家<br />
+10<br />
+想要训练大型扩散模型，但发现 AdamW<br />
+“内存密集”<br />
+，所有实验都是用 Adam-mini 进行的。研究人员也在使用 Adam-mini 的代码库进行其他研究，如架构设计<br />
+[<br />
+13<br />
+]<br />
+。所有这些都表明 Adam-mini 使不同领域的科学家能够在有限的 GPU 资源下开展研究。<br />
+NorMuon：Adam-mini + Muon。<br />
+Adam-mini 的思想也可用于改进 Muon。首先，我们在这里重述 Muon 的更新形式：<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
++<br />
+1<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k+1})<br />
+=<br />
+(<br />
+∗<br />
+)<br />
+\displaystyle\overset{(</em>)}{=}<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
+)<br />
+−<br />
+η<br />
+k<br />
+​<br />
+(<br />
+I<br />
+m<br />
+⊗<br />
+(<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+)<br />
+−<br />
+1<br />
+2<br />
+)<br />
+m<br />
+​<br />
+n<br />
+×<br />
+m<br />
+​<br />
+n<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+M<br />
+k<br />
+)<br />
+,<br />
+\displaystyle\operatorname{vec}(W_{k})-\eta_{k}\left(I_{m}\otimes\left(M_{k}^{\top}M_{k}\right)^{-\frac{1}{2}}\right)<em>{mn\times mn}\operatorname{vec}(M</em>{k}),<br />
+(4.3)<br />
+=<br />
+\displaystyle=<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
+)<br />
+−<br />
+η<br />
+k<br />
+​<br />
+[<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+⋯<br />
+0<br />
+⋱<br />
+0<br />
+⋯<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+]<br />
+m<br />
+​<br />
+n<br />
+×<br />
+m<br />
+​<br />
+n<br />
+−<br />
+1<br />
+2<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+M<br />
+k<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k})-\eta_{k}\begin{bmatrix}M_{k}^{\top}M_{k}&amp;\cdots&amp;0\<br />
+\vdots&amp;\ddots&amp;\vdots\<br />
+0&amp;\cdots&amp;M_{k}^{\top}M_{k}\end{bmatrix}^{-\frac{1}{2}}<em>{mn\times mn}\operatorname{vec}(M</em>{k})<br />
+如 (<br />
+4.3<br />
+) 所示并在之前 (<br />
+3.13<br />
+) 中讨论的，Muon 是一个与 Hessian 结构一致的块对角预条件器，但它对同一层内的每个神经元（即<br />
+M<br />
+k<br />
+M_{k}<br />
+的每一行）应用相同的预条件器<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+M_{k}^{\top}M_{k}<br />
+。<br />
+这使得它无法处理神经元级的异质性<br />
+[<br />
+65<br />
+;<br />
+18<br />
+]<br />
+。<br />
+NorMuon<br />
+[<br />
+30<br />
+]<br />
+通过用神经元级学习率增强 Muon 来解决这一限制。即，给定权重<br />
+W<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+n<br />
+W\in\mathbb{R}^{m\times n}<br />
+和动量<br />
+M<br />
+k<br />
+∈<br />
+ℝ<br />
+m<br />
+×<br />
+n<br />
+M_{k}\in\mathbb{R}^{m\times n}<br />
+，NorMuon 将 (<br />
+3.13<br />
+) 中的 Muon 更新规则更改为以下形式。<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
++<br />
+1<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k+1})<br />
+=<br />
+\displaystyle\overset{}{=}<br />
+vec<br />
+⁡<br />
+(<br />
+W<br />
+k<br />
+)<br />
+−<br />
+η<br />
+k<br />
+​<br />
+[<br />
+v<br />
+mean<br />
+,<br />
+k<br />
+,<br />
+1<br />
+​<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+⋯<br />
+0<br />
+⋱<br />
+0<br />
+⋯<br />
+v<br />
+mean<br />
+,<br />
+k<br />
+,<br />
+m<br />
+​<br />
+M<br />
+k<br />
+⊤<br />
+​<br />
+M<br />
+k<br />
+]<br />
+m<br />
+​<br />
+n<br />
+×<br />
+m<br />
+​<br />
+n<br />
+−<br />
+1<br />
+2<br />
+​<br />
+vec<br />
+⁡<br />
+(<br />
+M<br />
+k<br />
+)<br />
+\displaystyle\operatorname{vec}(W_{k})-\eta_{k}\begin{bmatrix}{\color[rgb]{1,0,0}v_{\operatorname{mean},k,1}}M_{k}^{\top}M_{k}&amp;\cdots&amp;0\<br />
+\vdots&amp;\ddots&amp;\vdots\<br />
+0&amp;\cdots&amp;{\color[rgb]{0,1,0}v_{\operatorname{mean},k,m}}M_{k}^{\top}M_{k}\end{bmatrix}^{-\frac{1}{2}}<em>{mn\times mn}\operatorname{vec}(M</em>{k})<br />
+(4.4)<br />
+其中<br />
+v<br />
+mean<br />
+,<br />
+k<br />
+,<br />
+j<br />
+∈<br />
+ℝ<br />
+v_{\operatorname{mean},k,j}\in\mathbb{R}<br />
+对于<br />
+j<br />
+∈<br />
+[<br />
+m<br />
+]<br />
+j\in[m]<br />
+是新设计的神经元级学习率，它们由 (<br />
+4.1<br />
+) 中 Adam-mini 的分块均值设计。这种设计不会带来额外的内存和计算开销。<br />
+NorMuon 现在是 NanoGPT 速度跑中的领先方法。特别是，所有三种最快的方法都使用 NorMuon<br />
+[<br />
+26<br />
+]<br />
+。<br />
+按行归一化方法。<br />
+除了 NorMuon，最近还涌现了一批受 Adam-mini 启发的按行归一化新方法（例如，RMNP<br />
+[<br />
+17<br />
+]<br />
+，Nora<br />
+[<br />
+62<br />
+]<br />
+，和 Sron<br />
+[<br />
+58<br />
+]<br />
+）。这些方法为<br />
+W<br />
+W<br />
+中的不同行分配不同的学习率，这与 Hessian 的块结构相匹配。这些学习率的具体形式与 Adam-mini 不同，一些设计被证明与 Muon 相匹配。<br />
+最后，Adam-mini 中的按行归一化设计可以</p>
+</blockquote>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 神经网络优化器, Adam, Hessian矩阵, 收敛性分析, Transformer</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

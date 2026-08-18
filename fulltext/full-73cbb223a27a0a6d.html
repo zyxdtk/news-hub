@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anthropic详解Claude新水印机制 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Anthropic详解Claude新水印机制</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-15</span>
+                <span>📄 TechCrunch AI</span>
+                <a href="https://techcrunch.com/2026/08/15/anthropic-shares-more-details-about-how-claudes-new-watermarks-will-work/" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Anthropic shares more details about how Claude’s new watermarks will work</h4>
+            <p><strong>中文摘要：</strong> Anthropic 发布博客，详细解释了其聊天机器人 Claude 新文本水印机制。为遵守欧盟 AI 法案，Claude 将采用 SynthID Text 方法，在不影响输出质量的前提下嵌入不可见水印，并计划推出检测 API。轻微编辑无法去除水印，但完全重写可以。代码因需保证功能性，水印影响极小。此举引发部分用户不满并退订，但公司强调这不同于常规 AI 检测工具。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>一篇博客文章<br />
+周五试图回答有关其将如何为聊天机器人 Claude 生成的文本添加水印的一些基本问题。例如：水印实际上是如何运作的？可以通过编辑隐藏吗？这对代码有何影响？</p>
+<p>自该公司本周早些时候透露<br />
+将进行此项水印处理以遵守欧盟《人工智能法案》的透明度准则以来，Claude 用户一直在对此举进行辩论。该准则要求 AI 公司使用能够识别 AI 生成内容的系统。</p>
+<p>例如，在 Reddit 上，一位发帖者<br />
+将此描述为针对无辜 Claude 用户的阴谋<br />
+，而另一位用户则声称：“你不想要这个的唯一原因就是为了欺骗别人。”而且<br />
+《商业内幕》报道<br />
+称，X 上的“数十名”用户声称因此取消了他们的 Claude 订阅。</p>
+<p>Anthropic 的新文章以水印概念的总体概述开始，解释说当做出“低风险选择”时——比如在“阴天”和“灰色”之间选择一个词来描述天气——Claude 可以在其回复中创建一种模式，这种模式“对读者来说是不可见的，但<br />
+对于拥有编码密钥的人来说是可检测的。”</p>
+<p>“水印不会影响 Claude 输出的质量，”该公司表示。“对读者来说，带水印的回复与不带水印的回复是无法区分的。”</p>
+<p>更具体地说，Anthropic 表示它将使用 Google DeepMind 团队在 2024 年概述的 SynthID Text 方法<br />
+，并计划发布一个水印检测 API。它还指出，水印与 Pangram 等公司提供的 AI 检测方法不同，后者寻找写作中的“破绽”（如“这不是 [X]，而是 [Y]”的结构）来揭示 AI 的使用：“捕捉这些模式与检查水印有着根本的不同。”</p>
+<p>有人可以通过重写文本来隐藏水印吗？Anthropic 表示这是可能的，但“轻微的编辑可能不会完全去除水印”，而“替换每个单词的完全重写则会”。</p>
+<p>“在后一种情况下，当然，这段文本是否还能被称为 AI 生成的就有待商榷了，”该公司表示。</p>
+<p>至于水印是否能在仅由 Claude 校对或编辑的文本中被检测到，Anthropic 表示这将取决于“文本的长度以及 Claude 对其编辑的程度”。如果只是轻微编辑，“几乎所有的单词”都将由人类作者编写，并且“水印几乎没有什么可以附着的地方（如果有的话）。”</p>
+<p>同时，代码的水印应该比其他文本少，因为模型需要创建可运行的代码，并且不会有权在多种同样有效的选项之间进行选择。</p>
+<p>“话虽如此，在代码中特定单词或术语之间存在任意选择的区域，可以使用水印，例如代码中的注释，”Anthropic 说。“但从定义上讲，它对生成的实际代码的影响可以忽略不计。”</p>
+<p>Anthropic 还表示，Claude 不会是唯一生成带水印文本的 AI 聊天机器人，因为“其他主要模型开发商已经签署了相同的实践准则，并将实施他们自己的水印。”</p>
+<p>话题<br />
+AI<br />
+,<br />
+Anthropic<br />
+,<br />
+Claude<br />
+,<br />
+水印<br />
+当您通过我们文章中的链接购买时，<br />
+我们可能会赚取少量佣金<br />
+。这不会影响我们的编辑独立性。</p>
+<p>Anthony Ha<br />
+Anthony Ha 是 TechCrunch 的周末编辑。此前，他曾是 Adweek 的科技记者、VentureBeat 的高级编辑、Hollister Free Lance 的地方政府记者，以及一家风险投资公司的内容副总裁。他住在纽约市。<br />
+您可以通过发送电子邮件至<br />
+anthony.ha@techcrunch.com<br />
+联系 Anthony 或验证来自他的外联信息。</p>
+<p>查看简介</p>
+<p>10 月 13 日 – 15 日<br />
+旧金山<br />
+更快扩展。增长您的投资组合。获得实用专业知识。无论您的目标是什么，Disrupt 都能赋能您。<br />
+今天节省高达 300 美元！<br />
+立即注册</p>
+<p>最受欢迎<br />
+据报道 Stripe 将以 70 亿美元以上收购 AI 网关初创公司 OpenRouter<br />
+Anthony Ha<br />
+苹果提议对 App Store 以外的购买收取 15% 的提成<br />
+Sarah Perez<br />
+如果苹果向您发送提醒您间谍软件攻击的推送通知，请认真对待<br />
+Zack Whittaker<br />
+Instagram 推出重新设计的文字图标<br />
+Sarah Perez<br />
+一些 Claude 用户对 Anthropic 的新水印会在他们的工作和课堂上抓住他们使用 AI 感到愤怒<br />
+Lucas Ropek<br />
+在微软威胁采取法律行动后，一名安全研究人员发布了新的 Windows 零日漏洞<br />
+Zack Whittaker<br />
+“Made by Google ’26”上公布的所有内容：Pixel 11、Pixel Watch 5、Pixel Tag 以及大量 Gemini 功能<br />
+Lauren Forristal</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 人工智能, Anthropic, Claude, 水印技术, 欧盟AI法案</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
