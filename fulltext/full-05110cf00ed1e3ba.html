@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于LLM反馈的策略不变奖励塑造 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于LLM反馈的策略不变奖励塑造</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-18</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.18008" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Policy-Invariant Reward Shaping from LLM Feedback: A Framework for Hybrid RL Agents</h4>
+            <p><strong>中文摘要：</strong> 本文将LLM规划器与RL控制器架构形式化为目标增强MDP（GA-MDP），并证明当LLM的进度分数作为有界势函数时，基于势的奖励塑造不会改变最优策略集。该保证比Text2Reward等方法更强。数值验证与流水线测试确认了框架有效性，并诊断出LLM计划与完成预言机的词汇不匹配问题。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>文章标题：基于LLM反馈的策略不变奖励塑造：混合强化学习智能体框架</p>
+<p>Christophe D. Hounwanou<br />
+通讯作者：christophe.hounwanou@aims.ac.rw<br />
+所属机构：非洲人工智能研究与创新中心 (AIRINA Labs), AI.Technipreneurs, 贝宁</p>
+<p>John Emeka Eze<br />
+Yaé U. Gaba<br />
+所属机构：非洲人工智能研究与创新中心 (AIRINA Labs), AI.Technipreneurs, 贝宁<br />
+所属机构：Sefako Makgatho 健康科学大学 (SMU), 南非<br />
+所属机构：非洲高级研究中心 (ACAS), 喀麦隆<br />
+[0.6em]<br />
+非洲数学科学研究所, 卢旺达</p>
+<p>摘要<br />
+将大型语言模型（LLM）与强化学习（RL）相结合是一个活跃的研究领域，但LLM衍生奖励信号的理论地位通常未被明确。我们将混合 LLM-规划器 + RL-控制器架构形式化为目标增强马尔可夫决策过程（GA-MDP），并证明当LLM的逐状态进度分数被用作 Ng, Harada, Russell (1999) 意义上的有界势函数时，无论LLM的分数在单个状态上错得多离谱，所诱导的奖励塑造项都不会改变增强MDP的最优策略集。这一保证比更通用的 LLM-as-reward 方法（Text2Reward, Eureka）所能提供的更强。我们在一个小型MDP上通过四种势函数配置（包括绝对值为基础奖励量级20倍的对抗性配置）进行了数值验证。我们还指定了完整的推理算法，发布了参考实现，在使用本地部署的 Qwen-2.5:14b 的20个 MiniGrid 任务上独立评估了规划器（100% 解析率，54.8% 的真实值覆盖率），并在 MiniGrid-DoorKey-6x6 上进行了小规模的流水线验证研究，这不仅确认了框架按规范运行，还诊断出一种集成失败：Done 预言机词汇与LLM计划不匹配，这正是我们的理论分析所预期的失败模式。该框架旨在使混合训练的固定点独立于经验收敛问题进行审计，后者是计划中的后续工作的主题。</p>
+<p>关键词：强化学习，大型语言模型，奖励塑造，分层规划，策略不变性。</p>
+<p>1 引言<br />
+考虑一个被自然语言指令要求“把厨房台面上的马克杯拿来，但如果脏了先冲洗一下”的智能体。纯强化学习智能体面临一个困难的探索问题：奖励是稀疏的（交付马克杯），时间跨度很长，并且没有信号引导它走向任务的复合结构。纯LLM规划器在给定场景的文本描述时，可以流畅地分解任务（去厨房，找到马克杯，检查，如果脏了就冲洗，返回），但无法在实际动力学上执行低级控制：它不知道有多少原始动作能穿过走廊，无法从失败的抓取中恢复，并且对场景状态没有校准的不确定性。</p>
+<p>将两者结合起来是一种自然的应对方案，沿这些思路的系统已经被提出——SayCan [1], DECKARD [17], SwiftSage [13], ELLM [7]，以及许多其他系统。经验上的情况是，这种结合有时会有所帮助，而从业者面临两个相关但截然不同的问题：<br />
+1. 混合系统会收敛到正确的策略吗？<br />
+如果LLM的打分或子目标选择被用作奖励信号，糟糕的LLM输出会把RL智能体推向对真实任务而言并非最优的策略吗？<br />
+2. 混合系统在实践中比纯RL学习得更快吗？<br />
+这种额外的结构是否转化为在实际基准测试上更好的样本效率或更高的最终性能？</p>
+<p>这两个问题经常被捆绑在一起，但它们在本质上是不同的。问题1是一个固定点/可靠性问题，在正确的设计下可以给出明确的答案。问题2是一个经验收敛速度问题，需要大规模实验来解决。</p>
+<p>本文的贡献。<br />
+我们完整地解决了问题1，并将问题2作为计划中的后续经验工作的范围。具体而言：<br />
+• 我们将 LLM-规划器 + RL-控制器架构形式化为目标增强MDP（第4节）。<br />
+• 我们展示（命题4.1）当LLM的逐状态进度分数被用作有界势函数时，诱导的基于势的塑造项不会改变增强MDP的最优策略集。这比更通用的 LLM-as-reward 方法（Text2Reward [24], Eureka [15]）所能保证的更强。<br />
+• 我们在3状态MDP上通过四种势函数配置（包括绝对值为基础奖励量级20倍的对抗性配置）对保证进行了数值验证（第4.4节）。<br />
+• 我们指定了完整的推理算法（算法1），并发布了带有测试的参考实现（第4.6节）。<br />
+• 我们在使用本地部署的 Qwen-2.5:14b 的20个 MiniGrid 任务上独立评估了规划器，在不依赖任何RL训练的情况下表征了LLM的计划质量概况（第4.7.1节）。<br />
+• 我们在 MiniGrid-DoorKey-6x6 上进行了小规模的流水线验证研究（第4.7.2节），这不仅确认了框架端到端运行，还诊断出一种与我们的理论分析所预期的失败模式完全匹配的集成失败。</p>
+<p>本文未声明的内容。<br />
+我们不声明这种特定的混合架构在任何基准测试上击败了已发表的基线；第4.7.2节中的流水线验证并未确立优越性，更大规模的比较研究是计划中的后续工作。本文的声明是，如果混合系统在经验上有效，其理论固定点在构造上就是正确的，并且这一属性不需要信任LLM。</p>
+<p>2 相关工作<br />
+用于具身智能体的LLM规划器。<br />
+越来越多的工作研究大型语言模型如何作为具身智能体的高级规划器。SayCan [1] 将基于LLM的任务分解与学习到的可供性价值函数相结合，实现了接地的动作选择。Inner Monologue [8] 通过将文本环境反馈送回LLM来闭合感知-动作回路。随后的框架如 ReAct [25], Reflexion [20], Code as Policies [12], ProgPrompt [22], LLM+P [14], Voyager [23], 和 Silver 等人 [21] 拓宽了设计空间，探索了言语推理轨迹、代码生成、PDDL翻译和终身技能库。我们的框架与这些规划器中的任何一个都兼容，将它们视为可互换的高级模块。</p>
+<p>LLM增强的RL与来自LLM的奖励。<br />
+另一个方向是使用LLM直接塑造或引导强化学习。ELLM [7] 提出在训练期间使用LLM生成的目标。Kwon 等人 [11] 将自然语言描述视为代理奖励信号。Text2Reward [24] 和 Eureka [15] 让LLM合成密集的奖励代码，并迭代细化。Motif [10] 使用LLM偏好作为内在奖励，而 GLAM [6] 采取了极端立场，将LLM本身作为策略，使用PPO在线更新。重要的是，这些方法都没有提供我们基于势的构造所建立的那种策略不变性保证。特别是，Text2Reward 和 Eureka 依赖于非势的密集奖励函数，当LLM的奖励规范不正确时，它们可能会——而且经验上确实会（见 Booth 等人 [5]）——改变最优策略。</p>
+<p>带有语言子目标的分层RL。<br />
+在LLM时代之前，分层RL探索了将自然语言作为一种高级抽象机制。Andreas, Klein, 和 Levine [4, 3] 引入了以语言为条件的策略草图作为结构化任务分解。Jiang 等人 [9] 形式化了一种双层架构，带有以语言为条件的低级控制器，这是现代LLM驱动系统的直接前身。DECKARD [17] 通过在规划和执行之间交替的 Dream/Wake 分解，将这一范式扩展到了LLM时代。</p>
+<p>策略不变塑造。<br />
+我们的理论基础建立在 Ng, Harada, 和 Russell [16] 的经典基于势的塑造定理之上，该定理刻画了奖励塑造何时能保持最优策略。我们将这一结果实例化于LLM衍生的势函数，并主张任何结合LLM反馈的RL系统都应该采用这种构造，或者明确证明偏离它的合理性。这在基于语言的引导和基于价值的控制之间提供了一个有原则的接口。</p>
+<p>3 预备知识<br />
+我们使用折扣无限时间跨度马尔可夫决策过程 (MDP)<br />
+$\mathcal{M}=(\mathcal{S},\mathcal{A},P,R,\gamma,\rho_{0}),\qquad\gamma\in[0,1),$<br />
+其中 $s_{t}\in\mathcal{S}$ 是时刻 $t$ 的状态，$a_{t}\in\mathcal{A}$ 是动作，下一个状态抽取为 $s_{t+1}\sim P(\cdot\mid s_{t},a_{t})$，瞬时奖励为 $r_{t}=R(s_{t},a_{t},s_{t+1})$。初始状态采样为 $s_{0}\sim\rho_{0}$。一个（可能是随机的）策略 $\pi(a\mid s)$ 诱导出回报 $J(\pi)=\mathbb{E}<em>{\pi}\Big[\sum</em>{t\geq 0}\gamma^{t}r_{t}\Big]$，最优状态价值为 $V^{\ast}(s)=\sup_{\pi}\mathbb{E}<em>{\pi}\big[\sum</em>{t\geq 0}\gamma^{t}r_{t}\mid s_{0}=s\big]$。我们用 $Q^{\pi}(s,a)$ 表示策略 $\pi$ 的动作价值函数。<br />
+长度为 $T$ 的轨迹（或回合）记为 $\tau=(s_{0},a_{0},s_{1},a_{1},\dots,s_{T})$。对于策略 $\pi$ 下的期望，我们有时写 $\mathbb{E}_{\tau\sim\pi}[\cdot]$ 以强调对诱导轨迹分布的依赖。</p>
+<p>任务、标题和规划器。<br />
+任务由自然语言字符串 $\ell\in\Sigma^{\ast}$ 指定。我们假设存在一个状态标题器 $\phi:\mathcal{S}\to\Sigma^{\ast}$，它将MDP状态映射为LLM规划器和打分模块使用的简短文本描述（标题）。规划器（LLM或其他）消费任务 $\ell$ 和状态标题 $\phi(s)$，并发出一个有限的有序子目标列表 $\mathbf{g}=(g_{1},\dots,g_{K})$，其中每个 $g_{i}\in\mathcal{G}$ 是一个简短的自然语言从句。当规划器是随机的时，我们将规划器在给定任务和状态标题时的输出分布记为 $\mathcal{P}(\ell,\phi(s))$。</p>
+<p>完成预言机和子目标语义。<br />
+对于子目标 $g\in\mathcal{G}$，我们定义一个完成谓词（Done 预言机）<br />
+$\Done(s,g)\in{\texttt{DONE},\texttt{CONTINUE}},$<br />
+指示状态 $s$ 是否满足 $g$。在实践中，$\Done$ 可以由符号检查器、学习到的分类器或LLM提示来实现；在我们的分析中，我们将其视为一个（可能不完美的）预言机，并明确考虑规划器语言与 $\Done$ 词汇之间的不匹配模式。</p>
+<p>目标增强MDP (GA-MDP)。<br />
+为了形式化混合规划器+控制器架构，我们使用目标增强MDP<br />
+$\mathcal{M}<em>{G}=(\mathcal{S}\times\mathcal{G},\ \mathcal{A},\ P</em>{G},\ R_{G},\ \gamma,\ \rho_{0,G}),$<br />
+其增强状态为 $(s,g)$，其中 $s\in\mathcal{S}$ 是环境状态，$g\in\mathcal{G}$ 是规划器提供的当前子目标。转移核 $P_{G}$ 根据 $P$ 演化环境状态，而子目标分量根据规划器或 $\Done$ 预言机（取决于执行协议）更新。奖励 $R_{G}$ 在环境分量上等于环境奖励 $R$；当应用塑造时（见下文），我们使用修改后的奖励 $R^{\prime}<em>{G}$。初始分布 $\rho</em>{0,G}$ 采样 $s_{0}\sim\rho_{0}$ 以及给定 $\ell$ 和 $\phi(s_{0})$ 从规划器获取的初始子目标 $g_{0}$。</p>
+<p>来自LLM反馈的基于势的塑造。<br />
+设 $\Phi:\mathcal{S}\times\mathcal{G}\to\mathbb{R}$ 为从状态-子目标对的LLM打分中导出的势函数（在实践中归一化为 $[0,1]$）。基于势的塑造奖励（根据 Ng 等人）定义为<br />
+$F_{\Phi}(s,a,s^{\prime},g)\coloneqq\gamma\,\Phi(s^{\prime},g)-\Phi(s,g).$<br />
+给定MDP奖励 $R$，对于某个标量 $\alpha$，塑造后的奖励为<br />
+$R^{\prime}(s,a,s^{\prime},g)=R(s,a,s^{\prime})+\alpha\,F_{\Phi}(s,a,s^{\prime},g)$<br />
+经典的基于势的塑造定理保证，在标准有界性假设下，添加 $F_{\Phi}$（当 $\alpha=1$ 时）会保持底层MDP的最优策略集；我们的贡献是使用LLM反馈实例化 $\Phi$，同时保持这种不变性属性。</p>
+<p>假设和符号。<br />
+在整篇论文中我们假设：<br />
+• 奖励是一致有界的：$\exists R_{\max}&lt;\infty$ 使得对于所有 $(s,a,s^{\prime})$ 有 $|R(s,a,s^{\prime})|\leq R_{\max}$；<br />
+• 标题器 $\phi$ 产生简洁、确定性的标题（扩展到随机标题器很简单）；<br />
+• 规划器发出长度最多为 $K_{\max}$ 的有限计划。<br />
+我们使用大写字母表示随机变量（例如，$S_{t},A_{t}$），花体字母表示集合，粗体表示序列或向量。为了简化符号，我们在方便时省略 $\Phi$ 和 $F_{\Phi}$ 中的子目标参数 $g$。</p>
+<p>实践直觉。<br />
+目标增强MDP构造是刻意模块化的：它清晰地将规划器的符号级、语言级引导与控制器的低级动作选择分离开来，这使得组件替换（不同的标题器、规划器或 $\Done$ 实现）变得简单且在实验上易于处理。直观上，LLM提供了一个粗略的、任务级别的脚手架，一系列子目标和进度估计，而控制器负责将这些指令落地为具体动作并处理环境的随机性。基于势的塑造随后充当LLM信号的低风险通道，在不改变底层最优策略集的情况下，将探索偏向规划器推荐的方向；这使得安全使用不完美或有噪声的LLM反馈成为可能。在实践中，这种模块化简化了消融研究（交换打分器、改变规划器保真度或注入 $\Done$ 不匹配），并澄清了可重复性：每个接口都有定义良好的契约和微小、可测试的表面。最后，GA-MDP 观点突出了经验收益可能出现在哪里（来自结构化探索的改进样本效率，以及在长跨度、组合任务上的更高成功率），以及失败将出现在哪里（即词汇不匹配、校准错误的势函数或脆弱的标题生成）。</p>
+<p>备注。<br />
+本节固定了本文其余部分使用的符号，并明确了LLM组件（规划器、打分器、$\Done$ 预言机）和RL控制器之间的接口。形式化的GA-MDP和基于势的塑造构造是第4节证明的不变性结果的基础。</p>
+<p>4 目标增强MDP框架<br />
+环境 -&gt; LLM 规划器 -&gt; RL 策略 $\pi_{\theta}$<br />
+$\Phi(s,g)$ 打分器<br />
+记忆<br />
+$\phi(s_{t})$<br />
+$s_{t}$<br />
+$g_{t}$ (子目标)<br />
+$g_{t}$<br />
+$a_{t}$<br />
+$r_{t}, s_{t+1}$<br />
+$F$ (塑造)<br />
+策略更新<br />
+重规划触发器<br />
+图 1：框架概览。实线箭头是每步数据流：环境发出状态 $s_{t}$ 及其标题 $\phi(s_{t})$；LLM规划器产生活动子目标 $g_{t}$ 和有界势分数 $\Phi(s,g)$；RL策略 $\pi_{\theta}$ 在 $s_{t}$ 和 $g_{t}$ 的条件下选择动作 $a_{t}$；塑造项 $F=\gamma\Phi(s^{\prime},g)-\Phi(s,g)$ 被加到环境奖励中。虚线箭头是周期性的：记忆驱动策略更新，并在第4.4节的计划上触发计划修订。</p>
+<p>4.1 目标增强MDP<br />
+定义 4.1 (子目标语法)。<br />
+子目标 $g\in\mathcal{G}$ 是有限长度的自然语言字符串。我们不需要形式化的规范语言；LLM规划器的输出分布决定了 $\mathcal{G}$。</p>
+<p>定义 4.2 (目标增强MDP)。<br />
+与 $\mathcal{M}$ 和语法 $\mathcal{G}$ 关联的目标增强MDP为<br />
+$\mathcal{M}^{\mathcal{G}}=\left(\mathcal{S}\times\mathcal{G},\ \mathcal{A},\ \tilde{P},\ \tilde{R},\ \gamma,\ \tilde{\rho}_{0}\right), \quad (1)$<br />
+具有增强状态 $(s,g)$，转移<br />
+$\tilde{P}\bigl((s^{\prime},g^{\prime})\mid(s,g),a\bigr)\;=\;P(s^{\prime}\mid s,a)\cdot P^{\mathcal{G}}(g^{\prime}\mid s,g,s^{\prime}), \quad (2)$<br />
+和增强奖励 $\tilde{R}((s,g),a,(s^{\prime},g^{\prime}))=R(s,a,s^{\prime})+F(s,g,s^{\prime})$，其中 $P^{\mathcal{G}}$ 是由调用者指定的完成预言机 $\Done:\mathcal{S}\times\mathcal{G}\to{0,1}$ 诱导的子目标转移核，$F$ 是下面定义的塑造项。</p>
+<p>4.2 LLM作为高级规划器<br />
+LLM在任务 $\ell$ 和初始状态标题的条件下，产生最多 $K_{\max}$ 个子目标的计划：<br />
+$\pi^{\mathrm{H}}=(g_{1},g_{2},\ldots,g_{K})\;\sim\;p_{\mathrm{LLM}}(\pi^{\mathrm{H}}\mid\ell,\phi(s_{0})). \quad (3)$<br />
+当 $\Done(s_{t+1},g_{k_{t}})=1$ 时，活动子目标指针 $k_{t}$ 前进。参考实现支持三种 $\Done$ 的实现： 环境事件标志， 学习到的MLP分类器， LLM本身，用完成查询进行提示。这种选择是一个设计轴，而不是固定的决定。</p>
+<p>4.3 低级策略<br />
+RL策略以状态和活动子目标为条件：<br />
+$a_{t}\sim\pi_{\theta}(a_{t}\mid s_{t},g_{t}). \quad (4)$<br />
+子目标通过冻结的句子编码器（默认 MiniLM-L6-v2，$d_{g}=384$）进行编码，并在策略头之前与状态编码拼接。训练使用带有GAE的PPO [19, 18]。</p>
+<p>4.4 来自LLM反馈的基于势的奖励塑造<br />
+LLM通过打分提示产生有界标量 $s_{\mathrm{LLM}}(s,g)\in[0,1]$。我们定义势<br />
+$\Phi(s,g)\;=\;c\cdot s_{\mathrm{LLM}}(s,g),\qquad c&gt;0, \quad (5)$<br />
+和塑造项<br />
+$F(s,g,s^{\prime})\;=\;\gamma\Phi(s^{\prime},g)-\Phi(s,g). \quad (6)$</p>
+<p>命题 4.1 (策略不变性)。<br />
+设 $\mathcal{M}$ 为MDP，$\Phi:\mathcal{S}\times\mathcal{G}\to\mathbb{R}$ 为任何有界函数。设 $\mathcal{M}^{\mathcal{G}}$ 为定义4.2中的目标增强MDP，其塑造项为 $F(s,g,s^{\prime})=\gamma\Phi(s^{\prime},g)-\Phi(s,g)$。那么，在任何关于 $(s,g)$ 可测的子目标调度规则下，$\mathcal{M}^{\mathcal{G}}$ 的每一个最优策略都投射为 $\mathcal{M}$ 的最优策略。</p>
+<p>证明。<br />
+证明遵循 Ng, Harada, Russell [16] 的定理1，应用于增强状态空间 $\mathcal{S}\times\mathcal{G}$。因为 $F$ 是有界势的伸缩差，增强回报分解为 $\tilde{J}(\pi)=J(\pi)-\Phi(s_{0},g_{0})+(\text{消失的伸缩尾部})$。尾部为 $\lim_{T\to\infty}\gamma^{T}\Phi(s_{T},g_{T})$，由于 $\Phi$ 有界且 $\gamma&lt;1$，该极限消失。因此，$\tilde{J}$ 对策略的argmax等于 $J$ 的argmax，即最优策略集保持不变。子目标调度规则通过 $P^{\mathcal{G}}$ 引入，不影响势不变性论证，这是加法塑造的属性。∎</p>
+<p>推论。<br />
+LLM的打分在任何单个状态上都可以任意错误，而不会改变增强MDP的最优策略集。糟糕的 $\Phi$ 只会减慢学习速度，而不会破坏固定点。这是更通用的LLM奖励塑造方法 [24, 15] 未提供的保证。</p>
+<p>命题 4.1 的数值验证<br />
+我们通过在具体实例上进行直接数值检查来补充证明。考虑一个3状态、2动作的确定性MDP：状态 ${s_{0},s_{1},s_{2}}$，其中 $s_{2}$ 是终止状态；“前进”动作使 $s_{0}\to s_{1}\to s_{2}$，“停留”动作给予奖励 $-0.1$ 并返回 $s_{0}$；只有转移 $s_{1}\to s_{2}$ 带有 $+1$ 的正奖励。在 $\gamma=0.9$ 和四个确定性策略下，基础最优策略为 [$s_{0}$: 前进, $s_{1}$: 前进]，$V^{\ast}(s_{0})=0.9000$。表1枚举了四种 $\Phi$ 配置下的策略（脚本：code/verify/prop1_numerical.py）。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">$\Phi$ 配置</th>
+<th style="text-align: left;">基础 $V^{\ast}(s_{0})$</th>
+<th style="text-align: left;">塑造后 $\tilde{V}^{\ast}(s_{0})$</th>
+<th style="text-align: left;">塑造后最优策略</th>
+<th style="text-align: left;">匹配基础？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">$\Phi\equiv 0$</td>
+<td style="text-align: left;">0.9000</td>
+<td style="text-align: left;">0.9000</td>
+<td style="text-align: left;">[$s_{0}$: 前进, $s_{1}$: 前进]</td>
+<td style="text-align: left;">是</td>
+</tr>
+<tr>
+<td style="text-align: left;">$\Phi\equiv 1$</td>
+<td style="text-align: left;">0.9000</td>
+<td style="text-align: left;">0.7100</td>
+<td style="text-align: left;">[$s_{0}$: 前进, $s_{1}$: 前进]</td>
+<td style="text-align: left;">是</td>
+</tr>
+<tr>
+<td style="text-align: left;">符号翻转</td>
+<td style="text-align: left;">0.9000</td>
+<td style="text-align: left;">1.4000</td>
+<td style="text-align: left;">[$s_{0}$: 前进, $s_{1}$: 前进]</td>
+<td style="text-align: left;">是</td>
+</tr>
+<tr>
+<td style="text-align: left;">对抗性大值</td>
+<td style="text-align: left;">0.9000</td>
+<td style="text-align: left;">-5.0500</td>
+<td style="text-align: left;">[$s_{0}$: 前进, $s_{1}$: 前进]</td>
+<td style="text-align: left;">是</td>
+</tr>
+</tbody>
+</table>
+<p>表 1：命题 4.1 的数值验证。所有四种 $\Phi$ 配置（包括逐状态值为基础奖励量级10-20倍的配置）都保持了基础最优策略。塑造后的价值 $\tilde{V}^{\ast}$ 偏移了势偏移量 $-\Phi(s_{0})$ 加上一个消失的伸缩尾部，正如定理所预测的。</p>
+<p>4.5 重规划与完整算法<br />
+计划在执行过程中可能变得陈旧。在以下两种事件之一时触发重规划： 周期性，每 $H$ 个环境步； 失败，如果 $\Done$ 在每个子目标预算 $B$ 内未在活动子目标上触发。算法1指定了完整的推理过程。</p>
+<p>算法 1 混合LLM增强RL（推理）。<br />
+1: 输入：任务 $\ell$，状态 $s_{0}$，策略 $\pi_{\theta}$，LLM $p_{\mathrm{LLM}}$，预言机 $\Done$，势 $\Phi$，周期 $H$，预算 $B$。<br />
+2: $t\leftarrow 0$，$k\leftarrow 1$，$b\leftarrow 0$<br />
+3: $\pi^{\mathrm{H}}=(g_{1},\ldots,g_{K})\sim p_{\mathrm{LLM}}(\cdot\mid\ell,\phi(s_{0}))$<br />
+4: while 回合未终止 do<br />
+5: $g_{t}\leftarrow g_{k}$<br />
+6: $a_{t}\sim\pi_{\theta}(\cdot\mid s_{t},g_{t})$<br />
+7: 观察 $s_{t+1}\sim P(\cdot\mid s_{t},a_{t})$ 和 $r_{t}$<br />
+8: $\tilde{r}<em>{t}\leftarrow r</em>{t}+\gamma\Phi(s_{t+1},g_{t})-\Phi(s_{t},g_{t})$ ▹ 基于势的塑造<br />
+9: if $\Done(s_{t+1},g_{k})=1$ then<br />
+10: $k\leftarrow\min(k+1,K)$，$b\leftarrow 0$ ▹ 推进子目标指针<br />
+11: else<br />
+12: $b\leftarrow b+1$<br />
+13: if $b\geq B$ then<br />
+14: $(g_{k},\ldots,g_{K^{\prime}})\sim p_{\mathrm{LLM}}(\cdot\mid\ell,\phi(s_{t+1}),g_{k},\mathrm{fail})$ ▹ 失败触发的重规划<br />
+15: $b\leftarrow 0$<br />
+16: end if<br />
+17: end if<br />
+18: if $t\bmod H=H-1$ then<br />
+19: $(g_{k},\ldots,g_{K^{\prime}})\sim p_{\mathrm{LLM}}(\cdot\mid\ell,\phi(s_{t+1}),g_{k},\mathrm{periodic})$ ▹ 周期性重规划<br />
+20: end if<br />
+21: $t\leftarrow t+1$<br />
+22: end while</p>
+<p>4.6 参考框架实现<br />
+我们发布了该框架的参考实现。¹<br />
+¹ 仓库：https://github.com/chrishounwanou/hybrid-llm-rl-framework<br />
+该实现：<br />
+• 为组件提供类型化接口（Planner, PotentialShaper, SubgoalScheduler, ReplanTrigger）。<br />
+• 支持 Ollama 服务的本地模型（Qwen, Llama）和可插拔的云后端。<br />
+• 附带三种 $\Done$ 预言机变体（环境事件，学习到的MLP，LLM完成提示）。<br />
+• 包含26个单元测试，包括在2状态MDP上对命题1的数值健全性检查。<br />
+• 包含用于参考混合和每个标准消融（子目标源，塑造，重规划，$\Done$ 预言机，LLM骨干）的YAML配置。<br />
+• 可在CPU上端到端运行；GPU仅用于扩展，而非验证。<br />
+该框架与第4节中的形式主义1:1映射：每个定义对应一个模块，参考算法是算法1的直接实现。</p>
+<p>4.7 经验验证<br />
+在 BabyAI、ALFWorld 和 Crafter 上的完整8基线经验研究是计划中的后续工作，需要超出本文可用范围的GPU + 云LLM计算。在这里，我们展示了两个较小规模的验证，以确立框架按规范运行并表征规划器的孤立行为。</p>
+<p>4.7.1 规划器独立审计<br />
+在任何RL训练之前，我们单独测量规划器。固定一组20个 MiniGrid 任务，带有手工策划的真实子目标分解（code/audit/tasks.json）。对于每个任务，我们通过 Qwen-2.5:14b² 运行P1规划提示（附录A），² Qwen-2.5，阿里云，2024年发布。模型卡：https://huggingface.co/Qwen/Qwen2.5-14B。通过 Ollama³ 本地部署，³ Ollama：https://ollama.com。解析输出，并根据真实情况进行评分。当LLM子目标中至少出现50%的真实值内容标记（非停用词，长度 $\geq 3$）时，该LLM子目标匹配真实子目标；覆盖率是按顺序匹配的真实子目标的分数；无关项是没有真实匹配的LLM子目标数量。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">指标</th>
+<th style="text-align: left;">值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">解析率（带有 $\geq 1$ 个子目标的输出）</td>
+<td style="text-align: left;">100.0% (20/20)</td>
+</tr>
+<tr>
+<td style="text-align: left;">平均计划长度（仅解析的）</td>
+<td style="text-align: left;">8.00 个子目标</td>
+</tr>
+<tr>
+<td style="text-align: left;">计划长度中位数</td>
+<td style="text-align: left;">7 个子目标</td>
+</tr>
+<tr>
+<td style="text-align: left;">平均真实值覆盖率</td>
+<td style="text-align: left;">54.8%</td>
+</tr>
+<tr>
+<td style="text-align: left;">每个计划平均无关子目标</td>
+<td style="text-align: left;">5.30</td>
+</tr>
+<tr>
+<td style="text-align: left;">每个计划输出标记中位数</td>
+<td style="text-align: left;">37</td>
+</tr>
+<tr>
+<td style="text-align: left;">每个计划中位挂钟时间</td>
+<td style="text-align: left;">57.71 s</td>
+</tr>
+<tr>
+<td style="text-align: left;">总挂钟时间（20个计划）</td>
+<td style="text-align: left;">22.3 min</td>
+</tr>
+</tbody>
+</table>
+<p>表 2：在20个 MiniGrid 任务上对 Qwen-2.5:14b（本地服务）的规划器独立审计。提示模板：P1（附录A）。<br />
+Qwen-2.5:14b 在每个任务上都产生了可解析的输出，平均覆盖了略多于一半的真实子目标。相对于真实情况，计划很长（平均8.0，而真实值平均约为3.6），每个计划大约有五个无关的子目标——冗长的低级措辞，如“左转面向墙壁”，而不是紧凑的“去拿钥匙”。</p>
+<p>4.7.2 MiniGrid-DoorKey-6x6 上的流水线验证<br />
+为了证明框架可以端到端运行并表征其在真实RL环境上的行为，我们在 MiniGrid-DoorKey-6x6 上进行了小规模的CPU验证研究。范围被刻意最小化——一个环境，两个配置，三个种子——旨在回答“流水线是否按规范工作？”而不是“混合架构是否击败了已发表的基线？”。后一个问题需要GPU + 云LLM，超出了本文的范围。</p>
+<p>设置。<br />
+两个配置，每个三个种子，MiniGrid-DoorKey-6x6-v0，每个种子30,000个环境步：<br />
+• PPO 基线。标准的 sb3 PPO [19]。没有LLM，没有子目标条件。<br />
+• 混合（框架实例）。带有 Qwen-2.5:14b（通过 Ollama 本地服务）作为规划器的子目标条件PPO。每个任务字符串缓存初始计划；在 $H=1000$ 步进行周期性重规划；禁用失败触发器（$B=0$），见下文注意事项。禁用塑造（$c=0$），因为在CPU上推理14B模型大约需要每个环境步两次LLM调用，将训练延长至数周的挂钟时间；塑造项在第4.4节中进行了形式化验证，并在第4.4节中进行了数值验证。<br />
+报告：根据 Agarwal 等人 [2] 的 IQM $\pm$ 95% bootstrap CI。指标在每个种子的最后25%的回合上计算。</p>
+<p>5 结果<br />
+表3报告了 PPO 基线和使用 Qwen-2.5:14b 的混合智能体在 MiniGrid-DoorKey-6x6 上的流水线验证结果。每个配置运行 $n=3$ 个种子。</p>
+<p>PPO基线实现了28.1%的成功率，置信区间很宽 [4.8, 65.2]，反映了种子之间的巨大方差。其最终回报为0.106 [0.008, 0.262]，平均回合长度稳定在340.4步 [317.2, 352.4]。正如预期的那样，PPO不需要LLM调用。</p>
+<p>混合配置显示出较低的成功率9.3% [0.0, 14.3]和最终回报0.058 [0.000, 0.095]。平均回合长度与PPO相当，为348.0步 [340.0, 358.5]。每个种子触发大约30次LLM调用，这与计划缓存设计一致。</p>
+<p>考虑到极其有限的训练预算，这些结果应该被理解为：试点使用 $3\times 10^{4}$ 个环境步，而先前的工作报告称 DoorKey-6x6 通常需要大约 $5\times 10^{5}$ 步才能让PPO收敛。在这种规模下，预计没有配置能达到高成功率，观察到的性能与这一约束一致。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">配置</th>
+<th style="text-align: left;">n</th>
+<th style="text-align: left;">成功率</th>
+<th style="text-align: left;">最终回报</th>
+<th style="text-align: left;">平均步数/回合</th>
+<th style="text-align: left;">LLM调用/种子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">PPO 基线</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">28.1% [4.8, 65.2]</td>
+<td style="text-align: left;">0.106 [0.008, 0.262]</td>
+<td style="text-align: left;">340.4 [317.2, 352.4]</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">混合 (Qwen)</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">9.3% [0.0, 14.3]</td>
+<td style="text-align: left;">0.058 [0.000, 0.095]</td>
+<td style="text-align: left;">348.0 [340.0, 358.5]</td>
+<td style="text-align: left;">30</td>
+</tr>
+</tbody>
+</table>
+<p>表 3：MiniGrid-DoorKey-6x6 上的流水线验证结果。所有运行的LLM预算：92次 Qwen-2.5:14b 调用，4,199个输出标记，1.32小时的 Ollama CPU挂钟时间。在这种预算下，没有配置收敛到高成功率；DoorKey-6x6 通常需要大约 $5\times 10^{5}$ 个环境步才能让PPO收敛，而试点使用 $3\times 10^{4}$。</p>
+<p>诊断。<br />
+试点没有显示出混合优势；PPO较高的IQM是由一个高方差种子驱动的，置信区间重叠。具有启发性的发现在混合方面：在所有三个种子中，子目标前进的总数为零。Qwen-2.5:14b 在 MiniGrid 任务上的计划是冗长的低级措辞，如“向下移动以到达墙壁”或“再次左转面向东方”，这些从未匹配环境事件 $\Done$ 预言机的关键词模式（“捡起X”、“解锁门”、“去目标”）。结果，调度器在整个回合中停留在第一个子目标上，RL策略实际上是以陈旧的字符串为条件的，子目标条件信号在源头就崩溃了。</p>
+<p>这正是第6节中预期的失败模式：计划词汇与预言机的系统性不匹配阻止了 $\Done$ 的触发。框架在 $\Done$ 预言机上的消融（三种变体：环境事件，学习到的分类器，LLM完成 第4节）正是需要改变以解决此问题的轴。基于LLM的 $\Done$ 预言机将根据LLM自身的语义判断推进调度器，但它增加了每个环境步一次LLM调用，这在GPU和云LLM计算下是可行的，但在带有本地14B模型的CPU上是不可行的。</p>
+<p>试点确实验证的内容。<br />
+尽管标题数据为负，但试点确立了几个重要点： 参考实现在CPU上端到端运行，在90,000个环境步中没有异常； MiniLM-L6-v2 子目标编码与PPO干净地集成，平均回合长度保持在纯PPO基线的置信区间内； 计划缓存设计将LLM推理保持在每个种子大约30次调用，为扩展提供了具体的成本校准； 日志记录和IQM+bootstrap分析流水线按规范产生稳定、可报告的结果。<br />
+涉及 BabyAI、ALFWorld、Crafter、多个基线、额外种子和云LLM计算的更大规模经验研究是未来的工作，超出了本文的范围。</p>
+<p>6 讨论<br />
+6.1 命题 4.1 保证和不保证的内容<br />
+该定理保证增强MDP的最优策略集不受基于势的塑造的影响。这是一个固定点声明，而不是收敛速度声明。它没有说明的两件事：<br />
+• 收敛速度。糟糕的 $\Phi$ 可以任意减慢学习速度。在极端情况下，塑造可以将探索引导离开状态空间的有效区域，即使固定点没有改变。Qwen-2.5:14b 的塑造在实践中是加速还是减慢学习是一个经验问题，留待未来的工作；第4.7.2节中的试点为了CPU的易处理性在没有塑造的情况下运行。<br />
+• 离策略价值估计。证明涉及无折扣极限回报，但Actor-Critic算法使用自举价值估计。只要价值估计器在训练和目标时间都一致地看到塑造奖励 $\tilde{r}_{t}$，不变性论证就成立；参考实现通过在 sb3 rollout 收集器读取奖励之前注入 $F$ 来确保这一点。</p>
+<p>6.2 设计启示<br />
+不变性保证具有直接的实际意义：任何使用通用（非势）密集奖励函数的基于LLM的奖励塑造系统——Text2Reward [24] 和 Eureka [15] 都是——都不在本定理的覆盖范围内。这些系统中糟糕的LLM输出可能会改变最优策略。我们的建议是，LLM塑造的RL系统应该要么使用势构造，要么明确证明为什么它们需要更通用的密集形式。</p>
+<p>6.3 可预见的失败模式<br />
+有三种失败模式值得明确预期：<br />
+• 有界 $\Phi$ 要求。打分提示要求一个 $[0,1]$ 中的值，我们对其进行截断。如果LLM产生超出范围或格式错误的输出的比率高于约1%，塑造就不再是严格的基于势的。请监控这一点。<br />
+• 子目标完成不匹配。如果 $\Done$ 预言机未能在LLM子目标措辞上触发（例如，针对冗长LLM输出的环境事件模式匹配），调度器将停滞，子目标通道不提供信号。对于计划语法漂移的LLM，请使用 LLMDone 或学习到的分类器。<br />
+• 重规划成本爆炸。如果失败触发的重规划在每个子目标上触发，每回合的有效LLM成本将随时间跨度线性增长，而不是预期的微小常数。请监测每回合的LLM调用次数。</p>
+<p>7 局限性<br />
+• 第4.7节中的经验验证是有范围的。它证明了框架可以端到端运行，独立表征了规划器，并诊断出一种集成失败，但没有解决激发更广泛研究计划的比较基准问题。全面评估是计划中的后续工作。<br />
+• 基于势的塑造需要有界、定义良好的 $\Phi$。如果LLM的分数是无界的或以违反有界性的方式有噪声，证明就会崩溃。<br />
+• 打分提示是一种设计选择。确切的提示形状（附录A，P2）影响 $\Phi$ 值的分布，并且可能被对提示敏感的LLM所利用。这是一个提示工程表面，而不是理论问题。</p>
+<p>8 结论<br />
+我们将 LLM-规划器和 RL-控制器架构形式化为目标增强MDP，并证明了来自LLM反馈的基于势的塑造保持了最优策略集，即使LLM提供了不准确的状态级分数。这一保证在小规模MDP上得到了数值验证，并在可在CPU上端到端运行的参考流水线中实现。MiniGrid-DoorKey-6x6 上的流水线验证（第4.7.2节）确认框架按规范运行，并揭示了一种集成失败：$\Done$ 预言机词汇与LLM生成的计划不匹配，这与我们的理论分析预期的失败模式完全一致。确定这种混合架构的实际优势是否在规模上持续存在仍然是一个经验问题，解决它是使用GPU和基于云的LLM计算进行计划中的后续工作的重点。</p>
+<p>可复现性声明<br />
+本文中的所有数值结果均由随附仓库中包含的确定性且完全指定的程序产生。实验涵盖了命题4.1的验证、规划器独立审计以及 MiniGrid-DoorKey-6x6 上的流水线验证。对于每个实验，我们报告了CPU运行时间、LLM调用次数以及完整的原始输出和日志集。所有每个种子的结果、置信区间和聚合步骤（IQM和bootstrap）都可以直接从提供的数据中复现。<br />
+参考实现包含一个带有26个单元测试的全面测试套件；25个无条件运行，一个在没有实时LLM后端可用时被跳过。仓库还包含所有提示模板、PPO超参数和每个消融轴的配置文件。仓库URL在第4.6节中提供。</p>
+<p>附录 A<br />
+提示模板<br />
+参考实现使用的逐字提示模板。</p>
+<p>P1 - 规划提示<br />
+系统：<br />
+你是运行在 {{environment_name}} 中的智能体的规划器。智能体接收自然语言任务，必须通过一系列子目标来完成它。发出最多12个子目标的列表，每行一个，每个都是不超过32个标记的简短祈使句。<br />
+用户：<br />
+任务：{{task_string}}<br />
+当前状态：{{state_caption}}<br />
+输出：</p>
+<p>P2 - 打分提示（势函数 $\Phi$）<br />
+系统：<br />
+你是一个进度估计器。给定一个子目标和当前状态，输出一个 [0, 1] 中的单个数字，估计智能体距离完成子目标有多近。只输出数字。<br />
+用户：<br />
+子目标：{{subgoal}}<br />
+状态：{{state_caption}}<br />
+分数：</p>
+<p>P3 - 完成预言机提示（LLM作为 $\Done$）<br />
+系统：<br />
+给定一个子目标和当前状态，准确输出一个标记：如果子目标现在已满足，输出 DONE；否则输出 CONTINUE。<br />
+用户：<br />
+子目标：{{subgoal}}<br />
+状态：{{state_caption}}<br />
+答案：</p>
+<p>P4 - 失败触发的重规划提示<br />
+系统：<br />
+你正在执行中途修订计划。前一个子目标未能在其步数预算内完成。修订剩余的计划。发出最多12个子目标的列表。<br />
+用户：<br />
+原始任务：{{task_string}}<br />
+当前状态：{{state_caption}}<br />
+失败的子目标：{{subgoal}}<br />
+原因：超过了 {{B}} 步的步数预算。<br />
+修订后的计划：</p>
+<p>参考文献<br />
+[1] M. Ahn et al., “Do As I Can, Not As I Say: Grounding Language in Robotic Affordances,” Conference on Robot Learning (CoRL), 2022. arXiv:2204.01691.<br />
+[2] R. Agarwal, M. Schwarzer, P. S. Castro, A. Courville, M. G. Bellemare, “Deep Reinforcement Learning at the Edge of the Statistical Precipice,” Advances in Neural Information Processing Systems (NeurIPS), 2021. arXiv:2108.13264.<br />
+[3] J. Andreas, D. Klein, S. Levine, “Modular Multitask Reinforcement Learning with Policy Sketches,” International Conference on Machine Learning (ICML), 2017. arXiv:1611.01796.<br />
+[4] J. Andreas, D. Klein, S. Levine, “Learning with Latent Language,” NAACL, 2018. arXiv:1711.00482.<br />
+[5] S. Booth, W. B. Knox, J. Shah, S. Niekum, P. Stone, A. Allievi, “The Perils of Trial-and-Error Reward Design: Misdesign through Overfitting and Invalid Task Specifications,” AAAI, 2023.<br />
+[6] T. Carta, C. Romac, T. Wolf, S. Lamprier, O. Sigaud, P.-Y. Oudeyer, “Grounding Large Language Models in Interactive Environments with Online Reinforcement Learning,” ICML, 2023. arXiv:2302.02662.<br />
+[7] Y. Du et al., “Guiding Pretraining in Reinforcement Learning with Large Language Models,” ICML, 2023. arXiv:2302.06692.<br />
+[8] W. Huang et al., “Inner Monologue: Embodied Reasoning through Planning with Language Models,” CoRL, 2022. arXiv:2207.05608.<br />
+[9] Y. Jiang, S. Gu, K. Murphy, C. Finn, “Language as an Abstraction for Hierarchical Deep Reinforcement Learning,” NeurIPS, 2019. arXiv:1906.07343.<br />
+[10] M. Klissarov et al., “Motif: Intrinsic Motivation from Artificial Intelligence Feedback,” ICLR, 2024. arXiv:2310.00166.<br />
+[11] M. Kwon, S. M. Xie, K. Bullard, D. Sadigh, “Reward Design with Language Models,” ICLR, 2023. arXiv:2303.00001.<br />
+[12] J. Liang et al., “Code as Policies: Language Model Programs for Embodied Control,” ICRA, 2023. arXiv:2209.07753.<br />
+[13] B. Y. Lin et al., “SwiftSage: A Generative Agent with Fast and Slow Thinking,” NeurIPS, 2023. arXiv:2305.17390.<br />
+[14] B. Liu et al., “LLM+P: Empowering Large Language Models with Optimal Planning Proficiency,” arXiv:2304.11477, 2023.<br />
+[15] Y. J. Ma et al., “Eureka: Human-Level Reward Design via Coding Large Language Models,” ICLR, 2024. arXiv:2310.12931.<br />
+[16] A. Y. Ng, D. Harada, S. Russell, “Policy Invariance under Reward Transformations: Theory and Application to Reward Shaping,” ICML, 1999.<br />
+[17] K. Nottingham et al., “Do Embodied Agents Dream of Pixelated Sheep: Embodied Decision Making using Language Guided World Modelling,” ICML, 2023. arXiv:2301.12050.<br />
+[18] J. Schulman, P. Moritz, S. Levine, M. Jordan, P. Abbeel, “High-Dimensional Continuous Control Using Generalized Advantage Estimation,” ICLR, 2016. arXiv:1506.02438.<br />
+[19] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, O. Klimov, “Proximal Policy Optimization Algorithms,” arXiv:1707.06347, 2017.<br />
+[20] N. Shinn, F. Cassano, A. Gopinath, K. Narasimhan, S. Yao, “Reflexion: Language Agents with Verbal Reinforcement Learning,” NeurIPS, 2023. arXiv:2303.11366.<br />
+[21] T. Silver, S. Dan, K. Srinivas, J. B. Tenenbaum, L. P. Kaelbling, M. Katz, “Generalized Planning in PDDL Domains with Pretrained Large Language Models,” AAAI, 2024.<br />
+[22] I. Singh et al., “ProgPrompt: Generating Situated Robot Task Plans using Large Language Models,” ICRA, 2023. arXiv:2209.11302.<br />
+[23] G. Wang et al., “Voyager: An Open-Ended Embodied Agent with Large Language Models,” arXiv:2305.16291, 2023.<br />
+[24] T. Xie et al., “Text2Reward: Reward Shaping with Language Models for Reinforcement Learning,” ICLR, 2024. arXiv:2309.11489.<br />
+[25] S. Yao et al., “ReAct: Synergizing Reasoning and Acting in Language Models,” ICLR, 2023. arXiv:2210.03629.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 强化学习, 大型语言模型, 奖励塑造, 策略不变性, 分层规划</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集中度博弈：贝叶斯更新、遗憾与信息 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">集中度博弈：贝叶斯更新、遗憾与信息</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-18</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.18061" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：The concentration game: Bayesian updating, regret, and information</h4>
+            <p><strong>中文摘要：</strong> 本文提出了一个学习者与自然之间的双人零和重复博弈（集中度博弈），其价值等式统一了贝叶斯更新与指数权重遗憾。该博弈的终端收益由相对熵球定义，单步约束为信息预算。文章证明累积遗憾可精确分解为内在时间损失、重温漂移和终端相对熵传输三部分，并揭示了吉布斯/贝叶斯更新作为贝尔曼均衡器的角色。该框架统一了在线学习、大偏差理论、老虎机和提升等多种方法的机制。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>集中度博弈：贝叶斯更新、遗憾与信息<br />
+Akshay Balsubramani<br />
+Email:<br />
+akshay@vac.bio<br />
+摘要<br />
+我们提出了一个在学习者与自然之间进行的双人零和重复博弈，其价值等式同时生成了贝叶斯更新和指数权重遗憾的精确核算，并提供了广泛的一类集中度现象所共享的比较类变分形式。<br />
+终端收益是比较器在距先验的固定相对熵处所能获得的最大收益，而单步约束是自然在学习者的混合动作下的信息预算。在学习者的动作不受其他限制的情况下，吉布斯/贝叶斯权重作为其唯一的贝尔曼均衡器出现——这是一种使每轮损失独立于自然移动方向的混合动作——其中对数配分函数扮演了价值函数的角色。<br />
+遗憾精确地分解为三个部分：反映观察结果变异性的每轮信息损失；精确解释轮间任何测量尺度变化的加性重温漂移；以及比较器相对于先验携带的信息。驱动标准遗憾界限的方差和有界范围代理是这种分解的更宽松松弛，该分解普遍成立并支配着它们。两位玩家的策略都从分解项中逐项读取，重复博弈产生了一个自博弈的信息论分类账，以取代通常的二次变分代理。<br />
+相同的比较类几何解释了经典的大偏差界限，而多臂老虎机、后验采样、聚合和提升等方法都是同一遗憾分解的特化。<br />
+1<br />
+引言<br />
+我们发展了这样一个思想：贝叶斯更新和指数权重遗憾是同一等式的两个面：即在若干轮（$T$）中进行的双人零和博弈的值。<br />
+我们在此称之为集中度博弈，因为针对比较器的一类广泛的集中度现象从该等式中汲取了其形式。<br />
+这统一了几个研究社区对于一组相互关联的信息核算问题的各自形式体系。<br />
+在线学习从学习率权衡中推导出指数权重遗憾；贝叶斯推断从似然比更新中推导出后验；测度集中和大偏差理论从矩母函数不等式中推导出尾部界限；重复博弈理论从无遗憾动态中推导出均衡收敛；而提升从加权误差势中推导出间隔保证。<br />
+集中度博弈的价值等式解释了所有这些。<br />
+贝叶斯/指数权重更新是其均衡策略，矩母函数是其每轮损失，对数配分函数是其价值。重复博弈均衡、汤普森采样、对数池化和AdaBoost是其特化，而测度集中和Sanov大偏差从其汲取了比较类变分形式。<br />
+博弈本质上是序贯的，因为它统一的现象是渐进的：每一轮，信念被更新，驱动集中的信息预算被耗尽。<br />
+下文博弈1.1陈述了基本框架。<br />
+然后在第4至7节中将重温、预算分配和部分信息叠加到相同的轮次上。<br />
+1.1<br />
+博弈与核心等式<br />
+固定一个在有限动作集 $[K]:={1,\dots,K}$ 上的严格正先验 $\pi$，一个比较器复杂度预算 $\Gamma\geq 0$，以及一个测量尺度和每轮信息预算的调度 $(\eta_{t},q_{t})<em>{t=1}^{T}$，该调度可以预先固定或从历史中自适应选择。<br />
+比较器是动作上的固定混合，学习者的累积损失与之比较，而 $\Gamma$ 限制了其距先验的相对熵。<br />
+进入第 $t$ 轮的状态是自然过去移动的累积中心化分数 $S</em>{t-1}:=\sum_{s<t}z_{s}$（$S_{0}=0$；移动 $z_{s}$ 在下文的博弈框中设定）。
+在学习者该轮玩的混合 $p_{t}$ 下，其均值为零，$\left\langle p_{t},z_{t}\right\rangle=0$：
+自然的移动在学习者自身的权重下在动作之间重新分配，而不是将它们全部一起移动，因此每个动作均等分担的损失对博弈是不可见的（第2节）。
+每一轮学习者设定动作上的混合，然后自然在单一单步预算下移动运行状态 $S_{t}$，并且一个势函数——对数配分函数——控制整个运行（第3节）。
+自然的单轮预算由其中心化移动 $z$ 在学习者的混合 $p$ 下的重标度中心化累积量生成函数（RCGF）$Q_{\eta}(p,z):=\eta^{-2}\log\sum_{i}p(i)e^{\eta z(i)}$ 来衡量；未重标度的 $\eta^{2}Q_{\eta}=\log\mathbb{E}_{p}[e^{\eta z}]$ 是中心化CGF，而 $\eta^{-2}$ 因子使得小尺度极限为方差的一半（第2节）。
+RCGF衡量自然的移动在尺度 $\eta$ 下有多大，而尺度设定了该大小响应的移动特征：在小 $\eta$ 时的 $z$ 的方差，在大 $\eta$ 时的其最差尾部。
+博弈 1.1
+（集中度博弈）。
+固定一个严格正先验 $\pi\in\Delta([K])$，一个比较器复杂度预算 $\Gamma\geq 0$，以及一个测量尺度和每轮RCGF预算的调度 $(\eta_{t},q_{t})_{t=1}^{T}$（可预测：$(\eta_{t},q_{t})$ 可以依赖于 $z_{1},\dots,z_{t-1}$）。从 $S_{0}=0$ 开始。对于每一轮 $t=1,\dots,T$：
+1.
+学习者选择动作上的混合 $p_{t}\in\Delta([K])$；
+2.
+自然观察到 $p_{t}$，选择中心化的 $z_{t}\in\mathbb{R}^{K}$ 满足 $\left\langle p_{t},z_{t}\right\rangle=0$ 且 $Q_{\eta_{t}}(p_{t},z_{t})\leq q_{t}$；
+3.
+状态推进为 $S_{t}:=S_{t-1}+z_{t}$。
+自然方的终端收益为 $L_{\Gamma}(S_{T})$，即先验周围相对熵球的支持函数（第2.2节）：
+$L_{\Gamma}(S):=\sup\{\left\langle\nu,S\right\rangle:\nu\in\Delta([K]),\ \mathrm{KL}(\nu\|\pi)\leq\Gamma\}$
+博弈允许学习者自由玩任何动作分布 $p_{t}$。
+我们关注吉布斯倾斜 $p_{t}=G_{\eta_{t}}(S_{t-1})$，即 $p_{t}(i)\propto\pi(i)e^{\eta_{t}S_{t-1}(i)}$（映射 $G_{\eta}(S)\colon i\mapsto\pi(i)e^{\eta S(i)}/\sum_{j}\pi(j)e^{\eta S(j)}$ 贯穿使用）。
+玩这种形式参数化了学习者的移动而不限制它：在任何尺度 $\eta>0$ 下，给每个动作正权重的混合 $p$ 都可以从状态 $S(i):=\eta^{-1}\log\bigl(p(i)/\pi(i)\bigr)$ 达到，因为 $\pi(i)e^{\eta S(i)}=p(i)$ 已经求和为1，所以 $G_{\eta}(S)=p$。<br />
+针对任何比较器 $\nu\in\Delta([K])$ 的累积遗憾为 $R_{T}^{c}(\nu):=\sum_{t=1}^{T}\left\langle p_{t}-\nu,c_{t}\right\rangle$，即学习者的累积损失减去比较器的，其中 $c_{t}$ 是标准符号约定下的第 $t$ 轮损失（$z_{t}=\left\langle p_{t},c_{t}\right\rangle\mathbf{1}-c_{t}$ 是中心化版本，因此 $R_{T}^{c}(\nu)=\left\langle\nu,S_{T}\right\rangle$）。<br />
+主要等式（定理4.3，第4节）是该累积遗憾精确分解为三个结构上不同的项：<br />
+$R_{T}^{c}(\nu)=\sum_{t=1}^{T}\eta_{t}Q_{t}(c)+D_{T}+B_{T}(\nu)$<br />
+(1.1)<br />
+其中前导和是内在时间损失[7]，由以尺度 $\eta_{t}$ 加权的第 $t$ 轮中心化RCGF $Q_{t}(c)\geq 0$（内在时间密度）构建。<br />
+内在时间以信息衡量运行的长度。<br />
+流逝的轮数不参与。<br />
+记 $W_{\eta}(S):=\eta^{-1}\log\sum_{i}\pi(i)e^{\eta S(i)}$ 为状态的尺度-$\eta$对数配分，即第3节的势函数。<br />
+重温漂移 $D_{T}=\sum_{t=1}^{T-1}\bigl(W_{\eta_{t+1}}(S_{t})-W_{\eta_{t}}(S_{t})\bigr)$ 是轮间改变测量尺度——重调逆温度——的精确损失，每个被加数是固定状态下 $W_{\eta}$ 的变化，因此在恒定尺度下 $D_{T}=0$。<br />
+终端相对熵传输 $B_{T}(\nu)=\eta_{T}^{-1}\bigl(\mathrm{KL}(\nu|\pi)-\mathrm{KL}(\nu|\rho_{T,\eta_{T}})\bigr)$，其中 $\rho_{T,\eta_{T}}:=G_{\eta_{T}}(S_{T})$ 是终端吉布斯后验，是比较器从先验 $\pi$ 携带到该后验的信息。<br />
+两个相对熵的差塌缩为单一期望，$\eta_{T}B_{T}(\nu)=\mathbb{E}<em>{\nu}\bigl[\log(\rho</em>{T,\eta_{T}}/\pi)\bigr]$，即后验与先验的对数似然比在比较器下的平均：运行将信念向比较器自身方向移动了多远（第5.5节）。<br />
+这三项合在一起构成了运行的分类账：遗憾的封闭账户，每个机制对应一个条目，精确求和且不留余额。<br />
+这个词贯穿于此意义，每个后续设置都有其自己的分类账，相同的三个条目在该设置评分的任何分数序列上评估。<br />
+因为 (1.1) 是一个等式而不是不等式，学习者和自然的策略都逐项读取：学习者玩贝尔曼均衡器（每轮吉布斯），而自然在最差的比较器方向上使轮预算饱和 $Q_{t}(c)=q_{t}$。<br />
+图2跟随了一个实现的运行，三项沿其累积。<br />
+相同的基本结构随后在改变充分统计量（学习者实际应用贝叶斯的分数序列，不必是原始损失）、比较器类、观察结构、几何或动作规则（附录B）后存活。每次修改改变表面特征，而贝尔曼骨干保持固定。<br />
+倾斜是指数权重/贝叶斯更新（乘法权重，Hedge），同样也是累积中心化分数上的熵正则化跟随领导者（FTRL）迭代 $\mathop{\mathrm{arg\,max}}<em>{p}{\left\langle p,S</em>{t-1}\right\rangle-\eta_{t}^{-1}\mathrm{KL}(p|\pi)}$，两者通过吉布斯变分等式 (2.6) 重合。<br />
+第3节将其推导为博弈的贝尔曼均衡器：使得该轮损失仅为自然预算的确定性函数的玩法，无论自然选择哪种可行移动。<br />
+均衡弱于轮值极小极大性，因为极小极大玩法最小化轮的最坏情况值，而均衡器平坦化自然回复上的损失，两者不必一致（第3.4节）。<br />
+在四个要素中，只有先验 $\pi$ 是一个建模决策，编码了动作质量的先验。<br />
+测量尺度 $\eta_{t}$ 赋予“一步的大小”以意义，通过指数族识别 $p\propto\pi e^{\eta S}$ 与 $\pi$ 对偶；它是一个逆温度，大 $\eta$ 冷且集中倾斜，小 $\eta$ 热且弥散。<br />
+约束 $Q_{\eta_{t}}(p_{t},z_{t})\leq q_{t}$ 是自然单轮移动的信息预算：根据等式 $\eta^{2}Q_{\eta}(p,z)=\mathrm{KL}(p|p^{+})$（其中 $p^{+}(i)\propto p(i)e^{\eta z(i)}$ 是轮内更新），$q_{t}$ 限制了尺度 $\eta_{t}$ 下的先验到后验相对熵转移。而 $\Gamma$ 是比较器类上的匹配预算：$L_{\Gamma}(S_{T})$ 是先验的相对熵 $\Gamma$ 内的任何分布可以提取的最大终端收益。<br />
+不受限的自然会玩无结构噪声；上限是博弈施加的唯一约束（第2节将其读作巧合预算）。<br />
+调度和视野都是博弈的数据，提供给双方且均不优化，直到第4节将尺度提升为学习者做出的选择（博弈4.1）。<br />
+固定 $T$ 在核算中不改变任何东西：定理4.3的分解在每个前缀处以等式成立，因此在任何 $t\leq T$ 处停止留下相同的三个条目，在视野 $t$ 处评估，第5.5节量化了任意时与固定视野的差异。<br />
+$T$<br />
+$R_{T}^{c}(\nu)=\underbrace{\sum_{t}\eta_{t}\,Q_{t}(c)}<em>{\begin{subarray}{c}\text{内在时间}\ \text{损失}\end{subarray}}\;+\;\underbrace{D</em>{T}}<em>{\begin{subarray}{c}\text{重温}\ \text{漂移}\end{subarray}}\;+\;\underbrace{B</em>{T}(\nu)}<em>{\begin{subarray}{c}\text{相对熵}\ \text{传输}\end{subarray}}$<br />
+$=$<br />
+$\log Z=$<br />
+图 1：<br />
+集中度博弈及其特化。一个双人零和博弈（中心）以贝叶斯/指数权重更新作为其贝尔曼均衡，以对数配分函数作为其值；其遗憾精确分解为 $R</em>{T}^{c}(\nu)=\sum_{t}\eta_{t}Q_{t}(c)+D_{T}+B_{T}(\nu)$ —— 一个内在时间损失、一个重温漂移和一个终端相对熵传输（定理4.3，项如文中）。每个周围家族的遗憾分解通过特化先验、测量尺度、每轮预算、比较器类和反馈结构来恢复——围绕相同均衡的一段记账；每个家族中的尖锐速率仍然需要对估计的每轮RCGF的家族特定界限。<br />
+图 2：<br />
+集中度博弈的一条轨迹及其信息分解。<br />
+一条代表性的实现路径，在 Gaussian 参考 $\pi$ 和一个在早期轮次给予自然更多每轮预算的调度 $(\eta_{t},q_{t})$ 下，线 $x\in\mathbb{R}$ 上有连续专家。<br />
+(a)<br />
+每轮学习者玩贝尔曼均衡器吉布斯倾斜 $p_{t}=G_{\eta_{t}}(S_{t-1})\propto\pi e^{\eta_{t}S_{t-1}}$（淡色密度），其均值 $m_{t}=\left\langle p_{t},x\right\rangle$ 是实现的游走（蓝色）；自然以中心化增量 $z_{t}$ 回答。胡须标记在RCGF预算 $q_{t}$ 下自然一轮可以移动状态多远。这个范围按 $\sqrt{q_{t}}$ 缩放（中心化RCGF在步长中是二阶的，所以在小步长机制下，预算饱和移动服从 $\delta\approx\sqrt{2q}$；精确地，对于两个对称专家 $\delta=\eta^{-1}\operatorname{arcosh}(e^{\eta^{2}q})$，命题A.6）。随着预算被用完——大部分在早期——范围缩小，状态集中。<br />
+(b)<br />
+比较器遗憾在每个视野分解，$R_{t}^{c}(\nu)=P_{t}+D_{t}+B_{t}(\nu)$，损失 $P_{t}=\sum_{s\leq t}\eta_{s}Q_{s}$，从原点开始（$R_{0}^{c}=0$：在任何轮次之前，每一项为零）。实线是总数。视野 $t_{1}$ 和 $t_{2}$ 处的虚线瀑布将其分为内在时间损失 $P_{t}$（上）、重温漂移 $D_{t}\leq 0$——轮间改变尺度的损失，此处对学习者是收益（下）——和终端相对熵传输 $B_{t}(\nu)=\big[\mathrm{KL}(\nu|\pi)-\mathrm{KL}(\nu|\rho_{t,\eta_{t}})\big]/\eta_{t}$（上），其中 $\rho_{t,\eta_{t}}$ 是视野-$t$吉布斯后验。比较器是 $\nu=\rho_{t_{2},\eta_{t_{2}}}$，即博弈确定的的后验。<br />
+1.2<br />
+主要结果<br />
+主要结果是分解 (1.1) 在每个视野、对于每个比较器和每个可预测调度下以等式成立：贝尔曼均衡器跨轮组合，三项中的每一项都是每轮贡献的和（定理4.3）。<br />
+漂移是轮间改变测量尺度的封闭形式损失，其每步形式是先验到后验的相对熵（命题C.1）；在固定尺度下它消失，分解简化为对数配分势携带的熵混合损失账户，其不等式松弛形式是经典的。<br />
+驱动标准遗憾界限的方差和有界范围量是该每轮原始量的导出松弛。RCGF 在 $\eta\downarrow 0$ 时趋于 $\tfrac{1}{2}\mathrm{Var}<em>{p}(z)$（推论2.5），在固定尺度下被方差代理和范围代理有上界，两者互不精炼（第3.3节）。用任一替代中心化RCGF产生更宽松的遗憾上界，二次变分界限作为其小 $\eta$ 极限出现。<br />
+在自然总信息的一个单一累积预算 $V$ 下，代替每轮上限，视野从值中消失。<br />
+在恒定尺度下，从有限视野起它等于 $\Gamma/\eta+\eta V$，因此平方根包络 $2\sqrt{\Gamma V}$ 被达到，单轮博弈展现的短缺属于那一轮（命题4.2）。<br />
+因此固定视野对自然没有任何让步。<br />
+已知的视野反而确定了尺度，它释放了任意时保证为未被咨询的时间保留的余量——比较器传输轨迹的回撤，它曾经低于当前水平多远（第5.5节）。<br />
+这两个节省将任意时有效的置信序列与一次读取的固定视野区间分开。<br />
+相同的等式给出了广泛方法家族的遗憾分解（图1）：吉布斯条件作用、Sanov定理、低噪声幸运度、置信集、重复博弈均衡、老虎机、反馈图、上下文老虎机、汤普森采样和AdaBoost（第5-9节），以及对数池化（附录A.12）。<br />
+每一个都是通过特化先验、测量尺度、每轮预算、比较器类和反馈结构获得的——在分解水平上的一段记账。<br />
+贡献是核算；速率本身并不新，每个家族中的尖锐速率仍然需要对每轮RCGF的家族特定界限。<br />
+将分解转换为尖锐速率，如极小极大老虎机 $O(\sqrt{KT})$ 依赖，由估计的每轮RCGF解决，它本身是真损失和观察几何的封闭形式（命题A.15）。<br />
+该封闭形式将经典的方差和范围包络恢复为最坏情况从未改进的小尺度松弛。<br />
+第6节的自博弈分类账反而从实现路径读取每轮损失，只要内在时间是次线性的，就给出比 $1/\sqrt{T}$ 最坏情况更快的均衡速率。<br />
+具体的贡献是这些独立的文献共享一个原始量——单尺度RCGF约束下的终端相对熵球收益——每个都从中汲取其比较类变分形式。<br />
+早期工作得到方差代理是因为它从下游开始；从RCGF开始将那些代理恢复为松弛并使等式可见。<br />
+2<br />
+坐标、终端收益和每轮原始量<br />
+博弈在两个原始量上运行——终端收益 $L</em>{\Gamma}$ 和每轮RCGF——两者都在一组中心化坐标中表达。我们在有限集 $[K]={1,\dots,K}$ 上工作，具有严格正先验 $\pi\in\Delta([K])$。学习者每轮的移动是不受限制的混合动作 $p_{t}\in\Delta([K])$——博弈仅约束自然——以指数族坐标记录为复合分数序列 $c_{t}\in\mathbb{R}^{K}$ 的贝叶斯/指数权重更新：<br />
+$p_{t}(i)=\frac{\pi(i)e^{-\eta_{t}C_{t-1}(i)}}{\sum_{j=1}^{K}\pi(j)e^{-\eta_{t}C_{t-1}(j)}},\qquad C_{t}(i):=\sum_{s=1}^{t}c_{s}(i),\qquad C_{0}\equiv 0$<br />
+(2.1)<br />
+对应的是累积分数：不同的内部玩法来自不同的分数类，而 $c_{t}=C_{t}-C_{t-1}$ 只有在下一个玩法和下一个尺度也给定时，才再次被固定到一个加性常数。只有乘积 $\eta_{t}C_{t-1}$ 进入 $p_{t}$，所以 $\eta_{t}$ 是将移动与自然的信息预算耦合的尺度选择。相同的形式是博弈的贝尔曼均衡器（第3节），即分析挑出的玩法。分数可以是字面损失、可预测偏移、重要性加权估计、乐观残差、带符号间隔或学习者应用贝叶斯的任何统计量——博弈是相对于选择的充分统计量定义的，其背后没有环境的“真”损失。<br />
+这不损失一般性：(2.1) 是从 $\mathbb{R}^{K}/\mathbb{R}\mathbf{1}$ 到 $\Delta([K])$ 内部的双射，所以它重新参数化了任意玩法而不是限制它，其逆在轮次自身的尺度下将状态读作轮次的后验到先验对数比（附录A.1.1）。<br />
+2.1<br />
+中心化超额分数坐标<br />
+对于第 $t$ 轮，定义学习者均值 $\mu_{t}:=\left\langle p_{t},c_{t}\right\rangle$，中心化移动 $z_{t}(i):=\mu_{t}-c_{t}(i)$，以及内在状态 $S_{t}:=\sum_{s=1}^{t}z_{s}$，其中 $S_{0}:=0$。<br />
+每个移动在学习者的玩法下中心化：$\left\langle p_{t},z_{t}\right\rangle=0$。<br />
+命题 2.1<br />
+（贝叶斯更新的中心化坐标形式）。<br />
+对于每个 $t\geq 1$ 和 $i\in[K]$，<br />
+$S_{t-1}(i)=\sum_{s=1}^{t-1}\mu_{s}-C_{t-1}(i),\qquad p_{t}(i)=\frac{\pi(i)e^{\eta_{t}S_{t-1}(i)}}{\sum_{j=1}^{K}\pi(j)e^{\eta_{t}S_{t-1}(j)}}$<br />
+(2.2)<br />
+此外，对于每个比较器 $\nu\in\Delta([K])$，<br />
+$R_{T}^{c}(\nu):=\sum_{t=1}^{T}\bigl(\left\langle p_{t},c_{t}\right\rangle-\left\langle\nu,c_{t}\right\rangle\bigr)=\left\langle\nu,S_{T}\right\rangle=\sum_{t=1}^{T}\left\langle\nu,z_{t}\right\rangle$。<br />
+只有相对性能重要。<br />
+用 $c_{t}+b_{t}\mathbf{1}$ 替换 $c_{t}$ 使每个 $z_{t}$ 不变：中心化坐标从一开始就商去全局偏差方向，博弈生活在 $\mathbf{1}$ 的正交补上。<br />
+2.2<br />
+终端集中度泛函<br />
+博弈以自然获得任何最佳容许比较器可以从最终状态提取的收益而结束。<br />
+唯一剩下的建模选择是哪些比较器算作容许的。<br />
+我们关注相对熵球：比较器可以在先验的信息预算 $\Gamma$ 内重新加权动作。<br />
+对于 $\Gamma\geq 0$ 和状态 $S\in\mathbb{R}^{K}$，定义<br />
+$L_{\Gamma}(S):=\sup\left{\left\langle\nu,S\right\rangle:\nu\in\Delta([K]),\ \mathrm{KL}(\nu|\pi)\leq\Gamma\right}$<br />
+(2.3)<br />
+这个数字可以有多种读法。<br />
+1.<br />
+基准：$\left\langle\nu,S_{T}\right\rangle$ 是针对比较器 $\nu$ 的累积遗憾（命题2.1），所以 $L_{\Gamma}(S_{T})$ 是容许类上的最差遗憾。<br />
+2.<br />
+支持函数：它是相对熵球 ${\nu:\mathrm{KL}(\nu|\pi)\leq\Gamma}$ 在方向 $S$ 上延伸多远。<br />
+3.<br />
+统计位移：它是相对熵中代价为 $\Gamma$ 的测度变化所达到的最大均值偏移，即Chernoff和Sanov界限计算的量（第5节）。<br />
+在 $\Gamma=0$ 时不允许重新加权，$L_{0}(S)=\left\langle\pi,S\right\rangle$，即先验均值；一旦 $\Gamma$ 足够大使得球填满单纯形，$L_{\Gamma}(S)=\max_{i}S(i)$，即最佳单一动作（命题A.4）。<br />
+在两者之间，$\Gamma$ 在两者之间插值。<br />
+固定 $\eta&gt;0$。<br />
+$L_{\Gamma}$ 的对偶描述依赖于从先验和状态构建的两个量：$\pi$ 在尺度 $\eta$ 下向 $S$ 的吉布斯倾斜 $\rho_{\eta,S}$，以及相关的尺度-$\eta$对数配分 $W_{\eta}(S)$。<br />
+对于 $S\in\mathbb{R}^{K}$ 定义<br />
+$[\rho_{\eta,S}]<em>{i}:=\frac{\pi(i)e^{\eta S(i)}}{\sum</em>{j}\pi(j)e^{\eta S(j)}},\qquad W_{\eta}(S):=\frac{1}{\eta}\log\sum_{i=1}^{K}\pi(i)e^{\eta S(i)}$<br />
+(2.4)<br />
+命题 2.2<br />
+（终端集中度泛函的对偶形式）。<br />
+对于每个 $S\in\mathbb{R}^{K}$ 和 $\Gamma\geq 0$，<br />
+$L_{\Gamma}(S)=\inf_{\eta&gt;0}\left{\frac{\Gamma}{\eta}+W_{\eta}(S)\right}$<br />
+(2.5)<br />
+等价地，吉布斯变分等式给出<br />
+$W_{\eta}(S)=\sup_{\nu\in\Delta([K])}\left{\left\langle\nu,S\right\rangle-\frac{1}{\eta}\mathrm{KL}(\nu|\pi)\right}$<br />
+(2.6)<br />
+且优化器为 $q=\rho_{\eta,S}$。<br />
+函数 $W_{\eta}(S)$ 是先验 $\pi$ 下分数 $S$ 的缩放对数矩母函数，而 $L_{\Gamma}(S)$ 说明复杂度预算 $\Gamma$ 的比较器可以在方向 $S$ 上集中多少终端质量。<br />
+等式 (2.5) 是写成等式的Cramér–Chernoff机制。令 $\Lambda(\eta):=\eta W_{\eta}(S)=\log\mathbb{E}<em>{i\sim\pi}\bigl[e^{\eta S(i)}\bigr]$ 为状态在先验下的累积量生成函数，$\Lambda^{<em>}$ 为其Legendre共轭，(2.5) 读作 $L_{\Gamma}(S)=\inf_{\eta&gt;0}(\Gamma+\Lambda(\eta))/\eta=\sup{s\in\mathbb{R}:\Lambda^{</em>}(s)\leq\Gamma}$，即逆Cramér变换：在速率 $\Gamma$ 下可达到的最大位移。<br />
+经典的尾部界限在 $\eta$ 上执行相同的优化并保留不等式；这里优化的值等于基准。因此下游的任何松动都来自提前承诺一个尺度——固定的 $\eta$ 不必是实现状态下的最小化器——而机制本身不贡献任何松动，第3节的固定尺度分析使这一区别定量化。<br />
+2.3<br />
+稳健贝叶斯、最大熵和指数族结构<br />
+吉布斯变分等式的优化器 $\rho</em>{\eta,S}$ 有第二个特征，即匹配暴露矩的最大熵分布——分布 $\nu$ 的一个特征，即线性终端收益能看到的其均值分数 $\left\langle\nu,S\right\rangle$。<br />
+第二个特征是终端泛函的稳健贝叶斯读法。<br />
+命题 2.3<br />
+（稳健贝叶斯/最大熵）。<br />
+固定 $S\in\mathbb{R}^{K}$ 和 $\eta&gt;0$。则：<br />
+(a)<br />
+$\rho_{\eta,S}$ 唯一最大化 $\nu\in\Delta([K])$ 上的 $\left\langle\nu,S\right\rangle-\eta^{-1}\mathrm{KL}(\nu|\pi)$。<br />
+(b)<br />
+如果 $m_{\eta}:=\left\langle\rho_{\eta,S},S\right\rangle$，则 $\rho_{\eta,S}$ 是在线性矩约束 $\left\langle\nu,S\right\rangle=m_{\eta}$ 下 $\mathrm{KL}(\nu|\pi)$ 的唯一最小化器。<br />
+因此，后验同时是最佳响应、贝尔曼均衡器和与当前暴露的充分统计量一致的最大熵分布。<br />
+指数族出现是因为集中度博弈在状态上是线性的，所以吉布斯变分等式 (2.6) 在每个尺度下适用，改变 $\eta$ 描绘出一个一维指数族，其中内在时间密度 $Q_{t}(c)$ 是Fisher信息的单步类比（附录A.1.2）。<br />
+2.4<br />
+单尺度中心化RCGF<br />
+对于 $p\in\Delta([K])$ 和中心化移动 $z\in\mathbb{R}^{K}$ 满足 $\left\langle p,z\right\rangle=0$，定义<br />
+$Q_{\eta}(p,z):=\frac{1}{\eta^{2}}\log\sum_{i=1}^{K}p(i)e^{\eta z(i)}$<br />
+(2.7)<br />
+等价地，在损失坐标中，<br />
+$Q_{t}(c)=\frac{1}{\eta_{t}^{2}}\psi_{p_{t}}(-\eta_{t};c_{t}),\qquad\psi_{p}(\lambda;c):=\log\sum_{i}p(i)e^{\lambda(c(i)-\left\langle p,c\right\rangle)}$<br />
+(2.8)<br />
+$Q_{t}$ 的参数命名了它评估的损失序列，而玩法和尺度是轮次的：$Q_{t}(c)$ 缩写 $Q_{\eta_{t}}(p_{t},z_{t})$，后面的章节对其他分数序列上的相同轮次-$t$泛函写 $Q_{t}(g)$ 和 $Q_{t}(\ell)$。<br />
+这里 $\eta^{2}Q_{\eta}(p,z)=\log\mathbb{E}<em>{p}[e^{\eta z}]$ 是自然的分数 $z$ 在尺度 $\eta$ 下学习者的混合动作 $p$ 下的中心化累积量生成函数（CGF）。贯穿论文的量不是该CGF，而是其 $\eta^{-2}$ 重标度 $Q</em>{\eta}$，在 $Q_{\eta}\to\tfrac{1}{2}\mathrm{Var}<em>{p}(z)$ 时的归一化（当 $\eta\downarrow 0$）；它被称为重标度中心化累积量生成函数，缩写为RCGF，或等价地称为内在时间密度。区别不是装饰性的：两者相差一个本身依赖于尺度的因子，所以关于跨尺度 $Q</em>{\eta}$ 的陈述不是关于跨尺度CGF的陈述。下文的“CGF”总是指未重标度的 $\eta^{2}Q_{\eta}$。<br />
+它是框架中轮次的原始信息论量：它衡量自然的移动在学习者选择的尺度 $\eta$ 下有多大，单位使得贝尔曼更新成为代数等式，并且每轮约束 $Q_{\eta}(p,z)\leq q$ 限制了自然的中心化倾斜在该尺度下可以有多集中。<br />
+它不是方差代理：在小 $\eta$ 时它简化为方差的一半 $\tfrac{1}{2}\mathrm{Var}<em>{p}(z)$（推论2.5），在大 $\eta$ 时它捕获 $z$ 在 $p$ 下的最差尾部行为，对于任何 $\eta$ 它是使 $W</em>{\eta}(S+z)-W_{\eta}(S)=\eta Q_{\eta}(\rho_{\eta,S},z)$ 成立的唯一非负量（定理3.2）。<br />
+因此界定 $Q_{\eta}(p,z)\leq q$ 在选择的尺度上限定了自然的巧合预算，并且是博弈所需的唯一约束。<br />
+相同泛函的三种读法——在矩 $\mathbb{E}<em>{p}[z^{n}]$ 上的巧合预算、稳健贝叶斯极小极大值的约束一半，以及先验到后验的相对熵增量——在附录A.1.3中发展。<br />
+那里的矩展开也将方差（$n=2$）和范围（$n=\infty$）作为截断展示，这就是为什么它们后来作为导出松弛出现（第3.3节）。<br />
+相同的原始量在框架的每个层级重复：自然的单轮移动（此处）、比较器的先验倾斜（命题2.2）、老虎机估计器的重要性加权分数（定理A.14），以及汤普森采样后验的似然比（第8.2节）。<br />
+中心化RCGF也允许作为倾斜方差加权平均的积分表示。<br />
+命题 2.4<br />
+（倾斜方差表示）。<br />
+令 $p</em>{s}^{(\eta,z)}(i)\propto p(i)e^{s\eta z(i)}$ 对于 $s\in[0,1]$。<br />
+则<br />
+$Q_{\eta}(p,z)=\int_{0}^{1}(1-s)\mathrm{Var}<em>{i\sim p</em>{s}^{(\eta,z)}}(z(i))\,ds$<br />
+(2.9)<br />
+因此 $Q_{\eta}(p,z)\geq 0$，等号当且仅当 $z$ 是 $p$-a.s.常数。<br />
+倾斜族 $p_{s}^{(\eta,z)}$ 从 $s=0$ 处的学习者玩法 $p$ 插值到 $s=1$ 处的轮内更新，表示使 $Q_{\eta}$ 的非负性显现，并将小 $\eta$ 方差极限和有界范围界限作为直接推论展示。<br />
+推论 2.5<br />
+（方差和有界范围松弛）。<br />
+如果 $\eta\downarrow 0$ 则 $Q_{\eta}(p,z)=\frac{1}{2}\mathrm{Var}<em>{p}(z)+o(1)$。<br />
+如果对于所有 $i$ 有 $z(i)\in[a,b]$，则 $Q</em>{\eta}(p,z)\leq(b-a)^{2}/8$。<br />
+相同的表示还控制原始量如何响应混合动作的扰动。<br />
+用点质量污染玩法将中心化RCGF移动一个影响，该影响下界为线性项，上界为最大中心化分数的指数：在分数范围的深度上线性，在其高度上指数（推论A.1，附录A.1）。<br />
+因此，只要中心化分数有界，从 $p$ 的抽样中对轮次中心化RCGF的估计就具有有界的每次抽样影响，界限由其范围的端点和尺度单独设定；专家数量不参与。<br />
+原始量正是在这个意义上在适度尺度下可估计。<br />
+3<br />
+固定尺度集中度博弈<br />
+固定尺度博弈在所有轮次中保持测量尺度 $\eta$ 固定。单一对数配分势控制整个运行：其单步增量恰好是中心化RCGF，传输等式、对偶正则化形式（附录A.2.3）以及方差和范围松弛都从该势读取。精确的单轮值在尺度被允许在第4节变化之前闭合了固定尺度图景。<br />
+3.1<br />
+自然的可行集与贝尔曼均衡器<br />
+固定尺度博弈将自然的每轮移动限制在中心化分数上的单轮信息预算。<br />
+对于 $p\in\Delta([K])$，$q\geq 0$，和 $\eta&gt;0$，设<br />
+$\mathcal{Z}<em>{\eta,q}(p):=\left{z\in\mathbb{R}^{K}:\left\langle p,z\right\rangle=0,\ Q</em>{\eta}(p,z)\leq q\right}$<br />
+(3.1)<br />
+博弈 3.1<br />
+（固定尺度集中度博弈）。<br />
+博弈1.1冻结一个数据：尺度保持恒定，$\eta_{t}\equiv\eta$，将自然的第 $t$ 轮移动限制在 $\mathcal{Z}<em>{\eta,q</em>{t}}(p_{t})$。<br />
+移动顺序、状态和 $T+1$ 时的终端收益 $L_{\Gamma}(S_{T})$ 不变。<br />
+单一势运行博弈：对数配分函数 $W_{\eta}(S)=\eta^{-1}\log\sum_{i}\pi(i)e^{\eta S(i)}$，漂移博弈势的熵对应物——提升式极小极大分析的势函数装置[45]。当学习者玩吉布斯权重 $p=G_{\eta}(S)=\nabla W_{\eta}(S)$ 时，一轮改变势的量为 $W_{\eta}(S+z)-W_{\eta}(S)=\eta\,Q_{\eta}(p,z)$——轮次的中心化RCGF，仅此而已——自然的预算将其限制在 $\eta q_{t}$。<br />
+均衡器简化了解：无论状态如何且自然移动哪个可行方向，轮次的损失都被自然预算限制，所以轮次不交互，势从 $W_{\eta}(0)=0$ 望远镜到定理3.2的封闭形式。<br />
+序贯博弈否则通过从视野的向后递归来解决；针对均衡器，该递归塌缩为前向和。<br />
+博弈是受约束的：原始描述中没有熵惩罚，正则化只在对偶化终端比较器类后出现，这将博弈转变为累积分数上的熵FTRL更新（附录A.2.3）。<br />
+接下来定义的待定值是容许的贝尔曼松弛：它从每个状态支配博弈的值，并且在均衡器玩法下，其轮次减量在可行集上非负，并在自然的预算饱和回复时消失。<br />
+因此验证它需要一轮的不等式，每轮继承，而直接计算值需要向后递归（附录A.2.1）。<br />
+定理 3.2<br />
+（贝尔曼松弛与均衡器）。<br />
+定义<br />
+$U_{t}(S):=\frac{\Gamma}{\eta}+W_{\eta}(S)+\eta\sum_{s=t}^{T}q_{s},\qquad 1\leq t\leq T+1$<br />
+(3.2)<br />
+则 $U_{t}$ 是博弈3.1的容许贝尔曼松弛。<br />
+特别地，$\mathrm{Val}<em>{t}^{\eta,\Gamma}(S)\leq U</em>{t}(S)$，<br />
+且贝尔曼均衡器是吉布斯分布 $p=\rho_{\eta,S}=\nabla W_{\eta}(S)$。<br />
+此外，对于该 $p$ 的选择和任何可行的 $z$，<br />
+$W_{\eta}(S+z)-W_{\eta}(S)=\eta Q_{\eta}(p,z)\leq\eta q_{t}$<br />
+(3.3)<br />
+(3.3) 中的不等式 $\eta Q_{\eta}(p,z)\leq\eta q_{t}$ 是假设（自然的每轮预算）；等式 $W_{\eta}(S+z)-W_{\eta}(S)=\eta Q_{\eta}(p,z)$ 是精确的，是定理的内容。<br />
+在自然的最佳响应 $Q_{\eta}(p,z)=q_{t}$ 处，增量不等式是紧的，所以贝尔曼松弛 $U_{t}$ 在贝尔曼增量处闭合。<br />
+松弛仅在承诺的尺度恰好也是实现终端状态处 $L_{\Gamma}$ 的对偶优化器时才对博弈值等式成立，学习者无法提前保证这一点（附录A.2.1）。<br />
+特别地，累积预算遗憾上的贝尔曼界限 $\Gamma/\eta+\eta V$ 一般是严格的：精确的极小极大值可以更小，因为均衡弱于轮值极小极大性，封闭形式是均衡的结果。<br />
+自然对均衡器的最佳响应来自相同的增量。它是饱和预算的中心化移动，$Q_{\eta}(p,z)=q_{t}$，并与最差的比较器方向对齐：根据吉布斯变分等式（命题2.2和2.3），该比较器是先验通过 $\eta S$ 的吉布斯倾斜 $\rho_{\eta,S}$，饱和的 $z$ 是 $p$ 向其的指数族倾斜。这是第2.3节从自然方读取的稳健贝叶斯图景：最差的比较器是比较器类上逆温度 $\eta$ 的后验，均衡器跟踪的条件律沿相同的指数族运行。<br />
+推论 3.3<br />
+（预算固定尺度博弈的贝尔曼界限）。<br />
+如果自然仅受累积预算 $\sum_{t=1}^{T}q_{t}\leq V$ 约束，则对于每个 $\eta&gt;0$<br />
+$\mathrm{Val}<em>{1}^{\eta,\Gamma}(0)\leq\frac{\Gamma}{\eta}+\eta V,\qquad\text{所以}\qquad\inf</em>{\eta&gt;0}\mathrm{Val}<em>{1}^{\eta,\Gamma}(0)\leq\inf</em>{\eta&gt;0}!\left[\frac{\Gamma}{\eta}+\eta V\right]=2\sqrt{\Gamma V}$<br />
+(3.4)<br />
+下确界在 $\eta=\sqrt{\Gamma/V}$ 处由AM–GM达到（$\Gamma/\eta+\eta V\geq 2\sqrt{\Gamma V}$）。<br />
+在视野 $T=1$ 时，相同的陈述读作 $\Gamma/\eta+\eta q$，在 $\eta=\sqrt{\Gamma/q}$ 处最小化，等于 $2\sqrt{\Gamma q}$：预算对 $(\Gamma,q)$ 中的次高斯集中轮廓。<br />
+第一个不等式是跨轮求和的定理3.2；第二行记录了标准的AM–GM优化。<br />
+界限 $2\sqrt{\Gamma V}$ 是贝尔曼上包络；精确的极小极大值可以严格更小（见定理3.2后的备注），其量在两专家实例中封闭形式计算（命题A.6，附录A.3）。该松弛是短视野效应：在累积预算下，双方从有限视野起相遇，所以 (3.4) 在恒定尺度下以等式成立（命题4.2）。<br />
+3.2<br />
+单步传输等式<br />
+定理3.2的固定尺度值界限来自望远镜势；针对固定比较器 $\nu$ 跟踪相同的望远镜反而给出每轮核算。<br />
+它是 (1.1) 的恒定尺度情况，其中重温漂移消失，只有内在时间损失和终端传输保留；一般形式，尺度自由移动，是定理4.3。<br />
+命题 3.4<br />
+（单步传输等式）。<br />
+固定 $\eta&gt;0$，$p\in\Delta([K])$，和中心化 $z$。<br />
+定义 $p^{+}(i):=p(i)e^{\eta z(i)}/\sum_{j}p(j)e^{\eta z(j)}$。<br />
+则对于每个比较器 $\nu\in\Delta([K])$，<br />
+$\left\langle\nu,z\right\rangle=\eta Q_{\eta}(p,z)+\frac{\mathrm{KL}(\nu|p)-\mathrm{KL}(\nu|p^{+})}{\eta}$<br />
+(3.5)<br />
+在固定尺度轨迹上求和给出<br />
+$\left\langle\nu,S_{T}\right\rangle=\eta\sum_{t=1}^{T}Q_{\eta}(p_{t},z_{t})+\frac{\mathrm{KL}(\nu|\pi)-\mathrm{KL}(\nu|p_{T+1})}{\eta}$<br />
+(3.6)<br />
+这是固定尺度信息平衡。<br />
+即时损失是单尺度中心化RCGF $\eta Q_{\eta}$；余数作为终端相对熵传输。<br />
+从左边读 (3.5)：比较器在该轮的收益是学习者的信息损失，加上比较器在学习者信念上获得的地面，衡量为从比较器到它的相对熵下降。<br />
+3.3<br />
+作为中心化RCGF上界的方差和范围<br />
+中心化RCGF具有命题2.4的倾斜方差表示，其两个经典代理直接从中读取。作为逐点上界保留它们是<br />
+$Q_{\eta_{t}}(p_{t},c)$<br />
+$\leq\;(e-2)\,\mathrm{Var}<em>{p</em>{t}}(c)\qquad\text{(对于 $\eta_{t}\leq 1$ 且 $c\in[0,1]^{K}$),}$<br />
+(3.7)<br />
+$Q_{\eta_{t}}(p_{t},c)$<br />
+$\leq\;\mathrm{range}(c)^{2}/8$<br />
+第一个是非渐近熵版本二阶界限[15]（其更尖锐的 $\eta_{t}\downarrow 0$ 形式是推论2.5的方差极限等式 $Q_{\eta_{t}}\to\tfrac{1}{2}\mathrm{Var}$），第二个是Hoeffding引理。<br />
+用任一代理替换遗憾分解 (4.8) 中的精确 $Q_{t}$ 给出更宽松的遗憾上界，恢复经典的二阶和Hoeffding式包络。每个用关于 $p_{t}$ 下 $c$ 的尾部形状的更容易评估的量进行交易，只要 $c$ 在 $p_{t}$ 下非高斯，不等式就是严格的。<br />
+两个代理互不精炼：作为对自然的约束集，${(e-2)\mathrm{Var}<em>{p</em>{t}}(c)\leq\beta}$ 和 ${\mathrm{range}(c)^{2}\leq 8\beta}$ 都位于 ${Q_{\eta_{t}}(p_{t},c)\leq\beta}$ 内，但互不包含，哪个更小取决于 $p$ 有多集中（附录A.2.2）。<br />
+保留余数将范围松弛转变为等式：在固定速率和有界范围下，经典的Hedge界限是范围松弛博弈加上显式非负松弛，即终端后验不匹配以及Hoeffding代理与真RCGF增量之间的累积差距（附录A.2.2）。<br />
+学习者在看到 $c_{t}$ 之前选择 $\eta_{t}$，并且仅在该单一尺度下观察 $Q_{\eta}(p_{t},z_{t})$，留下映射 $\eta\mapsto Q_{\eta}(p_{t},z_{t})$ 的其余部分未观察。<br />
+不同的逆温度揭示不同的结构——小 $\eta$ 时类方差，大 $\eta$ 时类尾部——所以内在时间是算法依赖的，RCGF约束集 (A.9) 随 $\eta_{t}$ 移动，而范围约束是无尺度的。<br />
+调度必须均衡的权衡在一个实例中可见：对于 $p_{t}=(\tfrac{1}{2},\tfrac{1}{2})$ 下 ${-1,+1}$ 上的二元中心化移动，$Q_{t}(\eta)=\log\cosh(\eta)/\eta^{2}$ 从 $\eta\to 0^{+}$ 时的 $\tfrac{1}{2}$ 下降到 $\eta\to\infty$ 时的 $0$，即使轮次的内在时间损失 $\eta Q_{t}=\log\cosh(\eta)/\eta$ 上升。<br />
+3.4<br />
+精确的单轮值<br />
+推论3.3的贝尔曼证书是一个上界，它在单轮时已经是严格的。<br />
+单轮值在两个切片上精确已知——每个比较器预算下的两个专家（命题A.6），以及相对熵球是整个单纯形的足够大比较器预算下的每个 $K$（命题A.5）——并且在两个切片上它都严格低于贝尔曼包络 $\Gamma/\eta+\eta q$。<br />
+吉布斯玩法在每个状态均衡但不必是极小极大：在非均匀先验下，两者在第一轮就已经分开，从倾斜状态看，精确的极小极大玩法相对于吉布斯迭代过度倾斜，所以超过 $T=1$ 没有基本的封闭形式存活。<br />
+附录A.3全面发展了单轮博弈：自然方证书、两个精确值、将贝尔曼间隙限制在单一有界终端泛函的逐点对齐等式，以及精确的两轮计算。<br />
+4<br />
+改变尺度：重温、分配和主动约束<br />
+固定尺度博弈干净，因为一个贝尔曼势控制所有轮次。<br />
+可变尺度意味着切换贝尔曼势。<br />
+切换它们的损失是漂移项。<br />
+4.1<br />
+从每轮上限到累积预算<br />
+尺度在这里改变角色：博弈1.1的数据，它成为学习者自身的移动，逐轮选择，玩法固定在 (2.1) 的吉布斯参数化上，所以尺度是学习者唯一剩下的选择。伴随该提升，自然的难度在整个运行中一次性上限，而不是逐轮，这让它选择集中在哪里。<br />
+博弈 4.1<br />
+（自调整集中度博弈 $\mathcal{G}^{\mathrm{st}}(\Gamma,V)$）。<br />
+博弈1.1改变两部分。<br />
+学习者的移动：学习者还每轮选择尺度 $\eta_{t}&gt;0$（可预测地，从 $c_{1},\dots,c_{t-1}$），其玩法固定在 (2.1) 的吉布斯参数化 $p_{t}(i)\propto\pi(i)e^{-\eta_{t}C_{t-1}(i)}$ 上。<br />
+自然的约束：每轮上限 $q_{t}$ 被运行上的单一预算取代，<br />
+$\sum_{t=1}^{T}Q_{t}(c)$<br />
+$\leq V\qquad\text{(内在时间预算)},$<br />
+(4.1)<br />
+$\mathrm{KL}(\nu|\pi)$<br />
+$\leq\Gamma\qquad\text{(比较器预算，对于 $\nu\in\Delta([K])$)},$<br />
+(4.2)<br />
+$\pi$ 具有完全支持，收益 $R_{T}^{c}(\nu)=\sum_{t=1}^{T}\left\langle p_{t}-\nu,c_{t}\right\rangle$ 给自然。<br />
+收益规则不变：$R_{T}^{c}(\nu)=\left\langle\nu,S_{T}\right\rangle$（命题2.1），所以其在比较器预算 (4.2) 上的上确界是终端收益 $L_{\Gamma}(S_{T})$。<br />
+博弈的极小极大值为<br />
+$\mathrm{Val}\bigl(\mathcal{G}^{\mathrm{st}}(\Gamma,V)\bigr)=\inf_{(\eta_{t})\text{ 可预测}}\;\sup_{\begin{subarray}{c}\nu:\,\mathrm{KL}(\nu|\pi)\leq\Gamma\ c_{1:T}:\,\sum_{t}Q_{t}\leq V\end{subarray}}R_{T}^{c}(\nu)$<br />
+(4.3)<br />
+逐轮写，博弈4.1是交替极小极大<br />
+$\inf_{\eta_{1},p_{1}}\sup_{c_{1}}\cdots\inf_{\eta_{T},p_{T}}\sup_{c_{T}}\sup_{\nu}\sum_{t}\left\langle p_{t}-\nu,c_{t}\right\rangle$<br />
+在可预测的 $(\eta_{t},p_{t})$ 上，每轮移动受求和至多 $V$ 的分配 $(q_{t})$ 约束，以及预算 $\Gamma$ 内的终端比较器选择步骤。<br />
+固定尺度分析已经无视野依赖地界定该链。在任何恒定尺度 $\eta_{t}\equiv\eta$ 下漂移消失；在吉布斯响应下，轮次的势增量恰好是 $\eta_{t}Q_{t}$，被预算限制在 $\eta q_{t}$（定理3.2）；终端传输代价至多 $\Gamma/\eta$。因此<br />
+$\mathrm{Val}\bigl(\mathcal{G}^{\mathrm{st}}(\Gamma,V)\bigr)\;\leq\;\inf_{\eta&gt;0}\Bigl{\frac{\Gamma}{\eta}+\eta V\Bigr}=2\sqrt{\Gamma V}$<br />
+(4.4)<br />
+仅依赖于预算对 $(\Gamma,V)$ 的界限：在固定 $V$ 下加倍 $T$ 不改变它。全局约束 $\sum_{t}Q_{t}\leq V$ 让自然在轮次间不均匀分配难度；每轮上限 $Q_{t}\leq\beta$ 是 $V=T\beta$ 的情况，每轮最大值 $Q_{T}^{<em>}(c)=\max_{t}Q_{t}(c)$ 在定理4.4中作为集中在一轮的预算的边缘项出现。<br />
+该值从有限视野起在相同意义上是无视野的，所以固定 $T$ 与预算一起对自然的约束比看起来少。<br />
+命题 4.2<br />
+（恒定尺度值的视野无关性）。<br />
+固定 $\eta&gt;0$，$\Gamma\in(0,\Gamma_{\max})$，其中 $\Gamma_{\max}:=\max_{i}\log(1/\pi(i))$ 是相对熵球填满单纯形的预算，和 $V&gt;0$，并记 $\mathrm{Val}<em>{T}^{\eta}(\Gamma,V)$ 为博弈4.1在恒定尺度 $\eta</em>{t}\equiv\eta$ 下从 $S_{0}=0$ 开始的值。<br />
+则存在有限 $T_{0}(\eta,V,\Gamma)$ 使得<br />
+$\mathrm{Val}<em>{T}^{\eta}(\Gamma,V)=\frac{\Gamma}{\eta}+\eta V\qquad\text{对于每个 }T\geq T</em>{0}$<br />
+(4.5)<br />
+机制是自然必须同时做两件事：耗尽预算，并在吉布斯后验遇到最差比较器的球上结束。<br />
+一轮将它们刚性耦合，值因不匹配而不足；第二轮将它们解耦，从那里起两者可以一起满足。<br />
+附录A.4带有它所依赖的链特征，连同它优化的终端对齐泛函 $A_{\Gamma}(p):=\sup_{\nu:\,\mathrm{KL}(\nu|\pi)\leq\Gamma}\bigl[\mathrm{KL}(\nu|\pi)-\mathrm{KL}(\nu|p)\bigr]$。<br />
+它还带有两步门的封闭形式，即可变尺度改进恒定尺度的数值余量，以及迫使下文调度中在 $\eta_{t}=1$ 处剪裁的无界适应示例。<br />
+超过 $T_{0}$，包络 $2\sqrt{\Gamma V}$ 精确地是恒定尺度值，在 $K\leq 5$ 的每个计算实例中 $T_{0}=2$，均匀和倾斜先验 alike，$T_{0}=3$ 仅在饱和的几个百分点内。<br />
+因此 $T=1$ 时的严格性是单轮现象，不持续。<br />
+在 $T\geq 2$ 时仍然开放的是每轮上限博弈，其可达集仍通过 $V=T\beta$ 随视野增长（第11节）。<br />
+恒定尺度论证不为必须在线设置尺度而不使用 $V$ 的学习者提供保证；接下来证明的分解量化了该插件。<br />
+4.2<br />
+精确的可变温度分解<br />
+令 $\rho_{t,\eta}(i)\propto\pi(i)e^{-\eta C_{t}(i)}$。<br />
+定义<br />
+$A_{t}(\eta):=-\frac{1}{\eta}\log\sum_{i}\pi(i)e^{-\eta C_{t}(i)},\qquad D_{T}:=\sum_{t=1}^{T-1}\bigl(A_{t}(\eta_{t})-A_{t}(\eta_{t+1})\bigr)$<br />
+(4.6)<br />
+等价地，在中心化坐标中，<br />
+$D_{T}=\sum_{t=1}^{T-1}\bigl(W_{\eta_{t+1}}(S_{t})-W_{\eta_{t}}(S_{t})\bigr)$。<br />
+漂移 $D_{T}$ 是轮间切换势的代数损失。<br />
+沿轨迹望远镜每轮传输等式并分组切换点产生三个独立项：每轮中心化RCGF（来自每个测量尺度固定的步骤）、漂移（来自轮间重温）和终端相对熵传输（来自比较器与最终后验的比较）。<br />
+每项是干净的Bregman/相对熵差距；不需要二次变分代理。<br />
+分解及其符号规则在[7]中陈述；这里的博弈坐标，以及漂移的连续时间极限（命题C.1），是现在的发展。<br />
+非递增调度的符号规则 $D_{T}\leq 0$ 来自固定 $C_{t}$ 下 $A_{t}(\eta)$ 在 $\eta$ 上非递增。<br />
+这从变分形式 $A_{t}(\eta)=\min_{\nu\in\Delta([K])}{\left\langle\nu,C_{t}\right\rangle+\eta^{-1}\mathrm{KL}(\nu|\pi)}$ 可见：增加 $\eta$ 放松相对熵惩罚，所以最小值不能增加。<br />
+定理 4.3<br />
+（精确可变温度分解）。<br />
+对于先验重温更新 (2.1)，定义<br />
+$Q_{t}(c)=\frac{1}{\eta_{t}^{2}}\psi_{p_{t}}(-\eta_{t};c_{t}),\qquad V_{T}(c):=\sum_{t=1}^{T}Q_{t}(c),\qquad B_{T}(\nu):=\frac{\mathrm{KL}(\nu|\pi)-\mathrm{KL}(\nu|\rho_{T,\eta_{T}})}{\eta_{T}}$<br />
+(4.7)<br />
+则对于每个比较器 $\nu\in\Delta([K])$，<br />
+$R_{T}^{c}(\nu)=\sum_{t=1}^{T}\eta_{t}Q_{t}(c)+D_{T}+B_{T}(\nu)$<br />
+(4.8)<br />
+如果 $(\eta_{t})$ 非递增，则 $D_{T}\leq 0$。<br />
+该等式取代了吉布斯族的向后归纳：实现的遗憾按路径和对于每个可预测调度分解为三个项，然后分别界定，无需求解递归贝尔曼方程。<br />
+在固定温度下，序贯结构塌缩为单一对数配分：$D_{T}=0$，累积混合损失 $A_{T}(\eta_{T})$——贝叶斯/Hedge混合预测器的累积损失[25]——是终端对数配分函数，即先验 $\pi$ 和逆温度 $\eta$ 下数据的负对数贝叶斯边际似然。<br />
+等式 (4.8) 有两种读法。<br />
+原始读法是路径信息核算，$\sum_{t}\eta_{t}Q_{t}$，$D_{T}$，和 $B_{T}(\nu)$ 是沿实现轨迹产生的可预测记账量（图2）。<br />
+对偶读法在博弈4.1的贝尔曼松弛内评估相同的量，其中每轮吉布斯均衡器和自然的预算饱和移动形成值为 $\eta_{t}q_{t}$ 的松弛单步值的鞍点（定理3.2），$W_{\eta}$ 同时充当原始势和对偶值函数。<br />
+第4.4节从另一侧取对称对偶；重温漂移的连续时间Itô形式将两者作为单一精确势的遍历顺序包含（附录C）。<br />
+4.3<br />
+二阶均衡器与自然的分配<br />
+恒定尺度切片固定基准且不需要对调度的假设：每个恒定 $\eta$ 保证 $R_{T}^{c}(\nu)\leq\Gamma/\eta+\eta V$，预言机尺度 $\eta^{\star}(V)=\sqrt{\Gamma/V}$ 在 (4.4) 的AM–GM值 $2\sqrt{\Gamma V}$ 处均衡两个代价。<br />
+预言机尺度消耗了在线学习者没有的一个输入，总内在时间。<br />
+二阶均衡器是移除该输入的插件规则，用运行总数 $V_{t-1}(c)$——已揭示的内在时间部分——替换预言机尺度中的 $V$：固定 $\Gamma&gt;0$ 和 $C&gt;0$ 并令<br />
+$\eta_{t}=\begin{cases}1,&amp;V_{t-1}(c)=0,\[3.99994pt] \min\left{1,\ C\sqrt{\Gamma/V_{t-1}(c)}\right},&amp;V_{t-1}(c)&gt;0.\end{cases}$<br />
+(4.9)<br />
+在 $1$ 处的剪裁处理冷启动，调度可从实现数据计算，无需了解视野或 $V$。<br />
+(4.9) 的两个属性都不是假设；两者都是推导的。<br />
+首先，$V_{t-1}(c)$ 在 $t$ 上非递减，且 $v\mapsto\min{1,C\sqrt{\Gamma/v}}$ 非递增，所以尺度沿每个损失序列非递增——在温度术语中，调度单调变暖。<br />
+其次，定理4.3的符号规则然后使重温漂移成为学习者的收益，$D_{T}\leq 0$，所以遗憾受内在时间损失加传输限制。<br />
+调度通过沿整个路径将边际损失与边际传输的比率固定在 $2C^{2}$ 赢得其名，在 $C=1/\sqrt{2}$ 时逐轮相等（附录A.4.5）。<br />
+内在时间损失然后是下降尺度的黎曼和，在每个区间的左端点评估，所以它位于相应积分之上，并至多超过最大单一增量 $Q_{T}^{</em>}(c)$。<br />
+该括号是下方的双侧包络，其两侧之差是和与积分的离散化代价。<br />
+$V_{T}(c)$ 是沿实现轨迹的累积中心化RCGF，这与方差和是不同的量。小 $\eta$ 近似 $V_{T}\approx\tfrac{1}{2}\sum_{t}\mathrm{Var}<em>{p</em>{t}}(c_{t})$ 恢复经典二阶速率。远离该近似，当自然玩重尾中心化移动时，方差松弛博弈松散，而精确RCGF调度保持紧。<br />
+定理 4.4<br />
+（双侧平方根包络）。<br />
+令 $Q_{T}^{<em>}(c):=\max_{1\leq t\leq T}Q_{t}(c)$。<br />
+在 (4.9) 下，<br />
+$2C\sqrt{\Gamma V_{T}(c)}-C^{2}\Gamma\;\leq\;\sum_{t=1}^{T}\eta_{t}Q_{t}(c)\;\leq\;Q_{T}^{</em>}(c)+2C\sqrt{\Gamma V_{T}(c)}$<br />
+(4.10)<br />
+因此，如果 $\mathrm{KL}(\nu|\pi)\leq\Gamma$，<br />
+$R_{T}^{c}(\nu)\leq\Gamma+Q_{T}^{<em>}(c)+(2C+C^{-1})\sqrt{\Gamma V_{T}(c)}$<br />
+(4.11)<br />
+在 $C=1/\sqrt{2}$ 时，前导系数为 $2C+C^{-1}=2\sqrt{2}$：博弈4.1的每个可行序列产生 $R_{T}^{c}(\nu)\leq 2\sqrt{2}\,\sqrt{\Gamma V_{T}(c)}+O\bigl(\Gamma+Q_{T}^{</em>}(c)\bigr)$。<br />
+$Q_{T}^{<em>}(c)$ 上的单位系数以等式满足引理4.5的必要性下限；相同的包络，在上侧带有额外的 $C^{2}\Gamma$ 松弛，在[7]中建立。<br />
+该包络是精确等式 (4.8) 的界限形式：左侧和右侧夹住等式隔离的累积损失 $\sum_{t}\eta_{t}Q_{t}(c)$，上侧加上 $D_{T}\leq 0$ 和终端传输 $B_{T}(\nu)\leq\Gamma/\eta_{T}$，产生 (4.11)。<br />
+两侧之间的差距——边缘项 $Q_{T}^{</em>}(c)$ 和 $C^{2}\Gamma$ 初始化开销——是上述识别的离散化代价。<br />
+针对已知 $V$ 基准 (4.4)，恒定预言机尺度使用 $V$ 作为输入达到 $2\sqrt{\Gamma V}$；插件调度按路径达到相同的平方根速率，在实现的 $V_{T}(c)\leq V$ 处且没有 $V$ 作为输入，至多差边缘项。<br />
+正则化变体 $\eta_{t}=C\sqrt{\Gamma/(V_{t-1}(c)+\Gamma)}$ 用偏移 $\Gamma$ 替换在 $\eta_{t}=1$ 处的剪裁，并满足相同的包络，$V_{T}(c)$ 替换为 $V_{T}(c)+\Gamma$（附录D.3）。<br />
+它是第6节自博弈分类账中使用的形式。<br />
+调度的自然方是分配问题<br />
+$\max{\sum_{t}\eta_{t}Q_{t}:Q_{t}\geq 0,\ \sum_{t}Q_{t}\leq V}$。<br />
+针对预先承诺的非递增序列，这是通过前置加载解决的线性程序，首先填充大尺度的早期轮次。<br />
+针对自调整调度 (4.9)，黎曼和括号使损失对分配不敏感至边缘项——时间中的均衡器属性——所以自然剩余的杠杆恰好位于边缘，将其质量放在剪裁冷启动内或集中在一轮。<br />
+两种攻击都由下方的单轮见证量化。<br />
+引理 4.5<br />
+（边缘项必要性）。<br />
+定理4.4中的两个边缘项都由离散效应迫使，每个由单轮见证：初始化常数 $C^{2}\Gamma$ 精确达到，单跳见证显示 $Q_{T}^{\star}$ 系数不能低于 $1$。<br />
+4.4<br />
+主动约束博弈与压力目标<br />
+对偶序贯博弈反转轮次顺序并去掉自然的上限：<br />
+自然先移动，不受约束，<br />
+学习者通过选择使单步约束主动——以等式保持——在其选择压力目标处的尺度来回答。<br />
+目标是轮次的损失本身。<br />
+对于非 $p$-a.s.常数的中心化移动和任何目标 $b\in(0,\max_{i\in\mathrm{supp}(p)}z(i))$，存在唯一尺度 $\eta&gt;0$ 解<br />
+$\log\sum_{i}p(i)e^{\eta z(i)}=\eta b$<br />
+（命题A.7）；左边根据定义 (2.7) 是 $\eta^{2}Q_{\eta}(p,z)$，所以方程要求 $b=\eta\,Q_{\eta}(p,z)$，比率 $b/\eta$ 恰好是轮次的中心化RCGF。<br />
+学习者命名它本轮将承受的损失，方程返回交付它的尺度。<br />
+博弈A.8是博弈1.1改变三部分：自然先揭示其中心化移动，不施加限制，学习者以目标诱导的尺度回答，其更新固定为吉布斯迭代 $p_{t+1}(i)\propto p_{t}(i)e^{\eta_{t}z_{t}(i)}$。<br />
+终端收益不变，沿任何轨迹的比较器最差损失仍为 $L_{\Gamma}(S_{T})$（命题4.7）。<br />
+定理 4.6<br />
+（精确主动约束等式）。<br />
+在博弈A.8下，对于每个比较器 $\nu\in\Delta([K])$，<br />
+$\sum_{t=1}^{T}\eta_{t}\bigl(\left\langle\nu,z_{t}\right\rangle-b_{t}\bigr)=\mathrm{KL}(\nu|p_{1})-\mathrm{KL}(\nu|p_{T+1})$<br />
+(4.12)<br />
+等价地，令 $\kappa_{t}:=b_{t}/\eta_{t}$，<br />
+$\sum_{t=1}^{T}\eta_{t}\left\langle\nu,z_{t}\right\rangle=\sum_{t=1}^{T}\kappa_{t}\eta_{t}^{2}+\mathrm{KL}(\nu|p_{1})-\mathrm{KL}(\nu|p_{T+1})$<br />
+(4.13)<br />
+此外，$\kappa_{t}=\frac{1}{2}\mathrm{Var}<em>{p</em>{t}}(z_{t})+O(\eta_{t})$ 当 $\eta_{t}\to 0$，所以通常的二次变分惩罚是精确压力目标线搜索的小 $\eta$ 极限。<br />
+$\kappa_{t}$ 的小尺度展开是在这些坐标中读取的推论2.5，因为 $\kappa_{t}$ 是轮次的中心化RCGF。<br />
+两个对偶博弈因此共享单步传输等式。<br />
+在博弈A中，重温二阶博弈，学习者先承诺 $\eta_{t}$ 并从变暖中受益（$D_{T}\leq 0$ 对于非递增 $\eta_{t}$）。<br />
+在博弈B中，压力博弈，自然先揭示其移动，学习者解局部线搜索，受冷却青睐。<br />
+压力目标 $b_{t}$ 是操作变量，尺度 $\eta_{t}$ 是打开以满足它的对偶变量，这使提升（压力=每轮间隔）和集中（压力=每轮RCGF）处于相同立足点。<br />
+两种读法交换哪个量是原始的，哪个是拉格朗日乘子，留下均衡不变。<br />
+命题 4.7<br />
+（可变温度分类账的终端塌缩）。<br />
+以任何可预测调度 $(\eta_{t})<em>{t=1}^{T}$ 运行可变温度博弈（博弈1.1），并令 $S</em>{T}=\sum_{t=1}^{T}z_{t}$ 为实现的终端分数，$\rho_{T,\eta_{T}}(i)\propto\pi(i)e^{\eta_{T}S_{T}(i)}$ 为终端后验。<br />
+以 (4.8) 中的 $\sum_{t}\eta_{t}Q_{t}$，$D_{T}$，和 $B_{T}(\nu)$，<br />
+$\sum_{t=1}^{T}\eta_{t}Q_{t}+D_{T}=W_{\eta_{T}}(S_{T})$<br />
+(4.14)<br />
+因此比较器最差遗憾仅依赖于实现状态，<br />
+$\sup_{\nu:\,\mathrm{KL}(\nu|\pi)\leq\Gamma}R_{T}^{c}(\nu)=L_{\Gamma}(S_{T})$<br />
+(4.15)<br />
+三个视野项因此不独立：针对最差比较器，它们望远镜到仅依赖于实现状态的函数上，所以 $D_{T}$ 由状态和损失固定，调度仅通过它让自然达到的终端状态进入最坏情况遗憾。<br />
+相同的塌缩对压力博弈成立，所以博弈A和B沿任何共同分数轨迹给出相同的比较器最差遗憾，视野比较 $\mathrm{Val}(\mathrm{B})\leq\mathrm{Val}(\mathrm{A})$ 简化为可达性。<br />
+5<br />
+比较器类、集中度与幸运度<br />
+改变比较器类、学习者评分的充分统计量或终端事件，将相同的博弈转变为分位数和跟踪遗憾、侧信息和乐观、事件限制集中度（吉布斯条件作用、Sanov、Chernoff、Cramér）、随机幸运度（在简单损失序列上锐化的保证）和置信集。这些都是由终端收益 $L_{\Gamma}$ 打包的终端切片。<br />
+5.1<br />
+改变比较器类<br />
+分位数遗憾是最简单的比较器改变。<br />
+如果 $\pi$ 均匀且 $\nu_{A}$ 在集合 $A\subseteq[K]$ 上均匀，则 $\mathrm{KL}(\nu_{A}|\pi)=\log(K/|A|)$。<br />
+每个PAC-Bayes/集中度陈述通过选择 $A$ 作为好专家的事后集合，立即产生相应的固定预算分位数陈述。<br />
+一个简单的二元元控制器使保证在所有分位数上同时成立：每个预算 $\Gamma_{j}=2^{j}$ 一个工作者副本，由玩工作者预测混合的对数预算控制器聚合。这增加了 $O(\log\log\log K)$ 的控制器项加上控制器自身预算和内在时间中的控制器内在时间项 $O(\sqrt{\Gamma^{\mathrm{ctl}}V_{T}^{\mathrm{ctl}}})$。<br />
+达到饱和预算的二元网格有 $O(\log\log K)$ 个工作者，可加代价是它们上均匀先验的比较器复杂度，在控制器级别运行的定理4.4包络下。<br />
+动态比较器路径 $\nu_{1},\dots,\nu_{T}$ 由相同的微积分处理：<br />
+$R_{T}^{c,\mathrm{dyn}}(\nu_{1:T})=D_{T}+B_{T}(\nu_{T})+\sum_{t=1}^{T}\eta_{t}Q_{t}(c)+\sum_{t=1}^{T-1}\left\langle\nu_{t+1}-\nu_{t},C_{t}\right\rangle$<br />
+(5.1)<br />
+只有最后一项是新的。<br />
+它在被界定之前是精确的，所以切换/跟踪遗憾作为比较器路径传输项进入，对于 $[0,1]$ 中的损失由路径的总变分控制，<br />
+$|\sum_{t=1}^{T-1}\left\langle\nu_{t+1}-\nu_{t},C_{t}\right\rangle|\leq 2\sum_{t=1}^{T-1}t\,\mathrm{TV}(\nu_{t+1},\nu_{t})$<br />
+在约定 $\mathrm{TV}(p,q)=\tfrac{1}{2}|p-q|<em>{1}$ 下。<br />
+5.2<br />
+作为设计选择的充分统计量<br />
+集中度博弈相对于学习者评分的任何充分统计量定义，其背后没有环境损失向量；改变该选择将侧信息、乐观、专家专家、稀疏性和有界影响稳健性恢复为一个博弈的特例。<br />
+如果学习者将贝叶斯应用于原始损失、乐观残差、重要性加权估计、带符号间隔、单侧短缺或有界影响变换，则产生的状态、内在时间和移动约束是真正不同的。<br />
+乐观对可预测基线评分残差。假设原始损失是 $\ell</em>{t}$ 且可预测基线 $m_{t}$ 可用。<br />
+设 $c_{t}=\ell_{t}-m_{t}$ 产生<br />
+$\sum_{t=1}^{T}\left\langle p_{t}-\nu,\ell_{t}\right\rangle=D_{T}+B_{T}(\nu)+\sum_{t=1}^{T}\eta_{t}Q_{t}(\ell-m)+\sum_{t=1}^{T}\left\langle p_{t}-\nu,m_{t}\right\rangle$<br />
+(5.2)<br />
+只有残差序列 $\ell_{t}-m_{t}$ 贡献于内在时间损失；最后一项记录可预测不匹配。<br />
+慢时间漂移、乐观博弈玩法、基于模型的预测和鞅补偿器都是实例。<br />
+六个进一步的选择遵循相同的模板，每个作为每轮分数的累积统计量 $C_{t-1}(i)$ 进入熵FTRL更新，每个都有其自身后果：置信加权分数 $\sum_{s<t}\beta_{s}(i)\ell_{s}(i)$ 给出软专家，即置信率专家的框架[16]和一些自适应分析的侧信息装置。
+可预测偏移给出方差校正；超额损失正部 $e_{t}^{+}(i):=(\left\langle p_{t},c_{t}\right\rangle-c_{t}(i))_{+}$ 寻求稀疏性，$R_{T}^{c}(\nu)\leq\sum_{t}\left\langle\nu,e_{t}^{+}\right\rangle$ 且 $\mathrm{range}(e_{t}^{+})\leq\mathrm{range}(e_{t})$；Winsorization或Catoni变换[14]限制重尾上的损失。
+在每种情况下 $p_{t}$ 是给定选择统计量的最大熵分布，$Q_{t}$ 是相应指数族中新观察的RCGF，不匹配项精确记录原始损失上的博弈与变换上的简化博弈有何不同。
+重尾分数需要有界影响变换。
+具有无界坐标的原始移动可将单轮RCGF发送到 $+\infty$，在截断分数上运行相同的博弈恢复有限轮次，同时保持每个等式不变。
+截断然后作为比较器收益中的精确加性偏差携带。
+表3收集了它们；专家聚合也扩展，通过相同类型的极小极大博弈在未标记数据上结合集成的预测[9, 10]。
+框架吸收每一个作为充分统计量选择，不需要单独的算法。
+5.3
+事件限制终端博弈、吉布斯条件作用与Sanov
+终端支持问题可将比较器限制为事件 $A\subseteq[K]$，其中标准形式使用相对熵球。
+命题 5.1
+（事件限制终端博弈）。
+固定事件 $A\subseteq[K]$ 和 $\eta>0$。<br />
+则<br />
+$\sup_{\nu\in\Delta([K]),\ \mathrm{supp}(\nu)\subseteq A}\left{\left\langle\nu,S\right\rangle-\frac{1}{\eta}\mathrm{KL}(\nu|\pi)\right}=\frac{1}{\eta}\log\sum_{i\in A}\pi(i)e^{\eta S(i)}$<br />
+(5.3)<br />
+等价地，<br />
+$\frac{1}{\eta}\log\sum_{i\in A}\pi(i)e^{\eta S(i)}=\frac{\log\pi(A)}{\eta}+\frac{1}{\eta}\log\mathbb{E}<em>{i\sim\pi(\cdot\mid A)}e^{\eta S(i)}$<br />
+(5.4)<br />
+优化器是条件先验 $\pi(\cdot\mid A)$ 的吉布斯倾斜。<br />
+这是博弈形式的离散吉布斯条件作用原理——条件于事件，推断从条件于该事件的先验进行：事件代价是 $-\log\pi(A)$，事件内的条件集中由与之前相同的对数配分处理。<br />
+相同的比较器类几何支撑经典的大偏差界限。<br />
+在类型（经验分布）的单纯形 $\Delta([K])$ 上，闭集 $E$ 具有经验测度指数 $\inf</em>{\nu\in E}\mathrm{KL}(\nu|p)$，即 $L_{\Gamma}$ 解的相同比较器类变分问题的拉格朗日对偶（命题2.2）；当 $E$ 是面 ${\nu:\mathrm{supp}(\nu)\subseteq A}$ 时，对偶具有命题5.1的封闭形式。<br />
+Chernoff、Cramér、吉布斯条件作用和Sanov然后每个都是比较器类集中度博弈，共享一个推导，仅在进入位置不同（表1；标准处理见[26]）。<br />
+固定三元组 $(\pi,S,A)$，比较器类对偶提供变分值，命题5.1的封闭形式在面上评估它，优化尺度将其转换为速率函数——一个论证，在两个命题中证明一次，是博弈对每一行的全部贡献。<br />
+只有从速率函数到概率陈述的闭合步骤在行间不同，每个都是经典的：Chernoff和Cramér的倾斜后指数马尔可夫，I投影的条件极限定理，Sanov的 $n$ 缩放与闭包和内部条件（附录A.5）。<br />
+经典界限<br />
+三元组 $(\pi,S,A)$<br />
+博弈量<br />
+经典步骤，视为给定<br />
+Chernoff，iid 和 $\bar{X}<em>{n}$<br />
+$\pi=P$，$S=nc$，$A={i:c(i)\geq t}$<br />
+变分倾斜<br />
+$\eta^{-1}\log\sum</em>{i}P(i)e^{\eta nc(i)}$<br />
+$=W_{\eta}(nc)$<br />
+（命题2.2）<br />
+马尔可夫/指数倾斜<br />
+$\Rightarrow\Pr(\bar{X}<em>{n}\geq t)\leq e^{-nI(t)}$<br />
+Cramér 大偏差<br />
+相同 $(\pi,S,A)$<br />
+拉格朗日对偶<br />
+$\inf</em>{\nu:\,\mathbb{E}<em>{\nu}X\geq t}\mathrm{KL}(\nu|P)=I(t)$<br />
+（命题2.2）<br />
+倾斜律表示，指数马尔可夫<br />
+I投影/条件极限<br />
+吉布斯条件作用于 $\mathrm{supp}\subseteq A$<br />
+$\eta\downarrow 0$ 优化器<br />
+$=$ $\pi$ 到 $A$ 上的I投影<br />
+（命题5.1）<br />
+条件极限定理<br />
+有限状态 Sanov<br />
+类型 $\Delta([K])$，$\pi=P$，$E$ 闭<br />
+拉格朗日对偶<br />
+$\inf</em>{\nu\in E}\mathrm{KL}(\nu|P)$<br />
+（命题2.2）<br />
+$n$ 缩放，闭包/内部条件<br />
+表 1：<br />
+作为一个比较器类终端博弈的经典界限。每个固定三元组 $(\pi,S,A)$；命题2.2的比较器类对偶提供变分形式，在面上取命题5.1的封闭形式；剩余成分是标准大偏差步骤。共享成分是条件基础测度的吉布斯/I投影。附录A.5将每行从博弈带到经典陈述，包括闭合步骤。<br />
+5.4<br />
+比较器中心幸运度<br />
+幸运度保证是其遗憾界限适应实现损失序列难度的保证，在低噪声实例上比最坏情况速率更尖锐。<br />
+对于 $[0,1]$ 中的损失，精确内在增量可由比较器中心二阶矩上界。<br />
+命题 5.2<br />
+（比较器中心二阶包络）。<br />
+假设 $c_{t}(i)\in[0,1]$ 且 $\eta_{t}\in(0,1]$。<br />
+定义 $\Psi_{t}(\nu):=\sum_{i=1}^{K}p_{t}(i)(c_{t}(i)-\left\langle\nu,c_{t}\right\rangle)^{2}$。<br />
+则<br />
+$Q_{t}(c)\leq(e-2)\Psi_{t}(\nu)$<br />
+(5.5)<br />
+因此对于非递增调度 $(\eta_{t})$，<br />
+$R_{T}^{c}(\nu)\leq\eta_{T}^{-1}\mathrm{KL}(\nu|\pi)+(e-2)\sum_{t=1}^{T}\eta_{t}\Psi_{t}(\nu)$。<br />
+对于 $[0,1]^{K}$ 中均值 $\mu=\mathbb{E}c_{1}$ 的 iid 损失 $c_{1},c_{2},\dots$，比较器 $\nu\in\Delta([K])$ 在常数 $\kappa_{\nu}\geq 0$ 下满足低噪声条件，当对于每个 $i\in[K]$，$\mathbb{E}[(c_{t}(i)-\left\langle\nu,c_{t}\right\rangle)^{2}]\leq\kappa_{\nu}(\mu(i)-\left\langle\nu,\mu\right\rangle)$。<br />
+定理 5.3<br />
+（固定速率随机幸运度）。<br />
+假设上述低噪声条件具有常数 $\kappa_{\nu}$，并以 $\eta\in(0,1]$ 在复合损失上运行固定速率Hedge。<br />
+如果 $(e-2)\kappa_{\nu}\eta&lt;1$，则<br />
+$\mathbb{E}R_{T}^{c}(\nu)\leq\frac{\mathrm{KL}(\nu|\pi)}{\eta(1-(e-2)\kappa_{\nu}\eta)}$<br />
+(5.6)<br />
+特别地，选择 $\eta=\min{1,[2(e-2)\kappa_{\nu}]^{-1}}$ 给出常数-$T$期望遗憾界限：<br />
+$\mathbb{E}R_{T}^{c}(\nu)\leq 2(1+2(e-2)\kappa_{\nu})\mathrm{KL}(\nu|\pi)$。<br />
+相同现象在二阶调度下存活：在 (4.9) 下，<br />
+$\mathbb{E}R_{T}^{c}(\nu)\leq 2\Gamma+2\,\mathbb{E}[Q_{T}^{<em>}(c)]+(2C+C^{-1})^{2}(e-2)\kappa_{\nu}\Gamma$<br />
+(5.7)<br />
+所以困难和简单序列不是不同的定理，而是相同博弈的不同实现不动点。<br />
+低噪声条件在 $\nu=\delta_{k^{</em>}}$ 处匹配标准点质量条件，并且仅当比较器绑定最小均值 $\mu^{*}=\min_{j}\mu(j)$ 时才以有限常数可满足，所以定</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 在线学习, 贝叶斯更新, 集中度不等式, 遗憾分解, 零和博弈</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
