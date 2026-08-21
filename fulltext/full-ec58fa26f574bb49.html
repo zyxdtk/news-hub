@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自提示与跨模型共识实现LLM文献数据提取 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">自提示与跨模型共识实现LLM文献数据提取</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-19</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.19025" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Self-prompting and cross-model consensus enable reproducible data extraction from scientific literature with large language models</h4>
+            <p><strong>中文摘要：</strong> 本研究探讨了利用前沿大语言模型（LLM）从科学文献中提取高度上下文化数据的性能。通过四种递进工作流发现：在专家提示下LLM提取表现接近人类水平；LLM能自行编写近乎专家级的提示；自主文献发现易遗漏或捏造引用；结合人类在环可创建高质量新数据集。研究强调跨模型共识与重复提取对于质量控制至关重要，为可重复的LLM辅助科学数据整理提供了实用框架。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p><strong>自提示与跨模型共识实现利用大语言模型从科学文献中提取可重复数据</strong><br />
+Valentin Romanov1, Monique Bax2,3, Steven Niederer1,4<br />
+1. 英国伦敦帝国理工学院医学院国家心肺研究所<br />
+2. 英国剑桥大学剑桥干细胞研究所，JeDrey Cheah生物医学中心，剑桥生物医学园区<br />
+3. 英国剑桥大学医学系<br />
+4. 美国加利福尼亚州斯坦福大学斯坦福心血管研究所心血管医学部</p>
+<p><strong>摘要</strong><br />
+从研究文章中准确提取细致且具上下文的数据既费力又耗时。在此，我们研究了基于浏览器的前沿大语言模型（LLM）在提取高度上下文化信息方面的表现。我们展示了四种逐步升级的工作流程：1）在给定专家精心设计的提示和研究文章时，大多数前沿LLM在数据提取方面表现良好，但在解释科学背景和细微差别时可能会遇到困难；2）在给定简单指令时，LLM能够编写自己的提示，其效果几乎与专家编写的提示一样好；3）自主发现研究文献很困难，智能体要么遗漏要么捏造参考文献；4）LLM可以根据已发表的指南创建与人类专家评判高度匹配的新数据集，但仍需要人类在环。总之，这些发现定义了一种可审计的劳动分工：专家指定证据标准，模型交叉检查重复提取的结果，研究人员解决有争议的案例，为在不放弃专家监督的情况下扩展科学数据整理提供了一条实用途径。</p>
+<p><strong>引言</strong><br />
+从非结构化的研究文章中提取数据既耗时又费力。研究人员可能会花费数月时间梳理文献以寻找已发表参数的来源，即便如此，提取错误、计算失误和对研究细节的误解也可能污染结果1。虽然大语言模型（LLM）可以显著改善这一过程，并有望提高参数提取的准确性和效率2，但关于如何做好这项工作的通用原则仍在开发中3,4。随着模型能力的发展，有必要考虑在何处使用LLM。应用程序编程接口（API）调用与浏览器会话之间存在显著差异。浏览器用户交互的不是孤立的LLM（具有定义系统提示、温度等参数的能力），而是一个部署好的产品，该产品可能结合了隐藏指令、文档处理、检索、上下文记忆、内容审核和提供商控制的工具。LLM的能力和性能也会随着界面更新和计算资源分配而变化。直接比较表明，即使Web用户界面（WebUI）和API暴露的 ostensibly 是相同的模型系列，它们也可能产生不同的行为5,6。因此，通过API获得的结果不能自动推广到面向消费者的Web产品中。</p>
+<p>不仅在界面层面存在差异，LLM的性能还取决于其接收的提示和给定的上下文。Liu等人（2025年）发现，长而详细的提示能改善金融任务的表现7，而Levy等人（2024年）发现较长的提示会降低性能8。Liu等人（2023年）还表明，提示长度和关键信息的位置会影响结果9，而Du等人（2025年）发现长度比提示结构更重要10。诸如APE AI和OPRO等自动化方法可以产生高质量的提示，但通常需要标记示例或其他策略来判断性能11–16。即使有扎实的提示和受控的上下文17，LLM在寻找相关研究文章和准确从中提取数据方面仍可能失败。Clark等人（2025年）发现，LLM搜索工作流遗漏了68–96%的相关研究，并错误提取了4–31%的条目18。尽管新的基准测试和深度研究方法测试或结合了搜索、引文检查和数据提取19–23，但它们在真实研究任务中的表现证据仍然有限24–26。此外，自动化文献提取必须准确、可重复，并且能够与明确的参考标准进行评估。这具有挑战性，因为论文经常省略关键方法，例如，研究发现临床前研究平均报告的《动物研究：体内实验报告》（ARRIVE）条目不到推荐数量的一半27。除了人类的遗漏，LLM的输出在不同运行和不同模型之间也会有所变化。改善LLM输出的一种方法是获得共识28，其中LLM之间的分歧实际上可能有助于标记出需要人类审查的困难案例29–31。</p>
+<p>尽管LLM已被用于大规模评估临床试验报告32，并支持机器学习和自然语言处理领域的研究报告和可重复性核对清单33,34，但由于缺乏如何开发提示、如何使用不同的前沿模型以及如何成功引入人类在环的示例，目前尚不清楚LLM在其他领域能多准确、多一致地应用详细的报告指南。在此，我们评估了四种策略，这些策略逐步提高模型在从非结构化研究文章中提取细微信息时的自主性。通过大多数研究人员和公众访问LLM所使用的浏览器界面，我们展示了一系列战术和技术，可显著改善LLM在具有挑战性的数据提取任务中的输出。我们表明：（1）在专家设计的提示和固定研究语料库下，前沿LLM的提取性能接近人类水平；（2）LLM可以起草接近专家水平的提示，但仍需要人类在环提供指导和细微差别；（3）深度研究智能体差异显著，大多数偏离了我们要求它们复制的真实数据集；以及（4）使用此处展示的技术，人类在环工作流程可用于引导LLM在一个不相关的科学领域生成新数据集。总之，我们的发现提供了一个实用框架，用于决定哪些工作可以委托给LLM，以及哪些地方专家判断（人类在环）仍然必不可少。</p>
+<p><strong>结果与讨论</strong><br />
+<strong>使用LLM进行数据提取和整理</strong><br />
+作为初步案例研究，我们使用了Niederer等人（2006年）的综述，该综述整理了多项实验研究的测量结果，这些研究测量了Ca2+与心肌肌钙蛋白C的结合亲和力，用于为心脏收缩的生物物理模型提供信息35（图1a）。重建该综述中的证据基础特别具有挑战性，因为许多来源可追溯到1980年代，通常有不完整或简短的方法部分，使用特定时代的细微科学术语，以及存在于表格和图表中的数据。对于LLM来说，要识别正确的测量值，它必须理解该测量的实验背景，包括pH值、温度、[Mg²⁺]浓度、蛋白质形式以及测量方法。增加这一挑战的是如何有效地使用LLM来提取这些数据。性能取决于提示中的细节和指令水平、提示是否适合该模型、访问方式（本地 vs API vs 浏览器）、模型层级（免费和付费模型在能力和上下文限制上有所不同）、模型是否适合该任务，以及LLM是非确定性的并且可能对同一查询返回不同答案的事实（图1b）。</p>
+<p>在此，我们使用七种前沿LLM：GPT-5.5、Opus 4.7、Gemini 3.1 Pro、Qwen3.7、Kimi K2.6、GLM-5.1和DeepSeek v4，开发并测试了四种复杂度递增的策略，每种策略都将更多任务委托给模型。首先，每个模型接收相同的人类专家精心设计的提示，如同大多数研究一样，检索结果以五次运行的中位数或最佳值进行评分（图1c）。其次，我们测试LLM是否能设计出专家级的提示，从一个仅传达研究者意图的“知情用户提示”开始（图1d）。第三，我们完全移除了提示工程，并让深度研究智能体完成整个工作流程，即查找参考文献以及提取数值（图1e）。最后，我们创建了一个新数据集。我们利用已发表的指南和知情用户提示生成特定于LLM的主提示，然后使用该提示从不相关领域的文章中提取数据。我们将其与向研究人员征集的注释进行比较，重点关注人类专家在何处以及如何偏离LLM的发现（图1f）。</p>
+<p><strong>图1：LLM辅助文献提取的框架和研究设计。</strong><br />
+a，传统手动数据提取工作流。研究人员阅读全文，在文本、表格和图表中定位相关测量值，记录每次测量的实验背景，并协调单位和报告规范以生成结构化数据集。<br />
+b，通用LLM辅助工作流。通常，文章和专家精心设计的提示被提供给LLM以生成结构化数据集。然而，关于如何做好这项工作仍存在许多问题。<br />
+c，首先，我们探索人类专家提示在多个前沿LLM中的表现，并将生成的数据集与专家策划的参考数据集进行比较。<br />
+d，其次，我们调查前沿LLM如何自行编写提示并将其聚合为单一主提示，以及该提示在数据提取中相对于专家策划数据集的表现。<br />
+e，接下来，我们使用自主深度研究智能体来识别相关的主要文献并提取目标参数，将性能与真实数据集进行比较。<br />
+f，最后，我们将c、d和e中的概念应用于不相关的科学领域以生成新数据集。使用已发表的指南和用户提示生成三个模型编写的提示和一个聚合的主提示，之后将LLM生成的数据集与人类评判进行比较。</p>
+<p><strong>专家精心设计的提示 vs 前沿模型</strong><br />
+我们询问前沿LLM是否能够遵循详细的、专家编写的提示来可靠地提取科学数据。该提示（支持性提示1）指定了要查找什么信息、如何组织信息以及如何引入研究人员在环。我们将此提示连同18篇研究文章分别提供给每个模型，每次提取重复五次（图2a）。对于每次提取，我们检查模型是否正确报告了七条信息：物种、温度、肌钙蛋白制备、测量方法、镁浓度以及两个亲和力值Kd和K。GPT-5.5表现最好，正确报告了95.7%的预期值和实验条件，其次是Gemini 3.1 Pro和Opus 4.7，分别为91.4%和90.6%（图2b）。排名前三的模型（GPT、Opus和Gemini）的平均准确率为92.6 ± 2.7%，而其他四个模型为86.4 ± 3.1%。GLM-5.1是表现最好的开源模型。我们注意到模型能力正在迅速提升，例如，DeepSeek V4比DeepSeek V3.2高出17.6个百分点，部分原因是更好的指令遵循能力（支持性图S1）。值得注意的是，在提取数据并将其与真实情况（表1）进行比较的过程中，LLM能够识别出原始数据集中的几个错误（支持性表3）。这些错误包括错误的Kd到K转换因子、不正确的温度（25°C至室温）以及错误关联的镁值。这些错误很容易被发现，因为几乎所有LLM都偏离了真实情况。使用多个LLM在多次运行中双重检查提取质量被证明是非常有效和高效的。LLM在从研究文章中提取亲和力数据方面表现良好（图2c）。排名靠前的模型平均为97.1 ± 2.6%，而其余模型为93.0 ± 4.1%，其中GPT-5.5达到99.5%。因此，模型通常能够找到或计算出亲和力值，但在准确确定该值属于哪种生物制备和实验条件方面可靠性较低。模型还经常返回无法与参考数据集匹配的额外结果（图2d）。Kimi K2.6每个预期结果平均多提取了3.6个条目，但仅恢复了其中的89.2%；Opus 4.7产生的额外条目最少（1.9个），恢复了95.4%；而GPT-5.5几乎恢复了所有内容（99.5%），但仍产生了2.7个额外条目。这些额外输出是直接从文章中提取的数据，但并未回答原始问题。模型在提取数据时采取了保守策略，提取的数据多于精准查找所请求的信息。因此，更多的输出并不一定意味着更好的准确性，它通常意味着研究人员必须手动检查更多的材料。即使在前沿模型中，一致性也是一个问题（图2e）。在七个模型中，只有四分之三（76.4%）的提取参数在所有五次运行中都是正确的，4.4%在所有五次运行中都是错误的，19.2%在正确和错误之间变化。排名前三的模型在87.7%的参数上，在所有五次运行中给出了相同的正确答案，而其他四个模型为67.9%（表1）。单次运行可能会歪曲模型的能力。Kimi K2.6在一次运行中达到了95.2%，而在其他四次运行中仅为78.4–80.2%。因此，我们建议每个提示至少运行五次，并报告五次运行的多数结果。有趣的是，LLM能够在99.0%和99.8%的情况下正确找到并提取数值参数（K和Kd），但在需要更深推理才能确定正确的肌钙蛋白制备时，仅在80.7%的情况下做到了这一点（图2f）。提取难度在18篇文章中分布不均（图2g）。平均得分最低的是Hofmann和Fuchs（1987；ref33；62.4 ± 30.1%）、Pan和Solaro（1987；ref28；66.1 ± 29.8%）以及Parsons等人（1997；ref29；75.5 ± 8.0%；平均值 ± 标准差）。在Hofmann和Fuchs的文章上，Opus 4.7得分为0%，而Kimi K2.6为94.3%；在Pan和Solaro的文章上，Gemini 3.1 Pro得分为17.1%，而GPT-5.5为100%。Parsons等人的文章难度更为一致，得分范围从60.0%到82.9%。三篇最难的论文（ref28：Pan和Solaro（1987），ref29：Parsons等人（1997）和ref33：Hofmann和Fuchs（1987））36–38要求模型对在剥膜纤维或天然肌丝中进行的测量进行推理，区分在不同镁浓度下获取的数据，并从方法中推断每种测量是如何进行的，有时还需要计算未在表格中直接报告的亲和力。虽然提取质量在很大程度上取决于模型的“智能”和精心设计的提示，但它也取决于文章本身，例如，在最难的论文中，相同的亲和力由两种不同的方法报告，参考值出现在正文中，而表格中列出了其他有时相互矛盾的常数，并且下载的两篇论文仅以图像形式提供，其中光学字符识别（OCR）破坏了指数（图2g）。另一个有趣的失败点是，1980年代撰写的文章使用了不同的命名法，这对于像Opus 4.7这样专门训练以忠实遵循指令的LLM来说是个问题，如果提示没有考虑到这一点的话（图2g中使用的研究文章列表——支持性信息）。</p>
+<p><strong>图2：前沿LLM从主要研究文章中提取Ca2+结合数据的性能。</strong><br />
+a，基准工作流程概述。将专家策划的Ca2+结合数据提取提示连同每篇文章一起提供给每个模型，模型输出经过清理、对齐到固定模式，并与校正后的真实数据集进行评分。<br />
+b，所有评分字段的整体提取准确率。大点表示五次独立运行中模型的平均准确率；小点表示每篇文章的表现。<br />
+c，仅限于定量亲和力字段Kd和K的准确率。<br />
+d，提取效率，以真实数据行召回率和每个真实数据行生成的额外行数来衡量。<br />
+e，重复运行的错误分类。“始终正确”表示在所有五次运行中均正确提取的字段，“系统性”表示在所有五次运行中均遗漏的字段，“随机”表示跨运行提取不一致的字段。<br />
+f，跨模型的参数级难度，显示诸如肌钙蛋白上下文等上下文字段比数值亲和力字段更难提取。<br />
+g，按文章难度的热图，显示五次运行中每个文章-模型对的平均准确率。粉色表示较低准确率，蓝色表示较高准确率。面板b-g展示了7个前沿模型在18篇主要研究文章上的评估，每篇文章进行5次独立运行。</p>
+<p><strong>表1。</strong> 选定模型在五次独立提取运行中的准确率。每次运行均与策划的真实数据进行评分。Best of 5是任何单次运行中达到的最高准确率。5-Run Majority报告了模型在至少3次（共5次）独立运行中提取正确值的预期真实数据字段的比例。Spread (pp)是模型最佳和最差单次运行准确率之间的差异，以百分点表示，显示了运行间的变异性。色阶：蓝色，最高准确率；红色，最低准确率。</p>
+<p><strong>LLM自行编写的提示和主提示</strong><br />
+接下来，我们让每个模型设计自己的数据提取提示。指令要求进行两次准备性搜索：一次是针对适合该模型的提示工程实践，另一次是针对相关文献中特定领域的术语。我们还指定了数据、如何格式化输出表以及如何证明LLM发现的任何内容（支持性提示2）。每个模型生成三个候选提示，然后将它们组合成一个单一的主提示（支持性提示3），该主提示在五次独立运行中应用于跨越图2g中定义的“简单”、“中等”和“困难”类别的八篇研究文章（图3a）。我们评估了两件事：每个主提示在多大程度上重现了专家设计的黄金标准提示（见图2），以及模型使用它提取数据的准确程度。每个提示都根据一个包含38个组件的评分标准进行评分，涵盖任务定义、来源优先级、所需列和引文、计算、特殊情况、示例和冲突解决指令，这些都在专家策划的提示中找到。将提示聚合为单一主提示提高了每个模型的评分标准得分。GPT-5.5得分最高，从其三个单独提示的平均82.9%提高到其主提示的88.2%；Gemini 3.1 Pro和Kimi K2.6增幅最大，分别为11.4和10.5个百分点（图3b）。然后，我们将每个主提示应用于这八篇文章。GPT-5.5的整体准确率最高，为90.3%，Opus 4.8次之，为85.5%，其他五个模型在57.8%至74.5%之间（图3c）。结合的缔合和解离常数准确率超过了每个模型的整体准确率，GPT-5.5达到98.1%（图3d）。GPT-5.5也是最一致的，在其五次运行中返回的准确率为90.1–90.7%（标准差，0.3 pp）（支持性表1）。LLM提示与专家提示的匹配程度并不能强烈预测提取准确率。在七个模型中，排名仅呈弱相关且不显著（Spearman r=0.36，P=0.43）。DeepSeek V4生成了得分第二高的主提示，但在提取准确率方面排名第五，而Opus 4.8生成的提示得分排名第四，但提取准确率排名第二（支持性图S2）。与专家提示相比，模型生成的主提示降低了每个模型的整体提取准确率（图3e）。GPT-5.5仍然是准确率最高的模型，从使用人类专家提示时的95.6%下降到使用LLM主提示时的90.3%，下降了5.3 pp；Opus 4.8下降了4.8 pp，Gemini 3.1 Pro下降了32.5 pp。在测试期间，Gemini 3.1 Pro尽管被反复提示，但没有执行请求的网络搜索，这就是为什么它的主提示在覆盖面上低于人类提示，以及为什么它不可避免地表现较差的原因。</p>
+<p><strong>图3。</strong> LLM编写的提示 vs 人类专家策划的提示。<br />
+a，提示工程工作流程概述。每个模型被指示在互联网上搜索特定于模型的提示工程实践，并在主要文献中搜索特定领域的术语，然后生成三个候选提取提示并将它们聚合为一个单一的主提示。每个主提示连同图2中的人类专家黄金标准提示一起被应用于研究文章。<br />
+b，根据黄金标准提示评分的提示质量。对于每个模型，柱状图显示其三个单独提示的平均值（实心）和其聚合的主提示（阴影线）；标签给出聚合增益，虚线标记黄金标准提示（100%）。<br />
+c，使用聚合主提示的整体提取准确率。大点表示五次独立运行中模型的平均准确率；小点表示每篇文章的表现。<br />
+d，在聚合主提示下，仅限于定量亲和力字段Kd和K的准确率。<br />
+e，在黄金标准提示（金色）与聚合主提示（阴影线）下的整体提取准确率。<br />
+f，仅限于Kd和K字段的相同比较。<br />
+g，从黄金标准到聚合主提示的参数级准确率变化，跨模型平均；负值表示在自行编写的提示下提取准确率较低的字段。每个模型均针对八篇主要研究文章进行评估，每篇文章进行五次独立运行。</p>
+<p>亲和力提取对提示更具鲁棒性。GPT-5.5的结合缔合和解离常数准确率仅下降了1.1 pp，从使用人类专家提示时的99.2%下降到使用LLM主提示时的98.1%（图3f）。因此，我们按提取字段分解了专家提示和主提示之间的差异（图3g）。测量方法字段的准确率平均下降幅度最大，跨模型下降了27.5 pp，而镁浓度、物种、温度和两个亲和力常数下降了13.8至16.4 pp。肌钙蛋白复合物分类相对保留，仅下降了2.1 pp。这些结果与专家提示提供更明确的特定参数指令一致，特别是在解释实验测量方法方面。</p>
+<p><strong>深度研究智能体</strong><br />
+我们询问每个智能体是否能够定位黄金标准背后的主要文献。我们使用相同的LLM编写的提示（支持性提示3和4）在每个模型的深度研究配置中运行了五次，允许每个系统搜索、浏览并编译一份独立的报告（图4a）。每次运行都被指示识别最多20篇在2005年之前发表的主要研究文章。Opus 4.8返回的引文最多，平均每次运行20.6 ± 1.4篇，而Mistral 3.5（测试的唯一欧洲模型）返回的最少，平均每次运行4.4 ± 1.6篇引文（图4b）。接下来，我们询问每个模型恢复了Niederer等人2006年表1中19篇主要参考文献中的多少篇。Opus 4.8恢复的最多，平均为53.7% ± 14.7个百分点。GPT-5.5紧随其后，为38.9% ± 2.6 pp，专门的文献搜索智能体Edison QA3为29.5% ± 2.6 pp（图4c）。因此，即使是领先的深度研究模型也遗漏了大约一半的专家策划的参考文献。文章的获取权限可能导致了这一差距。总体而言，被引用的真实论文中有63%是公开获取的，而37%是封闭或付费的。Edison的开放获取比例最高，为91%，其次是GLM-5.2，为72%，Gemini 3.1 Pro为67%（支持性表2）。然后，我们验证了每个唯一的引文，并将其分类为准确且已验证、指的是真实论文但包含错误、或者是捏造的（图4d）。Qwen3.7-Plus和GLM-5.2在这一指标上表现不佳：Qwen捏造了45%的唯一引文（60篇中的27篇），而GLM-5.2捏造了29%（69篇中的20篇）。其他五个智能体；GPT-5.5、Opus 4.8、Gemini 3.1 Pro、Mistral 3.5和Edison QA3没有产生捏造的引文。Qwen3.7-Plus的60个唯一引文中只有2个被无误验证；31个指的是论文，但在作者、年份、期刊或这些的某种组合上存在错误，27个完全是捏造的。报告长度并不是提取质量的可靠指标。Edison生成的报告最长，平均10,035 ± 2,466字，在一次运行中达到14,441字，大约是Opus 4.8和GPT-5.5报告平均长度的两倍（图4e）。在七模型队列中，平均报告长度和平均字段准确率仅呈中度相关（r=0.51）。虽然Opus 4.8对真实数据的参考文献召回率最高，但它并不一致，跨运行恢复了37–74%的参考文献集（标准差14.7 pp），而Gemini 3.1 Pro恢复了5–37%（标准差10.3 pp）。</p>
+<p><strong>图4。</strong> 深度研究智能体进行的文献发现和钙结合数据提取。<br />
+a，评估工作流程概述。七个智能体在五次运行中独立接收相同的LLM编写的提示，被指示识别最多20篇在2005年之前发表的主要研究文章，并提取心肌肌钙蛋白C钙结合数据。输出结果与源自Niederer等人（2006年）表1的19篇参考文献、40种条件的真实数据进行比较。<br />
+b，每次运行报告的参考文献数量。小点表示单次运行，大点表示五次运行的平均值，虚线表示20篇参考文献的目标。<br />
+c，每次运行中恢复的19篇真实参考文献的百分比。小点和大点分别表示单次运行和五次运行的平均值。<br />
+d，五次运行中引用的唯一论文的验证状态。引文被分类为：无误验证、指的是真实论文但包含引文错误、或捏造。<br />
+e，以字数衡量的报告长度。小点表示单次运行，大点表示五次运行的平均值。<br />
+f，合并每个模型五次运行后的字段级提取准确率。数值显示正确恢复的物种、温度、肌钙蛋白复合物状态、实验方法、镁浓度、缔合常数和解离常数等可评分真实条件的百分比。<br />
+g，模型报告的常数K和Kd与真实常数之间的一致性。实线表示模型与真实情况之间完全一致；上方或下方的点分别代表高估或低估。两个轴均为对数坐标。</p>
+<p>每个智能体还被要求从每份深度研究报告中提取报告的钙结合参数。在七个评分字段中平均，与真实情况相比的准确率Opus 4.8达到39.9%，GPT-5.5为37.1%，Edison QA3为34.6%（图4f）。没有模型在任何单个字段上超过60%，Opus 4.8在物种、温度和肌钙蛋白复合物状态方面领先，而GPT-5.5更频繁地恢复两个亲和力常数，Kd为45%对40%，K为48%对32%。当模型确实恢复了实验条件并报告了数值亲和力值时，该值通常接近真实情况。其中，89%的缔合常数K和84%的解离常数Kd在两倍因子范围内（图4g）。</p>
+<p><strong>使用先前环节中开发的技术创建新数据集</strong><br />
+我们结合这些先前的经验（来自图2、3和4）来演示如何构建新数据集，询问前沿LLM是否能够像人类科学审稿人一样，从研究文章中识别和记录推荐的报告实践。我们安排七个模型和具有博士级科学训练的人类审稿人根据23项最低和理想报告标准评估10篇文章39–48（图5a）。我们基于Sandoval等人的建议制定了这些标准，他们开发了一套指南，定义了类器官定量分析的标准报告实践49。例如，根据“形态和谱系”标准，研究人员至少应从每个分化批次中取样三到五个类器官；理想情况下，先前的实验和适当的功效分析应决定样本量（图5b）。</p>
+<p>我们首先检查了LLM与人类审稿人达成一致的程度。有趣的是，我们发现使用人类审稿人存在一个直接的复杂情况。因为报告并不总是直接的“是/否”决定，当决定可以两可时，我们观察到在分配“是”或“否”决定时存在差异，即高度的不确定性。审稿人在79.1%的评估中分配了相同的分类，但在20.9%的评估中存在分歧。LLM与审稿人1的平均一致率为83.9%，与审稿人2的平均一致率为78.2%，总体平均为81.1%。个别模型与审稿人的一致率从75.2%到87.0%不等。对于某些模型，更改用于比较的审稿人会使一致率估计值改变多达7.8 pp（图5c）。</p>
+<p><strong>图5。</strong> LLM提取的脑类器官报告标准的可重复性和人类一致性。<br />
+a，自提示和提取工作流程概述。七个前沿LLM中的每一个都从已发表的类器官报告指南中生成了三个候选提示，将它们聚合为特定于模型的主提示，并在五次独立运行中将该提示应用于10篇脑类器官研究文章。将LLM生成的数据集与博士级研究人员的评估进行比较。<br />
+b，源自Sandoval等人（2024年）最低和理想建议的23项报告标准，分为所有方法、形态和谱系、转录组学、功能和代谢部分，并附有包含提取的答案和支持性引文的结构化输出示例。<br />
+c，五次运行多数结果与每个人类审稿人的一致性。实心和空心点分别表示评判者1和评判者2。<br />
+d，模型内部可重复性，以所有五次运行返回相同结果（是或否）的提取百分比衡量。<br />
+e，所有LLM的五次多数结果之间的一致性以及与审稿人结果的一致性。结果汇总了审稿人一致同意的所有“是”调用。误差棒：95%置信区间。<br />
+f，按指南中的每个部分比较人类审稿人的决定。标准被分类为两位审稿人均报告、仅评判者1报告、仅评判者2报告或两位审稿人均未报告。<br />
+g，审稿人分歧最大的七项报告标准。<br />
+h，比较所有模型基于1次运行（青色）与每个单模型5次运行（紫色）与审稿人的一致性。误差棒：95%置信区间。</p>
+<p>然而，与审稿人的一致性并不能告诉我们模型是否会再次产生相同的答案。因此，我们使用每个模型自己的固定提示运行了五次，并测量所有五个“是/否”分类相同的频率。GPT-5.5是可重复性最高的模型，跨文章为92.6% ± 7.7个百分点，其次是Kimi K2.6，为87.8%，Opus 4.7为87.0%。Gemini 3.1 Pro的可重复性最低，为81.7%，这意味着其五次运行中至少有一次在18.3%的评估中存在差异。然而，Gemini的五次多数分类仍然在91.8%的评估中与审稿人共识一致，这表明可重复性和审稿人一致性捕捉了模型行为的不同方面（图5d）。这种对比引出了第二个问题：重新运行之间的分歧能否作为结果答案可靠性较低的警告？汇总审稿人一致同意的所有模型和评估，一致的5–0模型答案在93.2%的情况下与审稿人共识匹配。当运行结果为4–1分裂时，一致性降至65.0%，当分裂为3–2时降至55.2%（图5e）。因此，五次运行之间的一致程度提供了关于多数答案与审稿人匹配可能性的方向性指示。作为一个有趣的题外话，所选文章之一是一篇概念论文44。只有Opus 4.7在未被提示的情况下告知了我们这一事实。LLM通常会继续执行用户的请求，而不管底层上下文是否合适。验证所有来源是研究人员的工作。</p>
+<p>接下来，我们回到人类评估以了解审稿人在哪里存在分歧。分歧在报告框架中分布不均。审稿人在“形态和谱系”方面的一致性最高，为86.7%，在“转录组学”方面为85.0%，但在“功能标准”方面降至50.0%。转录组学中两位审稿人均分类为已报告的比例最高，为60.0%，而代谢标准中两位审稿人均分类为未报告的比例最高，为66.0%。功能分歧更为两极分化，在50.0%的功能评估中，审稿人2将该标准分类为已报告，而审稿人1则没有（图5f）。总共有七项标准占了所有审稿人分歧的66.7%（图5g）。</p>
+<p>最后，使用多样化的前沿模型集使我们能够提出一个实际问题：如果有多个LLM模型可用，研究人员是应该要求同一个模型反复评估论文，还是要求不同的模型并结合它们的答案？要求同一个模型重复评估在与审稿人共识的一致性方面变化不大，五次运行后最高达到89.2%。相比之下，跨不同模型的多数投票将一致性提高到三次运行的92.1%和五次运行的93.3%，分别增加了3.0和4.1 pp。对于此基准测试，当分布在不同的模型上时，额外的运行比重复分配给同一模型产生更高的一致性（图5h）。</p>
+<p><strong>结论</strong><br />
+这项研究表明，可靠的LLM辅助文献整理不仅取决于模型智能，还取决于提示工程、精心策划的来源和人类在环验证。我们表明，当给定固定的文章集和专家提示时，当前的前沿模型恢复了90%以上的真实值和实验条件。数值亲和力常数的准确率接近99%。主要挑战在于确定应该和不应该在何种细微差别和上下文下提取数值。重复运行还表明，单次运行可能会歪曲模型性能。我们进一步表明，LLM可以根据知情用户简报生成有效的主提示。尽管这些提示无法与专家编写的提示的性能相匹配，但它们可以为迭代用户优化提供一个强有力的起点。更高的自主性暴露了一个更实质性的限制。当深度研究智能体被要求定位和解释来源文献时，即使是最强大的系统平均也仅恢复了53.7%的专家策划的主要参考文献，并且有两个系统产生了捏造的引文。</p>
+<p>一个核心发现是，模型共识是LLM输出质量控制的重要组成部分。对一个不相关的类器官报告数据集应用重复和跨模型评估，不仅揭示了模型之间的分歧，还揭示了用于建立参考标准的人类审稿人之间的分歧。在审稿人达成一致的地方，模型共识密切重现了他们的评估；在模型存在分歧的地方，这些案例可以被导向专家审查。跨模型的收敛还有助于暴露原始心脏参考数据集中的错误，表明共识既可以审计提取的数据，也可以审计用于评估它们的标准。总之，这些发现为可重复的LLM辅助文献整理建立了一个实用框架。专家定义问题、来源和证据标准；模型跨系统执行重复提取；人类审查专注于有争议的、上下文的或高影响力的案例。这种劳动分工在保留人类验证、反馈和科学判断的同时，为构建高质量科学数据集提供了一条透明且可审计的途径。</p>
+<p><strong>方法</strong><br />
+<strong>模型</strong><br />
+图2、3和5是使用以下模型完成的：GPT-5.5 (xhigh)、Claude Opus 4.7 (max)、Gemini 3.1 Pro (extended thinking)、DeepSeek V4 (instant)、GLM-5.1 (Deep think, Max)、Kimi K2.6 (Instant + High)和Qwen3.7-Plus (thinking)。在可能的情况下，我们明确关闭了LLM访问互联网的能力。目前尚不清楚在使用深度研究模式时调用的是哪个模型，因此，我们列出了进行分析时的模型时代：GPT-5.5 (Deep research)、Claude Opus 4.8 (Research)、Gemini 3.1 Pro (Deep research)、GLM-5.2 (Advanced Search)、Mistral 3.5、Qwen3.7-Plus (Deep research)和Edison Literature (High)。</p>
+<p><strong>提示</strong><br />
+用于提取数据、创建新的LLM编写提示和创建主提示的提示可在支持性信息文档中找到。</p>
+<p><strong>浏览器访问</strong><br />
+在生成这些结果的过程中，不仅模型发生了变化，它们在浏览器中的行为也发生了变化。最初，Gemini 3.0 Pro非常能够搜索并生成自己的提示，而我们发现Gemini 3.1 Pro始终拒绝搜索，通常会捏造它已经这样做了。我们最初对MiniMax 3进行了基准测试，但后来放弃了，因为该平台最终减少了对免费账户的计算分配。同样，当GLM-5.2首次发布时，分配给Web客户端的计算资源非常少，因此我们无法进行分析。截至撰写本文时，虽然Opus 5可用，但我们无法在不立即耗尽令牌额度的情况下使用它。在这些模型中，Qwen是唯一一个我们可以同时运行5个独立对话且一整天都不会达到限制的平台。</p>
+<p><strong>生成初始LLM数据集</strong><br />
+所有模型均通过其各自的Web浏览器访问。对于每个模型，我们打开了5个对话。我们将专家提示粘贴到每个对话中，添加PDF（一次一篇），并收集输出以供进一步处理。我们使用了Niederer等人（2006年）表1中总结的主要研究。该表包含19篇全文主要文章和40种实验条件，其中18篇我们能够访问。因此，最终的语料库是18篇主要文章和39种条件。参考数据描述了物种、温度、肌钙蛋白制备、Ca²⁺测量方法、镁浓度、缔合常数Kd (M⁻¹)和解离常数K (µM)。除了提取所有感兴趣的参数外，每个参数都附带引文，以便我们能够根据原始文章快速验证，并带有一个细节列。由于原始综述的主要兴趣是数值参数，我们基于K和Kd值锚定提取。如果模型未能找到其中任何一个，则将其归类为缺失，并在每个字段中评分为不正确。无法分配给预期行的模型行被归类为额外行。当五次运行中至少三次为正时，五次多数结果为正。</p>
+<p><strong>LLM自行编写的提示和主提示</strong><br />
+首先指示每个模型研究特定于提供商的提示指导和与cTnC亲和力提取相关的科学术语。它生成了三个候选提示，每个提示旨在从一篇上传的文章中提取结构化表格，同时保留支持性引文和任何计算。对于图3和图5，每个模型都被赋予了搜索互联网的能力：Opus 4.7 (max - web search)、GLM-5.1 (Deep think + Max + Advanced Search)、DeepSeek v4 (DeepThink + Search)、Kimi k2.6 (Instant + High + web search – auto)和Qwen3.7-Plus (Thinking + Web search)。对于每个模型，我们打开了3个新对话，并生成了3个初始提示，将它们合并到一个文档中。随后的聚合指令要求模型将三个候选提示合并为一个主提示，而不丢弃有用的细节。然后将生成的特定于模型的主提示用于八篇主要文章的提取，每篇文章进行五次运行，代表26个预期的实验条件行。将LLM设计的主提示与单一的专家策划提示进行比较，分解为38个组件，涵盖任务定义、来源优先级、所需列和证据、计算、特殊情况、示例和冲突解决。每个组件评分为0（缺失）、1（部分存在）或2（完全存在），最高分为76分。主提示的初始评分由Opus 4.8 (xhigh)执行，随后进行人工验证、核实和确认。</p>
+<p><strong>深度研究文献发现基准测试</strong><br />
+七个深度研究智能体在五次独立的运行中独立接收相同的主提示。初始提示和主提示可在支持性提示S4和S5中找到。每份报告都与提示进行比较以检查合规性。报告中的每个参考文献都经过了人工验证，特别关注该参考文献是否真实，以及是否为开放获取。</p>
+<p><strong>脑类器官报告基准测试</strong><br />
+我们将Sandoval等人（2024年）的最低和理想报告建议转换为23个论文级项目，分为五个部分：适用于所有研究的方法（7项）、形态和谱系（6项）、转录组学（2项）、功能评估（3项）和代谢（5项）。七个模型各自生成了三个候选提示，将它们聚合为特定于模型的主提示，并在五次运行中将该固定提示应用于十篇脑类器官文章。这10篇论文是经过手工挑选的，包含指南中要求的大多数特征。来自LLM的数据被捕获在一个Excel文档中，保留了原始答案、支持性引文以及关于LLM是否标记文章已涵盖特定指南的二进制“是/否”。两名博士级科学审稿人独立评估了相同的十篇论文和23个项目，将每个标准评分为“是”（文章解决了指南）或“否”。对于每个模型，当至少三次运行为“是”时，五次多数结果即为“是”。</p>
+<p><strong>生成式AI的使用</strong><br />
+生成式AI（GPT-5.6 Sol (xhigh)和Fable 5 (high) + Opus 5 (med)）被用于编写Python脚本以处理数据，以及对手稿进行文字编辑。</p>
+<p><strong>数据可用性</strong><br />
+存储库包含：<br />
+- 本工作中使用的所有提示<br />
+- 所有图表的原始和整理数据<br />
+- 尝试图2和3中开发的工作流程的教程</p>
+<p>存储库：https://github.com/ValentinRoma26/romanov-2026-llm-extraction</p>
+<p><strong>参考文献</strong><br />
+1. Schmidt, L. et al. Data extraction methods for systematic review (semi)automation: Update of a living systematic review. F1000Research 10, 401 (2025).<br />
+2. Gartlehner, G. et al. Data extraction for evidence synthesis using a large language model: A proof-of-concept study. Res. Synth. Methods 15, 576–589 (2024).<br />
+3. Xu, D. et al. Large language models for generative information extraction: a survey. Front. Comput. Sci. 18, 186357 (2024).<br />
+4. Dagdelen, J. et al. Structured information extraction from scientiﬁc text with large language models. Nat. Commun. 15, 1418 (2024).<br />
+5. Chen, L., Zaharia, M. &amp; Zou, J. How Is ChatGPT’s Behavior Changing Over Time? Harv. Data Sci. Rev. 6, (2024).<br />
+6. Kim, J. &amp; Holden, D. Reassessing automated essay scoring with large language models: Evidence from API and GUI interfaces. Assess. Writ. 69, 101080 (2026).<br />
+7. Liu, Q., Wang, W. &amp; Willard, J. ENects of Prompt Length on Domain-speciﬁc Tasks for Large Language Models.<br />
+8. Levy, M., Jacoby, A. &amp; Goldberg, Y . Same Task, More Tokens: the Impact of Input Length on the Reasoning Performance of Large Language Models. in Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) (eds Ku, L.-W., Martins, A. &amp; Srikumar, V .) 15339–15353 (Association for Computational Linguistics, Bangkok, Thailand, 2024). doi:10.18653/v1/2024.acl-long.818.<br />
+9. Liu, N. F . et al. Lost in the Middle: How Language Models Use Long Contexts. Preprint at https://doi.org/10.48550/arXiv.2307.03172 (2023).<br />
+10. Du, Y . et al. Context Length Alone Hurts LLM Performance Despite Perfect Retrieval. arXiv.org https://arxiv.org/abs/2510.05381v1 (2025).<br />
+11. Wang, Y. et al. Self-Instruct: Aligning Language Models with Self-Generated Instructions. in Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) (eds Rogers, A., Boyd-Graber, J. &amp; Okazaki, N.) 13484–13508 (Association for Computational Linguistics, Toronto, Canada, 2023). doi:10.18653/v1/2023.acl-long.754.<br />
+12. Besta, M. et al. Graph of Thoughts: Solving Elaborate Problems with Large Language Models. Proc. AAAI Conf. Artif. Intell. 38, 17682–17690 (2024).<br />
+13. Pryzant, R. et al. Automatic Prompt Optimization with “Gradient Descent” and Beam Search. in Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (eds Bouamor, H., Pino, J. &amp; Bali, K.) 7957–7968 (Association for Computational Linguistics, Singapore, 2023). doi:10.18653/v1/2023.emnlp-main.494.<br />
+14. Lin, X. et al. Prompt Optimization with Human Feedback. Preprint at https://doi.org/10.48550/arXiv.2405.17346 (2024).<br />
+15. Cui, W. et al. Heuristic-based Search Algorithm in Automatic Instruction-focused Prompt Optimization: A Survey. in Findings of the Association for Computational Linguistics: ACL 2025 (eds Che, W., Nabende, J., Shutova, E. &amp; Pilehvar, M. T.) 22093–22111 (Association for Computational Linguistics, Vienna, Austria, 2025). doi:10.18653/v1/2025.ﬁndings-acl.1140.<br />
+16. Zhou, Y . et al. Large Language Models are Human-Level Prompt Engineers. in (2022).<br />
+17. Romanov, V . &amp; Niederer, S. A. The Prompt Engineering Report Distilled: Quick Start Guide for Life Sciences. Preprint at https://doi.org/10.48550/arXiv.2509.11295 (2026).<br />
+18. Clark, J. et al. Generative artiﬁcial intelligence use in evidence synthesis: A systematic review. Res. Synth. Methods 16, 601–619 (2025).<br />
+19. Skarlinski, M. D. et al. Language agents achieve superhuman synthesis of scientiﬁc knowledge. Preprint at https://doi.org/10.48550/arXiv.2409.13740 (2024).<br />
+20. He, Y . et al. PaSa: An LLM Agent for Comprehensive Academic Paper Search. in Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) (eds Che, W., Nabende, J., Shutova, E. &amp; Pilehvar, M. T.) 11663–11679 (Association for Computational Linguistics, Vienna, Austria, 2025). doi:10.18653/v1/2025.acl-long.572.<br />
+21. Du, M., Xu, B., Zhu, C., Wang, X. &amp; Mao, Z. DeepResearch Bench: A Comprehensive Benchmark for Deep Research Agents. Preprint at https://doi.org/10.48550/arXiv.2506.11763 (2025).<br />
+22. Wang, Z. et al. Accelerating Clinical Evidence Synthesis with Large Language Models. Preprint at https://doi.org/10.48550/arXiv.2406.17755 (2024).<br />
+23. Wu, K. et al. An automated framework for assessing how well LLMs cite relevant medical references. Nat. Commun. 16, 3615 (2025).<br />
+24. Bencze, B. et al. Comparing Manual and ChatGPT Deep Research on Systematic Search and Selection in the PubMed Database on the Topic of Dental Implantology. Int. J. Dent. 2025, 2677641 (2025).<br />
+25. Keplinger, L. E., Frashure, L. K., Duran, S. A. &amp; Hu, G. Assessment of Deep Research for dermatology literature reviews: Deep concern over the hype. J. Eur. Acad. Dermatol. Venereol. 40, e300–e302 (2026).<br />
+26. Carrier, R. et al. Evaluating the Utility of Artiﬁcial Intelligence in Conducting Systematic Reviews. Arthroplasty Today 39, 102035 (2026).<br />
+27. Avey, M. T. et al. The Devil Is in the Details: Incomplete Reporting in Preclinical Animal Research. PLOS ONE 11, e0166733 (2016).<br />
+28. Omar, M., Glicksberg, B. S., Nadkarni, G. N. &amp; Klang, E. Reﬁning LLMs outputs with iterative consensus ensemble (ICE). Comput. Biol. Med. 196, 110731 (2025).<br />
+29. Khan, M. A. et al. Collaborative large language models for automated data extraction in living systematic reviews. J. Am. Med. Inform. Assoc. 32, 638–647 (2025).<br />
+30. Tekin, S. F ., Ilhan, F ., Huang, T., Hu, S. &amp; Liu, L. LLM-TOPLA: ENicient LLM Ensemble by Maximising Diversity. in Findings of the Association for Computational Linguistics: EMNLP 2024 (eds Al-Onaizan, Y ., Bansal, M. &amp; Chen, Y .-N.) 11951–11966 (Association for Computational Linguistics, Miami, Florida, USA, 2024). doi:10.18653/v1/2024.ﬁndings-emnlp.698.<br />
+31. Schoenegger, P ., Tuminauskaite, I., Park, P . S., Valdece Sousa Bastos, R. &amp; E. Tetlock, P . Wisdom of the silicon crowd: LLM ensemble prediction capabilities rival human crowd accuracy. Sci. Adv. 10, (2024).<br />
+32. Srinivasan, A., Berkowitz, J., Friedrich, N. A., Kivelson, S. &amp; Tatonetti, N. P . Large Language Model Analysis of Reporting Quality of Randomized Clinical Trial Articles: A Systematic Review. JAMA Netw. Open 8, e2529418 (2025).<br />
+33. Goldberg, A. et al. Usefulness of LLMs as an Author Checklist Assistant for Scientiﬁc Papers: NeurIPS’24 Experiment. Preprint at https://doi.org/10.48550/arXiv.2411.03417 (2024).<br />
+34. Galarnyk, M. et al. ConfReady: A RAG based Assistant and Dataset for Conference Checklist Responses. in Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (eds Habernal, I., Schulam, P . &amp; Tiedemann, J.) 667–677 (Association for Computational Linguistics, Suzhou, China, 2025). doi:10.18653/v1/2025.emnlp-demos.49.<br />
+35. Niederer, S. A., Hunter, P . J. &amp; Smith, N. P . A Quantitative Analysis of Cardiac Myocyte Relaxation: A Simulation Study. Biophys. J. 90, 1697–1722 (2006).<br />
+36. Pan, B. S. &amp; Solaro, R. J. Calcium-binding properties of troponin C in detergent-skinned heart muscle ﬁbers. J. Biol. Chem. 262, 7839–7849 (1987).<br />
+37. Parsons, B. et al. The eNect of pH on the Ca2+ aNinity of the Ca2+ regulatory sites of skeletal and cardiac troponin C in skinned muscle ﬁbres. J. Muscle Res. Cell Motil. 18, 599–609 (1997).<br />
+38. Hofmann, P . A. &amp; Fuchs, F . Evidence for a force-dependent component of calcium binding to cardiac troponin C. Am. J. Physiol.-Cell Physiol. 253, C541–C546 (1987).<br />
+39. Isik, M. et al. Bioactive and chemically deﬁned hydrogels with tunable stiNness guide cerebral organoid formation and modulate multi-omics plasticity in cerebral organoids. Acta Biomater. 171, 223–238 (2023).<br />
+40. Mil, J. et al. Metabolic atlas of early human cortex identiﬁes regulators of cell fate transitions. BioRxiv Prepr. Serv. Biol. 2025.03.10.642470 (2025) doi:10.1101/2025.03.10.642470.<br />
+41. Azbukina, N. et al. Multi-omic human neural organoid cell atlas of the posterior brain. BioRxiv Prepr. Serv. Biol. 2025.03.20.644368 (2025) doi:10.1101/2025.03.20.644368.<br />
+42. Kathuria, A. et al. Transcriptomic landscape and functional characterization of induced pluripotent stem cell-derived cerebral organoids in schizophrenia. JAMA Psychiatry 77, 745–754 (2020).<br />
+43. Zeng, P .-M. et al. Thymosin beta 4 as an Alzheimer disease intervention target identiﬁed using human brain organoids. Stem Cell Rep. 20, 102601 (2025).<br />
+44. Sapir, G., Steinberg, D. J., Aqeilan, R. I. &amp; Katz-Brull, R. Real-time non-invasive and direct determination of lactate dehydrogenase activity in cerebral organoids - a new method to characterize the metabolism of brain organoids? Pharmaceuticals 14, 878 (2021).<br />
+45. Zhang, W. et al. Human forebrain organoid-based multi-omics analyses of PCCB as a schizophrenia associated gene Linked to GABAergic pathways. Nat. Commun. 14, 5176 (2023).<br />
+46. Menacho, C. et al. Accelerating Leigh syndrome drug discovery through deep learning screening in brain organoids. Nat. Commun. 17, 3570 (2026).<br />
+47. Zagare, A. et al. MIRO1 mutation leads to metabolic maladaptation resulting in Parkinson’s disease-associated dopaminergic neuron loss. Npj Syst. Biol. Appl. 11, 37 (2025).<br />
+48. Wang, M. et al. Morphological diversiﬁcation and functional maturation of human astrocytes in glia-enriched cortical organoid transplanted in mouse brain. Nat. Biotechnol. 43, 52–62 (2025).<br />
+49. Sandoval, S. O. et al. Rigor and reproducibility in human brain organoid research: Where we are and where we need to go. Stem Cell Rep. 19, 796–816 (2024).</p>
+<p><strong>致谢</strong><br />
+该项目由英国研究与创新工程和物理科学研究委员会（EPSRC）通过拨款（EP/Z531297/1）资助。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 大语言模型, 数据提取, 跨模型共识, 提示工程, 人类在环</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
