@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自优化流水线中的非对称容量分配 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">自优化流水线中的非对称容量分配</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-21</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.21345" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Asymmetric Capacity Allocation in Self-Refinement Pipelines</h4>
+            <p><strong>中文摘要：</strong> 本文研究了自优化流水线中生成、批判和修订三个阶段的模型容量分配问题。通过在五个基准测试和两个模型家族上进行分阶段模型大小分析，发现流水线性能对生成器和优化器的容量高度敏感，而对批判器大小相对不敏感。即使是小型批判器也优于无批判的流水线，而过小的优化器甚至会损害初始性能。研究结果表明，不应在流水线中均匀分配模型容量，这为设计计算高效的多阶段语言模型系统提供了实用指导。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>文章标题：自优化流水线中的非对称容量分配</p>
+<p>作者：Zhuoyi Yang<br />
+ affiliation: University of California, Irvine<br />
+ Email: zhuoyy1@uci.edu<br />
+Ian G. Harris<br />
+ affiliation: University of California, Irvine<br />
+ Email: iharris@uci.edu<br />
+Salar Hashemitaheri<br />
+ affiliation: University of California, Irvine<br />
+ Email: salarh@uci.edu<br />
+Cassie Huang<br />
+ affiliation: Drexel University<br />
+ Email: yuanganl@uci.edu<br />
+Yuangang Li<br />
+ affiliation: University of California, Irvine<br />
+ Email: hyunwooo@uci.edu<br />
+Hyunwoo Oh<br />
+ affiliation: University of California, Irvine<br />
+ Email: givargis@uci.edu<br />
+Paul Dourish<br />
+ affiliation: University of California, Irvine<br />
+ Email: mohseni@uci.edu<br />
+Tony Givargis<br />
+ affiliation: University of California, Irvine<br />
+ Email: jpd@ics.uci.edu<br />
+Mohsen Imani<br />
+ affiliation: University of California, Irvine<br />
+ Email: Cassie.Huang@drexel.edu<br />
+Li Zhang<br />
+ affiliation: Drexel University<br />
+ Email: Harry.Zhang@drexel.edu</p>
+<p>摘要<br />
+自优化通常被结构化为生成、批判和修订，是改善大语言模型（LLM）生成的广泛采用范式，并作为许多 LLM 智能体的核心机制。尽管这三个阶段涉及不同的认知需求，但大多数现有方法为了方便将模型大小视为实现细节而非研究对象，这可能导致资源浪费。很少有工作系统地研究模型大小如何影响每个阶段，或者有效的自优化是否需要为生成、批判和修订提供同等能力的模型。我们首次在来自不同领域的 5 个基准测试上，使用 6 种 Qwen3 和 4 种 Gemma 3 模型大小，对自优化流水线进行了分阶段模型大小研究。我们得出结论：更大的生成器和优化器通常会改善流水线，而过小的优化器甚至会损害性能。其次，性能对批判器的大小高度不敏感，尽管包含即使是小型的批判器也始终优于完全省略批判。我们的发现表明，不应在自优化流水线中均匀分配模型容量。相反，不同阶段表现出不同的大小缩放特性，为设计更具计算效率的多阶段语言模型系统提供了实用指导。</p>
+<p>图 1：<br />
+我们三阶段自优化流水线的概述及简化示例。给定输入 $x$，生成器产生初始解决方案 $y_{0}$，批判器针对 $x$ 和 $y_{0}$ 提供自然语言反馈 $f$，优化器基于 $x$、$y_{0}$ 和 $f$ 修订解决方案。</p>
+<p>1 引言<br />
+大语言模型越来越依赖于迭代推理而非一次性生成。一种常见的范式是自优化 (Madaan et al., 2023)，其中模型首先产生解决方案，批判其自身输出，然后基于生成的反馈修订解决方案。这种生成器-批判器-优化器流水线已成为现代 LLM 系统的基础组件，在推理、规划、编码和生成任务上提升了性能 (Shinn et al., 2023; Gou et al., 2024; Zhou et al., 2025; Chen et al., 2023b)。更广泛地说，类似的优化循环现在被嵌入到许多智能体工作流中，智能体在采取后续行动之前反复评估中间输出 (Zhang et al., 2026; Wu et al., 2023; Yao et al., 2023)。</p>
+<p>现有工作通常启发式地选择模型大小或均匀缩放整个流水线，而不检查所有阶段是否均等地受益于增加的模型容量 (Madaan et al., 2023; Shinn et al., 2023; Gou et al., 2024)。这种设计可能导致资源浪费。生成器-批判器-优化器的分解也与经典认知模型一致，这些模型将产生、评估和修订区分为独立的认知过程 (Flower and Hayes, 1980; Hayes, 1996; Kellogg, 1996)。这三个阶段执行根本不同的功能，但流水线中的模型容量尚未作为系统研究的主题。这提出了一个根本问题：在自优化流水线的各个阶段中应如何分配模型容量？</p>
+<p>我们通过对自优化流水线进行受控的分阶段模型大小分析来解决这个问题（图 1）。我们独立改变生成器、批判器和优化器的大小，同时保持其他两个阶段固定（图 2）。这种实验设计分离了每个阶段的贡献，并能够直接比较它们在 5 个基准测试和 2 个模型家族（Qwen3 (Yang et al., 2025) 和 Gemma 3 (Team et al., 2025)）中对模型大小的敏感性。</p>
+<p>我们得出两个主要结论。首先，自优化性能对生成器和优化器的容量高度敏感。扩展任一阶段通常会提高整体性能，而过小的优化器甚至可能使性能降至低于初始生成的水平。其次，流水线性能对批判器大小相对不敏感。虽然更大的批判器仅提供边际收益，但即使是最小的批判器也始终优于没有显式批判的流水线。我们的发现表明，这三个阶段表现出显著不同的缩放特性，表明均匀分配模型是次优的。这些结果为设计计算高效的自优化流水线提供了实用指导。</p>
+<p>2 相关工作<br />
+自优化已成为在推理时改善大语言模型的广泛采用范式。早期工作如 SELF-REFINE 证明，单个语言模型可以在没有额外训练的情况下迭代生成反馈并优化其自身输出 (Madaan et al., 2023)。此后，许多方法通过引入更强的批判器、外部验证、执行反馈、检索和工具使用来扩展这一范式，以改善推理、规划、编码和文本生成 (Shinn et al., 2023; Zhou et al., 2025; Chen et al., 2024; Chen et al., 2023b)。最近，生成-批判-优化循环已成为许多当代智能体系统核心推理原语之一。(Yao et al., 2023; Kim et al., 2024; Wu et al., 2023)。最近的调查同样将反思和自我纠正识别为现代智能体架构的核心认知组件 (Zhang et al., 2026; Huang et al., 2024; Zhang et al., 2025)。尽管优化策略多种多样，但现有工作主要集中在设计更有效的反馈机制或优化算法以最大化下游任务性能，而通常将分配给每个阶段的模型视为固定的。</p>
+<p>另一条研究路线调查了模型容量和计算预算如何影响语言模型性能。经典的缩放定律研究描述了性能如何随着模型大小、训练数据和计算量的增加而提高，为高效模型开发提供了原则 (Kaplan et al., 2020; Hoffmann et al., 2022)。最近，研究人员将注意力从训练时缩放转向推理时缩放，表明在推理期间分配额外计算可以在不增加模型参数的情况下显著提高性能。代表性方法包括通过更长推理轨迹的深思熟虑推理 (OpenAI et al., 2026; Guo et al., 2025)、自引导推理和内部思考生成 (Zelikman et al., 2024)，以及用额外推理计算换取更高准确性的测试时计算缩放策略 (Muennighoff et al., 2025; Tarunokusumo and Cunha, 2025)。</p>
+<p>补充工作研究了应如何分配推理计算，包括 LLM 路由 (Ong et al., 2025)、模型级联 (Chen et al., 2023a)、自适应模型选择 (Ding et al., 2025) 和混合专家路由 (Fedus et al., 2022; Lepikhin et al., 2020)，它们根据输入难度或计算预算动态选择模型或专家。虽然这些方法确定了在每个查询上花费多少计算或哪个模型应该回答它，但它们通常将推理视为单一的预测阶段。相比之下，我们研究在多阶段自优化流水线的相互作用阶段中应如何分配模型容量。</p>
+<p>尽管自优化流水线和模型大小缩放都已被广泛研究，但它们的交叉点在很大程度上仍未被探索。据我们所知，以前没有工作系统地研究在自优化流水线中应如何在生成器、批判器和优化器之间分配模型容量。我们通过进行首次系统的自优化流水线分阶段模型大小分析来填补这一空白。</p>
+<p>3 方法<br />
+本节描述了我们用于分析自优化流水线中模型容量的实验框架。我们首先形式化生成器-批判器-优化器流水线，然后提出我们的分阶段模型大小分析协议。</p>
+<p>3.1 自优化流水线<br />
+我们的自优化框架由三个顺序阶段组成：生成器、批判器和优化器，遵循 Madaan et al. (2023) 提出的 SELF-REFINE 范式。<br />
+给定输入 $x$，生成器首先产生初始解决方案 $y_{0}=G(x),$ 其中 $G$ 表示生成器。然后批判器分析生成的解决方案并产生自然语言批判 $f=C(x,y_{0}),$ 其中 $C$ 表示批判器。$f$ 包括潜在错误和可操作的批判。最后，优化器通过将批判应用于原始解决方案来生成最终解决方案，$y_{r}=R(x,y_{0},f),$ 其中 $R$ 表示优化模型。</p>
+<p>我们用 $P(G,C,R)$ 表示一个完整的自优化流水线，其中 $G$、$C$ 和 $R$ 指定用于生成器、批判器和优化器的模型。例如，$P(32\mathrm{B},\,0.6\mathrm{B},\,32\mathrm{B})$ 表示使用 32B 生成器、0.6B 批判器和 32B 优化器的流水线。</p>
+<p>3.2 分阶段模型大小分析协议<br />
+我们的目标是量化自优化流水线每个阶段模型大小的贡献。为了隔离单个阶段的影响，我们只改变一个阶段，同时将其他两个阶段保持为相同的模型。这种受控设计确保任何性能差异都可以完全归因于正在变化的阶段（图 2）。</p>
+<p>图 2：<br />
+分阶段模型大小分析。三个面板说明了生成器、批判器和优化器扫描。高亮阶段是正在评估的阶段，其模型大小在变化，而其他两个阶段保持固定。我们还与无批判基线进行了比较。</p>
+<p>具体而言，我们执行三个分阶段模型大小分析实验：<br />
+• 生成器扫描：在将批判器和优化器固定为相同大小时改变生成器大小，$P(G_{i},C,R),$ 其中 $G_{i}$ 表示第 $i$ 个生成器模型。<br />
+• 批判器扫描：在将生成器和优化器固定为相同大小时改变批判器大小，$P(G,C_{i},R),$ 其中 $C_{i}$ 表示第 $i$ 个批判器。<br />
+• 优化器扫描：在将生成器和批判器固定为相同大小时改变优化器大小，$P(G,C,R_{i}),$ 其中 $R_{i}$ 表示第 $i$ 个优化器。</p>
+<p>我们对每个基准测试和每个模型家族重复此过程。例如，在 Qwen3-32B 配置下，生成器扫描评估 P(0.6B, 32B, 32B)、P(1.7B, 32B, 32B)、P(4B, 32B, 32B)、P(8B, 32B, 32B)、P(14B, 32B, 32B) 和 P(32B, 32B, 32B)。</p>
+<p>3.3 无批判基线<br />
+为了确定显式批判是否提供了超出额外优化传递的益处，我们将标准自优化流水线与匹配的无批判基线进行比较。无批判流水线表示为 $P(G,\emptyset,R),$ 其中移除了批判器，优化器在不接收反馈的情况下直接修订生成器输出。</p>
+<p>为了隔离引入批判的影响，我们将批判器固定为 Qwen 家族中最小的模型 (Qwen3-0.6B)，并将其与相应的无批判流水线进行比较。对于生成器扫描，批判增益定义为<br />
+$\Delta_{\mathrm{critique}}^{\mathrm{gen}}(G_{i})=P(G_{i},0.6\mathrm{B},R)-P(G_{i},\emptyset,R),$<br />
+类似地，对于优化器扫描，<br />
+$\Delta_{\mathrm{critique}}^{\mathrm{ref}}(R_{i})=P(G,0.6\mathrm{B},R_{i})-P(G,\emptyset,R_{i}),$<br />
+其中只有优化器变化而生成器保持固定。</p>
+<p>对于每个基准测试，我们报告生成器和优化器扫描的平均批判增益。通过将批判器固定为 Qwen3-0.6B，此比较衡量即使是轻量级批判器是否也能提供超出额外优化传递的益处。</p>
+<p>4 实验设置<br />
+我们在涵盖规划、摘要、逻辑推理、代码优化和开放式故事写作的五个基准测试中进行了分阶段模型大小分析。实验使用 2 个模型家族（Qwen3 和 Gemma 3）和 5 个配置（Qwen3-32B、Qwen3-14B、Qwen3-8B、Gemma 3-27B 和无批判基线）进行。对于每个基准测试，我们独立改变分配给一个流水线阶段的模型，同时保持其他两个阶段固定，遵循第 3.2 节中描述的协议。</p>
+<p>图 3：<br />
+五个基准测试的代表性示例。第一列简要说明了每个任务的目标和输入，随后是初始生成、生成的批判和最终优化的解决方案，展示了自优化流水线如何在不同领域运作。</p>
+<p>4.1 模型<br />
+我们使用两个开放权重大语言模型家族：Qwen3 和 Gemma 3 评估我们的分阶段缩放分析。这些模型家族提供了多样化的参数规模，同时保持了一致的架构和训练范式，使其适合研究自优化不同阶段中模型容量的影响。</p>
+<p>对于 Qwen3 家族，我们考虑具有 0.6B、1.7B、4B、8B、14B 和 32B 参数的模型。为了检查我们的发现是否依赖于可用的最大模型容量，我们使用 Qwen3-32B、Qwen3-14B 和 Qwen3-8B 作为流水线中固定阶段的最大模型，进行了三次完整的分阶段缩放分析。除非另有说明，正文报告 Qwen3-32B 配置的结果。Qwen3-14B 和 Qwen3-8B 实验作为鲁棒性研究在附录 D 和附录 E 中展示。</p>
+<p>为了进一步验证我们观察结果的普遍性，我们在 Gemma 3 家族上重复分析，使用 Gemma 3-1B-IT、Gemma 3-4B-IT、Gemma 3-12B-IT 和 Gemma 3-27B-IT。相应结果在附录 C 中报告，并表现出与 Qwen3 观察到的相同的定性分阶段缩放趋势。</p>
+<p>4.2 基准测试和评估<br />
+我们在涵盖规划、摘要、逻辑推理、代码优化和故事生成的五个不同基准测试的子集上评估分阶段模型大小分析。这些任务涵盖了广泛的推理和生成能力，使我们能够评估我们的发现是否跨异构应用领域泛化，而不是特定于单一任务。每个基准测试使用其特定的任务指标进行评估。我们将子集详细信息放在附录 B 中。</p>
+<p>会议规划 (Zheng et al., 2024)。在此任务中，模型必须生成满足一组时间和旅行约束的可行行程。我们使用规划准确率评估规划性能，定义为满足所有约束的生成行程的百分比。只有当行程完全可行时才被认为是正确的；对指定约束的任何违反都会导致该实例得分为零。</p>
+<p>CNN/DailyMail (Hermann et al., 2015; See et al., 2017)。在此任务中，模型必须生成一个简洁的摘要，捕捉原始新闻文章的关键信息。我们使用覆盖率评估性能，定义为生成摘要覆盖参考高亮句信息的百分比。</p>
+<p>ZebraLogic (Lin et al., 2025)。在此任务中，模型必须推断出满足一组逻辑约束的完整逻辑网格谜题。我们报告单元格准确率，衡量完整解决方案网格中所有单元格中正确分配属性值的百分比。</p>
+<p>PIE (Shypula et al., 2024)。在此任务中，模型必须优化程序以提高其效率，同时保留其原始功能。我们使用 %OPT 评估性能，定义为功能正确且成功优化的生成程序的百分比。</p>
+<p>CollaboSentGen. 这是一个源自 ROCStories 语料库 (Mostafazadeh et al., 2016) 的基准测试，其中故事中间的三句话之一被移除，并提供了来自缺失句子的一组关键词。<br />
+在此任务中，模型必须使用给定的一组关键词生成一个连贯地融入现有故事的句子。我们使用 Overall-Story-Fit 评估性能，其中 GPT-4 (OpenAI et al., 2024) 作为自动评估器，评估生成的句子与周围叙述的融合程度。</p>
+<p>分阶段敏感性指标。为了量化每个流水线阶段对模型大小的敏感性，我们使用两个统计数据总结每个分阶段扫描：性能范围 ($\Delta$)，定义为扫描内最高和最低分数之间的差异，以及性能分数的标准差 ($\sigma$)。较大的 $\Delta$ 和 $\sigma$ 值表明流水线性能对模型大小增加更敏感。</p>
+<p>4.3 提示策略<br />
+所有三个阶段都使用特定于任务的少样本指令提示进行格式和结构对齐 (Brown et al., 2020)。每个基准测试使用的完整提示在附录 G 中提供。</p>
+<p>图 3 在定量分析之前说明了所有五个基准测试上的自优化流水线。这些示例在我们定量分析分阶段缩放之前，为我们评估中考虑的不同类型的任务提供了直觉。</p>
+<p>图 4：<br />
+Qwen3-32B 配置下五个基准测试的分阶段模型大小扫描。X 轴是模型大小。蓝线、绿线和红线分别代表生成器扫描、批判器扫描和优化器扫描。灰色虚线报告了没有优化的相应初始生成性能。更陡峭的曲线表明对该阶段的模型大小具有更大的敏感性。指标在第 4.2 节中定义。</p>
+<p>基准测试 | 模型 | 生成器 $\Delta$ | 生成器 Std. | 批判器 $\Delta$ | 批判器 Std. | 优化器 $\Delta$ | 优化器 Std.<br />
+Meeting Planning | Qwen | 16.00 | 6.15 | 9.00 | 3.10 | 32.00 | 11.20<br />
+Meeting Planning | Gemma | 24.00 | 8.76 | 8.00 | 2.92 | 34.00 | 12.64<br />
+CNN/DailyMail | Qwen | 10.00 | 3.95 | 8.00 | 3.10 | 23.40 | 8.99<br />
+CNN/DailyMail | Gemma | 25.10 | 9.62 | 6.30 | 2.24 | 16.80 | 6.39<br />
+ZebraLogic | Qwen | 8.65 | 3.07 | 3.89 | 1.46 | 13.39 | 4.71<br />
+ZebraLogic | Gemma | 27.60 | 10.71 | 5.80 | 2.31 | 17.50 | 6.71<br />
+PIE | Qwen | 28.00 | 10.43 | 4.00 | 1.63 | 50.00 | 20.60<br />
+PIE | Gemma | 37.50 | 14.79 | 5.00 | 1.92 | 17.00 | 6.50<br />
+CollaboSentGen | Qwen | 2.79 | 0.96 | 0.56 | 0.20 | 5.61 | 2.03<br />
+CollaboSentGen | Gemma | 2.46 | 1.038 | 0.63 | 0.26 | 4.36 | 1.92</p>
+<p>表 1：<br />
+在将其他两个阶段固定为最大模型时改变一个阶段的模型大小的性能变异性。值以每个基准测试的评估指标报告，如第 4.2 节所指定。</p>
+<p>图 5：<br />
+五个基准测试中手动批判质量分数的分布。对于每个基准测试（从上到下：会议规划、CNN/DailyMail、ZebraLogic、PIE 和 CollaboSentGen）：堆叠段显示分配分数 1-5 的批判百分比，而右侧的百分比报告非误导性批判（分数 3-5）的比例。</p>
+<p>5 结果<br />
+输入<br />
+开始：The Castro (9:00 AM)<br />
+Ronald: Chinatown (9:30–11:30, 75 min)<br />
+Nancy: Nob Hill (11:15–12:00, 30 min)<br />
+生成<br />
+09:30–10:30 Ronald<br />
+10:50–11:20 Nancy<br />
+0.6B 批判器（得分 4）<br />
+检测到：Ronald 的会议只有 60 分钟（需要 75 分钟）。<br />
+32B 批判器（得分 5）<br />
+检测到：Ronald 的会议只有 60 分钟。<br />
+检测到：Nancy 被安排在她的可用时间窗口之外。</p>
+<p>表 2：<br />
+说明 0.6B 批判器和 32B 批判器性能的代表性示例。</p>
+<p>图 4 显示了在将其他两个阶段固定为 Qwen3-32B 时独立增加每个阶段模型大小的影响。每个数据点代表一个流水线。蓝线代表生成器扫描的趋势，绿线代表批判器扫描的趋势，红线代表优化器扫描的趋势（在第 3.2 节中定义）。灰色虚线代表没有任何优化的生成。在视觉上，更平坦的线意味着相应阶段的性能对增加的模型大小不太敏感。</p>
+<p>所有基准测试中一致的趋势是，扩展生成器和优化器的大小显著提高了性能，这在图 4 中更陡峭的线中可视化，并在表 1 中定量总结。相比之下，批判器阶段对模型大小相对不敏感，因为较大的批判器模型仅比较小的模型提供边际收益。Gemma 3-27B、Qwen3-14B 和 Qwen3-8B 配置的结果在附录 C、D 和 E 中提供。它们表现出相同的定性趋势。</p>
+<p>5.1 生成器的模型大小分析<br />
+发现 1. 流水线性能随着生成器大小缩放而持续改善。<br />
+图 4 显示，增加生成器大小在所有五个基准测试中持续改善端到端流水线性能。使用不同的模型配置，在图 7、8 和 9 中重现了相同的趋势。</p>
+<p>我们使用每个流水线阶段跨模型大小的性能范围 ($\Delta$) 和标准差 来量化这一趋势。由此产生的统计数据总结在表 1 中。在 Qwen3 家族下，生成器的标准差从 CollaboSentGen 上的 0.96 到 PIE 上的 10.43 个百分点不等，表明生成器缩放显著影响流水线性能。</p>
+<p>5.2 批判器的模型大小分析<br />
+发现 2.1 流水线性能对批判器大小基本不敏感。<br />
+这种行为在图 4 中视觉上很明显，其中批判器曲线始终比生成器和优化器的曲线平坦。我们通过计算每个阶段跨模型大小的性能范围 ($\Delta$) 和标准差 来进一步量化这一趋势（表 1）。在所有基准测试和两个模型家族中，批判器始终表现出最低的变异性。例如，它在 CollaboSentGen 上的标准差保持在 0.21 以下，在所有其他基准测试上保持在 3.1 个百分点以下，而生成器和优化器显示出更大的变化。这些结果表明，扩展批判器模型大小在端到端性能方面产生相对有限的改进。</p>
+<p>为了更好地理解这一现象，我们调查了两种可能的解释：(1) 批判质量在不同模型之间仅略有变化，或者 (2) 即使较大的批判器产生更高质量的批判，优化模型也可能无法充分利用附加信息。我们首先通过手动评估来检查批判本身的质量。具体而言，我们从所有五个基准测试中分别从 0.6B 和 32B 批判模型中随机抽取 50 个批判。遵循先前关于基于规则评估的工作 (Rao and Callison-Burch, 2026)，我们设计了一个特定于任务的五点规则来评估批判质量：5 分表示完全正确、全面且有充分理由的批判；4 分表示正确但有一些遗漏的批判；3 分表示不完美但非误导性的批判；2 分表示包含至少一个错误建议的部分误导性反馈；1 分表示根本不正确或误导性的反馈。我们将 5 分和 4 分表示为正确，3 分表示为良性，2 分和 1 分表示为误导性。</p>
+<p>图 5 显示 0.6B 和 32B 批判器很少产生质量差异很大的批判。当 32B 批判器生成正确的批判时，0.6B 批判器通常也会产生非误导性的批判（分数 3-5），尽管它可能会遗漏一些错误。例如，在 ZebraLogic 上，32B 批判器产生的批判中有 70% 属于分数 3-5，而 0.6B 批判器产生的批判中有 64% 属于分数 3-5。</p>
+<p>相反，当 32B 批判器产生误导性反馈（分数 1-2）时，0.6B 批判通常也是误导性的。因此，较大批判器的主要好处是检测到额外的错误，而不是从根本上改变反馈是否正确。表 2 是一个代表性示例。32B 模型比 0.6B 模型检测到更多错误，但它们都提供了正确的反馈。尽管 32B 批判器通常提供更完整的反馈，但优化性能的相应改进仍然是适度的（图 4）。这表明优化器并不总是将附加的批判信息转化为更好的修订，也为第二种解释提供了证据。</p>
+<p>基准测试 | 生成器扫描 | 优化器扫描<br />
+Meeting Planning | +9.67 | +10.34<br />
+CNN/DailyMail | +4.56 | +5.21<br />
+ZebraLogic | +7.97 | +7.86<br />
+PIE | +9.03 | +11.06<br />
+CollaboSentGen | +3.71 | +4.01</p>
+<p>表 3：<br />
+在生成器和优化器扫描中，以 Qwen3-0.6B 作为批判器相对于匹配的无批判基线的平均批判增益。</p>
+<p>发现 2.2 即使是最小的批判器也优于无批判流水线<br />
+为了确定自优化的改进是来自批判本身还是仅仅来自执行额外的推理步骤，我们将具有最小批判器的标准流水线 P(G, 0.6B, R) 与匹配的无批判基线 P(G, $\varnothing$, R) 进行比较，在后一种基线中，优化器在不接收批判的情况下直接修订生成器输出。</p>
+<p>我们观察到，即使是合并最小的显式批判器也会在所有五个基准测试中产生优于初始生成的改进，如表 3 所示。平均而言，使用 Qwen-0.6b 批判器在会议规划基准测试中为生成器和优化器扫描分别提高了 9.67 和 10.34 个百分点的性能。我们在其余基准测试中观察到类似的增益。这些结果表明，自优化的好处不能仅仅归因于额外的计算。相反，显式批判提供了补充指导，使优化器能够产生更高质量的输出。</p>
+<p>图 6：<br />
+来自 ZebraLogic 的退化示例。尽管有正确的批判，0.6B 优化器正在引入新错误，而 32B 优化器正在整合批判。</p>
+<p>5.3 优化器的模型大小分析<br />
+发现 3.1 流水线性能对优化器大小高度敏感。<br />
+图 4 中优化器较陡峭的线显示，在所有五个基准测试中，优化器始终表现出比生成器和批判器大得多的变异性。这一观察结果在表 1 中得到量化。例如，在 Qwen3 家族下，优化器在 PIE 上的标准差达到 20.60 个百分点，而批判器仅为 1.63 个百分点；在会议规划上为 11.20 个百分点对比 3.10 个百分点；在 CNN/DailyMail 上为 8.99 个百分点对比 3.10 个百分点。</p>
+<p>发现 3.2. 弱优化器可能会降低初始性能。<br />
+在 Qwen3-32B 配置下，30 个评估的优化器流水线（5 个基准测试 × 6 个优化器大小）中有 12 个的表现比相应的初始生成差。所有退化配置的完整流水线在附录 F 中。为了理解潜在的故障模式，我们手动分析了最极端情况 P(32B,32B,0.6B) 中的 50 个退化事件，其中最弱的优化器表现出最大的性能下降。在所有 50 个事件中，0.6B 优化器产生的输出比相同初始解决方案和批判下的初始生成和 32B 优化器都要差。</p>
+<p>在 50 个退化事件中，有 41 个是在接收到非误导性批判（人工评分 3-5）的情况下发生的。在这些情况下，0.6B 优化器在尝试应用批判时不必要地修改了原始解决方案的正确部分，而 32B 优化器通常保留正确的内容并仅执行所需的编辑。其余 9 个案例涉及误导性批判（分数 1-2）。0.6B 优化器遵循不正确的反馈，将批判错误传播到最终解决方案中，而 32B 优化器忽略误导性建议并保留原始解决方案。图 6 展示了一个代表性的退化示例。两个优化器收到相同的批判，但它们的响应不同。0.6B 优化器不必要地修改了先前正确的分配，引入了批判中未指出的新错误。相比之下，32B 优化器仅执行所需的编辑并保留其余解决方案。此示例反映了手动分析期间观察到的主要故障模式。</p>
+<p>6 结论<br />
+我们提出了首次对自优化流水线的分阶段模型大小分析。在 5 个基准测试、2 个模型家族和 4 个配置中，我们表明流水线性能对生成器和优化器的容量高度敏感，但对批判器大小相对不敏感。虽然较大的批判器仅提供适度的增益，但即使是轻量级批判器也始终优于无批判流水线。同时，弱优化器可能会损害初始性能。这些发现表明，不应在自优化流水线中均匀分配模型容量，为设计更具计算效率的多阶段语言模型系统和 LLM 智能体系统提供了实用指导。</p>
+<p>局限性<br />
+这项工作分析了具有单次优化迭代的典型生成-批判-优化流水线中的分阶段模型缩放。我们的发现可能无法直接推广到包含检索、规划、工具使用、记忆或多次优化轮次等额外组件的更复杂的智能体系统。此外，尽管我们在五个不同的基准测试上评估了两个模型家族（Qwen3 和 Gemma 3），但将分析扩展到其他架构、任务和模态将进一步确立观察到的缩放趋势的普遍性。最后，我们的研究侧重于模型容量分配，并未调查其他形式的推理时缩放，例如自适应路由、增加解码预算或超出单次批判-优化周期的迭代优化。</p>
+<p>参考文献<br />
+Brown et al. (2020)<br />
+T. B. Brown, B. Mann, N. Ryder, M. Subbiah, J. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell, S. Agarwal, A. Herbert-Voss, G. Krueger, T. Henighan, R. Child, A. Ramesh, D. M. Ziegler, J. Wu, C. Winter, C. Hesse, M. Chen, E. Sigler, M. Litwin, S. Gray, B. Chess, J. Clark, C. Berner, S. McCandlish, A. Radford, I. Sutskever, and D. Amodei Language models are few-shot learners. External Links: 2005.14165, Link Cited by: §4.3.</p>
+<p>Chen et al. (2023a)<br />
+L. Chen, M. Zaharia, and J. Zou FrugalGPT: how to use large language models while reducing cost and improving performance. External Links: 2305.05176, Link Cited by: §2.</p>
+<p>Chen et al. (2024)<br />
+P. Chen, Z. Guo, B. Haddow, and K. Heafield Iterative translation refinement with large language models. External Links: 2306.03856, Link Cited by: §2.</p>
+<p>Chen et al. (2023b)<br />
+X. Chen, M. Lin, N. Schärli, and D. Zhou Teaching large language models to self-debug. External Links: 2304.05128, Link Cited by: §1, §2.</p>
+<p>Ding et al. (2025)<br />
+D. Ding, A. Mallick, S. Zhang, C. Wang, D. Madrigal, M. D. C. H. Garcia, M. Xia, L. V. S. Lakshmanan, Q. Wu, and V. Rühle BEST-route: adaptive llm routing with test-time optimal compute. External Links: 2506.22716, Link Cited by: §2.</p>
+<p>Fedus et al. (2022)<br />
+W. Fedus, B. Zoph, and N. Shazeer Switch transformers: scaling to trillion parameter models with simple and efficient sparsity. External Links: 2101.03961, Link Cited by: §2.</p>
+<p>Flower and Hayes (1980)<br />
+L. Flower and J. R. Hayes Identifying the organization of writing processes. In Cognitive Processes in Writing, Cited by: §1.</p>
+<p>Gou et al. (2024)<br />
+Z. Gou, Z. Shao, Y. Gong, Y. Shen, Y. Yang, N. Duan, and W. Chen CRITIC: large language models can self-correct with tool-interactive critiquing. External Links: 2305.11738, Link Cited by: §1, §1.</p>
+<p>Guo et al. (2025)<br />
+D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi, X. Zhang, X. Yu, Y. Wu, Z. F. Wu, Z. Gou, Z. Shao, Z. Li, Z. Gao, A. Liu, B. Xue, B. Wang, B. Wu, B. Feng, C. Lu, C. Zhao, C. Deng, C. Ruan, D. Dai, D. Chen, D. Ji, E. Li, F. Lin, F. Dai, F. Luo, G. Hao, G. Chen, G. Li, H. Zhang, H. Xu, H. Ding, H. Gao, H. Qu, H. Li, J. Guo, J. Li, J. Chen, J. Yuan, J. Tu, J. Qiu, J. Li, J. L. Cai, J. Ni, J. Liang, J. Chen, K. Dong, K. Hu, K. You, K. Gao, K. Guan, K. Huang, K. Yu, L. Wang, L. Zhang, L. Zhao, L. Wang, L. Zhang, L. Xu, L. Xia, M. Zhang, M. Zhang, M. Tang, M. Zhou, M. Li, M. Wang, M. Li, N. Tian, P. Huang, P. Zhang, Q. Wang, Q. Chen, Q. Du, R. Ge, R. Zhang, R. Pan, R. Wang, R. J. Chen, R. L. Jin, R. Chen, S. Lu, S. Zhou, S. Chen, S. Ye, S. Wang, S. Yu, S. Zhou, S. Pan, S. S. Li, S. Zhou, S. Wu, T. Yun, T. Pei, T. Sun, T. Wang, W. Zeng, W. Liu, W. Liang, W. Gao, W. Yu, W. Zhang, W. L. Xiao, W. An, X. Liu, X. Wang, X. Chen, X. Nie, X. Cheng, X. Liu, X. Xie, X. Liu, X. Yang, X. Li, X. Su, X. Lin, X. Q. Li, X. Jin, X. Shen, X. Chen, X. Sun, X. Wang, X. Song, X. Zhou, X. Wang, X. Shan, Y. K. Li, Y. Q. Wang, Y. X. Wei, Y. Zhang, Y. Xu, Y. Li, Y. Zhao, Y. Sun, Y. Wang, Y. Yu, Y. Zhang, Y. Shi, Y. Xiong, Y. He, Y. Piao, Y. Wang, Y. Tan, Y. Ma, Y. Liu, Y. Guo, Y. Ou, Y. Wang, Y. Gong, Y. Zou, Y. He, Y. Xiong, Y. Luo, Y. You, Y. Liu, Y. Zhou, Y. X. Zhu, Y. Huang, Y. Li, Y. Zheng, Y. Zhu, Y. Ma, Y. Tang, Y. Zha, Y. Yan, Z. Z. Ren, Z. Ren, Z. Sha, Z. Fu, Z. Xu, Z. Xie, Z. Zhang, Z. Hao, Z. Ma, Z. Yan, Z. Wu, Z. Gu, Z. Zhu, Z. Liu, Z. Li, Z. Xie, Z. Song, Z. Pan, Z. Huang, Z. Xu, Z. Zhang, and Z. Zhang DeepSeek-r1. Nature 645 ( 8081 ), pp. 633–638. External Links: ISSN 1476-4687, Link, Document Cited by: §2.</p>
+<p>Hayes (1996)<br />
+J. R. Hayes A new framework for understanding cognition and affect in writing. In The Science of Writing, Cited by: §1.</p>
+<p>Hermann et al. (2015)<br />
+K. M. Hermann, T. Kočiský, E. Grefenstette, L. Espeholt, W. Kay, M. Suleyman, and P. Blunsom Teaching machines to read and comprehend. In Advances in Neural Information Processing Systems, Cited by: Appendix B, §4.2.</p>
+<p>Hoffmann et al. (2022)<br />
+J. Hoffmann, S. Borgeaud, A. Mensch, E. Buchatskaya, T. Cai, E. Rutherford, D. de Las Casas, L. A. Hendricks, J. Welbl, A. Clark, T. Hennigan, E. Noland, K. Millican, G. van den Driessche, B. Damoc, A. Guy, S. Osindero, K. Simonyan, E. Elsen, J. W. Rae, O. Vinyals, and L. Sifre Training compute-optimal large language models. External Links: 2203.15556, Link Cited by: §2.</p>
+<p>Huang et al. (2024)<br />
+X. Huang, W. Liu, X. Chen, X. Wang, H. Wang, D. Lian, Y. Wang, R. Tang, and E. Chen Understanding the planning of llm agents: a survey. External Links: 2402.02716, Link Cited by: §2.</p>
+<p>Kaplan et al. (2020)<br />
+J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown, B. Chess, R. Child, S. Gray, A. Radford, J. Wu, and D. Amodei Scaling laws for neural language models. External Links: 2001.08361, Link Cited by: §2.</p>
+<p>Kellogg (1996)<br />
+R. T. Kellogg A model of working memory in writing. Journal of Writing Research. Cited by: §1.</p>
+<p>Kim et al. (2024)<br />
+S. Kim, S. Moon, R. Tabrizi, N. Lee, M. W. Mahoney, K. Keutzer, and A. Gholami An llm compiler for parallel function calling. External Links: 2312.04511, Link Cited by: §2.</p>
+<p>Lepikhin et al. (2020)<br />
+D. Lepikhin, H. Lee, Y. Xu, D. Chen, O. Firat, Y. Huang, M. Krikun, N. Shazeer, and Z. Chen GShard: scaling giant models with conditional computation and automatic sharding. External Links: 2006.16668, Link Cited by: §2.</p>
+<p>Lin et al. (2025)<br />
+B. Y. Lin, R. L. Bras, K. Richardson, A. Sabharwal, R. Poovendran, P. Clark, and Y. Choi ZebraLogic: on the scaling limits of llms for logical reasoning. External Links: 2502.01100, Link Cited by: Appendix B, §4.2.</p>
+<p>Madaan et al. (2023)<br />
+A. Madaan, N. Tandon, P. Gupta, S. Hallinan, L. Gao, S. Wiegreffe, U. Alon, N. Dziri, S. Prabhumoye, Y. Yang, S. Gupta, B. P. Majumder, K. Hermann, S. Welleck, A. Yazdanbakhsh, and P. Clark Self-refine: iterative refinement with self-feedback. External Links: 2303.17651, Link Cited by: §1, §1, §2, §3.1.</p>
+<p>Mostafazadeh et al. (2016)<br />
+N. Mostafazadeh, N. Chambers, X. He, D. Parikh, D. Batra, L. Vanderwende, P. Kohli, and J. Allen A corpus and cloze evaluation for deeper understanding of commonsense stories. In NAACL-HLT, Cited by: Appendix B, §4.2.</p>
+<p>Muennighoff et al. (2025)<br />
+N. Muennighoff, Z. Yang, W. Shi, X. L. Li, L. Fei-Fei, H. Hajishirzi, L. Zettlemoyer, P. Liang, E. Candès, and T. Hashimoto S1: simple test-time scaling. External Links: 2501.19393, Link Cited by: §2.</p>
+<p>Ong et al. (2025)<br />
+I. Ong, A. Almahairi, V. Wu, W. Chiang, T. Wu, J. E. Gonzalez, M. W. Kadous, and I. Stoica RouteLLM: learning to route llms with preference data. External Links: 2406.18665, Link Cited by: §2.</p>
+<p>OpenAI et al. (2026)<br />
+OpenAI, :, A. Jaech, A. Kalai, A. Lerer, A. Richardson, A. El-Kishky, A. Low, A. Helyar, A. Madry, A. Beutel, A. Carney, A. Iftimie, A. Karpenko, A. T. Passos, A. Neitz, A. Prokofiev, A. Wei, A. Tam, A. Bennett, A. Kumar, A. Saraiva, A. Vallone, A. Duberstein, A. Kondrich, A. Mishchenko, A. Applebaum, A. Jiang, A. Nair, B. Zoph, B. Ghorbani, B. Zhang, B. Rossen, B. Sokolowsky, B. Barak, B. McGrew, B. Minaiev, B. Hao, B. Baker, B. Houghton, B. McKinzie, B. Eastman, C. Lugaresi, C. Bassin, C. Hudson, C. M. Li, C. de Bourcy, C. Voss, C. Shen, C. Zhang, C. Koch, C. Orsinger, C. Hesse, C. Fischer, C. Chan, D. Roberts, D. Kappler, D. Levy, D. Selsam, D. Dohan, D. Farhi, D. Mely, D. Robinson, D. Tsipras, D. Li, D. Oprica, E. Freeman, E. Zhang, E. Wong, E. Proehl, E. Cheung, E. Mitchell, E. Wallace, E. Ritter, E. Mays, F. Wang, F. P. Such, F. Raso, F. Leoni, F. Tsimpourlas, F. Song, F. von Lohmann, F. Sulit, G. Salmon, G. Parascandolo, G. Chabot, G. Zhao, G. Brockman, G. Leclerc, H. Salman, H. Bao, H. Sheng, H. Andrin, H. Bagherinezhad, H. Ren, H. Lightman, H. W. Chung, I. Kivlichan, I. O’Connell, I. Osband, I. C. Gilaberte, I. Akkaya, I. Kostrikov, I. Sutskever, I. Kofman, J. Pachocki, J. Lennon, J. Wei, J. Harb, J. Twore, J. Feng, J. Yu, J. Weng, J. Tang, J. Yu, J. Q. Candela, J. Palermo, J. Parish, J. Heidecke, J. Hallman, J. Rizzo, J. Gordon, J. Uesato, J. Ward, J. Huizinga, J. Wang, K. Chen, K. Xiao, K. Singhal, K. Nguyen, K. Cobbe, K. Shi, K. Wood, K. Rimbach, K. Gu-Lemberg, K. Liu, K. Lu, K. Stone, K. Yu, L. Ahmad, L. Yang, L. Liu, L. Maksin, L. Ho, L. Fedus, L. Weng, L. Li, L. McCallum, L. Held, L. Kuhn, L. Kondraciuk, L. Kaiser, L. Metz, M. Boyd, M. Trebacz, M. Joglekar, M. Chen, M. Tintor, M. Meyer, M. Jones, M. Kaufer, M. Schwarzer, M. Shah, M. Yatbaz, M. Y. Guan, M. Xu, M. Yan, M. Glaese, M. Chen, M. Lampe, M. Malek, M. Wang, M. Fradin, M. McClay, M. Pavlov, M. Wang, M. Wang, M. Murati, M. Bavarian, M. Rohaninejad, N. McAleese, N. Chowdhury, N. Chowdhury, N. Ryder, N. Tezak, N. Brown, O. Nachum, O. Boiko, O. Murk, O. Watkins, P. Chao, P. Ashbourne, P. Izmailov, P. Zhokhov, R. Dias, R. Arora, R. Lin, R. G. Lopes, R. Gaon, R. Miyara, R. Leike, R. Hwang, R. Garg, R. Brown, R. James, R. Shu, R. Cheu, R. Greene, S. Jain, S. Altman, S. Toizer, S. Toyer, S. Miserendino, S. Agarwal, S. Hernandez, S. Baker, S. McKinney, S. Yan, S. Zhao, S. Hu, S. Santurkar, S. R. Chaudhuri, S. Zhang, S. Fu, S. Papay, S. Lin, S. Balaji, S. Sanjeev, S. Sidor, T. Broda, A. Clark, T. Wang, T. Gordon, T. Sanders, T. Patwardhan, T. Sottiaux, T. Degry, T. Dimson, T. Zheng, T. Garipov, T. Stasi, T. Bansal, T. Creech, T. Peterson, T. Eloundou, V. Qi, V. Kosaraju, V. Monaco, V. Pong, V. Fomenko, W. Zheng, W. Zhou, W. Zhan, W. McCabe, W. Zaremba, Y. Dubois, Y. Lu, Y. Chen, Y. Cha, Y. Bai, Y. He, Y. Zhang, Y. Wang, Z. Shao, and Z. Li OpenAI o1 system card. External Links: 2412.16720, Link Cited by: §2.</p>
+<p>OpenAI et al. (2024)<br />
+OpenAI, J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Aleman, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat, R. Avila, I. Babuschkin, S. Balaji, V. Balcom, P. Baltescu, H. Bao, M. Bavarian, J. Belgum, I. Bello, J. Berdine, G. Bernadett-Shapiro, C. Berner, L. Bogdonoff, O. Boiko, M. Boyd, A. Brakman, G. Brockman, T. Brooks, M. Brundage, K. Button, T. Cai, R. Campbell, A. Cann, B. Carey, C. Carlson, R. Carmichael, B. Chan, C. Chang, F. Chantzis, D. Chen, S. Chen, R. Chen, J. Chen, M. Chen, B. Chess, C. Cho, C. Chu, H. W. Chung, D. Cummings, J. Currier, Y. Dai, C. Decareaux, T. Degry, N. Deutsch, D. Deville, A. Dhar, D. Dohan, S. Dowling, S. Dunning, A. Ecoffet, A. Eleti, T. Eloundou, D. Farhi, L. Fedus, N. Felix, S. P. Fishman, J. Forte, I. Fulford, L. Gao, E. Georges, C. Gibson, V. Goel, T. Gogineni, G. Goh, R. Gontijo-Lopes, J. Gordon, M. Grafstein, S. Gray, R. Greene, J. Gross, S. S. Gu, Y. Guo, C. Hallacy, J. Han, J. Harris, Y. He, M. Heaton, J. Heidecke, C. Hesse, A. Hickey, W. Hickey, P. Hoeschele, B. Houghton, K. Hsu, S. Hu, X. Hu, J. Huizinga, S. Jain, S. Jain, J. Jang, A. Jiang, R. Jiang, H. Jin, D. Jin, S. Jomoto, B. Jonn, H. Jun, T. Kaftan, Ł. Kaiser, A. Kamali, I. Kanitscheider, N. S. Keskar, T. Khan, L. Kilpatrick, J. W. Kim, C. Kim, Y. Kim, J. H. Kirchner, J. Kiros, M. Knight, D. Kokotajlo, Ł. Kondraciuk, A. Kondrich, A. Konstantinidis, K. Kosic, G. Krueger, V. Kuo, M. Lampe, I. Lan, T. Lee, J. Leike, J. Leung, D. Levy, C. M. Li, R. Lim, M. Lin, S. Lin, M. Litwin, T. Lopez, R. Lowe, P. Lue, A. Makanju, K. Malfacini, S. Manning, T. Markov, Y. Markovski, B. Martin, K. Mayer, A. Mayne, B. McGrew, S. M. McKinney, C. McLeavey, P. McMillan, J. McNeil, D. Medina, A. Mehta, J. Menick, L. Metz, A. Mishchenko, P. Mishkin, V. Monaco, E. Morikawa, D. Mossing, T. Mu, M. Murati, O. Murk, D. Mély, A. Nair, R. Nakano, R. Nayak, A. Neelakantan, R. Ngo, H. Noh, L. Ouyang, C. O’Keefe, J. Pachocki, A. Paino, J. Palermo, A. Pantuliano, G. Parascandolo, J. Parish, E. Parparita, A. Passos, M. Pavlov, A. Peng, A. Perelman, F. de Avila Belbute Peres, M. Petrov, H. P. de Oliveira Pinto, Michael, Pokorny, M. Pokrass, V. H. Pong, T. Powell, A. Power, B. Power, E. Proehl, R. Puri, A. Radford, J. Rae, A. Ramesh, C. Raymond, F. Real, K. Rimbach, C. Ross, B. Rotsted, H. Roussez, N. Ryder, M. Saltarelli, T. Sanders, S. Santurkar, G. Sastry, H. Schmidt, D. Schnurr, J. Schulman, D. Selsam, K. Sheppard, T. Sherbakov, J. Shieh, S. Shoker, P. Shyam, S. Sidor, E. Sigler, M. Simens, J. Sitkin, K. Slama, I. Sohl, B. Sokolowsky, Y. Song, N. Staudacher, F. P. Such, N. Summers, I. Sutskever, J. Tang, N. Tezak, M. B. Thompson, P. Tillet, A. Tootoonchian, E. Tseng, P. Tuggle, N. Turley, J. Tworek, J. F. C. Uribe, A. Vallone, A. Vijayvergiya, C. Voss, C. Wainwright, J. J. Wang, A. Wang, B. Wang, J. Ward, J. Wei, C. Weinmann, A. Welihinda, P. Welinder, J. Weng, L. Weng, M. Wiethoff, D. Willner, C. Winter, S. Wolrich, H. Wong, L. Workman, S. Wu, J. Wu, M. Wu, K. Xiao, T. Xu, S. Yoo, K. Yu, Q. Yuan, W. Zaremba, R. Zellers, C. Zhang, M. Zhang, S. Zhao, T. Zheng, J. Zhuang, W. Zhuk, and B. Zoph GPT-4 technical report. External Links: 2303.08774, Link Cited by: §4.2.</p>
+<p>Rao and Callison-Burch (2026)<br />
+D. Rao and C. Callison-Burch Autorubric: unifying rubric-based llm evaluation. External Links: 2603.00077, Link Cited by: §5.2.</p>
+<p>See et al. (2017)<br />
+A. See, P. J. Liu, and C. D. Manning Get to the point: summarization with pointer-generator networks. arXiv preprint arXiv:1704.04368. Cited by: Appendix B, §4.2.</p>
+<p>Shinn et al. (2023)<br />
+N. Shinn, F. Cassano, E. Berman, A. Gopinath, K. Narasimhan, and S. Yao Reflexion: language agents with verbal reinforcement learning. External Links: 2303.11366, Link Cited by: §1, §1, §2.</p>
+<p>Shypula et al. (2024)<br />
+A. Shypula, A. Madaan, Y. Zeng, U. Alon, J. Gardner, M. Hashemi, G. Neubig, P. Ranganathan, O. Bastani, and A. Yazdanbakhsh Learning performance-improving code edits. External Links: 2302.07867, Link Cited by: Appendix B, §4.2.</p>
+<p>Tarunokusumo and Cunha (2025)<br />
+R. A. Tarunokusumo and R. F. Cunha Boosting accuracy and efficiency of budget forcing in llms via reinforcement learning for mathematical reasoning. External Links: 2510.21398, Link Cited by: §2.</p>
+<p>Team et al. (2025)<br />
+G. Team, A. Kamath, J. Ferret, S. Pathak, N. Vieillard, R. Merhej, S. Perrin, T. Matejovicova, A. Ramé, M. Rivière, L. Rouillard, T. Mesnard, G. Cideron, J. Grill, S. Ramos, E. Yvinec, M. Casbon, E. Pot, I. Penchev, G. Liu, F. Visin, K. Kenealy, L. Beyer, X. Zhai, A. Tsitsulin, R. Busa-Fekete, A. Feng, N. Sachdeva, B. Coleman, Y. Gao, B. Mustafa, I. Barr, E. Parisotto, D. Tian, M. Eyal, C. Cherry, J. Peter, D. Sinopalnikov, S. Bhupatiraju, R. Agarwal, M. Kazemi, D. Malkin, R. Kumar, D. Vilar, I. Brusilovsky, J. Luo, A. Steiner, A. Friesen, A. Sharma, A. Sharma, A. M. Gilady, A. Goedeckemeyer, A. Saade, A. Feng, A. Kolesnikov, A. Bendebury, A. Abdagic, A. Vadi, A. György, A. S. Pinto, A. Das, A. Bapna, A. Miech, A. Yang, A. Paterson, A. Shenoy, A. Chakrabarti, B. Piot, B. Wu, B. Shahriari, B. Petrini, C. Chen, C. L. Lan, C. A. Choquette-Choo, C. Carey, C. Brick, D. Deutsch, D. Eisenbud, D. Cattle, D. Cheng, D. Paparas, D. S. Sreepathihalli, D. Reid, D. Tran, D. Zelle, E. Noland, E. Huizenga, E. Kharitonov, F. Liu, G. Amirkhanyan, G. Cameron, H. Hashemi, H. Klimczak-Plucińska, H. Singh, H. Mehta, H. T. Lehri, H. Hazimeh, I. Ballantyne, I. Szpektor, I. Nardini, J. Pouget-Abadie, J. Chan, J. Stanton, J. Wieting, J. Lai, J. Orbay, J. Fernandez, J. Newlan, J. Ji, J. Singh, K. Black, K. Yu, K. Hui, K. Vodrahalli, K. Greff, L. Qiu, M. Valentine, M. Coelho, M. Ritter, M. Hoffman, M. Watson, M. Chaturvedi, M. Moynihan, M. Ma, N. Babar, N. Noy, N. Byrd, N. Roy, N. Momchev, N. Chauhan, N. Sachdeva, O. Bunyan, P. Botarda, P. Caron, P. K. Rubenstein, P. Culliton, P. Schmid, P. G. Sessa, P. Xu, P. Stanczyk, P. Tafti, R. Shivanna, R. Wu, R. Pan, R. Rokni, R. Willoughby, R. Vallu, R. Mullins, S. Jerome, S. Smoot, S. Girgin, S. Iqbal, S. Reddy, S. Sheth, S. Põder, S. Bhatnagar, S. R. Panyam, S. Eiger, S. Zhang, T. Liu, T. Yacovone, T. Liechty, U. Kalra, U. Evci, V. Misra, V. Roseberry, V. Feinberg, V. Kolesnikov, W. Han, W. Kwon, X. Chen, Y. Chow, Y. Zhu, Z. Wei, Z. Egyed, V. Cotruta, M. Giang, P. Kirk, A. Rao, K. Black, N. Babar, J. Lo, E. Moreira, L. G. Martins, O. Sanseviero, L. Gonzalez, Z. Gleicher, T. Warkentin, V. Mirrokni, E. Senter, E. Collins, J. Barral, Z. Ghahramani, R. Hadsell, Y. Matias, D. Sculley, S. Petrov, N. Fiedel, N. Shazeer, O. Vinyals, J. Dean, D. Hassabis, K. Kavukcuoglu, C. Farabet, E. Buchatskaya, J. Alayrac, R. Anil, Dmitry, Lepikhin, S. Borgeaud, O. Bachem, A. Joulin, A. Andreev, C. Hardin, R. Dadashi, and L. Hussenot Gemma 3 technical report. External Links: 2503.19786, Link Cited by: §1.</p>
+<p>Wu et al. (2023)<br />
+Q. Wu, G. Bansal, J. Zhang, Y. Wu, B. Li, E. Zhu, L. Jiang, X. Zhang, S. Zhang, J. Liu, A. H. Awadallah, R. W. White, D. Burger, and C. Wang AutoGen: enabling next-gen llm applications via multi-agent conversation. External Links: 2308.08155, Link Cited by: §1, §2.</p>
+<p>Yang et al. (2025)<br />
+A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, C. Zheng, D. Liu, F. Zhou, F. Huang, F. Hu, H. Ge, H. Wei, H. Lin, J. Tang, J. Yang, J. Tu, J. Zhang, J. Yang, J. Yang, J. Zhou, J. Zhou, J. Lin, K. Dang, K. Bao, K. Yang, L. Yu, L. Deng, M. Li, M. Xue, M. Li, P. Zhang, P. Wang, Q. Zhu, R. Men, R. Gao, S. Liu, S. Luo, T. Li, T. Tang, W. Yin, X. Ren, X. Wang, X. Zhang, X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Zhang, Y. Wan, Y. Liu, Z. Wang, Z. Cui, Z. Zhang, Z. Zhou, and Z. Qiu Qwen3 technical report. External Links: 2505.09388, Link Cited by: §1.</p>
+<p>Yao et al. (2023)<br />
+S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao ReAct: synergizing reasoning and acting in language models. External Links: 2210.03629, Link Cited by: §1, §2.</p>
+<p>Zelikman et al. (2024)<br />
+E. Zelikman, G. Harik, Y. Shao, V. Jayasiri, N. Haber, and N. D. Goodman Quiet-star: language models can teach themselves to think before speaking. External Links: 2403.09629, Link Cited by: §2.</p>
+<p>Zhang et al. (2025)<br />
+M. Zhang, Y. Yang, R. Xie, B. Dhingra, S. Zhou, and J. Pei Generalizability of large language model-based agents: a comprehensive survey. External Links: 2509.16330, Link Cited by: §2.</p>
+<p>Zhang et al. (2026)<br />
+M. Zhang, Y. Yang, R. Xie, B. Dhingra, S. Zhou, and J. Pei Generalizability of large language model-based agents: a comprehensive survey. ACM Comput. Surv. 58 ( 10 ). External Links: ISSN 0360-0300, Link, Document Cited by: §1, §2.</p>
+<p>Zheng et al. (2024)<br />
+H. S. Zheng, S. Mishra, H. Zhang, X. Chen, M. Chen, A. Nova, L. Hou, H. Cheng, Q. V. Le, E. H. Chi, and D. Zhou NATURAL plan: benchmarking llms on natural language planning. External Links: 2406.04520, Link Cited by: Appendix B, §4.2.</p>
+<p>Zhou et al. (2025)<br />
+C. Zhou, X. Zhang, D. Song, X. Chen, W. Gu, H. Ma, Y. Tian, M. Zhang, and L. Hu RefineCoder: iterative improving of large language models via adaptive critique refinement for code generation. External Links: 2502.09183, Link Cited by: §1, §2.</p>
+<p>附录 A 实现细节<br />
+所有实验均在 NVIDIA H100 GPU 上使用 Qwen3 和 Gemma 3 模型进行。我们为生成器、批判器和优化器阶段使用了特定于任务的少样本提示，完整的提示模板在附录中提供。生成使用贪婪解码，温度为 0.0，最大输出长度为 700 个新 token。相同的解码配置用于所有模型大小和流水线阶段，以确保观察到的性能差异可归因于模型容量而不是推理设置的变化。</p>
+<p>附录 B 数据集细节<br />
+我们在每个基准测试的子集上进行评估，以保持实验在计算上易于处理。根据基准测试，我们要么随机抽样评估实例，要么将评估限制在受控难度的子集上，如下所述。</p>
+<p>会议规划。我们评估了 500 个示例。由于我们实验中使用的即使是最大的模型在最困难的实例上也会遇到困难 (Zheng et al., 2024)，我们将评估限制为最多涉及五个人的问题。</p>
+<p>CNN/DailyMail (Hermann et al., 2015; See et al., 2017)。我们评估了官方测试集 1.0.0 版本的前 500 个示例。</p>
+<p>ZebraLogic。我们评估了 320 个示例。由于我们实验中使用的即使是最大的模型在最困难的谜题上也会遇到困难 (Lin et al., 2025)，我们将评估限制为最多 10 个单元格的谜题。</p>
+<p>PIE (Shypula et al., 2024)。由于评估每个生成的程序在计算上很昂贵，我们从基准测试中随机抽取了 500 个示例。</p>
+<p>CollaboSentGen (Mostafazadeh et al., 2016)。我们评估了 500 个随机选择的示例。</p>
+<p>附录 C Gemma 家族的其他结果<br />
+为了评估我们的观察结果是否可以推广到 Qwen3 之外，我们使用 Gemma 家族重复了分阶段缩放分析。具体而言，我们评估了 Gemma 3 1B-IT、Gemma 3 4B-IT、Gemma 3 12B-IT 和 Gemma 3 27B-IT。我们在图 7 中绘制了结果。Gemma 的结果与 Qwen3 观察到的结果非常相似。在所有五个基准测试中，流水线性能在很大程度上对生成器和优化器的大小都很敏感。弱优化器的表现可能不如初始生成。性能对批判器大小最不敏感。这些结果表明我们的结论并不特定于某个模型家族。</p>
+<p>附录 D Qwen3-14B 配置<br />
+图 8 比较了在将其他两个阶段固定为 Qwen3-14B 时独立增加每个阶段模型大小的影响。蓝线代表生成器扫描的趋势，绿线代表批判器扫描的趋势，红线代表优化器扫描的趋势（在第 3.2 节中定义）。正文中报告的相同定性观察结果保持一致。特别是，生成器和优化器缩放显著影响流水线性能，而批判缩放产生相对较小的增益。</p>
+<p>附录 E Qwen3-8B 配置<br />
+图 9 比较了在将其他两个阶段固定为 Qwen3-8B 时独立增加每个阶段模型大小的影响。蓝线代表生成器扫描的趋势，绿线代表批判器扫描的趋势，红线代表优化器扫描的趋势（在第 3.2 节中定义）。正文中报告的相同定性观察结果保持一致。特别是，生成器和优化器缩放显著影响流水线性能，而批判缩放产生相对较小的增益。</p>
+<p>附录 F 退化流水线<br />
+为了补充第 5.3 节中提出的定性分析，表 4 总结了最终优化输出比相应初始生成表现更差的所有基准测试-优化器大小组合。这些退化案例发生在多个基准测试和模型家族中，表明该现象是系统性的，而不是局限于单一任务或模型。此表报告了在每个实验配置下导致退化的优化器大小。</p>
+<p>图 7：<br />
+Gemma 3-27 配置下五个基准测试的分阶段模型大小扫描。X 轴是模型大小。蓝线、绿线和红线分别代表生成器扫描、批判器扫描和优化器扫描。灰色虚线报告了没有优化的相应初始生成性能。更陡峭的曲线表明对该阶段的模型大小具有更大的敏感性。指标在第 4.2 节中定义。</p>
+<p>图 8：<br />
+Qwen3-14B 配置下五个基准测试的分阶段模型大小扫描。X 轴是模型大小。蓝线、绿线和红线分别代表生成器扫描、批判器扫描和优化器扫描。灰色虚线报告了没有优化的相应初始生成性能。更陡峭的曲线表明对该阶段的模型大小具有更大的敏感性。指标在第 4.2 节中定义。</p>
+<p>图 9：<br />
+Qwen3-8B 配置下五个基准测试的分阶段模型大小扫描。X 轴是模型大小。蓝线、绿线和红线分别代表生成器扫描、批判器扫描和优化器扫描。灰色虚线报告了没有优化的相应初始生成性能。更陡峭的曲线表明对该阶段的模型大小具有更大的敏感性。指标在第 4.2 节中定义。</p>
+<p>Qwen3-32B<br />
+基准测试 | 0.6B | 1.7B | 4B | 8B | 14B | 32B<br />
+Meeting Planning | | | | | ✓ | ✓<br />
+CNN/DailyMail | | | | | | ✓<br />
+ZebraLogic | | ✓ | | ✓ | | ✓<br />
+PIE | ✓ | ✓ | ✓ | ✓ | |<br />
+CollaboSentGen | | | | | ✓ | ✓<br />
+总计 | 12 / 30</p>
+<p>Qwen3-14B<br />
+基准测试 | 0.6B | 1.7B | 4B | 8B | 14B | 32B<br />
+Meeting Planning | | | | | | ✓<br />
+CNN/DailyMail | | | | | | ✓<br />
+ZebraLogic | | ✓ | | ✓ | | ✓<br />
+PIE | ✓ | ✓ | | | |<br />
+CollaboSentGen | | | | | ✓ | ✓<br />
+总计 | 9 / 30</p>
+<p>Qwen3-8B<br />
+基准测试 | 0.6B | 1.7B | 4B | 8B | 14B | 32B<br />
+Meeting Planning | | | | | |<br />
+CNN/DailyMail | | | | | | ✓<br />
+ZebraLogic | | ✓ | | ✓ | |<br />
+PIE | ✓ | ✓ | ✓ | | |<br />
+CollaboSentGen | | | | | ✓ | ✓<br />
+总计 | 8 / 30</p>
+<p>Gemma3-27B<br />
+基准测试 | 1B | 4B | 12B | 27B<br />
+Meeting Planning | | ✓ | ✓ |<br />
+CNN/DailyMail | | | |<br />
+ZebraLogic | | ✓ | ✓ |<br />
+PIE | ✓ | ✓ | |<br />
+CollaboSentGen | | ✓ | ✓ |<br />
+总计 | 8 / 20</p>
+<p>表 4：<br />
+在不同模型配置下，性能低于相应初始生成的优化器大小。勾号表示使用相应的优化器大小会导致性能低于初始生成。</p>
+<p>附录 G 提示<br />
+生成器提示<br />
+生成器接收带有示例 ($x$) 的任务描述并产生初始解决方案 ($y_{0}$)。</p>
+<p>批判器提示<br />
+批判器接收带有示例 ($x$) 的任务描述和初始解决方案 ($y_{0}$)。它分析生成的解决方案 $y_{0}$，识别错误，并提供可操作的批判 $f$。</p>
+<p>优化器提示<br />
+优化器接收带有示例 ($x$) 的任务描述、初始解决方案 $y_{0}$ 和批判 $f$，并被指示产生包含批判的修订最终解决方案 $y_{r}$。</p>
+<p>我们实验中使用的提示组织如下：<br />
+• 会议规划：图 10–12<br />
+• CNN/DailyMail：图 13–15<br />
+• ZebraLogic：图 16–18<br />
+• PIE：图 19–21<br />
+• CollaboSentGen：图 22–24</p>
+<p>图 10：会议规划的生成器提示<br />
+图 11：会议规划的批判器提示<br />
+图 12：会议规划的优化器提示<br />
+图 13：CNN/DailyMail 的生成器提示<br />
+图 14：CNN/DailyMail 的批判器提示<br />
+图 15：CNN/DailyMail 的优化器提示<br />
+图 16：ZebraLogic 的生成器提示<br />
+图 17：ZebraLogic 的批判器提示<br />
+图 18：ZebraLogic 的优化器提示<br />
+图 19：PIE 的生成器提示<br />
+图 20：PIE 的批判器提示<br />
+图 21：PIE 的优化器提示<br />
+图 22：CollaboSentGen 的生成器提示<br />
+图 23：CollaboSentGen 的批判器提示<br />
+图 24：CollaboSentGen 的优化器提示</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 自优化, 模型容量分配, 大语言模型, 推理时缩放, 多阶段流水线</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
