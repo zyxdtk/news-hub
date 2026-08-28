@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LivingRAG：用经验增强图检索增强生成 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">LivingRAG：用经验增强图检索增强生成</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-26</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.25960" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：LivingRAG: Augmenting Graph RAG with Experience</h4>
+            <p><strong>中文摘要：</strong> LivingRAG提出了一种具有可写和可重用推理经验的图RAG框架。通过在图检索主干中添加可写的经验存储，系统能够在推理过程中重用经过验证的经验，包括利用存储的图信号辅助检索证据，以及利用存储的摘要为答案生成提供推理模式。实验表明，该方法不仅提高了多跳问答的准确性，还显著减少了补全令牌的使用和API成本。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>LivingRAG：用经验增强图检索增强生成</p>
+<p>Yuzhuo Cui<br />
+所属机构：<br />
+虚拟现实技术与系统国家重点实验室，北京航空航天大学，中国北京<br />
+所属机构：<br />
+北京航空航天大学杭州创新研究院，中国浙江杭州</p>
+<p>Zongye Zhang<br />
+所属机构：<br />
+虚拟现实技术与系统国家重点实验室，北京航空航天大学，中国北京<br />
+所属机构：<br />
+北京航空航天大学杭州创新研究院，中国浙江杭州</p>
+<p>Qingjie Liu<br />
+邮箱：<br />
+{cyz020403, zhangzongye, qingjie.liu}@buaa.edu.cn<br />
+*<br />
+通讯作者<br />
+所属机构：<br />
+虚拟现实技术与系统国家重点实验室，北京航空航天大学，中国北京<br />
+所属机构：<br />
+北京航空航天大学杭州创新研究院，中国浙江杭州</p>
+<p>摘要<br />
+基于图的RAG通过将证据组织成知识图谱来改进多跳问答。<br />
+然而，大多数现有的RAG系统孤立地处理每个查询，并在推理后丢弃大语言模型响应中有用的推理。<br />
+因此，后续的相关查询需要从头开始检索证据和进行推理。<br />
+我们提出了LivingRAG，一个具有可写和可重用推理经验的图RAG框架。<br />
+LivingRAG在基于图的检索主干中添加了一个可写的经验存储，使得经过验证的经验可以在推理过程中以两种方式被重用。<br />
+存储的图信号帮助检索找到在早期相关查询中有用的实体和段落。<br />
+存储的摘要为答案生成提供参考推理模式。<br />
+我们分析了在线问答流，并从共享实体、图邻域和问题模板中发现了可重用的信号。<br />
+在多跳问答基准上的实验表明，LivingRAG比强大的RAG基线提高了准确性，并在重用相关先前经验时减少了补全令牌的使用。</p>
+<p>1 引言<br />
+大语言模型在许多语言理解和推理任务中表现良好。<br />
+然而，它们在知识密集型任务中仍面临限制。<br />
+它们可能会产生事实幻觉。<br />
+它们也可能缺乏对特定领域或最新知识的访问。<br />
+检索增强生成通过将模型输出扎根于外部文档来解决这些限制<br />
+(Lewis et al., 2020; Karpukhin et al., 2020; Gao et al., 2024)。<br />
+基于图的RAG进一步改进了复杂问题的检索。<br />
+它在图中表示段落、实体及其关系。<br />
+图结构帮助检索器找到密集检索可能遗漏的多跳证据。<br />
+最近的系统表明，图结构对于全局上下文和实体级推理很有用<br />
+(Edge et al., 2024; Guo et al., 2024; Gutiérrez et al., 2025; Zhuang et al., 2025; Luo et al., 2026b)。</p>
+<p>然而，在线问答流提出了一个进一步的问题。<br />
+当相关查询随时间到达时，系统是否应该重用早期查询中有用的推理？<br />
+尽管取得了这些进展，大多数RAG和Graph RAG系统在推理时仍然独立地回答每个查询<br />
+(Edge et al., 2024; Guo et al., 2024; Gutiérrez et al., 2025; Zhuang et al., 2025; Luo et al., 2026b)。<br />
+这些方法为当前查询检索证据然后生成答案，但它们在推理后丢弃了大多数查询级别的推理信号。<br />
+因此，后续的相关查询通常需要从头开始检索和推理。<br />
+这种只读的推理过程限制了在线问答流中的重用。<br />
+这个限制很重要，因为有用的重用不限于重复的实体。<br />
+两个问题可能访问检索图的附近区域。<br />
+它们也可能遵循具有不同实体的相同推理模式。<br />
+例如，两个比较问题可能都问哪个人出生得更早，即使人物和证据段落不同。<br />
+因此，一个有用的在线Graph RAG系统应该保留的不仅仅是最终答案。<br />
+它应该保留图邻域先验和可重用的推理模式。</p>
+<p>为了解决这个问题，我们引入了LivingRAG，一个具有可写和可重用推理经验的Graph RAG框架。<br />
+LivingRAG在基于图的检索主干中添加了一个可写的经验存储。<br />
+在每个查询之后，如果经验是有根据的且新颖的，它可以写入一个紧凑的经验。<br />
+每个存储的经验保留源查询、激活的图实体、简短的推理摘要和验证元数据。<br />
+在随后的推理中，LivingRAG以两种方式重用存储的经验。<br />
+激活图引导图检索走向有用的证据邻域。<br />
+推理摘要为答案生成提供脚手架。<br />
+可写的经验存储也引入了风险。<br />
+如果不受支持的推理被写入存储，后续查询可能会重用它并放大错误。<br />
+LivingRAG通过质量门控降低了这种风险。<br />
+只有当候选者的声明得到检索证据的支持，并且与存储的经验不冗余时，才会被存储。<br />
+因此，LivingRAG可以在不存储低质量经验的情况下返回答案。</p>
+<p>我们在多跳问答基准上评估了LivingRAG。<br />
+经验存储在每次运行开始时初始化，并在运行期间在线更新。<br />
+在这些基准测试中，LivingRAG比强大的RAG基线提高了准确性。<br />
+当后续查询检索到有用的先前经验时，它还减少了补全令牌的使用和估计的API成本。</p>
+<p>我们的贡献是：<br />
+(1) 我们引入了LivingRAG，一个具有可写和可重用推理经验的Graph RAG框架。它存储有根据的和新颖的经验，并通过用于检索的激活图和用于生成的推理摘要来重用它们。<br />
+(2) 我们分析了在线问答流，并从共享实体、图邻域和问题模板中发现了可重用的信号。我们表明LivingRAG可以在多跳问答和支持式问答设置中重用这些信号。<br />
+(3) 我们表明LivingRAG比强大的RAG基线提高了准确性。当重用相关的先前经验时，它还减少了补全令牌的使用和估计的API成本。</p>
+<p>2 相关工作<br />
+检索增强生成将语言模型扎根于外部文档，并减少对参数化知识的依赖<br />
+(Lewis et al., 2020; Karpukhin et al., 2020; Gao et al., 2024)。<br />
+早期系统通常检索单独的文本块。<br />
+最近的Graph RAG方法添加了图结构以支持复杂的检索。<br />
+GraphRAG构建实体图和社区摘要<br />
+(Edge et al., 2024)。<br />
+LightRAG将图索引与向量检索相结合<br />
+(Guo et al., 2024)。<br />
+HippoRAG和HippoRAG2使用基于图的联想检索<br />
+(Gutiérrez et al., 2024; Gutiérrez et al., 2025)。<br />
+LinearRAG使用轻量级的段落-句子-实体图进行高效检索<br />
+(Zhuang et al., 2025)。<br />
+这些系统表明图结构有助于多跳证据搜索。<br />
+LivingRAG建立在这个方向上，但研究了一个不同的问题。<br />
+它询问Graph RAG系统如何跨在线查询流写入和重用经过验证的推理经验。</p>
+<p>几种方法还通过推理或记忆来改进RAG。<br />
+推理增强的RAG方法使用分解、中间笔记、自我反思或工具使用来改进单查询推理<br />
+(Trivedi et al., 2023; Jiang et al., 2023; Asai et al., 2024; Yu et al., 2024; Kabir et al., 2025)。<br />
+基于记忆的智能体存储过去的观察或反馈以供后续决策<br />
+(Shinn et al., 2023; Madaan et al., 2023)。<br />
+最近的记忆增强RAG系统进一步表明可重用的记忆可以支持检索。<br />
+REMem为语言智能体历史构建了一个混合情景记忆图，并使用智能体检索器进行情景回忆和推理<br />
+(Shu et al., 2026)。<br />
+MemoRAG为长上下文处理构建了全局记忆，并使用它来产生检索线索<br />
+(Qian et al., 2025)。<br />
+LivingRAG是对这些工作的补充。<br />
+它专注于用于问答流的在线Graph RAG。<br />
+它写入的单元是经过验证的推理经验，而不是原始的交互历史或全局长上下文记忆。<br />
+每个经验存储图激活信息和紧凑的推理脚手架。<br />
+它仅在扎根和新颖性检查之后写入。<br />
+经验不仅作为文本被检索。<br />
+它还改变了检索器使用的初始图激活。</p>
+<p>3 方法<br />
+3.1 动机分析<br />
+LivingRAG是为在线问答流设计的。<br />
+在这种设置中，系统逐一回答查询。<br />
+对于查询 $q_{t}$，只有较早的查询 $q_{1},\ldots,q_{t-1}$ 可以用作重用源。<br />
+这种因果设置匹配在线经验存储，并避免使用未来信息。<br />
+我们测量三个重用信号。<br />
+当当前查询与较早的查询共享至少一个种子实体时，发生实体重用。<br />
+当当前查询和较早的查询访问检索图的附近区域时，发生图邻域重用。<br />
+我们使用固定的LinearRAG检索器测量此信号。<br />
+当两个查询的检索段落或过滤后的上下文实体的Jaccard相似度至少为0.05时，被计为图邻域重用。<br />
+当两个查询没有种子实体重叠但具有相似的掩码问题时，发生模板重用。<br />
+我们掩盖实体提及、引用跨度和数字，如第3.4节所述。<br />
+然后我们计算掩码问题之间的TF-IDF余弦相似度。<br />
+当分数至少为0.35时，两个查询被计为模板重用。</p>
+<p>表1：在线问答流中的重用信号。只有较早的查询被用作重用源。所有值均为百分比。<br />
+数据集 | 实体重用 | 图邻域重用 | 模板重用<br />
+2Wiki | 4.30 | 99.70 | 96.30<br />
+HotpotQA | 26.53 | 99.10 | 21.82<br />
+MuSiQue | 40.34 | 95.60 | 39.14<br />
+MuSiQue-full | 54.10 | 96.32 | 54.30<br />
+WixQA | 76.69 | 80.45 | 16.04</p>
+<p>表1表明，可重用的信号存在于在线问答流中，但它们以不同的形式出现。<br />
+在大多数数据集中，直接的实体重用是有限的，因此仅限实体的缓存会错过许多机会。<br />
+相比之下，图邻域重用在数据集中很常见。<br />
+这表明后续查询通常需要来自接近早期检索路径区域的证据。<br />
+模板重用也很有用，但它更依赖于数据集。<br />
+它在程式化的多跳流中更强，而在更多样的支持式问题中较弱。<br />
+这些结果促使LivingRAG通过两条路径重用经验。</p>
+<p>3.2 概述<br />
+LivingRAG通过可写的经验存储扩展了基于图的RAG系统。<br />
+基础检索器遵循LinearRAG (Zhuang et al., 2025)。<br />
+给定一个文档语料库 $\mathcal{D}$，它构建一个具有段落节点、句子节点和实体节点的检索图。<br />
+该图是通过轻量级的实体提取构建的，并且在索引期间不需要LLM调用。<br />
+对于每个查询，LinearRAG首先激活与查询相关的实体，在句子-实体图上传播相关性，然后通过段落-实体图上的个性化PageRank对段落进行排名。<br />
+LivingRAG保持此检索主干不变。<br />
+它在在线问答流期间添加了一个可写的经验存储。<br />
+LivingRAG不重用以前的答案作为响应缓存。<br />
+它在检索和生成期间重用经过验证的激活图和推理脚手架。<br />
+图1给出了完整工作流程的概述。</p>
+<p>图1：LivingRAG概述。该框架首先离线构建静态检索图。然后它执行经验增强的检索、脚手架生成和通过质量门控的回写。</p>
+<p>在时间步 $t$，系统接收一个查询 $q_{t}$，并可以访问静态检索图 $\mathcal{G}$ 和经验存储 $\mathcal{E}<em>{t}$。<br />
+标准的基于图的RAG系统独立地回答每个查询：<br />
+$a</em>{t}=\mathrm{LLM}\bigl(q_{t},\mathcal{R}(q_{t},\mathcal{G})\bigr),$ (1)<br />
+其中 $\mathcal{R}$ 从图中检索段落。<br />
+LivingRAG相反在检索和生成期间都使用存储的经验：<br />
+$a_{t}=\mathrm{LLM}\bigl(q_{t},\mathcal{R}<em>{\mathrm{exp}}(q</em>{t},\mathcal{G},\mathcal{E}<em>{t}), \mathcal{S}</em>{\mathrm{exp}}(q_{t},\mathcal{E}<em>{t})\bigr).$ (2)<br />
+这里 $\mathcal{R}</em>{\mathrm{exp}}$ 是经验增强的图检索，$\mathcal{S}<em>{\mathrm{exp}}$ 是从经验存储中选择的可选推理脚手架。<br />
+如果没有找到有用的存储经验，LivingRAG退回到基础的图RAG系统。<br />
+在回答查询 $q</em>{t}$ 之后，LivingRAG形成一个候选经验 $C_{t}$。<br />
+候选包含查询、检索到的段落、生成的解释和最终答案。<br />
+然后LivingRAG决定是否应该将候选写入存储。<br />
+如果候选通过了扎根和新颖性检查，它就成为一个经过验证的经验 $e_{t}$。<br />
+我们在验证之前使用 $C_{t}$ 表示候选，在验证之后使用 $e_{t}$ 表示经过验证的经验。<br />
+经验存储更新为：<br />
+$\mathcal{E}<em>{t+1}=\begin{cases}\mathcal{E}</em>{t}\cup{e_{t}},&amp;\text{if }\mathrm{Store}(C_{t},\mathcal{E}<em>{t})=1,\ \mathcal{E}</em>{t},&amp;\text{otherwise}.\end{cases}$ (3)<br />
+函数 $\mathrm{Store}$ 检查候选是否扎根于检索到的证据中，并且与存储的经验有足够的不同。<br />
+这种回写机制让LivingRAG在不改变模型参数的情况下积累可重用的经验。</p>
+<p>3.3 经验存储<br />
+存储的基本单元是经过验证的经验。在此定义之后，当含义清楚时，我们使用经验作为简写。<br />
+每个经过验证的经验是通过验证的一个候选经验的紧凑形式：<br />
+$e_{t}=\bigl(q_{t},\mathbf{v}<em>{t},\tilde{\mathbf{a}}</em>{t},\mathrm{sum}<em>{t},a</em>{t},ts_{t},\mathrm{conf}<em>{t}\bigr).$ (4)<br />
+这里 $q</em>{t}$ 是源查询，$\mathbf{v}<em>{t}=\mathrm{Emb}(q</em>{t})$ 是其查询嵌入，$\tilde{\mathbf{a}}<em>{t}$ 是图实体上的稀疏激活图，$\mathrm{sum}</em>{t}$ 是紧凑的推理摘要，$a_{t}$ 是最终答案，$ts_{t}$ 是时间戳，$\mathrm{conf}<em>{t}$ 是扎根置信度。<br />
+激活图是经过验证的经验的主要图空间表示。<br />
+在基础检索器完成查询 $q</em>{t}$ 的实体传播后，它产生一个最终的实体激活向量 $\mathbf{a}^{\mathrm{final}}<em>{q</em>{t}}$。<br />
+LivingRAG稀疏化这个向量：<br />
+$\tilde{\mathbf{a}}<em>{t}=\mathrm{sparsify}(\mathbf{a}^{\mathrm{final}}</em>{q_{t}},\epsilon),$ (5)<br />
+其中低于阈值 $\epsilon$ 的条目被设为零。<br />
+稀疏激活图存储哪些图实体对候选有用以及它们被激活的强度。<br />
+与普通的实体列表不同，该图保留了分级的图邻域信息，并且可以在随后的图检索中直接重用。<br />
+紧凑的推理摘要成为随后生成期间的推理脚手架。<br />
+它不是完整的原始推理轨迹。<br />
+为了保持提示简短，LivingRAG从生成的解释中选择少量关键句子。<br />
+选择以 $\mathbf{a}^{\mathrm{final}}<em>{q</em>{t}}$ 中最激活的实体为锚点。<br />
+提及更多激活实体的句子排名更高，选定的句子保持其原始顺序。<br />
+存储的摘要为：<br />
+$\mathrm{sum}<em>{t}=\bigl(q</em>{t},\mathrm{KeySent}(r_{t},\mathbf{a}^{\mathrm{final}}<em>{q</em>{t}}),a_{t}\bigr),$ (6)<br />
+其中 $r_{t}$ 是生成的解释。<br />
+紧凑的摘要保留了主要的推理模式，同时向未来的提示添加了很少的令牌。</p>
+<p>3.4 经验增强的检索和脚手架生成<br />
+LivingRAG在两个地方使用经验存储。<br />
+首先，它使用激活图来引导图检索。<br />
+其次，它使用紧凑的摘要作为答案生成的推理脚手架。<br />
+这两条路径相关但分离。<br />
+检索路径传输图邻域信息。<br />
+生成路径传输可重用的推理模式。<br />
+对于图检索，LivingRAG首先将当前查询与存储的经验进行匹配。<br />
+每个存储的经验通过结合语义相似性和激活图相似度来评分：<br />
+$s_{k}^{\mathrm{ret}}={} \alpha\cos\bigl(\mathrm{Emb}(q_{t}),\mathbf{v}<em>{k}\bigr) + (1-\alpha)\cos\bigl(\mathbf{a}^{\mathrm{base}}</em>{q_{t}},\tilde{\mathbf{a}}<em>{k}\bigr).$ (7)<br />
+这里 $\mathbf{a}^{\mathrm{base}}</em>{q_{t}}$ 是在使用存储的经验之前从当前查询产生的初始实体激活向量。<br />
+第一项捕获表面级别的查询相似性。<br />
+第二项捕获当前查询是否在以前有用的证据邻域附近开始。<br />
+LivingRAG根据 $s_{k}^{\mathrm{ret}}$ 检索top-K经验。<br />
+检索到的激活图然后融合到初始实体激活向量中：<br />
+$\mathbf{a}^{0}<em>{q</em>{t}}=\mathrm{normalize}\left(\mathbf{a}^{\mathrm{base}}<em>{q</em>{t}}+\beta\sum_{e_{k}\in\mathcal{N}^{\mathrm{ret}}<em>{t}}w</em>{k}\tilde{\mathbf{a}}<em>{k}\right).$ (8)<br />
+我们首先计算选定经验上的softmax权重：<br />
+$\bar{w}</em>{k}=\frac{\exp(s_{k}^{\mathrm{ret}}/\tau_{s})}{\sum_{j\in\mathcal{N}^{\mathrm{ret}}<em>{t}}\exp(s</em>{j}^{\mathrm{ret}}/\tau_{s})}.$ (9)<br />
+然后我们通过存储经验的置信度来缩放这个权重：<br />
+$w_{k}=\bar{w}<em>{k}\cdot\mathrm{conf}</em>{k}.$ (10)<br />
+缩放后的权重不重新归一化。<br />
+因此，低置信度的经验对融合的激活向量影响较小。<br />
+结果向量 $\mathbf{a}^{0}<em>{q</em>{t}}$ 替换基础检索器的原始初始激活向量。<br />
+所有后续的检索步骤保持不变。<br />
+当经验存储为空，或者当前查询没有用于图融合的种子实体时，LivingRAG退回到基础检索器。<br />
+对于生成，LivingRAG也可以选择一个推理脚手架。<br />
+脚手架选择可以使用模板信号，因为选定的脚手架仅添加到LLM提示中，并且不将历史实体注入图检索中。<br />
+对于查询 $q$，我们定义一个掩码模板：<br />
+$T(q)=\mathrm{Mask}(q),$ (11)<br />
+其中实体提及、引用跨度和数字表达式被替换为占位符。<br />
+脚手架分数为：<br />
+$s_{k}^{\mathrm{scaf}}={} (1-\lambda)s_{k}^{\mathrm{ret}} + \lambda\cos\bigl(\mathrm{Emb}(T(q_{t})),\mathrm{Emb}(T(q_{k}))\bigr).$ (12)<br />
+当存储的经验可用时，LivingRAG选择得分最高的经验作为脚手架：<br />
+$e_{t}^{\mathrm{scaf}}=\operatorname*{arg\,max}<em>{e</em>{k}\in\mathcal{E}<em>{t}}s</em>{k}^{\mathrm{scaf}}.$ (13)<br />
+如果经验存储为空，或者没有选择有用的脚手架，则不插入脚手架。<br />
+在 $\lambda=0$ 的特殊情况下，脚手架选择退化为经验增强检索中得分最高的经验。<br />
+LLM接收检索到的段落，并在可用时接收选定的脚手架：<br />
+$\mathrm{Context}<em>{t}={p</em>{1},\ldots,p_{k}}\cup{\mathrm{sum}(e_{t}^{\mathrm{scaf}})}.$ (14)<br />
+脚手架显示了相关问题是如何解决的。<br />
+当新查询需要不同的证据时，模型仍然可以使用当前段落来产生不同的答案。</p>
+<p>3.5 经验回写<br />
+生成之后，LivingRAG检查是否应该存储新的候选经验。<br />
+LivingRAG将回写验证与答案生成分离开来。<br />
+即使候选未被存储，系统也可以返回答案。<br />
+这种分离防止了不受支持或冗余的推理进入经验存储。<br />
+第一个标准是事实扎根。<br />
+LivingRAG从可用的推理轨迹和最终答案中提取原子声明。<br />
+使用NLI模型针对检索到的段落检查每个声明：<br />
+$g_{i}=\max_{p_{j}\in\mathcal{D}^{\mathrm{used}}<em>{t}}P</em>{\mathrm{NLI}}(\mathrm{entail}\mid p_{j},cl_{i}).$ (15)<br />
+扎根分数为：<br />
+$\mathrm{GS}(C_{t})=\frac{1}{M}\sum_{i=1}^{M}\mathbb{1}[g_{i}\geq\tau_{\mathrm{nli}}].$ (16)<br />
+如果 $\mathrm{GS}(C_{t})&lt;\tau_{\mathrm{gs}}$，则不存储候选。<br />
+扎根分数衡量证据支持。<br />
+它没有明确衡量候选是否对未来问题有用。<br />
+第二个标准是新颖性。<br />
+LivingRAG避免存储与存储的经验近乎重复的候选。<br />
+在经验融合之前，使用当前查询嵌入及其基础激活向量测量新颖性：<br />
+$\eta_{k}=\alpha\cos\bigl(\mathrm{Emb}(q_{t}),\mathbf{v}<em>{k}\bigr) +(1-\alpha)\cos\bigl(\mathbf{a}^{\mathrm{base}}</em>{q_{t}},\tilde{\mathbf{a}}<em>{k}\bigr),$ (17)<br />
+$\mathrm{NS}(C</em>{t},\mathcal{E}<em>{t})=1-\max</em>{e_{k}\in\mathcal{E}<em>{t}}\eta</em>{k}.$ (18)<br />
+使用基础激活向量避免了循环。<br />
+一个新的候选不应该仅仅因为以前存储的经验影响了检索而看起来冗余。<br />
+如果 $\mathrm{NS}(C_{t},\mathcal{E}<em>{t})&lt;\tau</em>{\mathrm{novel}}$，LivingRAG返回答案但不存储候选。<br />
+回写规则为：<br />
+$\mathrm{Store}(C_{t},\mathcal{E}<em>{t})=1\quad\text{iff}\quad\mathrm{GS}(C</em>{t})\geq\tau_{\mathrm{gs}} \land\ \mathrm{NS}(C_{t},\mathcal{E}<em>{t})\geq\tau</em>{\mathrm{novel}}.$ (19)<br />
+该规则定义了存储条件。<br />
+在实现中，LivingRAG在扎根之前检查新颖性以避免不必要的NLI调用。<br />
+附录D报告了门控动态以及接受和拒绝的候选示例。<br />
+对于接受的候选，置信度分数设为扎根分数 $\mathrm{conf}<em>{t}=\mathrm{GS}(C</em>{t})$。<br />
+新的经过验证的经验随后被附加到存储中，并可供后续查询使用。</p>
+<p>表2：QA基准上的总体准确率(%)。Cont.-Acc.表示Contain-Match准确率。WixQA仅针对LinearRAG和LivingRAG报告；不可用的条目用–标记。最佳结果用粗体标记，第二好的结果用下划线标记。<br />
+方法 | 2Wiki Cont.-Acc. | 2Wiki LLM-Acc. | HotpotQA Cont.-Acc. | HotpotQA LLM-Acc. | MuSiQue Cont.-Acc. | MuSiQue LLM-Acc. | MuSiQue-full Cont.-Acc. | MuSiQue-full LLM-Acc. | WixQA LLM-Acc.<br />
+Vanilla RAG (Top-5) | 58.80 | 59.40 | 65.20 | 77.10 | 34.00 | 43.70 | 27.35 | 41.33 | –<br />
+LightRAG | 60.60 | 48.20 | 62.20 | 71.70 | 39.20 | 49.10 | 29.83 | 44.89 | –<br />
+GFM-RAG | 75.50 | 77.80 | 72.50 | 86.10 | 42.70 | 52.50 | 37.28 | 47.75 | –<br />
+HippoRAG2 | 76.50 | 68.00 | 71.20 | 84.60 | 45.40 | 52.90 | 40.92 | 44.06 | –<br />
+LinearRAG | 79.60 | 84.40 | 72.90 | 86.80 | 48.50 | 60.70 | 41.00 | 52.71 | 66.00<br />
+LivingRAG (Ours) | 82.70 | 87.00 | 73.20 | 88.00 | 50.80 | 64.40 | 44.39 | 58.42 | 70.25</p>
+<p>3.6 复杂度<br />
+LivingRAG保留了LinearRAG的静态图构建和图检索主干。<br />
+因此，语料库侧的复杂度保持不变。<br />
+对于每个查询，添加的检索成本来自于将查询与存储的经验进行匹配。<br />
+如果经验存储包含 $|\mathcal{E}<em>{t}|$ 个经验，并且激活图中非零条目的平均数量为 $\bar{z}$，则添加的检索成本为 $O(|\mathcal{E}</em>{t}|d+|\mathcal{E}<em>{t}|\bar{z})$，其中 $d$ 是嵌入维度。<br />
+由于仅融合top-K经验，且 $K$ 是固定的，经验增强的检索开销与存储大小成线性关系，且与语料库图大小无关。<br />
+回写验证也是选择性的。<br />
+新颖性评分使用相同的轻量级存储扫描。<br />
+扎根验证仅对通过新颖性门控的候选执行。<br />
+如果候选包含 $M$ 个声明，并且验证器为每个声明保留 $K</em>{g}$ 个候选证据句子，则回写开销为：<br />
+$T_{\mathrm{write}}(q_{t})={} O(|\mathcal{E}<em>{t}|(d+\bar{z})) +\mathbb{1}</em>{\mathrm{novel}}\,O(MK_{g}).$ (20)<br />
+因此，NLI扎根成本仅为通过新颖性过滤的候选支付。<br />
+NLI成本用于回写验证。<br />
+它不改变基础图索引，并且不需要额外的LLM调用。<br />
+额外的存储是紧凑的。<br />
+每个存储的经验包含一个密集嵌入、一个稀疏激活图、一个简短的推理脚手架和元数据。<br />
+经验存储开销为 $O(|\mathcal{E}<em>{t}|(d+\bar{z}+\bar{\ell}))$，其中 $\bar{\ell}$ 是平均脚手架长度。<br />
+附录C提供了完整的时间和空间分析。<br />
+当检索到有用的存储经验时，LivingRAG可以通过两种方式降低生成成本。<br />
+激活图可以更早地将检索引向相关证据，而脚手架可以减少LLM必须从头重建的推理。<br />
+我们将预期的令牌成本写为：<br />
+$\mathbb{E}[\mathrm{Cost}(t)]={} (1-f</em>{\mathrm{exp}}(t))C_{\mathrm{base}} +f_{\mathrm{exp}}(t)C_{\mathrm{exp}},$ (21)<br />
+其中 $f_{\mathrm{exp}}(t)$ 是具有来自存储经验有用支持的查询比例。<br />
+由于 $C_{\mathrm{exp}}$ 取决于检索到的经验的质量，LivingRAG不假设成本总是下降的。<br />
+它预测当后续查询可以重用相关的存储经验时成本更低，我们在实验中对此进行了测试。</p>
+<p>4 实验<br />
+4.1 QA基准上的总体准确率<br />
+我们首先评估LivingRAG是否在端到端QA准确率上优于代表性的RAG和GraphRAG基线。<br />
+后面的章节将隔离经验重用、令牌使用和在线效率。<br />
+设置。我们在四个多跳问答流上评估所有方法：2WikiMultiHopQA、HotpotQA、MuSiQue和MuSiQue-full。<br />
+MuSiQue-full使用附录E中描述的2,417个可回答问题流。<br />
+我们还额外报告了仅针对LinearRAG和LivingRAG的WixQA，因为其基于LLM的实体提取不适用于其他基线。<br />
+附录F描述了这些选择。<br />
+我们将LivingRAG与Vanilla RAG (Karpukhin et al., 2020)、LightRAG (Guo et al., 2024)、GFM-RAG (Luo et al., 2026b)、HippoRAG2 (Gutiérrez et al., 2025)和LinearRAG (Zhuang et al., 2025)进行比较。<br />
+所有方法都使用Qwen3.6 Plus进行答案生成。<br />
+我们报告Contain-Match准确率和LLM-Evaluation准确率；WixQA仅使用LLM-Evaluation准确率。<br />
+对于LivingRAG，经验存储在每个数据集开始时初始化为空，并在评估期间在线更新。<br />
+按照第3.1节中定义的在线设置，只有较早的查询可以为后续查询提供经验。<br />
+表2表明，LivingRAG在四个多跳基准上以及在与LinearRAG的WixQA比较中实现了最佳的总体准确率。<br />
+在我们的评估设置下，可写的经验存储并没有削弱图RAG主干的基础QA能力。<br />
+由于LivingRAG基于LinearRAG构建检索框架，后续实验使用LinearRAG作为主要基线，以更好地隔离经验重用的效果。<br />
+附录K.3报告了使用HippoRAG2的实体-段落PPR进行的检索级传输测试。</p>
+<p>表3：LinearRAG和LivingRAG的令牌消耗和成本。Prompt和Completion令牌是每次查询的平均值。Rel. $\Delta$ 列报告 $(\mathrm{LivingRAG}-\mathrm{LinearRAG})/\mathrm{LinearRAG}$。负值表示减少。运行成本使用Qwen3.6 Plus定价计算：每百万提示令牌$0.50，每百万补全令牌$3.00。<br />
+数据集 | 查询数 | 提示令牌 | 补全令牌 | 运行成本(USD)<br />
+2WikiMultiHopQA | 1,000 | 6,038.2 | 6,241.6 (+3.4%) | 1,067.6 | 906.4 (-15.1%) | $6.22 | $5.84 (-6.1%)<br />
+HotpotQA | 1,000 | 5,779.8 | 5,985.8 (+3.6%) | 941.9 | 767.0 (-18.6%) | $5.72 | $5.29 (-7.4%)<br />
+MuSiQue | 1,000 | 5,888.4 | 6,092.4 (+3.5%) | 2,098.8 | 1,641.7 (-21.8%) | $9.24 | $7.97 (-13.7%)<br />
+MuSiQue-full | 2,417 | 8,639.3 | 8,861.0 (+2.6%) | 2,223.8 | 1,643.7 (-26.1%) | $26.57 | $22.63 (-14.8%)<br />
+WixQA | 400 | 6,633.0 | 7,412.8 (+11.8%) | 1,653.8 | 1,378.1 (-16.7%) | $3.31 | $3.14 (-5.3%)<br />
+总体 (加权) | 5,817 | 7,089.7 | 7,340.9 (+3.5%) | 1,744.0 | 1,347.6 (-22.7%) | $51.05 | $44.87 (-12.1%)</p>
+<p>图2：在线问答流上的补全令牌趋势。每个面板对应一个数据集。蓝色和橙色曲线显示LinearRAG和LivingRAG在每个流段中的平均补全令牌。两条曲线之间的绿色阴影标记LivingRAG使用较少补全令牌的段，而红色阴影标记其使用更多补全令牌的段。每个流的前10%被展开以显示启动阶段。</p>
+<p>4.2 在线令牌效率<br />
+我们接下来研究在线经验重用是否减少了令牌使用和估计成本。<br />
+我们使用与第4节中相同的数据集和在线设置。<br />
+由于LivingRAG使用LinearRAG作为其检索主干，我们仅比较这两个系统。<br />
+这种比较隔离了可写经验存储的效果。<br />
+设置。我们记录每次运行的提示令牌、补全令牌和总运行成本。<br />
+提示令牌测量输入上下文。<br />
+补全令牌测量生成的输出。<br />
+成本使用表3中使用的Qwen3.6 Plus价格进行估计。<br />
+我们报告提示令牌、补全令牌和总运行成本。<br />
+提示令牌对应于输入上下文，而补全令牌对应于生成的输出。<br />
+我们分开报告它们，因为它们反映了推理的不同部分，并且许多LLM API对它们的定价不同。<br />
+在我们的估计中，提示令牌收费为每百万令牌$0.5，补全令牌收费为每百万令牌$3.0。<br />
+表3显示了一致的权衡。<br />
+LivingRAG在所有数据集上增加了提示令牌，因为它可能添加紧凑的推理脚手架或与经验相关的上下文。<br />
+加权提示令牌增加为3.5%。<br />
+然而，LivingRAG在所有五个数据集上减少了补全令牌，加权减少为22.7%。<br />
+在MuSiQue和MuSiQue-full上减少最大，这些查询通常需要更长的多跳推理。<br />
+总成本减少小于补全令牌减少，因为添加的提示令牌部分抵消了节省。<br />
+即便如此，LivingRAG在每个数据集上都降低了总运行成本。<br />
+总体而言，估计成本从$51.05降至$44.87，减少了12.1%。<br />
+第4.3节进一步分析了推理期间使用了哪些重用路径。<br />
+图2显示了在线趋势。<br />
+在最早的段中，LivingRAG存储的经验很少，可能暂时使用更多的补全令牌。<br />
+在经验积累之后，大多数段中两条曲线之间的区域是绿色的，表明LivingRAG通常使用较少的补全令牌。<br />
+段级趋势表明，节省不是由单个后期平均值引起的，并且在启动阶段后变得更加稳定。</p>
+<p>4.3 实现的重用信号<br />
+我们接下来检查LivingRAG是否使用了激发我们设计的重用信号。<br />
+此分析不是准确率评估。<br />
+它也不是从重用机会到实现重用的直接转换。<br />
+第3.1节中的机会值描述了流是否包含可能的重用信号。<br />
+这里的实现值是从LivingRAG推理轨迹中测量的。<br />
+我们测量两个实现的信号。<br />
+当激活图融合引入了新的高于阈值的图实体时，发生图邻域传输。<br />
+当选择的脚手架与当前查询的掩码模板相似度至少为0.35时，发生模板重用。</p>
+<p>表4：LivingRAG中的重用机会和实现的重用。“Opp.”表示第3.1节中的模板重用机会。“Reuse”表示推理期间实现的脚手架重用。图传输是从激活图融合中测量的。机会值和实现值使用不同的测量方法，因此该表应作为趋势比较而不是直接的数值比较来阅读。所有值均为百分比。<br />
+数据集 | 图信号 图传输 | 模板信号 Opp. | 模板信号 Reuse<br />
+2Wiki | 0.00 | 96.30 | 84.15<br />
+HotpotQA | 0.00 | 21.82 | 9.04<br />
+MuSiQue | 91.20 | 39.14 | 40.69<br />
+MuSiQue-full | 82.42 | 54.30 | 50.44<br />
+WixQA | 91.50 | 16.04 | 7.03</p>
+<p>表4表明LivingRAG在不同的数据集上使用了不同的重用路径。<br />
+在2Wiki上，模板重用率很高。<br />
+这与第3.1节中观察到的强模板信号相匹配。<br />
+在我们严格的定义下，图传输为0.00%。<br />
+这并不意味着图信号不存在。<br />
+它仅意味着在此设置下，激活图融合没有引入新的高于阈值的实体。<br />
+在MuSiQue、MuSiQue-full和WixQA上，图传输要强得多。<br />
+这表明存储的激活图经常改变图检索状态。<br />
+在MuSiQue和MuSiQue-full上也可以看到模板重用。<br />
+这些结果支持了LivingRAG中的两条重用路径。<br />
+激活图帮助检索重用图邻域。<br />
+脚手架帮助生成重用推理模式。<br />
+HotpotQA在两个严格的轨迹指标下值都很低。<br />
+这表明这两个测量可能无法捕获该数据集上的所有经验效果。<br />
+总体而言，该表表明LivingRAG的实现行为与激发该方法的重用信号一致。<br />
+附录K进一步分析了按实现重用信号划分的性能以及跨查询顺序的鲁棒性。</p>
+<p>4.4 消融研究<br />
+我们在2WikiMultiHopQA、MuSiQue-full和WixQA上消融了三个关键组件：激活图融合、推理脚手架和回写质量门控。<br />
+每次运行都从一个空的经验存储开始并在线更新。</p>
+<p>表5：消融结果。2W、MQ-F和Wix报告了2WikiMultiHopQA、MuSiQue-full和WixQA上的LLM准确率(%)。Red.是相对于LinearRAG的平均补全令牌减少。<br />
+变体 | 2W | MQ-F | Wix | Red.<br />
+LivingRAG | 87.00 | 58.42 | 70.25 | 23.6%<br />
+w/o Act. fusion | 86.70 | 56.32 | 67.45 | 15.1%<br />
+w/o Scaffold | 83.80 | 56.92 | 69.55 | 8.3%<br />
+w/o Quality Gate | 84.60 | 55.52 | 68.25 | 18.0%</p>
+<p>表5表明，两种经验使用路径扮演不同的角色。<br />
+移除激活图融合对MuSiQue-full和WixQA的损害更大，在这些数据集上，激活图传输在推理期间经常被实现。<br />
+移除脚手架对2WikiMultiHopQA的损害最大，并且也减少了补全令牌的节省，表明脚手架有助于避免重复推理。<br />
+在五个流中，质量门控仅存储了27.4%的候选经验（附录D）。<br />
+移除质量门控降低了所有数据集的准确性，证实了可写经验在重用前必须通过检查。<br />
+总体而言，消融支持了LivingRAG的设计。<br />
+激活图帮助检索，脚手架帮助生成，质量门控保持在线经验可靠。</p>
+<p>5 结论<br />
+我们提出了LivingRAG，一个具有可写和可重用推理经验的Graph RAG框架。<br />
+LivingRAG存储经过验证的经验。<br />
+它通过激活图融合和推理脚手架重用它们。<br />
+在多跳问答基准上的实验表明，LivingRAG比强大的RAG基线提高了准确性并减少了补全令牌。<br />
+结果表明，经过验证的经验重用是增强Graph RAG的一种简单方法。</p>
+<p>6 局限性<br />
+LivingRAG的一个局限性是长期的经验增长。<br />
+如我们的复杂度分析所示，LivingRAG保持LinearRAG图不变，并添加了与接受的经验数量成线性关系的经验存储成本。<br />
+运行时细分还表明，这种开销在我们的实验中是可以接受的，并且答案后验证不需要增加用户可见的延迟。<br />
+然而，在更大的部署中，经验可能会长期积累。<br />
+太多重复或弱有用的经验可能会增加匹配成本并使重用变得不稳定。<br />
+未来的系统可能需要更强的存储维护，例如修剪、压缩或索引经验搜索。<br />
+LivingRAG还假设存储的经验对后续查询仍然有效。<br />
+当前存储不更新或删除接受的经验。<br />
+该假设在动态领域可能会失败。<br />
+例如，产品政策、事件信息或其他时间敏感的事实可能在经验写入后发生变化。<br />
+尽管每个经验都存储了时间戳，但当前系统没有明确降低旧经验的影响。<br />
+固定语料库基准不包含按时间顺序的更新或事实有效性间隔，因此它们无法直接评估知识变化下的过期。<br />
+未来的工作应探索时间感知刷新和自适应修剪，以便在出现新证据时对旧经验进行降权、更新或删除。<br />
+我们的评估还将受控的QA基准作为在线查询流的代理。<br />
+MuSiQue是通过组合单跳问题构建的，因此可能比自然发生的流量包含更密集的可重用结构。<br />
+WixQA更面向部署，但它没有时间戳，并且其问题共享一个企业知识库。<br />
+在自然流中，可重用的经验可能更分散，而主题漂移和噪声可能会降低它们的价值。<br />
+在具有主题漂移和受控噪声的自然时间戳流上进行评估仍然是未来的工作。</p>
+<p>致谢<br />
+这项工作得到了中国浙江省自然科学基金（青年项目）Grant No. LQN26F020018和浙江省“尖兵”和“领雁”研发计划Grant No. 2024C01020的支持。</p>
+<p>参考文献<br />
+Asai et al. (2024)<br />
+A. Asai, Z. Wu, Y. Wang, A. Sil, and H. Hajishirzi Self-RAG: learning to retrieve, generate, and critique through self-reflection. In The Twelfth International Conference on Learning Representations, External Links: Link Cited by: Appendix A, §2.</p>
+<p>Cai et al. (2025)<br />
+Y. Cai, Z. Guo, Y. Pei, W. Bian, and W. Zheng SimGRAG: leveraging similar subgraphs for knowledge graphs driven retrieval-augmented generation. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 3139–3158. External Links: Link, Document, ISBN 979-8-89176-256-5</p>
+<p>Dong et al. (2025)<br />
+J. Dong, S. An, Y. Yu, Q. Zhang, L. Luo, X. Huang, Y. Wu, D. Yin, and X. Sun Youtu-graphrag: vertically unified agents for graph retrieval-augmented complex reasoning. External Links: 2508.19855, Link</p>
+<p>Edge et al. (2024)<br />
+D. Edge, H. Trinh, N. Cheng, J. Bradley, A. Chao, A. Mody, S. Truitt, D. Metropolitansky, R. O. Ness, and J. Larson From local to global: a graph rag approach to query-focused summarization. arXiv preprint arXiv:2404.16130. Cited by: Appendix A, §1, §1, §2.</p>
+<p>Fang et al. (2025)<br />
+J. Fang, Z. Meng, and C. MacDonald KiRAG: knowledge-driven iterative retriever for enhancing retrieval-augmented generation. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 18969–18985. External Links: Link, Document, ISBN 979-8-89176-251-0</p>
+<p>Gao et al. (2025a)<br />
+G. Gao, Z. Li, C. Yuan, J. Li, W. Jianzhuo, Y. Zhang, X. Jin, B. Li, and W. Hu D-RAG: differentiable retrieval-augmented generation for knowledge graph question answering. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 35398–35417. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Gao et al. (2024)<br />
+Y. Gao, Y. Xiong, X. Gao, K. Jia, J. Pan, Y. Bi, Y. Dai, J. Sun, M. Wang, and H. Wang Retrieval-augmented generation for large language models: a survey. External Links: 2312.10997, Link Cited by: §1, §2.</p>
+<p>Gao et al. (2025b)<br />
+Z. Gao, Y. Cao, H. Wang, A. Ke, Y. Feng, S. K. Zhou, and X. Xie FRAG: a flexible modular framework for retrieval-augmented generation based on knowledge graphs. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 6178–6192. External Links: Link, Document, ISBN 979-8-89176-256-5</p>
+<p>Guan et al. (2025)<br />
+Z. Guan, J. C. L. Li, Z. Hou, P. Zhang, D. Xu, Y. Zhao, M. Wu, J. Chen, T. Nguyen, P. Xian, W. Ma, S. Qin, G. Chesi, and N. Wong KG-RAG: enhancing GUI agent decision-making via knowledge graph-driven retrieval-augmented generation. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 5396–5405. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Guo et al. (2025)<br />
+K. Guo, H. Shomer, S. Zeng, H. Han, Y. Wang, and J. Tang Empowering GraphRAG with knowledge filtering and integration. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 25439–25453. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Guo et al. (2024)<br />
+Z. Guo, L. Xia, Y. Yu, T. Ao, and C. Huang Lightrag: simple and fast retrieval-augmented generation. arXiv preprint arXiv:2410.05779 2(3). Cited by: Appendix A, §1, §1, §2, Table 2, §4.1.</p>
+<p>Gutiérrez et al. (2024)<br />
+B. J. Gutiérrez, Y. Shu, Y. Gu, M. Yasunaga, and Y. Su HippoRAG: neurobiologically inspired long-term memory for large language models. In The Thirty-eighth Annual Conference on Neural Information Processing Systems, External Links: Link Cited by: Appendix A, §2.</p>
+<p>Gutiérrez et al. (2025)<br />
+B. J. Gutiérrez, Y. Shu, W. Qi, S. Zhou, and Y. Su From RAG to memory: non-parametric continual learning for large language models. In Forty-second International Conference on Machine Learning, External Links: Link Cited by: Appendix A, §K.3, §1, §1, §2, Table 2, §4.1.</p>
+<p>He et al. (2024)<br />
+X. He, Y. Tian, Y. Sun, N. V. Chawla, T. Laurent, Y. LeCun, X. Bresson, and B. Hooi G-retriever: retrieval-augmented generation for textual graph understanding and question answering. In The Thirty-eighth Annual Conference on Neural Information Processing Systems, External Links: Link</p>
+<p>Helali et al. (2025)<br />
+M. Helali, Y. Luo, T. J. Ham, J. Plotts, A. Chaugule, J. Chang, P. Ranganathan, and E. Mansour Reliable and cost-effective exploratory data analysis via graph-guided RAG. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 16536–16553. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Jiang et al. (2025)<br />
+X. Jiang, R. Zhang, Y. Xu, R. Qiu, Y. Fang, Z. Wang, J. Tang, H. Ding, X. Chu, J. Zhao, and Y. Wang HyKGE: a hypothesis knowledge graph enhanced RAG framework for accurate and reliable medical LLMs responses. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 11836–11856. External Links: Link, Document, ISBN 979-8-89176-251-0</p>
+<p>Jiang et al. (2023)<br />
+Z. Jiang, F. Xu, L. Gao, Z. Sun, Q. Liu, J. Dwivedi-Yu, Y. Yang, J. Callan, and G. Neubig Active retrieval augmented generation. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, H. Bouamor, J. Pino, and K. Bali (Eds.), Singapore, pp. 7969–7992. External Links: Link, Document Cited by: Appendix A, §2.</p>
+<p>Kabir et al. (2025)<br />
+I. Kabir, M. A. Reza, and S. Billah Logic-rag: augmenting large multimodal models with visual-spatial knowledge for road scene understanding. In 2025 IEEE International Conference on Robotics and Automation (ICRA), Cited by: Appendix A, §2.</p>
+<p>Kang et al. (2025)<br />
+J. Kang, M. Ji, Z. Zhao, and T. Bai Memory OS of AI agent. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 25961–25970. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Karpukhin et al. (2020)<br />
+V. Karpukhin, B. Oguz, S. Min, P. Lewis, L. Wu, S. Edunov, D. Chen, and W. Yih Dense passage retrieval for open-domain question answering. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), B. Webber, T. Cohn, Y. He, and Y. Liu (Eds.), Online, pp. 6769–6781. External Links: Link, Document Cited by: §1, §2, Table 2, §4.1.</p>
+<p>Lee et al. (2025)<br />
+M. Lee, Q. Zhu, C. Mavromatis, Z. Han, S. Adeshina, V. N. Ioannidis, H. Rangwala, and C. Faloutsos HybGRAG: hybrid retrieval-augmented generation on textual and relational knowledge bases. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 879–893. External Links: Link, Document, ISBN 979-8-89176-251-0</p>
+<p>Lewis et al. (2020)<br />
+P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal, H. Küttler, M. Lewis, W. Yih, T. Rocktäschel, S. Riedel, and D. Kiela Retrieval-augmented generation for knowledge-intensive nlp tasks. In Proceedings of the 34th International Conference on Neural Information Processing Systems, NIPS ’20, Red Hook, NY, USA. External Links: ISBN 9781713829546 Cited by: §1, §2.</p>
+<p>Li et al. (2025)<br />
+M. Li, S. Miao, and P. Li Simple is effective: the roles of graphs and large language models in knowledge-graph-based retrieval-augmented generation. In ICLR 2025 Workshop on Foundation Models in the Wild, External Links: Link</p>
+<p>Liu et al. (2025)<br />
+H. Liu, Z. Wang, X. Chen, Z. Li, F. Xiong, Q. Yu, and W. Zhang HopRAG: multi-hop reasoning for logic-aware retrieval-augmented generation. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 1897–1913. External Links: Link, Document, ISBN 979-8-89176-256-5</p>
+<p>Long et al. (2025)<br />
+Y. Long, K. Chen, L. Jin, and M. Shang DRAE: dynamic retrieval-augmented expert networks for lifelong learning and task adaptation in robotics. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 23098–23141. External Links: Link, Document, ISBN 979-8-89176-251-0</p>
+<p>Luo et al. (2026a)<br />
+H. Luo, H. E, G. Chen, Y. Zheng, X. Wu, Y. Guo, Q. Lin, Y. Feng, Z. Kuang, M. Song, Y. Zhu, and A. T. Luu HyperGraphRAG: retrieval-augmented generation via hypergraph-structured knowledge representation. In The Thirty-ninth Annual Conference on Neural Information Processing Systems, External Links: Link</p>
+<p>LUO et al. (2024)<br />
+L. LUO, Y. Li, G. Haffari, and S. Pan Reasoning on graphs: faithful and interpretable large language model reasoning. In The Twelfth International Conference on Learning Representations, External Links: Link</p>
+<p>Luo et al. (2026b)<br />
+L. Luo, Z. Zhao, G. Haffari, D. Phung, C. Gong, and S. Pan GFM-RAG: graph foundation model for retrieval augmented generation. In The Thirty-ninth Annual Conference on Neural Information Processing Systems, External Links: Link Cited by: Appendix A, §1, §1, Table 2, §4.1.</p>
+<p>Ma et al. (2025)<br />
+S. Ma, C. Xu, X. Jiang, M. Li, H. Qu, C. Yang, J. Mao, and J. Guo Think-on-graph 2.0: deep and faithful large language model reasoning with knowledge-guided retrieval augmented generation. In The Thirteenth International Conference on Learning Representations, External Links: Link</p>
+<p>Madaan et al. (2023)<br />
+A. Madaan, N. Tandon, P. Gupta, S. Hallinan, L. Gao, S. Wiegreffe, U. Alon, N. Dziri, S. Prabhumoye, Y. Yang, S. Welleck, B. P. Majumder, S. Gupta, A. Yazdanbakhsh, and P. Clark Self-refine: iterative refinement with self-feedback. External Links: 2303.17651 Cited by: Appendix A, §2.</p>
+<p>Mavromatis et al. (2025)<br />
+C. Mavromatis, S. Adeshina, V. N. Ioannidis, Z. Han, Q. Zhu, I. Robinson, B. Thompson, H. Rangwala, and G. Karypis BYOKG-RAG: multi-strategy graph retrieval for knowledge graph question answering. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 27881–27898. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Qian et al. (2025)<br />
+H. Qian, Z. Liu, P. Zhang, K. Mao, D. Lian, Z. Dou, and T. Huang MemoRAG: boosting long context processing with global memory-enhanced retrieval augmentation. In Proceedings of the ACM on Web Conference 2025, WWW ’25, New York, NY, USA, pp. 2366–2377. External Links: ISBN 9798400712746, Link, Document Cited by: Appendix A, §2.</p>
+<p>Salama et al. (2025)<br />
+R. Salama, J. Cai, M. Yuan, A. Currey, M. Sunkara, Y. Zhang, and Y. Benajiba MemInsight: autonomous memory augmentation for LLM agents. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 33136–33152. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Shen et al. (2025)<br />
+Z. Shen, C. Diao, P. Vougiouklis, P. Merita, S. Piramanayagam, E. Chen, D. Graux, A. Melo, R. Lai, Z. Jiang, Z. Li, Y. Qi, Y. Ren, D. Tu, and J. Z. Pan GeAR: graph-enhanced agent for retrieval-augmented generation. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 12049–12072. External Links: Link, Document, ISBN 979-8-89176-256-5</p>
+<p>Shi et al. (2024)<br />
+H. Shi, Z. Xu, H. Wang, W. Qin, W. Wang, Y. Wang, Z. Wang, S. Ebrahimi, and H. Wang Continual learning of large language models: a comprehensive survey. arXiv preprint arXiv:2404.16789.</p>
+<p>Shinn et al. (2023)<br />
+N. Shinn, F. Cassano, A. Gopinath, K. R. Narasimhan, and S. Yao Reflexion: language agents with verbal reinforcement learning. In Thirty-seventh Conference on Neural Information Processing Systems, External Links: Link Cited by: Appendix A, §2.</p>
+<p>Shu et al. (2026)<br />
+Y. Shu, S. P. Jonnalagedda, X. Gao, B. J. Gutiérrez, W. Qi, K. Das, H. Sun, and Y. Su REMem: reasoning with episodic memory in language agent. In The Fourteenth International Conference on Learning Representations, External Links: Link Cited by: Appendix A, §2.</p>
+<p>Tan et al. (2025)<br />
+X. Tan, X. Wang, Q. Liu, X. Xu, X. Yuan, L. Zhu, and W. Zhang HydraRAG: structured cross-source enhanced large language model reasoning. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 14431–14459. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Trivedi et al. (2023)<br />
+H. Trivedi, N. Balasubramanian, T. Khot, and A. Sabharwal Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), A. Rogers, J. Boyd-Graber, and N. Okazaki (Eds.), Toronto, Canada, pp. 10014–10037. External Links: Link, Document Cited by: Appendix A, §2.</p>
+<p>Wang and Han (2025)<br />
+J. Wang and J. Han PropRAG: guiding retrieval with beam search over proposition paths. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 6212–6227. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Wang et al. (2025a)<br />
+N. Wang, X. Han, J. Singh, J. Ma, and V. Chaudhary CausalRAG: integrating causal graphs into retrieval-augmented generation. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 22680–22693. External Links: Link, Document, ISBN 979-8-89176-256-5</p>
+<p>Wang et al. (2025b)<br />
+Z. Wang, Z. Liang, Z. Shao, Y. Ma, H. Dai, B. Chen, L. Mao, C. Lei, Y. Ding, and H. Li InfoGain-RAG: boosting retrieval-augmented generation through document information gain-based reranking and filtering. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 7190–7204. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Wei et al. (2022)<br />
+J. Wei, X. Wang, D. Schuurmans, M. Bosma, brian ichter, F. Xia, E. H. Chi, Q. V. Le, and D. Zhou Chain of thought prompting elicits reasoning in large language models. In Advances in Neural Information Processing Systems, A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho (Eds.), External Links: Link</p>
+<p>Xiang et al. (2026)<br />
+Z. Xiang, C. Wu, Q. Zhang, S. Chen, Z. Hong, X. Huang, and J. Su When to use graphs in RAG: a comprehensive analysis for graph retrieval-augmented generation. In The Fourteenth International Conference on Learning Representations, External Links: Link</p>
+<p>Xu et al. (2025)<br />
+Y. Xu, J. Gao, X. Yu, Y. Xue, B. Bi, H. Shen, and X. Cheng Training a utility-based retriever through shared context attribution for retrieval-augmented language models. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 629–648. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Yao et al. (2023)<br />
+S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao ReAct: synergizing reasoning and acting in language models. In International Conference on Learning Representations (ICLR),</p>
+<p>Yu et al. (2026)<br />
+J. Yu, Y. Liu, J. Gu, P. Torr, and D. Zhou Can knowledge-graph-based retrieval augmented generation really retrieve what you need?. In The Thirty-ninth Annual Conference on Neural Information Processing Systems, External Links: Link Cited by: Appendix A.</p>
+<p>Yu et al. (2024)<br />
+W. Yu, H. Zhang, X. Pan, P. Cao, K. Ma, J. Li, H. Wang, and D. Yu Chain-of-note: enhancing robustness in retrieval-augmented language models. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, Y. Al-Onaizan, M. Bansal, and Y. Chen (Eds.), Miami, Florida, USA, pp. 14672–14685. External Links: Link, Document Cited by: Appendix A, §2.</p>
+<p>Zhang et al. (2025a)<br />
+H. Zhang, T. Feng, and J. You Graph of records: boosting retrieval augmented generation for long-context summarization with graphs. In Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 23780–23799. External Links: Link, Document, ISBN 979-8-89176-251-0</p>
+<p>Zhang et al. (2025b)<br />
+H. Zhang, P. Huang, Z. Zhang, P. Lin, Y. Yu, B. Hu, and Y. Du PathwiseRAG: multi-dimensional exploration and integration framework. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 22904–22925. External Links: Link, Document, ISBN 979-8-89176-332-6</p>
+<p>Zhou et al. (2026)<br />
+Z. Zhou, D. A. Tarzanagh, S. Didari, W. Hu, B. Gutow, O. Verkholyak, M. Faraki, H. Hao, H. Moon, and S. Min Query-aware flow diffusion for graph-based RAG with retrieval guarantees. In The Fourteenth International Conference on Learning Representations, External Links: Link</p>
+<p>Zhuang et al. (2025)<br />
+L. Zhuang, S. Chen, Y. Xiao, H. Zhou, Y. Zhang, H. Chen, Q. Zhang, and X. Huang LinearRAG: linear graph retrieval augmented generation on large-scale corpora. arXiv preprint arXiv:2510.10114. Cited by: Appendix A, §1, §1, §2, §3.2, Table 2, §4.1.</p>
+<p>附录 A 其他相关工作<br />
+基于图的RAG。基于图的RAG用显式的图结构组织外部知识。GraphRAG构建实体图和社区摘要，以支持语料库上的全局意义构建 (Edge et al., 2024)。LightRAG将图索引与向量检索相结合，以高效地检索实体、关系和文本块 (Guo et al., 2024)。HippoRAG和HippoRAG2在自动构建的图上使用个性化PageRank，以支持联想和多跳检索 (Gutiérrez et al., 2024; Gutiérrez et al., 2025)。LinearRAG构建一个轻量级的段落-句子-实体图，并执行稀疏图传播以进行高效检索 (Zhuang et al., 2025)。GFM-RAG训练一个图基础模型，以捕获图结构上的查询-知识关系 (Luo et al., 2026b)。GraphFlow在文本丰富的知识图上学习检索策略 (Yu et al., 2026)。这些方法表明图结构对于复杂检索很有用。LivingRAG建立在这条工作线上。它添加了经过验证的经验回写，以便在随后的图检索和生成中重用先前的推理。<br />
+推理增强的RAG。另一条工作线通过更强的推理来改进RAG。迭代检索方法分解查询并逐步检索证据 (Trivedi et al., 2023; Jiang et al., 2023)。Self-RAG使用自我反思来决定何时以及如何检索 (Asai et al., 2024)。Chain-of-Note在检索到的证据上生成中间笔记 (Yu et al., 2024)。LogicRAG根据逻辑依赖性将复杂问题分解为子查询 (Kabir et al., 2025)。这些方法主要改进了当前查询的推理。LivingRAG则研究如何将早期查询中有用的推理存储并在随后的查询中重用。<br />
+记忆增强的LLM和RAG。基于记忆的语言智能体存储过去的观察、反馈或计划，以改进后续决策 (Shinn et al., 2023; Madaan et al., 2023)。最近的系统还研究了用于检索和推理的记忆。REMem从交互历史中构建了一个混合情景记忆图，并使用智能体检索器进行情景回忆和推理 (Shu et al., 2026)。MemoRAG为长上下文处理构建了全局记忆，并使用它来生成检索线索 (Qian et al., 2025)。LivingRAG是对这些方法的补充。它针对的是问答流上的在线Graph RAG。它存储的单元是经过验证的推理经验。每个经验包含一个稀疏激活图、一个紧凑的推理摘要和验证元数据。激活图引导随后的图检索。摘要为生成提供推理脚手架。只有当候选通过扎根和新颖性检查时才被写入。</p>
+<p>附录 B 实验细节<br />
+实体提取模型。对于使用基于spaCy的实体提取的实验，我们使用英文transformer管道 en_core_web_trf。<br />
+NLI扎根模型。对于经验回写中的扎根检查，我们使用 cross-encoder/nli-deberta-v3-large。该模型用作NLI交叉编码器，对检索到的证据和提取的声明之间的蕴含关系进行评分。<br />
+参数设置。为了公平比较，LinearRAG和LivingRAG使用相同的LinearRAG检索设置。LivingRAG保持原始LinearRAG参数不变，仅添加第3节中描述的经验存储组件。</p>
+<p>附录 C 详细复杂度分析<br />
+本附录总结了LivingRAG在LinearRAG之上引入的额外成本。<br />
+设 $N_{t}=|\mathcal{E}<em>{t}|$ 为查询 $q</em>{t}$ 之前存储的经验数量，$d$ 为嵌入维度，$b_{t}$ 为当前基础激活向量中非零实体的数量，$\bar{z}$ 为存储的激活图中非零条目的平均数量。<br />
+LivingRAG不重建或修改LinearRAG语料库图。它仅更改初始实体激活向量，然后调用相同的图检索过程。因此，语料库侧的构建和检索复杂度保持为LinearRAG的复杂度。<br />
+主要添加的在线成本是对经验存储的精确扫描。对于每个存储的经验，LivingRAG计算一个密集的查询嵌入相似度和一个稀疏的激活图相似度：<br />
+$O\bigl(N_{t}(d+b_{t}+\bar{z})\bigr)\approx O\bigl(N_{t}(d+\bar{z})\bigr).$ (22)<br />
+匹配后，只有top-K经验被融合到种子激活向量中。如果每个选定的激活图可选地被截断为其前 $H$ 个实体，则融合成本为<br />
+$O\bigl(K\min(\bar{z},H)\bigr),$ (23)<br />
+其中 $K$ 和 $H$ 是固定的超参数。<br />
+模板感知的脚手架选择（启用时）最多增加一次额外的存储扫描。模板嵌入可以从存储的脚手架或源问题文本中惰性计算并暂时缓存，但它们不是持久经验存储的一部分。<br />
+回写验证也是存储侧和选择性的。新颖性分数（NS）使用相同的双通道扫描，$O(N_{t}(d+\bar{z}))$。扎根分数（GS）仅在NS通过后计算。如果提取了 $c_{t}$ 个声明，并且证据预过滤器为每个声明保留 $K_{g}$ 个候选证据句子，则NLI阶段成本为<br />
+$O(c_{t}K_{g}),$ (24)<br />
+其中 $K_{g}$ 是固定的，并且证据仅来自少量的检索段落。<br />
+因此，每次查询的合并成本可以写为<br />
+$T_{\mathrm{Living}}(q_{t})={} T_{\mathrm{Linear}}(q_{t}) +O\bigl(N_{t}(d+\bar{z})\bigr) +O\bigl(K\min(\bar{z},H)\bigr) +\mathbb{1}<em>{\mathrm{GS}}O(c</em>{t}K_{g}).$ (25)<br />
+该表达式将未更改的语料库侧LinearRAG成本与添加的经验存储成本分离开来。<br />
+在包含 $Q$ 个查询的流中，精确的存储扫描贡献了 $\sum_{t=1}^{Q}N_{t}$。如果每个查询都被存储，最坏的情况是 $Q$ 的二次方，但LivingRAG并不存储每个候选。在我们的五个流中，只有1806个候选通过NS并到达GS。其他4011个候选跳过了NLI检查。最后，1592个候选被写入存储，最终回写率为27.4%。因此，存储增长与经过验证的和新颖的经验相关联，而不是与原始查询数量相关联。<br />
+额外的存储同样紧凑。每个存储的经验包含一个查询嵌入、一个稀疏激活图、一个短脚手架和元数据。设 $\bar{\ell}$ 表示平均脚手架长度。经验存储开销为<br />
+$S_{\mathrm{Living}}(t)=S_{\mathrm{Linear}}+O\bigl(N_{t}(d+\bar{z}+\bar{\ell})\bigr).$ (26)<br />
+用于脚手架选择的模板嵌入是暂时缓存值，不计入此持久存储项。<br />
+至关重要的是，LivingRAG存储稀疏激活图而不是密集的图实体向量，并存储紧凑的脚手架而不是完整的推理轨迹。因此，额外空间与接受的经验数量成线性关系，并且独立于静态语料库图。<br />
+总体而言，LivingRAG保留了LinearRAG的语料库侧可扩展性，同时添加了受稀疏化、top-K融合和选择性回写限制的受控经验存储开销。附录G报告了这些组件的测量运行时间。附录D解释了为什么扎根检查仅对一部分候选运行。</p>
+<p>附录 D 经验回写的质量门控<br />
+图3：在线推理期间NS和GS门控的动态。NS通过和经验回写是在每个窗口上计算的。GS通过仅在到达GS检查的候选上计算。黑色曲线显示存储经验的累积数量。每个流的前10%被展开以显示启动阶段。</p>
+<p>表6：NS和GS门控对经验回写的影响。所有运行都使用 $\tau_{\mathrm{novel}}=0.7$ 和 $\tau_{\mathrm{gs}}=0.6$。NS通过是在所有问题上测量的。GS通过仅在到达GS检查的候选上测量。GS拒绝计数未通过扎根门控的检查候选。<br />
+数据集 | 问题数 | NS通过(%) | GS检查 | GS通过(%) | GS拒绝 | 存储经验<br />
+2Wiki | 1000 | 13.80 | 138 | 72.46 | 38 | 100<br />
+HotpotQA | 1000 | 63.30 | 633 | 86.73 | 84 | 549<br />
+MuSiQue | 1000 | 36.30 | 363 | 86.23 | 50 | 313<br />
+MuSiQue-full | 2417 | 21.31 | 515 | 91.84 | 42 | 473<br />
+WixQA | 400 | 39.25 | 157 | 100.00 | 0 | 157<br />
+所有 | 5817 | 31.05 | 1806 | 88.15 | 214 | 1592</p>
+<p>图3和表6分析了候选被作为经过验证的经验写入之前使用的两个门控。为了实现效率，LivingRAG在GS之前评估NS。此更改仅影响计算顺序。只有当两个门控都通过时，新经验才被存储。当NS失败时，系统跳过GS并避免NLI检查。<br />
+NS曲线在开始时很高，因为存储的经验很少。随着写入更多的经验，NS通过率降低。回写曲线遵循相同的趋势。<br />
+在五个流中，只有1806个候选通过NS。GS检查的数量也是1806，这证实了当NS失败时跳过了GS。最终存储的经验数量为1592。计数表明LivingRAG不存储每个查询。它主要存储相对于早期经验仍然新颖的候选。<br />
+然后GS被应用于较小的候选集。总共有4011个候选未通过NS并跳过GS。在GS检查的1806个候选中，1592个通过，214个被拒绝。在检查的候选中，GS通过率为88.15%。<br />
+结果表明NS控制存储增长。GS在回写之前移除了未扎根的候选。<br />
+WixQA是表6中的一个特例。在到达GS检查的候选中，其GS通过率为100%。该值并不意味着所有GS分数都饱和了。在检查的WixQA候选中，平均GS为0.886，最低分为0.653。因此，结果意味着所有检查的候选都高于0.6的扎根阈值。可能的原因是WixQA语料库由官方帮助文档组成。许多答案包含直接由检索到的帮助文档支持的过程信息。对于此数据集，我们因此将GS用作轻量级的扎根约束，而不是主要的选择性门控。在参数调整中，这对应于保持扎根阈值宽松，并依赖新颖性门控和WixQA特定的检索设置来控制回写。有效的选择性转向了NS，它在GS运行之前过滤重复的支持模式。该设置防止WixQA被扎根拒绝所主导，同时仍然要求每个存储的经验都有明确的段落支持。</p>
+<p>表7：代表性的NS和GS案例研究。这些案例选自最终的LivingRAG运行，没有重新运行检索或验证。<br />
+案例 | 数据集 | Idx. | 查询 | 答案 | NS | GS | 决定 | 解释<br />
+存储的多跳候选 | HotpotQA | 33 | 中华民国（台湾）最大航空公司的哪家子公司的主要枢纽在台中机场？ | 华信航空 | 0.793 | 1.000 | 存储 | 两个门控都通过。检索到的航空公司段落直接支持答案，因此候选成为经过验证的经验。<br />
+直接的WixQA扎根 | WixQA | 57 | 我想知道我可以拥有多少个网站。 | 一个Wix账户下可以创建的网站数量没有限制；您可以拥有任意数量的网站。 | 0.829 | 1.000 | 存储 | 答案包含来自检索到的帮助文章的直接支持的过程信息。这说明了为什么在宽松的扎根阈值下WixQA的GS分数通常很高。<br />
+新颖性拒绝 | WixQA | 391 | 我可以退款域名吗 | 不可以。Wix域名购买不可退款，并且不包含14天退款保证或试用期。如果您不再... | 0.213 | – | 被NS拒绝 | 查询重复了存储的域名退款经验。NS分配了低分，跳过GS，并避免存储相同支持模式的另一个副本。<br />
+扎根拒绝 | HotpotQA | 858 | Mustafa Shakir表示有兴趣扮演的虚构角色Spawn是由谁创作的？ | Todd McFarlane | 0.701 | 0.368 | 被GS拒绝 | NS通过，但检索到的段落没有提及关键实体。答案与金标签匹配，但GS阻止了回写，因为候选没有扎根于检索到的证据中。</p>
+<p>表7给出了这些决定的具体示例。两个存储的案例显示了候选何时被写入存储。它必须足够新颖并得到检索段落的支持。WixQA扎根案例也解释了为什么此数据集可能具有高GS通过率。其答案在帮助文章中直接陈述。<br />
+NS拒绝案例显示了相反的行为。稍后的域名退款查询检索到了几乎相同的存储经验。NS分配了非常低的分数，并阻止了另一个副本的写入。<br />
+最后，GS拒绝案例显示了为什么在NS之后仍然需要扎根。模型预测了正确的答案，但检索到的段落不包含支持它所需的关键实体。因此，LivingRAG返回答案但拒绝存储候选。扎根门控防止了不受支持的推理成为可重用的经验。<br />
+选择性也解释了附录C中复杂度分析的验证项。</p>
+<p>附录 E 数据集细节<br />
+我们在五个在线问答流上评估LivingRAG。其中三个是标准的多跳问答基准：2WikiMultiHopQA、HotpotQA和MuSiQue。它们主要测试系统是否可以跨多个事实检索和组合证据。这些数据集中的大多数答案是简短的实体、日期、位置或是否标签。<br />
+我们进一步包含了MuSiQue-full和WixQA。这两个数据集测试了在线经验重用的不同方面。MuSiQue-full提供了具有更密集重用结构的更大型的多跳流。WixQA提供了在共享企业知识库上的客户支持流。它们一起使评估较少依赖于单一数据集风格。<br />
+MuSiQue-full。MuSiQue是通过将单跳问题组合成多跳问题来构建的。它提供了分解注释，揭示了哪些单跳问题在不同的多跳问题中被重用。这使得它对于研究经验重用的RAG系统是否可以重用先前的推理步骤非常有用。先前的RAG评估通常使用1000个问题的MuSiQue子集。我们额外评估了一个更大的可回答分割，我们称之为MuSiQue-full。它包含2417个可回答的问题。此名称仅用于在我们的实验中将其与较小的子集区分开来。它不指代官方的不可回答的MuSiQue-Full设置。<br />
+我们使用官方的MuSiQue分解定义经验簇。如果两个问题共享至少一个分解的单跳问题，则它们被链接。然后我们在这个问题图上计算连通分量。具有至少两个问题的分量被视为经验簇。此定义基于数据集结构。它不使用文本相似度、嵌入相似度或模型预测。<br />
+表8：MuSiQue流中的重用结构。经验簇是共享至少一个分解的单跳问题的问题的连通分量。<br />
+数据集 | #Q | #Chunks | #Clusters | 覆盖率 | 平均大小 | 最大大小<br />
+MuSiQue | 1,000 | 1,354 | 178 | 79.2 | 4.4 | 21<br />
+MuSiQue-full | 2,417 | 2,379 | 300 | 89.9 | 7.2 | 58</p>
+<p>表8表明，与较小的MuSiQue子集相比，MuSiQue-full包含更强的重用结构。它有更多的簇、更高的簇覆盖率和更大的平均簇大小。这使其成为在线经验重用的有用压力测试。当后续问题重用早期推理组件时，存储经过验证的经验的系统应该受益更多。<br />
+WixQA。WixQA与维基百科风格的基准不同。它是基于Wix帮助中心的产品支持问题构建的。问题是关于产品功能、账户设置、支付、域名、网站编辑、电子邮件、预订和相关用户任务的。答案通常是支持式的解决方案。它们通常描述用户应该做什么，应该使用哪个产品，或者是否支持某个功能。<br />
+此设置对LivingRAG很重要。所有问题都扎根于同一个企业知识库。许多用户问题涉及相关的产品、设置和帮助文章。这创造了重复的证据邻域和反复出现的支持模式。同时，语言不如标准的多跳问答程式化。这使得WixQA成为在更像部署的设置中测试经验重用的有用工具。<br />
+我们在主要评估中使用400个WixQA问题。样本在ExpertWritten和Simulated问题之间保持平衡。我们排除了Synthetic子集，因为它是生成的并且更紧密地与个别文章相关联。检索语料库是Wix帮助中心语料库。按照LinearRAG设置，文章被分割成大约600个令牌的块。</p>
+<p>附录 F WixQA特定的处理和评估<br />
+WixQA需要几个特定于数据集的选择。这些选择不是对LivingRAG框架的更改。它们是必需的，因为WixQA在实体类型、段落长度分布和答案格式上与其他数据集不同。在比较LinearRAG和LivingRAG在WixQA上的实验中，两个系统都使用相同的WixQA特定处理。<br />
+F.1 基于LLM的实体提取<br />
+图检索器依赖查询实体来初始化图激活。对于维基百科风格的问答，通用的NER模型通常就足够了。大多数问题包含人物、地点、组织、作品、日期或命名事件。这些实体也是推理链的主要锚点。例如，在2WikiMultiHopQA和HotpotQA中，spaCy经常提取有用的实体，如人名、电影片名、地点和组织。<br />
+WixQA有不同的语言风格。它的重要查询线索通常是产品名称、UI标签、计划名称、功能名称、设置和用户操作。这些线索不是普通的命名实体。它们是来自Wix帮助中心的领域术语。如果它们被遗漏，图检索将从弱或空的查询种子开始。<br />
+表9比较了代表性的案例。对于标准的多跳问答，spaCy通常提取有用的命名实体。对于WixQA，spaCy通常不返回实体或仅返回广泛的品牌级实体。而LLM NER提取了对支持检索更有用的产品领域术语。<br />
+表9：查询端实体提取的示例。spaCy适用于标准的多跳问答，因为关键检索线索是普通的命名实体。在WixQA上，关键线索是产品领域术语，因此spaCy经常失败或仅提取广泛的实体。<br />
+数据集 | 问题 | spaCy NER | LLM NER或有用的种子<br />
+2Wiki | Lothair II的母亲何时去世？ | Lothair II | 不需要<br />
+2Wiki | 哪部电影先上映，Aas Ka Panchhi还是Phoolwari？ | Aas Ka Panchhi; Phoolwari | 不需要<br />
+HotpotQA | Raymond Robertsen出生的城镇位于哪个县？ | Raymond Robertsen | 不需要<br />
+MuSiQue | 在国王杯中与Messi的进球相比，被巴萨签下的人是什么时候出生的？ | Messi; 国王杯; 巴萨 | 不需要<br />
+WixQA | 我想知道升级我的电子邮件计划需要多少钱。 | [] | Email Marketing Plan; upgrade Email Marketing Plan; Email Marketing Plan pricing<br />
+WixQA | 如何将酒店应用与我的日历ical链接同步，以允许访客在我的网站上预订可用日期？ | [] | Wix Bookings; iCal URL; syncing calendars; booking available dates<br />
+WixQA | 我还没有在我的银行账户中收到我的付款。 | [] | Wix Payments; payout delay; failed payout; Payouts on Hold<br />
+WixQA | 我想知道Wix商店功能是否可以用于销售服务而不仅仅是实体商品。 | Wix | Wix Stores; selling services; service bookings; Wix Bookings</p>
+<p>这些示例表明问题不仅是低召回率。它也是通用NER标签与产品支持术语之间的不匹配。例如，最后一个WixQA问题不能仅通过识别“Wix”这个词来回答。检索系统必须区分用户应该使用“Wix Stores”还是“Wix Bookings”。这种区别对答案至关重要。<br />
+因此，我们对WixQA使用基于LLM的实体提取。提取器使用Qwen3.5-9B实现。这是一个相对较小的LLM，但我们在实践中发现它足以完成此任务。该任务仅需要提取短的产品领域种子术语，而不是解决问题。因此，较小的LLM可以提供有用的领域实体，而无需更改检索框架。<br />
+为了公平起见，LinearRAG和LivingRAG在所有WixQA运行中使用相同的段落级和查询级提取器。目标不是向检索器添加推理。目标是产生更好的产品领域种子术语。下游检索管道保持不变。提取的查询术语被映射到图实体，然后被相同的图传播和段落排名步骤使用。</p>
+<p>⬇<br />
+System: You are an entity extraction assistant for Wix product documentation. Extract ALL of the following from the given text:<br />
+1. Named product / feature / UI names (e.g. ’Wix Events’, ’Event Details Page’, ’Dashboard’, ’DNS records’, ’CMS collection’)<br />
+2. The main topic or action concept of this article as 1-3 short phrases that would match a user’s question about this content (e.g. ’Wix Payments account verification’, ’adding funds to cover refund’, ’publishing pages to live site’, ’staff working hours’, ’CMS collection item order’)<br />
+Return ONLY a JSON array combining all extracted terms. No explanation, no markdown fences.<br />
+Example – article about verifying a Wix Payments account:<br />
+["Wix Payments", "Wix Payments account verification", "account verification status", "Accept Payments", "Adyen", "Stripe"]<br />
+User: {passage}<br />
+Response:</p>
+<p>图4：用于索引期间WixQA基于LLM的实体提取的段落级提示。提取器从每个段落中识别Wix产品文档实体和文章级的操作-主题术语。</p>
+<p>⬇<br />
+System: You are a Wix documentation entity extractor. Extract 3-5 key terms from the user’s question that best identify the relevant help article.<br />
+CRITICAL: Your terms must match the vocabulary used in Wix help article entity labels – phrase them as they appear in article titles or article-level tags, NOT as the user phrased them.<br />
+Priority order:<br />
+1. Exact canonical Wix product / feature name – use the official Wix name, not user paraphrase (’Google Workspace’ not ’Gmail business’; ’Wix Bookings’ not ’booking system’; ’Email Marketing Plan’ not ’email plan’)<br />
+2. A specific action-topic phrase describing the article’s main subject<br />
+Good: ’resetting Workspace user password’, ’failed payout’, ’blocking off time in Booking Calendar’, ’Publishing Issues’, ’Premium Vouchers page’, ’upgrade Email Marketing Plan’<br />
+Bad: ’password reset’, ’payment’, ’block time’, ’page issue’, ’voucher’, ’upgrade’<br />
+3. Precise technical terms only if clearly stated (e.g. ’TXT record’, ’iCal URL’, ’DNS settings’)<br />
+Rules:<br />
+- Match article vocabulary: ’Google Workspace’ -&gt; ’Google Workspace’; ’Gmail’ in an admin / business context -&gt; ’Google Workspace’<br />
+- Use full noun phrases, not single generic nouns: ’Email Marketing Plan upgrade’ &gt; ’email’; ’payo</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 图检索增强生成, 经验重用, 多跳问答, 大语言模型, 知识图谱</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
