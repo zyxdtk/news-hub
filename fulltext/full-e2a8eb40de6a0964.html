@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利用学习到的查询改进信息抽取 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">利用学习到的查询改进信息抽取</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-31</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.31058" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Improving Information Extraction with Learned Queries</h4>
+            <p><strong>中文摘要：</strong> 本文提出LoQ框架，通过生成针对特定文档的问题集和基于反馈的迭代优化方法FeedQ，改进基于大语言模型的信息抽取。实验表明，仅优化问题设计即可使F1分数平均提升18.6分，优于使用更大模型。微调后的轻量级模型超越了未微调的大型模型，证明了问题设计是信息抽取的关键瓶颈。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>利用学习到的查询改进信息抽取<br />
+Omar Sharif<br />
+所属机构：<br />
+计算机科学系<br />
+Soroush Vosoughi<br />
+所属机构：<br />
+达特茅斯学院<br />
+Nikhil Singh<br />
+所属机构：<br />
+{omar.sharif.gr, soroush.vosoughi, nikhil.u.singh}@dartmouth.edu<br />
+摘要<br />
+当信息抽取失败时，一种自然的本能是改进执行该任务的模型：例如，通过扩大模型规模或优化其推理能力。在本文中，我们展示了流程中另一个部分同样至关重要：用于引导信息的查询。在四个临床基准和五个大语言模型（LLM）上，仅改进问题设计就能使性能提升约 18.6 个 F1 分数点，即比使用更大的抽取模型效果更好。为了使这种问题设计具备可学习性，我们引入了 List of Questions (LoQ)，它生成针对特定文档的问题集；以及 FeedQ，一种基于反馈的优化方法，可根据抽取结果迭代优化问题。最终优化后的问题可用于训练轻量级生成器：通过微调，40 亿参数模型能够匹配或超越专家衍生的基线，并大幅超过未微调的大得多的模型的性能。我们发布了一个包含 12,820 个优化问题的数据集，以支持信息抽取研究向将问题设计视为首要问题的更广泛转变。<br />
+1 引言<br />
+“如果你不知道如何提出正确的问题，你将一无所获。”<br />
+— W. Edwards Deming<br />
+我们周围充满了包含我们尚未提出的问题答案的文档。当这些问题最终出现时，例如“这些健康记录中每份记录开具了哪些药物？”，任务就变成了信息抽取：识别并结构化嵌入在文本中的相关信息。尽管这个目标看起来很简单，但实际操作却出奇地困难。感兴趣的信息很少以明确或一致的形式呈现；相反，它们通常分布在句子中、间接表达或与叙述语境交织在一起。因此，为了得到正确的答案，我们必须提出正确的问题。<br />
+这一挑战在临床和生物医学文本中尤为突出。病例报告、药物警戒记录和出院摘要通过非结构化的叙述传达结构化的事实 Zhang et al. (2025); Builtjes et al. (2025)。考虑仅抽取一种类型的信息：“药物不良反应”。症状可能在一个段落中提到，原因通过与药物的时间邻近性暗示，而结果的描述则在更后面。可靠地抽取此类信息既取决于模型的能力，也取决于我们查询它的方式是否能揭示相关证据。<br />
+图 1：一份病例报告描述了一名患者在开始服用帕罗西汀（高亮显示）后出现四种药物不良反应。标准方法提出一个角色级别的问题，仅检索到两种。LoQ 生成一组基于文档的问题，每个问题针对不同的症状类别，并恢复了全部四种。在两种设置中抽取模型是相同的；只有问题发生了变化，这展示了提出正确的问题如何有益于抽取答案。其他示例见表 12。<br />
+大语言模型（LLM）已成为此类任务的主导方法 Shimizu et al. (2025); Tanev et al. (2025)。对于 LLM，这个问题通常被构建为基于问题的论元抽取：给定一个文档和关于目标角色的问题，模型生成相关论元作为自由文本 Sharif et al. (2024); Zhang et al. (2024)。在这里，角色是要抽取的信息类型（例如，药物不良反应），而论元是该角色的具体细节（例如，涉及的药物、观察到的症状、结果）。这种表述很灵活，但它悄悄继承了一个假设，即问题本身是足够的。主流方法从标注模式或角色级模板中派生问题，并统一应用于所有文档，而不管目标信息是如何表达的 Du and Cardie (2020); Sharif et al. (2025)。如图 1 所示，询问“患者发生了什么药物不良反应？”将角色视为单个检索目标，假设所有相关论元都可以通过一个通用查询呈现。这有系统性地遗漏需要针对性关注的论元的风险。因此，瓶颈不仅在于 LLM 回答的能力，还在于我们提问和引导这种注意力的方式。<br />
+我们引入了 List of Questions (LoQ)，这是一个为每个文档-角色对量身定制学习抽取问题的框架。LoQ 使用 FeedQ，这是一个基于抽取它们所引导的论元质量来优化候选问题的迭代循环。优化后的问题随后帮助训练一个轻量级问题生成模型以供部署。因此，我们的贡献是：<br />
+• 我们提供了实证证据，证明问题设计是基于 LLM 的信息抽取的主要瓶颈。在四个临床基准（CaseReportBench Zhang et al. (2025), PHEE Sun et al. (2022), DiscourseEE Sharif et al. (2024), 和 MACCROBAT Ma et al. (2023)）和五个 LLM 上，改进问题平均可使 F1 提高 18.6%。<br />
+• 我们引入了一个由两部分组成的框架 LoQ，用于学习生成有效的、基于文档的抽取问题：<br />
+1. 首先，我们开发了 FeedQ，一种反馈驱动的迭代优化方法，用于在没有标注问题监督的情况下优化抽取问题。我们使用 FeedQ 构建了一个包含 12,820 个（文档、角色、问题集）三元组的数据集。<br />
+2. 其次，我们通过微调应用该数据集，并展示了零样本抽取的显著提升。<br />
+图 2：List of Questions 框架概述。(1) 问题优化：FeedQ 迭代地生成、评估和优化以文档、角色和真实论元为条件的角色特定问题，产生正确的问题。(2) QG 微调：这些问题教导较小的模型从文档和角色中产生问题，消除对真实标签的依赖。(3) 预测：在测试时，微调后的 QG 模型为未见过的文档-角色生成问题，预测模型使用它们来抽取论元。<br />
+2 相关工作<br />
+作为问答的信息抽取。<br />
+信息抽取可以直接重新构建为问答 (Du and Cardie, 2020; Liu et al., 2020; Li et al., 2020)，通过向模型提出一个问题，其答案就是所需的论元。这促使抽取模型使用预训练语言模型中已有的问答和阅读理解能力，并支持自由文本而非仅限跨度的方法 Huang et al. (2024); Sharif et al. (2024)。一旦以这种方式构建，问题质量对抽取成功至关重要。在实践中，问题通常根据标注指南或角色模板编写一次，然后在所有文档中重复使用 Hsu et al. (2022); Srivastava et al. (2025)。这使得它们易于应用，但也对证据在不同文档中的表达方式漠不关心。<br />
+问题的质量。<br />
+最近的工作开始更加认真地对待问题表述。Lu et al. (2023) 从特定事件的模板生成更好的角色问题，Hong and Liu (2024) 使用强化学习优化问题生成，Uddin et al. (2024b) 展示了结合上下文化和非上下文化问题的好处。尽管取得了这些进展，大多数方法仍然在每角色一问题的范式上运作 (Uddin et al., 2024a)，假设每个角色都是一个单一的、干净的检索目标。然而，一个角色可能涉及多个论元，间接表达，或分散在各个部分。当前的方法通常也使用代理来提高问题质量，如模板监督 (Lu et al., 2023)、流畅性和上下文恢复奖励 (Hong and Liu, 2024)，或问题类型的启发式组合 (Uddin et al., 2024b)。我们的工作建立在这些想法之上，但将问题设计作为抽取的一个可分离组件进行研究。我们问：对于一个文档-角色对，什么问题集最能揭示相关证据，我们如何找到这些问题？<br />
+学习提出正确的问题。<br />
+提示优化是改进文本工件的一种新兴策略 (Pryzant et al., 2023; Yuksekgonul et al., 2025; Lee et al., 2025; Cherep et al., 2026)。这些技术通过自然语言反馈近似基于梯度的优化。然而，这些方法优化单个文本提示，而我们的设置需要在多级抽取目标下优化以文档和角色为条件的问题集，具有集级别编辑和泄漏约束。我们开发了一种新的基于反馈的优化器，它交替进行问题生成和信息抽取，以及多步评估、文档和角色条件化、泄漏检查模块等其他几个组件。我们使用这种方法迭代地优化问题以最大化抽取质量。然后，我们通过监督微调将这种知识转移给一个轻量级问题生成语言模型，该模型在不访问真实论元的情况下产生针对特定文档的问题。用现成的预测语言模型回答这些问题平均应该能产生更好的信息抽取。<br />
+3 方法<br />
+我们提出了 List of Questions (LoQ) 框架，该框架分三个阶段自动化完整的论元抽取周期（如图 2 所示）。<br />
+阶段 1：问题优化。<br />
+给定一个文档、角色和真实论元，我们运行迭代优化循环（FeedQ，第 3.2 节）以得出最能抽取这些论元的问题，产生用于训练的黄金问题集。<br />
+阶段 2：问题生成。<br />
+我们在这些黄金问题上微调一个问题生成器（QG）模型，从而教会它生成以文档和角色为条件的有效问题。<br />
+阶段 3：预测。<br />
+在推理时，微调后的 QG 为未见过的实例生成问题，现成的语言模型使用这些问题来抽取论元。我们的设计将问题生成与预测分开，允许每个组件专门化。<br />
+3.1 预备知识<br />
+一个文档 𝒟 \mathcal{D} 是取自不同临床来源（如病例报告、药物警戒记录或在线健康论坛（例如 reddit 帖子））的全文。每个 𝒟 \mathcal{D} 具有由一组角色 ℛ = { r 1 , r 2 , … , r n } \mathcal{R}={r_{1},r_{2},\dots,r_{n}} 定义的信息结构，这些角色指定了要抽取的信息类型。论元 𝒜 = { a 1 , a 2 , … , a m } \mathcal{A}={a_{1},a_{2},\dots,a_{m}} 是这些角色中每一个的对应细节。例如，给定句子“患者每日两次处方二甲双胍 500mg”，相关信息结构是一个药物事件，具有药物、剂量和频率角色，分别由论元二甲双胍、500mg 和每日两次填充。我们将临床信息抽取表述为生成式论元抽取任务：给定一个文档 𝒟 \mathcal{D} 和一组目标角色 ℛ \mathcal{R} ，语言模型抽取对应于每个角色的一组论元 𝒜 \mathcal{A} 。<br />
+3.2 通过反馈进行问题优化<br />
+我们设计了 FeedQ，一种迭代反馈驱动的问题优化方法，旨在自动推导出正确的问题集，以从给定文档中抽取信息。<br />
+算法 1 FeedQ：反馈驱动的问题优化<br />
+1: 真实论元 𝒜 \mathcal{A} ，初始问题 𝒬 ( 0 ) \mathcal{Q}^{(0)} ，文档 𝒟 \mathcal{D} ，角色 r r ，最大迭代次数 T T ，目标分数 τ \tau ，耐心值 m m<br />
+2: 优化后的问题集 𝒬 ∗ \mathcal{Q}^{<em>}<br />
+3: 𝒬 ∗ ← 𝒬 ( 0 ) \mathcal{Q}^{</em>}\leftarrow\mathcal{Q}^{(0)} ； τ ∗ ← 0.0 \tau^{<em>}\leftarrow 0.0 ； p ← 0 p\leftarrow 0 ⊳ \triangleright 初始化<br />
+4: for t = 0 , 1 , … , T − 1 t=0,1,\ldots,T{-}1 do<br />
+5: 𝒬 ^ ( t ) ← LeakageCheck ​ ( 𝒬 ( t ) , 𝒜 ) \hat{\mathcal{Q}}^{(t)}\leftarrow\textsc{LeakageCheck}(\mathcal{Q}^{(t)},\,\mathcal{A})<br />
+6: 𝒜 ^ ( t ) ← Extract ​ ( 𝒟 , r , 𝒬 ^ ( t ) ) \hat{\mathcal{A}}^{(t)}\leftarrow\textsc{Extract}(\mathcal{D},\,r,\,\hat{\mathcal{Q}}^{(t)}) ⊳ \triangleright 预测<br />
+7: // 评估<br />
+8: M ( t ) ← 𝒜 ^ ( t ) ∩ 𝒜 M^{(t)}\leftarrow\hat{\mathcal{A}}^{(t)}\cap\mathcal{A}<br />
+9: Miss ( t ) ← 𝒜 ∖ 𝒜 ^ ( t ) \text{Miss}^{(t)}\leftarrow\mathcal{A}\setminus\hat{\mathcal{A}}^{(t)}<br />
+10: Extra ( t ) ← 𝒜 ^ ( t ) ∖ 𝒜 \text{Extra}^{(t)}\leftarrow\hat{\mathcal{A}}^{(t)}\setminus\mathcal{A}<br />
+11: s ( t ) ← E ⁡ ( | M ( t ) | , | 𝒜 ^ ( t ) | , | 𝒜 | ) s^{(t)}\leftarrow E\left(|M^{(t)}|,\,|\hat{\mathcal{A}}^{(t)}|,\,|\mathcal{A}|\right) ⊳ \triangleright 评估<br />
+12: if s ( t ) &gt; τ ∗ s^{(t)}&gt;\tau^{</em>} then ⊳ \triangleright 保存最佳并更新耐心值<br />
+13: 𝒬 ∗ ← 𝒬 ^ ( t ) \mathcal{Q}^{<em>}\leftarrow\hat{\mathcal{Q}}^{(t)}<br />
+14: τ ∗ ← s ( t ) \tau^{</em>}\leftarrow s^{(t)}<br />
+15: p ← 0 p\leftarrow 0<br />
+16: else<br />
+17: p ← p + 1 p\leftarrow p+1<br />
+18: end if<br />
+19: if τ ∗ ≥ τ \tau^{<em>}\geq\tau or p ≥ m p\geq m then ⊳ \triangleright 提前退出<br />
+20: break<br />
+21: end if<br />
+22: // 创建反馈信号<br />
+23: Δ ( t ) ← ( M ( t ) , Miss ( t ) , Extra ( t ) , s ( t ) , 𝒬 ^ ( t ) ) \Delta^{(t)}\leftarrow\left(M^{(t)},\;\text{Miss}^{(t)},\;\text{Extra}^{(t)},\;s^{(t)},\;\hat{\mathcal{Q}}^{(t)}\right)<br />
+24: // 问题优化<br />
+25: 𝒬 ( t + 1 ) ← Refine ​ ( 𝒬 ^ ( t ) , Δ ( t ) ) \mathcal{Q}^{(t+1)}\leftarrow\textsc{Refine}\left(\hat{\mathcal{Q}}^{(t)},\,\Delta^{(t)}\right)<br />
+26: end for<br />
+27: return 𝒬 ∗ \mathcal{Q}^{</em>}<br />
+目标。<br />
+给定一个文档 𝒟 \mathcal{D} ，一个角色 r ∈ ℛ r\in\mathcal{R} ，以及 r r 的真实论元 𝒜 = { a 1 , … , a m } \mathcal{A}={a_{1},\ldots,a_{m}} ，我们寻找一个最大化抽取性能的问题集 𝒬 ∗ \mathcal{Q}^{<em>} ：<br />
+𝒬 ∗ = arg ⁡ max 𝒬 ​ F1 ​ ( 𝒜 ^ ​ ( 𝒟 , r , 𝒬 ) , 𝒜 ) \mathcal{Q}^{</em>}=\arg\max_{\mathcal{Q}}\;\text{F1}\big(\hat{\mathcal{A}}(\mathcal{D},r,\mathcal{Q}),\;\mathcal{A}\big)<br />
+(1)<br />
+其中 𝒜 ^ ​ ( 𝒟 , r , 𝒬 ) \hat{\mathcal{A}}(\mathcal{D},r,\mathcal{Q}) 表示由以 𝒟 \mathcal{D} 、 r r 和 𝒬 \mathcal{Q} 为条件的预测模型（PM）抽取的论元。我们通过一个迭代反馈循环（算法 1）优化 𝒬 \mathcal{Q} ，其主要组件是：<br />
+初始化。<br />
+在 t = 0 t{=}0 时，问题生成器（QG）模型以 r r 、 𝒟 \mathcal{D} 和 𝒜 \mathcal{A} 为条件，以零样本方式产生初始问题列表。<br />
+泄漏检查。<br />
+由于 QG 模型可以看到 𝒜 \mathcal{A} ，它们可能会将真实论元 ( a i ∈ 𝒜 ) (a_{i}\in\mathcal{A}) 直接或间接地泄漏到生成的问题中。为了防止这种情况，我们使用基于语言模型的泄漏检查。在每次迭代中，LeakageCheck ⁡ ( 𝒬 ( t ) , 𝒜 ) \operatorname{LeakageCheck}(\mathcal{Q}^{(t)},\mathcal{A}) 标记可能泄漏真实情况的问题并重写它们以消除泄漏（例如，提出一个更通用的问题）。我们使用 gpt-oss-120b 实现此模块。附录 B.2 包含鲁棒性分析。<br />
+抽取和评估。<br />
+经过泄漏检查的问题 𝒬 ^ ( t ) \hat{\mathcal{Q}}^{(t)} 被转发给 PM，PM 输出预测的论元 𝒜 ^ ( t ) \hat{\mathcal{A}}^{(t)} 。使用评估框架（第 4 节）根据真实情况 𝒜 \mathcal{A} 评估预测。这产生了匹配、遗漏和过度生成的论元集合，我们从中计算精确率、召回率和 F1。<br />
+反馈和优化。<br />
+在第 t 次迭代时的结构化反馈信号 Δ \Delta 包含分数、匹配、遗漏和过度生成的论元，并传递给优化器语言模型。基于当前问题 𝒬 ( t ) \mathcal{Q}^{(t)} 和反馈 Δ ( t ) \Delta^{(t)} ，优化器生成更新后的集合 𝒬 ( t + 1 ) \mathcal{Q}^{(t+1)} 。优化被指示添加针对遗漏论元的问题，优化或删除导致过度生成的问题，并保留有效的问题。<br />
+收敛。<br />
+我们通过 F1 分数跟踪跨迭代的最佳问题集 𝒬 ∗ \mathcal{Q}^{<em>} 。当 满足以下条件时循环终止： F1 ≥ \geq 目标阈值， 连续 p p 次迭代没有改进（耐心值），或 达到最大迭代次数 T T 。输出始终是 𝒬 ∗ \mathcal{Q}^{</em>} （最佳，不一定是最终的，因为 F1 分数不保证是单调的）。<br />
+3.3 学习生成问题<br />
+FeedQ 产生黄金问题，并在此过程中产生一个 ( 𝒟 , r , 𝒬 ∗ ) (\mathcal{D},r,\mathcal{Q}^{*}) 三元组数据集。我们使用这些三元组来监督 Qwen3-4B 和 Qwen3-8B 与 LoRA 的微调。由此产生的模型学习在不访问真实情况的情况下生成以文档和角色为条件的问题，使 LoQ 适用于测试时的新查询。<br />
+3.4 预测<br />
+在推理时，微调后的 QG 模型生成以文档和目标角色为条件的问题。然后，预测模型使用这些问题从文档中抽取论元。我们评估了涵盖开放权重和专有 LLM 的五个预测模型：Qwen3-4B、Qwen3-8B、GPT-OSS-120B、GPT-5-Mini 和 Gemini-3.1-Pro。每个 PM 与每个 QG 配对，产生跨两个轴的完整比较。详细信息见附录 B.1，完整提示见附录 C。<br />
+Qw3 4B<br />
+Qw3 8B<br />
+OSS 120B<br />
+Gpt 5 mini<br />
+Gemini 3.1<br />
+Mean<br />
+Qw3 4B<br />
+Qw3 8B<br />
+OSS 120B<br />
+Gpt 5 mini<br />
+Gemini 3.1<br />
+Mean<br />
+Approach<br />
+CaseReportBench<br />
+PHEE<br />
+No-Question<br />
+55.6<br />
+54.9<br />
+70.1<br />
+65.2<br />
+70.6<br />
+63.3<br />
+62.8<br />
+67.8<br />
+66.2<br />
+66.4<br />
+83.3<br />
+69.3<br />
+Performance with Knowledge Questions<br />
+Knowledge-Q<br />
+62.4<br />
+61.6<br />
+75.3<br />
+71.0<br />
+78.3<br />
+69.7<br />
+76.5<br />
+79.5<br />
+75.7<br />
+71.8<br />
+83.4<br />
+77.4<br />
+CoT-Q<br />
+62.8<br />
+57.5<br />
+73.9<br />
+67.9<br />
+77.2<br />
+67.9<br />
+69.2<br />
+73.5<br />
+76.2<br />
+78.6<br />
+84.2<br />
+76.3<br />
+Performance with Dynamic Questions generated with GPT-OSS-120B<br />
+Contextual-Q<br />
+54.3<br />
+50.6<br />
+57.9<br />
+52.5<br />
+57.7<br />
+54.6<br />
+49.3<br />
+47.5<br />
+51.0<br />
+52.9<br />
+79.5<br />
+56.0<br />
+Zs-<br />
+FeedQ<br />
+76.9<br />
+72.1<br />
+92.7<br />
+88.7<br />
+91.9<br />
+84.5<br />
+82.5<br />
+83.5<br />
+86.3<br />
+84.4<br />
+89.4<br />
+85.2<br />
+Opt-<br />
+FeedQ<br />
+79.2<br />
+73.4<br />
+96.9<br />
+92.4<br />
+94.0<br />
+87.2<br />
+82.3<br />
+84.8<br />
+94.3<br />
+89.8<br />
+90.6<br />
+88.4<br />
+DiscourseEE<br />
+MACCROBAT<br />
+No-Question<br />
+46.6<br />
+46.1<br />
+47.2<br />
+44.9<br />
+52.2<br />
+47.4<br />
+30.3<br />
+33.2<br />
+37.1<br />
+37.1<br />
+52.0<br />
+37.9<br />
+Performance with Knowledge Questions<br />
+Knowledge-Q<br />
+53.0<br />
+53.8<br />
+60.5<br />
+55.6<br />
+57.8<br />
+56.1<br />
+36.6<br />
+38.3<br />
+42.1<br />
+42.5<br />
+58.1<br />
+43.5<br />
+CoT-Q<br />
+54.7<br />
+55.7<br />
+61.9<br />
+53.6<br />
+60.1<br />
+57.2<br />
+36.9<br />
+38.6<br />
+42.5<br />
+40.0<br />
+57.1<br />
+43.0<br />
+Performance with Dynamic Questions generated with GPT-OSS-120B<br />
+Contextual-Q<br />
+42.2<br />
+41.3<br />
+43.5<br />
+41.0<br />
+40.3<br />
+41.7<br />
+30.5<br />
+31.3<br />
+30.5<br />
+29.3<br />
+38.3<br />
+32.0<br />
+Zs-<br />
+FeedQ<br />
+60.0<br />
+61.2<br />
+72.2<br />
+61.2<br />
+67.3<br />
+64.4<br />
+49.4<br />
+56.3<br />
+74.9<br />
+64.1<br />
+83.6<br />
+65.6<br />
+Opt-<br />
+FeedQ<br />
+65.5<br />
+64.8<br />
+82.5<br />
+64.6<br />
+69.0<br />
+69.3<br />
+57.3<br />
+66.5<br />
+91.1<br />
+74.6<br />
+91.3<br />
+76.2<br />
+表 1：在四个数据集和五个预测模型上，问题质量对开发集抽取性能的影响。对于每列，只有问题发生变化，分离了提出正确问题的效果。Zs-FeedQ 是在单次零样本中生成的问题，Opt-FeedQ 是通过 FeedQ 迭代优化的问题。<br />
+4 数据集和评估<br />
+我们在跨越不同文本类型和标注粒度的四个临床和生物医学 IE 数据集上进行评估：<br />
+CaseReportBench Zhang et al. (2025)，包含全长临床病例报告（平均 582 词）；PHEE Sun et al. (2022)，由简短的药物警戒文本组成（平均 20 词）；DiscourseEE Sharif et al. (2024)，取自非正式的在线健康论坛；以及 MACCROBAT Ma et al. (2023)，包含 PubMed 病例报告片段。<br />
+所有数据集都转换为第 3.1 节中描述的统一格式：（文档、角色、真实论元列表）三元组。数据统计见表 8。<br />
+每个数据集分为训练、开发和测试拆分。开发集用于设计和内部验证 FeedQ。训练集提供了 FeedQ 产生用于微调的黄金问题的样本。测试集保留用于对未见数据进行最终评估。更多详细信息见附录 A。我们报告所有方法在测试集上的 F1。已知精确匹配和宽松匹配指标会低估 LLM 性能，因为具有表面形式差异的语义正确预测会受到惩罚 Lu et al. (2025); Fane et al. (2025)。<br />
+我们采用 Sharif et al. (2025) 的分层方法，该方法结合了精确、宽松和 LLM 作为评判者来评估论元的正确性（详细信息见附录 B.5）。<br />
+5 更好问题的重要性<br />
+为了首先分离问题质量对抽取的影响，我们比较了在固定预测模型的同时仅改变问题形成方式的方法（表 1）。<br />
+在 No-Question 中，我们用（文档、角色）提示预测模型，并指示它在没有问题的情况下生成论元。所有数据集的性能均下降，确立了问题是必要的。Knowledge-Q 和 CoT-Q 是知识问题：每个角色定义一次，并统一应用于所有文档 Du and Cardie (2020); Hsu et al. (2022)。这些直接取自数据集发布的专家问题，或从其专家标注指南最小限度地改编为 QA 格式（详细信息：附录 B.3）。这些是强大的人工编写问题基线。<br />
+Contextual-Q 在不访问真实情况的情况下为每个文档-角色对生成动态问题，这是一种现实的部署设置 Hong and Liu (2024)。Zs-FeedQ 和 Optimized-FeedQ 也生成动态问题，但最初可以访问真实论元：前者在单次零样本中生成，后者通过 FeedQ 进行迭代优化。访问真实情况确立了当问题得到良好定位时可实现的上限，然后再询问是否可以在没有它的情况下重现这种质量。对于实验，我们使用第 3.4 节中讨论的预测模型。<br />
+表 1 中的一个关键观察是 Contextual-Q 的性能下降到 No-Question 基线以下。这提出了一个问题：为什么文档条件问题会损害抽取性能。为了调查这一点，我们进行了精确率-召回率分析，如表 2 所示。我们发现未优化的上下文问题导致预测模型生成许多额外的候选论元，从而增加了误报。<br />
+Dataset<br />
+Approach<br />
+P<br />
+R<br />
+F1<br />
+CaseReportB<br />
+No-Question<br />
+54.5<br />
+77.5<br />
+63.3<br />
+Contextual-Q<br />
+40.2<br />
+85.8<br />
+54.6<br />
+PHEE<br />
+No-Question<br />
+63.6<br />
+76.9<br />
+69.4<br />
+Contextual-Q<br />
+44.6<br />
+78.6<br />
+56.0<br />
+DiscourseEE<br />
+No-Question<br />
+37.4<br />
+65.7<br />
+47.4<br />
+Contextual-Q<br />
+28.8<br />
+76.3<br />
+41.7<br />
+MACCROBAT<br />
+No-Question<br />
+29.1<br />
+54.8<br />
+38.0<br />
+Contextual-Q<br />
+22.1<br />
+57.9<br />
+32.0<br />
+表 2：No-Question 和 Contextual-Q 方法的总体精确率、召回率和 F1 分析。<br />
+No-Question 和 Contextual-Q 都以文档和目标角色为条件；Contextual-Q 额外提供了在没有真实情况访问权限的情况下即时生成的问题。它平均为每个文档-角色对生成 5.27 个问题，这导致了上述权衡。在每个数据集中，它都提高了召回率（例如，DiscourseEE 65.7 → 76.3），但大幅降低了精确率（37.4 → 28.8）。相反，No-question 产生较少的论元，因此其召回率较低。然而，大型预测模型仍然可以直接从文档和角色规范中恢复许多常见的论元，从而导致精确率大幅提高，并最终获得更高的 F1。<br />
+5.1 发现正确的问题<br />
+我们使用 FeedQ 选择最佳问题。为 FeedQ 选择问题生成器需要平衡质量和成本。我们评估了五个 LLM 作为零样本问题生成器（Qwen3-4B、Qwen3-8B、GPT-OSS-120B、GPT-5.2 和 Gemini-3.1-Pro），后两者具有高推理能力。对于每个模型，我们计算所有预测模型的平均 F1 分数。表 3 总结了结果；每个模型的细分如图 5 所示。<br />
+QG<br />
+CRB<br />
+PHEE<br />
+DEE<br />
+MBAT<br />
+Mean<br />
+Qwen3-4B<br />
+60.8<br />
+66.8<br />
+48.3<br />
+43.3<br />
+54.8<br />
+Qwen3-8B<br />
+60.8<br />
+64.1<br />
+47.8<br />
+40.7<br />
+53.4<br />
+OSS-120B<br />
+84.5<br />
+85.2<br />
+64.4<br />
+65.6<br />
+74.9<br />
+GPT-5.2<br />
+85.1<br />
+85.9<br />
+65.8<br />
+67.8<br />
+76.1<br />
+Gemini-3.1<br />
+79.8<br />
+85.1<br />
+63.5<br />
+59.8<br />
+72.1<br />
+表 3：五个 LLM 的零样本问题生成质量，由预测模型平均的 F1 衡量。每个模型的分数如图 5 所示。CRB、DEE 和 MBAT 分别表示 CaseReportBench、DiscourseEE 和 MACCROBAT 数据集。<br />
+较大的模型以很大优势优于 Qwen3 基线（≈ \approx 72–76 对比 ≈ \approx 54 F1）。GPT-5.2 总体表现最佳（76.1），但 GPT-OSS-120B 接近（74.9），而在撰写本文时每 token 的成本便宜 40 倍以上。因此，我们使用 GPT-OSS-120B 作为 QG 模型。它的开放权重还允许在需要时进行本地部署并与私有数据一起使用。为了可扩展性，我们还使用 GPT-OSS-120B 作为预测和优化模型，尽管任何足够有能力的模型都可以替代。<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt 5 mini<br />
+Gemini 3.1-pro<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt 5 mini<br />
+Gemini 3.1-pro<br />
+Approach<br />
+CaseReportBench<br />
+PHEE<br />
+Performance with Knowledge Questions<br />
+Knowledge-Q<br />
+60.29<br />
+60.17<br />
+73.40<br />
+69.03<br />
+78.17<br />
+76.92<br />
+80.02<br />
+74.08<br />
+74.05<br />
+81.37<br />
+CoT-Q<br />
+57.98<br />
+58.24<br />
+73.92<br />
+66.33<br />
+76.32<br />
+67.98<br />
+73.67<br />
+77.50<br />
+76.41<br />
+80.53<br />
+Performance with fine-tuned and non fine-tuned QG models<br />
+Qwen3-4B<br />
+63.18<br />
+59.26<br />
+52.28<br />
+45.73<br />
+66.14<br />
+64.71<br />
+63.54<br />
+62.30<br />
+58.75<br />
+79.89<br />
+Qwen3-8B<br />
+63.26<br />
+60.51<br />
+56.67<br />
+49.71<br />
+67.33<br />
+62.10<br />
+63.26<br />
+58.58<br />
+55.42<br />
+79.11</p>
+<hr />
+<p>Qwen3-4B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+62.56<br />
+64.09<br />
+71.63<br />
+67.86<br />
+71.32<br />
+78.48<br />
+81.52<br />
+83.61<br />
+80.30<br />
+84.96<br />
+Qwen3-8B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+63.85<br />
+64.59<br />
+70.88<br />
+69.16<br />
+69.98<br />
+78.07<br />
+80.66<br />
+84.52<br />
+82.74<br />
+84.25<br />
+Strong QG Baselines (non fine-tuned)<br />
+Gpt-OSS-120B<br />
+53.76<br />
+49.45<br />
+56.31<br />
+51.14<br />
+55.88<br />
+48.57<br />
+44.87<br />
+49.40<br />
+49.81<br />
+77.35<br />
+Gpt-5.2<br />
+60.46<br />
+58.07<br />
+69.36<br />
+64.13<br />
+65.63<br />
+62.59<br />
+61.39<br />
+71.87<br />
+71.44<br />
+80.33<br />
+Gemini-3.1<br />
+62.01<br />
+59.39<br />
+70.21<br />
+67.04<br />
+71.26<br />
+79.39<br />
+80.68<br />
+80.98<br />
+80.13<br />
+81.89<br />
+DiscourseEE<br />
+MACCROBAT<br />
+Performance with Knowledge Questions<br />
+Knowledge-Q<br />
+50.55<br />
+53.68<br />
+60.36<br />
+55.15<br />
+58.13<br />
+37.55<br />
+39.11<br />
+43.70<br />
+41.36<br />
+58.74<br />
+CoT-Q<br />
+50.44<br />
+55.13<br />
+61.01<br />
+52.71<br />
+59.62<br />
+37.41<br />
+41.75<br />
+43.60<br />
+41.60<br />
+58.51<br />
+Performance with fine-tuned and non fine-tuned QG models<br />
+Qwen3-4B<br />
+50.11<br />
+48.75<br />
+47.13<br />
+44.96<br />
+47.64<br />
+38.02<br />
+41.50<br />
+41.07<br />
+38.72<br />
+48.43<br />
+Qwen3-8B<br />
+47.91<br />
+48.90<br />
+46.59<br />
+42.66<br />
+44.36<br />
+38.71<br />
+40.28<br />
+40.12<br />
+39.07<br />
+47.57</p>
+<hr />
+<p>Qwen3-4B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+49.75<br />
+50.16<br />
+54.12<br />
+54.01<br />
+51.46<br />
+45.37<br />
+46.37<br />
+51.39<br />
+48.62<br />
+56.84<br />
+Qwen3-8B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+47.93<br />
+50.57<br />
+56.74<br />
+54.47<br />
+52.71<br />
+41.81<br />
+44.96<br />
+50.96<br />
+47.53<br />
+56.74<br />
+Strong QG Baselines (non fine-tuned)<br />
+Gpt-OSS-120B<br />
+41.66<br />
+40.52<br />
+44.60<br />
+41.59<br />
+38.83<br />
+32.49<br />
+32.51<br />
+33.31<br />
+32.90<br />
+39.18<br />
+Gpt-5.2<br />
+48.89<br />
+43.95<br />
+50.55<br />
+46.65<br />
+41.04<br />
+39.57<br />
+39.88<br />
+40.50<br />
+39.30<br />
+42.91<br />
+Gemini-3.1<br />
+51.39<br />
+49.65<br />
+53.18<br />
+50.84<br />
+49.52<br />
+37.13<br />
+40.59<br />
+43.25<br />
+41.49<br />
+52.13<br />
+表 4：跨问题生成方法的测试集性能比较。Knowledge-Q 和 CoT-Q 是人工编写的问题。所有其他方法动态生成问题，仅以文档和角色为条件（无真实情况访问）。Qwen3 ft 行报告了微调后的最佳分数（完整细分见表 7）。粗体表示微调模型在该数据集上击败了所有方法；绿色和浅绿色标记了总体上最高和第二高的分数。<br />
+5.2 问题改进的影响<br />
+如果基于 LLM 抽取的瓶颈在于模型能力，那么更好的问题只会产生边际收益。表 1 的结果表明情况并非如此。在四个数据集和所有预测模型上平均，Optimized-FeedQ 的性能比最强基线 高 18.6 F1。增益在每种数据集-模型组合上都成立，范围从 11.0 (PHEE) 到 32.7 (MACCROBAT)。<br />
+Zero-shot FeedQ 在没有迭代优化的情况下已经超过 Knowledge-Q 13.2 F1，表明大部分增益来自于根据文档中针对给定角色实际包含的信息生成问题。FeedQ 优化进一步增加了 5.4 F1，在 DiscourseEE (+4.9) 和 MACCROBAT (+10.6) 上增益最大，这些数据集中的论元最频繁地是隐含的或分布式的。其他替代提问策略都没有帮助：尽管以文档为条件，Contextual-Q 的 F1 仍比 Knowledge-Q 低 15.6，CoT-Q 也没有显示出任何好处（61.1 对 61.7）。没有基础支持的文档条件会产生模糊的查询，而推理无法弥补定位不佳的问题。<br />
+图 3：在开发集中找到得分最高的问题集时的 FeedQ 迭代分布。<br />
+图 4：开发集中每个角色生成的优化问题百分比分布。<br />
+5.3 优化问题的分析<br />
+图 3 和 4 为我们流程中的两个核心设计选择提供了理由。首先，迭代优化不是多余的：虽然单次 FeedQ 传递对于 PHEE (87%) 和 MACCROBAT (75%) 中的大多数角色来说就足够了，但 DiscourseEE 中近一半的角色 (47%) 和 CaseReportBench 中四分之一的角色需要两次或更多次迭代才能达到其得分最高的问题集（图 3）。其次，每个角色一个问题通常是不够的。CaseReportBench 仅将 41% 的角色分配给单个优化问题；其余 59% 的角色获得两个或更多问题，其中 27% 的角色需要四个或更多（图 4）。DiscourseEE 遵循类似的模式。这证实了结构丰富的模式中的角色通常需要多个有针对性的问题来充分分解抽取目标。对于 PHEE 和 MACCROBAT，在大多数情况下，单个措辞恰当的问题就足够好了。在附录 D 中，我们添加了补充证据，展示了如何使用自动可解释性方法改变问题。<br />
+6 学习正确的问题<br />
+第 5 节确立了更好的问题可以改进抽取。实际问题是模型是否可以学会为未见过的查询生成有效的问题，即不访问真实论元。我们通过在 FeedQ 产生的问题上微调 Qwen3-4B 和 Qwen3-8B 模型来测试这一点。具体来说，我们在每个数据集的训练拆分上运行 FeedQ 以生成（文档、角色、优化问题集）三元组，总共产生 12,820 个三元组。然后，我们使用 LoRA 进行监督微调，以训练每个模型将文档和角色映射到问题（第 3.3 节）。我们构建了三种训练配置：一种平衡混合，将每个数据集的样本数量限制在可比的水平（总计约 6K）；一种全可用混合，使用所有训练样本（总计约 12K）；以及一种域内混合，仅在目标数据集的三元组上进行训练。我们报告每个模型在三种配置中的最佳结果，并在表 7 中提供所有比较。更多微调详细信息见附录 B.4。<br />
+Approach<br />
+CRB<br />
+PHEE<br />
+DEE<br />
+MBAT<br />
+Mean<br />
+Knowledge Questions<br />
+Knowledge-Q<br />
+68.2<br />
+77.3<br />
+55.6<br />
+44.1<br />
+61.3<br />
+CoT-Q<br />
+66.6<br />
+75.2<br />
+55.8<br />
+44.6<br />
+60.5<br />
+Fine-tuned and Non Fine-tuned QG Models<br />
+Qwen3-4B<br />
+57.3<br />
+65.8<br />
+47.7<br />
+41.5<br />
+53.1<br />
+Qwen3-8B<br />
+59.5<br />
+63.7<br />
+46.1<br />
+41.1<br />
+52.6</p>
+<hr />
+<p>Qwen3-4B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+67.5<br />
+80.7<br />
+51.9<br />
+49.0<br />
+62.3<br />
+Qwen3-4B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+67.5<br />
+81.8<br />
+51.9<br />
+49.7<br />
+62.7<br />
+Qwen3-8B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+64.7<br />
+81.6<br />
+51.5<br />
+47.2<br />
+61.3<br />
+Qwen3-8B<br />
+ft<em><br />
+{}^{\text{ft</em>}}<br />
+67.7<br />
+82.0<br />
+52.5<br />
+48.4<br />
+62.7<br />
+Strong QG Baselines (Non Fine-tuned)<br />
+OSS-120B<br />
+53.3<br />
+54.0<br />
+41.4<br />
+34.1<br />
+45.7<br />
+Gpt-5.2<br />
+63.5<br />
+69.5<br />
+46.2<br />
+40.4<br />
+54.9<br />
+Gemini-3.1<br />
+66.0<br />
+80.6<br />
+50.9<br />
+42.9<br />
+60.1<br />
+表 5：五个预测模型的平均测试集 F1。微调的 Qwen3 模型 在来自 FeedQ 的优化问题上进行训练；（ft<em> 是每个模型的最佳配置，ft-a 是混合训练；完整细分见表 7）。CRB、DEE 和 MBAT 分别表示 CaseReportBench、DiscourseEE 和 MACCROBAT。<br />
+我们与三组方法进行比较。首先，需要人工编写问题的 Knowledge-Q 和 CoT-Q（第 5 节）。其次，非微调的 Qwen3-4B 和 Qwen3-8B 通过上下文提示为每个文档-角色对生成问题（以文档和角色为条件，无真实情况），隔离了相同模型内微调的效果。第三，三个强大的非微调 QG 模型（GPT-OSS-120B、GPT-5.2 和 Gemini-3.1-Pro）使用相同的上下文提示，确立了仅靠规模可以实现的目标。<br />
+所有结果均在保留的测试集上报告。<br />
+表 4 给出了每个模型的分数，表 5 给出了预测模型的平均值。<br />
+6.1 微调模型生成有效问题<br />
+在 FeedQ 生成的数据上进行微调可显著提高问题生成质量。微调后，两个 Qwen3 模型均达到 62.7 的平均 F1，而未微调时约为 53（表 5）。更重要的是，微调后的模型优于所有非微调的强基线，包括 GPT-OSS-120B、GPT-5.2 和 Gemini-3.1。最大的增益出现在 PHEE（+约 16–18）和 MACCROBAT（+约 7-8）上，但整体的改进并非特定于某个数据集。这些结果表明，有效的问题生成在很大程度上取决于实现正确的提问行为。<br />
+微调模型平均击败了 Knowledge-Q（62.7 对 61.3）。在 PHEE 和 MACCROBAT 上，微调模型分别以 4.5–4.7 和 4.3–5.6 F1 的优势优于 Knowledge-Q。在 CaseReportBench 上，Knowledge-Q 保持微弱优势（不到 1 F1），而在 DiscourseEE 上差距更大（3–4 F1）。这与训练数据可用性一致：PHEE 和 MACCROBAT 各贡献 5,000 个训练样本，而 CaseReportBench 仅提供 620 个，DiscourseEE 提供 2,200 个。在监督有限的情况下，微调模型无法完全学习这些数据集所需的问题模式。<br />
+我们在附录 B.6 中提供了系统的数据扩展实验。<br />
+6.2 域外实验<br />
+我们在 500 个样本的子集上进行了额外的零样本域外实验，数据集包括：DocEE Tong et al. (2022)，具有长且论元密集的任务；GENEVA Parekh et al. (2023)，具有简短、简单的示例；以及 MUC4 Sundheim (1992)，新闻文档。总体而言，我们发现微调使 DocEE（更长、更复杂的样本）和 MUC4 受益，但不包括 GENEVA，后者为每个角色标注了多个共指论元，并且更适合基础模型的更广泛问题集。精确率-召回率比较表明，微调模型产生针对角色的问题，提高了所有数据集的精确率。详细分析见附录 B.7。<br />
+Qwen3-4B<br />
+Qwen3-8B<br />
+Dataset<br />
+P<br />
+R<br />
+F1<br />
+P<br />
+R<br />
+F1<br />
+Base<br />
+DocEE<br />
+33.35<br />
+82.88<br />
+46.53<br />
+35.58<br />
+83.82<br />
+49.20<br />
+GENEVA<br />
+48.33<br />
+77.51<br />
+59.13<br />
+47.38<br />
+77.66<br />
+58.30<br />
+MUC4<br />
+45.98<br />
+80.20<br />
+57.45<br />
+47.21<br />
+80.14<br />
+58.56<br />
+Fine-tuned (ft</em>)<br />
+DocEE<br />
+49.18<br />
+63.63<br />
+55.28<br />
+48.38<br />
+68.65<br />
+56.65<br />
+GENEVA<br />
+49.73<br />
+56.43<br />
+52.82<br />
+49.66<br />
+56.65<br />
+52.88<br />
+MUC4<br />
+53.82<br />
+61.86<br />
+57.30<br />
+54.34<br />
+67.24<br />
+59.90<br />
+表 6：在 DocEE、GENEVA 和 MUC4 上的域外结果，在所有评估模型上取平均（ft* 是每个模型的最佳配置；完整细分见表 11）。每个数据集的最高 F1 以粗体显示。<br />
+7 结论<br />
+抽取是信息系统的核心雄心：如何在需要时找到正确的事实或段落。然而，文档不是数据库；信息没有整齐地组织起来等待抽取，复杂的抽取涉及问题的表示和可用于解决它的数据。查询不可避免地是这种表示的一部分，因此选择不当可能会使抽取器走上错误的道路，并使必要的信息变得不可见。在本文中，我们提供了这个问题的证据，并得出了一个可扩展的自动化解决方案。我们邀请信息抽取研究社区利用我们的方法和数据，为现代语言技术构建更好的信息访问形式。<br />
+局限性<br />
+一个局限性是 FeedQ 在优化期间仅使用 GPT-OSS-120B 作为问题生成、优化、泄漏检查和预测的唯一模型。优化后的问题在测试时有效地转移到所有五个预测模型（表 4–5），表明学习到的模式可以推广到优化器之外。探索改变优化器或集成来自多个模型的问题是否能产生进一步的收益，可能会产生有价值的额外设计知识。<br />
+另外，本工作中所有四个主要基准都是临床和生物医学领域的，其中论元分布在叙述部分并用领域特定术语表达。这些特性使得有针对性的提问特别有影响力。为了进一步评估泛化性，我们对三个域外非临床数据集进行了实验。结果表明 LoQ 在这些设置中仍然有效。将 LoQ 扩展到其他抽取领域（如新闻、法律或金融）将展示更广泛的适用性。<br />
+可复现性<br />
+数据集、模型和实现细节在附录 A、B 和 C 中提供。我们的代码和其他资源可在 https://omar-sharif.github.io/LoQ 获取。<br />
+参考文献<br />
+Builtjes et al. (2025)<br />
+L. Builtjes, J. Bosma, M. Prokop, B. van Ginneken, and A. Hering Leveraging open-source large language models for clinical information extraction in resource-constrained settings. JAMIA Open 8 (5), pp. ooaf109. External Links: ISSN 2574-2531, Document, Link, https://academic.oup.com/jamiaopen/article-pdf/8/5/ooaf109/64465454/ooaf109.pdf Cited by: §1.<br />
+Caufield et al. (2019)<br />
+J. H. Caufield, Y. Zhou, Y. Bai, D. A. Liem, A. O. Garlid, K. Chang, Y. Sun, P. Ping, and W. Wang A comprehensive typing system for information extraction from clinical narratives. medRxiv. External Links: Document, Link, https://www.medrxiv.org/content/early/2019/10/22/19009118.full.pdf Cited by: Appendix A, §B.3.<br />
+Cherep et al. (2026)<br />
+M. Cherep, P. M R, P. Maes, and N. Singh Visual persuasion: what influences decisions of vision-language models?. External Links: Link Cited by: Appendix D, §2.<br />
+Du and Cardie (2020)<br />
+X. Du and C. Cardie Event extraction by answering (almost) natural questions. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), B. Webber, T. Cohn, Y. He, and Y. Liu (Eds.), Online, pp. 671–683. External Links: Link, Document Cited by: §1, §2, §5.<br />
+Fane et al. (2025)<br />
+E. Fane, M. N. Uddin, O. Ikumariegbe, D. Kashif, E. Blanco, and S. Corman BEMEAE: moving beyond exact span match for event argument extraction. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers), L. Chiruzzo, A. Ritter, and L. Wang (Eds.), Albuquerque, New Mexico, pp. 5734–5749. External Links: Link, Document, ISBN 979-8-89176-189-6 Cited by: §4.<br />
+Hong and Liu (2024)<br />
+Z. Hong and J. Liu Towards better question generation in QA-based event extraction. In Findings of the Association for Computational Linguistics: ACL 2024, L. Ku, A. Martins, and V. Srikumar (Eds.), Bangkok, Thailand, pp. 9025–9038. External Links: Link, Document Cited by: §2, §5.<br />
+Hsu et al. (2022)<br />
+I. Hsu, K. Huang, E. Boschee, S. Miller, P. Natarajan, K. Chang, and N. Peng DEGREE: a data-efficient generation-based event extraction model. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, M. Carpuat, M. de Marneffe, and I. V. Meza Ruiz (Eds.), Seattle, United States, pp. 1890–1908. External Links: Link, Document Cited by: §2, §5.<br />
+Huang et al. (2024)<br />
+K. Huang, I. Hsu, T. Parekh, Z. Xie, Z. Zhang, P. Natarajan, K. Chang, N. Peng, and H. Ji TextEE: benchmark, reevaluation, reflections, and future challenges in event extraction. In Findings of the Association for Computational Linguistics: ACL 2024, L. Ku, A. Martins, and V. Srikumar (Eds.), Bangkok, Thailand, pp. 12804–12825. External Links: Link, Document Cited by: §2.<br />
+Lee et al. (2025)<br />
+Y. Lee, J. Boen, and C. Finn Feedback descent: open-ended text optimization via pairwise comparison. arXiv preprint arXiv:2511.07919. Cited by: §2.<br />
+Li et al. (2020)<br />
+F. Li, W. Peng, Y. Chen, Q. Wang, L. Pan, Y. Lyu, and Y. Zhu Event extraction as multi-turn question answering. In Findings of the Association for Computational Linguistics: EMNLP 2020, T. Cohn, Y. He, and Y. Liu (Eds.), Online, pp. 829–838. External Links: Link, Document Cited by: §2.<br />
+Liu et al. (2020)<br />
+J. Liu, Y. Chen, K. Liu, W. Bi, and X. Liu Event extraction as machine reading comprehension. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP), B. Webber, T. Cohn, Y. He, and Y. Liu (Eds.), Online, pp. 1641–1651. External Links: Link, Document Cited by: §2.<br />
+Lu et al. (2023)<br />
+D. Lu, S. Ran, J. Tetreault, and A. Jaimes Event extraction as question generation and answering. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers), A. Rogers, J. Boyd-Graber, and N. Okazaki (Eds.), Toronto, Canada, pp. 1666–1688. External Links: Link, Document Cited by: §2.<br />
+Lu et al. (2025)<br />
+Y. Lu, X. Mao, T. Lan, H. Huang, C. Xu, and X. Gao Beyond exact match: semantically reassessing event extraction by large language models. External Links: 2410.09418, Link Cited by: §4.<br />
+Ma et al. (2023)<br />
+M. D. Ma, A. Taylor, W. Wang, and N. Peng DICE: data-efficient clinical event extraction with generative models. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), A. Rogers, J. Boyd-Graber, and N. Okazaki (Eds.), Toronto, Canada, pp. 15898–15917. External Links: Link, Document Cited by: Appendix A, §B.3, 1st item, §4.<br />
+Parekh et al. (2023)<br />
+T. Parekh, I. Hsu, K. Huang, K. Chang, and N. Peng GENEVA: benchmarking generalizability for event argument extraction with hundreds of event types and argument roles. In Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), A. Rogers, J. Boyd-Graber, and N. Okazaki (Eds.), Toronto, Canada, pp. 3664–3686. External Links: Link, Document Cited by: §6.2.<br />
+Pryzant et al. (2023)<br />
+R. Pryzant, D. Iter, J. Li, Y. Lee, C. Zhu, and M. Zeng Automatic prompt optimization with “gradient descent” and beam search. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, H. Bouamor, J. Pino, and K. Bali (Eds.), Singapore, pp. 7957–7968. External Links: Link, Document Cited by: §2.<br />
+Reimers and Gurevych (2019)<br />
+N. Reimers and I. Gurevych Sentence-bert: sentence embeddings using siamese bert-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing, External Links: Link Cited by: §B.5.<br />
+Sharif et al. (2024)<br />
+O. Sharif, J. Gatto, M. Basak, and S. M. Preum Explicit, implicit, and scattered: revisiting event extraction to capture complex arguments. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, Y. Al-Onaizan, M. Bansal, and Y. Chen (Eds.), Miami, Florida, USA, pp. 12061–12081. External Links: Link, Document Cited by: Appendix A, §B.3, 1st item, §1, §2, §4.<br />
+Sharif et al. (2025)<br />
+O. Sharif, J. Gatto, M. Basak, and S. M. Preum REGen: a reliable evaluation framework for generative event argument extraction. In Findings of the Association for Computational Linguistics: EMNLP 2025, C. Christodoulopoulos, T. Chakraborty, C. Rose, and V. Peng (Eds.), Suzhou, China, pp. 12146–12168. External Links: Link, Document, ISBN 979-8-89176-335-7 Cited by: §B.5, §1, §4.<br />
+Shimizu et al. (2025)<br />
+S. Shimizu, H. Shohei, Y. Uno, S. Yada, S. Wakamiya, and E. Aramaki Exploring LLM annotation for adaptation of clinical information extraction models under data-sharing restrictions. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 14678–14694. External Links: Link, Document, ISBN 979-8-89176-256-5 Cited by: §1.<br />
+Srivastava et al. (2025)<br />
+S. Srivastava, S. Pati, and Z. Yao Instruction-tuning LLMs for event extraction with annotation guidelines. In Findings of the Association for Computational Linguistics: ACL 2025, W. Che, J. Nabende, E. Shutova, and M. T. Pilehvar (Eds.), Vienna, Austria, pp. 13055–13071. External Links: Link, Document, ISBN 979-8-89176-256-5 Cited by: §2.<br />
+Sun et al. (2022)<br />
+Z. Sun, J. Li, G. Pergola, B. Wallace, B. John, N. Greene, J. Kim, and Y. He PHEE: a dataset for pharmacovigilance event extraction from text. In Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing, Y. Goldberg, Z. Kozareva, and Y. Zhang (Eds.), Abu Dhabi, United Arab Emirates, pp. 5571–5587. External Links: Link, Document Cited by: Appendix A, §B.3, 1st item, §4.<br />
+Sundheim (1992)<br />
+B. M. Sundheim Overview of the fourth Message Understanding Evaluation and Conference. In Fourth Message Understanding Conference (MUC-4): Proceedings of a Conference Held in McLean, Virginia, June 16-18, 1992, External Links: Link Cited by: §6.2.<br />
+Tanev et al. (2025)<br />
+H. Tanev, N. Stefanovitch, T. Harmatha, and D. F. Sousa Exploring the performance of large language models for event detection and extraction in the health domain. In Proceedings of the 15th International Conference on Recent Advances in Natural Language Processing - Natural Language Processing in the Generative AI Era, G. Angelova, M. Kunilovskaya, M. Escribe, and R. Mitkov (Eds.), Varna, Bulgaria, pp. 1237–1247. External Links: Link Cited by: §1.<br />
+Team (2025)<br />
+Q. Team Qwen3 technical report. External Links: 2505.09388, Link Cited by: §B.1.<br />
+Tong et al. (2022)<br />
+M. Tong, B. Xu, S. Wang, M. Han, Y. Cao, J. Zhu, S. Chen, L. Hou, and J. Li DocEE: a large-scale and fine-grained benchmark for document-level event extraction. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, M. Carpuat, M. de Marneffe, and I. V. Meza Ruiz (Eds.), Seattle, United States, pp. 3970–3982. External Links: Link, Document Cited by: §6.2.<br />
+Uddin et al. (2024a)<br />
+M. N. Uddin, E. R. George, E. Blanco, and S. R. Corman Asking and answering questions to extract event-argument structures. In Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024), N. Calzolari, M. Kan, V. Hoste, A. Lenci, S. Sakti, and N. Xue (Eds.), Torino, Italia, pp. 1609–1626. External Links: Link Cited by: §2.<br />
+Uddin et al. (2024b)<br />
+M. N. Uddin, E. R. George, E. Blanco, and S. Corman Generating uncontextualized and contextualized questions for document-level event argument extraction. In Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers), K. Duh, H. Gomez, and S. Bethard (Eds.), Mexico City, Mexico, pp. 5612–5627. External Links: Link, Document Cited by: §2.<br />
+Yuksekgonul et al. (2025)<br />
+M. Yuksekgonul, F. Bianchi, J. Boen, S. Liu, P. Lu, Z. Huang, C. Guestrin, and J. Zou Optimizing generative ai by backpropagating language model feedback. Nature 639 (8055), pp. 609–616. Cited by: §2.<br />
+Zhang et al. (2025)<br />
+X. Y. C. Zhang, C. R. Ferreira, F. Rossignol, R. T. Ng, W. Wasserman, and J. Zhu CaseReportBench: an llm benchmark dataset for dense information extraction in clinical case reports. In Proceedings of the sixth Conference on Health, Inference, and Learning, X. O. Xu, E. Choi, P. Singhal, W. Gerych, S. Tang, M. Agrawal, A. Subbaswamy, E. Sizikova, J. Dunn, R. Daneshjou, T. Sarker, M. McDermott, and I. Chen (Eds.), Proceedings of Machine Learning Research, Vol. 287, pp. 527–542. External Links: Link Cited by: Appendix A, §B.3, 1st item, §1, §4.<br />
+Zhang et al. (2024)<br />
+X. F. Zhang, C. Blum, T. Choji, S. Shah, and A. Vempala ULTRA: unleash LLMs’ potential for event argument extraction through hierarchical modeling and pair-wise self-refinement. In Findings of the Association for Computational Linguistics: ACL 2024, L. Ku, A. Martins, and V. Srikumar (Eds.), Bangkok, Thailand, pp. 8172–8185. External Links: Link, Document Cited by: §1.<br />
+图 5：零样本问题生成质量的逐模型细分。每组柱状图显示了在每次数据集上使用所有五个预测模型评估单个 QG 模型的 F1 分数。较大的 QG 模型（GPT-OSS-120B、GPT-5.2、Gemini-3.1-Pro）在所有数据集和预测模型上始终优于较小的 Qwen 变体。平均值报告在表 3 中。<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt-5 mini<br />
+Gemini 3.1-pro<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt-5 mini<br />
+Gemini 3.1-pro<br />
+QG Model<br />
+CaseReportBench<br />
+PHEE<br />
+Qwen3-4B<br />
+ft-b<br />
+{}^{\text{ft-b}}<br />
+60.64<br />
+59.43<br />
+60.68<br />
+62.17<br />
+60.95<br />
+75.76<br />
+78.60<br />
+79.89<br />
+79.69<br />
+82.20<br />
+Qwen3-4B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+62.56<br />
+64.09<br />
+71.63<br />
+67.86<br />
+71.32<br />
+78.22<br />
+81.52<br />
+81.00<br />
+78.97<br />
+83.92<br />
+Qwen3-4B<br />
+ft-in<br />
+{}^{\text{ft-in}}<br />
+58.98<br />
+60.01<br />
+63.15<br />
+61.59<br />
+60.77<br />
+78.48<br />
+80.24<br />
+83.61<br />
+80.30<br />
+84.96</p>
+<hr />
+<p>Qwen3-8B<br />
+ft-b<br />
+{}^{\text{ft-b}}<br />
+62.98<br />
+61.59<br />
+69.40<br />
+66.07<br />
+67.89<br />
+77.42<br />
+77.38<br />
+78.88<br />
+77.18<br />
+81.35<br />
+Qwen3-8B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+60.89<br />
+61.03<br />
+69.22<br />
+65.64<br />
+66.83<br />
+78.07<br />
+80.66<br />
+82.36<br />
+82.74<br />
+84.25<br />
+Qwen3-8B<br />
+ft-in<br />
+{}^{\text{ft-in}}<br />
+63.85<br />
+64.59<br />
+70.88<br />
+69.16<br />
+69.98<br />
+77.86<br />
+79.99<br />
+84.52<br />
+80.03<br />
+83.70<br />
+DiscourseEE<br />
+MACCROBAT<br />
+Qwen3-4B<br />
+ft-b<br />
+{}^{\text{ft-b}}<br />
+45.27<br />
+47.61<br />
+49.36<br />
+50.38<br />
+46.22<br />
+40.61<br />
+45.22<br />
+49.52<br />
+45.45<br />
+53.18<br />
+Qwen3-4B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+49.75<br />
+50.16<br />
+54.12<br />
+54.01<br />
+51.46<br />
+41.71<br />
+46.37<br />
+51.39<br />
+48.62<br />
+56.84<br />
+Qwen3-4B<br />
+ft-in<br />
+{}^{\text{ft-in}}<br />
+47.69<br />
+48.57<br />
+51.35<br />
+51.88<br />
+45.96<br />
+45.37<br />
+45.97<br />
+49.20<br />
+46.54<br />
+55.34</p>
+<hr />
+<p>Qwen3-8B<br />
+ft-b<br />
+{}^{\text{ft-b}}<br />
+47.11<br />
+49.20<br />
+56.74<br />
+54.47<br />
+52.71<br />
+41.81<br />
+44.96<br />
+50.64<br />
+46.24<br />
+56.22<br />
+Qwen3-8B<br />
+ft-a<br />
+{}^{\text{ft-a}}<br />
+47.72<br />
+50.57<br />
+55.66<br />
+53.21<br />
+50.21<br />
+41.02<br />
+43.25<br />
+50.96<br />
+47.53<br />
+53.36<br />
+Qwen3-8B<br />
+ft-in<br />
+{}^{\text{ft-in}}<br />
+47.93<br />
+47.63<br />
+50.86<br />
+53.37<br />
+48.73<br />
+40.95<br />
+44.69<br />
+50.90<br />
+45.45<br />
+56.74<br />
+表 7：微调数据组成对 QG 模型性能的影响。每行在不同的 FeedQ 优化问题子集上微调 QG 模型（Qwen3-4B 或 Qwen3-8B）：ft-b 使用在数据集间均匀采样的平衡混合，ft-a 使用所有可用的优化问题而不考虑来源分布，ft-in 仅使用与目标数据集匹配的域内问题。消融实验的最佳 F1 分数报告在表 4 中。<br />
+附录 A<br />
+数据集<br />
+所有数据集都转换为第 3.1 节中描述的统一格式：每个样本由一个文档、一个角色及其真实论元组成。我们为每个数据集创建了 500 个样本的开发和测试拆分，除了 CaseReportBench，由于原始数据集较小，两者都限制为 350 个。表 8 报告了详细的统计数据。以下提供了每个数据集的描述。<br />
+Dataset<br />
+Data Splits<br />
+General Statistics<br />
+Train<br />
+Dev<br />
+Test<br />
+Total</p>
+<h1>Roles</h1>
+<p>Avg. doc length<br />
+Avg. argument length<br />
+Domain<br />
+CaseReportBench<br />
+620<br />
+350<br />
+350<br />
+1320<br />
+18<br />
+581.7<br />
+20.71<br />
+Clinical Reports<br />
+PHEE<br />
+5000<br />
+500<br />
+500<br />
+6000<br />
+14<br />
+19.7<br />
+2.45<br />
+Pharmacovigilance texts<br />
+DiscourseEE<br />
+2200<br />
+500<br />
+500<br />
+3200<br />
+34<br />
+120.8<br />
+3.04<br />
+Online Health Forums<br />
+MACCROBAT<br />
+5000<br />
+500<br />
+500<br />
+6000<br />
+22<br />
+24.2<br />
+1.73<br />
+PubMed Reports<br />
+表 8：我们实验中使用的四个数据集的汇总统计数据，包括拆分大小和一般统计数据。<br />
+CaseReportBench Zhang et al. (2025)。是一个来自罕见疾病临床病例报告的密集信息抽取数据集。每份病例报告由临床专家标注为不同的类别，如实验室检查结果、诊断、治疗和结果。该数据集旨在从需要在整个文档上进行推理的长篇非结构化临床叙述中抽取结构化信息。我们从作者的 HuggigFace 存储库 https://huggingface.com/CaseReportBench 获取数据集。我们通过将每个类别视为具有其对应论元字符串的角色，将其映射到我们的统一格式中。<br />
+PHEE Sun et al. (2022)。是一个为药物警戒（即药物安全）领域提供的论元抽取数据集。该数据集包含 14 个不同的角色，涵盖药物、剂量、途径、频率、持续时间、疾病和患者人口统计学特征（年龄、性别、种族）等方面。我们从官方存储库 https://github.com/ZhaoyueSun/PHEE 获取数据集。原始数据集包括句子级别的触发词和论元跨度标注。根据我们的表述，我们只取论元字符串，并将同一角色下的多个论元合并为一个论元列表。我们从 22,274 个文档-角色样本中随机选择了 6000 个样本。<br />
+DiscourseEE Sharif et al. (2024)。一个从在线健康论坛中标注的有关阿片类药物使用障碍信息寻求帖子的数据集。它具有 34 个独特的角色，所有论元都标注为自由文本字符串。值得注意的是，51.2% 的论元是隐含的（可以从上下文中推断但未直接说明），这使得该数据集对论元抽取具有独特的挑战性。我们从官方存储库 https://github.com/omar-sharif03/DiscourseEE/tree/main/Data 获取数据，并按照作者提供的代码将其转换为我们的格式。<br />
+MACCROBAT Ma et al. (2023)。是一个临床事件抽取数据集，最初由 Caufield et al. (2019) 引入，改编自专家标注的 PubMed 病例报告。它包含从实体-事件修改关系推断出的 22 个论元角色。该数据集非常密集，平均每句 3.21 个事件。我们从官方 GitHub 存储库 https://github.com/DICE 收集了改编的数据集。我们从 6,882 个文档-角色样本中随机选择了 6000 个样本。<br />
+附录 B<br />
+实现细节<br />
+B.1 模型<br />
+我们跨越三个模型系列 Qwen、GPT 和 Gemini 进行评估——涵盖不同规模的开源和专有 LLM。对于 Qwen Team (2025)，我们在非思考模式下使用 Qwen3-4B 和 Qwen3-8B。除了预测之外，我们还使用 LoRA 对这两个模型进行问题生成的微调（第 3.3 节）。我们使用三个 GPT 1 1 1 https://openai.com/index/introducing-gpt-5-2/ 模型：Gpt-OSS-120B 作为预测和问题生成模型，具有相同的超参数；具有中等推理力度的 GPT-5-mini 作为预测模型；具有高推理力度的 GPT-5.2 作为强大的问题生成模型。最后，我们评估了 Gemini-3.1-Pro 2 2 2 https://deepmind.google/models/gemini/pro/，用于问题生成和预测的高推理能力。<br />
+B.2 FeedQ 参数和泄漏分析<br />
+我们运行 FeedQ 最多 5 次迭代，耐心值为 3，目标分数为 1.0（即完全抽取所有真实论元）。图 3 证实 5 次迭代就足够了：在所有四个数据集中，得分最高的问题集都在此预算内找到，尽管所需的迭代次数因数据集的复杂性而异。<br />
+泄漏检查。<br />
+因为 FeedQ 针对真实论元优化问题，优化器可能会在问题文本中嵌入答案片段。我们通过两项措施来防止这种情况。首先，问题优化提示（附录 C.3）明确指示模型不要包含与答案相关的信息。其次，一个独立的泄漏检查器检查每个生成的问题集，并删除任何包含真实内容的问题。在这里，我们系统地分析了检查器在开发集上的行为。表 9 报告了在过滤之前，泄漏检查器将至少一个生成的问题标记为包含真实内容的迭代比例。泄漏在所有四个数据集中都大量发生，影响了 42–55% 的迭代和 45–65% 的样本。检查器在这些问题进入 QG 训练集之前将其删除，防止下游模型从有缺陷的信号中学习。<br />
+为了验证检查器，我们手动检查了 600 个过滤后的问题集（每个数据集 150 个）以查找遗漏的泄漏。假阴性率为 0.83% (5/600)，证实过滤器可靠地捕获了泄漏答案的问题。除了过滤之外，我们的测试时设置完全消除了对真实情况的访问：微调后的 QG 模型在没有预言机的情况下为未见过的查询生成问题，并且平均优于强大的 QG 模型和所有知识驱动的基线（表 4–5）。如果增益是由 FeedQ 优化期间目标信息的隐式编码驱动的，我们预计这种转移会退化。相反，它比基础模型有所改进。增益在领域转移下也成立：在 DocEE（域外）上，微调使 Qwen3-8B 提高了 +7.4 F1（表 6）。与优化文档或语义泄漏相关的隐式答案编码不会转移到具有不同论元分布的新领域。总而言之，这些分析表明泄漏最小。<br />
+Dataset<br />
+Iters Leaked (%)<br />
+Samples w/ Leak (%)<br />
+CRB<br />
+280 / 505 0 (55.4)<br />
+219 / 350 (62.6)<br />
+PHEE<br />
+272 / 644 0 (42.2)<br />
+223 / 500 (44.6)<br />
+DEE<br />
+516 / 1104 (46.7)<br />
+323 / 500 (64.6)<br />
+MBAT<br />
+353 / 816 0 (43.3)<br />
+228 / 500 (45.6)<br />
+表 9：开发集上 FeedQ 生成问题中的真实情况泄漏，在过滤前测量。Iter. Leaked 计算产生至少一个包含逐字论元的问题的优化迭代；Samples w/ Leak 计算受影响的唯一样本。<br />
+B.3 知识问题来源<br />
+我们直接从数据集作者发布的材料中获取这些人工编写的问题，或从专家标注指南中最小限度地将其改编为 QA 形式。对于 DiscourseEE，我们逐字使用原始论文 Sharif et al. (2024) 中发布的专家问题。对于 CaseReportBench Zhang et al. (2025)，我们改编了数据集 GitHub 存储库中发布的专家标注指南中的角色定义。 3 3 3 https://tinyurl.com/vvrautsr 对于 PHEE Sun et al. (2022) 和 MACCROBAT Ma et al. (2023); Caufield et al. (2019)，我们改编了论文中提供的角色级定义。因此，这构成了强大的人工基线问题。<br />
+B.4 微调<br />
+我们使用 Tinker 4 4 4 https://tinker-docs.thinkingmachines.ai/supervised-learning 通过 LoRA（秩 32）微调 Qwen3-4B 和 Qwen3-8B。所有模型训练 2 个 epoch，学习率为 3.7 ​ e − 4 3.7e^{-4} ，最大序列长度为 4,096。我们构建了三种训练混合（表 10）：一种平衡混合（6,200 个三元组），将每个数据集限制在可比的数量；全可用混合（12,820 个三元组），使用所有样本；以及域内混合，仅在目标数据集的三元组上进行训练。在所有情况下，都保留 20% 用于验证以选择最佳检查点。我们在表 4 中报告每个模型的最高分数，并在表 7 中提供完整的细分。<br />
+Dataset<br />
+Balanced (ft-b)<br />
+All (ft-a)<br />
+CaseReportBench<br />
+620<br />
+620<br />
+PHEE<br />
+1,860<br />
+5,000<br />
+DiscourseEE<br />
+1,860<br />
+2,200<br />
+MACCROBAT<br />
+1,860<br />
+5,000<br />
+Total<br />
+6,200<br />
+12,820<br />
+表 10：每种微调混合中每个数据集的 ( 𝒟 , r , 𝒬 ∗ ) (\mathcal{D},r,\mathcal{Q}^{*}) 三元组数量。我们保留 20% 用于验证以选择最佳检查点，并使用剩余的 80% 进行训练。<br />
+B.5 评估<br />
+我们遵循 REGen Sharif et al. (2025)，一个用于生成式论元匹配的三级分层评估框架。如果预测的论元在三个级别中的任何一个级别上匹配真实论元，则被认为是正确的：精确、基于相似性的宽松匹配，或基于 LLM 作为评判者的复杂匹配。然后以标准方式测量精确率/召回率/F1。在宽松匹配级别，如果两个论元的 SBERT 嵌入相似度 Reimers and Gurevych (2019) 超过 0.85，则认为它们是相似的。对于复杂匹配，我们使用 GPT-OSS-120B 作为评判模型，提示如下。<br />
+基于评判的匹配提示<br />
+确定两个论元是否针对给定角色指代相同的核心实体、值或声明。<br />
+如果它们传达相同的核心意义，即使细节、格式或特异性存在微小差异，也视为匹配。<br />
+上下文：<br />
+{context}<br />
+角色：<br />
+{role}<br />
+论元 1：<br />
+{x}<br />
+论元 2：<br />
+{y}<br />
+仅回答“是”或“否”。<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt-5 mini<br />
+Gemini 3.1-pro<br />
+Mean<br />
+Qwen3 4B<br />
+Qwen3 8B<br />
+OSS 120B<br />
+Gpt-5 mini<br />
+Gemini 3.1-pro<br />
+Mean<br />
+QG Model<br />
+DocEE<br />
+GENEVA<br />
+Qwen3-4B<br />
+56.94<br />
+48.23<br />
+36.00<br />
+36.05<br />
+55.41<br />
+46.53<br />
+55.37<br />
+54.55<br />
+54.36<br />
+54.57<br />
+76.79<br />
+59.13<br />
+Qwen3-8B<br />
+58.26<br />
+50.44<br />
+41.22<br />
+40.82<br />
+55.28<br />
+49.20<br />
+54.07<br />
+51.26<br />
+53.93<br />
+53.46<br />
+78.76<br />
+58.30<br />
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \frac{1}{2} 天 […] 我不打算再吃了 […] 我会有 Suboxone 戒断反应吗？<br />
+减量步骤是什么（药物、起始剂量、持续时间、目标剂量）？<br />
+Q1. 在该个体停止之前，Suboxone 减量的持续时间是多少？<br />
+Q2. 减量期间服用了哪些剂量的 Suboxone，顺序如何？<br />
+Q3. 该个体对潜在的戒断表达了什么担忧？<br />
+Q4. 减量后，该个体打算如何处理 Suboxone 的使用？<br />
+7<br />
+[MACCROBAT, Lab_value]<br />
+入院血液检查显示血红蛋白略有下降（106 g/L）。<br />
+诊断程序的测试结果、测量值或实验室值是什么？<br />
+Q1. 入院血液检查中报告的血红蛋白浓度是多少？<br />
+Q2. 血红蛋白水平在定性上是如何描述的？<br />
+8<br />
+[MACCROBAT, Detailed_description]<br />
+患者接受了为期 6 周的图像引导外束放射治疗，集中于切除区域。<br />
+治疗程序的具体细节或特征是什么？<br />
+Q1. 给予了哪种类型的放射治疗？<br />
+Q2. 使用什么成像技术来引导放射治疗？<br />
+9<br />
+[MACCROBAT, Dosage]<br />
+她在化疗前 24 小时内接受了 […] 碳酸氢钠（8.4%，10 瓶/天）输注。<br />
+药物的剂量、数量或用量是多少？<br />
+Q1. 给予的碳酸氢钠输注的浓度是多少？<br />
+Q2. 每天给予的碳酸氢钠量是多少？<br />
+表 12：跨数据集和角色的 LoQ 问题与 Vanilla-Q 对应项的比较示例。文档摘录中的粗体文本标记了每个优化问题所针对的不同论元。对于简单的多论元角色（第 7-9 行），LoQ 生成 2 个有针对性的问题；对于复杂的角色，它生成一组问题以正确抽取每个论元。<br />
+附录 C<br />
+提示<br />
+C.1 泄漏检查<br />
+你是信息抽取系统的质量控制审查员。你的任务是检查生成的任何问题是否包含信息泄漏——这意味着问题直接揭示、嵌入或强烈暗示了它们本应帮助抽取的特定真实论元。<br />
+为什么这很重要：<br />
+问题应该引导抽取模型在文档中查找相关信息，而不是把答案交给它。泄漏的问题使抽取变得非常容易，但产生的问题无法推广到新的、未见过的文档。<br />
+泄漏（必须重写）<br />
+如果一个问题具有以下情况，则存在严重泄漏：<br />
+1. 逐字或近乎逐字地直接包含真实论元（例如，当“血红蛋白 7.2 g/dL”是真实论元时，询问“患者的血红蛋白是 7.2 g/dL 吗？”）<br />
+2. 嵌入了来自真实情况的特定值、剂量或测量值（例如，当“患者是否开始每日两次服用左乙拉西坦 500mg？”是真实论元时，询问该确切的用药方案）<br />
+可接受 / 轻微重叠（保持不变）<br />
+如果一个问题是可接受的并且不应被重写，如果它：<br />
+- 询问一般的临床类别或器官系统（例如，即使真实情况中存在特定的血液学发现，询问“发现了哪些血液学异常？”也是可以的）<br />
+- 使用与真实术语自然重叠的标准医学术语（例如，当真实情况中存在神经系统发现时，提及“神经系统”）<br />
+- 提出开放式问题，探查相关的临床领域而不指定确切答案<br />
+- 引用广泛的临床概念，如症状类别、诊断方法或治疗类别<br />
+输入<br />
+角色：<br />
+{role}<br />
+当前问题：<br />
+{current_questions}<br />
+真实论元：<br />
+{gt_arguments}<br />
+说明<br />
+1. 针对所有真实论元审查每个问题，仅查找严重泄漏<br />
+2. 对于任何有泄漏的问题，将其重写为更一般的形式，同时仍针对相同的信息类别<br />
+3. 对于所有其他问题，保持它们完全不变<br />
+仅以这种确切格式回复有效的 JSON：<br />
+{{<br />
+"is_leaked": "yes/no",<br />
+"final_questions": [<br />
+"rewritten or original question 1",<br />
+"rewritten or original question 2"<br />
+]<br />
+}}<br />
+仅当至少一个问题存在严重泄漏并被重写时，才将 "is_leaked" 设置为 "yes"。否则，将其设置为 "no"。不要在 JSON 之外包含任何文本。<br />
+C.2 问题生成<br />
+你是一个乐于助人的助手，生成清晰且独特的问题，以最好地为给定角色抽取真实论元。<br />
+角色：<br />
+{role}<br />
+文档：<br />
+{document}<br />
+真实论元：<br />
+{gt_arguments}<br />
+说明：<br />
+– 每个问题应旨在抽取一个或多个真实论元。<br />
+– 如果单个问题可以在逻辑上抽取多个论元，请将它们分组在一个问题中。<br />
+– 避免冗余——不要创建多个询问相同信息的问题。<br />
+– 避免是/否问题或模糊的表述。<br />
+– 保持问题简洁，以便抽取模型不会感到困惑并抽取不相关的论元。<br />
+示例：<br />
+{“subject”: “Individual or patient involved in the medical event.”}<br />
+{“treatment”: “What therapy was administered to the patients?”}<br />
+{“subject-race”: “What is the race or nationality of the subject?”}<br />
+{“subject-disorder”: “What preexisting conditions does the subject have besides the main treatment disorder?”}<br />
+输出 JSON：<br />
+{ “questions”: [“your set of questions”] }<br />
+C.3 问题优化<br />
+你是一个乐于助人的助手，负责优化问题以更好地为给定角色抽取真实论元。你之前生成了一组问题，但抽取结果显示还有改进的空间。你的任务是分析反馈并生成一组改进的问题。<br />
+上下文<br />
+角色：<br />
+{role}<br />
+文档：<br />
+{document}<br />
+真实论元：<br />
+{gt_arguments}<br />
+之前的问题（迭代 {iteration}）<br />
+{current_questions}<br />
+抽取性能<br />
+精确率：<br />
+{precision}<br />
+召回率：<br />
+{recall}<br />
+F1 分数：<br />
+{f1_score}<br />
+总结：<br />
+– 成功抽取：{n_matched_gt} / {n_gt} 个真实论元<br />
+– 总预测：{n_pred} 个论元<br />
+– 正确预测：{n_matched_pred} / {n_pred}<br />
+匹配的内容<br />
+这些论元被成功抽取：<br />
+{matched_arguments}<br />
+遗漏的内容<br />
+这些真实论元未被抽取：<br />
+{missing_arguments}<br />
+过度生成的内容<br />
+这些论元被预测但不在真实情况中（幻觉或不相关的抽取）：<br />
+{extra_arguments}<br />
+你的任务<br />
+基于上述反馈，优化问题集以：<br />
+1. 添加或修改问题以捕获遗漏的论元<br />
+2. 优化或删除导致过度生成或幻觉的问题<br />
+3. 保留成功抽取匹配论元的问题（除非它们也导致了过度生成）<br />
+4. 确保清晰和具体——模糊的问题通常会导致不相关的抽取<br />
+分析策略<br />
+对于遗漏的论元：<br />
+– 询问：“什么具体问题会直接促使从文档中抽取此论元？”<br />
+– 考虑：信息在文档中吗？如果是，哪些关键词或短语会针对它？<br />
+– 行动：添加一个新的有针对性的问题或修改现有问题使其更全面<br />
+对于过度生成的论元：<br />
+– 询问：“哪个问题导致了这种幻觉或不相关的抽取？”<br />
+– 考虑：问题是否太宽泛、模棱两可或具有引导性？<br />
+– 行动：使问题更具体，添加约束，或者如果冗余则删除它<br />
+对于匹配的论元：<br />
+– 询问：“哪个问题成功抽取了这个？”<br />
+– 行动：保留它，但检查它是否也导致了过度生成<br />
+指南：<br />
+– 避免是/否问题<br />
+– 保持问题简洁且明确<br />
+– 不要创建冗余问题——每个问题都应有明确、独特的目的<br />
+– 问题总数不必保持不变；注重质量而非数量<br />
+关键规则<br />
+绝对禁止（违规会使问题无法泛化）：<br />
+1. 将“遗漏的内容”中的特定事实复制到问题中<br />
+2. 将遗漏的信息转换为是/否问题<br />
+3. 在问题中嵌入特定于文档的细节<br />
+4. 询问“[特定事实]发生了吗？”<br />
+5. 通过生成的问题泄漏真实论元<br />
+6. 任何其他伪装的泄漏<br />
+要求：<br />
+1. 问题必须针对信息类别，而不是特定值<br />
+2. 问题必须足够通用以适用于不同的文档<br />
+3. 问题必须明确说明需要什么类型的信息<br />
+输出格式<br />
+严格以 JSON 格式返回你的回复：<br />
+{“questions”: [“your refined set of questions”],<br />
+“reasoning”: “Brief explanation of key changes and why”}<br />
+C.4 预测<br />
+你是一个乐于助人的助手，根据角色问题，从给定文档中简洁地抽取指定角色的论元。<br />
+要抽取的角色：<br />
+{role}<br />
+角色特定问题：<br />
+{role_question}<br />
+文档：<br />
+{document}<br />
+说明：<br />
+– 仅根据角色问题从文档中抽取与给定角色相关的论元。<br />
+– 如果不存在论元，返回“null”。<br />
+– 如果存在多个论元，用分号 (;) 分隔。<br />
+– 不要包含解释、推理或任何额外文本。<br />
+– 严格以 JSON 格式返回输出。<br />
+– 不要重复问题的任何部分。<br />
+– JSON 必须只有一个键：上述“要抽取的角色”中的角色名称。不要使用“role”一词作为键。<br />
+示例：如果要抽取的角色是“Patient”，输出 {“Patient”: “arg1; arg2”}。如果要抽取的角色是“Age-at-Presentation”，输出 {“Age-at-Presentation”: “arg1; arg2”}。<br />
+输出 JSON（使用“要抽取的角色”中的角色值作为键）：<br />
+{ “{role}”: “arg1; arg2” }<br />
+附录 D<br />
+自动可解释性<br />
+下面我们给出了使用 Cherep et al. (2026) 的 matryoshka 方法自动解释问题如何转换的示例。我们使用 LLM 作为评判者来标记一对（原始、零样本）或（零样本、优化）问题，以解释发生了什么变化，对这些差异的嵌入进行凝聚聚类，并将聚类总结为如下所示的顶级总结。下面的“词汇”是指具有 token 级编辑操作；否则差异来自 LLM 作为评判者。<br />
+Dataset<br />
+Vanilla → \to Zero-Shot (LLM)<br />
+Zero-Shot → \to Optimized (Lexical)<br />
+Zero-Shot → \to Optimized (LLM)<br />
+CRB<br />
+• 范围缩小到临床特征<br />
+– 关注点从广泛的症状/体征转移到精确的神经、解剖、眼部或生命体征<br />
+• 添加时间和治疗背景<br />
+– 在问题中包含时间、治疗或情境临床场景<br />
+• 范围缩小到特定实体和术语<br />
+– 从广泛的类别到特定的疗法、疾病、测试；包括术语泛化<br />
+• 问题格式和响应约束的变化<br />
+– 从开放式转移到是/否格式，并添加时间约束<br />
+• 词汇替换和优化<br />
+– 用更精确、正式或临床聚焦的替代词替换单词或短语<br />
+• 插入澄清或指定的术语<br />
+– 添加单词以指定上下文、时间、案例参考或细节<br />
+• 删除冗余或不太相关的文本<br />
+– 删除不必要的单词或短语以简化问题<br />
+• 语法和结构调整<br />
+– 单复数形式变化以及问题表述或时间表达修改<br />
+• 临床范围扩大<br />
+– 添加症状、诊断、家族史、结果、具有风险干预措施<br />
+• 解剖和生化规范<br />
+– 包括大脑区域、代谢物、实验室检查结果、详细的解剖特征<br />
+• 术语优化和形式化<br />
+– 优化临床/遗传术语，澄清遗传，替换非正式术语<br />
+• 问题格式和措辞调整<br />
+– 改变查询风格，拆分问题，添加形容词，澄清时间和来源<br />
+DEE<br />
+• 主体视角和术语转变<br />
+– 在第三人称和第二人称主体之间变化；“subject”到“patient”术语<br />
+• 时间焦点调整<br />
+– 从特定的过去/未来事件转移到更广泛或当前的时间框架；添加<br />
+• 范围缩小和扩大<br />
+– 改变</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 信息抽取, 问题生成, 大语言模型, 临床文本, 反馈优化</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

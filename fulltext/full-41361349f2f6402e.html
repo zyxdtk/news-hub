@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思维流中的涟漪：基于模型内部显著性的CoT压缩 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">思维流中的涟漪：基于模型内部显著性的CoT压缩</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-31</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.31066" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Every Token Leaves a Ripple in the Stream of Thought: Eliciting Model-Internal Token Saliency for Chain-of-Thought Compression</h4>
+            <p><strong>中文摘要：</strong> 本文提出了一种名为MIST的模型内部显著性方法，用于Token级别的思维链压缩。该方法通过残差流中的必要性和充分性两个互补维度来评估推理Token的重要性，并利用一阶泰勒展开将计算成本降至每条链两次反向传播。实验表明，MIST在多个推理基准和模型上均优于基线方法，实现了更优的准确率与压缩权衡。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>每个 Token 在思维流中留下涟漪：基于模型内部 Token 显著性的思维链压缩<br />
+Tianyi Zhao<br />
+所属机构：<br />
+弗吉尼亚大学<br />
+邮箱：<br />
+abs4dj@virginia.edu<br />
+Yinhan He<br />
+所属机构：<br />
+弗吉尼亚大学<br />
+邮箱：<br />
+nee7ne@virginia.edu<br />
+Wendy Zheng<br />
+所属机构：<br />
+弗吉尼亚大学<br />
+邮箱：<br />
+ncd9cf@virginia.edu<br />
+Chen Chen<br />
+所属机构：<br />
+弗吉尼亚大学<br />
+邮箱：<br />
+zrh6du@virginia.edu</p>
+<p>摘要<br />
+思维链推理提升了多步问题解决能力，但过长的推理轨迹会增加推理成本。Token 级别的 CoT 压缩通过将完整推理链剪枝为更短的轨迹以进行模型适配，从而降低成本，这使得 Token 选择成为核心挑战。<br />
+现有方法通常依赖外部评分器或仅与模型内部答案计算间接相关的启发式信号。<br />
+我们转而采用模型内部的视角：当模型生成答案时，每个推理 Token 都会在残差流（即模型的“思维流”）中留下涟漪，该涟漪的幅度反映了该 Token 对答案计算的贡献。<br />
+基于这一观点，我们提出了 MIST（用于 Token 级 CoT 压缩的模型内部显著性），它沿着两个互补的轴定义 Token 重要性：必要性（即移除 Token 的内部贡献时答案似然的下降程度）和充分性（即仅提供该贡献时答案似然的增加程度）。将两者结合可产生用于剪枝的统一重要性评分。<br />
+在四个推理基准和四个模型上，MIST 始终优于基线方法，这表明模型内部显著性为推理 Token 重要性提供了有效的代理。</p>
+<p>1 引言<br />
+思维链推理（wei2022chain; kojima2022large; wang2023selfconsistency）提升了大语言模型（LLMs）的多步问题解决能力，但过长的推理轨迹会增加延迟、内存使用和推理服务成本。<br />
+这促使了关于 CoT 压缩的研究，旨在缩短中间轨迹的同时保持推理性能。<br />
+先前的方法通过多种方式获取紧凑的轨迹：通过提示或蒸馏进行简洁生成（xu2025cod）、自适应推理预算（han2025token）、替代显式推理的潜在计算（shen2025cod），以及从完整轨迹中剪枝 Token 或步骤（xia2025tokenskip; li2026making）。<br />
+我们专注于 Token 剪枝设置，即将完整的 CoT 轨迹剪枝为一部分推理 Token，用于监督模型生成更短的链。此设置明确了核心瓶颈：在保留预算 γ \gamma 下，应该保留哪些推理 Token？</p>
+<p>图 1：模型内部 Token 显著性的概念概述。对于每个推理 Token： 必要性测量当该 Token 的残差贡献被移除时，答案似然的下降程度； 充分性测量当该贡献被修补进无链前向传播时，答案似然的增加程度。这两个轴结合用于对 Token 进行排序，并在压缩时保留得分最高的 Token。</p>
+<p>现有的 Token 级压缩方法使用仅与目标模型的答案计算间接相关的信号来回答这个问题。例如，TokenSkip 风格（xia2025tokenskip）的方法依赖辅助评分器（pan2024llmlingua），其排序取决于评分器自身的训练目标、监督和领域假设，而不是从目标模型的内部推理过程中推导而来。<br />
+虽然有效，但它们留下了一条更直接、更有原则的测量 Token 重要性的路径未探索：从目标模型在生成答案时所依赖的内容中推导重要性。<br />
+因此，我们将焦点从启发式代理转移到互补的模型内部视角。<br />
+在这种观点下，当目标模型的答案计算依赖于某个推理 Token 在残差流中携带的信息时，该 Token 就是重要的。残差流是信息跨层传播的内部基底。我们将此残差流视为模型的“思维流”，其中每个 Token 都会留下涟漪，其幅度反映了它对答案的贡献。<br />
+因此，对压缩而言，携带较少与答案相关信息的 Token 是自然可被移除的候选者。<br />
+这将 Token 级 CoT 压缩重新定义为模型内部显著性问题：哪些推理 Token 对模型的答案计算做出了最大的内部贡献？<br />
+我们沿着两个互补的轴将此显著性形式化：<br />
+(Q1) 必要性：如果移除某个 Token 的内部贡献，真实答案似然会下降多少？<br />
+(Q2) 充分性：如果仅提供该 Token 的内部信息，能恢复多少真实答案似然？<br />
+必要性反映了全链依赖性：它捕获了其擦除会破坏链自身计算的 Token。<br />
+充分性反映了无链可恢复性：它捕获了上下文枢纽，这些枢纽的残差在给定查询时，无需链的其余部分即可恢复与答案相关的信息。<br />
+如果没有另一个轴，每个视图都是有偏的：必要性在充足的保留预算下，会允许未直接锚定于答案相关性的低信息上下文；而仅靠充分性在激进压缩下表现不佳，因为没有单个 Token 的残差可以替代整条链。<br />
+将两者结合产生了一个在各种压缩预算下保持可靠的排序。</p>
+<p>图 2：双轴模型内部 Token 显著性的经验性表征。在 Qwen2.5-1.5B-Instruct 上对 100 条 MATH 推理链的结果。 保留最高必要性的 Token 在所有预算下始终优于位置和随机基线。 保留最高充分性的 Token 比随机和范数匹配的对照组恢复更多的答案信号。 必要性和充分性诱导出弱相关的排序（平均 Spearman ρ = − 0.07 \rho=-0.07 ，前 30 % 30\% 重叠为 0.28 0.28 ），表明它们捕获了不同但互补的信号。</p>
+<p>基于这一框架，我们提出了 MIST（用于 Token 级 CoT 压缩的模型内部显著性）。<br />
+对于每个推理 Token，MIST 将这两个轴操作化为残差流干预：必要性测量从全链计算中擦除 Token 残差状态的效果，而充分性测量将该状态修补进无链前向传播时恢复的答案信号。<br />
+直接评估这些干预需要为每个 Token 进行单独的前向传播，其复杂度随链长 T 缩放为 O ⁡ ( T ) O(T) ，这使得逐 Token 评分成本高昂。<br />
+我们证明，这两个轴都允许在残差流中进行一阶泰勒线性化，将每个 Token 的得分简化为梯度和激活的内积，因此每个轴只需一次反向传播即可得出所有 Token 得分。<br />
+然后，MIST 将这两个得分结合为一个统一的 Token 重要性得分。<br />
+保留得分最高的 Token 形成压缩的 CoT 轨迹，随后用于适配模型以生成更短的推理链。<br />
+我们在涵盖数学推理（GSM8K（cobbe2021training）和 MATH（hendrycks2021measuring））和通用领域推理（MMLU-Pro（wang2024mmlupro）和 BIG-Bench Hard（suzgun2023challenging））的四个基准上评估 MIST，使用 Qwen2.5-1.5B-Instruct、Qwen2.5-7B-Instruct（qwen2.5）、Llama-3.1-8B-Instruct（grattafiori2024llama）和 Mistral-7B-Instruct-v0.3（Jiang2023Mistral7）。<br />
+大量结果表明，模型内部显著性可作为推理 Token 重要性的可靠代理，并且所提出的方法在各种设置下始终提升 CoT 压缩性能。</p>
+<p>总结，我们的贡献如下：<br />
+• 我们将 Token 级 CoT 压缩形式化为模型内部显著性问题：我们不再询问哪些 Token 对启发式代理显得重要，而是询问哪些推理 Token 对目标模型自身的答案计算有贡献，并沿着两个互补的轴（必要性和充分性）进行形式化。<br />
+• 我们提出了 MIST，它将这两个轴操作化为残差流干预，推导出将每条链的评分简化为每个轴一次反向传播的一阶线性化，并将这两个轴结合为统一的 Token 重要性得分。<br />
+• 跨越不同数据集和模型的大量实验结果证明了我们提出方法的有效性。</p>
+<p>2 相关工作<br />
+高效思维链推理。思维链提示提升了多步推理（wei2022chain; kojima2022large; wang2023selfconsistency），但增加了推理成本，促使了涵盖简洁生成（xu2025cod; munkhbat2025self）、自适应解码预算（han2025token）、长度可控微调（ma2025cot）、潜在推理（hao2024training; shen2025cod）以及生成轨迹的 Token 或步骤级剪枝（xia2025tokenskip; li2026making）的高效推理方法。我们专注于剪枝设置。<br />
+Token 级 CoT 剪枝。在剪枝设置中，TokenSkip（xia2025tokenskip）使用辅助的 LLMLingua 风格 Token 评分器（jiang2023llmlingua; pan2024llmlingua）构建压缩的 CoT 监督，而步骤级方法使用熵等信号跳过生成（li2026making）。更直接的方法包括 GoGI-Skip（通过梯度范数对中间表示进行评分（zhuang2025accelerating））和保持似然的贪婪删除（通过重复删除评估识别可移除 Token（singh2026llms））。相比之下，MIST 从模型残差流中的两个互补显著性测量中推导出统一的 Token 重要性得分，避免了外部评分器、单轴启发式和昂贵的迭代删除。<br />
+模型内部归因和干预。机制可解释性方法通过因果中介、因果追踪和激活修补等干预措施，识别行为相关组件，如神经元和注意力头（vig2020investigating; meng2022locating; zhang2024towards; heimersheim2024use; syed2024attribution; ghandeharioun2024patchscopes）。残差流分析和直接 Logit 归因分解了内部组件如何对输出 Logit 做出贡献（elhage2021mathematical; nostalgebraist2020logitlens）。受这一系列工作启发，我们在残差流中定义了 Token 显著性测量，并使用这种模型内部信号来量化推理 Token 对 CoT 压缩的重要性。</p>
+<p>3 MIST：用于 Token 级 CoT 压缩的模型内部显著性<br />
+我们提出了 MIST，一种用于 Token 级 CoT 压缩的模型内部方法。<br />
+给定查询 x x ，由目标模型 M M 生成的推理链 c = ( t 1 , … , t T ) c=(t_{1},\ldots,t_{T}) 以及答案 a a ，MIST 为每个链 Token 分配一个显著性得分，在保留预算下保留得分最高的 Token，并使用生成的压缩链来适配模型以生成紧凑的推理轨迹。<br />
+核心思想是首先定义 Token 对目标模型自身答案计算“有影响”的含义，然后从模型的内部状态量化这种重要性。</p>
+<p>图 3：在 GSM8K 和 MATH-500 上，MIST 和所有基线在 γ ∈ { 0.5 , … , 0.9 } \gamma\in{0.5,...,0.9} 下的准确率。</p>
+<p>3.1 问题形式化：模型内部的 Token 重要性概念<br />
+Token 级 CoT 压缩需要对推理 Token 进行排序。一个自然的目标是保留最能支持模型答案计算的 Token 子集：<br />
+c γ ⋆ = arg ⁡ max c ′ ⊆ c , | c ′ | = ⌈ γ ​ T ⌉ ​ log ​ p M ​ ( a ∣ x , c ′ ) , c_{\gamma}^{\star}=\arg\max_{c^{\prime}\subseteq c,\ |c^{\prime}|=\lceil\gamma T\rceil}\log p_{M}(a\mid x,c^{\prime}), (1)<br />
+其中 γ ∈ ( 0 , 1 ] \gamma\in(0,1] 是保留预算。直接求解该目标是组合优化问题，因此实际的压缩方法将问题简化为计算每个 Token 的重要性并保留排名最高的子集。<br />
+在这项工作中，我们将这种重要性形式化为模型内部显著性：如果目标模型自身的答案计算依赖于该 Token 携带的内部信息，则该 Token 是显著的。<br />
+为了使这一概念可操作，我们通过其残差流来测量 Token 的内部贡献，这是一个自然的选择，因为残差流是模型的内部计算基底。<br />
+然后，我们通过两个互补的轴来定义这种显著性。<br />
+必要性。必要性测量当 Token 的内部贡献从完整推理链中被移除时，模型失去了什么。<br />
+设 h i h_i 表示与 Token i i 相关的残差流状态。我们通过将 h i h_i 置零来操作化这种移除，然后将由此产生的答案似然下降量化为必要性显著性：<br />
+ϕ i := log ⁡ p M ​ ( a ∣ x , c ) − log ⁡ p M ​ ( a ∣ x , c h i → 0 ) . {\phi}<em>{i}:=\log p</em>{M}(a\mid x,c)-\log p_{M}\bigl(a\mid x,c^{h_{i}\to 0}\bigr). (2)<br />
+充分性。充分性询问如果仅提供 Token i i 的内部状态，相对于无链前向传播，能恢复多少答案似然。我们通过将 h i h_i 修补到最终位置的无链前向传播中来操作化这一点，并将由此产生的答案似然增益量化为充分性显著性：<br />
+ψ i := log ⁡ p M ​ ( a ∣ x , patch ⁡ ( i ) ) − log ⁡ p M ​ ( a ∣ x , ∅ ) . {\psi}<em>{i}:=\log p</em>{M}\bigl(a\mid x,\mathrm{patch}(i)\bigr)-\log p_{M}(a\mid x,\emptyset). (3)<br />
+为什么需要两个轴？信息丰富且互补的 Token 重要性视图。<br />
+上述必要性和充分性的定义提供了两种基于行为的 Token 重要性概念。我们进一步在 100 条黄金 MATH 链上进行了实证评估，以表明这两种概念在实践中都能产生有意义的 Token 重要性信息。<br />
+在各种压缩预算下，保留由精确必要性排序的 Token 始终优于位置和随机基线，这表明必要性识别了全链答案计算所依赖的 Token（图 2a）。相反，将最充分的 Token 修补到无链计算中可恢复大量与答案相关的信息，而随机 Token 和范数匹配的对照组则不能（图 2b）。尽管它们各自都有效，但这两种排序仅弱相关，并且顶部 Token 重叠有限（图 2c），表明它们捕获了 Token 重要性中大部分不同的方面。<br />
+因此，单独一个轴都不能完整地解释 Token 重要性，这促使我们在双轴显著性测量中将它们结合起来。</p>
+<p>3.2 实践中量化模型内部显著性<br />
+上述公式提供了概念上清晰的 Token 显著性测量，但它们的朴素计算成本高得令人望而却步。<br />
+评估每个 Token 需要额外的前向传播来实例化 c h i → 0 c^{h_{i}\to 0} 或 patch ⁡ ( i ) \mathrm{patch}(i) ，产生每条链 O ⁡ ( T ) O(T) 的成本，这在大规模时是不切实际的。<br />
+相反，我们将两者视为残差流干预，并在未受干扰的前向传播周围线性化 log ⁡ p M \log p_{M} 。这产生了一个实用的、一阶评分器，每条链只需两次反向传播即可计算，与 T T 无关。<br />
+设 h i ( l ) h_{i}^{(l)} （对于 l ∈ { 1 , … , L } l\in{1,\ldots,L} ）表示 Token i i 在层 l l 的残差， h i ( l ) , src h_{i}^{(l),\text{src}} 和 h final ( l ) , tgt h_{\text{final}}^{(l),\text{tgt}} 表示层 l l 未受干扰的源和目标激活。<br />
+必要性干预 c h i → 0 c^{h_{i}\to 0} 沿方向 − h i ( l ) , src -h_{i}^{(l),\mathrm{src}} 扰动 h i ( l ) , src h_{i}^{(l),\mathrm{src}} ；充分性干预 patch ⁡ ( i ) \mathrm{patch}(i) 沿方向 h i ( l ) , src − h final ( l ) , tgt h_{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}} 扰动 h final ( l ) , tgt h_{\mathrm{final}}^{(l),\mathrm{tgt}} 。<br />
+答案对数似然 log ⁡ p M \log p_{M} 在残差激活中是可微的，因此两个显著性都允许沿这些方向进行一阶泰勒展开。<br />
+必要性项。 log ⁡ p M src \log p_{M}^{\mathrm{src}} 沿 − h i ( l ) , src -h_{i}^{(l),\mathrm{src}} 的一阶展开识别出每层主项：<br />
+ϕ ^ i ( l ) := ⟨ ∇ h i ( l ) ​ log ​ p M src , h i ( l ) , src ⟩ , \widehat{\phi}<em>{i}^{(l)}\;:=\;\bigl\langle\nabla</em>{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}},\;h_{i}^{(l),\mathrm{src}}\bigr\rangle, (4)<br />
+ϕ ^ i ( l ) \widehat{\phi}<em>{i}^{(l)} 中的梯度和激活都是从同一个源前向传播中读取的：通过 log ⁡ p M src \log p</em>{M}^{\mathrm{src}} 的一次反向传播可同时在每个 ( i , l ) (i,l) 对处产生 ∇ h i ( l ) ​ log ​ p M src \nabla_{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}} ，因此必要性轴上的每条链成本是一次前向和一次反向传播。<br />
+充分性项。 log ⁡ p M tgt \log p_{M}^{\mathrm{tgt}} 沿 h i ( l ) , src − h final ( l ) , tgt h_{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}} 的一阶展开识别出每层主项：<br />
+ψ ^ i ( l ) := ⟨ ∇ h final ( l ) ​ log ​ p M tgt , h i ( l ) , src − h final ( l ) , tgt ⟩ , \widehat{\psi}<em>{i}^{(l)}\;:=\;\bigl\langle\nabla</em>{h_{\mathrm{final}}^{(l)}}\log p_{M}^{\mathrm{tgt}},\;h_{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr\rangle, (5)<br />
+梯度在目标的最终位置取得；通过 log ⁡ p M tgt \log p_{M}^{\mathrm{tgt}} 的一次反向传播可产生跨所有层 l l 的这些梯度，而源激活 h i ( l ) , src h_{i}^{(l),\mathrm{src}} 则从必要性传播中重用。<br />
+两个项的完整泰勒展开和余项界限在附录 D 中给出。</p>
+<p>3.3 统一的 MIST 得分<br />
+每层项 ϕ ^ i ( l ) \widehat{\phi}<em>{i}^{(l)} 和 ψ ^ i ( l ) \widehat{\psi}</em>{i}^{(l)} 是构建块；MIST 得分通过首先沿每个轴跨层聚合，然后结合这两个轴，将它们组合成统一的每 Token 显著性信号。<br />
+每轴聚合。不同的层对答案计算的贡献不同；因此，我们采用 Logit Lens 诱导的（nostalgebraist2020logitlens）层加权：每个 Transformer 层 l l 将加性更新 h t ( l ) − h t ( l − 1 ) h^{(l)}<em>{t}-h^{(l-1)}</em>{t} 写入位置 t t 的残差流状态，此更新与对应于黄金答案 Token 的解嵌出行 W U ​ [ a ] W_{U}[a] 的内积，<br />
+c ¯ l = 1 T ​ ∑ t = 1 T ⟨ h t ( l ) − h t ( l − 1 ) , W U ​ [ a ] ⟩ , \bar{c}<em>{l}\;=\;\frac{1}{T}\sum</em>{t=1}^{T}\bigl\langle h^{(l)}<em>{t}-h^{(l-1)}</em>{t},\;W_{U}[a]\bigr\rangle, (6)<br />
+捕获了该层的更新在多大程度上将链平均隐藏状态推向答案； c ¯ l \bar{c}<em>{l} 跨链的经验每层分布在图 11（附录 H）中可视化。<br />
+使用此共享权重聚合每个轴，产生沿两个轴的每 Token 显著性：<br />
+ϕ ^ i = ∑ l c ¯ l ⋅ | ϕ ^ i ( l ) | , ψ ^ i = ∑ l c ¯ l ⋅ | ψ ^ i ( l ) | . \widehat{\phi}</em>{i}\;=\;\sum_{l}\bar{c}<em>{l}\cdot\bigl|\widehat{\phi}</em>{i}^{(l)}\bigr|,\quad\widehat{\psi}<em>{i}\;=\;\sum</em>{l}\bar{c}<em>{l}\cdot\bigl|\widehat{\psi}</em>{i}^{(l)}\bigr|. (7)<br />
+结合两个轴。最后，我们将两个轴结合为 1 1 1 ϕ ^ i \widehat{\phi}<em>{i} 和 ψ ^ i \widehat{\psi}</em>{i} 在结合前进行归一化；详见附录 I。：<br />
+S i MIST = α ⋅ ϕ ^ i + ( 1 − α ) ⋅ ψ ^ i , α ∈ [ 0 , 1 ] . S^{\textsc{MIST}}<em>{i}\;=\;\alpha\cdot\widehat{\phi}</em>{i}+(1-\alpha)\cdot\widehat{\psi}<em>{i},\quad\alpha\in[0,1]. (8)<br />
+其中 α \alpha 是超参数。按 S i MIST S^{\textsc{MIST}}</em>{i} 排序的 Token 形成压缩链，用于在保留预算 γ \gamma 下监督 M M 的微调。</p>
+<p>4 实验<br />
+数据集 | 模型 | 方法 | Δ \Delta Acc. (%) | 压缩率<br />
+GSM8K | Qwen2.5-7B-Inst. ⋆ \star | MIST | ↓ 2.4 \downarrow 2.4 | 21.3 % 21.3\%<br />
+| | tokenskip | ↓ 4.3 \downarrow 4.3 | 20.0 % 20.0\%<br />
+| | gogi_l1 | ↓ 11.9 \downarrow 11.9 | 8.9 % 8.9\%<br />
+| | perplexity | ↓ 29.2 \downarrow 29.2 | 17.6 % 17.6\%<br />
+| | attn_rollout | ↓ 35.1 \downarrow 35.1 | 21.4 % 21.4\%<br />
+| | h2o | ↓ 45.2 \downarrow 45.2 | 22.0 % 22.0\%<br />
+| Mistral-7B-Inst. ⋆ \star | MIST | ↓ 1.3 \downarrow 1.3 | 13.4 % 13.4\%<br />
+| | tokenskip | ↓ 2.1 \downarrow 2.1 | 10.4 % 10.4\%<br />
+| | gogi_l1 | ↓ 9.2 \downarrow 9.2 | 14.8 % 14.8\%<br />
+| | perplexity | ↓ 39.5 \downarrow 39.5 | 25.6 % 25.6\%<br />
+| | attn_rollout | ↓ 28.8 \downarrow 28.8 | 22.5 % 22.5\%<br />
+| | h2o | ↓ 32.6 \downarrow 32.6 | 23.0 % 23.0\%<br />
+MATH-500 | Qwen2.5-1.5B-Inst. ⋆ \star | MIST | ↑ 5.3 \uparrow 5.3 | 9.3 % 9.3\%<br />
+| | tokenskip | ↓ 4.1 \downarrow 4.1 | 10.2 % 10.2\%<br />
+| | gogi_l1 | ↓ 6.6 \downarrow 6.6 | 3.9 % 3.9\%<br />
+| | perplexity | ↓ 14.1 \downarrow 14.1 | 8.5 % 8.5\%<br />
+| | attn_rollout | ↓ 4.2 \downarrow 4.2 | 0.0 % 0.0\%<br />
+| | h2o | ↓ 6.7 \downarrow 6.7 | 4.7 % 4.7\%<br />
+| Llama-3.1-8B-Inst. ⋆ \star | MIST | ↑ 1.2 \uparrow 1.2 | 10.6 % 10.6\%<br />
+| | tokenskip | ↓ 2.3 \downarrow 2.3 | 13.8 % 13.8\%<br />
+| | gogi_l1 | ↓ 3.8 \downarrow 3.8 | 7.2 % 7.2\%<br />
+| | perplexity | ↓ 14.1 \downarrow 14.1 | 11.1 % 11.1\%<br />
+| | attn_rollout | ↓ 2.6 \downarrow 2.6 | 8.0 % 8.0\%<br />
+| | h2o | ↓ 6.6 \downarrow 6.6 | 10.0 % 10.0\%<br />
+表 1：GSM8K 和 MATH-500 上的性能和压缩比较。每个条目是 γ ∈ { 0.5 , 0.6 , 0.7 , 0.8 , 0.9 } \gamma\in{0.5,0.6,0.7,0.8,0.9} 上相对于全链基线的平均值。 Δ \Delta Acc. (%)：相对准确率变化（ ↓ \downarrow 下降， ↑ \uparrow 提升）；压缩率：LoRA 适配模型在推理时生成的 Token 相对于同一全链基线减少的比例。</p>
+<p>4.1 实验设置<br />
+数据集和模型。我们在涵盖数学推理（GSM8K（cobbe2021training）；MATH（hendrycks2021measuring））和通用领域推理（MMLU-Pro（wang2024mmlupro）；BIG-Bench Hard（suzgun2023challenging））的四个推理基准上进行评估。每个数据集的拆分大小、预处理和自生成超参数详见附录 A。我们评估了涵盖三个系列和三个规模的四个模型：Qwen2.5-1.5B-Instruct 和 Qwen2.5-7B-Instruct（qwen2.5）、Llama-3.1-8B-Instruct（grattafiori2024llama）和 Mistral-7B-Instruct-v0.3（Jiang2023Mistral7）。<br />
+基线。我们将 MIST 与三类九个基线进行比较。无训练基线：prompt-reduce（xia2025tokenskip）提示冻结的目标模型压缩其自身的链，无需微调。朴素基线：full-chain、no-chain 和 uniform 共享流水线，但分别使用简单的 Token 选择：无压缩、移除链和均匀保留。Token 评分器基线：TokenSkip（xia2025tokenskip）使用外部 LLMLingua-2 分类器对 Token 评分，GoGI（zhuang2025accelerating）使用单层梯度范数，perplexity 使用每 Token 自信息（jiang2023llmlingua），attention rollout（abnar2020quantifying）和 H2O（zhang2023ho）使用两个基于注意力的代理。各基线详情见附录 B。</p>
+<p>图 4：BIG-Bench Hard 上的结果。<br />
+图 5：MMLU-Pro 上的结果。</p>
+<p>训练和评估协议。我们采用 TokenSkip（xia2025tokenskip）的标准程序。给定目标模型 M M 和训练集，我们 采样从 M M 自生成的推理链，并保留那些得出正确答案的链， 对于网格中的每个保留预算 γ ∈ { 0.5 , 0.6 , … , 1.0 } \gamma\in{0.5,0.6,\ldots,1.0} ，用 MIST 对每条链评分，并通过保留前 ⌈ γ ​ T ⌉ \lceil\gamma T\rceil 个 Token 形成压缩链， 使用单个 LoRA 适配器（秩 8， α = 16 \alpha=16 ，学习率 5 × 1 0 − 5 5!\times!10^{-5} ，三个 epoch，有效批次大小 8）在所有 γ \gamma 值的压缩链混合上微调 M M ，以便在推理时可以在任何保留预算下解码相同的适配器。需要注意的是，由于 γ \gamma 控制的是 SFT 期间保留的监督 Token，而不是在推理时施加硬长度约束，因此适配器自由解码，实际推理时的压缩率（表 1 中的 Comp. rate）通常小于 1 − γ 1-\gamma 。更多详情见附录 C。</p>
+<p>4.2 主要结果<br />
+我们在图 3 和表 1 中报告主要结果。<br />
+模型内部显著性优于外部评分器。TokenSkip 总体上是最强的基线，但它依赖于辅助评分器，其重要性信号并非从目标模型自身的答案计算中推导而来。在评估的数据集和模型中，MIST 实现了比 TokenSkip 更好的性能。在 γ \gamma 上的平均值，MIST 在使用 Qwen2.5-7B 和 Mistral-7B 的 GSM8K 上仅产生 1.3-2.4 个百分点 的准确率下降，而 TokenSkip 为 2.1-4.3 pp。在 MATH-500 上的差距更大：MIST 在 Qwen2.5-1.5B 上将平均准确率提高了 5.3 pp，在 Llama-3.1-8B 上提高了 1.2 pp，而 TokenSkip 分别下降了 4.1 pp 和 2.3 pp。这表明目标模型自身的内部计算为识别它实际依赖的推理 Token 提供了可靠的信号。<br />
+有原则的内部评分器优于内部启发式。其余基线使用目标模型信号（如梯度、困惑度或注意力权重），但通过启发式评分规则将这些信号映射到 Token 重要性。例如，GoGI 是最接近的内部梯度基线，但它将预选层的梯度范数作为 Token 重要性的启发式代理，而不是从任何明确的显著性定义中推导出来。相比之下，MIST 通过必要性和充分性干预将 Token 重要性操作化，并从它们对答案似然的一阶效应中推导其评分器。在 MIST 中，梯度仅与激活相乘并跨所有层聚合；GoGI 使用的纯梯度范数可视为这种构造沿必要性轴的严格简化。经验差距进一步凸显了 MIST 有原则的显著性构造的优势。在 GSM8K 上，GoGI 在 Qwen2.5-7B 和 Mistral-7B 上分别产生 11.9 和 9.2 pp 的准确率下降，而 MIST 仅为 2.4 和 1.3 pp。在 MATH-500 上，GoGI 在 Qwen2.5-1.5B 和 Llama-3.1-8B 上分别下降 6.6 pp 和 3.8 pp，而 MIST 比完整 CoT 提高了 5.3 和 1.2 pp。其他内部或模型衍生的启发式方法退化更严重，困惑度、注意力展开和 H2O 的下降分别高达 39.5、28.8 和 32.6 pp（表 1）。<br />
+MIST 实现了有利的准确率与压缩权衡。MIST 在产生最小推理性能损失的同时实现了有竞争力的压缩。在 Qwen2.5-7B 的 GSM8K 上，MIST 实现了 21.3% 的链长减少，而 TokenSkip 为 20.0%，同时准确率仅下降 2.4 pp，而 TokenSkip 为 4.3 pp。具有内部启发式信号的方法（如困惑度、注意力展开和 H2O）可以实现相似或更高的压缩率，但准确率下降要大得多。这种权衡表明，在相同的保留预算下，MIST 选择的 Token 携带了更大比例的答案相关信号，允许适配器从较短的轨迹中恢复链级准确率。</p>
+<p>图 6：在 GSM8K 上使用 Qwen2.5-1.5B-Instruct 对 α \alpha 的敏感性分析。<br />
+图 7：在 MATH-500 上使用 Llama-3.1-8B-Instruct 对 MIST 的组件消融。<br />
+图 8：压缩下每个评分器保留的内容（GSM8K，Qwen2.5-1.5B-Instruct）。使用表 2 中的分类法对 Token 进行分类。左图：每种方法如何在其 50% 的保留预算中分配给 7 种 Token 类型。右图：每类保留率：对于每个类别（x 轴），每种方法保留的该类 Token 的比例。</p>
+<p>4.3 超越数学推理的泛化<br />
+§4.2 中的主要结果确立了 MIST 在两个数学推理基准 GSM8K 和 MATH-500 上的优势。我们接下来询问这种优势是否超越数学推理。<br />
+为此，我们进一步在两个通用领域基准上评估：MMLU-Pro 和 BBH。<br />
+如图 4 和 5 所示，MIST 在两个基准和评估模型上仍然是最强的方法。<br />
+在 MMLU-Pro 上，MIST 始终优于外部和启发式基线，表明模型内部显著性在多领域、知识密集型设置中仍然有效。在 BBH 上，MIST 也最接近，并在某些设置中超越了完整 CoT 参考，而启发式基线则明显落后。这些结果表明 MIST 不仅仅是在利用数学特定的 Token 模式；它有效地捕获了跨更广泛领域和更异构推理格式的与答案相关的内部贡献。附加结果报告在附录 F 中。</p>
+<p>4.4 消融研究<br />
+敏感性分析。我们使用 Qwen2.5-1.5B-Instruct 在 GSM8K 上检查 MIST 对公式 (8) 中混合系数 α \alpha 的敏感性。图 6 比较了跨保留预算的 α ∈ { 0.4 , 0.5 , 0.6 , 0.7 } \alpha\in{0.4,0.5,0.6,0.7} 。在该范围内性能稳定，表明混合对 α \alpha 不是极度敏感。我们在所有主要实验中固定 α = 0.6 \alpha=0.6 ，因为它实现了最佳的整体性能。<br />
+每个组件都为统一的 MIST 质量做出贡献。我们消融了区分 MIST 与单轴或单层简化的三个设计选择： 使用两个显著性轴，通过一次移除一个（仅 φ ^ \widehat{\varphi} ，仅 ψ ^ \widehat{\psi} ）； 公式 7 中的层加权，通过用均匀的每层权重替换 c ¯ l \bar{c}_{l} （MIST-uniform）； 多层聚合，通过仅从倒数第二层计算每个轴（MIST-single）。<br />
+图 7 报告了在 Llama-3.1-8B-Instruct 上跨 γ ∈ { 0.5 , 0.6 , 0.7 , 0.8 } \gamma\in{0.5,0.6,0.7,0.8} 的 MATH-500 准确率。完整的 MIST 在每个保留预算下都实现了最佳性能。<br />
+单轴消融损失最大：仅 ψ ^ \widehat{\psi} 在最激进的预算下（ γ = 0.5 \gamma{=}0.5 ：37.5 % 37.5\% 对比 MIST 的 45.0 % 45.0\% ）下降高达 7.5 7.5 pp，仅 φ ^ \widehat{\varphi} 在 γ = 0.8 \gamma{=}0.8 （46.2 % 46.2\% 对比 49.6 % 49.6\% ）时损失高达 3.4 3.4 pp。MIST-uniform 和 MIST-single 根据 γ \gamma 分别损失 0.8 0.8 到 4.6 4.6 pp，证实加权和多层聚合都不能与均匀权重或单层简化互换。这三个设计选择结合产生了 MIST 的最终质量。</p>
+<p>4.5 Token 类型分析<br />
+为了了解每种方法实际保留了什么，我们将每个 Token 划分为七个角色类之一，归入三个宏观类别（表 2）：定量（数字、数学运算符、变量/函数）、逻辑（连接词、量词/否定）和叙述（内容、功能）。然后我们在 Qwen2.5-1.5B-Instruct + GSM8K 上测量每种方法在 γ = 0.5 \gamma=0.5 时的预算组成（左）和每类保留率（右）（图 8）。<br />
+类型 | 定义 | 示例<br />
+定量 | number | 整数、小数、分数、百分比 | 15 , 3.14<br />
+| math op | 算术运算符和关系 | + + , - - , × \times , ÷ \div , = = , ≥ \geq<br />
+| var/fn | 单字母变量和数学函数 | x , y , sin , log<br />
+逻辑 | connective | 因果/推理/顺序粘合剂 | so , if , then , because<br />
+| quant./neg. | 量词和否定标记 | all , some , no , not<br />
+叙述 | content | 名词、动词、形容词、副词 | Janet , eggs , calculate<br />
+| function | 冠词、介词、代词、助词 | the , of , is , she<br />
+表 2：分析中使用的 Token 分类法。<br />
+图 8 报告了两个互补的视图。左图显示了每种方法如何在其保留 Token 预算中分配给各个 Token 类别。MIST 将比启发式基线更大份额的预算分配给定量 Token：29 % 29\% 给数字，10 % 10\% 给数学运算符，同时仍保留内容和功能词以保持局部连贯性。在这些类别中，MIST 也保留了最高比例：所有数字的 75 % 75\% 和所有数学运算符的 66 % 66\% （图 8 右）。相比之下，注意力展开和困惑度仅将预算的 7 % 7\% 和 12 % 12\% 分配给数字，分别保留了 22 % 22\% 和 33 % 33\% 的数字 Token。因此，MIST 是唯一一个既向定量 Token 超额分配预算，又对它们实现最高类内保留率的评分器。注意力展开集中在经常作为注意力枢纽的频繁运算符和功能词上，而困惑度倾向于混淆惊异度，保留高惊异度但信息量低的 Token，如 therefore 和 so。这种模式与 §4.2 中的诊断一致：启发式评分器集中在句法上突出但信息量低的 Token 上，而 MIST 的显著性衍生排序与携带答案相关计算的 Token 一致。</p>
+<p>4.6 案例研究<br />
+图 9 可视化了 MIST 在三步 GSM8K 链上的显著性。<br />
+必要性 ϕ ^ \widehat{\phi} 将高显著性分配给全链计算所依赖的 Token，集中在中间数值事实（ $ 4 \$4 , 30 30 ）和最终答案 $ 120 \$120 上。<br />
+充分性 ψ ^ \widehat{\psi} 则突出了一组相关但不同的 Token，包括与购买、花费、货币和等式相关的 Token，当提供给无链计算时，这些 Token 的残差状态携带与答案相关的信息。<br />
+这两个视图在一些承载答案的 Token 上重叠，但也强调了推理轨迹的不同部分。<br />
+结合这些信号，统一的 MIST 得分保留了算术计算 $ 4 × 30 = $ 120 \$4\times 30=\$120 周围的 Token 以及承载答案的短语“spends $ 120 \$120 ”，既保留了定量锚点，又保留了绑定它们的局部语义上下文，与 §4.5 中报告的类级别分配相匹配。</p>
+<p>5 结论<br />
+我们提出了 MIST，一种用于 Token 级 CoT 压缩的模型内部方法。<br />
+MIST 通过在残差流上实例化的两个互补干预（必要性和充分性）在操作上定义了 Token 重要性，并通过一阶泰勒近似将两者转换为可处理的每 Token 评分器，将逐 Token 干预的成本降低到每条链两次反向传播。<br />
+跨不同数据集和模型的大量实证评估证明了我们提出方法的有效性。</p>
+<p>局限性<br />
+模型规模和梯度访问。我们的实验使用 1.5B 到 8B 的指令微调模型。显著性信号是否在更大模型中保持类似集中尚未确定。此外，MIST 需要访问目标模型的内部激活和梯度，因此不适用于黑盒纯 API 系统。<br />
+评估领域。我们的四个基准涵盖数学和通用领域推理。未来的工作可以将该框架扩展到开放式生成、代码生成或多轮对话，以进一步验证所提出方法的有效性。<br />
+近似干预得分。MIST 用其在残差流中的一阶泰勒项近似必要性和充分性干预。由于 Transformer 计算是非线性的，Token、层和头之间的高阶交互未被捕获，因此 MIST 得分是模型内部显著性估计器，而不是精确的因果分解。</p>
+<p>参考文献<br />
+图 9：GSM8K 链上的每 Token MIST 显著性（Qwen2.5-1.5B-Instruct， γ = 0.5 \gamma=0.5 ）</p>
+<p>附录 A 数据集详情<br />
+表 3 总结了我们在整个评估流水线中使用的每个数据集的拆分大小。下面我们描述每个数据集的预处理和自生成超参数。<br />
+数据集 | 训练 | 测试<br />
+GSM8K | 7,473 | 1,319<br />
+MATH | 7,500 | 500<br />
+MMLU-Pro | 10,501 | 1,531<br />
+BBH-MC | 3,258 | 816<br />
+表 3：我们评估流水线中使用的数据集拆分大小。<br />
+GSM8K。我们使用 GSM8K 发布的标准训练和测试拆分，无需进一步过滤。<br />
+MATH。训练集是 Hendrycks（hendrycks2021measuring）七个科目的拼接；测试集是规范的 MATH-500 子集。<br />
+MMLU-Pro。原始发布未提供标准训练拆分，仅提供 12,032 个示例的测试拆分和 70 个示例的少样本验证集。因此，我们随机将 12,032 个示例划分为 10,501 个训练示例和 1,531 个评估示例。<br />
+BBH-MC。我们使用 BIG-Bench Hard（suzgun2023challenging）的 17 个字母多项选择子任务，排除了 10 个二元或自由形式子任务。BBH 未提供标准训练拆分，仅为每个子任务提供测试集，因此我们随机将可用示例划分为 3,258 个训练示例和 816 个评估示例（80/20 拆分）。<br />
+子任务 | 字母 | N<br />
+date_understanding | A–F | 250<br />
+disambiguation_qa | A–C | 250<br />
+geometric_shapes | A–K | 250<br />
+hyperbaton | A–B | 250<br />
+logical_deduction_three_objects | A–C | 250<br />
+logical_deduction_five_objects | A–E | 250<br />
+logical_deduction_seven_objects | A–G | 250<br />
+movie_recommendation | A–D | 250<br />
+penguins_in_a_table | A–E | 146<br />
+reasoning_about_colored_objects | A–R | 250<br />
+ruin_names | A–D | 250<br />
+salient_translation_error_detection | A–F | 250<br />
+snarks | A–B | 178<br />
+temporal_sequences | A–D | 250<br />
+tracking_shuffled_objects_three_objects | A–C | 250<br />
+tracking_shuffled_objects_five_objects | A–E | 250<br />
+tracking_shuffled_objects_seven_objects | A–G | 250<br />
+总计 | | 4,074<br />
+表 4：我们 MIST 评估中使用的 BIG-Bench Hard 的 17 个子任务。“字母”显示答案字母范围；“N”是我们 80/20 拆分前每个子任务的原始示例数。</p>
+<p>附录 B 基线详情<br />
+本附录详述了第 4.1 节中比较的九个基线。<br />
+Prompt-reduce。冻结的目标模型被提示使用来自 TokenSkip（xia2025tokenskip，表 1）的思维链指令和减少指令，该指令附加了“please reduce ( 1 − γ ) × 100 % (1{-}\gamma)!\times!100\% of the words in your CoT”。这是一个冻结模型、感知 γ \gamma 的基线，无需任何微调即可在单次前向传播中压缩链。<br />
+Full-chain。LoRA 适配器在未修改的自生成链上进行微调（ γ = 1.0 \gamma=1.0 ，无 Token 选择）。<br />
+No-chain。LoRA 适配器仅在自生成的答案跨度上进行微调，整个推理链被剥离。<br />
+Uniform。对于每条链，在每个保留预算下保留 ⌈ γ ​ T ⌉ \lceil\gamma T\rceil 个 Token 的均匀随机子集。<br />
+TokenSkip。我们遵循 xia2025tokenskip 并使用预训练的 LLMLingua-2（pan2024llmlingua）分类器作为外部 Token 评分器。分类器为每条自生成链分配每 Token 重要性值，并在每个保留预算下保留前 ⌈ γ ​ T ⌉ \lceil\gamma T\rceil 个 Token。<br />
+GoGI- ℓ 1 \ell_{1} 。我们使用来自 Adaptive GoGI-Skip（zhuang2025accelerating）的单层梯度范数评分器。 log ⁡ p M ​ ( a ∣ x , c ) \log p_{M}(a\mid x,c) 的梯度在最后一个因果连接层（ l ⋆ = max ⁡ ( L − 2 , 0 ) l^{\star}=\max(L-2,0) ）的残差状态处取得，每 Token 得分为 ‖ ∇ h i ( l ⋆ ) ​ log ​ p M ‖ 1 |\nabla_{h_{i}^{(l^{\star})}}\log p_{M}|<em>{1} 。我们采用单层公式作为 MIST 最接近的仅梯度范数对应物。<br />
+Perplexity。我们遵循 LLMLingua-1 提示压缩评分器（jiang2023llmlingua）使用每 Token 自信息 s i = − log ⁡ p M ​ ( t i ∣ x , t &lt; i ) s</em>{i}=-\log p_{M}(t_{i}\mid x,t_{&lt;i}) ；保留具有更高自信息的 Token，理由是它们携带更多条件信息。<br />
+Attention rollout。遵循 abnar2020quantifying，我们将每头注意力权重聚合为跨层重要性得分。从单位矩阵开始，层 l l 处的累积注意力矩阵为 A ( l ) = ( A ~ ( l ) + I ) ​ A ( l − 1 ) , A ( 0 ) = I , A^{(l)}=(\widetilde{A}^{(l)}+I)\,A^{(l-1)},\quad A^{(0)}=I, (9)<br />
+其中 A ~ ( l ) \widetilde{A}^{(l)} 是层 l l 的头平均注意力矩阵。每 Token 得分是答案位置处 A ( L ) A^{(L)} 的列和。<br />
+H2O。我们使用 Heavy-Hitter Oracle 得分（zhang2023ho），定义为每个 Token 从答案位置跨所有层和头接收的累积注意力质量：<br />
+score ⁡ ( i ) = ∑ l , h ∑ j ∈ answer A j , i ( l , h ) . \mathrm{score}(i)=\sum_{l,h}\sum_{j\in\mathrm{answer}}A^{(l,h)}_{j,i}. (10)</p>
+<p>附录 C 训练、评估和实现详情<br />
+本附录详述了所有实验中使用的流水线、超参数、评估协议和硬件配置。<br />
+流水线概述。对于每个（模型，数据集）单元，我们遵循三阶段协议： 在训练集上从目标模型自生成 CoT 链，并保留其提取的答案与黄金标签匹配的链； 用 MIST 或基线评分器对每条保留的链进行评分，产生每 Token 重要性值； 对于每个保留预算 γ ∈ { 0.5 , 0.6 , 0.7 , 0.8 , 0.9 } \gamma\in{0.5,0.6,0.7,0.8,0.9} ，保留每条链的前 ⌈ γ ​ T ⌉ \lceil\gamma T\rceil 个 Token，用 LoRA 适配器对目标模型在生成的压缩链上进行微调，并通过在测试集上贪婪解码进行评估。我们区分了评审者可能混淆的两个比率。训练保留预算 γ \gamma 是构建 SFT 监督时保留的每条链 CoT Token 的比例（因此 γ = 0.7 \gamma=0.7 保留原始链 70% 的 Token）。报告的推理压缩率是微调适配器生成的总 Token 相对于全链 LoRA 基线的相对减少量。两者不必一致：适配器从 γ \gamma 混合中学习自己的长度策略，特别是在较小的模型上，通常产生比平均保留下限所建议的更短的链。<br />
+自生成（阶段 0）。我们使用温度 0 0 和 top- p p 1.0 1.0 在训练集查询上对目标模型进行贪婪解码。每条链的最大新 Token 数根据数据集设置，以匹配每个任务的典型链长：GSM8K 为 512 512 ，MMLU-Pro 和 BBH-MC 为 768 768 ，MATH 为 1 , 024 1{,}024 。过滤生成内容，仅保留提取答案与黄金标签匹配的链。自生成使用 SDPA 注意力后端和 bfloat16 精度，以确保批量生成（批次大小 32 32 ）的数值稳定性。<br />
+可复现性和公平性。相同的自生成链集（每个（模型，数据集）单元采样一次）在所有评分器（MIST 和所有基线）中重用，因此任何性能差异都可归因于评分阶段，而不是监督数据的差异。<br />
+Token 评分（阶段 1）。对于每条保留的链，计算 MIST 需要通过目标模型进行两次反向传播：在完整提示和链输入上通过答案对数似然 log ⁡ p M ​ ( a ∣ x , c ) \log p_{M}(a\mid x,c) 的源反向传播，以及在仅提示无链输入上通过 log ⁡ p M ​ ( a ∣ x , ∅ ) \log p_{M}(a\mid x,\emptyset) 的目标反向传播。我们在每个 Transformer 块的输出处注册 retain-grad 钩子，因此单次源反向传播可同时为每个链位置 i i 和每层 l l 暴露 ∇ h i ( l ) ​ log ​ p M src \nabla_{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}} （附录 D.4）；目标反向传播类似地暴露目标最终位置处的每层梯度。每层激活 h i ( l ) , src h_{i}^{(l),\mathrm{src}} 和 Logit Lens 层权重 c ¯ l \bar{c}_{l} 从同一个源前向传播中读取。我们在此阶段使用 eager 注意力后端和 float32 精度，以保持梯度的数值稳定性。<br />
+LoRA 微调（阶段 2）。我们遵循 TokenSkip（xia2025tokenskip）微调方案，以便 MIST 和基线评分器之间的任何性能差距都可以完全归因于评分阶段。LoRA 适配器使用秩 r = 8 r=8 ，缩放 α = 16 \alpha=16 ，dropout 0.0 0.0 ，并针对所有线性投影（ q_proj , k_proj , v_proj , o_proj , gate_proj , up_proj , down_proj ）。训练使用学习率 5 × 1 0 − 5 5{\times}10^{-5} ，在总步数的 10 % 10\% 上进行线性预热， 3 3 个 epoch，每设备批次大小 1 1 ，梯度累积 8 8 （有效批次 8 8 ），上下文长度 2 , 048 2{,}048 。对于每个（模型，数据集，评分器）三元组，我们在 γ ∈ { 0.5 , 0.6 , 0.7 , 0.8 , 0.9 , 1.0 } \gamma\in{0.5,0.6,0.7,0.8,0.9,1.0} 的压缩链均匀混合上训练单个 LoRA 适配器，遵循 TokenSkip 的 γ \gamma 混合方案（xia2025tokenskip）。在推理时，通过前置标准的“Please reduce ( 1 − γ ) × 100 % (1-\gamma)\times 100\% of the words in your CoT”指令（TokenSkip 表 1），在每个评估 γ \gamma 下解码相同的适配器；不训练单独的每 γ \gamma 适配器。适配器在每个三元组下保存一次到 adapters/<run_key>/ 以便评估重用。<br />
+评估（阶段 3）。在评估时，每个适配器被加载到目标模型中，并在保留的测试集上通过贪婪解码（温度 0 0 ，top- p p 1.0 1.0 ）进行生成，评估批次大小为 16 16 。每次生成的最大新 Token 数与每个数据集的阶段 0 预算匹配（GSM8K 为 512 512 ，MMLU-Pro 和 BBH-MC 为 768 768 ，MATH 为 1 , 024 1{,}024 ）。我们使用 SDPA 注意力后端和 bfloat16 精度，与阶段 0 匹配以保持一致。记录每批次的挂钟解码时间，用于 §4.2 中报告的推理成本分析。<br />
+硬件和软件。所有实验均在 2 × 2\times NVIDIA A100 (80 GB) GPU 上运行。实现使用 PyTorch 2.9、Hugging Face Transformers 和 PEFT 库进行 LoRA 微调。流水线产生以下一次性成本：推理链的自生成需要 0.5–2 GPU 小时；用 MIST 对链进行评分需要每条链两次反向传播，耗时 0.3–1.0 GPU 小时；LoRA 适配器训练需要 1–3 GPU 小时；在五个保留预算下的评估需要 0.5–1.5 GPU 小时。汇总所有四个模型、四个数据集和十种方法（六个评分器加四个简单基线），本文报告的总计算量约为 1,500 GPU 小时。</p>
+<p>附录 D 泰勒展开和余项界限<br />
+本附录形式化了每层必要性项 ϕ ^ i ( l ) \widehat{\phi}<em>{i}^{(l)} 和充分性项 ψ ^ i ( l ) \widehat{\psi}</em>{i}^{(l)} 的一阶泰勒展开，并给出了明确的每层余项界限，完善了第 3.2 节中延后的技术内容。<br />
+D.1 设置和符号<br />
+局部每层函数。设 M M 为具有 L L 个残差流层和隐藏维度 d d 的 Transformer 语言模型。对于每个链位置 i ∈ [ T ] i\in[T] 和层 l ∈ [ L ] l\in[L] ，定义源侧局部函数 f i , l src ( 𝐮 ) := log p M ( a ∣ x , c ; h i ( l ) ← 𝐮 ) , 𝐮 ∈ ℝ d f^{\mathrm{src}}<em>{i,l}(\mathbf{u}):=\log p</em>{M}\bigl(a\mid x,c;\;h_{i}^{(l)}\leftarrow\mathbf{u}\bigr),\quad\mathbf{u}\in\mathbb{R}^{d} (11)<br />
+其中分号表示残差流状态 h i ( l ) h_{i}^{(l)} 被 𝐮 \mathbf{u} 替换，然后正常评估剩余计算。在自然值处，干预计算与标准前向传播一致，其关于 𝐮 \mathbf{u} 的导数与 log ⁡ p M src \log p_{M}^{\mathrm{src}} 关于 h i ( l ) h_{i}^{(l)} 的反向模式梯度一致：<br />
+∇ f i , l src ​ ( h i ( l ) , src ) = ∇ h i ( l ) ​ log ​ p M src . \nabla f^{\mathrm{src}}<em>{i,l}\bigl(h</em>{i}^{(l),\mathrm{src}}\bigr)\;=\;\nabla_{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}}. (12)<br />
+目标侧局部函数类似定义：<br />
+f l tgt ( 𝐮 ) := log p M ( a ∣ x , ∅ ; h final ( l ) ← 𝐮 ) , 𝐮 ∈ ℝ d , f^{\mathrm{tgt}}<em>{l}(\mathbf{u})\;:=\;\log p</em>{M}\bigl(a\mid x,\emptyset;\;h_{\mathrm{final}}^{(l)}\leftarrow\mathbf{u}\bigr),\quad\mathbf{u}\in\mathbb{R}^{d}, (13)<br />
+具有类似的梯度恒等式 ∇ f l tgt ​ ( h final ( l ) , tgt ) = ∇ h final ( l ) ​ log ​ p M tgt . \nabla f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr)\;=\;\nabla_{h_{\mathrm{final}}^{(l)}}\log p_{M}^{\mathrm{tgt}}. (14)<br />
+为简洁起见，写 log ⁡ p M src := log ⁡ p M ​ ( a ∣ x , c ) \log p_{M}^{\mathrm{src}}:=\log p_{M}(a\mid x,c) 和 log ⁡ p M tgt := log ⁡ p M ​ ( a ∣ x , ∅ ) \log p_{M}^{\mathrm{tgt}}:=\log p_{M}(a\mid x,\emptyset) 。<br />
+正则性假设。我们假设每个 f i , l src f^{\mathrm{src}}<em>{i,l} 和 f l tgt f^{\mathrm{tgt}}</em>{l} 在包含未受干扰点和相应受干扰点的邻域上是局部 C 2 C^{2} 的。这是一个工作假设，仅为陈述拉格朗日形式的泰勒余项而引入；经验方法只需要一阶梯度。<br />
+D.2 必要性： ϕ i ( l ) \phi_{i}^{(l)} 的泰勒展开<br />
+层 l l 的每层必要性干预将 h i ( l ) h_{i}^{(l)} 替换为 𝟎 \mathbf{0} ，并让后续层从此扰动正常评估。相应的每层显著性和位移为<br />
+ϕ i ( l ) \displaystyle\phi_{i}^{(l)} : = f i , l src ​ ( h i ( l ) , src ) − f i , l src ​ ( 𝟎 ) , \displaystyle:=f^{\mathrm{src}}<em>{i,l}\bigl(h</em>{i}^{(l),\mathrm{src}}\bigr)-f^{\mathrm{src}}<em>{i,l}\bigl(\mathbf{0}\bigr), (15)<br />
+δ i , l ϕ \displaystyle\delta^{\phi}</em>{i,l} : = − h i ( l ) , src ∈ ℝ d . \displaystyle:=-\,h_{i}^{(l),\mathrm{src}}\in\mathbb{R}^{d}.<br />
+展开。通过对 f i , l src f^{\mathrm{src}}<em>{i,l} 沿从 h i ( l ) , src h</em>{i}^{(l),\mathrm{src}} 到 𝟎 \mathbf{0} 的线段应用带拉格朗日余项的泰勒定理，<br />
+f i , l src ​ ( 𝟎 ) \displaystyle f^{\mathrm{src}}<em>{i,l}(\mathbf{0}) = f i , l src ​ ( h i ( l ) , src ) + ⟨ ∇ f i , l src ​ ( h i ( l ) , src ) , δ i , l ϕ ⟩ \displaystyle=f^{\mathrm{src}}</em>{i,l}\bigl(h_{i}^{(l),\mathrm{src}}\bigr)+\bigl\langle\nabla f^{\mathrm{src}}<em>{i,l}\bigl(h</em>{i}^{(l),\mathrm{src}}\bigr),\;\delta^{\phi}<em>{i,l}\bigr\rangle (16) + 1 2 ​ ( δ i , l ϕ ) ⊤ ​ ∇ 2 f i , l src ​ ( ξ i , l ϕ ) ​ δ i , l ϕ . \displaystyle+\tfrac{1}{2}\bigl(\delta^{\phi}</em>{i,l}\bigr)^{!\top}\nabla^{2}f^{\mathrm{src}}<em>{i,l}\bigl(\xi^{\phi}</em>{i,l}\bigr)\delta^{\phi}<em>{i,l}.<br />
+对于线段上的某个 ξ i , l ϕ \xi^{\phi}</em>{i,l} 。代入 δ i , l ϕ = − h i ( l ) , src \delta^{\phi}<em>{i,l}=-h</em>{i}^{(l),\mathrm{src}} ，使用公式 (12)，并重新排列得到<br />
+ϕ i ( l ) = ϕ ^ i ( l ) − R i , l ϕ \phi_{i}^{(l)}\;=\;\widehat{\phi}<em>{i}^{(l)}\;-\;R^{\phi}</em>{i,l} (17)<br />
+其中 ϕ ^ i ( l ) \displaystyle\widehat{\phi}<em>{i}^{(l)} = ⟨ ∇ h i ( l ) ​ log ​ p M src , h i ( l ) , src ⟩ , \displaystyle\;=\;\bigl\langle\nabla</em>{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}},\;h_{i}^{(l),\mathrm{src}}\bigr\rangle, (18)<br />
+R i , l ϕ \displaystyle R^{\phi}<em>{i,l} = 1 2 ​ ( δ i , l ϕ ) ⊤ ​ ∇ 2 f i , l src ​ ( ξ i , l ϕ ) ​ δ i , l ϕ . \displaystyle\;=\;\tfrac{1}{2}\,\bigl(\delta^{\phi}</em>{i,l}\bigr)^{!\top}\nabla^{2}f^{\mathrm{src}}<em>{i,l}\bigl(\xi^{\phi}</em>{i,l}\bigr)\delta^{\phi}<em>{i,l}. (19)<br />
+公式 (17) 恢复了正文公式 (4) 中定义的每层一阶项。<br />
+余项界限。设 β i , l ϕ := sup ξ ∈ 𝒮 i , l ϕ ‖ ∇ 2 f i , l src ​ ( ξ ) ‖ op \beta^{\phi}</em>{i,l}:=\sup_{\xi\in\mathcal{S}^{\phi}<em>{i,l}}|\nabla^{2}f^{\mathrm{src}}</em>{i,l}(\xi)|<em>{\mathrm{op}} (20)<br />
+表示从 h i ( l ) , src h</em>{i}^{(l),\mathrm{src}} 到 𝟎 \mathbf{0} 的线段 𝒮 i , l ϕ \mathcal{S}^{\phi}<em>{i,l} 上的 Hessian 算子范数界限。则<br />
+| R i , l ϕ | ≤ 1 2 ​ β i , l ϕ ​ ‖ h i ( l ) , src ‖ 2 2 . \bigl|R^{\phi}</em>{i,l}\bigr|\;\leq\;\tfrac{1}{2}\,\beta^{\phi}<em>{i,l}\,\bigl|h</em>{i}^{(l),\mathrm{src}}\bigr|<em>{2}^{2}. (21)<br />
+D.3 充分性： ψ i ( l ) \psi</em>{i}^{(l)} 的泰勒展开<br />
+层 l l 的每层充分性干预将目标在层 l l 最终位置的残差替换为源在同一层位置 i i 的残差，并让后续层从此扰动正常评估。相应的每层显著性和位移为<br />
+ψ i ( l ) \displaystyle\psi_{i}^{(l)} : = f l tgt ​ ( h i ( l ) , src ) − f l tgt ​ ( h final ( l ) , tgt ) , \displaystyle:=f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{i}^{(l),\mathrm{src}}\bigr)-f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr), (22)<br />
+δ i , l ψ \displaystyle\delta^{\psi}<em>{i,l} : = h i ( l ) , src − h final ( l ) , tgt ∈ ℝ d . \displaystyle:=h</em>{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}}\in\mathbb{R}^{d}.<br />
+展开。通过对 f l tgt f^{\mathrm{tgt}}<em>{l} 沿从 h final ( l ) , tgt h</em>{\mathrm{final}}^{(l),\mathrm{tgt}} 到 h i ( l ) , src h_{i}^{(l),\mathrm{src}} 的线段应用带拉格朗日余项的泰勒定理，<br />
+f l tgt ​ ( h i ( l ) , src ) = f l tgt ​ ( h final ( l ) , tgt ) + ⟨ ∇ f l tgt ​ ( h final ( l ) , tgt ) , δ i , l ψ ⟩ + 1 2 ​ ( δ i , l ψ ) ⊤ ​ ∇ 2 f l tgt ​ ( ξ i , l ψ ) ​ δ i , l ψ . \begin{aligned} f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{i}^{(l),\mathrm{src}}\bigr)&amp;=f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr)+\bigl\langle\nabla f^{\mathrm{tgt}}<em>{l}\bigl(h</em>{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr),\;\delta^{\psi}<em>{i,l}\bigr\rangle\ &amp;\quad+\tfrac{1}{2}\bigl(\delta^{\psi}</em>{i,l}\bigr)^{!\top}\nabla^{2}f^{\mathrm{tgt}}<em>{l}\bigl(\xi^{\psi}</em>{i,l}\bigr)\delta^{\psi}<em>{i,l}.\end{aligned} (23)<br />
+对于线段上的某个 ξ i , l ψ \xi^{\psi}</em>{i,l} 。使用公式 (14) 并重新排列得到<br />
+ψ i ( l ) = ψ ^ i ( l ) + R i , l ψ \psi_{i}^{(l)}\;=\;\widehat{\psi}<em>{i}^{(l)}\;+\;R^{\psi}</em>{i,l} (24)<br />
+其中 ψ ^ i ( l ) \displaystyle\widehat{\psi}<em>{i}^{(l)} = ⟨ ∇ h final ( l ) ​ log ​ p M tgt , h i ( l ) , src − h final ( l ) , tgt ⟩ , \displaystyle\;=\;\bigl\langle\nabla</em>{h_{\mathrm{final}}^{(l)}}\log p_{M}^{\mathrm{tgt}},\;h_{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr\rangle, (25)<br />
+R i , l ψ \displaystyle R^{\psi}<em>{i,l} = 1 2 ​ ( δ i , l ψ ) ⊤ ​ ∇ 2 f l tgt ​ ( ξ i , l ψ ) ​ δ i , l ψ . \displaystyle\;=\;\tfrac{1}{2}\,\bigl(\delta^{\psi}</em>{i,l}\bigr)^{!\top}\nabla^{2}f^{\mathrm{tgt}}<em>{l}\bigl(\xi^{\psi}</em>{i,l}\bigr)\delta^{\psi}<em>{i,l}. (26)<br />
+公式 (24) 恢复了正文公式 (5) 中定义的每层一阶项。 R i , l ψ R^{\psi}</em>{i,l} 上的加号（与 R i , l ϕ R^{\phi}<em>{i,l} 上的减号相反）出现是因为充分性定义为似然增益，而必要性定义为似然下降。<br />
+余项界限。设 β i , l ψ := sup ξ ∈ 𝒮 i , l ψ ‖ ∇ 2 f l tgt ​ ( ξ ) ‖ op \beta^{\psi}</em>{i,l}:=\sup_{\xi\in\mathcal{S}^{\psi}<em>{i,l}}|\nabla^{2}f^{\mathrm{tgt}}</em>{l}(\xi)|<em>{\mathrm{op}} (27)<br />
+表示线段 𝒮 i , l ψ \mathcal{S}^{\psi}</em>{i,l} 上的 Hessian 算子范数界限。则<br />
+| R i , l ψ | ≤ 1 2 ​ β i , l ψ ​ ‖ h i ( l ) , src − h final ( l ) , tgt ‖ 2 2 . \bigl|R^{\psi}<em>{i,l}\bigr|\;\leq\;\tfrac{1}{2}\,\beta^{\psi}</em>{i,l}\,\bigl|h_{i}^{(l),\mathrm{src}}-h_{\mathrm{final}}^{(l),\mathrm{tgt}}\bigr|<em>{2}^{2}. (28)<br />
+D.4 从单次反向传播中恢复所有每层梯度<br />
+为每个 ( i , l ) (i,l) 对计算 ϕ ^ i ( l ) \widehat{\phi}</em>{i}^{(l)} 朴素地暗示需要 T ​ L TL 次单独的反向传播。在实践中，通过 log ⁡ p M src \log p_{M}^{\mathrm{src}} 的一次反向传播可同时恢复所有梯度 ∇ h i ( l ) ​ log ​ p M src \nabla_{h_{i}^{(l)}}\log p_{M}^{\mathrm{src}} ，方法是在每个 Transformer 块的输出残差上注册 retain-grad 钩子；反向模式自动微分通过标准链式法则将梯度传播到所有中间激活。这些钩子在不修改计算图的情况下暴露这些梯度。因此，所有必要性项需要通过 M M 的一次源前向和一次反向传播，所有充分性项需要一次目标前向和一次反向传播，每次最多产生激活缓存开销。<br />
+D.5 一阶项的经验紧密性<br />
+图 10：每层一阶泰勒项的经验紧密性。<br />
+§D.2–D.3 中的解析界限是由未指定的 Hessian 常数参数化的最坏情况陈述；我们通过直接测量一阶项在真实链上预测真实消融下降的紧密程度来弥合这一差距。对于一个残差块 l l 处的一个链 Token i i ，我们仅在该块缩放残差流 h i ( l ) → ( 1 − ε ) ​ h i ( l ) h_{i}^{(l)}!\to!(1-\varepsilon)\,h_{i}^{(l)} （其他未受干扰），并测量答案对数似然下降<br />
+D l ( ε ) := log p M ( a ∣ x , c ) − log p M ( a ∣ x , c ; h i ( l ) ← ( 1 − ε ) h i ( l ) ) . D_{l}(\varepsilon):=\log p_{M}(a!\mid!x,c)-\log p_{M}!\bigl(a!\mid!x,c;\,h_{i}^{(l)}!\leftarrow!(1-\varepsilon)\,h_{i}^{(l)}\bigr). (29)<br />
+每层泰勒主项（公式 4）， a i ( l ) := ⟨ ∇ h i ( l ) ​ log ​ p M src , h i ( l ) ⟩ = ϕ ^ i ( l ) a_{i}^{(l)}:=\langle\nabla_{h_{i}^{(l)}}!\log p_{M}^{\mathrm{src}},\,h_{i}^{(l)}\rangle=\widehat{\phi}<em>{i}^{(l)} ，产生一阶预测 D l ​ ( ε ) ≈ ε ​ a i ( l ) D</em>{l}(\varepsilon)\approx\varepsilon a_{i}^{(l)} ，因此归一化下降 D l ​ ( ε ) / a i ( l ) D_{l}(\varepsilon)/a_{i}^{(l)} 在一阶紧密极限下等于 ε \varepsilon 。在 Qwen2.5-1.5B-Instruct 上以 fp32 精度对 8 8 条 GSM8K 链的功能活跃 ( i , l ) (i,l) 单元（每条链 | D l ​ ( ε = 1 ) | |D_{l}(\varepsilon=1)| 的前四分位数，下限为 1 0 − 5 10^{-5} nats）进行测量，经验中位数总体上在 ≲ 10 % \lesssim 10\% 范围内追踪 y = ε y=\varepsilon （图 10）。<br />
+D.6 泰勒代理对精确干预的经验排序保真度<br />
+我们进一步通过在 Qwen2.5-1.5B-Instruct 上比较 GSM8K 下每个泰勒代理选出的排名最高 Token 与其精确干预选出的 Token 来评估选择保真度。如表 5 所示，必要性在 γ = 0.3 \gamma=0.3 时达到 0.72 0.72 的 top- γ \gamma 一致性，在 γ = 0.5 \gamma=0.5 时达到 0.81 0.81 ，而充分性分别达到 0.68 0.68 和 0.76 0.76 。所有值都大大超过相应的偶然水平 0.3 0.3 和 0.5 0.5 ，表明两个代理都可靠地保留了由其精确干预诱导的 Token 选择。<br />
+轴 | top@0.3 | top@0.5<br />
+必要性 ϕ ^ \widehat{\phi} | 0.72 0.72 | 0.81 0.81<br />
+充分性 ψ ^ \widehat{\psi} | 0.68 0.68 | 0.76 0.76<br />
+表 5：在 Qwen2.5-1.5B-Instruct 上，GSM8K 上一阶泰勒代理（ ϕ ^ , ψ ^ \widehat{\phi},\widehat{\psi} ）与精确干预（ ϕ , ψ \phi,\psi ）之间的 top- γ \gamma 一致性。偶然一致性为 γ \gamma 。</p>
+<p>附录 E 许可证和使用条款<br />
+本节讨论我们实验中使用的所有外部工件以及我们发布的工件许可证和使用条款。我们使用的所有数据集和模型均在宽松的、对研究友好的许可证下公开发布，我们的使用与其预期研究目的一致。<br />
+数据集。我们使用四个公开发布的推理基准。GSM8K（cobbe2021training）在 MIT 许可证下发布。MATH 数据集（hendrycks2021measuring）在 MIT 许可证下发布。MMLU-Pro（wang2024mmlupro）通过 Hugging Face 上的 TIGER-Lab 仓库在 MIT 许可证下发布。BIG-Bench Hard（suzgun2023challenging）作为 BIG-Bench 套件的一部分在 Apache 许可证 2.0 下发布。所有四个数据集均分发用于研究使用，我们的实验使用与其预期范围一致。我们不重新分发底层数据；实验从原始来源加载数据集。<br />
+模型。我们使用四个公开发布的指令微调模型。Qwen2.5-1.5B-Instruct 和 Qwen2.5-7B-Instruct（qwen2.5）在 Qwen 许可证（基于 Apache 2.0）下发布。Llama-3.1-8B-Instruct（grattafiori2024llama）在 Llama 3.1 社区许可协议下发布。Mistral-7B-Instruct-v0.3（Jiang2023Mistral7）在 Apache 许可证 2.0 下发布。所有四个模型都允许研究使用、微调，并根据各自条款发布衍生工件（如 LoRA 适配器）。<br />
+与预期使用的一致性。我们对所有外部工件的使用与其预期研究目的一致。四个推理数据集（GSM8K、MATH、MMLU-Pro、BIG-Bench Hard）作为评估语言模型多步推理的研究基准发布，我们的使用仅限于在发布的训练拆分上进行基准测试和训练 LoRA 适配器。四个指令微调模型（Qwen2.5-1.5B/7B、Llama-3.1-8B、Mistral-7B-Instruct-v0.3）发布以支持研究、微调和根据各自条款开发衍生工件。从每个基础模型衍生的适配器继承该基础模型的原始访问条件；特别是，从 Llama-3.1-8B-Instruct 衍生的适配器仅发布用于 Llama-3.1 基础模型，不用于训练、蒸馏或以其他方式改进 Llama 系列之外的语言模型，这与 Llama 3.1 社区许可证一致。所有其他适配器（基于 Qwen2.5 和 Mistral 构建，均在 Apache 2.0 下发布）不带有此类衍生限制。所有实验使用仅用于研究目的；我们不会将训练好的适配器部署在商业产品中。</p>
+<p>附录 F BBH 和 MMLU-Pro 上的附加主要结果<br />
+表 6 报告了图 4 和 5 基础的每个（模型，评分器）压缩数字，格式与表 1 的 Δ \Delta Acc / 压缩率格式相同。<br />
+数据集 | 模型 | 方法 | Δ \Delta Acc. (%) | 压缩率<br />
+BBH | Llama-3.1-8B-Inst. ⋆ \star | MIST | ↑ 3.7 \uparrow 3.7 | 11.6 % 11.6\%<br />
+| | tokenskip | ↑ 1.5 \uparrow 1.5 | 4.6 % 4.6\%<br />
+| | gogi_l1 | ↓ 1.2 \downarrow 1.2 | 6.8 % 6.8\%<br />
+| | attn_rollout | ↓ 0.7 \downarrow 0.7 | 6.1 % 6.1\%<br />
+| | h2o | ↑ 0.2 \uparrow 0.2 | 7.8 % 7.8\%<br />
+MMLU-Pro | Qwen2.5-1.5B-Inst. ⋆ \star | MIST | ↓ 2.8 \downarrow 2.8 | 20.8 % 20.8\%<br />
+| | tokenskip | ↓ 4.3 \downarrow 4.3 | − 0.5 % -0.5\%<br />
+| | gogi_l1 | ↓ 6.6 \downarrow 6.6 | 3.4 % 3.4\%<br />
+| | perplexity | ↓ 7.1 \downarrow 7.1 | 7.8 % 7.8\%<br />
+| | h2o | ↓ 3.5 \downarrow 3.5 | 12.7 % 12.7\%<br />
+| Llama-3.1-8B-Inst. ⋆ \star | MIST | ↓ 1.0 \downarrow 1.0 | 3.4 % 3.4\%<br />
+| | tokenskip | ↓ 2.5 \downarrow 2.5 | 1.2 % 1.2\%<br />
+| | gogi_l1 | ↓ 2.6 \downarrow 2.6 | 2.1 % 2.1\%<br />
+| | perplexity | ↓ 3.7 \downarrow 3.7 | 6.9 % 6.9\%<br />
+| | h2o | ↓ 3.4 \downarrow 3.4 | 2.5 % 2.5\%<br />
+表 6：BBH 和 MMLU-Pro 上的附加主要结果，格式与表 1 相同。每个条目是 γ ∈ { 0.6 , 0.7 , 0.8 , 0.9 } \gamma\in{0.6,0.7,0.8,0.9} 上相对于完整 CoT 基线的平均值。 Δ \Delta Acc. (%)：相对准确率变化（ ↓ \downarrow 下降， ↑ \uparrow 提升）；压缩率：LoRA 适配模型在推理时生成的 Token 相对于同一完整 CoT 基线减少的比例。负压缩率表示压缩监督适配器在评估时生成了比完整 CoT 基线更多的 Token。</p>
+<p>附录 G 直接推理成本测量。<br />
+延迟 | 模型 | γ = 1.0 \gamma{=}1.0 | γ = 0.5 \gamma{=}0.5 | 加速比<br />
+Qwen2.5-1.5B | 1.44 1.44 | 1.18 1.18 | 1.22 × 1.22\times<br />
+Llama-3.1-8B | 1.38 1.38 | 1.06 1.06 | 1.30 × 1.30\times<br />
+Mistral-7B | 1.72 1.72 | 1.20 1.20 | 1.43 × 1.43\times<br />
+表 7：在最激进的训练预算（ γ = 0.5 \gamma{=}0.5 ）下 MIST 适配器在 GSM8K 上的直接测量推理成本，与未压缩参考（ γ = 1.0 \gamma{=}1.0 ，无压缩指令的相同适配器）的对比。延迟是批次大小为 16 16 时每个问题的平均挂钟解码时间；加速比是 γ = 1.0 \gamma{=}1.0 相对于 γ = 0.5 \gamma{=}0.5 的延迟比。<br />
+主要结果使用压缩率作为与硬件无关的效率代理。为了量化实际服务收益，我们额外报告了在完整 GSM8K 测试集（ 1 , 319 1{,}319 个示例）上的挂钟解码延迟，使用批次大小为 16 16 的批量贪婪解码、bfloat16 和 SDPA。对于每个模型，我们比较最激进训练预算（ γ = 0.5 \gamma{=}0.5 ）下的 MIST 适配器与无压缩指令（ γ = 1.0 \gamma{=}1.0 ）下的相同适配器，后者作为完整 CoT 参考。如表 7 所示，压缩将 Qwen2.5-1.5B-Instruct 的延迟从 1.44 1.44 秒减少到 1.18 1.18 秒，Llama-3.1-8B-Instruct 从 1.38 1.38 秒减少到 1.06 1.06 秒，Mistral-7B-Instruct-v0.3 从 1.72 1.72 秒减少到 1.20 1.20 秒，分别对应 1.22 × 1.22\times 、 1.30 × 1.30\times 和 1.43 × 1.43\times 的加速。这些结果证实，更短的推理轨迹可转化为跨模型的可测量的端到端推理节省。</p>
+<p>附录 H 经验性每层 Logit Lens 权重<br />
+图 11：论文标题目标模型中两个模型在 30 30 条 BBH 链上的 Logit Lens 层权重 c ¯ l \bar{c}<em>{l} （公式 6）的经验平均值。权重幅度压倒性地集中在后面的层，而许多中间层的权重接近于零；这两个观察结果都直接经验性地支持了公式 (7) 中的层加权聚合，而不是均匀的每层权重。<br />
+公式 (6) 中的层权重 c ¯ l \bar{c}</em>{l} 是层 l l 的残差流更新与答案解嵌方向的链平均内积。图 11 为四个主要目标模型中的两个：Qwen2.5-1.5B-Instruct 和 Llama-3.1-8B-Instruct，逐层绘制了其在 30 30 条 BBH 链上的平均值。<br />
+该图使以下经验点具体化。首先， c ¯ l \bar{c}_{l} 在深度上远非均匀。这解释了为什么 §4.2（图 7）中的 MIST-uniform 消融会损失高达 4.6 4.6 pp ——均匀加权将选择预算浪费在更新本质上是答案中性的层-Token 单元上。此外，后层主导地位在两个模型系列中是一致的，因此公式 (7) 中的聚合并不特定于单一架构。</p>
+<p>附录 I 结合前的每轴归一化<br />
+必要性得分 ϕ ^ i \widehat{\phi}<em>{i} 和充分性得分 ψ ^ i \widehat{\psi}</em>{i} （公式 7）是具有不同参考激活的对数似然梯度的内积，因此在不同的链上具有不同的尺度。为了使公式 (8) 中的混合系数 α \alpha 在链和基准之间具有可比性，我们在混合前对每个轴应用每链标准化。<br />
+必要性轴在对数空间中标准化：<br />
+ϕ ^ i norm = log ⁡ ( | ϕ ^ i | + ε ) − mean j ​ log ⁡ ( | ϕ ^ j | + ε ) std j ​ log ⁡ ( | ϕ ^ j | + ε ) , \widehat{\phi}^{\,\mathrm{norm}}<em>{i}\;=\;\frac{\log(|\widehat{\phi}</em>{i}|+\varepsilon)-\mathrm{mean}<em>{j}\log(|\widehat{\phi}</em>{j}|+\varepsilon)}{\mathrm{std}<em>{j}\log(|\widehat{\phi}</em>{j}|+\varepsilon)}, (30)<br />
+充分性轴使用标准 z 分数：<br />
+ψ ^ i norm = ψ ^ i − mean j ​ ψ ^ j std j ​ ψ ^ j , \widehat{\psi}^{\,\mathrm{norm}}<em>{i}\;=\;\frac{\widehat{\psi}</em>{i}-\mathrm{mean}<em>{j}\widehat{\psi}</em>{j}}{\mathrm{std}<em>{j}\widehat{\psi}</em>{j}}, (31)<br />
+其中 ε = 1 0 − 12 \varepsilon=10^{-12} 用于数值稳定性，统计量在链的 Token 索引 j j 上取得。公式 (8) 中的统一得分是在 ϕ ^ i norm \widehat{\phi}^{\,\mathrm{norm}}<em>{i} 和 ψ ^ i norm \widehat{\psi}^{\,\mathrm{norm}}</em>{i} 上计算的。必要性轴上的对数转换是对于每链幅度跨越几个数量级的数量的标准选择，并保留了链内 Token 的相对顺序。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 思维链压缩, 模型内部显著性, Token剪枝, 残差流, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
