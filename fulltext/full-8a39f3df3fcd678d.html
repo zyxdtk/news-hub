@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向 WhisperX 的上下文感知交错批处理 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向 WhisperX 的上下文感知交错批处理</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-08-31</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2608.31170" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Context-Aware Interleaved Batching for WhisperX</h4>
+            <p><strong>中文摘要：</strong> 本文提出了上下文感知交错批处理方法，以解决 WhisperX 在长音频转录中因批处理孤立音频片段而丢失历史上下文的问题。该方法利用 VAD 边界稳定文本条件，通过 FIFO 滚动缓冲区在并行批次间传递历史文本，并解决冷启动问题。实验表明，该方法在保持高推理速度的同时，显著降低了词错率，提升了专有名词和标点符号的转录准确性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>牛津大学 †</p>
+<h1>面向 WhisperX 的上下文感知交错批处理</h1>
+<p>Carlos Bain *, Max Bain †</p>
+<p><strong>摘要</strong><br />
+虽然 WhisperX 通过音频内批处理加速了语音转录，但它将音频片段孤立开来，丢失了实现连贯标点和术语转录所需的历史上下文。相反，标准 Whisper 保留了顺序上下文，但推理速度慢且容易陷入幻觉循环。为了兼得两者的优势，我们提出了上下文感知交错批处理。通过使用 VAD 导出的片段边界，我们的算法稳定了 Whisper 的文本条件，使我们能够在批处理的音频片段中安全地保持连续的历史上下文。正如在长音频基准测试中所展示的，该方法降低了词错率（WER）并改善了专有名词的转录，同时保持了高吞吐量的推理速度。</p>
+<p>††<br />
+地址:<br />
+\@name<br />
+\@address</p>
+<p><strong>图 1：</strong><br />
+用于语音转录的上下文感知交错批处理。<br />
+长音频首先通过语音活动检测（VAD）被分割成块（≤ 30s）。这些块被划分为连续的流，并通过从每个流中提取一个块来进行批处理。为了在批处理转录期间保留文本上下文，每个块都以其流中前序块生成的 FIFO 滚动文本缓冲区为条件。最后，为了解决冷启动问题，使用按时间顺序排列的前序流的最终文本作为上下文，对第一批进行重新转录。</p>
+<p>11 脚注文本：<br />
+联系邮箱：carlos.o.bain@gmail.com<br />
+22 脚注文本：<br />
+在牛津大学期间完成的工作，目前在 Google DeepMind 工作。</p>
+<h2>1 引言</h2>
+<p>大规模语音识别模型，如 OpenAI 的 Whisper [1]，在各个领域都实现了高准确率。然而，在长音频上部署这些模型的计算成本很高。标准 Whisper 顺序处理音频，无法进行批处理推理。此外，虽然 Whisper 包含 <code>condition_on_previous_text</code> 功能以保持历史上下文，但它通常不稳定。正如我们的评估所表明的，在标准 Whisper 中启用此功能实际上会降低整体词错率（WER），这是模型在顺序前向传递中产生幻觉或传播错误的已知症状 [2]。此外，最近的工作 [3] 进一步强调了长音频转录中自回归上下文的风险，表明错误的上下文可以跨连续解码步骤传播并引发幻觉。</p>
+<p>为了解决这个问题，WhisperX [4] 引入了基于语音活动检测（VAD）的流水线。通过在自然停顿处而不是任意固定长度窗口处分割音频，WhisperX 通过音频内批处理转录提供了显著的推理加速，提高了整体转录准确率，并通过与 CTC 模型的强制对齐添加了高度准确的词级时间戳 [5]。尽管有这些优势，批处理本质上将每个音频块孤立开来。这阻止了模型以前序文本为条件，剥夺了其自回归上下文能力。在长音频中，这种历史上下文的丢失会降低在连续对话线索、技术语言和专有名词上的性能。端到端 ASR 领域的早期工作早已确立，通过上下文偏置获得的此类上下文对于准确转录罕见和特定领域的术语至关重要 [6, 7, 8]。</p>
+<p>目前，没有转录方法能够同时实现高并行化、可靠的词级时间戳和稳定的自回归条件。我们通过上下文感知交错批处理来解决这个问题。通过跨并行批处理边界传播历史文本，我们的方法在不牺牲推理速度的情况下保持了连续的上下文。至关重要的是，将音频块边界与 Whisper 的内部时间戳解码解耦，防止了幻觉循环，稳定了模型以前序文本为条件的机制，并提高了准确率。</p>
+<p>我们的贡献有三个方面： 一种在完全并行化的转录框架内启用历史文本条件的新方法； 一个新的开源医学长音频基准测试，并与针对性的专有名词和标点符号指标一起进行评估； 经验证明，我们的方法提高了所有指标的准确率，并可集成到任何基于批处理和分段的转录流水线中。</p>
+<h2>2 方法</h2>
+<p>在本节中，我们描述了 WhisperX [4] 引入的并行语音转录基线，随后是我们提出的上下文感知交错批处理方法。</p>
+<h3>2.1 基线架构概述</h3>
+<p>我们首先回顾标准 Whisper 模型的自回归条件机制 [1]。Whisper 作为编码器-解码器 Transformer 运行。在标准顺序推理期间，音频以最多 30 秒的固定窗口进行处理。在转录给定窗口 $i$ 时，模型依赖两种不同的注意力机制来生成文本：</p>
+<ol>
+<li><strong>交叉注意力：</strong> 编码器处理窗口 $i$ 的音频特征，并将表示传递给解码器。</li>
+<li><strong>自注意力（条件）：</strong> 因为 Whisper 按时间顺序处理这些音频窗口，所以来自前一个窗口 $i-1$ 的解码文本标记可以作为窗口 $i$ 解码器的条件前缀。</li>
+</ol>
+<p>为了确定后续传递的输入音频块边界，标准 Whisper 自回归地解码特定的时间戳标记。通过预测当前语音片段的结束时间，模型决定下一次前向传递的 30 秒音频窗口应移动多远。然而，这种内部时间戳解码容易出错和产生幻觉，经常导致模型预测错误的音频边界，从而导致错误的窗口移动、循环和严重的文本幻觉。此外，<code>condition_on_previous_text</code> 功能充当先进先出（FIFO）滚动缓冲区，保留最多 224 个先前解码的文本标记作为下一个块的历史前缀。虽然旨在保持对话的连续性，但输入从错误时间戳边界导出的 224 个标记的上下文通常会使模型陷入负反馈循环，向前传播幻觉。</p>
+<p>WhisperX 通过依赖稳健的语音活动检测（VAD）流水线规避了这种脆弱的时间戳解码。长音频首先由轻量级 VAD 模型 [9] 在自然停顿处进行分段，而不是依赖 Whisper 模型基于文本的内部时间戳。这产生了一个按时间排序的 $N$ 个可变长度块的序列，表示为 $\mathbf{s}=[s_{0},s_{1},\dots,s_{N-1}]$。然后，这些单独的块（每个最多 30 秒）被分组为批次并并行转录，从而实现了显著的推理加速，以及改进的词级时间戳和整体转录准确率。然而，批处理孤立了每个块。如果块 $s_{i-1}$ 和 $s_{i}$ 在同一批次中同时处理，则 $s_{i-1}$ 的文本标记无法作为前缀传递给 $s_{i}$。如果没有这种文本条件，模型将失去跨块边界的上下文感知能力。这经常导致片段之间的文本不一致，特别是在标点符号、大小写和专有名词的转录方面。</p>
+<h3>2.2 上下文感知交错批处理</h3>
+<p>为了同时保留标准 Whisper 的自回归文本条件和并行转录的吞吐量，我们提出了上下文感知交错批处理。给定 VAD 分段的序列 $\mathbf{s}$ 和目标硬件批大小 $B$，我们将序列划分为 $B$ 个长度为 $M=\lceil N/B \rceil$ 的连续流（如果 $N$ 不能被 $B$ 整除，则用空音频填充最后一个流）。对于 $b\in{0,1,\dots,B-1}$，第 $b$ 个流定义为：</p>
+<p>$$ \mathbf{S}<em>{b}=[s</em>{b\cdot M},\,s_{b\cdot M+1},\,\dots,\,s_{b\cdot M+M-1}] \quad (1) $$</p>
+<p>转录在 $M$ 个顺序批处理迭代中进行。在步骤 $m\in{0,1,\dots,M-1}$，我们通过从每个流中提取第 $m$ 个块来构建批次 $\mathcal{B}_{m}$：</p>
+<p>$$ \mathcal{B}<em>{m}=\left{\mathbf{S}</em>{b}[m]\mid b\in{0,1,\dots,B-1}\right} \quad (2) $$</p>
+<p>因为块 $\mathbf{S}<em>{b}[m]$ 在原始音频中紧随 $\mathbf{S}</em>{b}[m-1]$ 之后，所以来自批次 $\mathcal{B}<em>{m-1}$ 的解码文本被附加到特定于流的 FIFO 滚动上下文缓冲区（上限为 224 个标记）。然后，此滚动缓冲区用作批次 $\mathcal{B}</em>{m}$ 中相应块的条件前缀。这使得标准 Whisper 的自回归上下文能够跨音频传递，同时在安全的孤立 VAD 边界上操作，同时并行处理 $B$ 个块。</p>
+<p><strong>冷启动解决。</strong> 在每个流开始时（$m=0$），按时间顺序排列的前一个块是 $\mathbf{S}<em>{b-1}[M-1]$，它属于最后一批 $\mathcal{B}</em>{M-1}$。由于在评估 $\mathcal{B}<em>{0}$ 时 $\mathcal{B}</em>{M-1}$ 尚未转录，因此初始批次 $\mathcal{B}<em>{0}$ 在没有文本条件的情况下进行处理。一旦所有 $M$ 个批次都被转录，$\mathcal{B}</em>{0}$ 将使用从 $\mathcal{B}_{M-1}$ 新生成的文本作为上下文前缀重新转录，从而确保所有流的上下文边界一致。</p>
+<pre><code class="language-python">def batched_transcription(audio, batch_size, max_ctx=224):
+    '''
+    audio - 输入音频信号
+    batch_size - 流的数量 (B)
+    max_ctx - 用于条件的最大文本标记数
+    returns:
+    segs - 按时间顺序排列的转录片段数组
+    '''
+    # 提取 &lt;= 30s 的语音块
+    chunks = extract_vad_chunks(audio)
+
+    # 拆分为 B 个顺序流
+    streams = distribute_contiguous(chunks, batch_size)
+
+    # 跨流分组以进行批处理
+    batches = interleave_roundrobin(streams)
+
+    # 为每个流初始化空的滚动上下文
+    ctx = [[] for _ in range(batch_size)]
+    segs = []
+
+    for b in batches:
+        out = batch_transcribe(b, ctx)
+        segs.append(out)
+
+        # 更新滚动上下文
+        for sdx in range(len(out)):
+            # 提取标记 ID 以输入到
+            # 下一次前向传递
+            ctx[sdx] += out[sdx]['tokens']
+            # 截断至最大上下文窗口
+            ctx[sdx] = ctx[sdx][-max_ctx:]
+
+    # 冷启动解决：流 i 获取流 i-1 的上下文。
+    ctx_wrap = [None] + ctx[:-1]
+    segs[0] = batch_transcribe(batches[0], ctx_wrap)
+
+    # 展平批次并按时间顺序排序
+    return sort_by_time(segs)
+</code></pre>
+<p><strong>列表 1：</strong> 用于 WhisperX 转录的上下文感知交错批处理的伪代码。</p>
+<h2>3 结果</h2>
+<h3>3.1 评估方法</h3>
+<h4>3.1.1 评估数据集</h4>
+<p><strong>Earnings-21 [10]。</strong> 为了评估我们的方法，我们使用了两个基准测试。首先是广泛使用的 Earnings-21 语料库，这是一个具有挑战性的数据集，由 2020 年长篇、无脚本财务收益电话会议组成。该语料库特别适合对现实世界的转录系统进行基准测试，因为它具有高密度的复杂金融术语、专有名词和连续语音片段。至关重要的是，Earnings-21 数据集提供了严格的真值标点符号标记，使我们能够评估标点符号的准确率。</p>
+<p><strong>MedicalLessons。</strong> 其次，我们引入了一个自定义的医学术语课程语料库：MedicalLessons——一个专门构建的数据集，由涵盖基础和解剖学医学术语的教育讲座录音组成。该语料库包含一系列结构化课程，涵盖医学前缀和后缀、解剖学术语等主题，来源于 YouTube。所有六个录音的真值转录文本都经过人工验证以确保正确性。这是作为开源数据集发布的 *** https://huggingface.co/datasets/litosway/MedicalLessons 。</p>
+<h4>3.1.2 指标</h4>
+<p><strong>WER。</strong> 为了衡量转录准确率，我们使用标准的词错率指标（WER）。</p>
+<p><strong>F1。</strong> 对于标点符号，我们使用 F1；参考转录和假设转录之间的标点符号对齐是使用基于莱文斯坦距离的算法计算的，以独立于归一化文本隔离和评估语法停顿和结构错误。所有指标都在转录文本级别计算，而不是作为单个片段的平均值。对于 WER，文件中的所有预测片段被连接成一个单一的假设字符串，所有真值片段被连接成一个单一的参考字符串；然后使用标准的基于莱文斯坦距离的对齐在这些全长字符串上计算一次 WER。</p>
+<p>当然，这两个指标在其精确匹配性质上都有局限性，并且缺乏“语义”测量。标准的 ASR 指标尚未被证明能够正确衡量专有名词、技术语言和标点符号 [11]。因此，我们额外引入了基于 LLM 的指标。</p>
+<p><strong>LLM 标点符号评分。</strong> 为了基于语义含义而不是严格的精确匹配来计算标点符号准确率，我们引入了 LLM 标点符号评分（LPS），类似于 [11] 中所示的 LLM 作为评判者的指标。LPS 确保风格选择（例如使用破折号代替逗号，或使用句号代替分隔从句的逗号）不会受到惩罚。为了计算 LPS，使用 jiwer 库去除真值和预测转录文本的大小写和标点符号以进行词级对齐，标点符号被单独标记。这些完全加标的文本被分成正好 120 个 GT 词的片段。然后将每个配对的片段传递给 GPT-5.1，以 1 到 3 的等级评估预测标点符号的语义准确率。提示指示模型忽略词级转录错误，仅惩罚扭曲核心含义的结构差异。预测转录文本的最终 LPS 是这些单独片段分数的平均值。给定一个分为 $N$ 个片段的转录文本，其中每个片段 $i$ 获得分数 $S_{i}\in{1,2,3}$，总分计算为：</p>
+<p>$$ \text{LPS}=\frac{1}{N}\sum_{i=1}^{N}S_{i} $$</p>
+<p><strong>专有名词评分。</strong> 为了衡量对专有名词和特定领域技术术语的遵循程度，我们提出了专有名词评分。每个真值词都由基于 LLM 的分类器标记为专有名词或技术术语。然后使用真值和候选转录文本之间的词级对齐来识别替换和删除。Pn 分数衡量正确转录的专有名词的比例：</p>
+<p>$$ \mathrm{Pn}=\frac{P-M}{P}\times 100 \quad (3) $$</p>
+<p>其中 $P$ 是真值中专有名词的总数，$M$ 是其中被错误转录（替换或删除）的数量。100 分表示完美的专有名词准确率。该指标的提出是因为传统 WER 在捕捉转录错误重要性方面存在局限性。Semantic-WER [12] 通过赋予语义上重要的错误更大的重要性，而不是平等对待所有词错误来解决这一局限性。最近，Bañeras-Roux 等人 [13] 研究了生成式 LLM 作为 ASR 评估器，表明在对竞争性转录假设进行评分时，基于 LLM 的评估可以实现比 WER 高得多的与人类判断的一致性。为了更好地评估转录，我们的 Pn 分数针对特定领域的技术术语和专有名词，这是一种衡量转录质量的卓越方法。</p>
+<h4>3.1.3 实现细节</h4>
+<p>所有评估均使用 <code>openai/whisper-large-v2</code> 作为基础转录模型，在单个 Nvidia T4 GPU 上执行。在两个 WhisperX 变体上，对收益数据集使用了默认批大小 16。对于医学数据集，使用了批大小 4。接下来，在两个数据集的所有变体上都应用了 float16 计算类型。解码使用束搜索（宽度 5，温度 0.0），在温度 0.2-1.0 之间回退到 5 选 1 采样。WhisperX 和 Whisper 均使用各自存储库中的默认设置。最后，为了计算 WER，使用了 <code>jiwer</code> Python 包。</p>
+<h3>3.2 结果与讨论</h3>
+<p><strong>表 1：</strong><br />
+转录变体的性能指标评估（报告为百分比）。在长语音语料库的 15 个转录文本上比较 WER、Pn 分数、F1 和速度。箭头（↑/↓）表示每个指标的首选方向。最佳性能值以粗体突出显示。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">方法</th>
+<th style="text-align: center;">以前序文本为条件</th>
+<th style="text-align: center;">WER ↓</th>
+<th style="text-align: center;">Pn 分数 ↑</th>
+<th style="text-align: center;">F1 ↑</th>
+<th style="text-align: center;">LPS ↑</th>
+<th style="text-align: center;">速度 ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">WhisperX+IB (我们的)</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">8.2</td>
+<td style="text-align: center;">79.3</td>
+<td style="text-align: center;">67.4</td>
+<td style="text-align: center;">2.9</td>
+<td style="text-align: center;">8.4×</td>
+</tr>
+<tr>
+<td style="text-align: left;">WhisperX [4]</td>
+<td style="text-align: center;">×</td>
+<td style="text-align: center;">8.4</td>
+<td style="text-align: center;">76.5</td>
+<td style="text-align: center;">67.2</td>
+<td style="text-align: center;">2.8</td>
+<td style="text-align: center;">11.8×</td>
+</tr>
+<tr>
+<td style="text-align: left;">openai/whisper [1]</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">12.0</td>
+<td style="text-align: center;">72.0</td>
+<td style="text-align: center;">67.9</td>
+<td style="text-align: center;">2.9</td>
+<td style="text-align: center;">1.0×</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: center;">×</td>
+<td style="text-align: center;">11.9</td>
+<td style="text-align: center;">66.9</td>
+<td style="text-align: center;">66.7</td>
+<td style="text-align: center;">2.8</td>
+<td style="text-align: center;">1.0×</td>
+</tr>
+</tbody>
+</table>
+<p>在表 1 中，我们展示了我们提出的上下文感知交错批处理（WhisperX+IB）与标准 WhisperX 和顺序 <code>openai/whisper</code> 基线在 Earnings-21 语料库上的评估对比。结果表明，我们的方法有效地弥合了由孤立批处理引起的性能差距。尽管带有前序文本的顺序 <code>openai/whisper</code> 模型实现了较高的 F1 分数（67.91）和领先的 LPS（2.9），但它的 WER（12.0）很高，并且缺乏并行化，以 1.0× 的基线速度运行。通过跨块边界重新启用自回归上下文，WhisperX+IB 匹配了最高的 LPS（2.9），提高了转录准确率，并提供了 8.4 倍的加速。尽管由于冷启动解决传递导致延迟略有下降，但我们的方法仍与标准 WhisperX（11.8×）具有竞争力，同时提供了改进的转录结构和准确率。</p>
+<p>从 Earnings-21 的结果中我们可以观察到，<code>openai/whisper</code> 在标点符号质量方面优于我们的方法。WhisperX 为纯转录设置 <code>without_timestamps=True</code>（因此 WhisperX+IB 也是如此）。Whisper 解码器在由单个条件标记控制的两种目标格式上进行训练，一种带有交错时间戳标记，另一种没有 [citeradford2022]。我们假设时间戳条件模式学习了句号和标记片段边界之间更紧密的关联。因此，没有它们的解码可能会恶化句号的位置，并解释了为什么尽管在 WER 和 Pn 分数上落后，Whisper 的 F1 仍然更高。</p>
+<p><strong>表 2：</strong><br />
+在医学 YouTube 讲座上对转录变体的评估（报告为百分比）。比较 WER 和 Pn 分数，在手动验证的医学术语课程转录文本真值数据集上进行评估。箭头（↑/↓）表示每个指标的首选方向。最佳性能值以粗体突出显示。WhisperX 和 WhisperX+IB 的批大小设置为 4。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">变体</th>
+<th style="text-align: center;">WER ↓</th>
+<th style="text-align: center;">Pn 分数 ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">WhisperX+IB (我们的)</td>
+<td style="text-align: center;">3.3</td>
+<td style="text-align: center;">84.7</td>
+</tr>
+<tr>
+<td style="text-align: left;">WhisperX</td>
+<td style="text-align: center;">3.5</td>
+<td style="text-align: center;">83.6</td>
+</tr>
+</tbody>
+</table>
+<p>在表 2 中，我们报告了在自定义 MedicalLessons 数据集上的结果，以评估模型处理复杂的特定领域术语的能力。我们看到交错批处理再次优于标准的 WhisperX 方法。通过成功地将前序文本上下文传播到后续批次，WhisperX+IB 将整体 WER 从 3.5% 降低到 3.3%。更重要的是，我们提出的方法在专有名词（PN）分数上产生了显著改进，从 83.6% 提高到 84.7%。这表明提供连续的文本上下文极大地帮助模型正确预测跨越 VAD 分段块边界的具有挑战性的医学词汇和技术术语，而这种能力在孤立的批处理推理中通常会丢失。</p>
+<p><strong>表 3：</strong><br />
+展示上下文注入影响的定性比较。在没有历史上下文的情况下，孤立的 <code>WhisperX</code> 模型产生了“post-2007”这一短语幻觉。相比之下，<code>WhisperX+IB</code> 变体成功利用前序上下文准确转录了“upholstery fabric segment”。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">前序上下文</th>
+<th style="text-align: left;">“对于 <em>upholstery fabric segment</em>，第三季度的销售额为 3500 万美元，比上一年下降 5.7%，而上一年的销售业绩非常强劲……”</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">WhisperX</td>
+<td style="text-align: left;">“过去 12 个月期间的资本回报率对于 <em>post-2007</em> 继续令人印象深刻，达到 54%。家居配件部门，包括我们的电子商务……”</td>
+</tr>
+<tr>
+<td style="text-align: left;">WhisperX+IB (带有前序上下文)</td>
+<td style="text-align: left;">“过去 12 个月期间的资本回报率对于 <em>upholstery fabric segment</em> 继续令人印象深刻，达到 54%。家居配件部门，包括我们的电子商务……”</td>
+</tr>
+</tbody>
+</table>
+<p>表 3 说明了上下文注入在提高转录准确率方面的关键作用。当孤立运行时，基线 WhisperX 模型产生了“post-2007”这一短语幻觉。相比之下，WhisperX+IB 变体成功利用前序对话为其输出提供了上下文基础，消除了幻觉并准确转录了“upholstery fabric segment”这一短语。</p>
+<h3>3.3 局限性</h3>
+<p>虽然交错批处理对长音频非常有效，但当 VAD 分段块的总数（$N$）小于或等于批大小（$B$）时，会出现一个固有的局限性。在这种情况下，转录在单次并行传递中完成，阻止了前序文本上下文的传播。恢复此上下文需要人为减小批大小，可能降至 $B=1$，这以牺牲并行吞吐量为代价来换取上下文准确率。然而，重要的是，即使在这种完全顺序的配置（$B=1$）中，我们的方法与标准 Whisper 相比仍保持显著的准确率优势。通过将自回归文本条件与脆弱的时间戳解码解耦，我们的方法避免了幻觉循环，并保持了最先进的 WER、标点符号和专有名词准确率。</p>
+<h2>4 结论</h2>
+<p>在本文中，我们解决了高速音频转录中的一个主要挑战：处理速度和准确率之间的权衡。虽然现代系统通过将音频分成单独的块进行并行处理来实现高吞吐量，但这种方法将各个片段彼此孤立，切断了连续的上下文并降低了转录质量。我们提出的方法成功地弥合了这一差距。结果表明 WhisperX+IB 如何在语法和标点方面减少错误。最终，该框架证明推理速度不必以牺牲准确率为代价，为高性能、上下文感知的语音转录提供了可扩展的解决方案。</p>
+<h2>参考文献</h2>
+<p>[1] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and I. Sutskever (2022). Robust speech recognition via large-scale weak supervision. External Links: 2212.04356, Link. Cited by: §1, §2.1, Table 1.</p>
+<p>[2] Y. Peng, J. Tian, B. Yan, D. Berrebbi, X. Chang, X. Li, J. Shi, S. Arora, W. Chen, R. Sharma, W. Zhang, Y. Sudo, M. Shakeel, J. Jung, S. Maiti, and S. Watanabe (2023). Reproducing whisper-style training using an open-source toolkit and publicly available data. External Links: 2309.13876, Link. Cited by: §1.</p>
+<p>[3] H. Ahn, J. Chae, Y. Park, and K. Shim (2026). Whisper-cd: accurate long-form speech recognition using multi-negative contrastive decoding. External Links: 2603.06193, Link. Cited by: §1.</p>
+<p>[4] M. Bain, J. Huh, T. Han, and A. Zisserman (2023). WhisperX: time-accurate speech transcription of long-form audio. External Links: 2303.00747, Link. Cited by: §1, §2, Table 1.</p>
+<p>[5] L. Kürzinger, D. Winkelbauer, L. Li, T. Watzel, and G. Rigoll (2020). Ctc-segmentation of large corpora for german end-to-end speech recognition. In International Conference on Speech and Computer, pp. 267–278. Cited by: §1.</p>
+<p>[6] I. Williams, A. Kannan, P. Aleksic, D. Rybach, and T. Sainath (2018). Contextual speech recognition in end-to-end neural network systems using beam search. In Proc. Interspeech 2018, pp. 2227–2231. External Links: Document. Cited by: §1.</p>
+<p>[7] M. Jain, G. Keren, J. Mahadeokar, and Y. Saraf (2020). Contextual rnn-t for open domain asr. In Interspeech, External Links: Link. Cited by: §1.</p>
+<p>[8] F. Chang, J. Liu, M. H. Radfar, A. Mouchtaris, M. Omologo, A. Rastrow, and S. Kunzmann (2021). Context-aware transformer transducer for speech recognition. 2021 IEEE Automatic Speech Recognition and Understanding Workshop (ASRU), pp. 503–510. External Links: Link. Cited by: §1.</p>
+<p>[9] H. Bredin, R. Yin, J. M. Coria, G. Gelly, P. Korshunov, M. Lavechin, D. Fustes, H. Titeux, W. Bouaziz, and M. Gill (2020). Pyannote. audio: neural building blocks for speaker diarization. In ICASSP 2020-2020 IEEE International conference on acoustics, speech and signal processing (ICASSP), pp. 7124–7128. Cited by: §2.1.</p>
+<p>[10] M. Del Rio, N. Delworth, R. Westerman, M. Huang, N. Bhandari, J. Palakapilly, Q. McNamara, J. Dong, P. Żelasko, and M. Jetté (2021). Earnings-21: a practical benchmark for asr in the wild. In Interspeech 2021, pp. 3465–3469. External Links: Document, Link. Cited by: §3.1.1.</p>
+<p>[11] A. Parulekar and P. Jyothi (2025). LASER: an llm-based asr scoring and evaluation rubric. External Links: 2510.07437, Link. Cited by: §3.1.2, §3.1.2.</p>
+<p>[12] S. Roy (2021). Semantic-wer: a unified metric for the evaluation of a</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 语音识别, WhisperX, 上下文感知, 批处理, 词错率</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
