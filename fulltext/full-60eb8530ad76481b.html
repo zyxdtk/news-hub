@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向连续扩散语言模型的Transformer设计 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向连续扩散语言模型的Transformer设计</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-15</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.22330" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Designing Transformers for Continuous Diffusion Language Models</h4>
+            <p><strong>中文摘要：</strong> 本文提出了LangDiT，一种专为连续扩散语言模型（CDLMs）设计的Transformer骨干架构。研究发现，直接使用因果LLMs或图像DiTs的架构并非CDLMs的最优选择。LangDiT结合了四项关键创新：骨干和查询-键RMSNorm用于特征与注意力规模控制、更宽的噪声条件化、似然捷径梯度分离与有界校准、以及基于熵的置信度门控训练自条件化。在OpenWebText数据集上的实验表明，LangDiT在LangFlow框架中将GenPPL从64.26降至53.66（128 NFE），在Plai</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>面向连续扩散语言模型的Transformer设计</h1>
+<p><strong>作者：</strong> Weijian Luo, Yujian Chen, Hao Jiang, Guang Cheng, Tianyang Hu</p>
+<h2>摘要</h2>
+<p>连续扩散语言模型（CDLMs）提供了一种并行语言生成的替代方法；然而，大多数现有研究直接使用来自因果大语言模型（LLMs）或用于图像生成的扩散Transformer（DiTs）的transformer架构，这些架构并未针对CDLMs进行优化。本文对CDLMs的Transformer架构进行了系统研究，并引入了<strong>语言扩散Transformer</strong>（<strong>LangDiT</strong>），结合了特征和查询–键归一化、更宽的噪声条件化、似然捷径梯度路由和校准，以及置信度门控训练自条件化。LangDiT在匹配的LangFlow比较中显著降低了生成困惑度，在不同模型表述中建立了连续语言生成的新的最先进水平。使用LangFlow作为代表性CDLM，LangDiT作为即插即用骨干网络，在OpenWebText数据集上1024个token序列的无条件生成中，使用1024个NFE实现了21.72的生成困惑度，使用128个NFE实现了44.72的GenPPL。当适应于Plaid风格的CDLM表述时，LangDiT使用1024个去噪NFE实现了11.33的新领先GenPPL，使用128个去噪NFE实现了27.51的GenPPL。这些增益是在保留每个模型的底层表示、训练目标和推理采样器的情况下实现的，将transformer架构隔离为改进的根本来源。我们的研究将架构设计确定为连续扩散语言模型改进的重要来源。</p>
+<p><strong>图1：</strong> OWT-1024上训练期间的架构消融。128 NFE下的GenPPL（左）和每样本平均一元熵（右），使用1,024个样本和EMA权重。R1（基线）和R7（完整模型）显示至180k更新。为清晰起见，R2–R6的轨迹仅显示至50k更新。点为未平滑的记录测量值；端点在180k处标注。图例添加是累积的，更宽的条件化先于捷径分离（表4）。较低的GenPPL伴随较低的一元熵；每个比较分别说明检查点步数和样本数。</p>
+<h2>1 引言</h2>
+<p>自回归语言模型通过顺序预测token来生成文本。连续扩散语言模型（CDLMs）提供了一种替代方案：它们通过迭代去噪或流动力学联合精炼token序列的连续表示，允许多个token位置并行更新。最近的研究探索了一系列表示、训练目标和生成动力学，包括one-hot流、学习的token嵌入和潜空间模型（Lee et al., 2026; Yang et al., 2026; Chen et al., 2026; Hu et al., 2026; Meshchaninov et al., 2026; Guo et al., 2026; Liang et al., 2026）。尽管它们的表述不同，这些模型共享一个核心计算组件：将噪声连续状态映射为语言生成预测的神经骨干网络。</p>
+<p><strong>图2：</strong> OWT上的生成结果（$L=1024$）。(a) 基线和LangDiT在128/1,024去噪步下使用250k更新内的检查点。LangFlow比较在128 NFE使用250k检查点，在1,024 NFE使用180k检查点。RePlaID在128步比较40k与150k，在1,024步比较220k与250k，因此这些对不匹配训练进度；后者在计划预算上也有所不同。(b) 扩展训练检查点：来自1M更新计划的LangFlow 660k和RePlaID 520k。RePlaID需要超出显示步数的一次最终去噪器调用。柱状图显示GenPPL；括号中的值显示每样本平均一元熵。所有结果使用1,024个样本和EMA权重；†表示我们的实现（表3）。</p>
+<p>CDLMs的许多进展集中在连续生成过程的表述和学习上，而实现它们的Transformer架构则受到相对较少的系统关注。现有模型通常从因果大语言模型（LLMs）或为图像生成开发的扩散Transformer（DiTs）继承架构选择。这些架构为方法论研究提供了有用的起点，但它们对连续语言生成的适用性值得更仔细的审视。因果LLMs设计用于下一token预测，而图像DiTs在连续视觉表示上操作。CDLMs必须从噪声连续状态中恢复离散语言token，同时协调噪声相关计算、词汇预测以及（在使用时）自条件化。这些要求引出了一个核心问题：</p>
+<ul>
+<li><strong>什么Transformer架构最适合连续扩散语言模型？</strong></li>
+</ul>
+<p>本文系统研究了CDLMs的Transformer架构，并引入了<strong>LangDiT</strong>，一个为连续语言生成设计的骨干网络。我们的核心发现是，在因果LLMs或图像扩散模型中有效的架构选择不一定在CDLMs中产生最佳性能。通过在固定模型表述内改变架构，我们展示了架构设计可以显著改善生成性能。我们首先在LangFlow（Chen et al., 2026）中开发和评估LangDiT，然后将其转移到Plaid风格的CDLMs（Gulrajani and Hashimoto, 2023; Yang et al., 2026）。在每个设置中，我们保留底层表示、目标表述和推理采样器，以研究每个表述内的架构变化。Plaid适应重用了设计的一个子集，同时保留其原生预测接口。</p>
+<p>我们研究了CDLM架构的三个方面。在骨干网络内，我们研究特征归一化和噪声条件化如何影响去噪。在词汇接口处，我们检查通过似然捷径的梯度如何影响token嵌入的学习。对于自条件化，我们研究先前预测应该在多大程度上指导后续去噪。在共享训练和评估设置下的累积消融研究测量了这些组件的增量效应，产生了一个可重用的架构，在保留底层模型表述的同时改善生成。</p>
+<p>我们在OpenWebText无条件生成上评估LangDiT，序列长度为1,024。七阶段LangFlow阶梯跟踪连续的架构变化（图1）。在250k更新和128 NFE下，在相同调度下，GenPPL从64.26降至53.66，而每样本平均一元熵从5.416变为5.391。另外，来自1M更新计划的660k LangFlow检查点和520k Plaid检查点在较大采样预算下分别达到GenPPL 21.72和11.33（表3）。这些扩展训练分数伴随较大的熵变化，并且不从训练预算中隔离架构效应。我们在整篇论文中区分这些设置（图2）。</p>
+<p>我们的贡献有三方面：</p>
+<ul>
+<li>我们在CDLMs中对六个去噪器设计干预进行了系统的实证研究，使用共享训练和评估设置下的累积LangFlow消融。</li>
+<li>我们引入了<strong>LangDiT</strong>，它结合了骨干归一化和噪声条件化与似然捷径梯度路由、校准以及置信度门控训练自条件化。</li>
+<li>我们在匹配的LangFlow比较中展示了更低的GenPPL，并检验了在Plaid风格表述中兼容组件的重用，报告采样成本和一元熵以及生成困惑度。</li>
+</ul>
+<p>总之，这些发现将架构设计确立为CDLMs进展的重要来源，并为并行语言生成的进一步研究提供了可重用的基础。</p>
+<h2>2 相关工作</h2>
+<p><strong>连续语言扩散和流。</strong> Diffusion-LM和自条件化嵌入扩散建立了语言生成的连续去噪方法（Li et al., 2022; Strudel et al., 2022），而CDCD和Plaid发展了分类扩散和基于似然的训练（Dieleman et al., 2022; Gulrajani and Hashimoto, 2023）。最近的工作探索了流映射（Lee et al., 2026）、具有基于信息的噪声调度的学习嵌入（Chen et al., 2026）、架构精炼（Yang et al., 2026）、超球面动力学（Deschenaux and Gulcehre, 2026）以及嵌入空间流匹配（Hu et al., 2026）。我们在固定的LangFlow和Plaid风格表述内研究架构设计。</p>
+<p><strong>潜表示和解码。</strong> CoDAR使用上下文自回归解码（Shen et al., 2026），而LDLM联合学习编码器、去噪器和解码器并具有受控的梯度交互（Meshchaninov et al., 2026）。Cola-DLM引入了文本VAE和潜先验（Guo et al., 2026），AURORA-LM限制噪声输入路径同时保留高容量潜变量（Liang et al., 2026）。ELF的分析将token恢复与解码器边界和去噪轨迹联系起来（Du and Ma, 2026）。我们的变化在现有的基于码本的预测接口内操作。</p>
+<p><strong>归一化和条件化。</strong> DiT和EDM2强调扩散网络中的自适应条件化和幅度控制（Peebles and Xie, 2023; Karras et al., 2024）。RMSNorm、nGPT和查询–键归一化提供了控制表示和注意力规模的互补方法（Zhang and Sennrich, 2019; Loshchilov et al., 2025; Henry et al., 2020）。相关工作检查了注意力熵崩溃（Zhai et al., 2023），并在整流流Transformer中使用查询–键RMSNorm（Esser et al., 2024）。我们在连续语言去噪中检验这些归一化选择以及噪声条件化容量。</p>
+<p><strong>自条件化。</strong> Analog Bits、自条件化嵌入扩散和LangFlow使用先前预测来指导去噪（Chen et al., 2022; Strudel et al., 2022; Chen et al., 2026）。AURORA-LM通过轨迹一致性解决训练–推理不匹配（Liang et al., 2026）。我们的基于熵的门在训练期间调节bootstrap输入，同时保留基线损失表述和推理采样器。</p>
+<p><strong>离散扩散和评估。</strong> MDLM、LLaDA和iLLaDA推进了掩码扩散语言建模（Sahoo et al., 2024; Nie et al., 2025; Nie et al., 2026），而Duo将均匀状态离散扩散连接到底层高斯过程（Sahoo et al., 2025）。在扩散族中，似然排名可能与基于生成质量和采样成本的排名不同（Sahoo et al., 2026）；较低的GenPPL也可能伴随减少的分布覆盖（Franca and Tong, 2026）。因此，我们报告GenPPL以及每样本平均一元熵，并明确采样预算。</p>
+<h2>3 语言扩散Transformer</h2>
+<p>LangDiT是用于连续语言生成的Transformer去噪器。其设计涉及去噪的三个组件：处理噪声嵌入、预测离散token以及通过自条件化整合先前预测。我们在LangFlow风格基线（Chen et al., 2026）内开发该架构，在架构变体中保留其连续表示、训练和噪声调度目标表述以及推理采样器。表1总结了设计选择。</p>
+<p><strong>表1：</strong> LangDiT中的架构设计原则及其实现。</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>设计原则</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>骨干网络</td>
+<td>将特征规模控制与噪声相关调制分离。</td>
+<td>骨干和Q/K RMSNorm；更宽的噪声条件化。</td>
+</tr>
+<tr>
+<td>词汇头</td>
+<td>分别控制捷径的前向贡献和直接码本梯度。</td>
+<td>捷径分离；有界学习校准。</td>
+</tr>
+<tr>
+<td>自条件化</td>
+<td>在训练期间区分干净状态估计和辅助反馈。</td>
+<td>置信度门控bootstrap输入；推理时无权重后验均值估计。</td>
+</tr>
+</tbody>
+</table>
+<h3>3.1 整体去噪管线</h3>
+<p>在每个去噪步骤中，输入投影将噪声token嵌入 $z_{\gamma}$ 与可选的自条件化估计 $x_{\mathrm{SC}}$ 结合。双向Transformer通过由噪声水平 $\gamma$ 调制的注意力和前馈子层处理序列。一个非绑定词汇头产生上下文logits，由测量噪声状态与码本之间兼容性的门控似然捷径增强。Softmax产生token概率，其加权嵌入均值提供用于采样器更新和后续自条件化的干净状态估计。图3(a)展示了展开一个Transformer块的管线。</p>
+<p>相对于基线，LangDiT引入了用于特征规模控制的骨干RMSNorm、用于注意力logit规模控制的查询–键RMSNorm，以及用于更大调制容量的更宽噪声条件化。似然捷径遵循高斯噪声模型（Gulrajani and Hashimoto, 2023; Yang et al., 2026; Chen et al., 2026）。我们分离其嵌入矩阵以阻断直接码本梯度路径，而有界门控制其前向贡献。基于熵的门进一步在训练期间调节bootstrap自条件化（图3(b)）；推理保留用于自条件化和采样器更新的无门后验均值估计器。</p>
+<p><strong>图3：</strong> LangDiT中的Transformer架构和自条件化。(a) 去噪器从下到上读取，展开了12个块中的一个。RMSNorm在每个调制子层之前；逐头查询–键RMSNorm在RoPE之前，而值不经过任何操作。256维噪声嵌入提供调制参数和残差门（虚线箭头）。门控似然捷径绕过Transformer及其非绑定词汇头。只有捷径的显式码本因子被分离；$C=s\widetilde{E}$ 通过噪声状态构造保持可训练。(b) 对同一去噪器的bootstrap调用产生无梯度跟踪的token概率。这些概率确定干净状态估计和用于训练自条件化的基于熵的权重（方程(13)）。推理将无权重估计传递给下一步。为清晰起见，省略了捷径预热。</p>
+<h3>3.2 连续表示和训练目标</h3>
+<p>LangFlow用学习的嵌入表示token，并通过将高斯噪声传输到这些嵌入来生成语言（Chen et al., 2026）。其去噪器预测token概率，其嵌入均值为流提供所需的连续估计。</p>
+<p><strong>干净嵌入和噪声输入。</strong> 设 $\mathcal{V}$ 表示词汇表，$y_{1:L}\in\mathcal{V}^{L}$ 为token序列，$E\in\mathbb{R}^{|\mathcal{V}|\times d}$ 为学习的码本。每行归一化为范数 $\sqrt{d}$ 并缩放 $s=0.1$：</p>
+<p>$$\widetilde{E}<em>{v}=\sqrt{d}\,\frac{E</em>{v}}{\lVert E_{v}\rVert_{2}},\qquad C_{v}=s\widetilde{E}_{v},\qquad v\in\mathcal{V}.$$</p>
+<p>(1)</p>
+<p>得到的干净嵌入表为 $C=s\widetilde{E}$。token序列由 $x_{0}\in\mathbb{R}^{L\times d}$ 表示，其中 $x_{0,i}=C_{y_{i}}$。</p>
+<p>对于对数噪声信号比 $\gamma=\log(\sigma_{\gamma}^{2}/\alpha_{\gamma}^{2})$，我们定义：</p>
+<p>$$\alpha_{\gamma}=\sqrt{\operatorname{sigmoid}(-\gamma)},\qquad\sigma_{\gamma}=\sqrt{\operatorname{sigmoid}(\gamma)},$$<br />
+$$z_{\gamma}=\alpha_{\gamma}x_{0}+\sigma_{\gamma}\epsilon,\qquad\epsilon_{ij}\overset{\mathrm{i.i.d.}}{\sim}\mathcal{N}(0,1).$$</p>
+<p>(2)</p>
+<p>噪声在位置和嵌入维度之间独立。较大的 $\gamma$ 对应更大的损坏：$\gamma\to+\infty$ 产生高斯噪声，而 $\gamma\to-\infty$ 恢复干净状态。</p>
+<p><strong>Token预测目标。</strong> 去噪器预测 $p_{\theta,i}(v\mid z_{\gamma},\gamma,x_{\mathrm{SC}})$，即在给定完整噪声序列的情况下位置 $i$ 处token $v$ 的概率。我们用 $\theta$ 集体表示可训练去噪器参数，包括码本和（如适用）捷径门参数 $\psi$。噪声调度参数通过 $\pi$ 单独表示。当不需要区分训练和采样过程时，我们省略 $x_{\mathrm{SC}}$。</p>
+<p>训练使用token级交叉熵：</p>
+<p>$$\mathcal{L}<em>{\mathrm{CE}}=\mathbb{E}</em>{y_{1:L}\sim p_{\mathrm{data}},\,\gamma\sim\pi,\,\epsilon}\left[-\frac{1}{L}\sum_{i=1}^{L}\log p_{\theta,i}(y_{i}\mid z_{\gamma},\gamma)\right].$$</p>
+<p>(3)</p>
+<p>这里，$p_{\mathrm{data}}$ 是训练序列分布，$\pi$ 是LangFlow基于信息的调度器使用的学习Gumbel噪声水平分布（Chen et al., 2026）。所有变体保留此损失表述和调度的基线熵匹配目标。</p>
+<p>对于固定码本和损坏过程，当模型具有足够容量时，交叉熵的总体最优恢复token后验。相应的概率加权嵌入均值因此等于条件干净状态均值 $\mathbb{E}[x_{0}\mid z_{\gamma},\gamma]$。LangFlow通过Bregman散度流匹配形式化这一联系（Chen et al., 2026），解释了分类预测如何支持连续空间中的去噪和采样。</p>
+<h3>3.3 噪声条件化Transformer骨干</h3>
+<p>骨干网络在适应噪声水平的同时处理噪声嵌入。我们将归一化和噪声条件化作为独立组件研究：归一化控制特征规模，而条件化提供噪声相关调制。</p>
+<p><strong>输入和自条件化融合。</strong> 输入状态为：</p>
+<p>$$h_{0}=z_{\gamma}+P([z_{\gamma};x_{\mathrm{SC}}]),$$</p>
+<p>(4)</p>
+<p>其中括号表示沿特征维度的拼接，$P:\mathbb{R}^{2d}\to\mathbb{R}^{d}$ 是在每个位置独立应用的零初始化、无偏置线性投影。嵌入和骨干宽度在此架构中相等。当自条件化不存在时，$x_{\mathrm{SC}}=0$。</p>
+<p><strong>Transformer块。</strong> 每个块包含双向注意力和前馈子层，每个都有噪声条件化残差门。遵循DiT（Peebles and Xie, 2023），噪声嵌入 $c_{\gamma}$ 提供偏移、缩放和门：</p>
+<p>$$u=h+g_{a}(c_{\gamma})\odot\operatorname{Attn}!\left(\operatorname{mod}<em>{a}(N</em>{a}(h);c_{\gamma})\right),$$<br />
+$$h'=u+g_{m}(c_{\gamma})\odot\operatorname{MLP}!\left(\operatorname{mod}<em>{m}(N</em>{m}(u);c_{\gamma})\right).$$</p>
+<p>(5)</p>
+<p>下标 $a$ 和 $m$ 标识注意力和MLP子层；为可读性省略块索引。我们将仿射调制写为：</p>
+<p>$$\operatorname{mod}<em>{j}(v;c</em>{\gamma})=\bigl(1+\delta_{j}(c_{\gamma})\bigr)\odot v+\beta_{j}(c_{\gamma}),\qquad j\in{a,m},$$</p>
+<p>(6)</p>
+<p>其中调制向量和残差门在序列位置上广播。</p>
+<p><strong>骨干RMSNorm。</strong> LayerNorm在归一化幅度之前减去特征均值。为检验这种重新中心化在嵌入空间去噪中是否需要，我们将每个Transformer块中的两个预归一化层和词汇头中的归一化层替换为RMSNorm（Zhang and Sennrich, 2019）：</p>
+<p>$$\RMSNorm(x)=g\odot\frac{x}{\sqrt{d^{-1}\sum_{j=1}^{d}x_{j}^{2}+\varepsilon}},\qquad\varepsilon=10^{-6}.$$</p>
+<p>(7)</p>
+<p>均方归约在FP32中计算，输出转换为投影数据类型。两个归一化层都使用无偏置的学习增益，因此替换保持参数数量。RMSNorm重新缩放输入而不移除其均值分量。消融测试了这种变化的效果，同时保留基线自适应调制。</p>
+<p><strong>查询–键RMSNorm。</strong> 归一化注意力的输入不直接约束学习查询和键投影产生的幅度。在点积注意力中，$\lVert q\rVert\lVert k\rVert$ 的变化独立于方向相似性地改变logit规模。因此，我们在融合QKV投影和头重塑之后，在旋转位置嵌入之前，对每个64维查询和键向量应用RMSNorm：</p>
+<p>$$\widehat{q}<em>{i,h}=\RMSNorm(q</em>{i,h}),\qquad\widehat{k}<em>{i,h}=\RMSNorm(k</em>{i,h}).$$</p>
+<p>(8)</p>
+<p>查询和键有独立的学习增益，每层内跨头共享；值不变。该设计遵循QK归一化（Henry et al., 2020）及其在整流流Transformer中的RMSNorm实现（Esser et al., 2024）。对于头维度 $d_{h}$ 和增益向量 $g_{q},g_{k}$，归一化点积logit满足：</p>
+<p>$$\left|\frac{(R_{i}\widehat{q})^{\top}(R_{j}\widehat{k})}{\sqrt{d_{h}}}\right|\leq\sqrt{d_{h}}\,\lVert g_{q}\rVert_{\infty}\lVert g_{k}\rVert_{\infty},$$</p>
+<p>(9)</p>
+<p>其中 $R_{i},R_{j}$ 是正交旋转位置变换。该界限从右侧移除了原始输入范数；它不固定温度或在训练中限制学习增益。附录A.1给出推导。消融评估这种规模控制是否改善生成。</p>
+<p><strong>噪声条件化容量。</strong> 条件化向量向所有12个Transformer块提供偏移、缩放和门，并向词汇头提供调制参数。我们将其宽度从128增加到256，将时间步MLP从 $256!\rightarrow!128!\rightarrow!128$ 更改为 $256!\rightarrow!256!\rightarrow!256$。输入是 $\gamma$ 的256维正弦编码，MLP在每个线性层后使用SiLU。所有自适应归一化投影和捷径门接收更宽的向量。这增加了噪声相关调制的容量，而不改变Transformer隐藏宽度或前馈维度。该变化增加了7.36M参数，占基线的2.25%；因此其消融包括容量增加，不是仅条件化的参数匹配测试。</p>
+<p><strong>上下文词汇头。</strong> 在Transformer块之后，RMS归一化、噪声调制的头将隐藏状态映射到上下文词汇logits $\ell_{\mathrm{raw},\theta}\in\mathbb{R}^{L\times|\mathcal{V}|}$。其输出权重与干净嵌入表 $C$ 非绑定。该头利用完整噪声序列，而似然捷径提供来自每个位置的直接证据。</p>
+<h3>3.4 具有似然捷径的词汇预测</h3>
+<p>在高斯损坏下，噪声状态 $z_{\gamma,i}$ 与token信号缩放嵌入 $\alpha_{\gamma}C_{v}$ 之间的距离提供了关于该token的局部证据。因为所有码本行具有相同范数，高斯观测对数似然简化为缩放点积，最多差一个与token无关的常数。</p>
+<p>基线将此解析似然捷径添加到上下文logits：</p>
+<p>$$\ell_{\theta}^{\mathrm{base}}(z_{\gamma},\gamma)=\ell_{\mathrm{raw},\theta}(z_{\gamma},c_{\gamma})+c_{\mathrm{skip}}(\gamma)\,z_{\gamma}C^{\top},$$<br />
+$$c_{\mathrm{skip}}(\gamma)=\frac{\alpha_{\gamma}}{\sigma_{\gamma}^{2}}.$$</p>
+<p>(10)</p>
+<p>此参数化遵循Plaid和LangFlow（Gulrajani and Hashimoto, 2023; Chen et al., 2026）。方程显示全强度捷径。在基线训练期间，其贡献在前5,000个优化步中线性预热。</p>
+<p>LangDiT修改了通过该分支的梯度路径及其前向贡献：</p>
+<p>$$\ell_{\theta}^{\mathrm{ours}}=\ell_{\mathrm{raw},\theta}+a_{\psi}(\gamma)c_{\mathrm{skip}}(\gamma)\,z_{\gamma}\operatorname{sg}[C]^{\top}.$$</p>
+<p>(11)</p>
+<p>这里，$\operatorname{sg}$ 表示停止梯度，$a_{\psi}(\gamma)$ 是从 $c_{\gamma}$ 计算的学习有界门。该门校准似然捷径，与Transformer内的残差门分开。</p>
+<p>停止梯度在固定参数下使前向logits不变，仅移除通过捷径显式码本因子的梯度。码本通过噪声状态构造保持可训练。因此，分离改变了优化图而不改变前向模型类或添加参数。附录A.3推导了移除的贡献；此恒等式本身不建立梯度冲突。</p>
+<p><strong>有界校准。</strong> 上下文头看到完整噪声序列，不受约束仅建模上下文先验。因此，我们允许捷径贡献的结构化调整：</p>
+<p>$$a_{\psi}(\gamma)=\exp!\left(\operatorname{clip}(f_{\psi}(c_{\gamma}),-\log 2,\log 2)\right).$$</p>
+<p>(12)</p>
+<p>这里 $f_{\psi}$ 是 $256!\rightarrow!32!\rightarrow!1$ MLP，具有SiLU激活和零初始化最终层。因此 $a_{\psi}\in[0.5,2]$ 且初始等于1。基线和修改模型都保留5,000步线性捷径预热。校准改变前向加权，而分离控制直接码本梯度。无限制头可以吸收捷径加权的变化，因此此参数化不是对高斯似然恒等式的校正（附录A.2）。</p>
+<h3>3.5 训练和采样期间的自条件化</h3>
+<p>自条件化提供干净状态估计作为辅助去噪器输入。LangDiT改变了训练期间此输入的加权方式，同时保留推理采样器使用的估计。</p>
+<p><strong>具有门控自条件化的训练。</strong> 遵循基线，我们在25%的训练样本上使用自条件化，采用先前工作中使用的bootstrap过程（Chen et al., 2022; Strudel et al., 2022）。对于这些样本，首先在当前 $z_{\gamma}$ 和 $\gamma$ 处评估完整去噪器，自条件化设为零。此bootstrap调用无梯度跟踪运行，产生概率矩阵 $p_{\mathrm{boot}}\in\mathbb{R}^{L\times|\mathcal{V}|}$。</p>
+<p>Bootstrap概率确定干净状态估计及其置信度权重：</p>
+<p>$$\mu_{\mathrm{boot}}=p_{\mathrm{boot}}C,\qquad x_{\mathrm{SC}}^{\mathrm{train}}=\operatorname{sg}!\left[w(p_{\mathrm{boot}})\odot\mu_{\mathrm{boot}}\right],$$</p>
+<p>(13)</p>
+<p>其中 $w(p_{\mathrm{boot}})\in\mathbb{R}^{L\times 1}$ 在嵌入维度上广播。位置 $i$ 的权重从token熵计算：</p>
+<p>$$H_{i}(p_{\mathrm{boot}})=-\sum_{v\in\mathcal{V}}p_{\mathrm{boot},i}(v)\log p_{\mathrm{boot},i}(v).$$</p>
+<p>(14)</p>
+<p>逐token权重为：</p>
+<p>$$w_{i}(p)=\operatorname{clip}!\left(1-\frac{H_{i}(p)}{\log|\mathcal{V}|},0,1\right).$$</p>
+<p>(15)</p>
+<p>对于均匀分布为零，对于one-hot分布为一。完整的bootstrap输入（包括与码本的乘法）无梯度计算。主去噪器调用接收加权估计。因此，门控制辅助输入的影响而不改变 $\mu_{\mathrm{boot}}$ 的定义。Bootstrap预测来自当前训练输入；它不来自较早的采样步骤。其余75%的样本使用零自条件化。</p>
+<p><strong>解释。</strong> 我们使用token熵作为bootstrap置信度的启发式度量。我们的假设是，在训练期间衰减分散的bootstrap预测会减少去噪器对不可靠辅助输入的依赖。门改变训练反馈信号，而推理采样器和推理时自条件化都保留无权重后验均值。附录A.4区分了token熵与嵌入空间中的不确定性，并解释为什么置信度加权不应被解释为改进的干净状态估计器。</p>
+<p><strong>使用无权重估计的采样。</strong> 生成从高斯噪声开始，使用基线Euler–EDM采样器从高到低 $\gamma$ 进行（Karras et al., 2022）。方程(2)中的归一化损坏坐标对应于加性噪声坐标：</p>
+<p>$$\tau_{\gamma}=\frac{\sigma_{\gamma}}{\alpha_{\gamma}}=e^{\gamma/2},\qquad\bar{z}<em>{\gamma}=\frac{z</em>{\gamma}}{\alpha_{\gamma}}=x_{0}+\tau_{\gamma}\epsilon,$$</p>
+<p>(16)</p>
+<p>其中 $\tau_{\gamma}$ 是EDM噪声规模。去噪器接收归一化状态 $z_{\gamma}=\alpha_{\gamma}\bar{z}_{\gamma}$。</p>
+<p>在每个非最终步骤，应用于组合logits的softmax产生token概率和干净状态估计：</p>
+<p>$$\widehat{x}<em>{0,i}=\sum</em>{v\in\mathcal{V}}p_{\theta,i}(v\mid z_{\gamma},\gamma,x_{\mathrm{SC}})\,C_{v}.$$</p>
+<p>(17)</p>
+<p>此无权重估计确定求解器更新并为下一个去噪步骤提供自条件化。第一步使用零自条件化。采样不需要额外的bootstrap调用或基于熵的加权，包括对使用置信度门控自条件化训练的模型。最终预测通过逐token argmax解码。</p>
+<h3>3.6 适应Plaid风格表述</h3>
+<p>我们的Plaid风格基线是我们对RePlaID的实现（Yang et al., 2026）：它结合了16维球面码本、似然界限目标（NELBO）、学习的噪声调度和祖先DDPM采样，使用12块、宽度768的Transformer。它不是原始发布的Plaid检查点。与LangFlow不同，其连续状态宽度为16而非768，其原生投影将噪声状态和自条件化映射到Transformer中。因此，方程(1)和(4)指定了LangFlow实例化，而不是替换Plaid的表示或输入接口。</p>
+<p><strong>表2：</strong> Plaid适应的范围。六个LangFlow干预中的四个被转移；保留了原生似然接口和梯度规则。</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>Plaid基线</th>
+<th>Plaid + LangDiT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>骨干/头归一化</td>
+<td>LayerNorm</td>
+<td>RMSNorm</td>
+</tr>
+<tr>
+<td>查询–键归一化</td>
+<td>无</td>
+<td>逐头RMSNorm</td>
+</tr>
+<tr>
+<td>条件化宽度</td>
+<td>128</td>
+<td>256</td>
+</tr>
+<tr>
+<td>捷径梯度</td>
+<td>自条件化训练样本上码本因子分离</td>
+<td>相同原生规则</td>
+</tr>
+<tr>
+<td>捷径校准</td>
+<td>解析系数</td>
+<td>相同；无学习乘数</td>
+</tr>
+<tr>
+<td>训练自条件化</td>
+<td>无权重bootstrap均值</td>
+<td>熵加权bootstrap均值</td>
+</tr>
+</tbody>
+</table>
+<p>原生捷径已经在自条件化样本上具有选择性码本分离。适应的模型保留该规则而不是导入LangFlow的无条件分支分离，并且不添加学习校准门。两个变体都保留16维状态、NELBO、学习调度和DDPM转换。报告的适应模型评估明确选择无权重推理自条件化；启用其可选推理门将是单独的采样干预。扩展运行使用1M更新计划，具有恢复的衰减调度和评估的520k检查点；附录B.1给出优化设置。此实验评估兼容组件的重用，不是整个LangFlow管线的转移。</p>
+<h3>3.7 实现细节</h3>
+<p>对于OpenWebText，LangDiT使用12个Transformer块，嵌入和隐藏宽度 $d=768$，12个维度64的注意力头，前馈宽度3072。对于LangFlow表述，输入投影 $P$ 将1536维映射到768维。Transformer深度和隐藏宽度从基线保留。</p>
+<p>基线和LangDiT都使用融合QKV投影、旋转位置嵌入、GELU前馈层和零初始化自适应归一化投影。配置定义和训练设置在附录C和B中提供。</p>
+<h3>3.8 架构变体</h3>
+<p>我们通过七个累积配置评估完整设计：基线LangFlow，然后是骨干RMSNorm、Q/K RMSNorm、增加的条件化宽度、捷径分离、学习校准和训练时置信度门控。表4的每行向前一个配置添加一个修改，每次从头开始单独训练运行。最后一行定义LangDiT，即图3中的架构，具有约100M transformer参数，包括码本和非绑定词汇投影。累积阶梯使用250k更新调度；扩展训练运行单独报告。</p>
+<p><strong>RePlaID + LangDiT的文本生成示例</strong></p>
+<p>1024长度序列的一部分，1024去噪NFE | GenPPL 11.33</p>
+<p>… Through our continued friendship and with us as a company, let it be known that we have another season to go for these talented individuals to reach their full potential and return to the table to meet fans expectations. We all know that this is a very exciting time to come for us at UW-Meison University and we are very, very excited to see an opportunity at our new organization. While representing our country, an exciting time has passed since we challenged our women's to victory in the first round of the championship event. Furthermore, we have another season to go. While representing our country, there is no doubt that many of our fans will open their eyes towards our debut in the T-Mobile Arena at WrestleMania (sticking to win the title) and watch with the best of our best. Furthermore, we have another season to go, for our individuals to reach their full potential and return to the table to meet fans expectations. We all know that this is a very exciting time to come for us here at UW-Meison University and we are very, very excited to see an opportunity at our new organization. While representing our country, I would like to state that there is no doubt that many of our fans will open their eyes towards our debut at the T-Mobile Arena at WrestleMania. Moreover, we have a lot of work to do, for these individuals to reach their full potential and mature to meet our community's expectations. We only have one season to go. While representing our country, our eyes will surely be open to the hard work and dedication we all continue to see from the air. …</p>
+<h2>4 实验</h2>
+<p>我们区分共享训练设置下的累积LangFlow消融与扩展训练检查点评估和Plaid风格适应。检查点进度、计划训练预算、采样成本和样本数分别报告。</p>
+<h3>4.1 实验设置</h3>
+<p><strong>数据和优化。</strong> 我们在OpenWebText上从头训练，使用Qwen3分词（151,936个输出条目）、文档BOS/EOS标记、打包、10,000文档洗牌缓冲区和1,024个token的随机裁剪。LangFlow消融使用全局批次512，AdamW权重衰减0.01，梯度裁剪1.0，以及250k更新调度：5k预热步到 $3\times 10^{-4}$，然后余弦衰减到 $3\times 10^{-5}$。所有七个配置共享数据顺序、目标、调度和采样器。训练使用bfloat16、dropout 0.1、种子42和EMA衰减0.999。单独的扩展训练调度在附录B.1中描述。</p>
+<p><strong>生成和采样成本。</strong> 这里报告的所有本地结果使用1,024个无条件样本，1,024个模型token，温度1和EMA权重。生成种子为0–1,023。LangFlow使用Euler–EDM采样器，具有无权重自条件化和最终argmax解码。其NFE计算所有去噪器调用。Plaid使用祖先DDPM：$K$ 个反向转换需要 $K+1$ 次模型前向，包括最终去噪器调用。我们明确显示此额外调用。这些约定也适用于附录F中的定性示例。</p>
+<p><strong>指标。</strong> 我们用冻结的GPT-2 Large模型评分解码文本。评估器使用GPT-2分词，不添加特殊token，排除填充，并将每个样本截断至最多1,024个评估器token。生成器特殊token在干净文本字段中移除；内联评分器在该字段为空时回退到原始解码文本。对于长度为 $T_{x}$ 的分词样本 $x$，语料库级生成困惑度为：</p>
+<p>$$\operatorname{GenPPL}<em>{r}(\mathcal{S})=\exp!\left(-\frac{\sum</em>{x\in\mathcal{S}}\sum_{t=2}^{T_{x}}\log r(x_{t}\mid x_{&lt;t})}{\sum_{x\in\mathcal{S}}(T_{x}-1)_{+}}\right),$$</p>
+<p>(18)</p>
+<p>其中 $(a)_{+}=\max(a,0)$；第一个token没有前文上下文，不评分。熵表示<strong>每样本平均一元熵（nats）</strong>，在相同的截断、非填充GPT-2 token序列上计算，包括其第一个token。样本等权重，不汇入语料库直方图（附录D）。此词汇统计不建立语义多样性或分布覆盖，因此较低的GenPPL本身不是更好整体生成质量的证据。</p>
+<h3>4.2 生成结果</h3>
+<p><strong>与公开模型的比较。</strong> 表3将发布的自回归和扩散结果与我们的本地LangFlow和Plaid风格结果结合。发布的OWT GenPPL包括MDLM的104.9、SEDD Uniform的103.6、Duo的77.6、FLM的62.2、LangFlow的36.5和自回归Transformer的35.9。本地行标识实际检查点更新和去噪器调用，250k更新内的检查点和扩展训练结果分组显示。</p>
+<p><strong>表3：</strong> OWT上的生成结果（$L=1024$）。发布的基线结果取自Chen et al. (2026)的表2并保留其原始协议；本地结果使用我们的实现、1,024个样本和EMA权重。检查点表示完成的优化器更新，NFE计算去噪评估。扩展训练检查点来自1M更新训练计划。熵表示每样本平均一元熵（第4.1节）。破折号表示未报告的值；†表示我们的实现。对于RePlaID，$K+1$ 计算K个反向转换和最终去噪器调用。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>训练步数</th>
+<th>NFE</th>
+<th>GenPPL↓</th>
+<th>熵</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>发布结果：自回归</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Transformer</td>
+<td>–</td>
+<td>–</td>
+<td>35.9</td>
+<td>–</td>
+</tr>
+<tr>
+<td><strong>发布结果：吸收态扩散</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MDLM</td>
+<td>–</td>
+<td>–</td>
+<td>104.9</td>
+<td>–</td>
+</tr>
+<tr>
+<td><strong>发布结果：均匀态/连续扩散</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>SEDD Uniform</td>
+<td>–</td>
+<td>–</td>
+<td>103.6</td>
+<td>–</td>
+</tr>
+<tr>
+<td>Duo</td>
+<td>–</td>
+<td>–</td>
+<td>77.6</td>
+<td>–</td>
+</tr>
+<tr>
+<td>FLM (1024步)</td>
+<td>–</td>
+<td>–</td>
+<td>62.2</td>
+<td>–</td>
+</tr>
+<tr>
+<td>LangFlow</td>
+<td>–</td>
+<td>–</td>
+<td>36.5</td>
+<td>–</td>
+</tr>
+<tr>
+<td><strong>本地结果：250k更新内</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>LangFlow†</td>
+<td>≤250k</td>
+<td>128</td>
+<td>64.26</td>
+<td>5.42</td>
+</tr>
+<tr>
+<td>LangFlow† + LangDiT</td>
+<td>≤250k</td>
+<td>128</td>
+<td>53.66</td>
+<td>5.39</td>
+</tr>
+<tr>
+<td>LangFlow†</td>
+<td>≤250k</td>
+<td>1024</td>
+<td>41.98</td>
+<td>5.25</td>
+</tr>
+<tr>
+<td>LangFlow† + LangDiT</td>
+<td>≤250k</td>
+<td>1024</td>
+<td>24.04</td>
+<td>5.05</td>
+</tr>
+<tr>
+<td>LangFlow†</td>
+<td>≤250k</td>
+<td>1024</td>
+<td>39.40</td>
+<td>5.22</td>
+</tr>
+<tr>
+<td>RePlaID†</td>
+<td>≤250k</td>
+<td>128+1</td>
+<td>52.32</td>
+<td>5.43</td>
+</tr>
+<tr>
+<td>RePlaID† + LangDiT</td>
+<td>≤250k</td>
+<td>128+1</td>
+<td>38.14</td>
+<td>5.38</td>
+</tr>
+<tr>
+<td>RePlaID†</td>
+<td>≤250k</td>
+<td>1024+1</td>
+<td>23.91</td>
+<td>5.24</td>
+</tr>
+<tr>
+<td>RePlaID† + LangDiT</td>
+<td>≤250k</td>
+<td>1024+1</td>
+<td>13.90</td>
+<td>5.06</td>
+</tr>
+<tr>
+<td><strong>本地结果：扩展训练</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>LangFlow† + LangDiT</td>
+<td>660k</td>
+<td>128</td>
+<td>44.72</td>
+<td>5.39</td>
+</tr>
+<tr>
+<td>LangFlow† + LangDiT</td>
+<td>660k</td>
+<td>1024</td>
+<td>21.72</td>
+<td>5.06</td>
+</tr>
+<tr>
+<td>RePlaID† + LangDiT</td>
+<td>520k</td>
+<td>128+1</td>
+<td>27.51</td>
+<td>5.39</td>
+</tr>
+<tr>
+<td>RePlaID† + LangDiT</td>
+<td>520k</td>
+<td>1024+1</td>
+<td>11.33</td>
+<td>5.01</td>
+</tr>
+</tbody>
+</table>
+<p><strong>评估范围。</strong> 公开模型结果保留其来源的训练设置和评估协议。特别是，发布的LangFlow OWT评估使用GPT-2分词、1M更新训练调度、1,024采样步和样本平均困惑度。我们的本地评估使用方程18中的语料库级聚合。因此，该表提供了报告结果的广泛比较；架构归因使用下面共享调度的本地比较。</p>
+<p><strong>匹配的LangFlow比较。</strong> 在共享250k更新调度下，LangDiT在128 NFE将GenPPL从64.26降至53.66，相对降低16.5%。每样本平均一元熵从5.416变为5.391。比较保持数据顺序、批次大小、目标表述和采样器固定。修改模型有334.45M参数，基线为327.09M。</p>
+<p><strong>250k更新内的额外检查点。</strong> 在1,024 NFE下，180k更新处的配对LangFlow检查点产生GenPPL 41.98和24.04，熵为5.248和5.049。对于128去噪步的RePlaID，可用的基线和修改EMA评估分别在40k和150k更新（52.32和38.14 GenPPL）。在1,024步处，它们分别在220k和250k更新（23.91和13.90）。这些RePlaID对在训练进度上不同，修改的250k检查点来自1M更新计划。图2(a)标注了实际检查点；这些结果描述更新上限内的性能，不隔离匹配训练下架构的效果。</p>
+<p><strong>扩展训练和转移。</strong> 660k LangFlow检查点在128次调用达到GenPPL 44.72，在1,024次调用达到21.72，熵从5.391降至5.056。520k处的Plaid适应在129和1,025总调用达到27.51和11.33，熵从5.393降至5.014。因此，较大采样预算下较低的GenPPL伴随较大的熵变化。两个检查点都属于1M更新计划；两个结果都不是完成的1M步评估。这些检查点表征扩展训练下的性能，但不隔离架构效应。第3.6节指定了适应于Plaid的组件。报告的Plaid分数建立了设计在不同目标下的应用，但不为所有六个LangFlow干预提供匹配的基线比较。</p>
+<h3>4.3 累积消融和分析</h3>
+<p>表4的每行向前一个配置添加一个变化并从头训练。50k更新处的比较使用相同的样本数、EMA约定和128-NFE采样。该表报告总参数，包括码本和非绑定词汇投影；这些与Transformer和条件化路径中大约100M参数不同。</p>
+<p><strong>表4：</strong> OWT-1024上的累积架构消融，从R1到R7（完整模型）。每个连续行添加一个组件，更宽的条件化在捷径分离之前。50k步列报告使用128 NFE、1,024个生成样本和温度1的未平滑GenPPL。170k步列报告使用1024 NFE、1,024个生成样本和温度1的未平滑GenPPL。</p>
+<table>
+<thead>
+<tr>
+<th>累积架构</th>
+<th>50k步 128 NFE GenPPL↓</th>
+<th>170k步 1024 NFE GenPPL↓</th>
+<th>熵</th>
+<th>Transformer参数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1（基线）</td>
+<td>87.48</td>
+<td>41.97</td>
+<td>5.24</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R2（+RMS）</td>
+<td>84.41</td>
+<td>-</td>
+<td>-</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R3（+QK）</td>
+<td>84.37</td>
+<td>-</td>
+<td>-</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R4（+c=256）</td>
+<td>80.74</td>
+<td>-</td>
+<td>-</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R5（+Detach）</td>
+<td>79.35</td>
+<td>-</td>
+<td>-</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R6（+Calib.）</td>
+<td>74.03</td>
+<td>-</td>
+<td>-</td>
+<td>~100M</td>
+</tr>
+<tr>
+<td>R7（+Conf.-SC）</td>
+<td>61.73</td>
+<td>28.74</td>
+<td>5.15</td>
+<td>~100M</td>
+</tr>
+</tbody>
+</table>
+<p><strong>归一化和条件化。</strong> 骨干RMSNorm将50k步GenPPL从87.48降至84.41。添加Q/K RMSNorm仅略微变化至84.37，而加宽噪声条件化进一步降至80.74。仅此早期检查点低估了两个归一化配置之间观察到的分离：在250k处，R2和R3分别达到60.76和57.86。因此Q/K比较取决于训练进度。条件化结果包括7.36M参数容量增加，不能隔离该容量分配位置的收益。</p>
+<p><strong>捷径和训练反馈。</strong> 在当前累积路径上，分离将GenPPL从80.74降至79.35，校准将其降至74.03。添加置信度门控训练自条件化产生最大的相邻减少，从74.03到61.73。总体而言，R1–R7在50k处将GenPPL降低29.4%。这些增量以先前的修改为条件；它们不是独立贡献或来自单一训练种子的统计显著性证据。因为推理在此阶梯中使用无权重自条件化，最终增量反映训练反馈的变化而非推理门。恒定衰减和交互控制仍未报告（附录E）。</p>
+<p><strong>训练进度和熵。</strong> 图1显示了记录的轨迹，中间配置仅为清晰起见显示至50k。在180k处，基线和完整模型的GenPPL为64.94和52.39，熵为5.410和5.385。配对测量支持将GenPPL增益与词汇多样性变化一起阅读。它们不建立提出的优化机制：注意力诊断和梯度对齐测量未报告。</p>
+<h3>4.4 参数和计算成本</h3>
+<p>完整LangFlow模型有334.45M总参数，基线为327.09M。两个计数都包括 $151{,}936\times 768$ 码本和非绑定词汇投影矩阵。排除这两个矩阵分别留下约101.07M和93.71M参数，包括条件化和其余预测接口参数。Q/K RMSNorm添加1,536个参数，校准添加8,257个；其余增加来自加宽条件化。替换骨干归一化、分离捷径和应用置信度门控不添加参数。</p>
+<p>相等的训练更新和去噪器调用计数不建立相等的FLOPs或挂钟时间。不声称训练吞吐量或采样延迟优势。附录F中的固定ID生成覆盖图2中的所有十二个评估，每个设置有多个完整输出；它们不是匹配的定量比较。</p>
+<p>结果支持通过改变去噪器骨干及其预测和训练接口来改进CDLMs。在累积LangFlow研究中，50k更新处最大的相邻GenPPL减少来自置信度加权训练自条件化。Plaid风格适应说明了如何在保留不同连续状态空间、目标和采样器的同时重用兼容组件。</p>
+<p>研究限于一个骨干规模和一个训练种子下的OWT-1024。累积消融测量固定设计序列上的效应，更宽的条件化增加参数计数。参数和计算匹配的比较、组件移除消融和额外种子将有助于隔离个体效应并评估其鲁棒性。注意力行为和码本梯度的直接测量也是检验所提出优化解释所必需的。不匹配的Plaid比较和扩展训练结果应结合其各自的训练预算来解释。最后，GenPPL和一元熵捕获生成质量的有限方面；连贯性、语义多样性和分布覆盖的评估仍然必要。</p>
+<h2>5 结论</h2>
+<p>我们提出了LangDiT，一个通过对连续扩散语言模型架构设计的系统研究开发的Transformer骨干。其设计将特征规模控制与噪声调制分离，将似然捷径的前向贡献与其直接码本梯度解耦，并将干净状态估计与自条件化输入的加权区分。在OWT-1024上的实验展示了LangFlow内的改进生成性能以及兼容组件向Plaid风格模型的适应，同时保留每个模型的表示、目标表述和推理采样器。将GenPPL与一元熵一起评估使这些增益能够与词汇多样性变化一起解释。这些发现突出了架构作为CDLMs中可重用的改进来源，并激励在更大规模和更广泛生成任务上的进一步研究。</p>
+<h2>参考文献</h2>
+<ul>
+<li>Chen et al. (2022). Analog Bits: Generating Discrete Data using Diffusion Models with Self-Conditioning.</li>
+<li>Chen et al. (2026). LangFlow: Continuous Diffusion Rivals Discrete in Language Modeling.</li>
+<li>Deschenaux and Gulcehre (2026). Language Modeling with Hyperspherical Flows.</li>
+<li>Dieleman et al. (2022). Continuous Diffusion for Categorical Data.</li>
+<li>Du and Ma (2026). Continuous Language Diffusion as a Decoder-Interface Problem.</li>
+<li>Esser et al. (2024). Scaling Rectified Flow Transformers for High-Resolution Image Synthesis.</li>
+<li>Franca and Tong (2026). Hacking Generative Perplexity: Why Unconditional Text Evaluation Needs Distributional Metrics.</li>
+<li>Gulrajani and Hashimoto (2023). Likelihood-Based Diffusion Language Models.</li>
+<li>Guo et al. (2026). Continuous Latent Diffusion Language Model.</li>
+<li>Henry et al. (2020). Query-Key Normalization for Transformers.</li>
+<li>Hu et al. (2026). ELF: Embedded Language Flows.</li>
+<li>Karras et al. (2022). Elucidating the Design Space of Diffusion-Based Generative Models.</li>
+<li>Karras et al. (2024). Analyzing and Improving the Training Dynamics of Diffusion Models.</li>
+<li>Lee et al. (2026). Flow Map Language Models: One-step Language Modeling via Continuous Denoising.</li>
+<li>Li et al. (2022). Diffusion-LM Improves Controllable Text Generation.</li>
+<li>Liang et al. (2026). AURORA-LM: Autoencoding Unified Representation for Continuous-Latent Diffusion Language Modeling.</li>
+<li>Loshchilov et al. (2025). nGPT: Normalized Transformer with Representation Learning on the Hypersphere.</li>
+<li>Meshchaninov et al. (2026). How to Train Your Latent Diffusion Language Model Jointly With the Latent Space.</li>
+<li>Nie et al. (2026). Improved Large Language Diffusion Models.</li>
+<li>Nie et al. (2025). Large Language Diffusion Models.</li>
+<li>Peebles and Xie (2023). Scalable Diffusion Models with Transformers.</li>
+<li>Sahoo et al. (2024). Simple and Effective Masked Diffusion Language Models.</li>
+<li>Sahoo et al. (2025). The Diffusion Duality.</li>
+<li>Sahoo et al. (2026). Scaling Beyond Masked Diffusion Language Models.</li>
+<li>Shen et al. (2026). CoDAR: Continuous Diffusion Language Models are More Powerful Than You Think.</li>
+<li>Strudel et al. (2022). Self-conditioned Embedding Diffusion for Text Generation.</li>
+<li>Yang et al. (2026). Continuous Diffusion Scales Competitively with Discrete Diffusion for Language.</li>
+<li>Zhai et al. (2023). Stabilizing Transformer Training by Preventing Attention Entropy Collapse.</li>
+<li>Zhang and Sennrich (2019). Root Mean Square Layer Normalization.</li>
+</ul>
+<h2>附录A 架构分析和推导</h2>
+<p>本附录推导了用于激励LangDiT的归一化、似然、梯度和估计恒等式。分析表征了架构干预，不建立收敛或生成质量保证。我们假设实数算术、非零码本行和有限噪声水平 $\sigma_{\gamma}&gt;0$。</p>
+<p>我们保留方程(1)中的码本符号 $C=s\widetilde{E}\in\mathbb{R}^{|\mathcal{V}|\times d}$，因此每行具有平方范数 $s^{2}d$。单位置嵌入被视为列向量：$c_{v}=C_{v,:}^{\top}$ 表示token $v$ 的嵌入，$z_{\gamma,i}\in\mathbb{R}^{d}$ 表示位置 $i$ 处噪声嵌入的列向量表示。完整噪声序列仍为 $z_{\gamma}\in\mathbb{R}^{L\times d}$。</p>
+<h3>A.1 归一化注意力的规模依赖性</h3>
+<p>对于查询向量 $q\in\mathbb{R}^{d_{h}}$ 和学习增益 $g_{q}\in\mathbb{R}^{d_{h}}$，定义：</p>
+<p>$$\widehat{q}=\frac{g_{q}\odot q}{\sqrt{\lVert q\rVert_{2}^{2}/d_{h}+\varepsilon}},\qquad\varepsilon&gt;0.$$</p>
+<p>则：</p>
+<p>$$\lVert\widehat{q}\rVert_{2}^{2}\leq\lVert g_{q}\rVert_{\infty}^{2}\frac{\lVert q\rVert_{2}^{2}}{\lVert q\rVert_{2}^{2}/d_{h}+\varepsilon}\leq d_{h}\lVert g_{q}\rVert_{\infty}^{2}.$$</p>
+<p>(19)</p>
+<p>相同论证适用于具有增益 $g_{k}$ 的归一化键 $\widehat{k}$。设 $R_{i}$ 和 $R_{j}$ 表示查询位置 $i$ 和键位置 $j$ 处的正交旋转变换。对于标准缩放点积注意力，范数保持和Cauchy–Schwarz给出：</p>
+<p>$$\left|\frac{\langle R_{i}\widehat{q}<em>{i},R</em>{j}\widehat{k}<em>{j}\rangle}{\sqrt{d</em>{h}}}\right|\leq\sqrt{d_{h}}\,\lVert g_{q}\rVert_{\infty}\lVert g_{k}\rVert_{\infty}.$$</p>
+<p>(20)</p>
+<p>这限制了softmax之前注意力logits的点积贡献；任何单独的加性注意力偏置必须独立考虑。</p>
+<p>对于固定增益，界限独立于原始查询和键范数。精确的正重缩放不变性在 $\varepsilon=0$ 时对非零输入成立。当 $\varepsilon&gt;0$ 时，当 $\varepsilon$ 相对于原始和重缩放输入的均方幅度可忽略时近似成立。学习增益仍可能增长，注意力可能保持集中。这些界限激励检查特征规模和注意力熵，而不是建立查询–键RMSNorm防止不稳定性或熵崩溃（Henry et al., 2020; Zhai et al., 2023）。</p>
+<h3>A.2 观测证据和上下文预测</h3>
+<p>固定码本，设 $p_{\star}$ 表示由数据和前向损坏过程诱导的联合分布。对于位置 $i$ 处的token $v$，方程(2)给出：</p>
+<p>$$\log p_{\star}(z_{\gamma,i}\mid y_{i}=v,\gamma)=-\frac{\lVert z_{\gamma,i}-\alpha_{\gamma}c_{v}\rVert_{2}^{2}}{2\sigma_{\gamma}^{2}}+\kappa_{\gamma}$$<br />
+$$=\frac{\alpha_{\gamma}}{\sigma_{\gamma}^{2}}z_{\gamma,i}^{\top}c_{v}-\frac{\alpha_{\gamma}^{2}}{2\sigma_{\gamma}^{2}}\lVert c_{v}\rVert_{2}^{2}+\kappa(z_{\gamma,i},\gamma),$$</p>
+<p>(21)</p>
+<p>其中 $\kappa_{\gamma}$ 和 $\kappa(z_{\gamma,i},\gamma)$ 与token身份无关。由于 $\lVert c_{v}\rVert_{2}^{2}=s^{2}d$，范数相关项在token间也是常数。剩余的token相关项是Plaid和LangFlow中使用的基线似然捷径（Gulrajani and Hashimoto, 2023; Chen et al., 2026）。</p>
+<p>设 $z_{\gamma,-i}$ 表示移除位置 $i$ 的噪声序列。在独立位置高斯损坏下，$z_{\gamma,i}$ 在给定 $y_{i}$ 和 $\gamma$ 时条件独立于 $z_{\gamma,-i}$。对于在给定 $z_{\gamma,-i}$ 和 $\gamma$ 时具有正条件概率的token $v$ 和 $u$，贝叶斯法则给出：</p>
+<p>$$\log\frac{p_{\star}(y_{i}=v\mid z_{\gamma},\gamma)}{p_{\star}(y_{i}=u\mid z_{\gamma},\gamma)}=\frac{\alpha_{\gamma}}{\sigma_{\gamma}^{2}}z_{\gamma,i}^{\top}(c_{v}-c_{u})+\log\frac{p_{\star}(y_{i}=v\mid z_{\gamma,-i},\gamma)}{p_{\star}(y_{i}=u\mid z_{\gamma,-i},\gamma)}.$$</p>
+<p>(22)</p>
+<p>第一项是局部观测证据。第二项包含其他噪声位置和token先验，因此不需要均匀先验假设。对于不等嵌入范数，方程(21)中相应的范数相关项差异也必须保留。</p>
+<p>学习词汇头接收整个噪声序列（包括位置 $i$），因此不需要表示仅上下文先验。在固定 $C$ 下，无限制头也允许具有无门捷径的等价前向表示：</p>
+<p>$$\ell_{\mathrm{raw}}^{\prime}=\ell_{\mathrm{raw}}+(a_{\psi}(\gamma)-1)c_{\mathrm{skip}}(\gamma)z_{\gamma}C^{\top}.$$</p>
+<p>(23)</p>
+<p>将 $c_{\mathrm{skip}}(\gamma)z_{\gamma}C^{\top}$ 添加到 $\ell_{\mathrm{raw}}^{\prime}$ 恢复门控logits。因此，上下文logits和捷径证据的分解不能仅从组合logits中唯一识别。此前向等价性不意味着等价的梯度或优化动力学。在有限架构中，显式门也可能影响近似容量。</p>
+<h3>A.3 分离移除的梯度路径</h3>
+<p>考虑捷径预热后的单个位置。写 $z=z_{\gamma,i}$，设 $\beta=a_{\psi}(\gamma)c_{\mathrm{skip}}(\gamma)$ 为标量。表示为列向量的logits为：</p>
+<p>$$\ell=r+\beta Cz,\qquad r\in\mathbb{R}^{|\mathcal{V}|}.$$</p>
+<p>对于无权重token交叉熵损失 $\mathcal{L}<em>{\mathrm{tok}}=-\log p</em>{\theta}(y)$，其中 $p_{\theta}=\operatorname{softmax}(\ell)$：</p>
+<p>$$\delta=\frac{\partial\mathcal{L}<em>{\mathrm{tok}}}{\partial\ell}=p</em>{\theta}-\operatorname{onehot}(y).$$</p>
+<p>通过显式 $C$ 因子的直接梯度贡献因此为 $\beta\delta z^{\top}$。</p>
+<p>设 $g_{E}$ 和 $g_{E}^{\mathrm{sg}}$ 分别表示通过原始和分离计算图的反向传播返回的关于 $\operatorname{vec}(E)$ 的梯度。定义：</p>
+<p>$$J_{C}=\frac{\partial\operatorname{vec}(C)}{\partial\operatorname{vec}(E)}.$$</p>
+<p>则：</p>
+<p>$$g_{E}-g_{E}^{\mathrm{sg}}=J_{C}^{\top}\operatorname{vec}!\left(\beta\delta z^{\top}\right).$$</p>
+<p>(24)</p>
+<p>两个梯度在相同参数值处评估，具有相同的前向计算；唯一区别是捷径显式 $C$ 因子上的停止梯度。通过 $r$ 的路径、当噪声状态依赖于码本时通过 $z$ 的路径，以及任何其他保留的计算都保留在两个图中。批次和序列平均引入它们通常的缩放因子，预热系数可以吸收到 $\beta$ 中。固定token权重乘以相应的梯度贡献。</p>
+<p>方程(24)通过微分矩阵乘积并通过码本归一化应用链式法则得出。它标识了移除的贡献，而不确定该贡献是有助于还是有碍于优化。特别地，大的 $c_{\mathrm{skip}}$ 本身不意味着大梯度，因为 $\delta$ 依赖于预测。相对梯度范数和与保留梯度的对齐为基于优化的解释提供了更直接的证据。</p>
+<h3>A.4 后验均值、几何和自条件化</h3>
+<p>对于token上的任何分布 $p$，设 $Y\sim p$，$X=c_{Y}$，$\mu(p)=\mathbb{E}<em>{p}[X]$，以及 $\mathcal{R}</em>{p}(a)=\mathbb{E}<em>{p}\lVert X-a\rVert</em>{2}^{2}$。</p>
+<p>展开平方并使用 $\mathbb{E}_{p}[X-\mu(p)]=0$ 给出：</p>
+<p>$$\mathcal{R}<em>{p}(a)=\mathcal{R}</em>{p}(\mu(p))+\lVert a-\mu(p)\rVert_{2}^{2}.$$</p>
+<p>(25)</p>
+<p>对于标量权重 $w=w(p)$，代入 $a=w\mu(p)$ 得到：</p>
+<p>$$\mathcal{R}<em>{p}(w\mu(p))-\mathcal{R}</em>{p}(\mu(p))=(1-w)^{2}\lVert\mu(p)\rVert_{2}^{2}\geq 0.$$</p>
+<p>(26)</p>
+<p>等范数码本进一步意味着：</p>
+<p>$$\operatorname{tr}\operatorname{Cov}<em>{p}(X)=\mathcal{R}</em>{p}(\mu(p))=s^{2}d-\lVert\mu(p)\rVert_{2}^{2}.$$</p>
+<p>(27)</p>
+<p>这些恒等式在任何 $p$ 下成立，无论是否校准。当 $p$ 等于真实token后验时，它们描述条件数据风险。</p>
+<p>仅熵不确定嵌入方差。对于 $d\geq 2$，设 $b_{1},b_{2}$ 为正交单位基向量，$R=s\sqrt{d}$。考虑等范数嵌入 $c_{1}=Rb_{1}$，$c_{2}=Rb_{2}$，$c_{3}=-Rb_{1}$。在这些token上支撑的两个分布，概率为 $(1/2,1/2,0)$ 和 $(1/2,0,1/2)$，都有熵 $\log 2$，但它们的嵌入方差分别为 $R^{2}/2$ 和 $R^{2}$。因此，基于熵的门控为辅助输入加权提供了启发式，而不是嵌入空间中不确定性的精确度量。</p>
+<p>在LangDiT中，置信度加权仅改变训练bootstrap输入。推理求解器及其自条件化输入都保留无权重均值。上述风险恒等式涉及固定分布下的单个估计；它们对迭代生成的含义必须单独评估。此区别激励将辅助条件化和状态估计作为模型的独立方面进行评估。</p>
+<h2>附录B 实现配置</h2>
+<p>表5总结了累积架构消融的共享训练配置和评估协议。250k更新预算是配置的训练目标；每个报告的测量与其记录的检查点步骤相关联。共享调度消融和单独的扩展训练检查点分别报告。</p>
+<p><strong>表5：</strong> 累积架构消融的共享配置和评估协议。</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据</td>
+<td>OpenWebText；文档BOS/EOS标记；打包随机裁剪</td>
+</tr>
+<tr>
+<td>分词器</td>
+<td>Qwen3分词器</td>
+</tr>
+<tr>
+<td>配置词汇大小</td>
+<td>151,936</td>
+</tr>
+<tr>
+<td>生成器权重</td>
+<td>无预训练语言模型权重</td>
+</tr>
+<tr>
+<td>序列长度</td>
+<td>1,024 tokens</td>
+</tr>
+<tr>
+<td>骨干</td>
+<td>宽度768；12块；FFN宽度3,072；12 MHA头；头维度64</td>
+</tr>
+<tr>
+<td>位置编码</td>
+<td>RoPE，基数10,000</td>
+</tr>
+<tr>
+<td>Dropout</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>扩散状态</td>
+<td>学习的token嵌入，行范数 $0.1\sqrt{d}$</td>
+</tr>
+<tr>
+<td>自条件化频率</td>
+<td>25%的训练样本</td>
+</tr>
+<tr>
+<td>配置训练预算</td>
+<td>250k优化器更新</td>
+</tr>
+<tr>
+<td>全局批次大小</td>
+<td>512序列</td>
+</tr>
+<tr>
+<td>训练精度/种子</td>
+<td>bfloat16 / 42</td>
+</tr>
+<tr>
+<td>优化器</td>
+<td>AdamW；权重衰减0.01；梯度裁剪阈值1.0</td>
+</tr>
+<tr>
+<td>学习率调度</td>
+<td>5k更新预热到 $3\times 10^{-4}$；余弦衰减到 $3\times 10^{-5}$</td>
+</tr>
+<tr>
+<td>评估权重</td>
+<td>EMA；衰减0.999</td>
+</tr>
+<tr>
+<td>训练时评估</td>
+<td>每10k更新；1,024样本；长度1,024；128 NFE</td>
+</tr>
+<tr>
+<td>额外检查点评估</td>
+<td>1,024样本；长度1,024；128或1,024去噪步</td>
+</tr>
+<tr>
+<td>GenPPL评估器</td>
+<td>冻结GPT-2 Large；语料库级token聚合</td>
+</tr>
+</tbody>
+</table>
+<p>去噪管线在第3.1节中描述，其组件在第3.3–3.5节中详述。对于使用RMSNorm的变体，所有归一化归约在FP32中执行，$\varepsilon=10^{-6}$。在R3–R7中，查询–键RMSNorm在投影和头重塑之后、RoPE之前应用。每层具有维度64的独立查询和键增益向量，跨注意力头共享。</p>
+<p>基于熵的置信度加权仅在R7中引入。它作用于自条件化训练样本的bootstrap输入。在推理期间，自条件化和求解器更新都使用无权重估计后验均值。</p>
+<h3>B.1 单独的扩展训练运行</h3>
+<p>扩展的LangFlow + LangDiT结果在单独的1M更新计划下继续训练完整架构后在660k更新处评估。配置的衰减从步骤270k索引，具有2,500个预热更新，峰值学习率 $3\times 10^{-4}$，余弦衰减至步骤1M处的 $3\times 10^{-5}$。训练从450k检查点恢复，同时保留从270k索引的衰减调度。全局批次大小为512，权重衰减为0.01，EMA衰减为0.999。这些设置与250k消融调度分开。</p>
+<p>扩展的Plaid + LangDiT结果在520k更新处评估。其初始训练阶段使用1M更新目标，2,500个预热更新，然后是恒定组学习率：骨干/投影为 $3\times 10^{-4}$，嵌入和调度组为 $10^{-2}$。延续在250k恢复，使用5,000个预热更新，然后在步骤1M时对每组的峰值速率应用余弦衰减到0.1倍。AdamW使用betas $(0.9,0.999)$，除噪声调度边界上的0.1外零权重衰减，梯度裁剪1.0。两个阶段都使用批次大小512、bfloat16、种子42和EMA衰减0.999。OWT管线和分词器与第4.1节中描述的匹配。</p>
+<p>表3中所有扩展训练结果使用普通的、无权重的推理自条件化。发布元数据分别记录源运行、实际检查点步骤、计划目标和采样模式。选择的结果不意味着已达到1M更新目标。</p>
+<h2>附录C 消融配置</h2>
+<p>表6总结了表4和图1中训练轨迹中使用的七个累积配置。</p>
+<p><strong>表6：</strong> 累积架构变化。每行保留前面行中引入的变化。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>相对于前一行的变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td>基线</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>RMSNorm</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>查询–键RMSNorm</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>256维噪声条件化</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>似然捷径分离</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>学习似然捷径校准</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>置信度门控训练自条件化</td>
+</tr>
+</tbody>
+</table>
+<p>R7是图3中说明的完整LangDiT配置，具有明确的250k更新训练预算。1M更新配置被视为单独的实验。在累积阶梯中，R4将噪声条件化加宽到256维，R5在该宽度处添加捷径分离。</p>
+<p>表4的50k步列使用每个配置在优化器步骤50,000处记录的GenPPL标量。这些值既不是最小值也不是早期检查点的平均值。表3中的250k比较在相同的250k调度下使用R1和R7。</p>
+<h2>附录D 评估和报告细节</h2>
+<p>匹配消融比较相同的检查点步骤、EMA约定、生成种子、采样温度、NFE和样本数。规定的生成长度为1,024个token。这里报告的记录轨迹和额外检查点评估都使用1,024个样本。</p>
+<p><strong>指标定义。</strong> GenPPL是得分token上聚合的平均负对数似然的指数，如方程(18)所定义。一元熵在单个样本间平均。对于 $M$ 个评估样本和经验token频率分布 $\widehat{q}_{m}$：</p>
+<p>$$H_{\mathrm{sample}}=\frac{1}{M}\sum_{m=1}^{M}\left[-\sum_{v}\widehat{q}<em>{m}(v)\log\widehat{q}</em>{m}(v)\right].$$</p>
+<p>(28)</p>
+<p>每个 $\widehat{q}_{m}$ 在其样本内归一化；样本不汇入单个token频率分布。我们将此指标称为每样本平均一元熵。</p>
+<p><strong>样本核算。</strong> 报告的检查点指标对应于包含1,024个生成记录的文件。少于两个评估器token的文本对GenPPL不贡献下一token预测；熵在其非填充token序列上计算。内联评分器的空干净文本回退在第4.1节中描述。</p>
+<p><strong>记录标量提取。</strong> 图1中的训练曲线和表4中的50k步结果从R1–R7的训练日志中提取。记录的超参数指定EMA权重、1,024个长度1,024的样本、128 NFE、温度1、生成种子0和相同的冻结GPT-2 Large评分器。生成种子与训练种子42不同。分词器和特殊token策略在第4.1节中指定；一元熵使用自然对数。</p>
+<p>导出器在CSV文件中保留精确的优化器步骤索引和原始标量精度，记录源事件路径和快照校验和，并且仅对显示值进行舍入。缺失的TensorBoard测量不从其他评估中插补。这些日志与其实际检查点步骤和评估设置一起报告。</p>
+<p><strong>采样器来源。</strong> R7将置信度加权应用于训练bootstrap输入，同时在采样期间保留基线无权重自条件化规则。也对推理时反馈进行加权的模型实现定义了不同的采样设置，不属于指定的R7比较。模型类、代码修订、采样器实现和反馈规则因此需要明确标识评估。</p>
+<h2>附录E 局限性和进一步控制</h2>
+<p>累积阶梯测量特定顺序下的连续变化。它本身不建立每个组件在完整架构中的贡献或解决组件间的交互。进一步的控制包括从完整模型中移除单个组件、将查询–键归一化与条件化宽度128/256交叉，以及在固定条件化宽度下将捷径分离与校准交叉。具有可比参数增加的骨干扩展以及单独的计算匹配比较将进一步阐明增益是否来自条件化容量的放置。</p>
+<p>两个门的角色也需要单独测试。比较固定单位乘数、学习常数和学习噪声相关乘数将隔离噪声相关捷径校准的价值。比较置信度门控与无门控、恒定衰减和噪声区间内打乱的门将区分token特定置信度信息与一般衰减。这些控制不包括在报告的结果中。</p>
+<p>此类比较需要匹配的数据暴露和优化调度、可比的调整预算以及参数计数和FLOPs的明确核算。跨共享种子集的独立基线和修改模型运行将评估训练变异性；通过重采样生成文本获得的区间不捕获该不确定性来源。</p>
+<p>潜在的失败模式包括抑制有用的不确定自条件化输入或移除有助于优化的捷径梯度。较低的特征方差本身不建立更好的生成。这些可能性限制了从当前配置得出的结论的一般性，并激励在更广泛设置中评估干预。</p>
+<h2>附录F 定性生成</h2>
+<p>我们展示覆盖图2中显示的每个检查点和采样预算的一些无条件生成。面板贡献了来自LangFlow和RePlaID在250k更新内的八个基线/修改评估；RePlaID对在检查点进度上不同，其修改的250k检查点属于1M更新计划。面板贡献了来自660k的LangFlow和520k的RePlaID的四个扩展训练评估，都来自1M更新计划。表3报告了相应的检查点和评估结果。</p>
+<p><strong>示例选择。</strong> 从十二个评估文件中的每一个，我们显示固定的样本ID。评估设置遵循图2中的十二个柱状图；单个样本不按困惑度、流畅性或感知质量排名。每张卡上显示的GenPPL描述其完整的1,024样本评估，而不是仅显示的文本；配对熵在表3中报告。示例遵循图的面板和柱状图顺序。</p>
+<p><strong>采样设置。</strong> 所有示例使用EMA权重、长度1,024模型token、温度1、最终argmax解码和无权重推理自条件化。LangFlow使用Euler–EDM，具有128或1,024总去噪器调用。RePlaID使用祖先DDPM，具有128或1,024个反向转换加一次最终调用，总计129或1,025；卡头用"(+1)"表示此额外调用。生成种子等于样本ID。相等的记录种子不意味着语义提示或跨表述建立相同的初始噪声。</p>
+<p><strong>阅读示例。</strong> 完整解码文本未经校正或截断地再现，包括特殊token和文档边界。名称、引用、类引用字符串、重复和事实错误是生成输出的一部分。非打印代码点U+0097/U+009D、源替换字符U+FFFD和不支持的丝带表情符号按代码点显示（例如，[U+1F380]）。U+200B保留零宽度间距，U+200E保留从左到右方向性。其他变化限于排版转义和布局。这些固定ID示例说明了引用的评估，但不建立典型质量、事实准确性或随NFE的系统性改进。</p>
+<h3>F.1 LangFlow基线</h3>
+<p><strong>样本1 | 128 NFE | GenPPL 64.26</strong></p>
+<p>未编辑模型输出 | 250k检查点 | EMA | 种子1 | 温度1 | 1,024模型token</p>
+<p>LMANE FLADA: They have the ability to bomb [the terrorism agent] nearly one way. And, you know, at every process, law forces can bomb almost every time. They just have windows around every process—they can't even go anywhere. And they also have the ability of law enforcement to destroy 100 percent of the market, jobs, and everything—some of that has window doors, walls, all go in. All of them.</p>
+<p>AMY GOODMAN: On Public Action Network, labor worker Jaime Carr quoted this claim. You know—what they are saying was, "U.S. Border Patrol is illegally." So they're basically right, they have done a lead in stopping this immigration problem, even if undocumented workers are dangerous at work.</p>
+<p>CLEARTOTT: We're also watching this today—there's Kate Cole, one of our guest directors of the CISE Institute. Here—we've talked with it—you have a look—in the transcript of one very many immigrants who've come to move out of their country. And all, but are you scared [to put] papers on your head?</p>
+<p>LMANE FLADA: You can read it on</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 连续扩散语言模型, Transformer架构, LangDiT, 生成困惑度, 噪声条件化</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向形式化定理证明的Lean图搜索 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向形式化定理证明的Lean图搜索</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-15</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.22339" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Lean Graph Search for Formal Theorem Proving</h4>
+            <p><strong>中文摘要：</strong> LeanGraphSearch是一种面向Lean 4定理证明的图检索方法，从Mathlib前向依赖构建有向图，利用个性化PageRank沿多跳依赖链传播相关性，发现与查询词汇相似度低但实际有用的支撑引理。在MathlibQR上召回率最高提升12个百分点，MathlibMPR证明路线覆盖率提升3.7个百分点；集成到迭代证明循环后，三个基准上通过率最高提升40%，并降低单位解决问题的API成本，展现更优的精度-成本权衡。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>面向形式化定理证明的 Lean 图搜索</h1>
+<p><strong>作者</strong>：Yihan Xu†、Jia-Chen Gu†、Junyi Zhang、Di Wu、Haikang Deng、Po-Nien Kung、Kai-Wei Chang、Amit Sahai、Wei Wang、Nanyun Peng</p>
+<p><strong>单位</strong>：加州大学洛杉矶分校</p>
+<p><strong>联系方式</strong>：{simpson561@, gujc@, junyizhang2002@, diwu@cs.}ucla.edu</p>
+<p>† 共同贡献 | 网站 | 代码</p>
+<h2>摘要</h2>
+<p>检索相关引理对于形式化定理证明至关重要，它使证明器能够基于已有的数学结果构建机器可验证的证明。近期的检索系统将库声明与目标定理或其中间证明步骤进行匹配，但对声明之间多跳依赖关系的利用有限。这些依赖关系可以揭示那些与目标定理在词汇上不一定相似、但在相关问题的证明中反复出现的支撑性引理。为此，我们提出 <strong>LeanGraphSearch</strong>，一种面向 Lean 4 的基于图的检索方法，它从 Mathlib 的前向依赖关系构建图，并通过遍历该图经由多跳依赖链发现支撑性引理。具体而言，LeanGraphSearch 将每个声明与其所依赖的前提相连接，使用基于图的排序算法将相关性从语义匹配的声明传播到其依赖项，并根据原始查询对扩展后的候选进行重排序。在两个数学检索基准上，LeanGraphSearch 在 MathlibQR 上比最强基线 LeanSearch v2 的召回率提高了多达 12 个百分点，在 MathlibMPR 上将完整标注证明路线的覆盖率提高了多达 3.7 个百分点。更重要的是，我们通过将 LeanGraphSearch 集成到由 Lean 反馈引导的迭代证明循环中，评估这些检索增益是否转化为端到端定理证明的改进。在三个定理证明基准上，LeanGraphSearch 在 {8,16,32} 轮反思下的通过率相比原始证明器提高了多达 40%，相比 LeanSearch v2 最多提高 10%，展现出更好的精度–成本权衡。这些发现突出了依赖图搜索对定理证明的价值，并激励了对面向结构的证明发现搜索的进一步研究。</p>
+<h2>1 引言</h2>
+<p>形式化定理证明用形式语言表达数学陈述和证明，允许 Lean 等证明助手验证其正确性（de Moura &amp; Ullrich, 2021）。搜索引擎通过帮助用户和自动证明器在 Mathlib 等大型数学库中定位有用的定义、定理和引理来支持证明过程（The mathlib Community, 2020; Yang et al., 2023; Mikuła et al., 2024; Shen et al., 2025; Ju et al., 2026）。现有检索系统（如 LeanExplore（Asher, 2025）、LeanFinder（Lu et al., 2026）和 LeanSearch v2（Gao et al., 2026））通过识别与目标定理或中间目标相关的库声明来满足这一需求。然而，它们对声明间多跳依赖关系的有限利用可能会遗漏那些与查询词汇相似性很低、但在相关问题证明中出现的支撑性引理（Shen et al., 2025; Gao et al., 2026）。</p>
+<p>一个关键观察是，与目标定理相关的声明可以作为通过多跳依赖发现支撑性引理的起点。这些依赖关系将声明与其直接和间接前提连接起来，为词汇上与查询相似度较低的实用引理提供了额外路径。为了捕获和利用这种结构，我们引入了 LeanGraphSearch（图 1），一个面向 Lean 4 定理证明的基于图的检索框架。它从 Mathlib 的前向依赖关系构建有向图，将声明表示为节点，并将每个声明与其直接依赖的前提相连接。从语义相关的声明出发搜索该图，将检索扩展到直接查询匹配之外，帮助用户和自动证明器发现可能难以定位的支撑性前提。</p>
+<p><strong>图 1：使用 LeanGraphSearch 的依赖引导检索。</strong> 声明依赖关系图示，展示语义检索到的声明（蓝色）如何通过共享依赖和多跳依赖导向支撑性前提（绿色）。 精选的检索与证明结果。增益以相对于 LeanSearch v2 的百分点报告。其中：查询 q 为目标定理或证明目标；d₁、d₂ 为相关声明；ℓ₁ 为共享前提；ℓ₂ 为多跳前提；d₃、d₄ 为图中其他声明。MathlibQR 召回率：LeanSearch v2 为 82.7%，LeanGraphSearch 为 94.7%（+12.0 个百分点）；MathlibMPR 覆盖率：LeanSearch v2 为 39.1%，LeanGraphSearch 为 42.8%（+3.7 个百分点）；FATE-H 成功率：无检索为 52%，LeanSearch v2 为 73%，LeanGraphSearch 为 81%（+8.0 个百分点）。</p>
+<p>为了搜索构建的依赖图，LeanGraphSearch 使用目标查询引导沿形式依赖关系的遍历。给定非正式描述或形式目标，它首先使用嵌入检索声明，并根据查询对它们进行重排序以选择语义相关的种子。种子相关性分数被归一化以形成个性化 PageRank（Brin &amp; Page, 1998）的个性化分布，该算法沿依赖边传播相关性，同时反复返回种子，从而扩展候选集。最后，LeanGraphSearch 根据原始查询对扩展后的候选进行重排序，并将这些第二轮相关性分数与特定于查询的图分数结合以产生最终排名。</p>
+<p>我们在独立前提检索和下游形式化定理证明两方面评估 LeanGraphSearch。对于前提检索，LeanGraphSearch 在 MathlibQR 的 810 个查询公平子集（Gao et al., 2026）上将 Recall@100 从 LeanSearch v2 的 82.7% 提高到 94.7%，证实依赖图搜索有效恢复了额外的相关引理。在 MathlibMPR（Gao et al., 2026）上，它提高了证明路线级别的前提覆盖率，将 Covered@20 从 39.1% 提高到 42.8%，Covered@50 从 41.3% 提高到 44.2%。这些结果表明，依赖感知检索能更好地恢复沿标注证明路线的完整前提集。对于形式化定理证明，我们将 LeanGraphSearch 集成到配备 Lean 诊断反馈和问题局部失败记忆的迭代证明循环中。LeanGraphSearch 在 FATE-H（Jiang et al., 2026）、MathlibMPR-Prop（Gao et al., 2026）和 Lean-IMO-Bench（Kung et al., 2026）三个基准上始终优于最先进的检索基线，证明前提检索的改进转化为更高的形式化证明成功率。</p>
+<h2>2 相关工作</h2>
+<p>数学定理证明可以非正式地用自然语言和数学符号进行，也可以正式地用 Lean 等证明助手检查的语言进行（de Moura &amp; Ullrich, 2021）。基于大语言模型（LLM）的形式化证明方法包括在证明状态搜索中生成策略（Yang et al., 2023; Thakur et al., 2024），以及通过验证器反馈生成和细化证明脚本，通常由非正式证明草图引导（Kung et al., 2026）。在本文中，数学搜索是指为形式化证明检索库声明，使用非正式或正式查询。更多相关工作见附录 A。</p>
+<p><strong>形式化数学的搜索。</strong> 先前的工作表明，检索可重用的库事实可以改进形式化证明构建（Mikuła et al., 2024; Yang et al., 2023; Shen et al., 2025）。Magnushammer 通过对比训练和重排序为 Isabelle 学习前提选择（Mikuła et al., 2024），而 ReProver 和 REAL-Prover 基于检索到的 Lean 前提进行策略生成（Yang et al., 2023; Shen et al., 2025）。LeanPremise 支持用户特定上下文中的前提选择（Zhu et al., 2026），LeanStateSearch 将分词和重排序适应于形式化证明状态查询（Tao et al., 2025）。互补的搜索系统帮助从数学描述定位声明：LeanExplore 结合形式陈述与非正式描述进行语义搜索（Asher, 2025），LeanFinder 从合成查询和偏好反馈中学习意图感知嵌入（Lu et al., 2026）。LeanSearch v2 将这一系列工作扩展到全局前提检索，将基于嵌入的搜索和重排序与迭代“草图–检索–反思”循环相结合，为整个证明收集支撑性前提（Gao et al., 2026）。</p>
+<p><strong>基于图的检索。</strong> 图结构已被用于指导自然语言语料库和形式库中的检索。GraphRAG 构建实体图和社区摘要用于以查询为中心的摘要（Edge et al., 2024），而 HippoRAG 将个性化 PageRank 应用于知识图进行多跳检索（Jiménez Gutiérrez et al., 2024）。KG²RAG 从语义检索的块开始，使用知识图扩展和组织证据（Zhu et al., 2025）。在形式化数学搜索中，LeanExplore 使用声明依赖生成非正式描述，并将 PageRank 中心性作为排序特征（Asher, 2025）。LeanSearch v2 在构建声明描述时也自底向上处理依赖关系（Gao et al., 2026）。为了学习前提选择的图感知表示，Petrovčič et al. (2025) 将文本嵌入与状态–前提和前提–前提依赖上的关系图神经网络相结合。</p>
+<h2>3 LeanGraphSearch</h2>
+<p><strong>图 2：LeanGraphSearch 概览。</strong> 依赖图构建（3.2 节）：使用 jixia 进行静态分析，从 Mathlib 声明中提取引用以构建有向图 𝒢 = (V, E)。节点为声明陈述及描述，边为声明到被引用依赖的指向。 基于图的检索（3.3 节）：首先使用语义嵌入检索语义种子，然后通过遍历依赖图扩展候选集。种子和图扩展的候选被合并并重排序，以选择最终的前 K 个声明。流程包括：1. 语义种子检索（嵌入检索 + 首次重排序 → 前 K 个声明集合 S）；2. 查询感知传播（个性化 PageRank → PPR 分数前 N 个集合 T）；3. 候选细化（合并候选 → 第二次重排序 → 结合分数 → 最终前 K 个声明）。</p>
+<p>我们引入了一个面向 Lean 定理证明的基于图的检索框架，利用声明之间的结构关系。它将 Mathlib 表示为有向声明依赖图（图 2(a)），并使用查询感知传播从语义相关的声明扩展到其形式先决条件（图 2(b)）。语义相关性和依赖结构共同指导有前景的声明选择，随后进行重排序以产生最终排名列表。</p>
+<h3>3.1 任务形式化</h3>
+<p><strong>数学检索。</strong> 我们研究 Lean 4 中用于定理证明的库声明检索（de Moura &amp; Ullrich, 2021）。令 ℒ = {dᵢ}ᵢ₌₁ⁿ 表示 Mathlib 声明语料库。每个声明 dᵢ 由其名称标识，并与其形式陈述以及（如果可用）自然语言描述相关联¹。检索查询 q 可以包含非正式数学描述、形式 Lean 陈述、证明状态或它们的组合。它可以描述目标定理，或请求中间证明步骤所需的定义或引理。给定查询 q，检索器从 ℒ 中返回最多 K 个按检索分数排序的声明，记为 ℛ(q) = {dⱼ}ⱼ₌₁ᴷ。我们考虑两个互补目标：定位与查询匹配的单个声明，以及检索目标定理的支撑性前提。在后一种设置中，有用的声明可能涉及中间对象或侧条件，可能需要多个声明来支持完整证明。因此，检索必须捕获声明在证明中的相关性，即使它们的陈述与查询差异很大。</p>
+<p>¹ 描述取自 Gao et al. (2026) 提供的 Gemini 生成语料库。</p>
+<p><strong>定理证明。</strong> 每个证明问题由包含一个目标证明空洞的 Lean 源 x 指定。在第 t 轮，搜索策略可以使用 x 以及（如果可用）先前的证明候选 Yₜ₋₁ 和 Lean 编译器诊断 eₜ₋₁ 发出查询。检索到的声明被聚合到上下文 Rₜ 中，证明器使用它来构建或修改候选 Yₜ。成功的候选在没有活动 sorry 的情况下通过详细阐述并满足证明空洞完整性契约。这将查询级检索接口与决定何时调用它的策略分开。</p>
+<h3>3.2 声明依赖图构建</h3>
+<p>LeanGraphSearch 通过使用 jixia 工具（frenzymath, 2024）进行静态分析，从 Mathlib 的结构引用中构建有向图 𝒢 = (𝒱, ℰ)。每个节点 i ∈ 𝒱 表示一个声明及其形式陈述和（如果可用）自然语言描述。有向边 i → j 表示声明 i 在其类型或值中引用声明 j。因此，边从声明指向其依赖项，允许从查询相关的声明遍历到其陈述或实现之下的定义和引理。该图提供了补充基于嵌入的语义相似性的显式形式依赖结构。从语义相关的声明开始，遍历可以揭示潜在有用的支撑性声明，包括具有不同表面形式的声明所共享的依赖项。因此，该图用形式结构关系增强检索，同时保持底层 Mathlib 语料库不变。</p>
+<h3>3.3 基于图的检索</h3>
+<p><strong>语义种子检索。</strong> 给定查询 q，LeanGraphSearch 首先使用嵌入–重排序器检索管道（Gao et al., 2026）检索语义相关的声明作为图传播的种子。查询使用 Qwen3-Embedding-8B（Zhang et al., 2025）编码以检索初始候选集。然后使用 Qwen3-Reranker-8B 产生的重排序器 logits 对每个查询–声明对进行相关性评分（Zhang et al., 2025）。按这些分数排名的前 K 个声明形成语义种子集 S。</p>
+<p><strong>查询个性化传播。</strong> 为了利用 3.2 节中描述的依赖结构，LeanGraphSearch 在图上传播特定于查询的种子分布。具体而言，LeanGraphSearch 归一化语义种子分数以获得图节点上的种子分布 v，将种子集 S 之外的节点的质量分配为零：</p>
+<p>vᵢ = (qᵢ · 𝟙[i ∈ S]) / (∑ⱼ∈S qⱼ)。　　(1)</p>
+<p>令 P 表示 𝒢 的行随机转移矩阵，𝒟 表示悬挂节点集。LeanGraphSearch 通过迭代计算个性化 PageRank（PPR）（Brin &amp; Page, 1998）：</p>
+<p>p⁽ᵏ⁺¹⁾ = rv + (1−r)p⁽ᵏ⁾P + (1−r)(∑ᵢ∈𝒟 pᵢ⁽ᵏ⁾)v，　　(2)</p>
+<p>其中 p⁽⁰⁾ = v。重启项 rv 保持传播锚定到种子分布，而转移项 (1−r)p⁽ᵏ⁾P 将每个种子向其依赖项扩展。将悬挂质量返回到 v 保持特定于查询的分布。</p>
+<p><strong>图感知候选细化。</strong> 在 PPR 传播后，LeanGraphSearch 将语义种子集 S 与按 PPR 分数排名的前 N 个图扩展候选合并。保留的候选然后通过 Qwen 重排序器在第二轮重排序阶段针对原始查询进行评分。最终分数将第二阶段相关性分数 q̃ᵢ 与由系数 λ 加权的归一化 PPR 分数混合：</p>
+<p>fᵢ = q̃ᵢ + λ · zscore_query(pᵢ)。　　(3)</p>
+<p>该过程使用相同的相关性模型评估图扩展和种子候选，图信号帮助区分具有相似重排序器分数的候选。最后，LeanGraphSearch 返回具有最高 fᵢ 的前 K 个候选作为 ℛ(q)。</p>
+<h3>3.4 搜索循环策略</h3>
+<p>为了与 LeanSearch v2 中的搜索循环设置保持一致，我们评估了 LeanGraphSearch 的两种检索策略变体，它们共享相同的检索机制，但在调用时机和方式上有所不同。<strong>标准模式</strong>在失败的证明尝试后使用以当前证明状态为条件的查询调用基于图的检索。<strong>推理模式</strong>额外使用 LLM 在第一次证明尝试之前将定理分解为针对定义、高级证明策略和单个证明步骤的查询。检索到的证据在子查询之间聚合并截断为 K 个声明。读者可以参考 Gao et al. (2026) 了解搜索策略的更多细节。</p>
+<h2>4 数学检索实验</h2>
+<h3>4.1 设置</h3>
+<p><strong>基准和指标。</strong> 我们在 MathlibQR 和 MathlibMPR 上评估 LeanGraphSearch，遵循 LeanSearch v2 的基准定义和指标（Gao et al., 2026）。MathlibQR 包含六种自然语言查询，每个查询与单个目标声明配对。我们使用其在所有比较系统共享的 171 个目标声明上的 810 个查询的公平子集，并报告 k ∈ {1,5,10} 的 nDCG@k 和 k ∈ {10,50,100} 的 Recall@k。MathlibMPR 包含 69 个研究级 Mathlib 定理，具有分组前提和替代证明路线。Recall@k（组）度量前 k 个结果命中的前提组的比例，而 Covered@k 度量检索集是否覆盖至少一条完整证明路线中的每个前提组。我们报告 k ∈ {5,10,20,30,50} 的两个指标。</p>
+<p><strong>基线。</strong> 对于非智能体搜索，我们在 MathlibQR 上将 LeanGraphSearch 与三种先前的基于嵌入的搜索方法 LeanExplore、LeanFinder 和 LeanSearch v2（标准模式）进行比较（Asher, 2025; Lu et al., 2026; Gao et al., 2026）。对于智能体搜索，我们将 LeanGraphSearch 与三种使用非正式和正式描述作为查询的搜索方法 INF-X-Retriever、ReasonIR 和 DIVER（Yao et al., 2025; Shao et al., 2025; Sun et al., 2025）；三种使用当前证明状态作为查询的搜索方法 ReProver、LeanPremise 和 LeanStateSearch（Yang et al., 2023; Zhu et al., 2026; Tao et al., 2025）；以及最后与使用简单连接的描述和状态作为输入的 LeanSearch v2（推理模式）进行比较。为了估计跨不同主干模型的鲁棒性，我们使用 Gemini 3.1 Pro 和 Claude Sonnet 5 作为主干模型评估 LeanSearch v2（推理模式）和 LeanGraphSearch（推理模式），然后对两个模型的每个指标取平均。</p>
+<h3>4.2 结果</h3>
+<p>表 1 显示 LeanGraphSearch 在每个测量的截断点上一致地提高了检索性能。相对于 LeanSearch v2 的增益在更大的截断点增加，nDCG@10 从 0.616 增加到 0.629，Recall@50 增加 7.8 个百分点，Recall@100 增加 12.0 个百分点。在表 2 中，LeanGraphSearch 在五个截断点中的四个上提高了组召回率，Recall@10 除外。完整路线覆盖率的改进更为一致：Covered@k 在每个截断点都增加，在 k=20 时超过 LeanSearch v2 3.7 个百分点，在 k=50 时超过 2.9 个百分点。</p>
+<p><strong>表 1：MathlibQR 810 个查询公平子集上的查询到声明检索。</strong> LeanExplore 和 LeanFinder 引自 Gao et al. (2026)。每列的最佳结果以<strong>粗体</strong>显示。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>nDCG@1</th>
+<th>nDCG@5</th>
+<th>nDCG@10</th>
+<th>Recall@10</th>
+<th>Recall@50</th>
+<th>Recall@100</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LeanExplore</td>
+<td>0.246</td>
+<td>0.358</td>
+<td>0.393</td>
+<td>0.569</td>
+<td>0.743</td>
+<td>0.789</td>
+</tr>
+<tr>
+<td>LeanFinder</td>
+<td>0.370</td>
+<td>0.514</td>
+<td>0.533</td>
+<td>0.698</td>
+<td>0.824</td>
+<td>0.875</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>0.472</td>
+<td>0.596</td>
+<td>0.616</td>
+<td>0.765</td>
+<td>0.821</td>
+<td>0.827</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td><strong>0.473</strong></td>
+<td><strong>0.604</strong></td>
+<td><strong>0.629</strong></td>
+<td><strong>0.794</strong></td>
+<td><strong>0.899</strong></td>
+<td><strong>0.947</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 2：MathlibMPR 上的全局前提检索。</strong> 两个评估方法行是 Gemini 3.1 Pro 和 Claude Sonnet 5 上的算术平均值。基线结果引自 Gao et al. (2026)。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Recall@5</th>
+<th>Recall@10</th>
+<th>Recall@20</th>
+<th>Recall@30</th>
+<th>Recall@50</th>
+<th>Covered@5</th>
+<th>Covered@10</th>
+<th>Covered@20</th>
+<th>Covered@30</th>
+<th>Covered@50</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INF-X-Retriever</td>
+<td>21.2</td>
+<td>28.2</td>
+<td>33.9</td>
+<td>40.0</td>
+<td>42.6</td>
+<td>15.9</td>
+<td>18.8</td>
+<td>21.7</td>
+<td>24.6</td>
+<td>24.6</td>
+</tr>
+<tr>
+<td>ReasonIR</td>
+<td>23.9</td>
+<td>26.9</td>
+<td>33.3</td>
+<td>35.6</td>
+<td>43.8</td>
+<td>17.4</td>
+<td>18.8</td>
+<td>20.3</td>
+<td>21.7</td>
+<td>30.4</td>
+</tr>
+<tr>
+<td>DIVER</td>
+<td>27.7</td>
+<td>38.0</td>
+<td>46.6</td>
+<td>52.8</td>
+<td>55.0</td>
+<td>18.8</td>
+<td>24.6</td>
+<td>29.0</td>
+<td>33.3</td>
+<td>37.7</td>
+</tr>
+<tr>
+<td>ReProver</td>
+<td>3.0</td>
+<td>5.5</td>
+<td>7.6</td>
+<td>8.8</td>
+<td>10.3</td>
+<td>0.0</td>
+<td>1.4</td>
+<td>2.9</td>
+<td>4.3</td>
+<td>4.3</td>
+</tr>
+<tr>
+<td>LeanPremise</td>
+<td>4.1</td>
+<td>4.8</td>
+<td>8.0</td>
+<td>9.9</td>
+<td>11.5</td>
+<td>1.4</td>
+<td>1.4</td>
+<td>4.3</td>
+<td>4.3</td>
+<td>5.8</td>
+</tr>
+<tr>
+<td>LeanStateSearch</td>
+<td>6.5</td>
+<td>9.3</td>
+<td>12.5</td>
+<td>16.0</td>
+<td>20.0</td>
+<td>2.9</td>
+<td>2.9</td>
+<td>7.2</td>
+<td>10.1</td>
+<td>13.0</td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td>36.4</td>
+<td>48.2</td>
+<td>55.5</td>
+<td>57.8</td>
+<td>58.2</td>
+<td>22.5</td>
+<td>29.7</td>
+<td>39.1</td>
+<td>41.3</td>
+<td>41.3</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td><strong>37.9</strong></td>
+<td>47.0</td>
+<td><strong>56.8</strong></td>
+<td><strong>57.9</strong></td>
+<td><strong>58.3</strong></td>
+<td><strong>23.9</strong></td>
+<td><strong>31.9</strong></td>
+<td><strong>42.8</strong></td>
+<td><strong>43.5</strong></td>
+<td><strong>44.2</strong></td>
+</tr>
+</tbody>
+</table>
+<p>总体而言，这些结果表明基于图的检索既改进了单个声明检索，也改进了支持完整证明路线的前提集的恢复。除了定量结果外，我们的定性分析揭示了以下发现：</p>
+<p><strong>图感知扩展揭示底层数学对象。</strong> 在 MathlibQR 上，语义检索器经常识别描述与查询密切匹配的构造器、投影或特征定理，但遗漏相关的父声明或更深的依赖声明，因为它们的名称和签名与查询的词汇相似性较低。图感知扩展通过依赖关系将这些语义匹配连接到底层声明。</p>
+<p><strong>图增强改进检索上下文的组成。</strong> 在 MathlibMPR 上，LeanGraphSearch 平均返回比 LeanSearch v2 更少的过滤声明，但在前五个位置检索到更多黄金声明，提高了组召回率和完整路线覆盖率。路线级示例进一步说明了这种效果。这些结果表明图增强将相关前提集中在检索到的上下文中，而不是仅仅扩展它。</p>
+<p>说明这些发现的示例在附录 C 中提供。</p>
+<h2>5 定理证明实验</h2>
+<p>更重要的是，我们在形式化定理证明任务上进行评估，以确认检索质量的改进是否转化为更好的证明生成。</p>
+<h3>5.1 智能体证明循环中的 LeanGraphSearch</h3>
+<p>为了将 LeanGraphSearch 集成到以验证器为基础的证明循环中，我们将其实现为 LLM 证明器可以调用的搜索工具。每个问题实例包含一个带有目标证明空洞的 Lean 源 x。在推理轮 t，由 θ 参数化的证明器 M_θ 在问题 x、先前候选 Yₜ₋₁、最新 Lean 编译器诊断 eₜ₋₁、可选的检索声明 Rₜ 和可选的失败记忆反馈 mₜ₋₁ 的条件下生成完整的 Lean 源候选 Yₜ：</p>
+<p>Yₜ ~ M_θ(x, Yₜ₋₁, eₜ₋₁, Rₜ, mₜ₋₁)。　　(4)</p>
+<p>Lean 编译器执行 Yₜ 并返回成功的详细阐述或结构化诊断。每个失败的候选之后是在最新验证器反馈条件下的一个修订，产生单个候选谱系。基于将验证器反馈纳入迭代证明细化的常见做法，我们研究 LeanGraphSearch 是否可以提供有用的检索反馈以进一步提高证明性能。在失败的尝试后，LLM 可选择地从问题 x、当前候选 Yₜ 和 Lean 诊断 eₜ 生成五个搜索查询。每个查询调用 LeanGraphSearch 并返回 K 个声明。LeanGraphSearch 对检索到的声明去重，并将它们插入修订提示中先前候选和诊断的旁边。当完整的 Lean 源在没有活动 sorry 的情况下通过详细阐述并满足证明空洞完整性契约时，候选成功。</p>
+<p><strong>可选的形式化失败记忆。</strong> 我们的初步实验表明，LLM 证明器可能在多轮中重复相同或相似的失败证明，浪费推理预算并限制替代证明策略的探索。为了缓解这个问题，我们引入了失败记忆，它用循环形式化状态的问题局部记录增强了智能体循环。对于每个稳定的失败，我们构建结构化的失败状态：</p>
+<p>sₜ = (cₜ, ēₜ, Gₜ, Lₜ, τₜ)，　　(5)</p>
+<p>其中 cₜ 是错误类别，ēₜ 是归一化诊断，Gₜ 包含未解决的目标，Lₜ 总结局部上下文，τₜ 是推断的失败策略。确定性序列化和 SHA-256（NIST, 2015）哈希识别重复状态。当状态重复时，下一次证明器调用接收一个紧凑的死胡同记录和导致它的失败修改，鼓励证明器探索替代修复。记忆还重用相同候选的确定性失败，并按形式化证明状态和归一化查询缓存检索响应。这些干预减少了重复编译和检索，同时保持单谱系搜索结构。</p>
+<h3>5.2 设置</h3>
+<p><strong>基准和指标。</strong> 我们考虑三个具有不同领域和复杂性的基准：FATE-H（Jiang et al., 2026）、MathlibMPR-Prop（Gao et al., 2026）和 Lean-IMO-Bench（Kung et al., 2026）。FATE-H 包含 100 个研究生级别的代数问题，MathlibMPR-Prop 包含 MathlibMPR 中允许统一策略模式接口的 50 个命题，Lean-IMO-Bench 包含 30 个基础和 30 个高级奥林匹克问题。对于每个问题，我们允许主干模型最多 32 轮反思，每轮分配一个可选查询，并报告 k ∈ {8,16,32} 的 pass@k，其中 k 表示反思轮数。我们还报告每组的归一化总成本以评估成本效益。</p>
+<p><strong>基线。</strong> 为了控制评估成本同时保留代表性基线，我们主要将 LeanGraphSearch 与最先进的 LeanSearch v2（Gao et al., 2026）和<strong>无检索的原始主干 LLM</strong>进行比较。为了与 LeanSearch v2 中的搜索循环设置保持一致，我们在<strong>标准模式</strong>和<strong>推理模式</strong>下评估 LeanSearch v2 和 LeanGraphSearch。五种配置中的每一种分别在禁用和启用失败记忆的情况下评估。具体而言，每个检索动作产生以当前定理、证明候选和 Lean 诊断为条件的五个查询，每个查询检索最多 50 个声明。Gemini 3.1 Pro 是所有实验中的证明器主干。在每个基准内，证明器提示、验证器、动作预算和模型设置在所有配置中固定。</p>
+<h3>5.3 结果</h3>
+<p>表 3、4 和 5 显示了三个基准上相对于无检索基线的通过率和成本。我们的结果揭示了以下发现：</p>
+<p><strong>表 3：FATE-H 上的证明结果</strong>，按是否启用失败记忆分组。相对成本是以每组内无检索归一化的全预算 API 成本。每组中的最佳和次佳结果分别以<strong>粗体</strong>和下划线显示。</p>
+<table>
+<thead>
+<tr>
+<th>检索条件</th>
+<th>pass@8</th>
+<th>pass@16</th>
+<th>pass@32</th>
+<th>相对成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>禁用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>35</td>
+<td>42</td>
+<td>47</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>49</td>
+<td>61</td>
+<td>70</td>
+<td>1.11×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td>53</td>
+<td><strong>69</strong></td>
+<td>71</td>
+<td>1.09×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td>52</td>
+<td>68</td>
+<td>73</td>
+<td>1.41×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td><strong>56</strong></td>
+<td><strong>70</strong></td>
+<td><strong>75</strong></td>
+<td>1.37×</td>
+</tr>
+<tr>
+<td><strong>启用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>33</td>
+<td>45</td>
+<td>52</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>53</td>
+<td>63</td>
+<td>71</td>
+<td>1.01×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td>54</td>
+<td>68</td>
+<td>73</td>
+<td>1.01×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td>54</td>
+<td>66</td>
+<td>73</td>
+<td>1.31×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td><strong>58</strong></td>
+<td><strong>75</strong></td>
+<td><strong>81</strong></td>
+<td>1.22×</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 4：MathlibMPR-Prop 上的证明结果</strong>，按是否启用失败记忆分组。</p>
+<table>
+<thead>
+<tr>
+<th>检索条件</th>
+<th>pass@8</th>
+<th>pass@16</th>
+<th>pass@32</th>
+<th>相对成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>禁用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>15</td>
+<td>18</td>
+<td>23</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>31</td>
+<td>35</td>
+<td>39</td>
+<td>0.82×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td><strong>32</strong></td>
+<td><strong>38</strong></td>
+<td><strong>41</strong></td>
+<td><strong>0.78×</strong></td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td><strong>33</strong></td>
+<td><strong>37</strong></td>
+<td><strong>41</strong></td>
+<td>1.01×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td><strong>33</strong></td>
+<td><strong>38</strong></td>
+<td>39</td>
+<td>1.06×</td>
+</tr>
+<tr>
+<td><strong>启用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>15</td>
+<td>19</td>
+<td>23</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td><strong>33</strong></td>
+<td>35</td>
+<td>39</td>
+<td>0.76×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td><strong>35</strong></td>
+<td><strong>37</strong></td>
+<td><strong>40</strong></td>
+<td>0.78×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td><strong>33</strong></td>
+<td><strong>36</strong></td>
+<td><strong>39</strong></td>
+<td>0.99×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td>31</td>
+<td><strong>37</strong></td>
+<td><strong>40</strong></td>
+<td><strong>0.96×</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 5：Lean-IMO-Bench 上的证明结果</strong>，按是否启用失败记忆分组。</p>
+<table>
+<thead>
+<tr>
+<th>检索条件</th>
+<th>基础集（n=30）pass@8</th>
+<th>pass@16</th>
+<th>pass@32</th>
+<th>相对成本</th>
+<th>高级集（n=30）pass@8</th>
+<th>pass@16</th>
+<th>pass@32</th>
+<th>相对成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>禁用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>12</td>
+<td>16</td>
+<td>16</td>
+<td>1.00×</td>
+<td>7</td>
+<td>7</td>
+<td>8</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>15</td>
+<td>15</td>
+<td>18</td>
+<td>1.49×</td>
+<td>4</td>
+<td>8</td>
+<td>9</td>
+<td>1.82×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td><strong>16</strong></td>
+<td><strong>17</strong></td>
+<td><strong>21</strong></td>
+<td>1.40×</td>
+<td><strong>5</strong></td>
+<td><strong>9</strong></td>
+<td><strong>10</strong></td>
+<td>1.88×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td>14</td>
+<td>16</td>
+<td><strong>21</strong></td>
+<td>2.04×</td>
+<td><strong>7</strong></td>
+<td><strong>9</strong></td>
+<td><strong>10</strong></td>
+<td>2.56×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td>14</td>
+<td>16</td>
+<td>19</td>
+<td>2.09×</td>
+<td><strong>7</strong></td>
+<td>8</td>
+<td><strong>10</strong></td>
+<td>2.53×</td>
+</tr>
+<tr>
+<td><strong>启用失败记忆</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>无检索</td>
+<td>13</td>
+<td>15</td>
+<td>17</td>
+<td>1.00×</td>
+<td>5</td>
+<td>6</td>
+<td>7</td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>LeanSearch v2（标准模式）</td>
+<td>13</td>
+<td>16</td>
+<td>16</td>
+<td>1.61×</td>
+<td>6</td>
+<td>7</td>
+<td>8</td>
+<td>1.64×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（标准模式）</strong></td>
+<td><strong>15</strong></td>
+<td><strong>18</strong></td>
+<td><strong>20</strong></td>
+<td>1.64×</td>
+<td><strong>7</strong></td>
+<td><strong>9</strong></td>
+<td>9</td>
+<td><strong>1.61×</strong></td>
+</tr>
+<tr>
+<td>LeanSearch v2（推理模式）</td>
+<td><strong>16</strong></td>
+<td><strong>18</strong></td>
+<td>18</td>
+<td>1.94×</td>
+<td><strong>7</strong></td>
+<td><strong>10</strong></td>
+<td><strong>12</strong></td>
+<td>2.31×</td>
+</tr>
+<tr>
+<td><strong>LeanGraphSearch（推理模式）</strong></td>
+<td>15</td>
+<td>17</td>
+<td>18</td>
+<td>2.25×</td>
+<td><strong>7</strong></td>
+<td>9</td>
+<td><strong>12</strong></td>
+<td>2.20×</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图 3：定理证明的成本效率。</strong> LS = LeanSearch，LGS = LeanGraphSearch，Std. = 标准模式，Reas. = 推理模式。对于 10 种配置中的每一种，我们计算总 API 成本除以 210 个定理证明实例并集上已解决问题的数量。已解决计数按 pass@32 测量。值越低表示成本效率越好。禁用失败记忆时：无检索 $13.86，LS 标准模式 $11.22，LGS 标准模式 $10.46，LS 推理模式 $13.72，LGS 推理模式 $13.89；启用失败记忆时：无检索 $14.28，LS 标准模式 $11.58，LGS 标准模式 $10.94，LS 推理模式 $14.24，LGS 推理模式 $13.02。</p>
+<p><strong>图检索改进证明完成。</strong> 标准模式下的 LeanGraphSearch 在所有集合的每个评估反思预算下都优于标准模式下的 LeanSearch v2，同时实现与推理模式下的 LeanSearch v2 相当的性能。在没有记忆的情况下，32 轮内 210 个问题中解决的数量从 136 增加到 143，在有记忆的情况下从 134 增加到 142。推理模式下的 LeanGraphSearch 产生进一步改进，达到最高的解决问题总数，在 FATE-H 上结果特别强。这种好处在较小的反思预算下也很明显。比较不同预算的结果揭示了仅从 pass@32 不太明显的改进。在 FATE-H 上，无记忆的标准模式使用 LeanGraphSearch 在 16 轮内解决 69 个问题，而使用 LeanSearch v2 为 61 个。在有记忆的推理模式下，LeanGraphSearch 在 16 轮内解决 75 个 FATE-H 问题，超过 LeanSearch v2 在 32 轮内解决的 73 个问题。</p>
+<p><strong>失败记忆在有限的反思预算下改进证明性能。</strong> 在 k=8 时，启用失败记忆增加了所有四种检索配置的解决问题总数。在标准模式下，LeanGraphSearch 的数量从 106 增加到 111，LeanSearch v2 从 99 增加到 105。在推理模式下，记忆也改进了完成度，将 LeanGraphSearch 的总 pass@16 计数从 132 增加到 138。这些结果表明失败记忆可以帮助证明器在有限的反思预算下完成更多证明。</p>
+<p><strong>图检索降低每个解决问题的 API 成本。</strong> 图 3 报告了所有 210 个定理证明实例上每种检索配置的每个解决问题的 API 成本，计算为总 API 支出（包括不成功的运行）除以 32 轮内解决的问题数。标准模式下的 LeanGraphSearch 实现了最低的每个解决问题成本。有记忆的推理模式下的 LeanGraphSearch 实现了最高的总完成度，解决了 210 个问题中的 151 个，同时保持比 LeanSearch v2 更低的每个解决问题成本。</p>
+<p>我们的定性分析表明，通过遵循多跳依赖，LeanGraphSearch 发现了直接查询匹配可能遗漏的相关证明中使用的支撑性引理。检索这些前提有助于改进下游定理证明。说明这种机制的示例在附录 C 中提供。</p>
+<h2>6 结论</h2>
+<p>我们引入了 LeanGraphSearch，一种利用 Mathlib 中形式依赖关系发现 Lean 4 定理证明支撑性前提的基于图的检索方法。从语义相关的声明开始，它使用个性化 PageRank 沿依赖边传播相关性，并根据原始查询对扩展的候选进行重排序。实验显示声明召回率和标注证明路线覆盖率的改进，其好处延伸到下游证明构建。LeanGraphSearch 在大多数评估基准和反思预算上改进了匹配 LeanSearch v2 配置的证明完成度，同时降低了每个解决问题的总 API 成本。总之，这些发现表明形式库中记录的依赖关系为检索支撑性前提提供了有用的指导，将语义搜索与构建形式证明所需的数学要素联系起来。</p>
+<h2>AI 使用声明</h2>
+<p>在这项工作中，我们使用生成式 AI 工具来实现方法和协助翻译。此外，我们使用生成式 AI 工具创建或编辑软件代码、总结或分析现有文献，以及获取或搜索信息。我们没有使用生成式 AI 工具来提出或细化假设、设计或提供研究方法或实验的反馈、清理或重新格式化数据集、支持定性或主题数据分析、解释结果、生成合成数据集、帮助开发理论模型或概念框架、提出数学主张、为证明数学主张提供关键要素，或协助编写证明。这些用途不适用于这项工作。所有代码、写作和参考文献均由至少两位作者双重检查。我们对这项工作的最终内容负责，包括在生成式 AI 帮助下产生的文本、主张和工件。</p>
+<h2>伦理声明</h2>
+<p>本文主要讨论形式化数学声明搜索和相应的定理证明工具。我们的工作有几个潜在的社会后果，我们认为没有必要在此特别强调。</p>
+<h2>可重现性声明</h2>
+<p>本文中使用的模型和数据都可以在线访问，我们为所有基线提供引用。读者可以参考 Gao et al. (2026) 和 frenzymath (2024) 的代码库以更好地重现我们的框架。我们还上传了代码库的删节版本作为补充材料供参考。有关我们实现设置的更多技术细节，请参见附录。</p>
+<h2>参考文献</h2>
+<p>Asher (2025) Justin Asher. LeanExplore: A search engine for Lean 4 declarations. arXiv preprint arXiv:2506.11085, 2025.</p>
+<p>Azerbayev et al. (2022) Zhangir Azerbayev, Bartosz Piotrowski, and Jeremy Avigad. ProofNet: A benchmark for autoformalizing and formally proving undergraduate-level mathematics problems. In Workshop on MATH-AI: Toward Human-Level Mathematical Reasoning at NeurIPS, 2022.</p>
+<p>Azerbayev et al. (2024) Zhangir Azerbayev, Hailey Schoelkopf, Keiran Paster, Marco Dos Santos, Stephen McAleer, Albert Q. Jiang, Jia Deng, Stella Biderman, and Sean Welleck. Llemma: An open language model for mathematics. In International Conference on Learning Representations, 2024.</p>
+<p>Bansal et al. (2019) Kshitij Bansal, Sarah Loos, Markus Rabe, Christian Szegedy, and Stewart Wilcox. HOList: An environment for machine learning of higher order logic theorem proving. In Proceedings of the 36th International Conference on Machine Learning, volume 97 of Proceedings of Machine Learning Research, pp. 454–463. PMLR, 2019.</p>
+<p>Brin &amp; Page (1998) Sergey Brin and Lawrence Page. The anatomy of a large-scale hypertextual web search engine. Computer Networks, 30:107–117, 1998.</p>
+<p>Czajka &amp; Kaliszyk (2018) Łukasz Czajka and Cezary Kaliszyk. Hammer for Coq: Automation for dependent type theory. Journal of Automated Reasoning, 61:423–453, 2018.</p>
+<p>de Moura &amp; Ullrich (2021) Leonardo de Moura and Sebastian Ullrich. The Lean 4 theorem prover and programming language. In Automated Deduction—CADE 28, volume 12699 of Lecture Notes in Computer Science, pp. 625–635. Springer, 2021.</p>
+<p>Edge et al. (2024) Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, Dasha Metropolitansky, Robert Osazuwa Ness, and Jonathan Larson. From local to global: A graph RAG approach to query-focused summarization. arXiv preprint arXiv:2404.16130, 2024.</p>
+<p>frenzymath (2024) frenzymath. jixia: A static analysis tool for Lean 4. GitHub repository, 2024. URL https://github.com/frenzymath/jixia.</p>
+<p>Gao et al. (2026) Guoxiong Gao, Zeming Sun, Jiedong Jiang, Yutong Wang, Jingda Xu, Peihao Wu, Bryan Dai, and Bin Dong. Leansearch v2: Global premise retrieval for lean 4 theorem proving. arXiv preprint arXiv:2605.13137, 2026.</p>
+<p>Hu et al. (2025) Jiewen Hu, Thomas Zhu, and Sean Welleck. miniCTX: Neural theorem proving with (long-)contexts. In International Conference on Learning Representations, 2025.</p>
+<p>Hubert et al. (2026) Thomas Hubert, et al. Olympiad-level formal mathematical reasoning with reinforcement learning. Nature, 651:607–613, 2026.</p>
+<p>Jiang et al. (2022) Albert Qiaochu Jiang, et al. Thor: Wielding hammers to integrate language models and automated theorem provers. In Advances in Neural Information Processing Systems, volume 35, 2022.</p>
+<p>Jiang et al. (2023) Albert Qiaochu Jiang, et al. Draft, sketch, and prove: Guiding formal theorem provers with informal proofs. In International Conference on Learning Representations, 2023.</p>
+<p>Jiang et al. (2026) Jiedong Jiang, et al. FATE: A formal benchmark series for frontier algebra of multiple difficulty levels. In International Conference on Learning Representations, 2026.</p>
+<p>Jiménez Gutiérrez et al. (2024) Bernal Jiménez Gutiérrez, Yiheng Shu, Yu Gu, Michihiro Yasunaga, and Yu Su. HippoRAG: Neurobiologically inspired long-term memory for large language models. In Advances in Neural Information Processing Systems, volume 37, 2024.</p>
+<p>Ju et al. (2026) Haocheng Ju, et al. Matlas: A semantic search engine for mathematics. arXiv preprint arXiv:2604.17484, 2026.</p>
+<p>Kaliszyk et al. (2017) Cezary Kaliszyk, François Chollet, and Christian Szegedy. HolStep: A machine learning dataset for higher-order logic theorem proving. In International Conference on Learning Representations, 2017.</p>
+<p>Kung et al. (2026) Po-Nien Kung, et al. LEAP: Supercharging LLMs for formal mathematics with agentic frameworks. arXiv preprint arXiv:2606.03303, 2026.</p>
+<p>Lample et al. (2022) Guillaume Lample, et al. HyperTree proof search for neural theorem proving. In Advances in Neural Information Processing Systems, volume 35, pp. 26337–26349, 2022.</p>
+<p>Lin et al. (2025) Haohan Lin, Zhiqing Sun, Sean Welleck, and Yiming Yang. Lean-STaR: Learning to interleave thinking and proving. In International Conference on Learning Representations, 2025.</p>
+<p>Lin et al. (2026) Yong Lin, et al. Goedel-Prover-V2: Scaling formal theorem proving with scaffolded data synthesis and self-correction. In International Conference on Learning Representations, 2026.</p>
+<p>Liu et al. (2023) Chengwu Liu, et al. FIMO: A challenge formal dataset for automated theorem proving. arXiv preprint arXiv:2309.04295, 2023.</p>
+<p>Liu et al. (2026) Junqi Liu, et al. CombiBench: Benchmarking LLM capability for combinatorial mathematics. In Third AI for Math Workshop at the International Conference on Machine Learning, 2026.</p>
+<p>Liu et al. (2025) Qi Liu, Xinhao Zheng, Xudong Lu, Qinxiang Cao, and Junchi Yan. Rethinking and improving autoformalization: Towards a faithful metric and a dependency retrieval-based approach. In International Conference on Learning Representations, 2025.</p>
+<p>Lu et al. (2026) Jialin Lu, et al. Lean Finder: Semantic search for Mathlib that understands user intents. In International Conference on Learning Representations, 2026.</p>
+<p>Mikuła et al. (2024) Maciej Mikuła, et al. Magnushammer: A transformer-based approach to premise selection. In International Conference on Learning Representations, 2024.</p>
+<p>Muennighoff et al. (2023) Niklas Muennighoff, et al. MTEB: Massive text embedding benchmark. In Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics, pp. 2014–2037. Association for Computational Linguistics, 2023.</p>
+<p>NIST (2015) NIST. Secure hash standard (SHS). Federal Information Processing Standards Publication 180-4, National Institute of Standards and Technology, 2015.</p>
+<p>Paulson &amp; Blanchette (2012) Lawrence C. Paulson and Jasmin Christian Blanchette. Three years of experience with Sledgehammer, a practical link between automatic and interactive theorem provers. In IWIL 2010, volume 2 of EPiC Series in Computing, pp. 1–11. EasyChair, 2012.</p>
+<p>Petrovčič et al. (2025) Job Petrovčič, David Narváez, and Ljupčo Todorovski. Combining textual and structural information for premise selection in Lean. In Fifth Workshop on Mathematical Reasoning and AI at NeurIPS, 2025.</p>
+<p>Pham et al. (2026) QuocViet Pham, et al. TheoremBench: Evaluating LLMs on theorem proving in formal mathematics. arXiv preprint arXiv:2606.09450, 2026.</p>
+<p>Pu et al. (2026) Lushi Pu, et al. MA-ProofBench: A two-tiered evaluation of LLMs for theorem proving in mathematical analysis. arXiv preprint arXiv:2606.13782, 2026.</p>
+<p>Ren et al. (2025) Z. Z. Ren, et al. DeepSeek-Prover-V2: Advancing formal mathematical reasoning via reinforcement learning for subgoal decomposition. arXiv preprint arXiv:2504.21801, 2025.</p>
+<p>Shao et al. (2025) Rulin Shao, et al. ReasonIR: Training retrievers for reasoning tasks. In Second Conference on Language Modeling, 2025.</p>
+<p>Shen et al. (2025) Ziju Shen, et al. REAL-Prover: Retrieval augmented Lean prover for mathematical reasoning. arXiv preprint arXiv:2505.20613, 2025.</p>
+<p>Shinn et al. (2023) Noah Shinn, et al. Reflexion: Language agents with verbal reinforcement learning. In Advances in Neural Information Processing Systems, volume 36, 2023.</p>
+<p>Su et al. (2025) Hongjin Su, et al. BRIGHT: A realistic and challenging benchmark for reasoning-intensive retrieval. In International Conference on Learning Representations, 2025.</p>
+<p>Sun et al. (2025) Duolin Sun, et al. DIVER: A multi-stage approach for reasoning-intensive information retrieval. arXiv preprint arXiv:2508.07995, 2025.</p>
+<p>Tao et al. (2025) Yicheng Tao, Haotian Liu, Shanwen Wang, and Hongteng Xu. Learning an effective premise retrieval model for efficient mathematical formalization. In Second AI for Math Workshop at the International Conference on Machine Learning, 2025.</p>
+<p>Thakur et al. (2024) Amitayush Thakur, et al. An in-context learning agent for formal theorem-proving. In First Conference on Language Modeling, 2024.</p>
+<p>Thakur et al. (2021) Nandan Thakur, et al. BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models. In Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks, volume 1, 2021.</p>
+<p>The mathlib Community (2020) The mathlib Community. The Lean Mathematical Library. In Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs, CPP 2020, New Orleans, LA, USA, January 2020. ACM.</p>
+<p>Tsoukalas et al. (2024) George Tsoukalas, et al. PutnamBench: Evaluating neural theorem-provers on the Putnam mathematical competition. In Advances in Neural Information Processing Systems, volume 37, 2024.</p>
+<p>Varambally et al. (2026) Sumanth Varambally, et al. Hilbert: Recursively building formal proofs with informal reasoning. In International Conference on Learning Representations, 2026.</p>
+<p>Wang et al. (2024) Haiming Wang, et al. LEGO-Prover: Neural theorem proving with growing libraries. In International Conference on Learning Representations, 2024.</p>
+<p>Wang et al. (2026) Hanyu Wang, et al. Aria: An agent for retrieval and iterative auto-formalization via dependency graph. In International Conference on Learning Representations, 2026.</p>
+<p>Welleck et al. (2021) Sean Welleck, et al. NaturalProofs: Mathematical theorem proving in natural language. In Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks, volume 1, 2021.</p>
+<p>Xin et al. (2025) Huajian Xin, et al. DeepSeek-Prover-V1.5: Harnessing proof assistant feedback for reinforcement learning and Monte-Carlo tree search. In International Conference on Learning Representations, 2025.</p>
+<p>Yang et al. (2023) Kaiyu Yang et al. LeanDojo: Theorem proving with retrieval-augmented language models. In Advances in Neural Information Processing Systems, volume 36, 2023.</p>
+<p>Yao et al. (2025) Yichen Yao, et al. INF-X-Retriever. GitHub repository, 2025. URL https://github.com/yaoyichen/INF-X-Retriever.</p>
+<p>Yu et al. (2026) Zhouliang Yu, et al. FormalMATH: Benchmarking formal mathematical reasoning of large language models. In Findings of the Association for Computational Linguistics: EMNLP 2026, 2026.</p>
+<p>Zhang et al. (2025) Yanzhao Zhang, et al. Qwen3 Embedding: Advancing text embedding and reranking through foundation models. arXiv preprint arXiv:2506.05176, 2025.</p>
+<p>Zheng et al. (2022) Kunhao Zheng, Jesse Michael Han, and Stanislas Polu. miniF2F: A cross-system benchmark for formal olympiad-level mathematics. In International Conference on Learning Representations, 2022.</p>
+<p>Zhu et al. (2026) Thomas Zhu, et al. Premise selection for a Lean hammer. In International Conference on Learning Representations, 2026.</p>
+<p>Zhu et al. (2025) Xiangrong Zhu, et al. Knowledge graph-guided retrieval augmented generation. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers), pp. 8912–8924. Association for Computational Linguistics, 2025.</p>
+<h2>附录 A 相关工作</h2>
+<h3>A.1 检索任务和基准</h3>
+<p>通用检索基准评估查询与支撑证据之间关系的不同方面。BEIR 度量跨异构领域的检索（Thakur et al., 2021），而 MTEB 评估跨检索和其他表示任务的嵌入（Muennighoff et al., 2023）。BRIGHT 强调需要超越直接语义匹配的推理查询（Su et al., 2025），推动了 ReasonIR、INF-X-Retriever 和 DIVER 等专用检索器的发展（Shao et al., 2025; Yao et al., 2025; Sun et al., 2025）。在数学领域，NaturalProofs 评估自然语言证明的参考检索（Welleck et al., 2021），Matlas 支持数学文献的陈述级搜索（Ju et al., 2026）。</p>
+<p>形式化证明轨迹为前提使用提供了更明确的监督。HolStep 和 HOList 提供 HOL Light 的证明步骤数据（Kaliszyk et al., 2017; Bansal et al., 2019），而 LeanDojo 从 Lean 开发中提取证明状态、策略和前提标注（Yang et al., 2023）。LeanSearch v2 引入了两个互补的检索基准（Gao et al., 2026）：MathlibQR 评估与单个目标声明配对的查询，而 MathlibMPR 标注前提组和替代证明路线。它们的指标区分定位相关声明与覆盖完整路线上的支撑前提。我们的评估将这些检索度量与下游证明完成度相结合，以检验检索到的声明是否有助于构建经过检查的证明。</p>
+<h3>A.2 形式化定理证明系统</h3>
+<p>前提选择长期以来将数学库与自动推理联系起来。Sledgehammer 和 CoqHammer 为外部证明器选择库事实，并在证明助手中重构成功的证明（Paulson &amp; Blanchette, 2012; Czajka &amp; Kaliszyk, 2018）。Thor 将语言模型与基于 hammer 的自动化集成（Jiang et al., 2022），Magnushammer 通过对比训练和重排序学习前提选择（Mikuła et al., 2024）。神经证明器还通过学习的策略选择探索证明状态，如 HOList 和 HyperTree 证明搜索（Bansal et al., 2019; Lample et al., 2022）。ReProver 和 REAL-Prover 将检索到的 Lean 前提纳入这种逐步证明过程（Yang et al., 2023; Shen et al., 2025）。最近的工作通过数学预训练（Azerbayev et al., 2024）、脚手架数据合成和自我修正（Lin et al., 2026）以及形式化验证的强化学习（Xin et al., 2025; Ren et al., 2025; Hubert et al., 2026）改进证明器。非正式推理提供了另一种指导来源：Draft, Sketch, and Prove 从非正式证明生成形式化草图（Jiang et al., 2023），而 Lean-STaR、Hilbert 和 LEAP 将非正式推理与形式化策略或子问题联系起来（Lin et al., 2025; Varambally et al., 2026; Kung et al., 2026）。这些方法改进了证明生成和分解。我们的实验固定证明器，以研究访问库声明如何影响证明完成度。</p>
+<p>库结构和先前的尝试也可以指导形式化推理。LEGO-Prover 从不断增长的库中检索已验证的引理（Wang et al., 2024），而 RAutoformalizer 和 Aria 在陈述自动形式化期间使用依赖信息和检索（Liu et al., 2025; Wang et al., 2026）。对于前提选择，Petrovčič et al. (2025) 将依赖关系纳入图感知表示。LeanGraphSearch 则使用查询条件化的依赖遍历来扩展语义重排序器考虑的候选。在证明构建期间，COPRA 记录不成功的策略并使用执行反馈指导搜索（Thakur et al., 2024）；Reflexion 更普遍地存储对失败尝试的反思（Shinn et al., 2023）。我们的可选失败记忆将不成功的修复与循环出现的形式化失败状态相关联，补充了检索提供的库证据。</p>
+<h3>A.3 定理证明基准</h3>
+<p>形式化证明基准涵盖竞赛问题、教科书数学和现有库开发。miniF2F、FIMO 和 PutnamBench 评估面向竞赛的数学（Zheng et al., 2022; Liu et al., 2023; Tsoukalas et al., 2024），而 ProverBench 增加了进一步的形式化问题集合，包括 AIME 问题（Ren et al., 2025）。ProofNet 将本科数学陈述与形式化配对（Azerbayev et al., 2022），FormalMATH 扩展了跨数学领域和难度级别的评估（Yu et al., 2026）。领域聚焦的集合包括组合数学的 CombiBench（Liu et al., 2026）、多难度级别代数的 FATE（Jiang et al., 2026）和数学分析的 MA-ProofBench（Pu et al., 2026）。其他基准强调定理周围的上下文和结构。miniCTX 评估真实 Lean 项目中的证明，其中先前的定义和引理提供相关上下文（Hu et al., 2025）。TheoremBench 提供主定理和相关的支撑子定理，以检验通过证明结构的进展（Pham et al., 2026）。我们的证明评估使用 FATE-H、MathlibMPR-Prop 和 Lean-IMO-Bench，涵盖研究生代数、Mathlib 开发和奥林匹克问题（Jiang et al., 2026; Gao et al., 2026; Kung et al., 2026）。结合 MathlibQR 和 MathlibMPR，这些基准将声明检索和前提覆盖与不同反思预算下的证明完成度联系起来。</p>
+<h2>附录 B 实现细节</h2>
+<h3>B.1 检索后端和依赖图</h3>
+<p><strong>语料库和图表示。</strong> 实现基于 LeanSearch v2 发布的 Mathlib v4.28.0-rc1 语料库（Gao et al., 2026），保留其声明元数据、非正式描述和预计算嵌入。发布的依赖图包含使用 jixia（frenzymath, 2024）提取的 310,579 个声明和 4,528,330 条前向边。构建器将结构化引用解析为声明名称，删除自引用和重复目标，并忽略图中不存在的目标引用。其仅依赖配置使用单位权重的前向依赖边。转移矩阵以压缩稀疏行格式存储，并带有悬挂节点的单独指示符。定理证明体引用的包含在图构建时控制并记录在图元数据中。</p>
+<p><strong>语义检索和相关性分数。</strong> 查询使用 Qwen3-Embedding-8B（Zhang et al., 2025）编码并在 cuVS CAGRA 搜索之前进行 ℓ₂ 归一化。Qwen3-Reranker-8B 使用 tokens "yes" 和 "no" 的最终位置 logits 对每个查询–声明对评分：</p>
+<p>qᵢ = exp(z_{i,yes}) / (exp(z_{i,yes}) + exp(z_{i,no}))。　　(6)</p>
+<p>这些非负分数定义了 3.3 节中的种子权重。两轮重排序使用相同的检查点和查询，每个格式化的对限制为 8,192 个 tokens。</p>
+<p><strong>匹配的检索预算。</strong> 在所有数学检索和定理证明评估中，两个检索器每个查询最多返回 K=50 个声明，LeanGraphSearch 使用 N=200 个 PPR 排序的扩展候选。对于 LeanGraphSearch，K 指定语义种子的数量和最终排名后返回的声明数量，而 N 指定考虑扩展的 PPR 排序图候选数量。LeanSearch v2 也为每个查询返回其前 50 个声明。因此，配对比较使用每个检索器的前 50 个结果；图扩展增加内部候选池而不增加每个查询的输出预算。相同的设置适用于直接基准查询、基于推理的子查询和反思时查询。多查询聚合是单独的操作，可以合并多个前 50 列表中的声明。</p>
+<p><strong>传播和候选细化。</strong> 检索配置使用 50 个语义种子、200 个 PPR 排序的图候选和最多 100 个声明的细化候选池。这些内部预算与每个查询 K=50 的输出预算分开。PPR 使用重启概率 r=0.15、最多 50 次迭代和 10⁻⁶ 的 ℓ₁ 收敛容差。计算使用双精度并将悬挂质量返回到种子分布。在第二轮重排序之前，实现将第一轮语义候选与 PPR 排序的候选合并，并应用图感知预过滤器：</p>
+<p>hᵢ = α·mm(qᵢ) + β·mm(pᵢ) − γ·log(1 + deg_in(i) + deg_out(i))，　　(7)</p>
+<p>其中 mm 表示候选并集上的最小–最大归一化。新的仅图候选接收初始语义分数为零。共享预过滤器默认值为 α=β=1 和 γ=0.05。保留的候选然后从重排序器接收新的语义分数。qwen_ppr_zscore 选项以 λ=0.005 实现 3.3 节中的最终分数；其均值和标准差在当前查询的保留候选上计算。零方差 PPR 向量贡献零修正。</p>
+<h3>B.2 搜索循环策略</h3>
+<p><strong>单查询检索。</strong> LeanSearch v2 和 LeanGraphSearch 共享相同的查询和结果接口。每个结果包含声明名称、模块、种类、形式签名和可用的非正式描述。客户端明确指定是否启用图增强，允许两种检索条件使用相同的服务后端。证明和推理调用者从每个查询保留最多 K=50 个声明，即使图检索使用更大的内部池。</p>
+<p><strong>基于推理的检索。</strong> 推理控制器遵循“分解–检索–过滤–判断”循环（Gao et al., 2026）。给定形式陈述和可用的非正式描述，分解模型为定义、高级结果和单个证明步骤生成查询。重复的查询字符串在检索之前被删除。过滤模型使用目标陈述和相应的步骤描述为每个子查询选择相关声明。判断模型然后评估得到的前提是否支持提议的计划。接受的计划终止循环；否则，计划和判断反馈被提供给下一次分解调用。MathlibMPR 检索和定理证明的基于推理的预检索使用相同的四个模板， reproduced in D.4 节。过滤后，声明由其模块和完全限定名称标识，并按其位置折扣之和排名：</p>
+<p>a(d) = ∑<em>{u∈𝒬: d∈F_u} 1/log₂(rank</em>{F_u}(d) + 1)，　　(8)</p>
+<p>其中 F_u 是子查询 u 的过滤列表，排名从一开始。得分最高的声明形成最终推理上下文。多分支控制器并发运行独立的计划，并使用判断器接受的第一个分支。如果没有分支被接受，它汇集已完成分支的最终过滤列表并应用相同的聚合规则。</p>
+<p><strong>与证明细化的集成。</strong> 在标准模式中，第一次证明尝试不接收检索到的上下文。在失败的尝试后，查询生成器使用目标陈述、当前候选和 Lean 诊断请求支撑声明。报告的证明设置为每个检索动作请求五个查询，每个查询保留最多 50 个声明。五个列表最多包含 250 个条目，并按首次出现顺序去重后提供给证明器。检索到的条目格式化为带有非正式描述的 Lean 声明。基于推理的证明首先通过推理控制器获得初始上下文。报告的推理模式使用自适应策略：初始证明草图和检索到的前提被提供给证明器，后续失败可以触发标准模式中使用的相同反思时查询。初始前提与失败后新检索的声明相结合。固定上下文的 reasoning/graph_reasoning 路径也存在于代码库中，但报告的自适应策略对应于其 _adaptive 变体。GET_QUERY_INIT 模板在五个评估的系统配置中未被调用。</p>
+<h3>B.3 数学检索设置</h3>
+<p><strong>MathlibQR。</strong> 评估将每个基准声明扩展为其可用的查询变体，并使用发布的 171 个名称列表选择共享声明子集。这产生了第 4 节中使用的 810 个查询。密集检索为初始重排序阶段提供 200 个候选；匹配比较使用每个检索器的最终前 200 个声明，LeanGraphSearch 的 K=50 和 N=200。与图 2 相比，选择最终前 K 的最后一步未被使用，保留完整列表以进行更深入的比较。每个查询有一个标注目标，Recall@k 是目标出现在前 k 个结果中的指示符，nDCG@k 是检索到时其对数折扣排名。指标在查询之间平均。</p>
+<p><strong>MathlibMPR。</strong> 推理输入由形式陈述及其 NL_main_result 描述组成；提供的非正式证明字段为空。发布的驱动程序默认为两个推理分支，每个分支有一个初始规划轮次和最多三次修订。每个子查询在共享的 K=50、N=200 设置下检索最多 50 个声明用于相关性过滤。判断器检查最多 30 个唯一的过滤声明，最终聚合排名最多包含 100 个声明。对于过滤解析失败，实现保留前五个候选；判断解析失败在预算剩余时触发另一次规划迭代。评估将检索标识符归一化为声明名称，并检查每个标注的前提组是否被至少一个检索到的成员命中。组召回率在问题之间进行宏平均。Covered@k 检查原始路线或标注替代路线的完整覆盖。两个指标在 k ∈ {5,10,20,30,50} 评估。如 4.1 节所述，报告的 LeanSearch v2 和 LeanGraphSearch 结果是 Gemini 3.1 Pro 和 Claude Sonnet 5 上的平均值。</p>
+<h3>B.4 定理证明设置</h3>
+<p><strong>问题和模型调用。</strong> 证明评估使用 100 个 FATE-H 问题、发布的命题 ID 列表选择的 50 个 MathlibMPR 条目，以及每个 Lean-IMO-Bench 难度级别的 30 个问题（Jiang et al., 2026; Gao et al., 2026; Kung et al., 2026）。基准加载器保留形式陈述和所需的源上下文。奥林匹克加载器提供问题描述和 Lean 陈述，同时将解答和评分字段保持在模型输入之外。Gemini 3.1 Pro 是报告实验中的证明器主干。实现请求证明生成、查询生成和推理控制器调用的温度为零。每个修订以当前候选、最新诊断和可用的检索及失败记忆上下文为条件，保持单个证明轨迹。</p>
+<p><strong>验证和证明空洞完整性。</strong> Lean 验证器使用 lean-interact 与 Mathlib 环境，v4.28.0-rc1 作为回退工具链版本。其默认超时为每次验证调用 600 秒。完整性感知路径隔离一个目标证明空洞，并将周围源保留为不可变的前缀和后缀。模型返回一个策略体，主机将其插入此源中。在编译之前，检查器拒绝对受保护上下文的更改、额外的顶层命令以及禁止的构造（如 sorry、admit 和新引入的 axiom 声明）。检查忽略注释和字符串内容。在此契约下，成功需要有效的源边界和成功的 Lean 详细阐述而没有未解决的 sorry 义务。</p>
+<p><strong>反思预算。</strong> 实现将初始尝试记录为第零轮，后续修订具有递增的轮次索引。报告的评估度量预算 k ∈ {8,16,32} 下的累积完成度。证明生成调用、检索动作和编译器提交在预算控制器中分别跟踪。一个检索动作可以发出多个搜索查询，而初始推理准备有自己的规划预算。这些计数器还区分新编译的候选与使用缓存反馈拒绝的完全相同的失败候选。</p>
+<p><strong>失败记忆。</strong> 记忆为每个证明问题单独初始化，不用于独立的数学检索基准。对于稳定的失败候选，实现序列化其错误类别、归一化诊断、未解决的目标、局部上下文、推断的失败策略、引用的标识符和附近的源片段。SHA-256 哈希识别状态，记录存储其出现次数和关联的不成功编辑（NIST, 2015）。重复阈值为两次观察。反馈包括最多三个循环状态和每个状态的三个最近失败编辑，以及更改不成功修复的指令。启用记忆时，FAILURE_MEMORY_GUIDANCE_STRICT 指令包含在初始证明提示和每个证明细化提示中。结构化的 failure_memory 摘要附加到编译器工具反馈，因此证明细化提示和反思查询提示都接收它。指导将记录的策略或声明视为在其上下文中失败应用的证据，而不是对该工具重用的全局禁止。在更改其参数、目标、实例或局部假设后，修正的应用可能仍然有效。当状态至少出现两次时，摘要包括 DEAD_END_REPEATED 指令。完整的指导和重复状态指令 reproduced in D.6 节。具有缓存确定性失败的完全相同候选被拒绝而不进行另一次编译器调用；它们的生成调用仍然计入模型使用。已经准备的检索上下文为替换候选保留。重复的搜索查询由形式状态指纹和归一化查询字符串缓存，缓存的结果被重用。基础设施故障被排除在稳定失败缓存之外。这些操作添加反馈并消除重复工作，同时保持单轨迹证明循环。</p>
+<p><strong>API 成本核算。</strong> API 支出包括证明生成、查询生成和基于推理的检索的付费调用，包括在不成功问题上进行的调用。相对成本由同一基准和记忆设置内的无检索配置归一化。对于聚合比较，每个解决问题的成本为：</p>
+<p>CostPerSolved = (∑ᵢ₌₁²¹⁰ Cᵢ) / (∑ᵢ₌₁²¹⁰ 𝟙{i 在预算 32 时被解决})，　　(9)</p>
+<p>其中 Cᵢ 是问题 i 上的 API 支出。此度量涵盖 API 使用；本地检索和 Lean 验证硬件成本不在其定义之内。结果记录保留证明尝试、编译器诊断、检索轨迹以及可用的使用和内存统计信息，用于检查单个轨迹。</p>
+<h2>附录 C 案例研究</h2>
+<h3>C.1 数学检索</h3>
+<p><strong>依赖引用改进检索质量。</strong> 在 MathlibQR 上，语义搜索通常在识别对象本身之前识别对象的构造器。对于描述“在两个函子之间且与态射作用交换的自然变换族”的查询，LeanSearch v2 检索到构造器 NatTrans.mk，但没有将 CategoryTheory.NatTrans 放入其前 100 名。来自构造器的类型引用边引入了父声明，LeanGraphSearch 将其排名第三。相同的模式出现在关于满足交换公理的基和独立集的查询中：Matroid.mk 导向 Matroid，LeanGraphSearch 将其排名第二，但 LeanSearch v2 的前 100 名中没有。对于描述为 Quillen 式同伦论配备的范畴，ModelCategory.mk' 类似地导向 HomotopicalAlgebra.ModelCategory，LeanGraphSearch 将其排名第一。在每种情况下，语义上可识别的 API 入口提供了通往底层数学对象的路径。</p>
+<p>声明体中的引用也暴露了互补的路线。对于将预层空间表示为 (X, ℱ: Open(X)^op → C) 的 MathlibQR 查询，语义检索到的全局截面限制函子在其值中引用 AlgebraicGeometry.PresheafedSpace。图扩展在排名第四处恢复后者，而 LeanSearch v2 没有在前 100 名中返回它。对于将概形定义为局部同构于仿射谱的局部环空间的查询，来自 AlgebraicGeometry.AffineScheme 的值引用连接到 AlgebraicGeometry.Scheme；目标从基线前 100 名之外移动到排名第八。最后，对于“函子之间的态射”，CategoryTheory.Functor.category 的实现引用了自然变换。遵循该值引用在排名 14 处恢复 CategoryTheory.NatTrans，同样来自基线前 100 名之外。这些示例展示了实现级关系如何在相关声明自身的描述是弱语义匹配时将其带入候选集。</p>
+<p><strong>更好的检索改进前提路线覆盖率。</strong> 在 MathlibMPR 上的好处在过滤前提列表的组成和排序中可见。在 MathlibMPR 查询 15 中，角度论证需要 SSameSide.oangle_sign_eq 和 angle_eq_abs_oangle_toReal。LeanSearch v2 将它们放在排名一和七；LeanGraphSearch 将它们放在排名一和四，在前五名内完成了双前提路线。在 MathlibMPR 查询 75 中，通过覆盖提升、Grothendieck 拓扑闭包和伴随自然性的路线类似地更加集中。LeanGraphSearch 将 IsCocontinuous.cover_lift 放在排名二而不是 18，将 superset_covering 放在排名三而不是八。其过滤上下文还包含伴随同胚等变性的左和右自然性引理，排名分别为 21 和 15；两者都没有出现在相应的 LeanSearch v2 过滤列表中。得到的上下文将此图式路线的主要步骤汇集在一起。</p>
+<h3>C.2 定理证明</h3>
+<p><strong>LeanGraphSearch 在预算内改进证明成功率。</strong> 对于 MathlibMPR-Prop 问题 51，LeanSearch v2 耗尽预算，而 LeanGraphSearch 在反思轮次 10 成功。成功的轨迹搜索 Radon–Nikodym 链式法则、密度变换和复合乘积，然后在其接受的证明中结合相应的测度论引理。在 FATE-H 问题 88 上，LeanSearch v2 轨迹再次在第 31 轮结束；LeanGraphSearch 轨迹在从商中的正则性到理想成员资格发展路线后，在第 10 轮成功。在 FATE-H 问题 100 上，LeanGraphSearch 使用平方零扩张及其模分量的幂零性在第 18 轮成功，而 LeanSearch v2 耗尽第 31 轮。这些案例说明了搜索引导的轨迹如何在可用预算内达到编译器接受的构造。</p>
+<p><strong>LeanGraphSearch 还有助于在更少的反思轮次中完成证明。</strong> 两个系统都解决了 MathlibMPR-Prop 问题 34，但 LeanGraphSearch 在第七轮而不是第 16 轮成功。其证明使用包括 Submodule.mem_colon_singleton 在内的事实发展冒号理想论证；总 API 成本从 $8.33 降至 $3.25。对于 MathlibMPR-Prop 问题 66，通过乘法高度界限和有限乘积的路线在第 5 轮而不是第 16 轮达到证明，成本从 $9.37 降至 $2.85。在 FATE-H 问题 89 上，关于平坦性、下行和素理想高度的查询与接受证明的高度论证一致。LeanGraphSearch 在第七轮而不是第 21 轮完成它，成本为 $3.24 而不是 $10.82。</p>
+<p><strong>图检索降低每次尝试的 API 成本。</strong> 更少的尝试占了节省的一部分，但观察到的每次尝试 API 成本也降低了。例如，在 MathlibMPR-Prop 问题 34 上，每次尝试的成本从 $0.490 降至 $0.406。在 FATE-H 问题 15 上，证明 ℤ[√−5] 不是主理想环的证明，每次尝试从 $0.572 降至 $0.415，同时在第三轮而不是第七轮完成。在 Lean-IMO-Bench 高级集问题 25（数字界限论证）上，相应数字为 $0.543 和 $0.416，在第三轮而不是第六轮完成。因此，这些情况下较短的轨迹每次尝试也需要更少的计费模型使用。</p>
+<p><strong>失败记忆改进证明效率。</strong> 失败记忆提供了额外的改进来源。在 Lean-IMO-Bench 基础集问题 16 上，无记忆的 LeanGraphSearch 运行耗尽第 31 轮。启用记忆的运行记录了重复的递归深度失败，更改其后续证明动作，并在第九轮用 omega 关闭剩余的算术矛盾。在 FATE-H 问题 12 上，两次运行都成功，但启用记忆将完成从第 30 轮减少到第七轮，API 成本从 $17.26 减少到 $4.56。轨迹记录了中间的编译器错误（包括类型不匹配），然后是接受的修订。</p>
+<h2>附录 D LLM 提示与采样</h2>
+<h3>D.1 提示接口</h3>
+<p>我们在匹配的 LeanSearch v2（Gao et al., 2026）和 LeanGraphSearch 比较中使用相同的提示模板。检索到的声明通过非正式描述（如果可用）后跟形式声明或签名呈现。我们的提示模板修改自 Gao et al. (2026) 的模板，纠正了可能导致不完整证明的部分。我们的提示见 D.4 和 D.5 节。</p>
+<p><strong>数学检索。</strong> MathlibQR 直接使用基准查询，不需要 LLM 生成的查询。对于 MathlibMPR，推理模型接收形式定理及其非正式描述。参考证明字段留空，黄金前提组仅用于评估。相同的推理提示用于在推理模式中为定理证明准备初始上下文。</p>
+<p>基于推理的检索遵循四个阶段：规划、检索、过滤和路线评估。规划提示首先寻求可以直接推进证明的高级定理，然后是各个步骤的关键定义和引理，所有类别最多 20 个查询。对于每个查询，过滤提示检查最多 50 个声明，并根据其数学相关性、Lean 类型和在证明中的预期角色选择结果。过滤器可以返回空列表。判断器评估过滤后的前提是否支持可实施的 Lean 证明路线，并返回带有反馈的“好”或“坏”判断。此判断评估提议的路线；成功的定理证明仍需要 Lean 验证。两个推理分支并行运行，每个分支允许初始计划和最多三次基于判断器反馈的修订。第一个分支……（原文至此截断）</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 形式化定理证明, Lean 4, 图检索, 前提选择, 个性化PageRank</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
