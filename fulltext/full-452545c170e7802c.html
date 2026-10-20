@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于大语言模型的COVID-19虚假新闻检测方法 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于大语言模型的COVID-19虚假新闻检测方法</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-16</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.23800" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：A Large Language Model LLM Approach to COVID-19 Fake News Detection</h4>
+            <p><strong>中文摘要：</strong> 本研究将BERT-base、ALBERT-base、XLM-RoBERTa-base、DistilBERT、GPT-2、T5和XLNet七种预训练模型应用于COVID-19英文推文数据集（共6,420条推文），进行真假新闻二元分类，并结合加权融合、粒子群优化、Nelder-Mead等六种优化技术提升性能。实验结果表明，GPT-2表现最佳，准确率达0.9631，精确率、召回率和F1分数均约为0.96，优于现有先进方法。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>基于大语言模型（LLM）的COVID-19虚假新闻检测方法</h1>
+<p><strong>作者</strong>：Muhammad Arif¹、Samah Fodeh-Jarad¹、Elyas Irankhah¹、Uroosa Fatima²、Lama Ayash³、Sreeraj Ramachandran¹</p>
+<p><strong>单位1</strong>：美国康涅狄格州纽黑文，耶鲁大学耶鲁医学院急诊医学系<br />
+<strong>单位2</strong>：墨西哥国家理工学院<br />
+<strong>单位3</strong>：沙特阿拉伯哈立德国王大学</p>
+<h2>摘要</h2>
+<p>文本分类是信息检索和数据挖掘领域中一个被广泛研究的方向，在医疗诊断、精准营销、娱乐以及COVID-19相关虚假新闻分类等诸多领域都有重要应用。该问题引起了全球研究人员的极大关注，尤其是近年来数据挖掘和自然语言处理的进步。这些进步推动了自动化系统的发展，以高效地对文本数据进行分类。自然语言处理（NLP）能够对包含多样化文本内容的文档进行分类。社交媒体平台通过用户互动产生海量数据。本研究的方法包括收集数据集。在这一领域中，诸如COVID-19英文推文数据集等数据集在实验中发挥了重要作用。该数据集包含各种形式的文本内容，包括与冠状病毒大流行相关的推文、帖子和消息。为了发挥迁移学习（TL）和大语言模型（LLM）的潜力，本研究将预训练的基于Transformer的模型和LLM应用于该数据集，包括BERT-base、ALBERT-base、XLM-RoBERTa-base、DistilBERT、GPT-2、XLNet和T5。此外，还应用了六种不同的优化技术，即加权融合、粒子群优化（PSO）融合、Nelder–Mead算法、Powell方法、Broyden–Fletcher–Goldfarb–Shanno（BFGS）算法和信赖域约束优化算法，以增强模型的效果。结果表明，GPT-2大语言模型表现出较高的准确性和效率。模型性能通过准确率、精确率、召回率和F1分数进行评估，每项指标均达到0.96。此外，还创建了热力图来可视化每个模型的结果。最后，本研究强调了应用LLM的价值，确定了所有分类器中的最佳表现者，并概述了该领域未来进一步探索的方向。</p>
+<h2>索引词</h2>
+<p>COVID-19、虚假新闻检测、大语言模型、迁移学习、Transformer、优化</p>
+<h2>I 引言</h2>
+<p>自然语言处理（NLP）是一门旨在使计算机具备理解和生成自然语言能力的科学学科。鉴于该领域研究的扩展和计算能力的提升，NLP近来受到了更多关注。目前，人们正努力寻找隐藏在语言中的有意义数据，将其作为教育、医疗、工业和零售领域的有用工具。早期工作采用基于规则的方法来解决NLP问题，但由于人类语言的丰富性，这些方法逐渐让位于机器学习（ML）方法。这些方法包括支持向量机（SVM）和朴素贝叶斯分类器，在处理自然语言的概念和动态方面更为有效。</p>
+<p>文本挖掘与NLP概念密切相关，涉及从社交媒体平台上的文本中获取有价值的信息。这种提取是通过处理文本数据的算法和方法实现的。尽管NLP是人工智能的重要组成部分，但它依赖于文本挖掘和数据分析等先进方法。数据挖掘是机器学习和深度学习的集成，是一种在多个领域具有高成功率的通用工具。它改进了问答、指代消解、生物信息学和基于网络的分析[1]。</p>
+<p>根据以往的研究结果，NLP和数据挖掘是情感分析[2]、仇恨言论识别以及乌尔都语演讲[3]和电影评论[4]评估中广泛使用的技术。许多此类技术具有全球性，对人类生活的不同方面产生了众所周知的影响。社交媒体是近年来最受欢迎的数字平台之一。这些平台被频繁使用并传输海量数据。然而，它们也与仇恨言论的兴起有关。例如，当一部新电影上映时，人们会在社交媒体上发布许多关于它的帖子，无论好坏。由于仇恨言论事件的增加，该问题受到了学者的广泛关注。一篇著名论文[5]阐明了NLP在仇恨言论检测中的关键作用，展示了自动化流程如何有效识别和标记社交媒体内容中的仇恨实例。</p>
+<p>理解和处理人类构建的自然语言严格依赖于NLP，它提供了基础工具。用户在社交媒体和评论平台上产生的信息包含对医疗、工业、科学和政策制定等各个领域有用的知识。这些内容富含文本，有可能为不同领域的决策提供信息。利用意见提取算法和情感分析技术[6]，研究人员可以从这些数据中提取有价值的见解。值得注意的是，这些算法在特征提取阶段对提高文本分类模型的性能起着至关重要的作用[7,8,9]。这种方法有助于利益相关者了解消费者情绪、市场趋势和公众舆论。</p>
+<p>在一项工作中，一组学者详细描述了仇恨言论检测领域当前的不足和漏洞[10]。他们提出了一种旨在克服这些挑战的解决方案，重点关注训练准确的仇恨言论检测算法所需充足数据的缺乏。缺乏足够的标注数据集是准确检测社交媒体上仇恨言论事件的主要挑战。为克服这一挑战，研究人员鼓励使用BERT等预训练模型，因为其在上下文文本分析方面非常有效[11]。他们的方法对数据随时间的变化很敏感，并以在意大利仇恨言论数据集上训练的AlBERTo模型为例。仅使用后半部分数据训练模型，其准确率显著提高。该研究进一步确立了仇恨言论与攻击性语言之间的区别。他们的方法通过使用用户在社交媒体平台上的条目和元启发式算法改进了文本分类；因此，它可以被视为对抗社交媒体平台上仇恨言论的一种有前途的方法。</p>
+<p>迁移学习是一种高效的技术，它利用未标注数据的信息来提升标注样本较少任务的整体性能。先验信息使得即使只有少量标注数据点也能获得高准确率。在NLP领域尤其如此，Transformer在其中胜过传统的ML和DL技术。迁移学习从相关领域获取知识，使ML系统能够以更高的准确率适应新任务。因此，它最大限度地减少了人工干预的需求，并且比主动学习和监督学习表现更好。例如，一个训练用于识别苹果的系统可以经过调整来识别梨，从而减少所需的数据量和训练系统所需的时间。</p>
+<p>社交媒体平台具有重大影响力，为用户提供了自由表达想法和意见的平台。利用这一点，研究人员使用先进的机器学习模型来区分真实信息和捏造信息，特别是与COVID-19新闻相关的信息。在这些模型中，Transformer已被证明特别有效，在区分真实和虚假内容方面提供了卓越的性能。</p>
+<p>新闻传播具有巨大的重要性，是让人们保持知情和参与的重要信息来源。然而，虚假新闻的传播可以追溯到18世纪[12]，而互联网的出现加剧了其传播，主要是通过社交媒体渠道的广泛使用。检测新闻文章的真实性是一个巨大的挑战，现有方法显示出局限性。研究人员正在开发混合方法，以提高虚假新闻检测的准确性和一致性，并克服当前的局限性。</p>
+<p>在这项工作中，我们使用各种优化技术来提高模型性能、减少损失并提高整体准确性。采用最先进的算法对模型参数进行精炼以获得最佳结果，确保预测的稳健性和可靠性。此外，在我们的实验和本文撰写过程中，ChatGPT被用作写作和分析辅助工具，以帮助完善方法论、解释结果和阐述研究发现。</p>
+<p>本文其余部分组织如下：第II节回顾相关文献，第III节描述数据集、方法和分类算法，第IV节介绍实验结果，第V节对其进行讨论，第VI节给出结论和未来方向。</p>
+<h2>II 相关文献</h2>
+<p>在现代研究中，迁移学习是一项基本技术，致力于在各个领域实现更高的精度。研究人员探索不同的Transformer变体以有效推进其研究。在最近的一项研究中，研究人员考察了NLP领域内TL的最新进展[13]。他们的综合分析包括考察新的ML和DL方法论，以及探索现代TL方法。</p>
+<p>研究人员观察到，TL技术为各种NLP任务引入了创新维度，尤其有利于训练数据有限的场景。通过利用预训练模型和随后的微调，TL模型比早期最先进的NLP方法表现出更优越的性能。预训练和微调的模型充当了强大的迁移机制，但其效率因任务而异，这促使人们开发新技术来应对复杂的挑战[14]。</p>
+<p>作为一种替代方案，研究人员引入了适配器模块[14]。这些模块有助于创建可扩展的模型，其中每个新增任务只需要极少量的可训练参数，避免了重新审视先前任务的需要。由于原始模型参数保持固定，稳定性得以提高。在包括GLUE基准在内的26个不同分类任务上评估BERT，适配器获得了接近最先进的性能，同时每个任务仅增加3.6%的额外参数，相比之下微调所有参数则需要更多。</p>
+<p>最近的研究显示了COVID-19错误信息的影响[15]。它强调了社交媒体如何包含许多导致广泛恐慌的不可靠消息。作者提出了一种基于CT-BERT（COVID-Twitter-BERT）的强大虚假新闻检测方法，实现了98.69的F1分数。</p>
+<p>研究人员还开发了一种方法来检验有关COVID-19的社交媒体帖子是否可信[16]。他们的方法使用了BERT、ALBERT和XLNet等TL模型。在大型数据集上测试时，该方法实现了98.55的F1分数，在160个团队中排名第5。通过仔细划分数据集，该研究创建了可靠的评估协议，突出了在危机期间传播可靠信息的重要性。</p>
+<p>社交媒体使如今查找新闻变得非常容易，但不幸的是，虚假新闻也传播迅速。为对抗这一点，研究人员研究了诸如实际内容、分享者及其个人资料等特征，利用这些线索来检测虚假信息[17]。然而，这种方法需要可靠的标注数据集，而这些数据集很难获得。因此，开发了无监督虚假新闻检测技术（UFD）。UFD使用12,800条短声明和1,627篇美国选举文章进行测试，在精确率、召回率、F1分数和准确率方面优于其他无监督方法，在LIAR上的准确率为0.759，在BuzzFeed数据上的准确率为0.679。</p>
+<p>在一项评估COVID-19大流行期间虚假新闻识别策略的分析中，研究人员探索了深度学习和迁移学习策略[18]。在分析一个包含10,700条社交媒体帖子和文章的数据集时，他们采用了多种算法，包括带注意力的Bi-LSTM、分层注意力网络（HAN）、DistilBERT和BERT-base，来区分真实和虚假新闻。他们仅关注新闻内容，忽略了社交媒体上并不总是可用的用户级或传播信号。有趣的是，在COVID-19推文上进一步预训练BERT和DistilBERT比仅在数据集上微调的模型获得了更好的整体性能。特别是，以这种方式预训练的BERT模型比COVID-Twitter-BERT模型表现更好。</p>
+<p>在[19]中，研究人员考察了社交媒体对日常生活的普遍影响，揭示了其潜在危险。他们解决了错误信息问题，特别是COVID-19新闻。他们区分真实信息和虚假信息的方法获得了很高的F1分数，并在排名中名列第二。利用来自Facebook、Twitter和Instagram等平台的数据集（分为训练集、验证集和测试集），并试验了各种基线和Transformer模型，研究人员验证了其RoBERTa和ELECTRA模型的优越性，在官方测试集上分别实现了0.9864和0.9827的F1分数。</p>
+<p>另一项研究提出了一种政治文本分类方法，通过对政治宣言进行标注来利用人类专家的见解[20]。该标注语料库作为分类器的训练数据，随后应用于COVID-19新闻发布会。通过将卷积神经网络（CNN）与BERT相结合，研究人员取得了强劲的结果。在所考察的模型（M1–M4）中，结合CNN和BERT的M4最为有效，具有最高的准确率和F1分数。</p>
+<p>在金融情感分析的研究中，研究人员测试了该领域近期的改进[21]。他们的研究涵盖了多种方法，从传统的基于词典的方法到现代的Transformer模型。其中，Transformer表现最佳。该团队评估了一系列Transformer模型，包括BERT、FinBERT和XLNet等。值得注意的是，BART以0.85的F1分数脱颖而出，展示了其捕获复杂金融情绪的能力。</p>
+<p>BERT在BookCorpus和Wikipedia等大型语料库上训练，在许多NLP任务中取得了强劲的结果[22]。然而，其在某些领域和任务中的效果会减弱，显示出改进空间。为解决这一差距，研究人员引入了BERT4TC，这是一种为文本分类量身定制的变体，融合了特定领域和面向任务的知识。在公开可用的数据集上进行评估，BERT4TC优于传统的基于特征的方法和若干微调方法，在多类分类中建立了新的基准。</p>
+<p>互联网已无缝融入我们的生活，成为我们日常生活中不可或缺的一部分[23]。虽然它是知识和信息的可信来源，但它也凸显了令人担忧的问题。网络有害语言的普遍性凸显了采取行动的重要性，ML技术在该领域已取得进展。DeepHate模型就是一个例子，它被开发用于高效分析此类数据并检测仇恨言论模式。该模型以迁移学习为基础，不仅捕获单词含义，还捕获句子结构。针对英语推文（37,520条推文）等数据集的研究代表了打击网络骚扰方面向前迈出的一步。</p>
+<h2>III 材料与方法</h2>
+<p>用于将COVID-19新闻分类为真实或虚假的总体方法如图1所示。它包括数据集收集、数据预处理、数据分割和模型评估。</p>
+<p><strong>图1</strong>：所提出方法的框图。</p>
+<h3>III-A 数据集</h3>
+<p>本研究分析了“COVID-19英文推文”数据集[55]。该数据集标注了3,360条真实推文和3,060条虚假推文，共计6,420条推文（图2），为理解大流行相关的社交媒体话语提供了宝贵见解。</p>
+<p>该数据集公开可用，包含两列。第一列“推文”包含文本内容，而第二列“标签”区分真实推文和虚假推文。示例见表I。</p>
+<ul>
+<li><strong>推文</strong>：此列包含代表与COVID-19大流行相关推文的原始文本数据。每行包含特定推文的文本内容，涵盖从动态更新、统计数据、预防措施到有关大流行的各种观点。</li>
+<li><strong>标签</strong>：此列指定每条推文所含信息的真实性。包含准确信息的推文被归类为“真实”，包含与大流行相关的潜在误导信息的推文被归类为“虚假”。</li>
+</ul>
+<p>为处理数据，使用Python脚本将真实标签替换为1，虚假标签替换为0。图3展示了30个最常出现词的频率，图4显示了由原始未处理数据生成的词云。</p>
+<p><strong>图2</strong>：数据集的结构。（真实：3,360；虚假：3,060；总计：6,420）</p>
+<p><strong>表I</strong>：来自COVID-19英文推文数据集的示例推文</p>
+<table>
+<thead>
+<tr>
+<th>推文</th>
+<th>标签</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NBA本月即将重启。今年3月，我们报道了犹他爵士队如何在数小时内获得58次冠状病毒检测，而当时美国的检测进展迟缓。https://t.co/I8YjjrNoTh https://t.co/o0Nk6gpyos</td>
+<td>虚假</td>
+</tr>
+<tr>
+<td>我们刚刚宣布，针对新型冠状病毒的mRNA疫苗（mRNA-1273）II期研究中每个年龄组的首批参与者已完成给药。了解更多：https://t.co/woPlKz1bZC #mRNA https://t.co/9VGUoJu5cS</td>
+<td>真实</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图3</strong>：原始数据中前30个最频繁词的频率。</p>
+<p><strong>图4</strong>：原始数据的词云。</p>
+<h3>III-B 数据预处理</h3>
+<p>在收集和组织数据集之后，下一步是数据预处理，主要集中在数据清理：删除URL、特殊标签和数字，并将多个空格替换为单个空格。此外，所有字符均转换为小写以保持一致性。图5和图6展示了清理和预处理后数据集中30个最频繁的词和词云。由于数据集包含足够的两类样本用于实验，因此未应用类别平衡方法。</p>
+<p><strong>图5</strong>：处理后数据中前30个最频繁词的频率。</p>
+<p><strong>图6</strong>：处理后数据的词云。</p>
+<h3>III-C 训练、验证和测试分割</h3>
+<p>清理和预处理后，数据集被划分为训练集、验证集和测试集，分别包含约70%、10%和20%的数据。因此，模型在70%的数据上训练，在10%的数据上验证，并在其余20%的数据上测试。</p>
+<h3>III-D 模型评估</h3>
+<p>训练后，使用精确率、召回率、准确率和F1分数评估模型性能。混淆矩阵（可视化为热力图）用于通过比较预测值与实际值来了解每个模型的性能。混淆矩阵是一个简单的M×N矩阵，包含真阳性、真阴性、假阳性和假阴性[24]；它显示了模型的优势所在以及需要改进之处。</p>
+<h3>III-E 分类算法</h3>
+<p>本研究探索了七种分类模型：用于TL的BERT-base、XLM-RoBERTa-base、ALBERT-base和DistilBERT，以及三种LLM，即GPT-2、T5和XLNet。LLM是旨在理解、生成和操纵人类语言的先进机器学习模型。它们通常使用深度学习技术构建，并在海量文本数据上训练。</p>
+<p>本研究使用了微调的模型。所选TL模型和LLM的参数以其默认设置初始化，仅对部分参数根据需要进行更改，例如训练轮数、学习率和批次大小。例如，GPT-2的默认学习率为5×10⁻⁵，而本研究中设置为2×10⁻⁵。</p>
+<p>首先，在数据集上评估TL模型以考察其性能。随后应用优化技术进一步改善其结果。通过比较优化前后的模型效果，本研究旨在获得更好的结果。</p>
+<h4>III-E1 BERT-Base</h4>
+<p>BERT由[25]引入，是Bidirectional Encoder Representations from Transformers（基于Transformer的双向编码器表示）的缩写。BERT在未标注文本上进行预训练，并考虑所有层级的上下文，使其成为自然语言处理中的强大工具。为特定任务调整BERT模型很简单：只需添加一个特定任务的输出层。BERT使用掩码语言模型（MLM）目标，其中输入文本中的单词被隐藏，模型根据周围的单词对其进行预测。通过同时考虑左右上下文，学习到双向理解能力。此外，它将MLM与下一句预测（NSP）相结合。BERT-Base所需的处理和计算时间相对较少。它在虚假新闻检测、内容优化和知识蒸馏等任务中表现良好，但不太适合模糊数据或文本挖掘[24]。BERT已被用于检测虚假新闻[26]、内容增强的文本到SQL生成[27]以及情感分析[28,29]。</p>
+<h4>III-E2 ALBERT-Base</h4>
+<p>2019年，芝加哥丰田技术研究所和谷歌研究院推出了ALBERT[30]，这是BERT的紧凑型继任者。通过减少参数，ALBERT加快了训练速度并降低了内存使用。尽管参数数量较少，ALBERT在各种分类任务和情感分析中仍表现良好[24]。ALBERT已被用于检测Twitter上的讽刺[31]，应用于虚假新闻检测并优于其他模型[32]，在COVID-19问答任务中评估的精确匹配分数为13.04[33]，并用于分析社交媒体上报告的药物使用情况[34]。</p>
+<h4>III-E3 DistilBERT</h4>
+<p>2019年，DistilBERT[35]作为BERT更小、更快、更便宜的变体被引入，速度快60%、体积小40%，同时保留97%的语言理解能力[24]。[36]的作者考察了DistilBERT对社会政治新闻进行分类的能力，结果令人鼓舞。另一项研究[37]分析了RoBERTa、BERT和DistilBERT中的组合语义和词汇语义。DistilBERT还被用于通过命名实体识别检测受保护的健康信息和医学概念[38]，在答案选择任务中提升了0.6%的性能[39]，并在通用依存句法树上重新训练用于语音购物助手[40]。</p>
+<h4>III-E4 XLM-RoBERTa-Base</h4>
+<p>XLM-RoBERTa建立在RoBERTa[41]的基础上，使用超过2TB的过滤数据在一百种语言上进行训练。在[46]中，研究人员探索了该模型在多语言情感分析中的应用，报告了良好的F1分数。在EVALITA 2020中，[47]的研究人员在仇恨言论数据集上实现了0.798的F1分数，[48]展示了XLM-RoBERTa在词义消歧任务中的卓越性能。[45]的作者将XLM-RoBERTa与DPCNN相结合用于攻击性语言识别。相关工作已将RoBERTa应用于语言泛化[42]、精神疾病检测[43]和信息性COVID-19推文检测[44]。</p>
+<h4>III-E5 GPT-2</h4>
+<p>GPT-2（Generative Pre-trained Transformer 2，生成式预训练Transformer 2）是一种自回归语言模型，逐个token生成文本，捕获上下文以在众多主题上产生流畅的文本[49]。</p>
+<h4>III-E6 XLNet</h4>
+<p>XLNet由谷歌AI和卡内基梅隆大学开发，以Transformer-XL作为其核心架构。与BERT不同（BERT对输入token进行掩码处理，无法完全捕获被掩码位置之间的依赖关系），XLNet通过最大化因子分解顺序排列的期望似然来学习双向上下文，解决了BERT的这些局限性[58]。</p>
+<h4>III-E7 T5</h4>
+<p>文本到文本迁移Transformer（T5）由谷歌AI创建，将每个任务视为文本到文本问题。T5使用通过无监督跨度破坏目标预训练的编码器–解码器Transformer。虽然T5已有效应用于许多NLP任务，但从中提取高质量文本表示的方法仍在研究之中[59]。</p>
+<h3>III-F 优化技术与融合</h3>
+<p>本研究探索了多种优化技术以提升模型性能。遵循[50]的融合方法，我们采用基于优劣的后期融合，使用多种权重选择和优化方法组合来自不同模型的分类分数。使用单独的验证集计算分类误差，作为每种方法的适应度函数。这些方法是根据其在类似任务中的既往成功经验选择的[51]。</p>
+<h4>III-F1 加权融合</h4>
+<p>加权融合通过给予性能更好的模型更多权重来提高预测准确性。具有更高精度或可靠性的模型获得更高的权重，因此最终结果反映了每个模型的优势。使用这些权重对预测进行加权平均，平衡了每个模型的影响，从而产生更可靠的整体结果。</p>
+<h4>III-F2 PSO融合</h4>
+<p>粒子群优化（PSO）[52]是一种广泛使用的优化技术，以其有效性和通用性著称。它已被应用于神经网络的超参数调优[54]和联邦学习[53]。PSO从多样化的候选解群体出发，基于适应度函数迭代改进，使用个体最优和全局最优位置更新粒子的位置和速度[50]。</p>
+<h4>III-F3 Nelder–Mead算法</h4>
+<p>Nelder–Mead算法于1965年提出，是最古老且最广泛使用的无导数优化方法之一，在众多统计和机器学习库中均受支持[51]。它非常适合n维问题以及寻找目标函数的最小值，例如最小化验证数据上的分类误差以获得融合权重[50]。</p>
+<h4>III-F4 Powell方法</h4>
+<p>Powell方法是一种流行的无导数搜索方法，沿一组共轭方向执行连续线搜索。与PSO类似，它迭代地细化初始猜测，向函数的最小值移动。尽管行之有效，它也存在局限性，例如关于步长的假设，但它提供了一种简单而有效的优化策略[50]。</p>
+<h4>III-F5 BFGS</h4>
+<p>Broyden–Fletcher–Goldfarb–Shanno（BFGS）算法是一种用于在多维空间中最小化函数的迭代拟牛顿方法。当函数的梯度可用时非常有用，并且在平滑、性质良好的问题上表现出色，使其成为无约束优化的常见选择。</p>
+<h4>III-F6 信赖域约束算法</h4>
+<p>信赖域约束算法在遵守约束的同时最小化或最大化函数。它可处理等式和不等式约束，并使用信赖域进行高效优化，使其非常适合具有平滑目标函数的约束问题。</p>
+<h2>IV 实验与结果</h2>
+<p>本节展示了每个实验在数据集上的所有性能指标结果，以及混淆矩阵热力图。</p>
+<p>表II显示了四种TL分类器未经优化的结果，表III展示了优化技术的结果，表IV报告了三种LLM的结果。表V将所提出的工作与最先进的方法进行了比较。</p>
+<p>图7显示了所有TL模型的准确率，图8展示了它们的精确率、召回率和F1分数。图9显示了优化技术的结果。图10显示了LLM的准确率，图11展示了它们的其他指标。图12显示了TL模型的热力图，图13显示了融合/优化技术的热力图，图14显示了LLM的热力图。</p>
+<p><strong>表II</strong>：迁移学习模型的结果</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>准确率</th>
+<th>精确率</th>
+<th>召回率</th>
+<th>F1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BERT-base</td>
+<td>0.9532</td>
+<td>0.9540</td>
+<td>0.9568</td>
+<td>0.9554</td>
+</tr>
+<tr>
+<td>XLM-RoBERTa-base</td>
+<td>0.9532</td>
+<td>0.9540</td>
+<td>0.9568</td>
+<td>0.9554</td>
+</tr>
+<tr>
+<td>ALBERT-base</td>
+<td>0.9532</td>
+<td>0.9540</td>
+<td>0.9568</td>
+<td>0.9554</td>
+</tr>
+<tr>
+<td>DistilBERT</td>
+<td>0.9517</td>
+<td>0.9485</td>
+<td>0.9598</td>
+<td>0.9541</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表III</strong>：优化技术的结果</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>准确率</th>
+<th>精确率</th>
+<th>召回率</th>
+<th>F1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>加权融合</td>
+<td>0.9595</td>
+<td>0.9599</td>
+<td>0.9627</td>
+<td>0.9613</td>
+</tr>
+<tr>
+<td>PSO</td>
+<td>0.9563</td>
+<td>0.9723</td>
+<td>0.9434</td>
+<td>0.9577</td>
+</tr>
+<tr>
+<td>Nelder–Mead</td>
+<td>0.9610</td>
+<td>0.9627</td>
+<td>0.9627</td>
+<td>0.9627</td>
+</tr>
+<tr>
+<td>Powell方法</td>
+<td>0.9532</td>
+<td>0.9608</td>
+<td>0.9494</td>
+<td>0.9550</td>
+</tr>
+<tr>
+<td>BFGS</td>
+<td>0.9532</td>
+<td>0.9608</td>
+<td>0.9494</td>
+<td>0.9550</td>
+</tr>
+<tr>
+<td>Trust-constr</td>
+<td>0.9532</td>
+<td>0.9608</td>
+<td>0.9494</td>
+<td>0.9550</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表IV</strong>：大语言模型的结果</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>准确率</th>
+<th>精确率</th>
+<th>召回率</th>
+<th>F1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-2</td>
+<td>0.9631</td>
+<td>0.9612</td>
+<td>0.9610</td>
+<td>0.9600</td>
+</tr>
+<tr>
+<td>T5</td>
+<td>0.9299</td>
+<td>0.9356</td>
+<td>0.9314</td>
+<td>0.9310</td>
+</tr>
+<tr>
+<td>XLNet</td>
+<td>0.9532</td>
+<td>0.9540</td>
+<td>0.9568</td>
+<td>0.9554</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表V</strong>：最先进方法与所提出工作的比较（准确率）</p>
+<table>
+<thead>
+<tr>
+<th>[56]</th>
+<th>[57]</th>
+<th>所提出方法（GPT-2）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.7900</td>
+<td>0.6100</td>
+<td>0.9631</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图7</strong>：迁移学习分类器的准确率。（BERT-base：0.9532；XLM-R：0.9532；ALBERT：0.9532；DistilBERT：0.9517）</p>
+<p><strong>图8</strong>：TL模型的精确率、召回率和F1分数。</p>
+<p><strong>图9</strong>：优化技术所获得的准确率。（加权：0.9595；PSO：0.9563；Nelder-Mead：0.9610；Powell：0.9532；BFGS：0.9532；Trust：0.9532）</p>
+<p><strong>图10</strong>：大语言模型的准确率。（GPT-2：0.9631；T5：0.9299；XLNet：0.9532）</p>
+<p><strong>图11</strong>：大语言模型的精确率、召回率和F1分数。</p>
+<p><strong>图12</strong>：迁移学习模型的混淆矩阵热力图。</p>
+<p><strong>图13</strong>：融合/优化技术的混淆矩阵热力图。</p>
+<p><strong>图14</strong>：大语言模型的混淆矩阵热力图。</p>
+<h2>V 讨论</h2>
+<p>基于Transformer的模型在COVID-19英文推文数据集上表现出卓越的性能。GPT-2被确定为表现最佳的模型，准确率达到96.31%，精确率、召回率和F1分数分别为96.12%、96.10%和96.00%。XLM-RoBERTa-base和ALBERT-base紧随其后，各自达到95.32%的准确率。所有实验的结果表明，基于Transformer的模型和LLM优于表V中所比较的最先进机器学习方法。</p>
+<p>当多个模型产生相似的结果时，这可能归因于使用了规模较小且类别平衡的数据集。此外，使用相似的超参数或初始化方法可能导致模型收敛到相似的解决方案，从而产生几乎相同的性能。</p>
+<h2>VI 结论</h2>
+<p>在本研究中，四种迁移学习模型（即BERT-base、XLM-RoBERTa-base、DistilBERT和ALBERT-base）以及三种大语言模型（即GPT-2、T5和XLNet）被应用于COVID-19英文推文数据集进行二元文本分类。该数据集从可靠的存储库获得，包含真实和虚假的英文推文。所有模型均使用准确率、召回率、精确率和F1分数进行评估。此外还探索了多种优化技术，包括加权融合、PSO融合、Nelder–Mead融合、Powell方法、BFGS融合和信赖域约束融合。</p>
+<p>GPT-2被确定为表现最佳的模型，准确率为0.9631，精确率为0.9612，召回率为0.9610，F1分数为0.9600，证明了其在真实和虚假新闻分类方面的有效性。</p>
+<p>在未来的工作中，我们计划使用更大的数据集进行多类分类实验，并探索不同语言的数据集。此外，我们计划利用Twitter的实时数据流收集实时推文，并研究来自其他社交媒体平台的数据。</p>
+<h2>参考文献</h2>
+<p>[1] Z. Zeng, H. Shi, Y. Wu, and Z. Hong, "Survey of natural language processing techniques in bioinformatics," <em>Computational and Mathematical Methods in Medicine</em>, vol. 2015, Article ID 674296, 2015.</p>
+<p>[2] C. Jefferson, H. Liu, and M. Cocea, "Fuzzy approach for sentiment analysis," in <em>Proc. 2017 IEEE Int. Conf. Fuzzy Systems (FUZZ-IEEE)</em>, Naples, Italy, Jul. 2017.</p>
+<p>[3] R. U. Mustafa et al., "Early detection of controversial Urdu speeches from social media," <em>Data Sci. Pattern Recognit.</em>, vol. 1, no. 2, pp. 26–42, 2017.</p>
+<p>[4] K. Kumar, B. S. Harish, and H. K. Darshan, "Sentiment analysis on IMDb movie reviews using hybrid feature extraction method," <em>Int. J. Interactive Multimedia and Artificial Intelligence</em>, vol. 5, no. 5, p. 109, 2019.</p>
+<p>[5] A. Schmidt and M. Wiegand, "A survey on hate speech detection using natural language processing," in <em>Proc. 5th Int. Workshop on Natural Language Processing for Social Media</em>, pp. 1–10, 2017.</p>
+<p>[6] A. P. Kirilenko, S. O. Stepchenkova, H. Kim, and X. Li, "Automated sentiment analysis in tourism: comparison of approaches," <em>J. Travel Research</em>, vol. 57, no. 8, pp. 1012–1025, 2018.</p>
+<p>[7] W. H. Bangyal, J. Ahmed, and H. T. Rauf, "A modified bat algorithm with torus walk for solving global optimisation problems," <em>Int. J. Bio-Inspired Computation</em>, vol. 15, no. 1, pp. 1–13, 2020.</p>
+<p>[8] S. Pervaiz, Z. Ul-Qayyum, W. H. Bangyal, L. Gao, and J. Ahmad, "A systematic literature review on particle swarm optimization techniques for medical diseases detection," <em>Computational and Mathematical Methods in Medicine</em>, vol. 2021, Article ID 5990999, 2021.</p>
+<p>[9] A. Ashraf, A. A. Almazroi, W. H. Bangyal, and M. A. Alqarni, "Particle swarm optimization with new initializing technique to solve global optimization problems," <em>Intelligent Automation &amp; Soft Computing</em>, vol. 31, no. 1, pp. 191–206, 2022.</p>
+<p>[10] M. Mozafari, R. Farahbakhsh, and N. Crespi, "A BERT-based transfer learning approach for hate speech detection in online social media," in <em>Complex Networks and Their Applications VIII</em>, vol. 881, pp. 928–940, 2020.</p>
+<p>[11] K. Florio, V. Basile, M. Polignano, P. Basile, and V. Patti, "Time of your hate: the challenge of time in hate speech detection on social media," <em>Applied Sciences</em>, vol. 10, no. 12, p. 4180, 2020.</p>
+<p>[12] E. M. Okoro, B. A. Abara, A. O. Umagba, A. A. Ajonye, and Z. S. Isa, "A hybrid approach to fake news detection on social media," <em>Nigerian J. Technology</em>, vol. 37, no. 2, p. 454, 2018.</p>
+<p>[13] A. Malte and P. Ratadiya, "Evolution of transfer learning in natural language processing," arXiv:1910.07370, 2019.</p>
+<p>[14] N. Houlsby et al., "Parameter-efficient transfer learning for NLP," arXiv:1902.00751, 2019.</p>
+<p>[15] A. Glazkova, M. Glazkov, and T. Trifonov, "g2tmn at Constraint@AAAI2021: exploiting CT-BERT and ensembling learning for COVID-19 fake news detection," arXiv, 2020.</p>
+<p>[16] S. Gundapu and R. Mamidi, "Transformer based automatic COVID-19 fake news detection system," arXiv:2101.00180, 2021.</p>
+<p>[17] S. Yang, K. Shu, S. Wang, R. Gu, F. Wu, and H. Liu, "Unsupervised fake news detection on social media: a generative approach," in <em>Proc. 33rd AAAI Conf. Artificial Intelligence</em>, pp. 5644–5651, Honolulu, HI, USA, 2019.</p>
+<p>[18] A. Wani, I. Joshi, S. Khandve, V. Wagh, and R. Joshi, "Evaluating deep learning approaches for Covid19 fake news detection," arXiv:2101.04012, 2021.</p>
+<p>[19] T. Raha, V. Indurthi, and A. Upadhyaya, "Identifying COVID-19 fake news in social media," arXiv:2101.11954, 2021.</p>
+<p>[20] K. Chatsiou, "Text classification of manifestos and COVID-19 press briefings using BERT and convolutional neural networks," arXiv, 2020.</p>
+<p>[21] K. Mishev, A. Gjorgjevikj, I. Vodenska, L. T. Chitkushev, and D. Trajanov, "Evaluation of sentiment analysis in finance: from lexicons to transformers," <em>IEEE Access</em>, vol. 8, pp. 131662–131682, 2020.</p>
+<p>[22] S. Yu, J. Su, and D. Luo, "Improving BERT-based text classification with auxiliary sentence and domain knowledge," <em>IEEE Access</em>, vol. 7, pp. 176600–176612, 2019.</p>
+<p>[23] M.-A. Rizoiu, T. Wang, G. Ferraro, and H. Suominen, "Transfer learning for hate speech detection in social media," arXiv, 2019.</p>
+<p>[24] R. Qasim, W. H. Bangyal, M. A. Alqarni, and A. A. Almazroi, "A fine-tuned BERT-based transfer learning approach for text classification," <em>J. Healthcare Engineering</em>, vol. 2022, 2022.</p>
+<p>[25] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, "BERT: pre-training of deep bidirectional transformers for language understanding," in <em>Proc. NAACL-HLT</em>, pp. 4171–4186, 2019.</p>
+<p>[26] R. K. Kaliyar, A. Goswami, and P. Narang, "FakeBERT: fake news detection in social media with a BERT-based deep learning approach," <em>Multimedia Tools and Applications</em>, vol. 80, no. 8, pp. 11765–11788, 2021.</p>
+<p>[27] T. Guo and H. Gao, "Content enhanced BERT-based text-to-SQL generation," arXiv, 2019.</p>
+<p>[28] Z. Chen and T. Qian, "Transfer capsule network for aspect level sentiment classification," in <em>Proc. 57th Annual Meeting of the ACL</em>, pp. 547–556, Florence, Italy, 2019.</p>
+<p>[29] C. Sun, L. Huang, and X. Qiu, "Utilizing BERT for aspect-based sentiment analysis via constructing auxiliary sentence," in <em>Proc. NAACL-HLT</em>, vol. 1, pp. 380–385, 2019.</p>
+<p>[30] Z. Lan, M. Chen, S. Goodman, K. Gimpel, P. Sharma, and R. Soricut, "ALBERT: a lite BERT for self-supervised learning of language representations," arXiv:1909.11942, 2019.</p>
+<p>[31] H. Gregory, S. Li, P. Mohammadi, N. Tarn, R. Draelos, and C. Rudin, "A transformer approach to contextual sarcasm detection in Twitter," in <em>Proc. 2nd Workshop on Figurative Language Processing</em>, pp. 270–275, 2020.</p>
+<p>[32] R. Vijjali, P. Potluri, S. Kumar, and S. Teki, "Two stage transformer model for COVID-19 fake news detection and fact checking," arXiv:2011.13253, 2020.</p>
+<p>[33] H. Ngai, Y. Park, J. Chen, and M. Parsapoor, "Transformer-based models for question answering on COVID19," arXiv:2101.11432, 2021.</p>
+<p>[34] M. A. Al-Garadi, Y.-C. Yang, H. Cai et al., "Text classification models for the automatic detection of nonmedical prescription medication use from social media," <em>BMC Medical Informatics and Decision Making</em>, vol. 21, no. 1, pp. 1–13, 2021.</p>
+<p>[35] V. Sanh, L. Debut, J. Chaumond, and T. Wolf, "DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter," arXiv:1910.01108, 2019.</p>
+<p>[36] B. Büyüköz, A. Hürriyetoğlu, and A. Özgür, "Analyzing ELMo and DistilBERT on socio-political news classification," in <em>Proc. Workshop on Automated Extraction of Socio-political Events from News 2020</em>, pp. 9–18, 2020.</p>
+<p>[37] I. Staliunaite and I. Iacobacci, "Compositional and lexical semantics in RoBERTa, BERT and DistilBERT: a case study on CoQA," in <em>Proc. EMNLP</em>, pp. 7046–7056, 2020.</p>
+<p>[38] M. Abadeer, "Assessment of DistilBERT performance on named entity recognition task for the detection of protected health information and medical concepts," in <em>Proc. 3rd Clinical Natural Language Processing Workshop</em>, pp. 158–167, 2020.</p>
+<p>[39] J. Mozafari, A. Fatemi, and P. Moradi, "A method for answer selection using DistilBERT and important words," in <em>Proc. 6th Int. Conf. Web Research (ICWR)</em>, pp. 72–76, Tehran, Iran, 2020.</p>
+<p>[40] P. Jayarao and A. Sharma, "Retraining DistilBERT for a voice shopping assistant by using universal dependencies," arXiv:2103.15737, 2021.</p>
+<p>[41] Y. Liu, M. Ott, N. Goyal et al., "RoBERTa: a robustly optimized BERT pretraining approach," arXiv:1907.11692, 2019.</p>
+<p>[42] A. Warstadt, Y. Zhang, X. Li, H. Liu, and S. R. Bowman, "Learning which features matter: RoBERTa acquires a preference for linguistic generalizations (eventually)," in <em>Proc. EMNLP</em>, pp. 217–235, 2020.</p>
+<p>[43] A. Murarka, B. Radhakrishnan, and S. Ravichandran, "Detection and classification of mental illnesses on social media using RoBERTa," arXiv:2011.11226, 2020.</p>
+<p>[44] S. Dhanalaxmi, R. Agarwal, and A. Sinha, "Detection of COVID-19 informative tweets using RoBERTa," arXiv:2010.11238, 2020.</p>
+<p>[45] Y. Zhao and X. Tao, "ZYJ123@DravidianLangTech-EACL2021: offensive language identification based on XLM-RoBERTa with DPCNN," in <em>Proc. 1st Workshop on Speech and Language Technologies for Dravidian Languages</em>, pp. 216–221, 2021.</p>
+<p>[46] X. Ou and H. Li, "YNU@Dravidian-CodeMix-FIRE2020: XLM-RoBERTa for multi-language sentiment analysis," pp. 4–9, 2020.</p>
+<p>[47] X. Ou and H. Li, "YNU_OXZ @ HaSpeeDe 2 and AMI: XLM-RoBERTa with ordered neurons LSTM for classification task at EVALITA 2020," in <em>EVALITA 2020</em>, CEUR vol. 2765, pp. 102–109, 2020.</p>
+<p>[48] S. Xie, J. Ma, H. Yang, L. Jiang, Y. Mo, and J. Shen, "PALI at SemEval-2021 Task 2: fine-tune XLM-RoBERTa for word in context disambiguation," arXiv:2104.10375, 2021.</p>
+<p>[49] S. S. Tekiroglu, H. Bonaldi, M. Fanton, and M. Guerini, "Using pre-trained language models for producing counter narratives against hate speech: a comparative study," arXiv:2204.01440, 2022.</p>
+<p>[50] M. Tayyab Zamir, M. A. Ayub, A. Gul, N. Ahmad, and K. Ahmad, "Stylometry analysis of multi-authored documents for authorship and author style change detection," arXiv preprint, 2024.</p>
+<p>[51] K. Ahmad, M. A. Ayub, J. Khan, N. Ahmad, and A. Al-Fuqaha, "Social media as an instant source of feedback on water quality," <em>IEEE Trans. Technology and Society</em>, 2022.</p>
+<p>[52] J. Kennedy and R. Eberhart, "Particle swarm optimization," in <em>Proc. ICNN'95 Int. Conf. Neural Networks</em>, vol. 4, pp. 1942–1948, 1995.</p>
+<p>[53] B. Qolomany, K. Ahmad, A. Al-Fuqaha, and J. Qadir, "Particle swarm optimized federated learning for industrial IoT and smart city services," in <em>Proc. IEEE GLOBECOM</em>, pp. 1–6, 2020.</p>
+<p>[54] Y. Wang, H. Zhang, and G. Zhang, "cPSO-CNN: an efficient PSO-based algorithm for fine-tuning hyper-parameters of convolutional neural networks," <em>Swarm and Evolutionary Computation</em>, vol. 49, pp. 114–123, 2019.</p>
+<p>[55] S. Ohashi, T. Kajiwara, C. Chu, N. Takemura, Y. Nakashima, and H. Nagahara, "IDSOU at WNUT-2020 Task 2: identification of informative COVID-19 English tweets," in <em>Proc. 6th Workshop on Noisy User-generated Text (W-NUT 2020)</em>, pp. 428–433, 2020.</p>
+<p>[56] C. Monica and N. Nagarathna, "Detection of fake tweets using sentiment analysis," <em>SN Computer Science</em>, vol. 1, no. 2, p. 89, 2020.</p>
+<p>[57] A. Khalil, H. Hajjdiab, and N. Al-Qirim, "Detecting fake followers in Twitter: a machine learning approach," <em>Int. J. Machine Learning and Computing</em>, vol. 7, no. 6, pp. 198–202, 2017.</p>
+<p>[58] M. O. Topal, A. Bas, and I. van Heerden, "Exploring transformers in natural language generation: GPT, BERT, and XLNet," arXiv:2102.08036, 2021.</p>
+<p>[59] J. Ni, G. H. Abrego, N. Constant, J. Ma, K. B. Hall, D. Cer, and Y. Yang, "Sentence-T5: scalable sentence encoders from pre-trained text-to-text models," arXiv:2108.08877, 2021.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 虚假新闻检测, 大语言模型, 迁移学习, Transformer, 文本分类</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

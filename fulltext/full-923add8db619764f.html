@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逻辑引导的图去噪扩散模型 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">逻辑引导的图去噪扩散模型</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-16</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.23766" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Logic-Guided Graph Denoising Diffusion Models</h4>
+            <p><strong>中文摘要：</strong> 本文提出LTN引导方法，通过一阶逻辑（FOL）约束在推理时引导预训练图扩散模型的生成过程。该方法将FOL规则经逻辑张量网络（LTN）转换为可微目标函数，利用分类器引导调整去噪轨迹，并采用基于Focal Loss的自适应加权机制突出未满足的约束。在IntelliGraphs知识图基准上，该方法显著提升生成图的本体约束满足率（多数数据集超过95%），且支持分布内条件生成与分布外规则转移，无需额外训练。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>逻辑引导的图去噪扩散模型</h1>
+<p>Samuel Cognolato<br />
+Luciano Serafini<br />
+Alessandro Sperduti<br />
+Andrea Cavallaro</p>
+<h2>摘要</h2>
+<p>图扩散模型是生成复杂图结构数据的竞争性方法。然而，当此类分布具有严格的结构约束时，扩散模型可能无法精确捕捉它们，导致生成无效图。在本文中，我们提出了一种通过一阶逻辑（FOL）将图扩散模型植根于领域特定知识的方法，利用其表达性强且可解释的形式体系对生成过程施加结构约束。我们使用分类器引导技术融入领域知识，该技术通过外部变量对扩散模型的分布进行条件化，从而控制采样数据。在生成过程中，分类器引导去噪轨迹以优化目标函数，我们将该目标函数定义为逻辑规则的模糊可微松弛。我们的方法只需以FOL形式指定约束，并在推理时鼓励满足这些约束以引导预训练的生成模型。我们通过比较知识图的无条件生成与我们的逻辑引导框架来评估所提方法，该框架在推理过程中将领域本体作为结构约束纳入。这种方法显著提高了满足本体约束的生成图的比例。</p>
+<p>1 帕多瓦大学"Tullio Levi-Civita"数学系，意大利帕多瓦<br />
+2 布鲁诺·凯斯勒基金会（FBK），意大利特伦托<br />
+3 帕多瓦大学人类启发技术研究中心（HIT），意大利帕多瓦<br />
+4 洛桑联邦理工学院（EPFL），瑞士洛桑</p>
+<h2>1 引言</h2>
+<p>图生成涉及学习底层数据分布，以促进新颖、真实的图结构的合成。图扩散模型（Jo et al. 2022; Vignac et al. 2023; Huang et al. 2023; Cognolato et al. 2026a; Cognolato et al. 2026b）和流匹配模型（Eijkelboom et al. 2024; Qin et al. 2024）可以对具有离散标签和连续属性的图分布进行建模。在某些应用中，例如生物学，图需要满足定义其是否格式良好的领域特定规则（Rigoni et al. 2020）。然而，神经生成模型缺乏显式强制执行结构约束的机制，需要专门的技术来解决。因此，约束图生成问题，即从满足一组约束的元素子空间中采样图，已获得广泛关注（Liu et al. 2018; Rigoni et al. 2025; Madeira et al. 2024）。</p>
+<p>一阶逻辑（FOL）（Barwise 1977）可作为编码和组合异构约束的统一方法。FOL可用于形式化图中的属性，其中节点和边标签分别表示为一元和二元谓词（Cai et al. 1992）。规则可作用于单个节点、其邻居以及关系的类型或方向，例如二分性和传递性。FOL规则还可考虑整个图结构，例如要求存在特定节点类型。这种局部与全局兼顾的操作能力为控制图的结构和内容提供了工具。这种设置为知识图本体的定义奠定了基础，为原本非结构化的数据提供了模式（Gruber 1993）。</p>
+<p>在本文中，我们提出LTN引导，这是一种将领域知识作为FOL约束注入图扩散模型（Vignac et al. 2023）生成过程的方法，无需任何额外训练。我们的目标是提高采样有效图的概率。首先，我们提出一个图签名，即定义一阶语言词汇表的符号集合，使得能够在标记图上定义逻辑公式。在生成过程中，我们使用分类器引导（Dhariwal and Nichol 2021）来引导预训练扩散模型优化规则满足度（外部目标函数）。我们的方法将目标FOL约束作为逻辑张量网络（LTN）（Badreddine et al. 2022）可微函数提供。基于Focal Loss（Lin et al. 2017）的机制允许对约束进行自适应重新加权，增加生成过程中较不满足句子的贡献。最后，我们提出了LTN函数的更廉价实现，例如用于实现边上的基数约束。</p>
+<p>我们的主要贡献是：</p>
+<ol>
+<li>一个允许在标记图上定义逻辑规则的图签名。我们将签名与公理集成以确保标签排他性；</li>
+<li>一种用FOL知识引导图扩散模型的即插即用方法。在推理过程中，FOL约束通过逻辑张量网络转换为可微函数，并用于通过分类器引导来引导预训练的无条件模型。</li>
+<li>我们评估了流行的图扩散模型DiGress（Vignac et al. 2023），分别使用和不使用我们的技术，从IntelliGraphs基准（Thanapalasingam et al. 2023）生成小型知识图，并与知识图嵌入和基于LLM的方法进行比较。我们观察到有效性的改善，在大多数数据集上达到&gt;95%。</li>
+<li>我们使用与数据兼容和冲突的新规则进行生成，分别评估条件分布内和分布外的有效性。LTN引导通过产生高比例的有效图，始终显示对输入公式的响应性。</li>
+</ol>
+<p>据我们所知，这是首个用于图扩散的推理时FOL约束引导框架。</p>
+<h2>2 相关工作</h2>
+<p>约束图生成（CGG）可基于深度学习，或者在FOL规则的具体情况下，基于加权一阶模型采样（WFOMS）。</p>
+<p>对于基于深度学习的CGG，约束在深度图生成模型中的应用仍处于起步阶段，很少有工作解决该问题，或仅限于特定类别的约束。</p>
+<p>约束图变分自编码器（CGVAE）（Liu et al. 2018）和条件CGVAE（Rigoni et al. 2020）在分子领域强制执行价态约束，与节点的出度密切相关。模型的生成过程是自回归的，允许在每一步禁用与已填满价态的原子的链接。ConStruct（Madeira et al. 2024）是一种扩散模型，其整个扩散和去噪序列保持在约束空间中，使样本在设计上即为有效。然而，所考虑的约束类别仅限于次遗传属性，即若对图成立则对其子式也成立的属性。</p>
+<p>图的生成也可视为满足FOL规则集的变量赋值采样。这已在加权一阶模型采样（WFOMS）（Wang et al. 2024）中被探索，与加权一阶模型计数（WFOMC）（Van den Broeck et al. 2011）密切相关。提升（即多项式）采样算法存在于FOL的C²片段（Wang et al. 2024），即允许具有全称量词和计数存在量词∀, ∃≥k, ∃≤k, ∃=k的句子，每个句子最多两个变量。尽管采样精确，但提升WFOMS对两个变量的限制可能使其对某些应用无效，例如具有超过3个变量的本体（Thanapalasingam et al. 2023）。</p>
+<p>关于知识图（KG）生成（通常定义FOL本体），有两种突出的KG补全方法：（1）实体嵌入和概率链接预测（Peng et al. 2023）；（2）使用大型语言模型（LLM）（Yao et al. 2025）。前者旨在通过从训练嵌入计算新三元组的可能性来预测缺失链接，而非生成新实体。后者将三元组集视为文本序列，新三元组作为新词元生成。</p>
+<p>然而，知识图嵌入在采样期间假设链接独立性，限制了结果图分布的表达能力；同时，将图视为文本否定了便于扩展到更大结构的归纳偏置。得益于KG数据及其本体的可用性，我们将在具有FOL约束的KG生成上评估我们的方法。</p>
+<h2>3 预备知识</h2>
+<p>我们给出标记图的形式化定义。标记图G是一个元组G=(𝒱, ℰ, Λv, Λe)，其中𝒱是节点集，ℰ⊆𝒱×𝒱是边集，Λv: 𝒱→ℒv和Λe: ℰ→ℒe是节点和边标记函数，其中ℒv和ℒe分别是节点和边标签。其张量表示𝑮=(𝑿, 𝑬)是一种更利于生成的格式，其中𝑿∈ℝ^(n×Dv)是节点张量，𝑬∈ℝ^(n×n×De)是边张量，n是节点数，Dv=|ℒv|且De=|ℒe|+1，将无边作为De个类别之一。</p>
+<h3>3.1 图的扩散模型</h3>
+<p>扩散模型（Ho et al. 2020; Austin et al. 2021）是一类生成模型，其目标是学习具有参数θ的未知数据分布q(G)的近似pθ(G)。DDPM作为马尔可夫链蒙特卡洛（MCMC）过程实现这一点，在一定的马尔可夫转换后达到对学习分布的收敛。</p>
+<p>图的扩散模型（Vignac et al. 2023）联合生成节点、边及其标签。两个离散扩散过程（Austin et al. 2021）随机翻转𝑿和𝑬中的节点和边标签，可能移除或添加连接性，从时间t=0进行到t=T。前向和训练的反向过程定义为：</p>
+<p>q(𝑮^(1:T)|𝑮^0) = ∏(t=1到T) q(𝑿^t|𝑿^(t-1)) q(𝑬^t|𝑬^(t-1)),  (1)</p>
+<p>pθ(𝑮^(0:T)) = p(𝑮^T) ∏(t=1到T) pθ(𝑮^(t-1)|𝑮^t).  (2)</p>
+<p>我们采用DiGress（Vignac et al. 2023）的离散图扩散公式，它通过分类转换破坏节点和边标签并学习反向转换pθ(𝑮^(t-1)|𝑮^t)。我们的方法保持训练不变，仅在推理时修改此转换。</p>
+<h3>3.2 一阶逻辑</h3>
+<p>一阶逻辑（FOL）处理事实的形式化，事实可为真或假。FOL在一阶语言上操作，由签名描述：</p>
+<p>Σ=(𝒞, ℱ, 𝒫),  (3)</p>
+<p>其中𝒞是常量符号集，ℱ是函数符号集，𝒫是谓词符号集。Σ上的解释ℐ将每个常量c映射到论域𝒟中的特定个体ℐ(c)，函数符号f映射到元数为n的函数ℐ(f): 𝒟^n→𝒟，谓词符号P映射到元数为n的关系ℐ(P)⊆𝒟^n。</p>
+<p>公式φ是由变量符号（如x, y, z）、签名Σ中包含的非逻辑符号和逻辑符号组成的字符串，逻辑符号包括连接词（合取、析取、否定）和量词（存在和全称）。逻辑的语义定义了逻辑运算符的含义。例如，经典FOL仅考虑真值{0,1}（假和真），而模糊逻辑还考虑[0,1]中的中间值。句子（即没有未量化变量的公式）若在给定逻辑语义下将ℐ应用于Σ中的符号评估为真，则被解释ℐ满足。</p>
+<h2>4 问题定义</h2>
+<p>生成具有约束φ的标记图G涉及两个主要挑战：</p>
+<ol>
+<li>将任何约束转换到图空间，定义节点、边及其标签上的关系。这一要求允许检查图上的约束满足度，并将其推广为函数φ(G)，若图G满足约束则为1，否则为0。</li>
+<li>使用模型pθ(G)生成满足φ的图。</li>
+</ol>
+<p>给定FOL中的现有知识库，当节点与签名Σ的𝒟中的个体之间存在一一对应时，可以轻松定义图上的规则。然而，若ℒv=𝒟，例如知识图中的实体，这一假设被Λv一般不是单射的事实打破。这延续到图生成模型，它们不假设节点间标签的排他性。</p>
+<p>对于第二个挑战，我们希望从约束分布中采样标记图，因此根据约束φ限制已训练生成模型pθ(G)的支持，得到条件分布pθ(G|φ)。通过逻辑，我们可以定义节点和边的存在、标签和属性的规则。我们专注于FOL公式作为表达图生成约束的通用语言，并使图扩散模型适用于这些场景，例如知识图生成（Thanapalasingam et al. 2023）。</p>
+<p>设pθ(φ(G)=1)为生成图满足φ的边际概率。在概率中，我们也将φ用作表示事件{φ(G)=1}的简写。</p>
+<p><strong>约束图生成</strong>涉及从图上的条件分布pθ(G|φ)采样，使得其支持中的所有图都满足φ(G)=1。</p>
+<p>约束图生成问题的最优解p*θ(G|φ)可通过应用贝叶斯定理平凡地找到：</p>
+<p>p*θ(G|φ) = p(φ|G)pθ(G) / ΣW p(φ|W)pθ(W) = φ(G)pθ(G) / ΣW φ(W)pθ(W).  (4)</p>
+<p>计算公式(4)不可行，因为它相当于解决加权一阶模型计数（WFOMC）（Van den Broeck et al. 2011），其计算复杂度为♯P（Valiant 1979）。我们使用精确的条件分布作为理想目标。我们的引导转换是一种启发式近似，旨在增加其在满足图上的支持质量，因此不保证精确的条件采样。</p>
+<h2>5 在标记图上表达FOL公式</h2>
+<p>为了在图上评估逻辑公式，我们定义一个签名，从公式3开始，将标记节点和边转换为谓词：</p>
+<p>Σ(G)=(𝒱, ∅, ℒv∪ℒe∪𝒫∪ℛ),  (5)</p>
+<p>其中常量是所有顶点，不考虑函数，谓词为节点和边标签的ℒv和ℒe，以及节点和边上附加谓词的𝒫和ℛ。ℒv和𝒫中的谓词是一元的，而ℒe和ℛ中的谓词是二元的。Herbrand解释（Detlovs and Podnieks 2021）ℐ定义如下：</p>
+<p>ℐ(v) = v, ∀v∈𝒱  (6)<br />
+ℐ(lv) = {v | v∈𝒱, Λv(v)=lv}, ∀lv∈ℒv  (7)<br />
+ℐ(le) = {e | e∈ℰ, Λe(e)=le}, ∀le∈ℒe  (8)<br />
+ℐ(P) ⊆ 𝒱, ∀P∈𝒫  (9)<br />
+ℐ(R) ⊆ ℰ, ∀R∈ℛ  (10)</p>
+<p>有了这个签名和解释，现在可以在标记图上评估FOL中的句子φ。我们将给定图G的公式表示为φ(G)，当在FOL中评估时，返回{0,1}中的值。</p>
+<p>为了使公式化与图的标记函数一致，我们将假设以下排他性公理总是存在于约束集φ中：</p>
+<p>∀x ⋁(lv∈ℒv) (lv(x) ∧ ¬(⋁(lv'∈ℒv∖{lv}) lv'(x))),  (11)</p>
+<p>∀x,y ⋁(le∈ℒe) (le(x,y) ∧ ¬(⋁(le'∈ℒe∖{le}) le'(x,y))).  (12)</p>
+<p>非正式地，这些公理声明每个节点和边必须有一个且只有一个标签。</p>
+<p>当一元和二元谓词𝒫、ℛ定义在标签子集上时，例如标签为horror(v)的节点v是genre(v)，可将如下形式的公理添加到规则集中：</p>
+<p>∀x (P(x) ↔ ⋁(lv∈ℒP) lv(x)),  (13)</p>
+<p>∀x,y (R(x,y) ↔ ⋁(le∈ℒR) le(x,y)),  (14)</p>
+<p>其中ℒP⊆ℒv和ℒR⊆ℒe是谓词成立的标签子集。</p>
+<p>这些公理对于一致的公式化是必要的，但对方法论没有实际后果，也未被应用。因此，我们现在提及它们，并在论文其余部分使其隐式化。</p>
+<h2>6 FOL约束图生成</h2>
+<p><strong>图1</strong>：我们的LTN引导在每个去噪步骤包含两个分支：（上）预训练的DiGress模型计算去噪概率pθ(𝑮^(t-1)|𝑮^t)；（下）LTN将给定的FOL规则φ解释为可微函数fφ，在其上计算关于𝑮^t的梯度，产生p(φ|𝑮^(t-1))的近似。分类器引导（右）通过逐元素乘积组合两者，返回条件概率pθ(𝑮^(t-1)|𝑮^t, φ)。</p>
+<p>对于FOL约束图生成，我们利用分类器引导来引导预训练图扩散模型满足公式φ。分类器引导需要可微目标函数进行梯度计算，因此我们求助于逻辑张量网络（LTN）在模糊逻辑中解释φ。φ中每个句子的贡献通过基于Focal Loss的机制重新加权。LTN引导的概述见图1。</p>
+<p>分类器引导（Dhariwal and Nichol 2021）是条件化扩散模型的最受欢迎替代方案之一。直观地，去噪路径被引导朝向分类器预测的优化。尽管名称暗示使用训练的分类器，但实际上它可以是任何可微函数，且可能不需要训练。在我们的案例中，分类器由公式满足度实现：</p>
+<p>pθ(𝑮^(t-1)|𝑮^t, φ) ∝ p(φ|𝑮^(t-1)) pθ(𝑮^(t-1)|𝑮^t)  (15)<br />
+≈ exp(λ𝑮^(t-1)⊤ ∇𝑮 log p(φ(𝑮^t)=1|𝑮^t)) pθ(𝑮^(t-1)|𝑮^t),</p>
+<p>其中pθ(𝑮^(t-1)|𝑮^t)是公式2中的无条件模型去噪转换，λ是引导强度，可作为超参数调整。该近似来自在𝑮^t处评估的p(φ|𝑮^(t-1))的一阶泰勒近似。一般证明见Vignac et al. (2023)。在经典FOL中，p(φ(𝑮^t)=1|𝑮^t)不可微，因为它等价于φ(G^t)，仅取{0,1}中的值。因此，我们提出使用模糊逻辑，特别是逻辑张量网络（LTN）（Badreddine et al. 2022），来提供公式的可微模糊解释。</p>
+<p>我们将log pφ(φ(𝑮^t)=1|𝑮^t)实现为可微函数fφ(𝑮^t)。</p>
+<p>逻辑张量网络（Badreddine et al. 2022）为FOL谓词、连接词和量词提供可微模糊语义。模糊逻辑允许指定逻辑运算符的语义𝒮以返回[0,1]范围内的值。这些函数在输入为{0,1}时与经典FOL语义完全相同，但允许中间值，通常表示真值程度。在下文中，我们定义应用于张量图𝑮的LTN。我们从一般一元和二元谓词Pi和Rj的基本情况开始：</p>
+<p>𝒮𝑮(Pi(v)) = Σ(l∈ℒPi) 𝑿vl,  (16)</p>
+<p>𝒮𝑮(Rj(v,v')) = Σ(l∈ℒRj) 𝑬vv'l,  (17)</p>
+<p>其中我们强调𝒱既是G中的节点集，也是签名Σ(G)的常量集。</p>
+<p>我们递归地继续乘积逻辑中逻辑连接词的语义：</p>
+<p>𝒮𝑮(φ∧ψ) = 𝒮𝑮(φ)𝒮𝑮(ψ),  (18)</p>
+<p>𝒮𝑮(φ∨ψ) = 1-(1-𝒮𝑮(φ))(1-𝒮𝑮(ψ)),  (19)</p>
+<p>𝒮𝑮(¬φ) = 1-𝒮𝑮(φ),  (20)</p>
+<p>以及所有量词使用以下来自Badreddine et al. (2022)的聚合函数：</p>
+<p>𝒮𝑮(∀x φ(x)) = 1-((1/|𝒱|) Σ(v∈𝒱) (1-𝒮𝑮(φ)v)^p)^(1/p),  (21)</p>
+<p>𝒮𝑮(∃x φ(x)) = ((1/|𝒱|) Σ(v∈𝒱) (𝒮𝑮(φ)v)^p)^(1/p).  (22)</p>
+<p>在两个变量上的量化情况下，对所有对∈𝒱×𝒱聚合p-均值即可。</p>
+<p>某些设置（Thanapalasingam et al. 2023）可能会在FOL语句上附加<strong>非平凡约束</strong>，其在标准LTN公式化下的直接接地（grounding）在计算上不切实际。边基数约束就是这种情况，它要求恰好有k条边。这种类型的约束可为固定的k实现为FOL规则：</p>
+<p>φcard,k: ∃x1,y1,…,xk,yk (⋀(i=1到k) R(xi,yi)  (23)<br />
+∧ ⋀(i≠j) ¬(xi=xj ∧ yi=yj)<br />
+∧ ∀x,y (R(x,y) → ⋁(i=1到k) (x=xi ∧ y=yi))),</p>
+<p>但需要引入k+1对变量，使检查计算昂贵。因此，我们为基数约束实现了一个自定义且易于计算的可微函数：</p>
+<p>𝒮𝑮(φcard,k) = exp(-|Σ(v,v'∈𝒱, l∈ℒe) 𝑬vv'l - k|^p / σ),  (24)</p>
+<p>其中σ是正温度参数，p是用于量词的相同指数。</p>
+<p>有了LTN，句子φ现在可转换为可微函数fφ(𝑮)=𝒮𝑮(φ)。尽管如此，整体约束可能是多个句子φ1, …, φm的合取。设φ为它们的合取。每个句子φi对应其模糊解释fφi。为了将规则聚合为<strong>单个可微函数</strong>，我们应用基于Focal Loss（Lin et al. 2017）的自适应重新加权方法：</p>
+<p>fφ(𝑮) = Σ(i=1到m) (1-fφi(𝑮)) log(fφi(𝑮)).  (25)</p>
+<p>当一个句子被满足时，即fφi(𝑮)≈1，那么log(fφi(𝑮))的贡献消失，留下未满足的句子来引导生成模型。应用LTN引导只需将∇𝑮 log pφ(y|𝑮t)替换为∇𝑮 fφ(𝑮t)。</p>
+<h2>7 实验</h2>
+<p>在我们的实验中，我们考虑三个研究问题：</p>
+<p><strong>RQ1</strong>：LTN引导是否提高数据集规则的满足度？<br />
+<strong>RQ2</strong>：LTN引导如何影响去噪过程？<br />
+<strong>RQ3</strong>：LTN引导是否允许添加新规则来限制支持或将其移出分布？</p>
+<h3>7.1 基准</h3>
+<p>我们使用IntelliGraphs基准（Thanapalasingam et al. 2023）来评估FOL引导的图生成。IntelliGraphs包含五个知识图（KG）数据集，旨在测试不同形式的语义有效性。syn-paths测试有向路径结构；syn-types测试实体和关系类型之间的兼容性以及固定基数约束；syn-tipr实例化时间索引的人-角色本体模式。两个现实世界数据集包含来自Wikidata的子图：wd-movies通过演员、导演和类型描述电影，而wd-articles描述学术文章和有序的作者信息。后者在结构上最复杂，因为有效的图必须表示连续的作者位置而没有间隙。相同基准用于Wang et al. (2025)，可用数据量远大于现有的通用图数据集（Huang et al. 2023）。</p>
+<p>数据集中的图采用资源描述框架（RDF）（Cyganiak et al. 2014）格式，即三元组𝒯={(s,r,o): s,o∈𝒟, r∈ℛ}，其中s是主体实体，r是边谓词或关系，o是客体实体，𝒟和ℛ分别是实体和关系集。为使其与我们的生成模型兼容，我们将它们全部转换为图G^1。关于知识图的详细介绍以及如何将其正式转换为标记图，可参见补充材料的附录C。</p>
+<p>^1 我们在数据集中发现了一些不规则性，例如三元组𝒯不是表示为集合而是列表，这允许重复。例如，syn-types数据集包含每个有10个三元组的KG，但图转换显示大约76.25%的集合实际上有10个三元组，而其余23.75%少于10个三元组。</p>
+<p>IntelliGraphs基准考虑有效、新颖、有效且新颖或空的图的百分比。<strong>有效性</strong>是生成模型效率的主要指标之一，因为它直接影响达到目标数量有效样本所需的重新采样次数。样本批次𝒮中有效图（即φ(G)=1的图）的百分比为：</p>
+<p>V(φ,𝒮) = (1/|𝒮|) Σ(G∈𝒮) φ(G).  (26)</p>
+<p>在IntelliGraphs中，有效性计算通过验证本体中每条规则的检查器实现^2。若两个KG的三元组（主体、谓词、客体）集合相同，则认为它们相等。给定这一概念，<strong>新颖性</strong>在批次𝒮和训练集𝒟tr上计算为不在训练集中的采样图的百分比：</p>
+<p>N(𝒮) = |𝒮∖𝒟tr| / |𝒮|.  (27)</p>
+<p>^2 我们想指出，我们在检查器中实现的规则与论文中提出的规则之间发现了差异。例如，wd-movies数据集包含一条规则，规定所有KG应至少有一个类型。然而，它不存在于检查器中，且数据集的许多KG不包含任何类型。因此，我们在方法中使用已实现的检查器。</p>
+<p>基准还考虑也是有效的新颖图𝒮∖𝒟train的百分比（<strong>有效且新颖</strong>）以及𝒮中没有边的生成图的百分比，正式地是𝒯=∅的图（<strong>空图</strong>）。</p>
+<p>我们纳入了图生成文献中的额外指标（Thompson et al. 2022）来评估生成模型捕捉数据分布的程度。这些基于两组图之间的最大均值差异（MMD），在使用特征提取器f从图中提取的特征上计算成对核函数k(·,·)。MMD定义为：</p>
+<p>MMD²(p,q) = 𝔼(G,G'~p)[kf(G,G')] + 𝔼(G,G'~q)[kf(G,G')] - 2𝔼(G~p,G'~q)[kf(G,G')].  (28)</p>
+<p>作为特征，我们考虑节点度、聚类系数和图拉普拉斯算子的特征值。作为核，我们使用径向基函数。</p>
+<h3>7.2 实现细节</h3>
+<p>我们将LTN引导应用于DiGress（Vignac et al. 2023），这是一种最先进的图扩散模型。由于DiGress最初是为无向图实现的，我们重新实现了模型和图转换器（Dwivedi and Bresson 2020）的部分，以避免邻接矩阵中的对称性，例如移除矩阵对称化操作𝐀𝐀⊤。这使得DiGress可用于有向图的生成。</p>
+<p>我们将DiGress与ComplEx（Trouillon et al. 2016）（IntelliGraphs的最佳KG嵌入基线）和ProvCreator（Wang et al. 2025）（一种基于LLM的模型）进行比较。专门的约束生成方法不适用于此设置，例如ConStruct（Madeira et al. 2024）仅处理次遗传属性，与基准没有任何重叠。我们注意到这些基线直接使用三元组格式，而我们使用它们的标记图转换。此外，ComplEx接收正确的实体集，这对其他方法不成立。对于我们的引导模型，我们对p使用标准LTN值，而引导强度被分为节点的λx和边的λe梯度，它们在每个数据集上的有效性优化值通过在[10^-5, 1]范围内的网格搜索找到。所有实验都在单个A40 GPU上进行。有关超参数搜索和所选值的更多细节可参见补充材料的附录A。</p>
+<h3>7.3 结果与讨论</h3>
+<p><strong>表1</strong>：IntelliGraphs基准上的结果。由于设置相同，ComplEx和ProvCreator的报告值分别取自（Thanapalasingam et al. 2023）和（Wang et al. 2025）。对于我们的方法，我们报告使用从0到2的随机种子训练的三个模型的均值±标准差，每个数据集采样1,000个图，wd-articles上除外，采样200个图。</p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>模型</th>
+<th>%有效↑</th>
+<th>%新颖且有效↑</th>
+<th>%新颖↑</th>
+<th>%空↓</th>
+<th>度↓</th>
+<th>聚类↓</th>
+<th>Spectre↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>syn-paths</td>
+<td>ComplEx（仅w/ p(S|E)）</td>
+<td>10.10</td>
+<td>10.10</td>
+<td>95.58</td>
+<td>4.42</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>ProvCreator</td>
+<td>93.14</td>
+<td>93.14</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（无引导）</td>
+<td>99.43±0.31</td>
+<td>99.40±0.30</td>
+<td>99.97±0.06</td>
+<td>0.00±0.00</td>
+<td>1.6e-5±9.17e-6</td>
+<td>1.33e-6±1.15e-6</td>
+<td>1.6e-5±9.17e-6</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（有引导）</td>
+<td>99.40±0.44</td>
+<td>99.37±0.42</td>
+<td>99.97±0.06</td>
+<td>0.00±0.00</td>
+<td>2.13e-5±1.81e-5</td>
+<td>1.33e-6±1.15e-6</td>
+<td>2.13e-5±1.81e-5</td>
+</tr>
+<tr>
+<td>syn-tipr</td>
+<td>ComplEx（仅w/ p(S|E)）</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>99.64</td>
+<td>0.36</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>ProvCreator</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（无引导）</td>
+<td>99.70±0.36</td>
+<td>95.87±1.07</td>
+<td>96.17±0.71</td>
+<td>0.00±0.00</td>
+<td>3e-5±1.74e-5</td>
+<td>6.67e-7±1.15e-6</td>
+<td>3e-5±1.74e-5</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（有引导）</td>
+<td>99.70±0.36</td>
+<td>95.87±1.07</td>
+<td>96.17±0.71</td>
+<td>0.00±0.00</td>
+<td>3e-5±1.74e-5</td>
+<td>6.67e-7±1.15e-6</td>
+<td>3e-5±1.74e-5</td>
+</tr>
+<tr>
+<td>syn-types</td>
+<td>ComplEx（仅w/ p(S|E)）</td>
+<td>1.01</td>
+<td>1.01</td>
+<td>94.17</td>
+<td>5.83</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>ProvCreator</td>
+<td>86.16</td>
+<td>86.16</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（无引导）</td>
+<td>74.97±0.85</td>
+<td>74.97±0.85</td>
+<td>100.00±0.00</td>
+<td>0.00±0.00</td>
+<td>1.61e-3±1.7e-4</td>
+<td>4.19e-4±5.85e-5</td>
+<td>4.51e-3±1.52e-4</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（有引导）</td>
+<td>95.70±1.00</td>
+<td>95.70±1.00</td>
+<td>100.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.01±1.12e-3</td>
+<td>0.02±3.56e-3</td>
+<td>0.01±4.7e-4</td>
+</tr>
+<tr>
+<td>wd-movies</td>
+<td>ComplEx（仅w/ p(S|E)）</td>
+<td>0.41</td>
+<td>0.41</td>
+<td>93.04</td>
+<td>6.96</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>ProvCreator</td>
+<td>94.26</td>
+<td>94.26</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（无引导）</td>
+<td>93.00±0.95</td>
+<td>87.63±1.69</td>
+<td>94.63±2.40</td>
+<td>0.00±0.00</td>
+<td>0.05±0.01</td>
+<td>0.00±0.00</td>
+<td>0.08±0.01</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（有引导）</td>
+<td>97.37±0.40</td>
+<td>91.40±2.75</td>
+<td>94.03±2.35</td>
+<td>0.00±0.00</td>
+<td>0.05±0.01</td>
+<td>0.00±0.00</td>
+<td>0.07±0.01</td>
+</tr>
+<tr>
+<td>wd-articles</td>
+<td>ComplEx（仅w/ p(S|E)）</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>ProvCreator</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>100.00</td>
+<td>0.00</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（无引导）</td>
+<td>64.50±7.00</td>
+<td>64.50±7.00</td>
+<td>100.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.16±0.02</td>
+<td>0.02±0.03</td>
+<td>0.14±0.01</td>
+</tr>
+<tr>
+<td></td>
+<td>DiGress（有引导）</td>
+<td>69.50±3.97</td>
+<td>69.50±3.97</td>
+<td>100.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.15±0.01</td>
+<td>0.01±0.01</td>
+<td>0.14±0.01</td>
+</tr>
+</tbody>
+</table>
+<p><strong>（RQ1）改善数据集上的有效性。</strong> 我们使用LTN引导来集成用于检查有效性的规则。我们的技术在无条件模型违反约束的地方提高有效性，同时在其他数据集上保持接近完美的有效性。结果呈现在表1中，尽管某些指标和数据集可能是冗余的，我们选择保留它们以保持基准的完整性。可以看出，DiGress即使没有引导，在所有数据集上都取得了非常好的结果，在syn-paths和syn-tipr上产生几乎完美的结果。在syn-types和wd-movies中，我们观察到无条件DiGress被ProvCreator基线超越。对于前者，我们发现错误源是数据集的基数约束。事实上，DiGress达到的有效性非常接近数据集中长度为10且没有重复的三元组集合的百分比。</p>
+<p>在公式24中纳入基数约束改善了其满足度，导致95.70%的非常高有效性。在wd-movies中，LTN引导也比原始DiGress改善了结果，平均有效性为97.37%，优于ProvCreator。尽管如此，分类器引导在最具挑战性的数据集wd-articles上没有显示出实质性改善。特别是，最不满足的约束涉及论文作者位置没有间隙。在最后的去噪步骤附近，无条件转换变得急剧集中，所选的引导强度不足以改变模型的预测。增加权重是不够的，因此需要更复杂的加权方案。关于分布指标，我们观察到引导与无条件模型相比不会实质性扭曲分布。这意味着该技术不会为了有效性而牺牲样本质量。</p>
+<p><strong>图2</strong>：syn-types数据集中跨3个种子的无条件与引导去噪过程比较。 平均有效性和1-R(𝒮0,𝒮t)。 三元组平均数量|𝒯|（含放大图）。目标为|𝒯|=10。阴影区域表示标准差。</p>
+<p><strong>（RQ2）LTN引导在去噪期间如何作用。</strong> 我们从在syn-types数据集上训练的模型生成了N=1000个图的批次，收集轨迹（即去噪期间的中间图）于批次𝒮t={Gt,1, …, Gt,N}中。然后，我们绘制了所有𝒮t随时间的有效性，以及图Gt相对于最终G0的修改率，计算为：</p>
+<p>R(𝒮0,𝒮t) = (1/|𝒮|) Σ(i=1到N) 𝟏&gt;0(GED(G0,i, Gt,i)),  (29)</p>
+<p>其中GED是具有单位成本的图编辑距离，𝟏&gt;0是正集合的指示函数。通过收集𝒮t获得的图可在图2中找到。我们强调，因为syn-types中从三元组转换的图并不都恰好包含10条边，所以在时间t=0时有效性不高。与LTN引导形成鲜明对比的是，有效性几乎达到100%。一个关键的观察是，与没有引导的去噪相比，有效性开始增加的时间步要早得多，随后是反向修改率，意味着最终图更早达到。这进一步被图2(b)证实，显示了整个去噪过程中图中三元组数量|𝒯|的趋势。目标是|𝒯|=10，引导去噪超过了这个值，但最终以低标准差收敛到它，而无条件去噪以&lt;10的值终止。</p>
+<p><strong>（RQ3）插入新规则。</strong> 我们在两种设置中评估LTN引导强制执行数据集中未考虑规则的能力：（1）支持限制，其中新规则与当前知识兼容，提供额外的控制信号；（2）支持转移，其中我们引入新的冲突规则，从数据规则中移除被破坏的规则。例如，在wd-movies中要求每个KG有一个类型构成限制，而将syn-types的三元组数量更改为12是转移，因为没有分布内KG满足此条件。有关添加规则的细节可参见补充材料的附录B。我们想强调，设置2非常具有挑战性，对应于分布外生成，这对生成模型来说并非易事。结果如图3所示。我们观察到，对于支持限制任务，LTN引导能够在所有情况下改善相对于新规则的有效性，在所有情况下几乎达到100%的有效性。这意味着使用LTN引导进行分布内条件化是可能的。如前所述，支持转移任务更具挑战性，但LTN引导引入了生成满足规则的图的非零可能性。因此，LTN引导产生的引导信号可用于产生分布外样本。</p>
+<p><strong>图3</strong>：引入新的兼容（限制）或冲突（转移）规则时无条件模型和引导模型的有效性比较。 支持限制规则 支持转移规则</p>
+<h3>7.4 局限性</h3>
+<p>LTN引导使用逻辑规则的可微松弛，这不保证完美的有效性。另一个限制是需要为每个数据集彻底搜索最佳引导权重λ。这项工作处理具有FOL约束的图生成，我们发现可比较的竞争工作和数据有限。因此，更广泛的实证图景留待未来工作。</p>
+<h2>8 结论</h2>
+<p>我们展示了如何通过LTN引导用FOL规则引导图去噪扩散模型。我们首先定义了图签名和一致性公理，在其下可编写FOL规则；其次，我们提出通过LTN将规则解释为可微目标函数；最后，分类器引导用获得的函数引导去噪过程。因此，预训练的图扩散模型可被条件化以最大化一组FOL规则的满足度，例如知识图的本体。这种精确的设置已被用于评估我们的技术，显示出与无条件模型相比改善的有效性。我们还研究了去噪过程中的行为，观察到FOL分类器引导作用激进，导致样本在去噪时间中更早达到其最终离散结构。在未来，多种多样的图设置可能受益于其应用。例如，在图神经网络（GNN）的反事实生成中（Chen et al. 2026），可使用LTN引导在推理时控制反事实分布。在条件分子生成和逆合成中（Qiao et al. 2025），某些元素可能被禁止，或者可能需要商业可获得的起始材料。</p>
+<h2>致谢</h2>
+<p>我们感谢以下项目的资助：(i) PNRR项目FAIR——未来AI研究（PE00000013），由NextGenerationEU资助的NRRP MUR计划下；(ii) 意大利大学与研究部（MUR）在PRIN计划下——Progetti di Rilevante Interesse Nazionale——PRIN 2022（秘书长令第1401/18/09/2024号）——CUP C53C24000770006，项目标题"DEEP-GRAPH: Design and Theory of Deep Graph Learning"。</p>
+<h2>参考文献</h2>
+<p>（参考文献保留原文格式）</p>
+<ul>
+<li>Ansel et al. (2024) J. Ansel, E. Yang, H. He, N. Gimelshein, A. Jain, M. Voznesensky, B. Bao, P. Bell, D. Berard, E. Burovski, et al. Pytorch 2: faster machine learning through dynamic python bytecode transformation and graph compilation. In <em>Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2</em>, pp. 929–947.</li>
+<li>Austin et al. (2021) J. Austin, D. D. Johnson, J. Ho, D. Tarlow, and R. Van Den Berg. Structured denoising diffusion models in discrete state-spaces. <em>Advances in Neural Information Processing Systems</em> 34, pp. 17981–17993.</li>
+<li>Badreddine et al. (2022) S. Badreddine, A. d. Garcez, L. Serafini, and M. Spranger. Logic tensor networks. <em>Artificial Intelligence</em> 303, pp. 103649.</li>
+<li>Barwise (1977) J. Barwise. An introduction to first-order logic. In <em>Studies in Logic and the Foundations of Mathematics</em>, Vol. 90, pp. 5–46.</li>
+<li>Cai et al. (1992) J. Cai, M. Fürer, and N. Immerman. An optimal lower bound on the number of variables for graph identification. <em>Combinatorica</em> 12(4), pp. 389–410.</li>
+<li>Chen et al. (2026) L. Chen, C. He, J. Cheng, C. Li, and Q. Guan. Generating in-distribution counterfactual explanation for graph neural networks. In <em>Proceedings of the AAAI Conference on Artificial Intelligence</em>, Vol. 40, pp. 20208–20216.</li>
+<li>Cognolato et al. (2026a) S. Cognolato, D. Rigoni, M. Ballarini, L. Serafini, S. Moro, and A. Sperduti. D4: distance diffusion for a truly equivariant molecular design. <em>Neurocomputing</em> 679, pp. 133197.</li>
+<li>Cognolato et al. (2026b) S. Cognolato, A. Sperduti, and L. Serafini. FLAGG: flexible autoregressive graph generation. <em>Journal of Machine Learning Research</em> 27(107), pp. 1–38.</li>
+<li>Cyganiak et al. (2014) R. Cyganiak, D. Wood, M. Lanthaler, G. Klyne, J. J. Carroll, and B. McBride. RDF 1.1 concepts and abstract syntax. <em>W3C recommendation</em> 25(02), pp. 1–22.</li>
+<li>Detlovs and Podnieks (2021) V. Detlovs and K. Podnieks. Herbrand's theorem. In <em>Introduction to Mathematical Logic, Edition 2021</em>, pp. 254–260.</li>
+<li>Dhariwal and Nichol (2021) P. Dhariwal and A. Nichol. Diffusion models beat gans on image synthesis. <em>Advances in neural information processing systems</em> 34, pp. 8780–8794.</li>
+<li>Dwivedi and Bresson (2020) V. P. Dwivedi and X. Bresson. A generalization of transformer networks to graphs. <em>arXiv preprint arXiv:2012.09699</em>.</li>
+<li>Eijkelboom et al. (2024) F. Eijkelboom, G. Bartosh, C. Andersson Naesseth, M. Welling, and J. van de Meent. Variational flow matching for graph generation. <em>Advances in Neural Information Processing Systems</em> 37, pp. 11735–11764.</li>
+<li>Falcon (2019) W. A. Falcon. Pytorch lightning. <em>GitHub</em> 3.</li>
+<li>Fey and Lenssen (2019) M. Fey and J. E. Lenssen. Fast graph representation learning with PyTorch Geometric. In <em>ICLR Workshop on Representation Learning on Graphs and Manifolds</em>.</li>
+<li>Gruber (1993) T. R. Gruber. A translation approach to portable ontology specifications. <em>Knowledge Acquisition</em> 5(2), pp. 199–220.</li>
+<li>Ho et al. (2020) J. Ho, A. Jain, and P. Abbeel. Denoising diffusion probabilistic models. <em>Advances in Neural Information Processing Systems</em> 33, pp. 6840–6851.</li>
+<li>Hogan et al. (2021) A. Hogan, E. Blomqvist, M. Cochez, et al. Knowledge graphs. <em>ACM Comput. Surv.</em> 54(4).</li>
+<li>Huang et al. (2023) H. Huang, L. Sun, B. Du, and W. Lv. Conditional diffusion based on discrete graph structures for molecular graph generation. In <em>Proceedings of the AAAI Conference on Artificial Intelligence</em>, Vol. 37, pp. 4302–4311.</li>
+<li>Jo et al. (2022) J. Jo, S. Lee, and S. J. Hwang. Score-based generative modeling of graphs via the system of stochastic differential equations. In <em>International Conference on Machine Learning</em>, pp. 10362–10383.</li>
+<li>Lin et al. (2017) T. Lin, P. Goyal, R. Girshick, K. He, and P. Dollár. Focal loss for dense object detection. In <em>Proceedings of the IEEE international conference on computer vision</em>, pp. 2980–2988.</li>
+<li>Liu et al. (2018) Q. Liu, M. Allamanis, M. Brockschmidt, and A. Gaunt. Constrained graph variational autoencoders for molecule design. <em>Advances in neural information processing systems</em> 31.</li>
+<li>Madeira et al. (2024) M. Madeira, C. Vignac, D. Thanou, and P. Frossard. Generative modelling of structurally constrained graphs. In <em>The Thirty-eighth Annual Conference on Neural Information Processing Systems</em>.</li>
+<li>Peng et al. (2023) C. Peng, F. Xia, M. Naseriparsa, and F. Osborne. Knowledge graphs: opportunities and challenges. <em>Artificial intelligence review</em> 56(11), pp. 13071–13102.</li>
+<li>Qiao et al. (2025) A. Qiao, Z. Wang, J. Rao, Y. Yang, and Z. Wei. Advancing retrosynthesis with retrieval-augmented graph generation. In <em>Proceedings of the AAAI Conference on Artificial Intelligence</em>, Vol. 39, pp. 20004–20013.</li>
+<li>Qin et al. (2024) Y. Qin, M. Madeira, D. Thanou, and P. Frossard. Defog: discrete flow matching for graph generation. <em>arXiv preprint arXiv:2410.04263</em>.</li>
+<li>Rigoni et al. (2020) D. Rigoni, N. Navarin, and A. Sperduti. Conditional constrained graph variational autoencoders for molecule design. In <em>2020 IEEE Symposium Series on Computational Intelligence (SSCI)</em>, pp. 729–736.</li>
+<li>Rigoni et al. (2025) D. Rigoni, N. Navarin, and A. Sperduti. RGCVAE: relational graph conditioned variational autoencoder for molecule design. <em>Mach. Learn.</em> 114(2), pp. 47.</li>
+<li>Thanapalasingam et al. (2023) T. Thanapalasingam, E. van Krieken, P. Bloem, and P. Groth. IntelliGraphs: datasets for benchmarking knowledge graph generation. <em>arXiv preprint arXiv:2307.06698</em>.</li>
+<li>Thompson et al. (2022) R. Thompson, B. Knyazev, E. Ghalebi, J. Kim, and G. W. Taylor. On evaluation metrics for graph generative models. In <em>International Conference on Learning Representations</em>.</li>
+<li>Trouillon et al. (2016) T. Trouillon, J. Welbl, S. Riedel, É. Gaussier, and G. Bouchard. Complex embeddings for simple link prediction. In <em>International conference on machine learning</em>, pp. 2071–2080.</li>
+<li>Valiant (1979) L. G. Valiant. The complexity of enumeration and reliability problems. <em>siam Journal on Computing</em> 8(3), pp. 410–421.</li>
+<li>Van den Broeck et al. (2011) G. Van den Broeck, N. Taghipour, W. Meert, J. Davis, L. De Raedt, and J. Walsh. Lifted probabilistic inference by first-order knowledge compilation. In <em>Proceedings of the Twenty-Second international joint conference on Artificial Intelligence</em>, pp. 2178–2185.</li>
+<li>Vignac et al. (2023) C. Vignac, I. Krawczuk, A. Siraudin, B. Wang, V. Cevher, and P. Frossard. DiGress: discrete denoising diffusion for graph generation. In <em>International Conference on Learning Representations</em>.</li>
+<li>Wang et al. (2025) T. Wang, S. Klancher, K. Mukherjee, J. Wiedemeier, F. Chen, M. Kantarcioglu, and K. Jee. Provcreator: synthesizing complex heterogenous graphs with node and edge attributes. <em>arXiv preprint arXiv:2507.20967</em>.</li>
+<li>Wang et al. (2024) Y. Wang, J. Pu, Y. Wang, and O. Kuzelka. Lifted algorithms for symmetric weighted first-order model sampling. <em>Artificial Intelligence</em> 331, pp. 104114.</li>
+<li>Yadan (2019) O. Yadan. Hydra—a framework for elegantly configuring complex applications. <em>GitHub</em>.</li>
+<li>Yao et al. (2025) L. Yao, J. Peng, C. Mao, and Y. Luo. Exploring large language models for knowledge graph completion. In <em>ICASSP 2025 - 2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)</em>, pp. 1–5.</li>
+</ul>
+<h2>附录A 超参数和实现细节</h2>
+<p>在本节中，我们报告为LTN引导执行的每个数据集的超参数搜索、所选值、实现和实验细节。</p>
+<p>如正文所述，我们将引导权重λ分为节点和边分量λx和λe。我们通过每个数据集的网格搜索选择它们的值。对于两个超参数，我们评估了以下集合中的值：</p>
+<p>{0, 10^-5, 5·10^-5, 10^-4, 5·10^-4, 10^-3, 5·10^-3, 10^-2, 5·10^-2, 10^-1, 5·10^-1, 1},  (30)</p>
+<p>并对所有数据集运行1000个图的生成，wd-articles为50个图，这是由于其图的大小的可行性。所有实验都使用从种子0获得的模型运行。</p>
+<p>图4报告了每个数据集的结果有效性。然后，我们选择了每个数据集达到最大有效性的配置，如表2所总结。</p>
+<p><strong>图4</strong>：五个数据集上LTN引导权重λx和λe的网格搜索有效性（%）。颜色条刻度在每个面板中独立设置以强调每个数据集内的差异，因此不应跨数据集比较颜色。 syn-paths syn-tipr syn-types wd-movies wd-articles</p>
+<p><strong>表2</strong>：选择的LTN引导超参数和相应的最大有效性（%）。</p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>最大有效性</th>
+<th>λx</th>
+<th>λe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>syn-paths</td>
+<td>99.71</td>
+<td>5·10^-4</td>
+<td>10^-3</td>
+</tr>
+<tr>
+<td>syn-tipr</td>
+<td>99.71</td>
+<td>5·10^-4</td>
+<td>5·10^-5</td>
+</tr>
+<tr>
+<td>syn-types</td>
+<td>97.07</td>
+<td>5·10^-3</td>
+<td>1</td>
+</tr>
+<tr>
+<td>wd-movies</td>
+<td>98.83</td>
+<td>5·10^-4</td>
+<td>10^-2</td>
+</tr>
+<tr>
+<td>wd-articles</td>
+<td>86.00</td>
+<td>1</td>
+<td>10^-3</td>
+</tr>
+</tbody>
+</table>
+<p>实现使用PyTorch（Ansel et al. 2024）、PyTorch Lightning（Falcon 2019）、Hydra（Yadan 2019）和PyTorch Geometric（Fey and Lenssen 2019）。所有实验都在Linux系统上运行，使用一块NVIDIA A40 GPU、五个CPU核心和20 GB内存。详细的架构超参数列表以及库及其版本列表在补充代码中提供，包含完整的Conda环境规范和hydra配置。代码将在论文被接受后公开提供。</p>
+<h2>附录B 支持限制和转移的附加规则</h2>
+<p>设φD表示数据集D的原始有效性规则合取。那么有效图集为：</p>
+<p>ℳ(φD) = {G : φD(G)=1}.  (31)</p>
+<p>那么，D的<strong>兼容规则</strong>ψD^comp满足：</p>
+<p>ℳ(φD) ∩ ℳ(ψD^comp) ≠ ∅,  (32)</p>
+<p>而D的<strong>冲突规则</strong>ψD^conf满足：</p>
+<p>ℳ(φD) ∩ ℳ(ψD^conf) = ∅.  (33)</p>
+<p>然后，从φD获得<strong>转移规则集</strong>φ'D，使得ψD^conf与其不冲突，例如，通过从φD中移除与ψD^conf冲突的规则。</p>
+<p>然后，我们有兴趣使用LTN引导从pθ(G|φD∧ψD^comp)和pθ(G|φ'D∧ψD^conf)采样，它们分别是<strong>支持限制</strong>和<strong>支持转移</strong>下图的条件分布。前者包含数据分布中发现的结构的子集，而后者包含数据分布之外的图。对于这些模型，目标是最大化采样有效图的概率。在正文中，我们报告了五个数据集的实验结果，这里我们提供支持限制和转移实验中使用的附加规则的FOL公式。有关每个数据集的详细规则集，请参见IntelliGraphs论文的第7.4节（Thanapalasingam et al. 2023）。</p>
+<p><strong>syn-paths</strong>。对于支持限制，我们保留原始的三边路径和根规则，并要求关系从根到叶恰好按cycle_to、drive_to和train_to的顺序出现：</p>
+<p>∃x,y,z,w root(x) ∧ cycle_to(x,y)  (34)<br />
+∧ drive_to(y,z) ∧ train_to(z,w).</p>
+<p>对于支持转移，我们移除路径和根规则，用有向三环替换它们。这三个节点两两不同：</p>
+<p>∃x,y,z x≠y ∧ y≠z ∧ z≠x  (35)<br />
+∧ edge(x,y) ∧ edge(y,z)<br />
+∧ edge(z,x).</p>
+<p><strong>syn-tipr</strong>。对于支持限制，我们保留规范的五三元组模式，并要求每个任期至少持续十年：</p>
+<p>∀x,y,z end_year(x,y) ∧ start_year(x,z)  (36)<br />
+→ before_10_years(y,z).</p>
+<p>这里y和z是年份节点，在比较中用其数值年份值标识。对于支持转移，我们保留五三元组模式，但用其严格反转替换原始的时间顺序规则：</p>
+<p>∀x,y,z end_year(x,y) ∧ start_year(x,z)  (37)<br />
+→ after(y,z),</p>
+<p>意味着z必须在y之后。</p>
+<p><strong>syn-types</strong>。对于支持限制，我们保留所有原始类型规则和十边约束，并要求三个spoken_in、三个could_be_part_of和四个same_type_as边的组合：</p>
+<p>φcard,3(spoken_in)  (38)<br />
+∧ φcard,3(could_be_part_of)<br />
+∧ φcard,4(same_type_as)<br />
+∧ φcard,10(edge).</p>
+<p>对于支持转移，我们用十二条边替换十边约束，每种关系使用四条边，同时保留原始类型规则：</p>
+<p>φcard,4(spoken_in)  (39)<br />
+∧ φcard,4(could_be_part_of)<br />
+∧ φcard,4(same_type_as)<br />
+∧ φcard,12(edge).</p>
+<p><strong>wd-movies</strong>。对于支持限制，我们保留所有原始规则，并添加电影至少有一个类型的要求：</p>
+<p>∃x has_genre(existential_node, x) ∧ genre(x).  (40)</p>
+<p>对于支持转移，我们移除强制导演规则，要求至少一个演员和一个类型，并禁止所有has_director边：</p>
+<p>∃x has_actor(existential_node, x) ∧ person(x),  (41)<br />
+∃x has_genre(existential_node, x) ∧ genre(x),<br />
+∀x,y ¬has_director(x,y).</p>
+<p><strong>wd-articles</strong>。对于支持限制，我们保留所有原始规则，并要求文章至少有一个到IRI的引用：</p>
+<p>∃x cites(article_node, x) ∧ iri(x).  (42)</p>
+<p>对于支持转移，我们用强制引用替换强制作者身份，并禁止所有has_author边：</p>
+<p>∃x cites(article_node, x) ∧ iri(x),  (43)<br />
+∀x,y ¬has_author(x,y).</p>
+<p>保留原始的主体和引用类型规则以及所有适用的结构规则。</p>
+<h2>附录C 知识图和转换为标记图</h2>
+<p>知识图（KG）（Hogan et al. 2021）是基于图的数据表示，涵盖来自不同来源的各种数据。KG用作为感兴趣实体的节点和作为它们之间关系的边来表示信息。这种结构允许知识以灵活的方式发展，通过启用对单个实体和关系的细粒度管理并允许缺失数据。仅KG表示数据，<strong>本体</strong>可用于定义图的模式，即实体和关系的类型以及它们必须满足的规则。</p>
+<p>本体可由FOL实现，从实体论域𝒟的定义开始，并从那里定义函数和谓词。论域被划分为子集𝒟1, …, 𝒟N，每个标识一个<strong>实体类型</strong>。为每个子集𝒟i指定一元谓词Pi。<strong>关系集</strong>ℛ={ℛ1, …, ℛM}包含子集ℛj⊆𝒟×𝒟。为每个关系ℛj指定二元谓词Rj。因此，三元组集变为𝒯={(s,r,o): s,o∈𝒟, r∈ℛ}。</p>
+<p>资源描述框架（RDF）（Cyganiak et al. 2014）是将KG表示为一组三元组𝒯的标准化模型，其中每个三元组的形式为，s是主体实体，r是边谓词或关系，o是客体实体，每个由标识符表示。</p>
+<p>为定义RDF格式的KG和标记图之间的映射，我们提出将KG实体表示为节点标签，关系表示为边标签。数学上，节点标签集为ℒv=𝒟，边标签集为ℒe=ℛ。为将三元组集𝒯转换为标记图G，我们首先收集𝒯中的唯一实体集ℒ(𝒯)：</p>
+<p>ℒ(𝒯) = {s | (s,r,o)∈𝒯} ∪ {o | (s,r,o)∈𝒯}.  (45)</p>
+<p>然后，我们创建顶点𝒱，并用双射Λv将它们与实体耦合：</p>
+<p>𝒱 = {v1, …, vn}, 其中 n=|ℒ(𝒯)|  (46)</p>
+<p>Λv(v) = l, v∈𝒱, l∈ℒ(𝒯).  (47)</p>
+<p>最后，边及其标签定义为：</p>
+<p>ℰ = {(v,v') | v,v'∈𝒱, (Λv(v), r, Λv(v'))∈𝒯},  (48)</p>
+<p>Λe((v,v')) = r, 若 (Λv(v), r, Λv(v'))∈𝒯 ∧ (v,v')∈ℰ.  (49)</p>
+<p>为将图G转换为三元组𝒯，只需将所有边和标签收集到集合中：</p>
+<p>𝒯 = {(Λv(v), Λe(v,v'), Λv(v')) | (v,v')∈ℰ}.  (50)</p>
+<p>因为原则上不假设Λv是单射的，可能有多个节点具有相同的标签。在KG领域，这意味着有两个节点表示相同的实体，意味着一旦映射到三元组，它们与其他节点连接的边集被合并。因此，我们包含附加约束∀l∈ℒv：</p>
+<p>∀x,y (l(x) ∧ l(y)) → x=y.  (51)</p>
+<h2>可复现性检查清单</h2>
+<p><strong>作者说明</strong>：本文档概述了评估可复现性的关键方面。请通过直接编辑此.tex文件提供您的输入。</p>
+<p><strong>1. 论文总体结构</strong></p>
+<p>1.1. 包含所引入AI方法的概念概述和/或伪代码描述（是/部分/否/NA）：是<br />
+1.2. 清楚区分作为观点、假设和推测的陈述与客观事实和结果（是/否）：是<br />
+1.3. 为不熟悉的读者提供明确标记的教学参考文献，以获得复制论文所需的背景知识（是/否）：是</p>
+<p><strong>2. 理论贡献</strong></p>
+<p>2.1. 本文是否做出理论贡献？（是/否）：否<br />
+2.2-2.8：NA</p>
+<p><strong>3. 数据集使用</strong></p>
+<p>3.1. 本文是否依赖一个或多个数据集？（是/否）：是<br />
+3.2. 对为何在所选数据集上进行实验给出了动机（是/部分/否/NA）：是<br />
+3.3-3.4：NA<br />
+3.5. 从现有文献中提取的所有数据集（可能包括作者自己以前发表的工作）都附有适当的引用（是/否/NA）：是<br />
+3.6. 从现有文献中提取的所有数据集（可能包括作者自己以前发表的工作）都是公开可用的（是/部分/否/NA）：是<br />
+3.7：NA</p>
+<p><strong>4. 计算实验</strong></p>
+<p>4.1. 本文是否包含计算实验？（是/否）：是<br />
+4.2. 本文说明了论文开发过程中每个（超）参数尝试的值的数量和范围，以及用于选择最终参数设置的标准（是/部分/否/NA）：是<br />
+4.3. 预处理数据所需的任何代码都包含在附录中（是/部分/否）：是<br />
+4.4. 进行和分析实验所需的所有源代码都包含在代码附录中（是/部分/否）：是<br />
+4.5. 进行和分析实验所需的所有源代码将在论文发表后以允许免费用于研究目的的许可证公开提供（是/部分/否）：是<br />
+4.6. 实现新方法的所有源代码都有详细说明实现的注释，并引用论文中每个步骤的出处（是/部分/否）：是<br />
+4.7. 若算法依赖随机性，则设置种子的方法以足以允许复制结果的方式描述（是/部分/否/NA）：是<br />
+4.8. 本文指定了用于运行实验的计算基础设施（硬件和软件），包括GPU/CPU型号；内存量；操作系统；相关软件库和框架的名称和版本（是/部分/否）：是<br />
+4.9. 本文正式描述了所使用的评估指标并解释了选择这些指标的动机（是/部分/否）：是<br />
+4.10. 本文说明了用于计算每个报告结果的算法运行次数（是/否）：是<br />
+4.11. 实验分析超越性能的单维摘要（例如平均值、中位数），包括变化、置信度或其他分布信息的度量（是/否）：是<br />
+4.12. 任何性能改进或下降的显著性使用适当的统计检验（例如Wilcoxon符号秩检验）判断（是/部分/否）：否<br />
+4.13. 本文列出了论文实验中每个模型/算法使用的所有最终（超）参数（是/部分/否/NA）：是</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 图扩散模型, 一阶逻辑, 知识图谱生成, 分类器引导, 逻辑张量网络</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
