@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键处深思：序列推荐的物品级自适应递归 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">关键处深思：序列推荐的物品级自适应递归</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-21</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.30128" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Think Harder Where It Matters: Item-Level Adaptive Recursion for Sequential Recommendation</h4>
+            <p><strong>中文摘要：</strong> **摘要**
+
+本文提出LoopRec，一种物品级自适应递归的序列推荐模型。诊断实验发现：序列中各物品的计算需求高度异构，多数物品浅层处理即收敛，少数关键物品需完整深度；固定深度分配仅在4.6%的序列中最优，灵活分配可带来最高8.8%的命中率提升。LoopRec将序列推荐重构为逐物品计算分配问题，以共享递归主干结合学习的物品级停止决策，自适应调整各物品计算深度，并通过深度特定读出保持跨深度表示对齐...</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>在关键之处更深入思考：序列推荐的物品级自适应递归<br />
+Zhanshuo Cao<br />
+注：<br />
+两位作者对本研究贡献相同。<br />
+所属机构：<br />
+中国人民大学高瓴人工智能学院<br />
+，<br />
+北京<br />
+，<br />
+中国<br />
+邮箱：<br />
+caozhanshuo@ruc.edu.cn<br />
+，<br />
+Jiakai Tang<br />
+所属机构：<br />
+中国人民大学高瓴人工智能学院<br />
+，<br />
+北京<br />
+，<br />
+中国<br />
+邮箱：<br />
+tangjiakai5704@ruc.edu.cn<br />
+，<br />
+Yuqi Zhou<br />
+所属机构：<br />
+中国人民大学高瓴人工智能学院<br />
+，<br />
+北京<br />
+，<br />
+中国<br />
+邮箱：<br />
+yuqizhou@ruc.edu.cn<br />
+，<br />
+Sunhao Dai<br />
+所属机构：<br />
+中国人民大学高瓴人工智能学院<br />
+，<br />
+北京<br />
+，<br />
+中国<br />
+邮箱：<br />
+sunhaodai@ruc.edu.cn<br />
+和<br />
+Jun Xu<br />
+注：<br />
+通讯作者。<br />
+所属机构：<br />
+中国人民大学高瓴人工智能学院<br />
+，<br />
+北京<br />
+，<br />
+中国<br />
+邮箱：<br />
+junxu@ruc.edu.cn<br />
+摘要。<br />
+现有序列推荐模型通常为用户交互历史中的每个物品分配固定的计算预算，而不考虑该物品对最终预测的贡献。我们通过两项诊断性发现对这一事实上的设计提出挑战。(1)<br />
+非均匀的计算需求：<br />
+同一序列内的各个物品在所需计算量上差异巨大。大多数物品在浅层处理后即收敛，而少数关键物品只有在完整深度下才趋于稳定。(2)<br />
+固定分配的次优性：<br />
+在能够以 oracle 方式访问目标物品的情况下，非均匀的深度分配始终优于 t</p>
+<p>Hmm, but should I preserve the fragment nature? Like starting with "固定深度模型，这表明..." - yes, that works as a fragment continuation.</p>
+<p>Also note "ntent platforms" at the start - it's a fragment of "content platforms". I'll translate it as "内容平台" since it's the continuation of a sentence.</p>
+<p>t<br />
+76.14<br />
+%<br />
+76.14\%<br />
+的物品在单层之后便已稳定其对推荐的贡献，而<br />
+6.72<br />
+%<br />
+6.72\%<br />
+的物品在全部三层中始终保持敏感，且这两个极端经常在同一序列中共存。其次，配备真实目标信息的受限先知（oracle）发现，原始的固定深度分配仅在<br />
+4.6<br />
+%<br />
+4.6\%<br />
+的序列中是最优的，通过灵活的重新分配可实现高达<br />
+8.8<br />
+%<br />
+8.8\%<br />
+的相对命中率（Hit Rate）提升。这些发现表明：<br />
+统一深度既浪费了已收敛物品的计算容量，又未能充分服务于能从更深计算中受益的关键少数物品<br />
+。这促使我们将序列推荐重新构建为一个逐物品计算分配问题。<br />
+然而，在序列推荐中实现逐物品的自适应计算带来了两个相互交织的挑战。(1)<br />
+跨深度的表示对齐：<br />
+由于不同物品可能在不同深度退出，其输出表示仍需驻留在共享特征空间中，以供下游计算和评分使用。若在没有精心架构设计的情况下允许深度变化，可能导致表示错位，使其在预测时无法比较。(2)<br />
+渐进式深度确定：<br />
+每个物品所需的计算量不能依赖于单一的前置决策，因为物品的就绪状态只有在逐渐吸收来自周围物品的上下文时才会显现。过早承诺可能导致要么浪</p>
+<p>For the last fragment "and m" - it's cut off. I'll translate as "并且" and leave it, or maybe indicate it's cut off. Since</p>
+<p>更近期的交互，而这正是预言机（oracle）也会为其分配更多计算资源的群体。</p>
+<p>我们的贡献总结如下：<br />
+•<br />
+我们使用两种互补的诊断方法，揭示了物品级计算需求的差异，以及固定深度处理在序列推荐中的局限性。<br />
+•<br />
+我们提出了 LoopRec，它将共享的递归主干与学习到的物品级停止决策相结合，从而在每个交互历史中自适应地调整计算深度。<br />
+•<br />
+在三个数据集和四个主干网络上的实验表明排序性能持续提升，路由分析进一步揭示了模型对低频物品和更近期物品分配了更深层的计算。</p>
+<p>图 1.<br />
+Office 数据集上的物品饱和深度<br />
+ℓ<br />
+i<br />
+⋆<br />
+\ell_{i}^{\star}<br />
+。(a) 测试集上的物品级分布。(b) 每个序列的深度构成。每个小提琴图展示了序列内占比的分布，其中圆点和横条分别标记中位数和四分位距（IQR）。</p>
+<p>2.<br />
+诊断分析<br />
+在介绍 LoopRec 之前，我们使用三层 SASRec<br />
+（<br />
+Kang and McAuley, 2018<br />
+）<br />
+在 Amazon Office Products<br />
+（<br />
+Hou et al., 2024<br />
+）<br />
+上通过两个诊断实验对均匀深度假设进行了实证探究。我们研究：<br />
+•<br />
+RQ1：<br />
+在固定深度处理下，同一序列内各物品的计算需求是如何分布的？<br />
+•<br />
+RQ2：<br />
+与灵活的逐物品分配方案相比，固定深度分配在多大程度上影响推荐质量？</p>
+<p>2.1.<br />
+探针实验 1：物品级饱和深度<br />
+为了量化</p>
+<p>。然而，仍有</p>
+<p>序列级别视图（图 1(b)）进一步表明，浅层饱和与深层饱和的物品经常共存于同一历史中，许多序列跨越了所有三个饱和深度。</p>
+<p>发现 1：非均匀的计算需求。<br />
+同一序列内的物品表现出高度异构的计算需求。大多数物品在经过最少处理后即收敛，而相当数量的少数物品则需要完整深度。由于这两组物品经常共存于同一序列中，没有任何单一固定深度能够同时很好地服务于所有物品。</p>
+<p>2.2.<br />
+探针 2：物品级深度分配</p>
+<p>探针 1 确立了物品在所需计算量上存在差异，但并未告诉我们这种不匹配是否真的损害了推荐质量。为了弥合这一差距，我们设计了一个受控实验：在保持模型参数冻结的情况下，我们探究逐物品的灵活深度分配是否能够产生比原始固定分配更好的排序。</p>
+<p>具体而言，我们在每个测试序列中最近的五个物品上构建反事实搜索。这些物品中的每一个都被允许在深度 1、2 或 3 后退出，而较早的位置则保留原始的完整深度传递。原始固定深度分配也被纳入候选之一。随后，一个能够访问真实目标的离线预言机选择可实现最佳目标排名的分配。构建细节见附录 A.3。</p>
+<p>表 1. 图 2(b) 中序列的排名改进和相对尾部计算，归一化</p>
+<p>Simplest faithful approach: translate as "……固定深度分配。" and move on. Or I</p>
+<p>"prefix" - 前缀</p>
+<p>thbf{s}<em>{1:t})<br />
+. 给定由前缀–目标对组成的训练集<br />
+𝒟<br />
+\mathcal{D}<br />
+，推荐目标是标准的交叉熵损失：<br />
+(2)<br />
+ℒ<br />
+rec<br />
+=<br />
+−<br />
+1<br />
+|<br />
+𝒟<br />
+|<br />
+∑<br />
+(<br />
+𝐬<br />
+1<br />
+:<br />
+t<br />
+,<br />
+v<br />
+t<br />
++<br />
+1<br />
+)<br />
+∈<br />
+𝒟<br />
+log<br />
+p<br />
+(<br />
+v<br />
+t<br />
++<br />
+1<br />
+∣<br />
+𝐬<br />
+1<br />
+:<br />
+t<br />
+)<br />
+.<br />
+\mathcal{L}</em>{\mathrm{rec}}=-\frac{1}{|\mathcal{D}|}\sum_{(\mathbf{s}<em>{1:t},\,v</em>{t+1})\in\mathcal{D}}\log p(v_{t+1}\mid\mathbf{s}_{1:t}).<br />
+图 2.<br />
+Office 数据集上的受限 tail-5 预言机。(a) 灵活预言机相对于固定深度基线的相对增益。(b) 样本序列的预言机所选尾部深度。数字表示深度，第 0–4 列为最近的五个位置。<br />
+3.2.<br />
+LoopRec 架构<br />
+第<br />
+2<br />
+节表明，同一序列中的不同历史物品可能需要不同的计算量，这使得统一的固定深度处理对序列推荐具有限制性。受此观察</p>
+<p>，LoopRec 将主干模块视为可复用的计算单元，并在递归之间共享它。设<br />
+ℬ<br />
+⁡<br />
+(<br />
+⋅<br />
+)<br />
+\mathcal{B}(\cdot)<br />
+表示具有<br />
+L<br />
+L<br />
+层的共享主干模块，设<br />
+R<br />
+R<br />
+为最大递归次数。我们将这种层–递归配置记为<br />
+LxRy<br />
+。例如，<br />
+L2R3<br />
+使用一个两层共享模块进行最多三次递归。给定<br />
+𝐗<br />
+\mathbf{X}<br />
+，LoopRec 通过三个组件进行处理。<br />
+初始上下文编码<br />
+首先将<br />
+ℬ<br />
+⁡<br />
+(<br />
+⋅<br />
+)<br />
+\mathcal{B}(\cdot)<br />
+应用于完整序列，以获得所有位置的上下文化状态。<br />
+深度路由递归<br />
+然后在每个递归边界处应用自适应深度路由：深度路由器对每个活跃位置做出停止或继续的决策，并仅对继续的位置重新应用共享模块，直到所有位置停止或达到递归预算。最后，<br />
+深度特定读出<br />
+从所选深度的状态中形成用于下一项预测的表示。在递归<br />
+r<br />
+r<br />
+后停止的位置实际上接收了<br />
+r<br />
+​<br />
+L<br />
+rL<br />
+层的序列编码。图<br />
+3<br />
+提供了概述。<br />
+图 3. LoopRec 概述。在每个递归边界处，深度路由门控决定哪些位置停止，哪些位置继续通过共享模块。<br />
+初始上下文编码。LoopRec 首先对完整序列进行共享的浅层传递：<br />
+𝐇<br />
+(<br />
+1<br />
+)<br />
+=<br />
+ℬ<br />
+⁡<br />
+(<br />
+𝐗<br />
+)<br />
+,<br />
+\mathbf{H}^{(1)}=\mathcal{B}(\mathbf{X}),<br />
+其中<br />
+𝐇<br />
+(<br />
+1<br />
+)<br />
+=<br />
+[<br />
+𝐡<br />
+1<br />
+(<br />
+1<br />
+)<br />
+,<br />
+…<br />
+,<br />
+𝐡<br />
+T<br />
+(<br />
+1<br />
+)<br />
+]<br />
+\mathbf{H}^{(1)}=[\mathbf{h}^</p>
+<p>{(1)}<em>{1},\dots,\mathbf{h}^{(1)}</em>{T}]<br />
+.<br />
+这一初始传递提供了共同的上下文化状态，后续针对各个历史项的路由决策正是基于这些状态做出的。<br />
+深度路由递归。<br />
+从上下文化状态<br />
+𝐇<br />
+(<br />
+1<br />
+)<br />
+\mathbf{H}^{(1)}<br />
+开始，LoopRec 执行深度路由递归，最多进行<br />
+R<br />
+−<br />
+1<br />
+R-1<br />
+个额外步骤。在递归边界<br />
+r<br />
+∈<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+R<br />
+−<br />
+1<br />
+}<br />
+r\in{1,\dots,R-1}<br />
+处，深度路由器会检查每个活跃位置的当前状态，并决定该位置是应在当前深度停止还是继续进行更深的递归。对于位置<br />
+i<br />
+i<br />
+，令<br />
+𝐡<br />
+i<br />
+(<br />
+r<br />
+)<br />
+\mathbf{h}<em>{i}^{(r)}<br />
+表示其在第<br />
+r<br />
+r<br />
+次递归后的状态。深度路由器计算路由分数<br />
+s<br />
+i<br />
+(<br />
+r<br />
+)<br />
+=<br />
+g<br />
+⁡<br />
+(<br />
+𝐡<br />
+i<br />
+(<br />
+r<br />
+)<br />
++<br />
+𝝆<br />
+r<br />
+)<br />
+,<br />
+s^{(r)}</em>{i}=g(\mathbf{h}^{(r)}<em>{i}+\boldsymbol{\rho}</em>{r}),<br />
+其中<br />
+g<br />
+⁡<br />
+(<br />
+⋅<br />
+)<br />
+g(\cdot)<br />
+是路由器头部，<br />
+𝝆<br />
+r<br />
+\boldsymbol{\rho}<em>{r}<br />
+是递归索引的可学习嵌入。该分数被转换为退出概率<br />
+q<br />
+i<br />
+,<br />
+exit<br />
+(<br />
+r<br />
+)<br />
+=<br />
+1<br />
+−<br />
+σ<br />
+⁡<br />
+(<br />
+s<br />
+i<br />
+(<br />
+r<br />
+)<br />
+)<br />
+,<br />
+q^{(r)}</em>{i,\mathrm{exit}}=1-\sigma(s^{(r)}<em>{i}),<br />
+其中<br />
+σ<br />
+⁡<br />
+(<br />
+⋅<br />
+)<br />
+\sigma(\cdot)<br />
+是 logistic sigmoid 函数。若<br />
+q<br />
+i<br />
+,<br />
+exit<br />
+(<br />
+r<br />
+)<br />
+≥<br />
+0.5<br />
+q^{(r)}</em>{i,\mathrm{exit}}\geq 0.5<br />
+，则该位置在边界<br />
+r<br />
+r<br />
+处停止。否则，它将被送入下一次递归。<br />
+令<br />
+𝒜<br />
+(<br />
+r<br />
++<br />
+1<br />
+)<br />
+\mathcal{A}^{(r+1)}<br />
+表示在边界<br />
+r<br />
+r<br />
+之后继续的位置。则<br />
+𝒜<br />
+(<br />
+r<br />
++<br />
+1<br />
+)<br />
+=<br />
+{<br />
+i<br />
+∈<br />
+𝒜<br />
+(<br />
+r<br />
+)<br />
+:<br />
+q<br />
+i<br />
+,<br />
+exit<br />
+(<br />
+r<br />
+)<br />
+&lt;<br />
+0.5<br />
+}<br />
+.</p>
+<p>5}.<br />
+只有这些继续的位置会通过将共享块重新应用于它们在上一次递归中的状态来更新：<br />
+𝐇<br />
+𝒜<br />
+(<br />
+r<br />
++<br />
+1<br />
+)<br />
+(<br />
+r<br />
++<br />
+1<br />
+)<br />
+=<br />
+ℬ<br />
+⁡<br />
+(<br />
+𝐇<br />
+𝒜<br />
+(<br />
+r<br />
++<br />
+1<br />
+)<br />
+(<br />
+r<br />
+)<br />
+)<br />
+.<br />
+\mathbf{H}^{(r+1)}<em>{\mathcal{A}^{(r+1)}}=\mathcal{B}!\left(\mathbf{H}^{(r)}</em>{\mathcal{A}^{(r+1)}}\right).<br />
+因此，每次递归将上一次递归的状态作为输入，但仅限于继续的位置。选定的子序列在因果掩码下保持其原始顺序，而停止的位置保持其当前状态且不再更新。因此，<br />
+𝒜<br />
+(<br />
+1<br />
+)<br />
+⊇<br />
+𝒜<br />
+(<br />
+2<br />
+)<br />
+⊇<br />
+⋯<br />
+⊇<br />
+𝒜<br />
+(<br />
+R<br />
+)<br />
+\mathcal{A}^{(1)}\supseteq\mathcal{A}^{(2)}\supseteq\dots\supseteq\mathcal{A}^{(R)}<br />
+：随着递归的进行，继续位置的集合不断缩小。在最后一次递归中，所有剩余的位置都被强制停止。<br />
+深度特定读出。<br />
+递归终止后，每个位置都与一个选定的深度<br />
+d<br />
+i<br />
+∈<br />
+{<br />
+1<br />
+,<br />
+…<br />
+,<br />
+R<br />
+}<br />
+d_{i}\in{1,\dots,R}<br />
+相关联。然后，LoopRec 通过将其输入词元与所选深度处的状态相结合，为位置<br />
+i<br />
+i<br />
+形成最终表示：<br />
+𝐳<br />
+¯<br />
+i<br />
+=<br />
+𝐱<br />
+i<br />
++<br />
+ω<br />
+i<br />
+​<br />
+𝐡<br />
+i<br />
+(<br />
+d<br />
+i<br />
+)<br />
+,<br />
+\bar{\mathbf{z}}<em>{i}=\mathbf{x}</em>{i}+\omega_{i}\mathbf{h}^{(d_{i})}<em>{i},<br />
+其中<br />
+ω<br />
+i<br />
+\omega</em>{i}<br />
+是一个依赖于深度的读出权重。<br />
+该读出使用由深度路由递归选定的状态，同时保留与输入词元的残差连接。<br />
+尽管前向传播为每个位置选择了硬深度<br />
+d<br />
+i<br />
+d_{i}<br />
+，但读出权重<br />
+ω<br />
+i<br />
+\omega_{i}<br />
+保持</p>
+<p>LoopRec 相比固定深度序列推荐器的关键附加组件是深度路由器。因此，训练需要确保该路由器既有用又可学习。首先，它应该将不同位置分配到不同深度。否则，LoopRec 会退化为近乎固定深度的行为，</p>
+<p>处的平均软深度使用量定义为</p>
+<p>zeer et al., 2017<br />
+;<br />
+Fedus et al., 2022<br />
+)<br />
+为<br />
+ℒ<br />
+bal<br />
+=<br />
+R<br />
+​<br />
+∑<br />
+r<br />
+=<br />
+1<br />
+R<br />
+P<br />
+r<br />
+​<br />
+f<br />
+r<br />
+.<br />
+\mathcal{L}<em>{\mathrm{bal}}=R\sum</em>{r=1}^{R}P_{r}f_{r}.<br />
+其中<br />
+P<br />
+r<br />
+P_{r}<br />
+衡量分配给深度<br />
+r<br />
+r<br />
+的平均软质量，而<br />
+f<br />
+r<br />
+f_{r}<br />
+衡量深度<br />
+r<br />
+r<br />
+被硬路由选中的频率。<br />
+最小化<br />
+ℒ<br />
+bal<br />
+\mathcal{L}_{\mathrm{bal}}<br />
+可以防止路由器将深度使用集中在狭窄的深度范围内。<br />
+避免门控过早饱和。<br />
+可学习的路由器不应在隐藏状态稳定之前变得过于自信。为了抑制这种行为，我们对较大的二值门对数配分函数进行惩罚，这借鉴了用于稳定稀疏路由模型的 router z-loss<br />
+(<br />
+Zoph et al., 2022<br />
+)<br />
+，该损失后来被 MoR<br />
+(<br />
+Bae et al., 2026<br />
+)<br />
+采用。使用深度路由步骤中引入的路由得分<br />
+s<br />
+i<br />
+(<br />
+r<br />
+)<br />
+=<br />
+g<br />
+⁡<br />
+(<br />
+𝐡<br />
+i<br />
+(<br />
+r<br />
+)<br />
++</p>
+<p>"recursive pass" → "递归传递" or "递归前向传播". "pass" here likely means forward pass. "递归传递" is fine, or "递归过程". I'll use "递归传递</p>
+<p>是一种自注意力序列推荐器，作为主要的注意力基准。它与固定深度的 Transformer 推荐器提供了最直接的比较。</p>
+<p>三个 Amazon 基准测试的主要结果，比较每个固定深度骨干网络与其对应的 LoopRec 版本。M@K 和 N@K 分别表示 MRR@K 和</p>
+<p>Hmm, for consistency and safety, I might keep "Vanilla" as is since it's a term of art. But "Improv." → "提升" seems right.</p>
+<p>(2) 增益可迁移至不同骨干架构。</p>
+<p>kbones，NDCG@</p>
+<p>最早的交互到最近的交互，并计算每个十分位数内所选递归轮次的平均值。为了提供比单一设置更广泛的视角，我们报告了四个 SASRec 骨干网络案例，涵盖 Office 和 Patio 在两种<br />
+LxRy<br />
+配置下的情况，其中每个递归轮次应用<br />
+x<br />
+x<br />
+个共享块，且最多可用<br />
+y<br />
+y<br />
+轮。</p>
+<p>图 4.<br />
+在两种<br />
+LxRy<br />
+配置下，Office 和 Patio 上各相对位置十分位数（D1：最早，D10：最近）的平均所选递归轮次。较新的历史项平均被路由到更深层。</p>
+<p>图<br />
+4<br />
+显示，在这四个案例中，较晚的历史十分位数平均倾向于获得更大的所选轮次。这表明相对位置与深度分配相关联：最近的交互往往携带关于用户当前偏好的更强信号，因此 LoopRec 将更多的深度预算分配给历史序列的后段。这种关系并非逐项规则，但它表明 LoopRec 并非在整个历史上均匀分配深度。</p>
+<p>4.3.2.<br />
+基于项级因素的深度分配<br />
+仅凭位置并不能完全描述一个历史项。处于相同相对位置的两个项，可能在训练期间出现的频率以及解释它们所需的上下文量上有所不同。因此，我们提出问题：路由深度是否也与项级信号相关。作为一种聚焦诊断，我们根据相应项的训练时交互频率对测试集历史 token 进行分桶，并报告所得</p>
+<p>ng深度统计信息见<br />
+表<br />
+4<br />
+。<br />
+频繁出现的物品被分配较浅的深度，而较稀有的物品则获得<br />
+更多计算。<br />
+随着训练频率的增加，所选平均深度总体上从单次出现桶中的<br />
+2.160<br />
+2.160<br />
+下降到<br />
++<br />
+100!+!<br />
+桶中的<br />
+1.330<br />
+。深度1分配的比例从<br />
+50.3<br />
+%<br />
+50.3\%<br />
+上升到<br />
+88.6<br />
+%<br />
+88.6\%<br />
+，而深度4分配的比例从<br />
+29.1<br />
+%<br />
+29.1\%<br />
+下降到<br />
+10.7<br />
+%<br />
+10.7\%<br />
+。因此，路由深度不仅与<br />
+位置相关，还与物品级交互信号的稀疏性相关。<br />
+这表明频繁出现的物品在几乎不需要额外计算的情况下<br />
+形成稳定表示，而较稀有的物品更常<br />
+受益于后续的递归更新。<br />
+附录<br />
+A.5<br />
+通过类别级视图和展示路由模式的完整序列示例<br />
+补充了这些汇总统计。<br />
+观察到的深度、新近度和频率之间的关系<br />
+促使我们测试基于这些信号的简单路由规则<br />
+是否能达到相当的推荐质量。<br />
+在Office数据集上使用SASRec时，LoopRec在五个随机种子下的平均NDCG@20<br />
+高于基于位置或基于频率的启发式方法。<br />
+实验设置和完整结果见<br />
+附录<br />
+A.6<br />
+。<br />
+表4. Office数据集上按物品训练时频率选择的深度。深度列报告分配给每个深度的token比例。<br />
+训练频率<br />
+Token数<br />
+平均深度<br />
+深度1<br />
+深度4<br />
+1<br />
+505<br />
+2.160<br />
+50.3%<br />
+29.1%<br />
+2–4<br />
+1,202<br />
+2.084<br />
+53.7%<br />
+27.0%<br />
+5–9<br />
+1</p>
+<p>,603<br />
+2.135<br />
+53.3%<br />
+29.3%<br />
+10–19<br />
+2,247<br />
+2.008<br />
+60.8%<br />
+28.1%<br />
+20–49<br />
+4,123<br />
+1.818<br />
+69.2%<br />
+24.1%<br />
+50–99<br />
+3,668<br />
+1.577<br />
+79.1%<br />
+17.7%<br />
+100+<br />
+11,659<br />
+1.330<br />
+88.6%<br />
+10.7%<br />
+4.3.3.<br />
+与饱和深度的对齐<br />
+前述分析表明，LoopRec 为较新和较稀有的物品分配了更深的路由。我们现在回到第<br />
+2<br />
+节中的饱和深度探针，询问相同的两个因素是否也出现在固定深度参考模型自身的深度敏感性模式中。这种一致性将表明，LoopRec 学习到的路由与固定深度推荐器仅在训练后才揭示的深度需求相一致。回顾一下，<br />
+ℓ<br />
+i<br />
+⋆<br />
+\ell_{i}^{\star}<br />
+是最早的一层，在此之后冻结物品<br />
+i<br />
+i<br />
+的更新仍能保留全深度推荐集。更大的<br />
+ℓ<br />
+i<br />
+⋆<br />
+\ell_{i}^{\star}<br />
+标记着一个在固定深度参考模型内部较晚才稳定的物品。<br />
+位置效应同样出现在饱和深度中。将历史 token 按相对位置分为四个四分位数组（图<br />
+5<br />
+(a)），前三个四分位数组的平均饱和深度较低，分别为<br />
+1.16<br />
+1.16<br />
+、<br />
+1.17<br />
+1.17<br />
+和<br />
+1.20<br />
+1.20<br />
+，而最近的四分位数组则升至<br />
+1.76<br />
+1.76<br />
+。<br />
+ℓ<br />
+⋆<br />
+=<br />
+3<br />
+\ell^{\star}=3<br />
+的比例也集中在最近的四分位数组（<br />
+30.3<br />
+%<br />
+30.3\%<br />
+），而前三个组中基本没有全深度饱和。因此，在固定深度参考模型下，靠近目标的位置更有可能需要更深的处理，这与第<br />
+4.3.1<br />
+节中 LoopRec 的路由深度趋势方向一致。<br />
+流行度效应同样</p>
+<p>在表征了LoopRec学习到的深度分配之后，我们现在转向消融研究和计算成本。我们考察共享递归、项目级深度分配、路由预热以及路由器端正则化的贡献</p>
+<p>在软件和办公类别上的 MRR@20 和 NDCG@20 均优于 Vanilla，但在庭院类别上没有提升。完整的 LoopRec 在两项指标上均达到最高均值</p>
+<p>无 ℒ bal \mathcal{L}<em>{\mathrm{bal}} &amp; ℒ z \mathcal{L}</em>{z} | 0.0632 | 0.0963 | 0.0505 | 0.0574 | 0.0386 | 0.0431</p>
+<p>两个正则化器会使各数据集上的MRR@20平均降低5.36%，NDCG@20平均降低4.25%。</p>
+<p>深度预算，然后再对下一个物品进行评分。LoopRec 解决的是一个正交的问题。在保持推荐目标和骨干网络体系不变的情况下，它探讨序列编码器是否能在物品层面分配递归计算，使得同一历史中的不同位置无需接收相同的深度。</p>
+<p>循环与自适应深度 Transformer。<br />
+循环 Transformer 研究共享或部分共享 Transformer 块的重复应用。<br />
+Universal Transformer 将共享的循环变换与自注意力相结合，并支持逐位置的自适应停止（<br />
+Dehghani et al., 2019<br />
+），其建立在自适应计算时间（<br />
+Graves, 2016<br />
+）之上。后续工作表明，循环 Transformer 可以实现非平凡的算法计算（<br />
+Giannou et al., 2023<br />
+;<br />
+Yang et al., 2024<br />
+）。近期的循环 Transformer 和循环语言模型研究将重复深度与潜在计算和推理联系起来（<br />
+Saunshi et al., 2025<br />
+;<br />
+Zhu et al., 2025<br />
+）。与此同时，自适应深度 Transformer 探索提前退出或路由式计算分配（<br />
+Elbayad et al., 2020<br />
+;<br />
+Raposo et al., 2024<br />
+;<br />
+Schuster et al., 2022<br />
+;<br />
+Xin et al., 2020<br />
+;<br />
+Liu et al., 2020<br />
+;<br />
+Zhou et al., 2020b<br />
+）。递归混合（Mixture-of-Recursions, MoR）将共享递归与 token 级自适应计算相结合用于语言建模（<br />
+Bae et al., 2026<br />
+）。其 token 选择路由器会预先分配总递归深度，而其专家选择路由器则在每一步中选择继续的 token，并在规定</p>
+<p>And "参考文献" for "References".</p>
+<p>"Dehghani et al. (2019)" → "Dehghani 等 (2019)"</p>
+<p>Järvelin 和 Kek</p>
+<p>Z. Ren、T. Lian 和 J. Ma<br />
+基于神经注意力机制的会话推荐<br />
+.<br />
+载于<br />
+《2017年ACM信息与知识管理会议论文集》<br />
+,<br />
+第1419–1428页<br />
+.<br />
+被引用于：<br />
+§5<br />
+.<br />
+Liu<br />
+等<br />
+(2024)<br />
+C. Liu、J. Lin、H. Liu、J. Wang 和 J. Caverlee<br />
+用于高效序列推荐的行为依赖线性循环单元<br />
+.<br />
+载于<br />
+《第33届ACM信息与知识管理国际会议论文集》<br />
+,<br />
+第1430–1440页<br />
+.<br />
+被引用于：<br />
+§1<br />
+.<br />
+Liu<br />
+等<br />
+(2018)<br />
+Q. Liu、Y. Zeng、R. Mokhosi 和 H. Zhang<br />
+STAMP：用于会话推荐的短期注意力/记忆优先模型<br />
+.<br />
+载于<br />
+《第24届ACM SIGKDD知识发现与数据挖掘国际会议论文集》<br />
+,<br />
+第1831–1839页<br />
+.<br />
+被引用于：<br />
+§5<br />
+.<br />
+Liu<br />
+等<br />
+(2020)<br />
+W. Liu、P. Zhou、Z. Wang、Z. Zhao、H. Deng 和 Q. Ju<br />
+FastBERT：一种具有自适应推理时间的自蒸馏BERT<br />
+.<br />
+载于<br />
+《第58届计算语言学协会年会论文集》<br />
+,<br />
+第6035–6044页<br />
+.<br />
+被引用于：<br />
+§5<br />
+.<br />
+Qiu<br />
+等<br />
+(2022)<br />
+R. Qiu、Z. Huang、H. Yin 和 Z. Wang<br />
+面向序列推荐中表示退化问题的对比学习<br />
+.<br />
+载于<br />
+《第十五届ACM网络搜索与数据挖掘国际会议论文集》<br />
+,<br />
+第813–823页<br />
+.<br />
+被引用于：<br />
+§5<br />
+.<br />
+Rang<br />
+等<br />
+(2023)<br />
+R. Rang、L. Xing、L. Zhang、H. Cai 和 Z. Sun<br />
+基于图卷积网络的异构多行为推荐<br />
+.<br />
+《IEEE Access》<br />
+第11卷<br />
+,<br />
+第22574–22584页<br />
+.<br />
+被引用于：<br />
+§1<br />
+.<br />
+Raposo<br />
+等<br />
+(2024</p>
+<ul>
+<li>"Outrageously large neural networks: the sparsely-gated mixture-of-experts layer" → "惊人的巨型神经网络：稀疏门控专家混合层" - "Outrageously large" is often translated</li>
+</ul>
+<p>Also "Tang and Wang (2018)" → "Tang 和 Wang (2018)"</p>
+<p>R. Nowak 和 D. Papailiopoulos<br />
+循环Transformer更擅长学习学习算法<br />
+.<br />
+发表于<br />
+国际学习表征会议<br />
+,<br />
+第<br />
+2024<br />
+卷<br />
+,<br />
+第42195–42214页<br />
+.<br />
+引用于：<br />
+§5<br />
+.<br />
+Yuan<br />
+等<br />
+(2019)<br />
+F. Yuan, A. Karatzoglou, I. Arapakis, J. M. Jose 和 X. He<br />
+一种用于下一项推荐的简单卷积生成网络<br />
+.<br />
+发表于<br />
+第十二届ACM网络搜索与数据挖掘国际会议论文集<br />
+,<br />
+第582–590页<br />
+.<br />
+引用于：<br />
+第3项<br />
+,<br />
+§5<br />
+.<br />
+Yue<br />
+等<br />
+(2024)<br />
+Z. Yue, Y. Wang, Z. He, H. Zeng, J. McAuley 和 D. Wang<br />
+用于序列推荐的线性循环单元<br />
+.<br />
+发表于<br />
+第17届ACM网络搜索与数据挖掘国际会议论文集<br />
+,<br />
+第930–938页<br />
+.<br />
+引用于：<br />
+§1<br />
+,<br />
+第4项<br />
+.<br />
+Zhang<br />
+等<br />
+(2022)<br />
+Y. Zhang, G. Yin, H. Dong 和 L. Zhang<br />
+用于序列推荐的基于注意</p>
+<p>，到达下一个边界的延续质量为</p>
+<p>前向过程。 算法 1 概述了启用路由时的自适应递归与读出。活跃集合 $\mathcal{A}$ 包含尚未退出的位置，$\mathcal{I}$ 则排除填充。为简洁起见，当前 s</p>
+<p>// 初始上下文编码（递归 1）</p>
+<p>positions<br />
+11<br />
+𝐇<br />
+𝒜<br />
+←<br />
+ℬ<br />
+⁡<br />
+(<br />
+𝐇<br />
+𝒜<br />
+)<br />
+\mathbf{H}<em>{\mathcal{A}}\leftarrow\mathcal{B}(\mathbf{H}</em>{\mathcal{A}})<br />
+;<br />
+//<br />
+在深度<br />
+R<br />
+R<br />
+处强制退出并读出<br />
+12<br />
+ω<br />
+i<br />
+←<br />
+c<br />
+i<br />
+\omega_{i}\leftarrow c_{i}<br />
+,<br />
+d<br />
+i<br />
+←<br />
+R<br />
+d_{i}\leftarrow R<br />
+，对所有<br />
+i<br />
+∈<br />
+𝒜<br />
+i\in\mathcal{A}<br />
+;<br />
+13<br />
+𝐳<br />
+¯<br />
+i<br />
+←<br />
+𝐱<br />
+i<br />
++<br />
+ω<br />
+i<br />
+​<br />
+𝐡<br />
+i<br />
+\bar{\mathbf{z}}<em>{i}\leftarrow\mathbf{x}</em>{i}+\omega_{i}\mathbf{h}<em>{i}<br />
+，对所有<br />
+i<br />
+∈<br />
+ℐ<br />
+i\in\mathcal{I}<br />
+;<br />
+14<br />
+返回<br />
+{<br />
+𝐳<br />
+¯<br />
+i<br />
+,<br />
+d<br />
+i<br />
+}<br />
+i<br />
+∈<br />
+ℐ<br />
+{\bar{\mathbf{z}}</em>{i},d_{i}}<em>{i\in\mathcal{I}}<br />
+;<br />
+活跃子序列<br />
+𝐇<br />
+𝒜<br />
+\mathbf{H}</em>{\mathcal{A}}<br />
+在因果掩码下保持原始时间顺序。已退出的位置保留其状态，因此最终的<br />
+𝐡<br />
+i<br />
+\mathbf{h}<em>{i}<br />
+即为所选深度<br />
+d<br />
+i<br />
+d</em>{i}<br />
+处的状态。<br />
+A.2.<br />
+针对特定骨干网络的实现<br />
+我们提供了将 LoopRec 应用于不同骨干网络的实现细节，包括递归单元、围绕每个原始骨干网络的包装选择、主要超参数搜索空间、批大小以及特定于骨干网络的超参数。<br />
+我们使用 Adam 优化器训练所有模型，最多训练 100 个 epoch，并基于验证集 NDCG@20 进行早停，耐心值为 10。测试性能使用具有最佳验证分数的检查点进行评估，主要结果为五次使用不同随机种子运行的平均值。主表中的"*"表示在配对 t 检验下 LoopRec 与相应固定深度骨干网络相比具有统计显著性（<br />
+p<br />
+&lt;<br />
+0.05<br />
+p&lt;0.05<br />
+）。<br />
+对于完整的 LoopRec 模型，我们固定 z 损失系数<br />
+λ<br />
+z<br />
+\lambda_{</p>
+<p>递归应用于原生残差卷积块。我们固定原生编码</p>
+<p>"search LoopRec configurations in {L3R2, L3R3, L6R2}" - "在 {L3R2, L3R3, L6R2} 中搜索</p>
+<p>通过正常的前向传播。我们将<br />
+ℓ<br />
+i<br />
+⋆<br />
+\ell_{i}^{\star}<br />
+纯粹用作训练模型全深度推荐集的稳定性统计量。<br />
+受限尾部-5预言机（Restricted Tail-5 Oracle）。<br />
+对于预言机诊断，我们在 Amazon Office Products 数据集上保持训练好的三层 SASRec 参数固定，仅改变最近五个历史项的更新深度。较早的位置遵循原始的全深度前向传播。每个尾部候选为每个尾部位置分配<br />
+{<br />
+1<br />
+,<br />
+2<br />
+,<br />
+3<br />
+}<br />
+{1,2,3}<br />
+中的一个可用深度。在该深度之后，该位置的表示在剩余层中停止更新。这在最近五个项上产生了一个小的候选族。原始的固定深度分配作为一个候选被包括在内，我们排除了使用比此基线更多尾部层评估的分配。对于每个测试序列，预言机选择使目标项获得最佳排名的候选。相对尾部计算是五个尾部项上的层评估数量，通过固定深度尾部分配进行归一化。<br />
+A.4.<br />
+深度分布分析<br />
+本小节研究 LoopRec 学习到的路由器是否利用多个深度，还是坍缩为近乎均匀的策略。我们分析测试序列中所选深度的分布，以评估计算分配的变化。<br />
+为了量化这一点，我们为每个测试序列计算分配给</p>
+<p>| 目标 | Flash Furniture 办公椅 | 办公椅 | – | – |</p>
+<p>路由器为上下文中的各个条目分配深度。我们还提供了类别级别的聚合，以在更粗的粒度上说明频率-深度关系。<br />
+表<br />
+7<br />
+给出了第<br />
+4.3.2<br />
+节中 Office<br />
+L1R4<br />
+分析的完整序列。该示例反映了主分析中讨论的两个聚合趋势：靠后的位置更有可能接收更深的更新，而高频条目往往保持较浅。例如，诸如<br />
+Uboxes poly mailers、ValueMailers<br />
+poly mailers<br />
+和<br />
+Avery address labels<br />
+等高频邮寄袋和标签类条目在深度 1 退出，而诸如<br />
+Aviditi box mailers、Hygloss library<br />
+pockets<br />
+和<br />
+Pro Supply poly mailers<br />
+等较稀有的条目则获得深度 2 或 3。确切选择的深度并非仅由任一信号单独决定：<br />
+PACKZON shipping labels<br />
+和<br />
+TECKNET mouse pad<br />
+达到了深度 4，而靠后的<br />
+Springhill cardstock<br />
+条目仍保持较浅，这表明近因性、流行度、类别语义以及周围上下文共同塑造了条目级别的路由。<br />
+类别级别聚合。我们将路由后的历史 token 与 Amazon Reviews 2023 元数据进行连接，并按类别叶子节点进行分组。图<br />
+7<br />
+按每个类别的中位数训练频率和平均路由深度进行了绘制。中位数频率较大的类别往往具有较低的平均深度，这与表<br />
+4<br />
+中的条目频率趋势一致。在每个类别内，单个路由决策仍会因位置和上下文而异。<br />
+图 7.<br />
+O 上类别级别路由深度与条目流行度的关系</p>
+<p>ffice。每个点是一个类别叶子（大小<br />
+∝<br />
+\propto<br />
+token 数量）。蓝色和橙色标记了深度最高和最低的五个类别，实线显示总体趋势。</p>
+<p>A.6. 与启发式路由的比较</p>
+<p>我们将 LoopRec 与两种启发式路由策略进行比较，以检验简单的物品信号是否能提供有效的深度分配。我们在 Office 数据集上使用 SASRec 骨干网络进行此比较。</p>
+<p>启发式路由。</p>
+<p>两种变体都保留了 LoopRec 的共享递归骨干网络，并用基于位置或频率的规则替换了学习到的路由器。每种策略为每个有效位置<br />
+i<br />
+i<br />
+分配一个分数<br />
+s<br />
+i<br />
+∈<br />
+[<br />
+0<br />
+,<br />
+1<br />
+]<br />
+s_{i}\in[0,1]<br />
+，并通过<br />
+r<br />
+i<br />
+=<br />
+1<br />
++<br />
+⌊<br />
+(<br />
+R<br />
+−<br />
+1<br />
+)<br />
+​<br />
+s<br />
+i<br />
++<br />
+1<br />
+2<br />
+⌋<br />
+,<br />
+r_{i}=1+\left\lfloor(R-1)s_{i}+\tfrac{1}{2}\right\rfloor,<br />
+将其映射到递归轮数，其中<br />
+R<br />
+R<br />
+是最大轮数。分数越大，分配的递归轮数越多。<br />
+位置（Position）为更近期的位置分配更大的深度。我们将当前输入窗口中的<br />
+n<br />
+n<br />
+个有效物品从最早到最近进行索引。对于<br />
+n</p>
+<blockquote>
+<p>1<br />
+n&gt;1<br />
+，分数为<br />
+s<br />
+i<br />
+=<br />
+(<br />
+i<br />
+−<br />
+1<br />
+)<br />
+/<br />
+(<br />
+n<br />
+−<br />
+1<br />
+)<br />
+s_{i}=(i-1)/(n-1)<br />
+。对于<br />
+n<br />
+=<br />
+1<br />
+n=1<br />
+，我们设置<br />
+s<br />
+i<br />
+=<br />
+1<br />
+s_{i}=1<br />
+，将唯一物品视为最近的位置并为其分配最大深度。<br />
+频率（Frequency）为不太频繁的物品分配更大的深度。我们从训练集划分中计算每个物品的交互次数<br />
+f<br />
+⁡<br />
+(<br />
+v<br />
+)<br />
+f(v)<br />
+，应用<br />
+g<br />
+⁡<br />
+(<br />
+v<br />
+)<br />
+=<br />
+log<br />
+⁡<br />
+(<br />
+1<br />
++<br />
+f<br />
+⁡<br />
+(<br />
+v<br />
+)<br />
+)<br />
+g(v)=\log(1+f(v))<br />
+，并定义<br />
+s<br />
+i<br />
+=<br />
+1<br />
+−<br />
+g<br />
+⁡<br />
+(<br />
+v<br />
+i<br />
+)<br />
+−<br />
+g<br />
+min<br />
+g<br />
+max<br />
+−<br />
+g<br />
+min<br />
+,<br />
+s_{i}=1-\</p>
+</blockquote>
+<p>"where the minimum and maximum are computed over items observed in training" - "其中最小值和最大值是在训练中观测</p>
+<p>延迟</p>
+<p>取决于动态执行如何映射到 GPU 运行时。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 序列推荐, 自适应深度, 循环Transformer, 物品级计算分配, 门控机制</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
