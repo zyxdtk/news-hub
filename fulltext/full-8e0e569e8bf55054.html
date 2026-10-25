@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向思维剪枝的直接Pass@k优化：在测试时... - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向思维剪枝的直接Pass@k优化：在测试时...</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-22</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.31667" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Direct Pass@$k$ Optimization for Thought Pruning: Balancing Quality and Diversity in Test-Time Reasoning</h4>
+            <p><strong>中文摘要：</strong> 本文提出PKTP框架，通过直接优化pass@k指标来选择测试时推理中保留的部分展开。现有剪枝方法分为基于质量（如线性探测器）和基于多样性（如RepExp）两类，分别存在纯利用和纯探索的偏差。PKTP使用潜在高斯模型建模展开结果的联合分布，推导出pass@k的封闭形式二阶近似，证明其代理函数具有次模性，从而可用贪心算法高效求解并获得(1-e^{-1})近似保证。在八个开放权重推理模型上的实验表明，PKTP优于现有方法，尤其在保留中等数量展开时优势最为显著。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>面向思维剪枝的直接Pass@k优化：在测试时推理中平衡质量与多样性</h1>
+<p><strong>作者：</strong> Mahdi Salmani, Adel Javanmard, Devansh Gupta, Meisam Razaviyayn</p>
+<p><strong>机构：</strong> 南加州大学</p>
+<h2>摘要</h2>
+<p>测试时扩展已成为推理模型的一种关键推理策略，模型生成大量候选解以期望找到至少一个正确解。将所有候选解运行至完成在计算上可能非常昂贵，因此近期工作在仅生成短前缀后对候选池进行剪枝，仅对存活的候选继续投入计算。现有剪枝策略大致分为两类：基于质量的方法为每个部分解分配分数并丢弃预测最终会导致错误最终解的候选；基于多样性的方法选择遵循不同推理轨迹的部分解，因此可能覆盖不同的最终解。这两个目标之间的张力是探索与利用的一个实例，然而先前关于剪枝的工作几乎没有直接暴露这种权衡，更不用说优化它了。本文引入一种剪枝程序，通过在选定解池上优化 pass@k 来直接解决这种权衡。具体而言，它选择池以最大化至少一个部分解在继续至完成时产生正确答案的概率。由于该目标同时奖励高质量的部分解并惩罚它们之间的冗余，质量和多样性由准则本身自然平衡，而非通过单独的临时设计选择。在八个开放权重推理模型上，我们的方法优于现有的基于质量和基于多样性的剪枝策略。当剪枝程序保留中等数量的部分解用于继续生成时，增益尤为显著，突出了在剪枝期间直接平衡质量和多样性的价值。</p>
+<h2>1 引言</h2>
+<p><strong>图1：</strong> 测试时剪枝。N个展开中仅有k个（带圈标记）继续超过截断点T，直至预算B。</p>
+<p>大语言模型在复杂推理方面展示了卓越能力，展现出解决需要多步逻辑的复杂问题的强大能力 [45, 21, 52, 18, 15]。为进一步增强这些能力，测试时扩展已成为一种突出策略，即为单个问题生成多个候选解，使模型能够探索多样化的推理策略并实现显著更好的最终性能 [35, 44, 3, 48]。然而，扩展测试时计算的一个重大挑战是生成多个完整解的昂贵成本，我们此后将其称为展开 [33, 23]。除生成之外，在best-of-N方法中评估已完成的展开也有成本，该方法用奖励模型对每个展开进行评分，这在大型长推理轨迹池上计算量很大 [11, 26, 36]。这种计算瓶颈，无论是在生成还是在best-of-N方法中评估所有N个展开，都需要在部分展开达到最终答案并终止之前进行测试时剪枝。换言之，我们将所有N个展开仅生成到T个token的截断点，保留其中最有希望的k个并将其运行到完整的token预算B，如图1所示。</p>
+<p>一类方法检查生成期间模型的置信度动态，利用如logit熵或置信度等指标 [30, 50, 17, 43]。其基本直觉是，如果模型在中间解码步骤过度自信，则扩展推理过程是浪费计算；相反，如果模型完全缺乏置信度，则无论提供多少额外计算都不太可能达到正确解，从而允许提前终止。另一条工作线利用模型的内部状态，特别是其transformer块的隐藏状态，来识别哪些展开值得继续 [54, 1]。通过"探测"这些内部状态，可以预测模型是否最终会得到正确解，有效地将剪枝问题框架化为分类任务。这允许提前丢弃不太可能产生正确最终答案的部分展开。与此同时，另一条研究方向优先考虑表示探索（RepExp）来选择覆盖尽可能多不同推理策略的展开子集 [39]。通过选择对应嵌入不相似的部分展开，RepExp旨在探索多样化的推理轨迹集合。</p>
+<p><strong>图2：</strong> 概念说明。同一候选展开池，按其部分展开表示在嵌入空间中定位，在三种剪枝策略下。每个展开按其预测正确性着色，并按其实际结果标记✓/✗；保留的k=3个展开带圈标记。 纯利用保留最高分数的展开，但它们相关且聚集在一起，因此错过了正确的展开。 纯探索保留最大多样化的子集，但将预算花在低质量展开上，也错过了它。 我们的方法直接在保留子集上优化pass@k，平衡质量和多样性，并保留正确的展开。</p>
+<p>然而，这些方法处于谱系的两端，都没有直接优化我们真正关心的量。探测方法的问题在于它们排名最高的展开往往彼此相似。因此，探测器可能同时对所有保留的展开都自信地错误，而没有一个能达到正确答案。这是纯利用的问题（图2a）。另一方面，RepExp找到多样化的展开，但由于忽略了展开的质量，它可能将大部分预算花在不太可能成功的展开上（图2b）。这些限制促使我们通过实际想要优化的指标来选择展开，选择最大化pass@k的k个展开集合S，即 $\max_{|S|=k}\mathrm{pass}@k(S)$，我们在公式3中形式化了这一点。直接优化该目标保持选定展开足够多样化以避免共享失败，同时仍偏向高质量展开（图2c）。</p>
+<p>为此，我们提出PKTP（Pass@k Thought Pruning），一种通过直接最大化pass@k来选择保留展开的剪枝框架。主要困难在于，即使展开是独立采样的，它们的结果（在部分观察展开的条件下）也不是独立的。因此，pass@k依赖于它们的联合分布（即，具有相似部分展开的展开倾向于一起成功或失败）。我们用潜在高斯模型对这种联合分布进行建模，其中每个展开的正确性通过对高斯分数进行阈值化获得。在该模型下评估pass@k需要对潜在变量求期望，因此我们转而推导其封闭形式的二阶近似。我们证明该近似是次模的，使我们能够使用贪心程序近似求解以找到大小为k的子集。所提出框架的一个重要方面是，潜在模型仅训练一次且不依赖于k，单次贪心遍历产生嵌套的子集序列，因此预算k可以在推理时在线选择而无需重新训练。</p>
+<p><strong>贡献。</strong> 首先，我们将剪枝转化为最大化保留集合的pass@k，并建模相似展开如何一起失败。其次，我们推导了pass@k的封闭形式次模近似，连接了探测器和RepExp。第三，通过在八个推理模型上的实验，我们表明PKTP优于现有剪枝方法，特别是对于中等的k值。</p>
+<h2>2 问题形式化与相关工作</h2>
+<p><strong>设置。</strong> 给定问题 $\mathbfit{q}$，我们从模型 $\pi$ 中抽取N个候选推理展开 $y^{(i)}\sim\pi(\cdot\mid\mathbfit{q})$。每个展开仅通过其前T个token（前缀 $y_{1:T}^{(i)}$）观察。我们将此前缀编码为表示向量 $h_i = h(y_{1:T}^{(i)})$，即截至token T的推理的隐藏状态嵌入。剪枝然后保留 $k\leq N$ 个展开，将其运行到完整token预算B，并丢弃其余的。完成的展开 $y_{1:B}$ 要么正确要么不正确，由符号 $C(y_{1:B})\in{-1,+1}$ 记录：</p>
+<p>$$C(y_{1:B}) = \begin{cases}+1, &amp; \text{if Verify}(y_{1:B}),\ -1, &amp; \text{otherwise}.\end{cases} \tag{1}$$</p>
+<p>这里Verify是一个<strong>任务特定的检查器</strong>，当且仅当完成的展开达到正确的最终答案时返回true，例如通过在数学问题上匹配参考解或在编码任务上通过单元测试。我们将 $C(y^{(i)})$ 写为第i个展开运行到预算B后的结果。</p>
+<p><strong>表示。</strong> 为了剪枝部分展开，我们需要将每个前缀映射到捕获其本质信息的向量。一条工作线依赖于展开和模型内部状态的手工设计特征，如token置信度、隐藏状态轨迹的几何或中间答案的收敛。这些特征通常维度非常低 [13, 40, 38, 19, 28]。第二条工作线则保留transformer的隐藏状态并将其池化为单个向量 [42, 39, 29]，这是我们使用的类别。特别地，我们取 $h_i$ 为隐藏状态的指数移动平均（EMA），这已被证明是一种有效的池化操作 [29]。因此，我们的改进是针对这类嵌入展示的，尽管我们的框架也可以应用于其他嵌入。附录F给出了我们使用的表示的细节。</p>
+<p><strong>目标。</strong> 在剪枝时，结果 $C(y^{(i)})$ 仍然未知，因为每个都取决于我们尚未生成的（随机）延续。那么，我们应该如何选择保留的 $|S|=k$ 个展开的集合 $S\subseteq{1,\ldots,N}$？两个极端选择如下。</p>
+<p><strong>纯利用</strong> 在S中保留具有最高预测成功率 $\mathbb{P}(C(y^{(i)})=+1\mid\mathbfit{q},y_{1:T}^{(i)})$ 的展开，由在表示 $h_i$ 上训练的线性探测器估计 [54]，即对于学习的权重向量 $w$，具有最大分数 $w^\top h_i$ 的k个展开。我们将此剪枝策略称为<strong>线性探测器</strong>。</p>
+<p><strong>纯探索</strong> 构建多样化的S，从随机展开开始，贪心地添加到S中通过求解以下问题的展开 $i^\star$：</p>
+<p>$$i^\star = \arg\max_{i\notin S} h_i^\top\Bigl(\tau I + \sum_{j\in S} h_j h_j^\top\Bigr)^{-1} h_i, \tag{2}$$</p>
+<p>即我们添加其表示最不被已选表示解释的展开，其中 $\tau&gt;0$ 是正则化器。这是<strong>RepExp</strong>剪枝策略 [39]。</p>
+<p>两个极端都没有在质量与多样性之间取得平衡。我们真正想要的是具有最佳pass@k的k个展开集合。数学上，我们寻找最可能包含正确展开的集合S：</p>
+<p><strong>Pass@k剪枝目标</strong></p>
+<p>$$\max_{S\subseteq{1,\ldots,N}} \mathbb{P}\Bigl(\sum_{i\in S}\mathbf{1}{C(y^{(i)})=+1}\geq 1 \Bigm| \mathbfit{q}, y_{1:T}^{(1)},\ldots,y_{1:T}^{(N)}\Bigr) \quad \text{s.t.}\quad |S|=k. \tag{3}$$</p>
+<p>这里 $\mathbf{1}{\cdot}$ 是指示函数，即 $\mathbf{1}{True}=1$ 且 $\mathbf{1}{False}=0$。</p>
+<p>公式3中的目标正是保留池的pass@k，即至少一个存活展开在运行到预算B时产生正确答案的概率。我们还假设最终结果是二值的，尽管相同的方法可以推广到连续结果，其中每个完成的展开由奖励模型评分，目标是最大化保留展开中的最佳者 [10]，在这种情况下公式3变为max@k目标 [41]。</p>
+<p><strong>相关工作。</strong> 现有剪枝方法单独对每个展开评分，使用模型的置信度 [30, 13]、奖励模型 [36] 或对其隐藏状态的探测器 [54, 25]，或者选择多样化集合，如RepExp所做的 [39]。Pass@k也被用作推理模型的训练目标 [41, 8]，但不用于决定保留哪些部分展开。在语言模型之外，选择集合使至少一个项成功已在信息检索和贝叶斯优化中被研究 [6, 34, 46]。附录G给出了扩展讨论。在下文中，我们讨论如何求解这样的目标。</p>
+<h2>3 方法</h2>
+<p>求解公式3存在一些挑战：首先，我们需要获得给定展开集合的pass@k。我们通过在概率模型下学习展开结果的联合分布来解决此问题，从中可以估计任何集合的pass@k。其次，即使有这样的估计，找到具有最高估计pass@k的k个展开子集是一个混合整数规划。因此，我们可以将我们的框架视为两个组件：学习结果的联合分布（第3.1节），以及在选择时求解此混合整数规划（第3.2节）。</p>
+<h3>3.1 概率模型</h3>
+<p>设 $H=[h_1,\ldots,h_N]\in\mathbb{R}^{d\times N}$ 收集N个生成的部分展开的表示，$Q_\theta:\mathbb{R}^d\to\mathbb{R}$ 是预测展开质量的可学习映射，定义 $Q_\theta(H)=[q_1,\ldots,q_N]^\top$，其中 $q_i := Q_\theta(h_i)$。我们将展开的潜在分数建模为：</p>
+<p>$$\mathbf{Z} = \underbrace{Q_\theta(H)}<em>{\text{展开质量}} + \underbrace{H^\top\mathbf{f}}</em>{\text{展开相关性}} + \underbrace{\mathbf{m}}_{\text{结果噪声}}, \quad \mathbf{m}\sim\mathcal{N}(0,I_N),\quad \mathbf{f}\sim\mathcal{N}(0,I_d), \tag{4}$$</p>
+<p>其中 $\mathbf{m}$ 和 $\mathbf{f}$ 独立。直观上，$\mathbf{Z}_i$ 是展开i有希望程度的分数，因此其质量 $q_i$ 越高，其分数越高。在 $q_i$ 之上，项 $h_i^\top\mathbf{f}$ 是具有相似表示的展开共享的随机效应，使它们一起成功或失败。实际上，对于不同的展开，$\operatorname{Cov}(\mathbf{Z}_i,\mathbf{Z}_j\mid H)=h_i^\top h_j$，因此具有对齐 $h_i$ 的展开具有正相关结果。最后，$\mathbf{m}_i$ 是特定于展开i的噪声。</p>
+<p>展开i的正确性 $C(y^{(i)})$ 然后通过将其分数在零处阈值化来建模。更具体地，我们定义随机变量 $\mathbf{C}_i = 2\times\mathbf{1}{\mathbf{Z}_i\geq 0}-1$。换言之，正分数意味着展开正确，而负分数意味着不正确。</p>
+<p>由于分数在给定 $\mathbf{f}$ 的条件下独立，观察到的正确性模式 $c\in{-1,1}^N$ 的似然为：</p>
+<p>$$\Pr[\mathbf{C}=c\mid H] = \mathbb{E}<em>{\mathbf{f}}\Bigl[\prod</em>{i=1}^{N}\Phi\bigl(c_i(q_i + h_i^\top\mathbf{f})\bigr)\Bigr], \tag{5}$$</p>
+<p>其中 $\Phi$ 是标准高斯CDF，推导可在第A.1节找到。</p>
+<p>假设我们有M个训练问题，其中问题m由池的表示 $H^{(m)}$ 和其观察到的结果 $c^{(m)}\in{-1,1}^N$ 组成。映射 $Q_\theta$ 通过最大化它们在公式5下的似然来训练，即求解：</p>
+<p>$$\max_\theta \frac{1}{M}\sum_{m=1}^{M}\log\Pr_\theta[\mathbf{C}=c^{(m)}\mid H^{(m)}], \tag{6}$$</p>
+<p>其中 $\Pr_\theta$ 是公式5的似然，$H=H^{(m)}=[h_1^{(m)},\ldots,h_N^{(m)}]$ 且 $q_i=Q_\theta(h_i^{(m)})$。直接求解公式6很困难，因为公式5中对 $\mathbf{f}$ 的期望没有封闭形式。因此，我们将每个对数因子在 $h_i^\top\mathbf{f}$ 中展开到二阶，这将期望转化为可以精确评估的高斯积分（<strong>定理1</strong>）。</p>
+<p><strong>定理1</strong>（二阶代理）。对于模式 $c\in{-1,1}^N$，设 $\phi$ 为标准高斯密度，$\lambda_i(c_i)=\phi(q_i)/\Phi(c_iq_i)$，$\kappa_i(c_i)=\lambda_i(c_i)(\lambda_i(c_i)+c_iq_i)$，$\Sigma(c)=\sum_{i=1}^{N}\kappa_i(c_i)h_ih_i^\top$，$b(c)=\sum_{i=1}^{N}c_i\lambda_i(c_i)h_i$。则当 $\varepsilon\to 0$ 时：</p>
+<p>$$\log\Phi\bigl(c_i(q_i+\varepsilon)\bigr) = \log\Phi(c_iq_i) + c_i\lambda_i(c_i)\varepsilon - \frac{\kappa_i(c_i)}{2}\varepsilon^2 + O(|\varepsilon|^3), \tag{8}$$</p>
+<p>将公式5中 $\Pr[\mathbf{C}=c\mid H]$ 的每个对数因子用 $\varepsilon=h_i^\top\mathbf{f}$ 处的此展开替换，得到：</p>
+<p>$$\widetilde{\Pr}[\mathbf{C}=c\mid H] = \Bigl(\prod_{i=1}^{N}\Phi(c_iq_i)\Bigr)\det\bigl(I_d+\Sigma(c)\bigr)^{-1/2}\exp\Bigl(\frac{1}{2}b(c)^\top\bigl(I_d+\Sigma(c)\bigr)^{-1}b(c)\Bigr). \tag{9}$$</p>
+<p>证明在第B.1.1节。该展开是局部的，因此我们将公式9用作可处理的代理而非精确恒等式或界。因此，我们将公式6中的 $\Pr_\theta$ 替换为 $\widetilde{\Pr}_\theta$。</p>
+<p>可以使用表示的学习编码器 $\mathcal{E}<em>\psi$ 并用 $\mathcal{E}</em>\psi(h_i)$ 代替 $h_i$，但其有用性取决于数据量。由于我们的数据有限，我们保持 $h_i$ 固定，因此 $Q_\theta$ 是唯一学习的组件，出于同样的原因，我们对 $Q_\theta$ 使用简单的线性模型 $Q_\theta(h)=\theta^\top h+\theta_0$，如线性探测器 [54] 中那样。与在每个展开的正确性上单独训练的线性探测器不同，$Q_\theta$ 在问题的所有展开的联合结果上训练，因此它学到的质量已经考虑了它们之间的相关性。由于公式9是封闭形式且对 $\theta$ 可微，我们通过对训练问题的随机梯度上升来最大化代理似然。</p>
+<h3>3.2 子集选择</h3>
+<p>在公式3中最大化pass@k等价于最小化每个保留展开都失败的概率。在潜在高斯模型下，省略对H的条件，保留展开集合S的失败概率为：</p>
+<p>$$L(S) = \Pr[\mathbf{C}<em>i=-1\ \forall i\in S] = \mathbb{E}</em>{\mathbf{f}\sim\mathcal{N}(0,I_d)}\Bigl[\prod_{i\in S}\Phi\bigl(-(q_i+h_i^\top\mathbf{f})\bigr)\Bigr], \tag{10}$$</p>
+<p>我们寻找最小化它的k个展开集合。由于 $L(S)$ 没有封闭形式，我们用<strong>定理1</strong>近似它。</p>
+<p><strong>推论1</strong>（选择代理）。对于集合 $S\subseteq[N]:={1,\ldots,N}$，设 $\lambda_i=\phi(q_i)/\Phi(-q_i)$，$\kappa_i=\lambda_i(\lambda_i-q_i)$，$\Sigma_S=\sum_{i\in S}\kappa_i h_ih_i^\top$ 且 $b_S=\sum_{i\in S}\lambda_i h_i$。将<strong>定理1</strong>应用于S中的展开，对每个 $i\in S$ 取 $c_i=-1$，给出 $L(S)$ 的代理 $\widetilde{L}(S)$：</p>
+<p>$$\log\widetilde{L}(S) = \underbrace{\sum_{i\in S}\log\Phi(-q_i)}<em>{\text{展开质量}} + \underbrace{\Bigl(-\frac{1}{2}\log\det(I_d+\Sigma_S)+\frac{1}{2}b_S^\top(I_d+\Sigma_S)^{-1}b_S\Bigr)}</em>{\text{展开相关性}}. \tag{11}$$</p>
+<p>证明在第B.1.2节。因此我们在 $|S|=k$ 上最小化 $\log\widetilde{L}(S)$。公式11的每一项都有直接解释。第一项偏向大的 $q_i$，因为基线失败因子 $\Phi(-q_i)$ 随 $q_i$ 递减。负对数行列式奖励覆盖多个方向的 $h_i$ 集合，而非重复选择同一方向。最后一项非负，惩罚加权向量 $\lambda_i h_i$ 在同一方向上叠加的集合，这是行列式单独无法检测到的，因为它对 $h_i$ 和 $-h_i$ 同等对待。例如，两个相同质量的展开在 $h_2=h_1$ 时比 $h_2=-h_1$ 时更频繁地一起失败，但两种情况给出相同的 $\Sigma_S$ 因此相同的行列式，而 $b_S$ 在第一种情况下是 $2\lambda_1 h_1$，在第二种情况下是 $0$。</p>
+<p>然而，精确最小化 $\log\widetilde{L}(S)$ 是困难的。</p>
+<p><strong>命题1</strong>（精确选择的困难性）。在所有 $S\subseteq[N]$ 且 $|S|=k$ 上最小化 $\log\widetilde{L}(S)$ 是NP难的。</p>
+<p>证明在第B.3节，通过从最大独立集问题的归约。然而，当目标函数是单调且次模的时，每次添加一个展开的贪心优化器保证达到最优值的至少 $(1-e^{-1})$ 比例 [32]。精确通过概率 $P(S):=1-L(S)$ 已知是单调且次模的 [46]。然而，次模函数的近似不一定是次模的，因此我们证明其代理 $\widetilde{P}(S):=1-\widetilde{L}(S)$ 也是单调且次模的，因此贪心优化器及其近似保证适用于我们的问题。</p>
+<p><strong>定理2</strong>（贪心保证）。$\widetilde{P}$ 是规范化的（$\widetilde{P}(\varnothing)=0$）、单调的（当 $A\subseteq B$ 时 $\widetilde{P}(A)\leq\widetilde{P}(B)$）且次模的，即对所有 $A\subseteq B\subseteq[N]$ 和 $j\notin B$：</p>
+<p>$$\widetilde{P}(A\cup{j})-\widetilde{P}(A)\geq\widetilde{P}(B\cup{j})-\widetilde{P}(B). \tag{12}$$</p>
+<p>因此，通过k次添加最增加 $\widetilde{P}$ 的候选获得的集合 $S_k^{\mathrm{greedy}}$ 满足：</p>
+<p>$$\widetilde{P}(S_k^{\mathrm{greedy}})\geq(1-e^{-1})\max_{|S|\leq k}\widetilde{P}(S). \tag{13}$$</p>
+<p>证明在第B.2节。</p>
+<p><strong>贪心优化。</strong> 贪心优化器从空集开始，在每一步添加具有最小变化 $\Delta_j(S)=\log\widetilde{L}(S\cup{j})-\log\widetilde{L}(S)$ 的候选 $j\notin S$。由于添加候选通过秩一矩阵改变 $\Sigma_S$，此变化有封闭形式，可以廉价地更新而无需重建行列式和逆（第A.2节）。通过这些秩一更新，贪心优化器花费 $O(k(Nd+d^2))$ 时间和 $O(Nd+d^2)$ 内存。相比之下，为每个候选重建和分解 $I_d+\Sigma_{S\cup{j}}$ 的朴素实现每个候选花费 $O(d^3)$，即 $O(kNd^3)$ 时间，内存相同。</p>
+<h3>3.3 与线性探测器和RepExp的关系</h3>
+<p>该代理使质量-多样性权衡变得明确，并在极限情况下连接到两个基线准则。如果公式11中的相关项被关闭，则 $\log\widetilde{L}(S)=\sum_{i\in S}\log\Phi(-q_i)$，因此最小化它保留k个最大质量分数并恢复仅质量的探测器式排名；当 $Q_\theta$ 是相应的线性探测器时，它与线性探测器一致。在另一个极端，假设质量分数相等且惩罚项在整个选择过程中可忽略。则每个 $\kappa_i$ 等于公共值 $\kappa$，因此 $\Sigma_S=\kappa\sum_{i\in S}h_ih_i^\top$，相关的集合依赖项是 $-\frac{1}{2}\log\det(I_d+\Sigma_S)$。由矩阵行列式引理，其贪心边际按 $h_j^\top(I_d+\Sigma_S)^{-1}h_j$ 对候选j排名，这是RepExp在相同表示上使用的残差方差准则（推导见第A.3节）。在这些极限之间，模块化质量、对数行列式多样性和惩罚项共同决定选定的集合。</p>
+<p>上述两个极端没有显示PKTP如何随k增长从线性探测器移动到RepExp。为看到这一点，我们在相关性弱时展开 $\log L(S)$ 及其代理。</p>
+<p><strong>命题2</strong>（弱相关性）。固定S、$q_i$ 和 $h_i$，将 $\mathbf{f}$ 替换为 $\rho\mathbf{f}$。当 $\rho\to 0$ 时：</p>
+<p>$$\log L(S) = \sum_{i\in S}\Bigl[\log\Phi(-q_i)+\frac{\rho^2}{2}\lambda_iq_i|h_i|^2\Bigr]+\rho^2\sum_{i&lt;j\in S}\lambda_i\lambda_j h_i^\top h_j + O(\rho^4), \tag{14}$$</p>
+<p>且 $\log\widetilde{L}(S)$ 有相同的展开。</p>
+<p>命题2展示了相关强度 $\rho$ 如何控制PKTP在两个基线之间的位置。在 $\rho=0$ 时展开独立，展开简化为 $\sum_{i\in S}\log\Phi(-q_i)$，PKTP按质量对展开排名，如线性探测器所做。对于 $\rho&gt;0$，每对保留的展开增加惩罚 $\rho^2\lambda_i\lambda_j h_i^\top h_j$，当它们的表示相似时该惩罚较大。添加到t个展开集合的展开支付t个这样的惩罚，因此第一个选择仅由质量决定，随着集合增长惩罚累积直到超过质量差异，此后PKTP分散其选择，如RepExp所做。$\rho$ 越大，这发生得越快，因此 $\rho$ 设定PKTP随k增长从线性探测器移动到RepExp的速度。</p>
+<p>附录C对固定 $\rho$ 使这种行为的两端精确化。在小k时，如果第k和第(k+1)大质量之间的差距超过 $k\rho^2$ 的常数倍，PKTP精确保留具有最大 $q_i$ 的k个候选，如线性探测器所做，并且当这在直到k的每个预算处都成立时以相同顺序。在大k时，当少数高质量候选从大量低质量候选中脱颖而出时，PKTP的目标（在大量质量上平均）简化为RepExp目标加上这些候选的一项。其最小化器因此保留它们并几乎最大化RepExp目标。最后，这两个结果的条件不冲突。我们构造一个单一模型，具有一个质量分布和一个 $\rho$ 值，其中PKTP在小k时遵循线性探测器，而其平均目标在k增长时简化为RepExp目标。</p>
+<h2>4 实验</h2>
+<h3>4.1 设置</h3>
+<p><strong>模型。</strong> 我们在两个规模层级的八个开放权重推理模型上进行评估。小规模层级是Qwen3-0.6B、Qwen3-1.7B [49]、OpenMath-Nemotron-1.5B [31] 和DeepSeek-R1-Distill-Qwen-1.5B [15]，大规模层级是Qwen3-8B、OpenMath-Nemotron-7B、DeepSeek-R1-Distill-Qwen-7B 和Skywork-OR1-Math-7B [16]。每个模型以温度0.8、top-p为0.95和完整token预算 $B=32{,}768$ 生成其展开。</p>
+<p><strong>数据集。</strong> 我们汇集来自多个基准源的问题而非单一源，因为剪枝策略必须在部分问题上训练并在其余问题上评估，没有单一竞赛基准足够大以同时满足两者。两个模型层级在不同的基准基底上评估，选择使得两个层级都不饱和。两个层级都使用AIME 2024、2025和2026以及HMMT 2024、2025和2026 [2]，加上RIMO-N [9]。小规模层级添加BeyondAIME [4]、OlymMATH（Easy）[37] 和Omni-MATH级别7和8 [14]，而大规模层级用AMO-Bench [27]、OlymMATH（Hard）和Omni-MATH级别8和9替换这些。这给出每个模型约600个问题。然后我们删除模型在128次试验中生成全对或全错解的问题。</p>
+<p><strong>验证。</strong> 当完成的展开的最终答案与问题的参考答案匹配时，计为正确。我们从展开的 $\boxed{}$ 表达式中获取该答案，并询问Qwen3-32B判断器 [49] 它是否与参考答案等价。我们使用判断器而非符号检查器如math-verify [24]，因为像AMO-Bench这样的基准有符号检查器无法处理的描述性答案。</p>
+<p><strong>评估。</strong> 每个模型只有几百个问题可用，因此单次分割为训练和测试问题会在任一侧留下太少，我们改用交叉验证评估。对于每个模型，我们将其问题划分为八个折叠，每个基准均匀分布在折叠中。每个折叠作为一次测试集，而学习的组件在其他七个上训练，因此每个问题恰好由未在其上训练的模型评分一次。对所有八个折叠的一次遍历形成一次重复。由于重复的结果取决于问题恰好如何划分，我们运行20次重复，每次通过在将问题分配给折叠之前打乱每个基准的问题获得新的随机分区，并使用新的训练随机种子。每个报告的数字是20次重复的平均值，其标准误差跨重复计算。对于RepExp，我们设正则化器 $\tau=1$。对于所有方法，部分展开的表示 $h_i$ 是其隐藏状态以速率 $10^{-3}$ 的EMA。</p>
+<p><strong>图3：</strong> 相对随机剪枝的pass@k增益。对于每个模型，每个剪枝策略的汇总pass@k减去随机（Pass@k）的pass@k，以百分点为单位，作为保留的展开数k的函数，带有逐次重复差异的一个标准误差带。绝对数字在表1中，逐基准分解在附录D中。</p>
+<h3>4.2 实验评估与比较</h3>
+<p>图3报告了我们的主要设置，其中每个方法从问题的 $N=128$ 个展开的前缀中选择 $k\in{1,2,4,8,16}$ 个，我们设截断阈值 $T=4000$ token。对于每个模型，它显示每个剪枝策略的pass@k减去随机（Pass@k）的pass@k，在所有测试问题上汇总。随机保留均匀随机选择的k个展开，等价于在没有任何剪枝的情况下采样k个展开，因此它是自然的参考点。绝对数字在表1中给出，逐基准分解在附录D中。</p>
+<p><strong>图4：</strong> 线性探测器保留一起失败的展开簇。一个问题（Qwen3-8B，AMO-Bench）的128个展开，投影在其表示的前两个主成分上，正确展开为绿色，错误展开为红色。线性探测器排名最高的16个展开（蓝色圆圈）彼此靠近且全部错误，而16个随机选择（灰色圆圈）包含7个正确展开。</p>
+<p>如图3所示，线性探测器在 $k=1$ 时表现强劲，但随着k增加，它越来越接近随机，如在Qwen模型中，在某些情况下在大k时甚至变得比随机更差。这可归因于偏向模型预测正确但可能不正确的展开簇，在分类器错误的情况下。换言之，按探测器排名使保留展开的分布在探测器认为正确的周围锐化。这反映了在强化学习中观察到的效应，其中用GRPO训练的模型在小k时优于其基础模型，但在大k时被其超越 [53]。例如，图4显示一个问题（Qwen3-8B，AMO-Bench）的128个展开，投影在其表示的前两个主成分上。探测器排名最高的16个展开都彼此接近且全部错误，而16个随机选择包含7个正确的。</p>
+<p><strong>图5：</strong> RepExp保留不太可能正确的离群值。一个问题（Qwen3-8B，Omni-MATH）的128个展开，通过其表示的多维缩放嵌入到二维中，正确展开为绿色，错误展开为红色。在随机第一选择后，RepExp（粉色圆圈，按选择顺序编号）选择远离其余的展开，其所有4个选择都是错误的，而4个随机选择（灰色圆圈）包含1个正确展开。</p>
+<p>图3还显示RepExp的行为与线性探测器相反。在 $k=1$ 时它如预期显示与随机相似的性能，因为其第一选择是随机的。随着k增加，一般趋势是RepExp越来越好于随机，特别是在 $k=16$（例如DeepSeek-R1-Distill模型）。然而有趣的是，对于中等k，它有时被随机超越，例如在OpenMath-Nemotron-1.5B和Qwen3-8B上。我们将此归因于RepExp在小和中等k时偏向离群值的倾向，因为远离已选展开的展开通常是不太可能正确的不寻常展开。Tuyls等人 [39] 报告了类似效应，其中RepExp在高温采样下停止帮助，因为不太连贯的响应在表示空间中看起来新颖但不一定包含正确答案。例如，图5显示一个问题（Qwen3-8B，Omni-MATH）的128个展开，通过其表示上的多维缩放嵌入到二维中。在其第一随机选择之后，RepExp选择远离其他展开的离群值，其所有4个选择都是错误的，而4个随机选择包含1个正确的。</p>
+<p>最后，图3显示PKTP优于线性探测器和RepExp，其优势在中等k时最明显，其中每个基线都受到其自身偏见的影响。例如在DeepSeek-R1-Distill-Qwen-1.5B上 $k=4$ 时，PKTP比线性探测器高3.0点，比RepExp高3.2点。在Qwen3-0.6B上它在每个 $k\geq 2$ 时领先两个基线超过2点，在DeepSeek-R1-Distill-Qwen-7B上 $k=4$ 时比线性探测器高3.3点。与两个基线不同，PKTP在每个模型上 $k\geq 2$ 时也保持在随机之上，因为它保留探测器的正确性信号同时将保留的展开分散在不太可能一起失败的结果上。然而在大k时，PKTP和RepExp的性能变得更接近。我们相信这是由于部分展开嵌入中微弱的正确性信号，这提出了如何从部分展开获得质量嵌入以及这是否可能的问题。</p>
+<p>其他池大小 $N\in{32,48,64,80,96,112}$ 在相同截断 $T=4000$ 下的结果在附录E中给出。</p>
+<h3>4.3 截断阈值的影响</h3>
+<p><strong>图6：</strong> 更晚的截断改善PKTP。Qwen3-1.7B和DeepSeek-R1-Distill-Qwen-7B上的Pass@4，随着截断T从2000增长到8000 token，$N=128$。PKTP在每个 $T\geq 4000$ 时都是最佳方法，并随着更长前缀持续改善，而线性探测器和RepExp增益少得多，Qwen3-1.7B上的线性探测器甚至漂移到随机以下。带为一个标准误差。</p>
+<p>剪枝的一个重要方面是截断阈值T，以及算法在截断增长时的行为。图6在Qwen3-1.7B和DeepSeek-R1-Distill-Qwen-7B上变化T。对于每个 $T\geq 4000$，PKTP在两个模型上都优于所有其他方法。一个有趣的观察是更晚的截断通常改善PKTP的性能。在Qwen3-1.7B上其pass@4从 $T=2000$ 时的 $63.5\%$ 上升到 $T=8000$ 时的 $65.9\%$，在DeepSeek-R1-Distill-Qwen-7B上从 $57.4\%$ 上升到 $61.7\%$。直观上，生成的token越多，关于展开质量和走向的信息就越多，因此有更多信号可利用。然而有趣的是，线性探测器和RepExp不一定发生同样的情况。例如在Qwen3-1.7B上，线性探测器从 $64.2\%$ 下降到 $62.3\%$，最终低于随机。一个原因可能是我们使用的表示。由于速率为 $10^{-3}$ 的EMA有效地在最后1000个token上平均，它可能丢失早期token中的信号。</p>
+<h3>4.4 池大小的影响</h3>
+<p><strong>图7：</strong> 一旦池足够大PKTP领先。Qwen3-1.7B和DeepSeek-R1-Distill-Qwen-7B上的Pass@4，随着池大小N从32增长到128，$T=4000$。PKTP在Qwen3-1.7B上对每个N都是最佳方法，在DeepSeek-R1-Distill-Qwen-7B上从 $N=80$ 开始是最佳方法，其中线性探测器随池增长而下降并保持在随机以下。带为一个标准误差。</p>
+<p>剪枝的另一个重要方面是选择k个展开的池的大小N。图7在Qwen3-1.7B和DeepSeek-R1-Distill-Qwen-7B上变化N。PKTP在Qwen3-1.7B上对每个N都优于所有其他方法，在DeepSeek-R1-Distill-Qwen-7B上一旦池达到 $N=80$ 就如此。更大的池提供更多候选选择，在Qwen3-1.7B上两个基线都从中受益，RepExp从 $N=32$ 时的 $62.9\%$ 上升到 $N=128$ 时的 $63.9\%$，随着池变得更加多样化，线性探测器从 $62.1\%$ 上升到 $63.1\%$。然而有趣的是，在DeepSeek-R1-Distill-Qwen-7B上同样不成立，线性探测器从 $58.1\%$ 下降到 $56.4\%$ 且对每个N都保持在随机以下，RepExp从 $N=48$ 时的 $59.5\%$ 下降到 $58.6\%$，而PKTP从 $58.8\%$ 上升到 $59.7\%$。一个原因可能是更大的池也包含更多离群值，这增加了像RepExp和线性探测器这样的极端情况在中等k如 $k=4$ 时选择它们的机会。</p>
+<h2>5 结论</h2>
+<p>我们引入了PKTP，一种通过直接优化pass@k来选择保留哪些部分展开的剪枝框架。PKTP用潜在高斯模型学习展开结果的联合分布，以封闭形式近似所得似然，并贪心地选择保留集合，对代理目标有近似保证。在八个推理模型上，它优于基于质量和基于多样性的剪枝，增益在中等k时最大，其中每个基线都受到其自身偏见的影响。由于PKTP可以与部分展开的任何表示结合，更好地捕获展开正确性的表示将直接加强它，开发它们是未来工作的自然方向。</p>
+<h2>致谢</h2>
+<p>本工作部分由USC研究与创新办公室的生成AI研究奖、NSF NRT计划、USC-Meta AI与学习研究教育中心以及Amazon的资助支持。AJ部分由NSF奖DMS-2311024、Amazon教师研究奖、Adobe教师研究奖和USC Marshall商学院的iORB资助支持。</p>
+<h2>AI使用声明</h2>
+<p>在本工作中，我们使用生成AI工具协助项目的多个部分。对于写作，我们用它们编辑和润色文本以及格式化LaTeX源。对于图表，我们用它们编写绘制实验结果的脚本。对于代码，我们用它们帮助实现部分代码。对于理论，我们用它们帮助推导和撰写附录中证明的部分。我们未使用生成AI工具生成数据或实验结果。所有AI辅助内容（包括代码和证明）均由作者审查和验证，作者对本文内容承担全部责任。</p>
+<h2>附录A 推导</h2>
+<h3>A.1 似然</h3>
+<p>写 $\mathbf{Z}_i = q_i + \mathbf{m}_i + h_i^\top\mathbf{f}$。在给定 $\mathbf{f}$ 的条件下，$\mathbf{Z}_i$ 彼此独立，因此：</p>
+<p>$$\Pr[\mathbf{C}<em>1=c_1,\ldots,\mathbf{C}_N=c_N\mid\mathbf{f}] = \prod</em>{i=1}^{N}\Pr[c_i\mathbf{Z}<em>i\geq 0\mid\mathbf{f}] = \prod</em>{i=1}^{N}\Pr[c_i(q_i+\mathbf{m}<em>i+h_i^\top\mathbf{f})\geq 0\mid\mathbf{f}] = \prod</em>{i=1}^{N}\Pr[c_i\mathbf{m}_i\geq -c_i(q_i+h_i^\top\mathbf{f})\mid\mathbf{f}].$$</p>
+<p>由于标准高斯关于0对称，$-c_i\mathbf{m}<em>i$ 与 $\mathbf{m}_i$ 服从相同分布，且 $\Phi(x):=\Pr</em>{Z\sim\mathcal{N}(0,1)}[Z\leq x]$，每个因子等于 $\Phi(c_i(q_i+h_i^\top\mathbf{f}))$。对 $\mathbf{f}$ 取期望给出公式5。</p>
+<h3>A.2 秩一贪心更新</h3>
+<p>如推论1中，设 $\Sigma_S=\sum_{i\in S}\kappa_i h_ih_i^\top$ 且 $b_S=\sum_{i\in S}\lambda_i h_i$。写 $\Omega_S=(I_d+\Sigma_S)^{-1}$，$r_j=h_j^\top\Omega_S h_j$ 且 $u_j=h_j^\top\Omega_S b_S$。添加候选 $j\notin S$ 通过秩一矩阵 $\kappa_j h_jh_j^\top$ 改变 $\Sigma_S$。矩阵行列式引理给出：</p>
+<p>$$\det(I_d+\Sigma_S+\kappa_j h_jh_j^\top)=\det(I_d+\Sigma_S)(1+\kappa_j r_j),$$</p>
+<p>而Sherman–Morrison给出：</p>
+<p>$$(I_d+\Sigma_S+\kappa_j h_jh_j^\top)^{-1}=\Omega_S-\frac{\kappa_j\Omega_S h_jh_j^\top\Omega_S}{1+\kappa_j r_j}.$$</p>
+<p>代入公式11并使用 $b_{S\cup{j}}=b_S+\lambda_j h_j$，未减半二次型的相应变化为：</p>
+<p>$$2\lambda_j u_j+\lambda_j^2 r_j-\frac{\kappa_j(u_j+\lambda_j r_j)^2}{1+\kappa_j r_j}=\frac{2\lambda_j u_j+\lambda_j^2 r_j-\kappa_j u_j^2}{1+\kappa_j r_j}.$$</p>
+<p>其一半，加上行列式项中的变化 $-\frac{1}{2}\log(1+\kappa_j r_j)$ 和新的质量项 $\log\Phi(-q_j)$，得到：</p>
+<p>$$\Delta_j(S)=\log\Phi(-q_j)-\frac{1}{2}\log(1+\kappa_j r_j)+\frac{2\lambda_j u_j+\lambda_j^2 r_j-\kappa_j u_j^2}{2(1+\kappa_j r_j)}.$$</p>
+<p>贪心步骤添加具有最小 $\Delta_j(S)$ 的候选。选择j后，维护的状态更新为：</p>
+<p>$$\Omega_{S\cup{j}}=\Omega_S-\frac{\kappa_j\Omega_S h_jh_j^\top\Omega_S}{1+\kappa_j r_j},\qquad b_{S\cup{j}}=b_S+\lambda_j h_j.$$</p>
+<p>其余标量 $r_\ell$ 和 $u_\ell$ 也可以递归更新。如果 $g_\ell=h_\ell^\top\Omega_S h_j$，则：</p>
+<p>$$r_\ell\leftarrow r_\ell-\frac{\kappa_j g_\ell^2}{1+\kappa_j r_j},\qquad u_\ell\leftarrow u_\ell+\frac{\lambda_j-\kappa_j u_j}{1+\kappa_j r_j}g_\ell.$$</p>
+<p>所有 $h_i$ 保留在内存中，每个贪心步骤花费 $O(Nd+d^2)$，因此一次前向传播花费 $O(k(Nd+d^2))$ 时间和 $O(Nd+d^2)$ 存储。</p>
+<h3>A.3 等质量极限下的贪心边际</h3>
+<p>假设每个质量分数等于公共值q，因此每个i有 $\lambda_i=\lambda$ 和 $\kappa_i=\kappa$，且惩罚项被丢弃。则公式11简化为：</p>
+<p>$$\log\widetilde{L}(S)=|S|\log\Phi(-q)-\frac{1}{2}\log\det(I_d+\Sigma_S),\qquad \Sigma_S=\kappa\sum_{i\in S}h_ih_i^\top.$$</p>
+<p>添加候选 $j\notin S$ 通过秩一矩阵 $\kappa h_jh_j^\top$ 改变 $\Sigma_S$。矩阵行列式引理给出：</p>
+<p>$$\det(I_d+\Sigma_{S\cup{j}})=\det(I_d+\Sigma_S)(1+\kappa h_j^\top(I_d+\Sigma_S)^{-1}h_j).$$</p>
+<p>从S处的公式24减去 $S\cup{j}$ 处的公式24并使用上式，因子 $\det(I_d+\Sigma_S)$ 消去：</p>
+<p>$$\Delta_j(S)=\log\Phi(-q)-\frac{1}{2}\log(1+\kappa h_j^\top(I_d+\Sigma_S)^{-1}h_j).$$</p>
+<p>第一项对所有候选相同，且 $x\mapsto\log(1+\kappa x)$ 由于 $\kappa&gt;0$ 而递增，因此具有最小 $\Delta_j(S)$ 的候选是具有最大 $h_j^\top(I_d+\Sigma_S)^{-1}h_j$ 的候选。此外，$(I_d+\Sigma_S)^{-1}=\kappa^{-1}(\kappa^{-1}I_d+\sum_{i\in S}h_ih_i^\top)^{-1}$，因此此排名是第2节中RepExp在正则化器 $\tau=1/\kappa$ 下的规则。</p>
+<h2>附录B 证明</h2>
+<h3>B.1 定理1和推论1的证明</h3>
+<h4>B.1.1 定理1的证明</h4>
+<p>这里 $\Pr[\mathbf{C}=c\mid H]$ 由公式5给出。固定结果 $c\in{-1,1}^N$，写 $\lambda_i$、$\kappa_i$、$\Sigma$ 和 $b$ 为 $\lambda_i(c_i)$、$\kappa_i(c_i)$、$\Sigma(c)$ 和 $b(c)$。对每个 $i\in[N]$ 和标量扰动x，设 $\ell_i(x):=\log\Phi(c_i(q_i+x))$，且 $r(u):=\phi(u)/\Phi(u)$，满足 $r'(u)=-r(u)(u+r(u))$。由于 $c_i^2=1$ 且 $\phi$ 是偶函数，$r(c_iq_i)=\lambda_i$，且：</p>
+<p>$$\ell_i'(x)=c_i r(c_i(q_i+x))\implies \ell_i'(0)=c_i\lambda_i,\qquad \ell_i''(0)=r'(c_iq_i)=-\lambda_i(\lambda_i+c_iq_i)=-\kappa_i.$$</p>
+<p>为看到 $\kappa_i&gt;0$，设 $u=c_iq_i$。对于 $u\geq 0$，这直接从 $\lambda_i&gt;0$ 得出。对于 $u&lt;0$，$\Phi(u)=\int_{|u|}^{\infty}\phi(t)dt&lt;\frac{1}{|u|}\int_{|u|}^{\infty}t\phi(t)dt=\frac{\phi(u)}{|u|}$，因此 $\lambda_i&gt;|u|=-c_iq_i$。在 $x=0$ 处的泰勒展开现在给出：</p>
+<p>$$\log\Phi(c_i(q_i+x))=\log\Phi(c_iq_i)+c_i\lambda_i x-\frac{\kappa_i}{2}x^2+R_i(x),\qquad R_i(x)=O(|x|^3).$$</p>
+<p>我们现在代入 $x=h_i^\top\mathbf{f}$ 并对 $i\in[N]$ 求和。由于 $\mathbf{f}$ 对所有 $i\in[N]$ 共同，出现的唯一聚合量是 $\Sigma$ 和 $b$，期望内的项可以写为：</p>
+<p>$$\prod_{i=1}^{N}\Phi(c_i(q_i+h_i^\top\mathbf{f}))=\left(\prod_{i=1}^{N}\Phi(c_iq_i)\right)\exp\left(b^\top\mathbf{f}-\frac{1}{2}\mathbf{f}^\top\Sigma\mathbf{f}+\sum_{i=1}^{N}R_i(h_i^\top\mathbf{f})\right).$$</p>
+<p>丢弃累积余项给出二次近似：</p>
+<p>$$\widetilde{\Pr}[\mathbf{C}=c\mid H]:=\left(\prod_{i=1}^{N}\Phi(c_iq_i)\right)\mathbb{E}_{\mathbf{f}}\exp\left(b^\top\mathbf{f}-\frac{1}{2}\mathbf{f}^\top\Sigma\mathbf{f}\right).$$</p>
+<p>此期望有封闭形式。将其指数与标准高斯密度结合给出：</p>
+<p>$$\mathbb{E}<em>{\mathbf{f}}\exp\left(b^\top\mathbf{f}-\frac{1}{2}\mathbf{f}^\top\Sigma\mathbf{f}\right)=(2\pi)^{-d/2}\int</em>{\mathbb{R}^d}\exp\left(-\frac{1}{2}f^\top(I_d+\Sigma)f+b^\top f\right)df.$$</p>
+<p>因为 $\kappa_i&gt;0$，$\Sigma\succeq 0$ 且矩阵 $I_d+\Sigma$ 正定。配方：</p>
+<p>$$-\frac{1}{2}f^\top(I_d+\Sigma)f+b^\top f=-\frac{1}{2}(f-(I_d+\Sigma)^{-1}b)^\top(I_d+\Sigma)(f-(I_d+\Sigma)^{-1}b)+\frac{1}{2}b^\top(I_d+\Sigma)^{-1}b.$$</p>
+<p>平移积分变量后，剩余的高斯积分贡献 $\det(I_d+\Sigma)^{-1/2}$，给出公式9。□</p>
+<h4>B.1.2 推论1的证明</h4>
+<p>在公式5中对S外的展开结果积分留下对 $i\in S$ 的乘积的相同表达式，因此定理1适用于S中的展开，$\Sigma_S(c)$ 和 $b_S(c)$ 是对 $i\in S$ 的求和。对每个 $i\in S$ 取 $c_i=-1$。则 $\lambda_i(-1)=\phi(q_i)/\Phi(-q_i)$，$\kappa_i(-1)=\lambda_i(\lambda_i-q_i)$，且 $b_S(c)=-\sum_{i\in S}\lambda_i h_i$，在整个附录中我们写 $b_S=\sum_{i\in S}\lambda_i h_i$。由于 $b_S$ 仅通过 $b_S^\top(I_d+\Sigma_S)^{-1}b_S$ 进入公式9，$L(S)$ 的代理是 $\widetilde{L}(S)$，且由于对数递增，最小化 $\widetilde{L}(S)$ 等价于最小化 $\log\widetilde{L}(S)$。□</p>
+<h3>B.2 定理2的证明</h3>
+<p>精确通过概率的次模性是事件并概率的标准性质 [46]，我们在此为完整性证明。新结果是代理保持此性质。</p>
+<p><strong>定义1</strong>（次模函数）。集合函数 $G:2^{[N]}\to\mathbb{R}$ 是次模的，如果对每个 $A\subseteq B\subseteq[N]$ 和每个 $j\notin B$：$G(A\cup{j})-G(A)\geq G(B\cup{j})-G(B)$。</p>
+<p><strong>定义2</strong>（单调函数）。集合函数 $G:2^{[N]}\to\mathbb{R}$ 是单调的，如果当 $A\subseteq B\subseteq[N]$ 时 $G(A)\leq G(B)$。</p>
+<p><strong>定义3</strong>（规范化函数）。集合函数 $G:2^{[N]}\to\mathbb{R}$ 是规范化的，如果 $G(\varnothing)=0$。</p>
+<h4>B.2.1 精确pass@k概率的次模性</h4>
+<p>首先，我们表明精确pass@k概率已经是规范化的单调次模集合函数。为看到这一点，设 $\mathcal{C}<em>i$ 表示响应i正确的事件。精确通过概率可以写为 $P(S):=\Pr(\bigcup</em>{i\in S}\mathcal{C}_i)$。</p>
+<p>对任何 $A\subseteq B\subseteq[N]$ 和 $j\notin B$，添加响应j的边际改善为：</p>
+<p>$$P(A\cup{j})-P(A)=\Pr(\mathcal{C}<em>j\setminus\bigcup</em>{i\in A}\mathcal{C}<em>i),$$<br />
+$$P(B\cup{j})-P(B)=\Pr(\mathcal{C}_j\setminus\bigcup</em>{i\in B}\mathcal{C}_i).$$</p>
+<p>由于 $A\subseteq B$，$(\mathcal{C}<em>j\setminus\bigcup</em>{i\in B}\mathcal{C}<em>i)\subseteq(\mathcal{C}_j\setminus\bigcup</em>{i\in A}\mathcal{C}_i)$。取概率因此给出 $P(A\cup{j})-P(A)\geq P(B\cup{j})-P(B)$，这正是次模函数性质。此外，$P(\varnothing)=0$，且当 $A\subseteq B$ 时 $P(A)\leq P(B)$。因此精确通过概率是规范化、单调且次模的。此结论对正确性事件的任意联合分布成立，不需要任何潜在变量模型或条件独立。</p>
+<h4>B.2.2 近似通过概率的次模性</h4>
+<p>现在我们表明高斯潜在模型下的近似本身是单调次模函数。注意，次模函数的每个近似不一定次模。在继续之前，让我们对 $\widetilde{L}(S)$ 确实代表某种概率概念这一事实获得直觉。在给定 $\mathbf{f}$ 的条件下，$\widetilde{L}(S)$ 中乘积的每一项可以写为：</p>
+<p>$$g_i(\mathbf{f}):=\Phi(-q_i)\exp\left(-\lambda_i h_i^\top\mathbf{f}-\frac{\kappa_i}{2}(h_i^\top\mathbf{f})^2\right).$$</p>
+<p>因此，$\widetilde{L}(S)=\mathbb{E}<em>{\mathbf{f}\sim\mathcal{N}(0,I_d)}\prod</em>{i\in S}g_i(\mathbf{f})$。</p>
+<p>因此，为使 $\widetilde{L}(S)$ 是在给定 $\mathbf{f}$ 条件下选择正确元素的某种失败概率的定义，只需证明 $g_i(\mathbf{f})&lt;1$。为此，对标量q，写 $\lambda(q):=\phi(q)/\Phi(-q)$，$\kappa(q):=\lambda(q)(\lambda(q)-q)$，并定义 $\beta(q):=\Phi(-q)\exp(\lambda(q)^2/(2\kappa(q)))$。</p>
+<p><strong>引理1。</strong> 对每个有限 $q\in\mathbb{R}$，有 $0&lt;\beta(q)&lt;1$。此外，$\beta(q)$ 在q上严格递减。</p>
+<p><strong>证明。</strong> 设 $\overline{\Phi}(q):=\Phi(-q)=1-\Phi(q)$ 且 $v(q):=\lambda(q)-q&gt;0$，$r(q):=\log\beta(q)=\log\overline{\Phi}(q)+\lambda(q)/(2v(q))$。由于 $\overline{\Phi}'(q)=-\phi(q)$，我们有 $\frac{d}{dq}\log\overline{\Phi}(q)=-\lambda(q)$。直接求导给出 $\lambda'(q)=\lambda(q)(\lambda(q)-q)=\lambda(q)v(q)$，$v'(q)=\lambda(q)v(q)-1$。因此：</p>
+<p>$$r'(q)=-\lambda(q)+\frac{\lambda'(q)v(q)-\lambda(q)v'(q)}{2v(q)^2}=\frac{\lambda(q)}{2v(q)^2}(1-qv(q)-2v(q)^2).$$</p>
+<p>还需证明括号中的表达式为负。为此，设 $X\sim N(0,1)$。利用 $\mathbb{E}[X\mid X&gt;q]=\lambda(q)$ 和 $\mathbb{E}[X^2\mid X&gt;q]=1+q\lambda(q)$，我们得到 $\mathbb{E}[X-q\mid X&gt;q]=v(q)$，$\mathbb{E}[(X-q)^2\mid X&gt;q]=1-qv(q)$。</p>
+<p>因此，只需证明 $\frac{1}{2}\mathbb{E}[(X-q)^2\mid X&gt;q]\leq(\mathbb{E}[X-q\mid X&gt;q])^2$。为证明上式，考虑 $T(x):=\Pr(X-q&gt;x\mid X&gt;q)=\overline{\Phi}(q+x)/\overline{\Phi}(q)$，$x\geq 0$。</p>
+<p>在给定 $X&gt;q$ 的条件律下，随机变量 $X-q$ 非负。因此，由二阶矩的尾积分公式 [12, Lemma 2.2.13]：</p>
+<p>$$\frac{1}{2}\mathbb{E}[(X-q)^2\mid X&gt;q]=\mathbb{E}\left[\int_0^\infty t\mathbf{1}_{{X-q&gt;t}}dt\Bigm| X&gt;q\right]=\int_0^\infty t\Pr(X-q&gt;t\mid X&gt;q)dt=\int_0^\infty tT(t)dt.$$</p>
+<p>期望和积分的交换由Tonelli定理 [12, Theorem 1.7.2] 合理化，因为被积函数非负。此外，在内积分中代入 $t=x+y$ 然后由Tonelli定理再次交换积分顺序，我们得到：</p>
+<p>$$\int_0^\infty\int_0^\infty T(x+y)dxdy=\int_0^\infty\int_y^\infty T(t)dtdy=\int_0^\infty\int_0^t T(t)dydt=\int_0^\infty tT(t)dt.$$</p>
+<p>我们知道 $\lambda$ 严格递增因为 $\lambda'(q)=\kappa(q)&gt;0$。因此，对 $x,y&gt;0$：</p>
+<p>$$\frac{T(x+y)}{T(x)}=\exp\left(-\int_x^{x+y}\lambda(q+t)dt\right)&lt;\exp\left(-\int_0^y\lambda(q+t)dt\right)=T(y),$$</p>
+<p>因此 $T(x+y)&lt;T(x)T(y)$。于是：</p>
+<p>$$\frac{1}{2}\mathbb{E}[(X-q)^2\mid X&gt;q]=\int_0^\infty tT(t)dt=\int_0^\infty\int_0^\infty T(x+y)dxdy&lt;\left(\int_0^\infty T(x)dx\right)^2=\left(\mathbb{E}[X-q\mid X&gt;q]\right)^2.$$</p>
+<p>结合上述结果得 $1-qv(q)-2v(q)^2&lt;0$。因此 $r'(q)&lt;0$。最后，当 $q\to-\infty$ 时，$\overline{\Phi}(q)\to 1$，$\lambda(q)\to 0$，且 $\lambda(q)/(2v(q))\to 0$。因此 $r(q)\to 0$。由于 $r$ 严格递减，对每个有限q有 $r(q)&lt;0$。等价地，$0&lt;\beta(q)&lt;1$，且 $\beta$ 严格递减。∎</p>
+<p>因此，回到 $g_i(\mathbf{f})$，在标量 $x=h_i^\top\mathbf{f}$ 中配方给出：</p>
+<p>$$g_i(\mathbf{f})=\Phi(-q_i)\exp\left(-\frac{\kappa_i}{2}\left(x+\frac{\lambda_i}{\kappa_i}\right)^2+\frac{\lambda_i^2}{2\kappa_i}\right)\leq\beta(q_i)&lt;1$$</p>
+<p>由引理1。因此对每个i和每个 $\mathbf{f}$ 有 $0&lt;g_i(\mathbf{f})&lt;1$。因此可以定义<strong>近似</strong>pass@k概率为 $\widetilde{P}(S):=1-\widetilde{L}(S)$。</p>
+<p>从公式43直接得出 $\widetilde{L}$ 在集合包含下递减，因此 $\widetilde{P}=1-\widetilde{L}$ 是单调的。此外，$\widetilde{P}(\varnothing)=1-1=0$，因此 $\widetilde{P}$ 是规范化的。</p>
+<p>现在设 $A\subseteq B$ 且 $j\notin B$。添加j获得的边际改善为：</p>
+<p>$$\widetilde{P}(A\cup{j})-\widetilde{P}(A)=\widetilde{L}(A)-\widetilde{L}(A\cup{j})=\mathbb{E}<em>{\mathbf{f}}\left[(1-g_j(\mathbf{f}))\prod</em>{i\in A}g_i(\mathbf{f})\right].$$</p>
+<p>因为每个 $g_i(\mathbf{f})$ 在 $(0,1)$ 中，$(1-g_j(\mathbf{f}))\prod_{i\in A}g_i(\mathbf{f})\geq(1-g_j(\mathbf{f}))\prod_{i\in B}g_i(\mathbf{f})$ 在 $\mathbf{f}$ 中逐点成立。取期望证明 $\widetilde{P}$ 是次模的。</p>
+<h4>B.2.3 贪心保证</h4>
+<p>由于 $\widetilde{P}$ 是规范化、单调且次模的（第B.2.2节），由Nemhauser等人 [32]，贪心解满足定理2的保证。□</p>
+<h3>B.3 命题1的证明</h3>
+<p><strong>证明。</strong> 我们表明即使所有 $q_i$ 等于同一整数且所有 $h_i$ 的条目在 ${0,1}$ 中，该问题也是NP难的。我们从独立集问题归约，该问题询问图是否包含k个两两不相邻的顶点，是NP完全的 [20]。设G是顶点集 $[N]$ 上的图，边集为E，邻接矩阵为A，最大度为 $\Delta\geq 1$（无边的情况是平凡的）。对 $S\subseteq[N]$，设 $A_S$ 是S诱导的子图的邻接矩阵，$e(S)$ 是其边数。我们构造一个实例，其最小化子是大小为k的独立集（当这样的集合存在时）。</p>
+<p>设 $d=|E|+N\Delta$。$\mathbb{R}^d$ 的前 $|E|$ 个坐标由G的边索引，其余的分成N个 $\Delta$ 坐标的块，每个顶点一个块。对每个顶点i，设 $h_i\in{0,1}^d$ 在与i关联的每条边的坐标上有一个1，在其自己块的 $\Delta-\deg(i)$ 个坐标上有一个1。两个不同顶点仅当相邻时共享非零坐标，且恰好共享一个，因此 $|h_i|^2=\Delta$。（证明继续通过构造实例并表明最小化子对应于独立集...）□</p>
+<h2>参考文献</h2>
+<p>[1] A. Afzal, F. Matthes, G. Chechik, and Y. Ziser (2025). Knowing before saying: LLM representations encode information about chain-of-thought success before completion. In Findings of ACL 2025, pp. 12791–12806.</p>
+<p>[2] M. Balunović, J. Dekoninck, I. Petrov, N. Jovanović, and M. Vechev (2025). MathArena: evaluating LLMs on uncontaminated math competitions. In NeurIPS Datasets and Benchmarks Track.</p>
+<p>[3] B. Brown, J. Juravsky, R. Ehrlich, R. Clark, Q. V. Le, C. Ré, and A. Mirhoseini (2024). Large language monkeys: scaling inference compute with repeated sampling. arXiv preprint arXiv:2407.21787.</p>
+<p>[4] ByteDance Seed (2025). Seed1.5-Thinking: advancing superb reasoning models with reinforcement learning. arXiv preprint arXiv:2504.13914.</p>
+<p>[5] J. Carbonell and J. Goldstein (1998). The use of MMR, diversity-based reranking for reordering documents and producing summaries. In SIGIR 1998.</p>
+<p>[6] H. Chen and D. R. Karger (2006). Less is more: probabilistic models for retrieving fewer relevant documents. In SIGIR 2006, pp. 429–436.</p>
+<p>[7] Y. Chen, S. Chakraborty, L. Wolf, Y. Paschalidis, and A. Pacchiano (2026). Post-training large language models for diverse high-quality responses. In ICLR 2026.</p>
+<p>[8] Z. Chen, X. Qin, Y. Wu, Y. Ling, Q. Ye, W. X. Zhao, and G. Shi (2025). Pass@k training for adaptively balancing exploration and exploitation of large reasoning models. arXiv preprint arXiv:2508.10751.</p>
+<p>[9] Z. Chen, C. Qin, and Y. Shu (2025). RIMO: an easy-to-evaluate, hard-to-solve olympiad benchmark for advanced mathematical reasoning. arXiv preprint arXiv:2509.07711.</p>
+<p>[10] Y. Chow, G. Tennenholtz, I. Gur, V. Zhuang, B. Dai, S. Thiagarajan, C. Boutilier, R. Agarwal, A. Kumar, and A. Faust (2025). Inference-aware fine-tuning for best-of-N sampling in large language models. In ICLR 2025.</p>
+<p>[11] K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano, C. Hesse, and J. Schulman (2021). Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168.</p>
+<p>[12] R. Durrett (2019). Probability: theory and examples. 5th edition, Cambridge University Press.</p>
+<p>[13] Y. Fu, X. Wang, H. Zhang, Y. Tian, and J. Zhao (2026). Deep think with confidence. In ICLR 2026.</p>
+<p>[14] B. Gao, F. Song, Z. Yang, Z. Cai, Y. Miao, Q. Dong, L. Li, C. Ma, L. Chen, R. Xu, et al. (2025). Omni-MATH: a universal olympiad level mathematic benchmark for large language models. In ICLR 2025.</p>
+<p>[15] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi, et al. (2025). DeepSeek-R1 incentivizes reasoning in LLMs through reinforcement learning. Nature 645(8081), pp. 633–638.</p>
+<p>[16] J. He, J. Liu, C. Y. Liu, R. Yan, C. Wang, P. Cheng, X. Zhang, F. Zhang, J. Xu, W. Shen, et al. (2025). Skywork open reasoner 1 technical report. arXiv preprint arXiv:2505.22312.</p>
+<p>[17] P. Hosseini, S. Nawathe, M. Salmani, M. Razaviyayn, and S. Feizi (2026). Early stopping for large reasoning models via confidence dynamics. arXiv preprint arXiv:2604.04930.</p>
+<p>[18] A. Jaech, A. Kalai, A. Lerer, A. Richardson, A. El-Kishky, A. Low, A. Helyar, A. Madry, A. Beutel, A. Carney, et al. (2024). OpenAI o1 system card. arXiv preprint arXiv:2412.16720.</p>
+<p>[19] X. Jiang, N. Liu, D. Wang, and L. Hu (2026). Beyond scalars: evaluating and understanding LLM reasoning via geometric progress and stability. In ICML 2026.</p>
+<p>[20] R. M. Karp (1972). Reducibility among combinatorial problems. In Complexity of Computer Computations, pp. 85–103.</p>
+<p>[21] T. Kojima, S. S. Gu, M. Reid, Y. Matsuo, and Y. Iwasawa (2022). Large language models are zero-shot reasoners. NeurIPS 35, pp. 22199–22213.</p>
+<p>[22] A. Kulesza and B. Taskar (2012). Determinantal point processes for machine learning. Foundations and Trends in Machine Learning 5(2–3), pp. 123–286.</p>
+<p>[23] W. Kwon, Z. Li, S. Zhuang, Y. Sheng, L. Zheng, C. H. Yu, J. Gonzalez, H. Zhang, and I. Stoica (2023). Efficient memory management for large language model serving with PagedAttention. In SOSP 2023, pp. 611–626.</p>
+<p>[24] H. Kydlíček (2025). Math-Verify: math verification library. https://github.com/huggingface/Math-Verify</p>
+<p>[25] Z. Liang, B. Huang, Z. Wang, and M. Zhang (2026). Hidden states as early signals: step-level trace evaluation and pruning for efficient test-time scaling. In Findings of ACL 2026, pp. 26800–26813.</p>
+<p>[26] H. Lightman, V. Kosaraju, Y. Burda, H. Edwards, B. Baker, T. Lee, J. Leike, J. Schulman, I. Sutskever, and K. Cobbe (2024). Let's verify step by step. In ICLR 2024.</p>
+<p>[27] J. Liu, S. An, S. Zhou, D. Ma, Y. Lin, X. Lv, X. Wang, X. Li, Z. Wang, X. Cao, and X. Cai (2026). AMO-Bench: large language models still struggle in high school math competitions. In Findings of ACL 2026, pp. 2120–2137.</p>
+<p>[28] X. Liu and L. Wang (2025). Answer convergence as a signal for early stopping in reasoning. In EMNLP 2025, pp. 17896–17907.</p>
+<p>[29] H. Lu, M. Pan, R. Li, G. Nan, J. Zhuang, Z. Zhao, Z. Sun, K. Wang, and Y. Liu (2026). Streaming hallucination detection in long chain-of-thought reasoning. In Findings of ACL 2026, pp. 21157–21183.</p>
+<p>[30] R. Manvi, A. Singh, and S. Ermon (2024). Adaptive inference-time compute: LLMs can predict if they can do better, even mid-generation. arXiv preprint arXiv:2410.02725.</p>
+<p>[31] I. Moshkov, D. Hanley, I. Sorokin, S. Toshniwal, C. Henkel, B. Schifferer, W. Du, and I. Gitman (2025). AIMO-2 winning solution: building state-of-the-art mathematical reasoning models with OpenMathReasoning dataset. arXiv preprint arXiv:2504.16891.</p>
+<p>[32] G. L. Nemhauser, L. A. Wolsey, and M. L. Fisher (1978). An analysis of approximations for maximizing submodular set functions. Mathematical Programming 14(1), pp. 265–294.</p>
+<p>[33] R. Pope, S. Douglas, A. Chowdhery, J. Devlin, J. Bradbury, J. Heek, K. Xiao, S. Agrawal, and J. Dean (2023). Efficiently scaling transformer inference. Proceedings of Machine Learning and Systems 5, pp. 606–624.</p>
+<p>[34] S. Sanner, S. Guo, T. Graepel, S. Kharazmi, and S. Karimi (2011). Diverse retrieval via greedy optimization of expected 1-call@k in a latent subtopic relevance model. In CIKM 2011.</p>
+<p>[35] C. Snell, J. Lee, K. Xu, and A. Kumar (2025). Scaling LLM test-time compute optimally can be more effective than scaling parameters for reasoning. In ICLR 2025.</p>
+<p>[36] H. Sun, M. Haider, R. Zhang, H. Yang, J. Qiu, M. Yin, M. Wang, P. Bartlett, and A. Zanette (2024). Fast best-of-N decoding via speculative rejection. In NeurIPS 2024.</p>
+<p>[37] H. Sun, Y. Min, Z. Chen, W. X. Zhao, and J. Wen (2026). Challenging the boundaries of reasoning: an olympiad-level math benchmark for large language models. In ACL 2026, pp. 17438–17457.</p>
+<p>[38] L. Sun, H. Dong, B. Qiao, Q. Lin, D. Zhang, and S. Rajmohan (2026). LLM reasoning as trajectories: step-specific representation geometry and correctness signals. In ACL 2026, pp. 26872–26887.</p>
+<p>[39] J. Tuyls, D. J. Foster, A. Krishnamurthy, and J. T. Ash (2026). Representation-based exploration for language models: from test-time to post-training. In ICLR 2026.</p>
+<p>[40] M. G. Vilas, S. Yousefi, B. Nushi, E. Horvitz, and V. Balachandran (2026). Tracing the traces: latent temporal signals for efficient and accurate reasoning. In ICLR 2026.</p>
+<p>[41] C. Walder and D. T. Karkhanis (2025). Pass@K policy optimization: solving harder reinforcement learning problems. In NeurIPS 2024, Vol. 38, pp. 152416–152445.</p>
+<p>[42] S. L. Wang, P. Isola, and B. Cheung (2026). The truth lies somewhere in the middle (of the generated tokens). In ICML 2026.</p>
+<p>[43] X. Wang, J. McInerney, L. Wang, and N. Kallus (2025). Entropy after correction for reasoning model early exiting. arXiv preprint arXiv:2509.26522.</p>
+<p>[44] X. Wang, J. Wei, D. Schuurmans, Q. Le, E. Chi, S. Narang, A. Chowdhery, and D. Zhou (2023). Self-consistency improves chain of thought reasoning in language models. In ICLR 2023.</p>
+<p>[45] J. Wei, X. Wang, D. Schuurmans, M. Bosma, B. Ichter, F. Xia, E. Chi, Q. V. Le, and D. Zhou (2022). Chain-of-thought prompting elicits reasoning in large language models. NeurIPS 35, pp. 24824–24837.</p>
+<p>[46] J. T. Wilson, F. Hutter, and M. P. Deisenroth (2018). Maximizing acquisition functions for Bayesian optimization. In NeurIPS 2018.</p>
+<p>[47] X. Wu, L. Bai, H. Bansal, P. Kung, S. Li, H. Liu, N. Peng, and K. Chang (2026). Planned test-time scaling with coordinated reasoning paths. arXiv preprint arXiv:2609.27374.</p>
+<p>[48] Y. Wu, Z. Sun, S. Li, S. Welleck, and Y. Yang (2025). Inference scaling laws: an empirical analysis of compute-optimal inference for LLM problem-solving. In ICLR 2025.</p>
+<p>[49] A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, et al. (2025). Qwen3 technical report. arXiv preprint arXiv:2505.09388.</p>
+<p>[50] C. Yang, Q. Si, Y. Duan, Z. Zhu, C. Zhu, Q. Li, M. Chen, Z. Lin, and W. Wang (2026). Dynamic early exit in reasoning models. In ICLR 2026, Vol. 2026, pp. 88170–88210.</p>
+<p>[51] L. Yang, H. Luo, J. Zhao, T. Dao, and R. Netravali (2026). Thought-level beam search for reasoning. In Conference on Language Modeling.</p>
+<p>[52] S. Yao, D. Yu, J. Zhao, I. Shafran, T. Griffiths, Y. Cao, and K. Narasimhan (2023). Tree of thoughts: deliberate problem solving with large language models. NeurIPS 36, pp. 11809–11822.</p>
+<p>[53] Y. Yue, Z. Chen, R. Lu, A. Zhao, Z. Wang, Y. Yue, S. Song, and G. Huang (2025). Does reinforcement learning really incentivize reasoning capacity in LLMs beyond the base model? In NeurIPS 2025.</p>
+<p>[54] A. Zhang, Y. Chen, J. Pan, C. Zhao, A. Panda, J. Li, and H. He (2025). Reasoning models know when they're right: probing hidden states for self-verification. In Conference on Language Modeling.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 测试时扩展, 思维剪枝, pass@k优化, 次模优化, 大语言模型推理</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

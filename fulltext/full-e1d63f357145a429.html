@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>以测试时回归重新思考序列压缩 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">以测试时回归重新思考序列压缩</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-22</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.31574" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Rethinking Sequence Compression with Test-time Regression</h4>
+            <p><strong>中文摘要：</strong> 本文提出 TTR-Compressor，从测试时回归视角重新思考序列压缩：将输入 token 构造为自监督岭回归问题，以拟合系数作为压缩表示。该方法通过格拉姆矩阵捕捉 token 间二阶相关性，使冗余证据影响递减而非累加；采用可学习对角正则化免除超参数调优，借助对偶 Cholesky 分解高效求解，每个压缩器仅需 2d 参数。在块级稀疏注意力与视觉 token 合并任务上均显著优于池化、投影及 MLP 基线，视觉 token 减少 55.6% 时性能相当。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>以测试时回归重新思考序列压缩</h1>
+<p>Sihan Yang、Jie Huang、Hanxuan Li、Yifan Guo、Weigao Sun、Yiran Zhong、Weiyang Liu</p>
+<p>香港中文大学、独立研究者、Token Foundry、阿里巴巴集团</p>
+<p>*通讯作者</p>
+<p>spherelab.ai/ttr-compressor</p>
+<h2>摘要</h2>
+<p>序列压缩是高效语言模型和多模态模型中的一项基本操作和关键信息瓶颈，然而目前基于池化或学习投影的主流方法表现仍然不佳。我们通过测试时回归的视角重新审视序列压缩：输入 token 定义了一个回归问题，其拟合系数构成压缩表示。重要的是，该回归问题通过反向传播进行端到端学习，而其系数在前向传播过程中以闭式高效计算。这催生了 TTR-Compressor，一种可替代传统池化和基于投影压缩的通用方案。我们将 TTR-Compressor 作为块级稀疏注意力的压缩器和多模态大语言模型的视觉 token 合并器进行评估。在块级稀疏注意力上，TTR-Compressor 大幅提升了 RULER 性能，超越了基于注意力的压缩器。在视觉 token 合并方面，它持续优于标准 MLP 合并器，并以减少 55.6% 的视觉 token 数量达到相同性能。这些结果确立了测试时回归作为高效语言和多模态模型中序列压缩的有效原语。</p>
+<p><strong>图 1：</strong> TTR-Compressor 概览。 与池化和投影独立处理各 token 不同，TTR-Compressor 联合拟合所有 token，从而捕捉它们之间的相互作用。 TTR-Compressor 在块级稀疏注意力和视觉 token 合并上均优于现有方法。</p>
+<h2>1 引言</h2>
+<p>序列压缩是现代高效大模型架构中无处不在的操作（Qwen Team, 2026b; DeepSeek-AI, 2026），但仍然令人惊讶地未被充分探索。例如，块级稀疏注意力将每个 token 块压缩为用于评分和选择相关块的摘要向量（Jiang et al., 2024; Lu et al., 2025; Yuan et al., 2025），而多模态大语言模型（MLLM）在将视觉特征送入语言主干之前，会将相邻视觉特征合并为紧凑的 token（Wang et al., 2025; Bai et al., 2025; Team et al., 2026a）。在这两种设置中，压缩器都充当关键的信息瓶颈。信息一旦被丢弃，就无法在下游恢复。</p>
+<p>人们期望压缩是一个经过精心设计的架构组件。然而，大多数模型依赖于简单的机制，例如无参数池化、对拼接 token 的学习投影，或者至多是注意力加权池化。</p>
+<p>我们认为这些默认压缩器存在一个根本性的结构局限，即<strong>它们使用不考虑 token 间关系的权重来聚合 token</strong>。平均池化使用均匀权重，线性投影使用固定的位置相关权重，而注意力加权池化则独立地对每个 token 进行评分。因此，冗余 token 会相互增强，而独特的信息则被稀释。从统计角度来看，这些方法主要利用<strong>一阶</strong> token 统计量，而忽略了<strong>二阶</strong> token 间相关性——恰恰是揭示哪些信息冗余、哪些信息独特的结构。</p>
+<p>我们引入了一种根本不同的压缩策略。我们不再询问<em>哪种加权平均</em>最能概括一组 token，而是让 token 定义一个回归问题，并将其<em>拟合系数</em>作为摘要。具体而言，我们提出的 TTR-Compressor 直接从输入 token 构造一个自监督岭回归问题，无需外部标签，并使用其闭式解作为压缩表示。</p>
+<p>这种表述创造了一种自然的分工：外层训练循环元学习<em>哪个</em>回归问题能产生对任务有用的表示，而内层闭式解则确定该问题应<em>如何</em>拟合每个输入。与常规池化和投影的关键区别源于回归解中的格拉姆矩阵。通过显式捕捉 token 间相关性，TTR-Compressor 联合拟合相关的 token，因此冗余证据的影响力递减而非纯粹累加。这种输入自适应行为无法通过固定投影或加性 token 组合来复现。</p>
+<p>此外，学习正则化项消除了大规模预训练中岭超参数调优的需要。由于压缩窗口通常小于通道维度（即 T &lt; d），我们通过对偶问题以高效的 T×T Cholesky 分解求解。因此，TTR-Compressor 产生的开销极小，每个压缩器仅引入 2d 个可学习参数，使其成为序列压缩的有效直接替换方案。</p>
+<p>我们在两个对压缩提出根本不同要求的应用上评估 TTR-Compressor。在<strong>块级稀疏注意力</strong>中，压缩摘要必须充当忠实的<strong>检索键</strong>。在此设置中，TTR-Compressor 在 RULER（Hsieh et al., 2024）检索任务上持续优于传统基线，以相当大的优势超越了复杂的基于注意力的压缩器（Hu et al., 2026）。相比之下，在<strong>视觉 token 合并</strong>中，压缩摘要必须保留忠实的<strong>表示</strong>。在此，TTR-Compressor 在各种压缩率下持续优于广泛使用的 MLP 合并器，并以减少 55.6% 的视觉 token 数量实现相当的性能。我们的贡献总结如下：</p>
+<ul>
+<li><strong>一种新颖的压缩框架。</strong> 我们引入了用于序列压缩的测试时回归框架，将 token 摘要重构为实例自适应的优化问题。</li>
+<li><strong>一种实用的算子。</strong> 我们推导出高效的对偶闭式解并消除了超参数调优，使 TTR-Compressor 完全实用且可扩展至大规模预训练。</li>
+<li><strong>实证有效性。</strong> 作为大模型中的直接替换组件，TTR-Compressor 在块级稀疏注意力和视觉 token 合并中均持续优于传统基线。</li>
+</ul>
+<h2>2 相关工作</h2>
+<p><strong>序列压缩。</strong> 将 token 序列压缩为单个向量是现代架构中的一项基本操作，应用范围从多模态 token 缩减（Bolya et al., 2022; Li et al., 2023; Yao et al., 2024; Cha et al., 2024; Chu et al., 2024）到块级稀疏注意力（Jiang et al., 2024; Lu et al., 2025; Gao et al., 2024; Lai et al., 2025）。现有压缩算子主要分为三种范式： 无参数池化，例如平均池化； 拼接后接学习投影；以及 基于注意力的压缩，通过注意力加权平均来汇总 token（Mohtashami &amp; Jaggi, 2023; Yang et al., 2025b）。这些方法族的一个根本局限在于它们计算 token 组合时未显式考虑 token 间相关性。相比之下，TTR-Compressor 将其表示推导为线性系统的解，其格拉姆矩阵直接编码这些相关性，为上述算子提供了一种富有表现力的直接替换方案。</p>
+<p><strong>测试时回归与测试时训练。</strong> 在推理时针对每个输入调整网络部分内容的想法可追溯到快速权重编程器（Schmidhuber, 1992; Schlag et al., 2021），并作为测试时训练（TTT）复兴——首先用于分布偏移下的鲁棒性（Sun et al., 2020），然后作为序列建模层，其隐藏状态是由自监督损失梯度下降更新的小模型（Sun et al., 2024; Behrouz et al., 2026b; Behrouz et al., 2026a; Han et al., 2026）。In-Place TTT（Feng et al., 2026）通过直接调整预训练 Transformer 的现有 MLP 投影权重进一步扩展了这一范式。另一条平行工作线将线性注意力及其后继者（例如 DeltaNet（Yang et al., 2024）、Gated DeltaNet（Yang et al., 2025c）、Longhorn（Liu et al., 2025）、Titans（Behrouz et al., 2026b））重新解释为在线回归：每层维护一个键到值的回归器，每个 token 用一步梯度或 delta 规则更新，并由查询读出。MesaNet（von Oswald et al., 2026）将内层优化推至收敛，在每个时间步用共轭梯度求解问题，而 LaCT（Zhang et al., 2026）在大的无序块上更新快速权重以提高硬件利用率。</p>
+<p>TTR-Compressor 在两个根本方面与这些方法不同。首先，由于压缩在小的、不相交的块上独立运行，没有跨块依赖性，回归可以通过单个 T×T 对偶求解获得高效的<strong>精确闭式解</strong>。这既避免了基于梯度的迭代内层优化（如 TTT、ViT³、In-Place TTT 和 MesaNet），也避免了单步近似（如 delta 规则更新）。其次，我们不是使用测试时回归来产生输入相关的模型权重（Bertinetto et al., 2018; Sun et al., 2020）或随后被查询的快速权重记忆（Schlag et al., 2021; Yang et al., 2025c; Behrouz et al., 2026b），而是使用回归直接产生 token 块的<strong>表示</strong>。具体而言，拟合系数本身充当压缩表示（例如视觉 token 或检索键）。</p>
+<h2>3 通过测试时回归的联合序列压缩</h2>
+<p>我们介绍基于<strong>测试时回归</strong>的序列压缩算子 TTR-Compressor，如图 2(a) 所示。给定一系列 token 表示，TTR-Compressor 从 token 构造一个回归问题，并使用其拟合系数作为压缩表示。我们首先给出压缩的回归表述及其构造，然后推导高效解，并描述 TTR-Compressor 如何在模型内进行端到端学习。</p>
+<h3>3.1 将压缩作为测试时回归</h3>
+<p>我们将序列压缩表述为岭回归（Hoerl &amp; Kennard, 1970）。序列中的 token 提供回归观测值，拟合的回归系数作为该序列的紧凑表示。回归目标鼓励该表示捕捉 token 之间的关系，而正则化控制拟合系数的大小。</p>
+<p>给定序列 𝑿 = [𝒙₁, …, 𝒙_T]⊤ ∈ ℝ^(T×d)，我们的目标是将其 T 个 token 表示压缩为单个向量 𝒉 ∈ ℝ^d。我们将每个 token 与回归键 𝒌_t ∈ ℝ^d 和标量目标 v_t ∈ ℝ 相关联，并将压缩表示定义为：</p>
+<p>𝒉⋆ = arg min_{𝒉∈ℝ^d} (1/2) Σ_{t=1}^T ω_t (𝒌_t⊤𝒉 − v_t)² + (λ/2)‖𝒉‖₂²，  (1)</p>
+<p>其中 ω_t ≥ 0 决定每个 token 的贡献，λ &gt; 0 控制正则化。𝒉⋆ 通过拟合其 token 间的键-目标关系来概括序列。</p>
+<p>回归目标 v_t 通过任务损失进行<strong>元学习</strong>，而回归本身在训练和推理期间针对每个输入序列进行构造和求解。</p>
+<p>总体而言，我们在求解一个双层优化，其中外层目标是寻找对任务有用的目标 v_t 的任务损失，内层目标是求解压缩表示 𝒉⋆ 的测试时回归公式 1。这里，"测试时"指的是拟合这些输入特定的系数；学习到的模型参数在推理时保持固定。</p>
+<p><strong>图 2：</strong> TTR-Compressor 概览。 双层学习：内层求解将序列压缩表述为测试时岭回归，通过精确的对偶 Cholesky 求解获得表示 𝒉*，而回归参数通过任务梯度端到端学习。 输入相关的二阶自适应：通过格拉姆矩阵联合耦合 token，TTR 自然地降低了冗余 token 相对于加性池化的相对影响。为了直观说明，我们设置 𝑫 = 𝑰 和均匀目标 𝒗 = 𝟏；如实践中通常学习到的，较小的正则化项 𝑫 会进一步放大这种去重效应，为独特 token 带来更高的相对份额。</p>
+<h3>3.2 构造回归问题</h3>
+<p><strong>键和目标。</strong> 我们通过归一化输入特征构造回归键，并使用学习投影生成标量目标：</p>
+<p>𝒌_t = 𝒙_t / ‖𝒙_t‖₂， v_t = 𝒂⊤𝒙_t，</p>
+<p>其中 𝒂 ∈ ℝ^d 在压缩器内的所有 token 和序列之间共享。</p>
+<p>键归一化确保 𝑲⊤𝑲 仅度量方向（语义）相似性（Liu et al., 2017）。至关重要的是，这种归一化是不对称的，因为目标保留了原始 token 幅度（v_t = 𝒂⊤𝒙_t）。如果目标也被归一化（v_t = 𝒂⊤𝒌_t），拟合项将退化为 (1/2)‖𝑲(𝒉 − 𝒂)‖₂²，使 𝒉⋆ 平凡地坍缩到序列不变的静态向量 𝒂。通过在目标中保留 token 范数，没有常数向量可以拟合变化的幅度，迫使 𝒉⋆ 动态整合 token 语义及其相对重要性。</p>
+<p>目标完全来自输入，因此拟合 𝒉⋆ 不需要额外的标签。</p>
+<p>可选地，可以通过首先应用局部卷积（语言为 1D，视觉为 2D）在投影之前聚合相邻上下文来进一步丰富目标，即 v_t = 𝒂⊤Conv(𝑿)，其中 Conv(·) 表示卷积算子，𝑿 表示位置 t 周围 n 个相邻 token 的局部上下文窗口。v_t 的其他参数化在附录 E.2 中探讨。</p>
+<p><strong>均匀 token 贡献。</strong> 我们使用均匀权重 ω_t = 1，为每个 token 的回归误差分配相同的系数。</p>
+<p>令 𝑲 = [𝒌₁, …, 𝒌_T]⊤ ∈ ℝ^(T×d) 和 𝒗 = [v₁, …, v_T]⊤ ∈ ℝ^T。将公式 1 的梯度设为零可得闭式解：</p>
+<p>(𝑲⊤𝑲 + λ𝑰_d)𝒉⋆ = 𝑲⊤𝒗， 𝒉⋆ = (𝑲⊤𝑲 + λ𝑰_d)^(−1)𝑲⊤𝒗。  (2)</p>
+<p>由于 λ &gt; 0，目标是严格凸的且具有唯一解。</p>
+<p>该解将键-目标统计量 𝑲⊤𝒗 与序列相关的特征几何 𝑲⊤𝑲 相结合。</p>
+<p><strong>可学习对角正则化。</strong> 在常规岭回归中，λ 是一个可调超参数。这种调优在大模型预训练期间代价高昂，并且使扩展到不同模型尺寸变得复杂。为避免这一点，我们将 λ𝑰_d 替换为可学习的正对角矩阵（通过任务损失元学习），产生广义岭回归目标（Tikhonov &amp; Arsenin, 1977）：</p>
+<p>𝑫 = diag(δ₁, …, δ_d)， δ_j = softplus(ρ_j)，  (3)</p>
+<p>其中 𝝆 ∈ ℝ^d 可训练。</p>
+<p>由此产生的目标及其解为：</p>
+<p>𝒉⋆ = arg min_𝒉 (1/2)‖𝑲𝒉 − 𝒗‖₂² + (1/2)𝒉⊤𝑫𝒉，  (4)<br />
+= (𝑲⊤𝑲 + 𝑫)^(−1)𝑲⊤𝒗，  (5)</p>
+<p>它求解了一个考虑 token 成对交互的正则化线性系统。</p>
+<h3>3.3 高效的对偶形式解</h3>
+<p>直接计算公式 2 需要求解 d×d 线性系统。当被压缩的 token 数量通常小于特征维度时，我们转而使用等价的对偶形式（Saunders et al., 1998）以提高计算效率：</p>
+<p>𝒉⋆ = 𝑲⊤(𝑲𝑲⊤ + λ𝑰_T)^(−1)𝒗。  (6)</p>
+<p>这将特征空间系统替换为 T×T 的 token 空间系统。其条目取决于回归键之间的成对相似性，使拟合的表示能够考虑 token 之间的相关性。</p>
+<p>我们通过求解 (𝑲𝑲⊤ + λ𝑰_T)𝜶 = 𝒗 并计算 𝒉⋆ = 𝑲⊤𝜶 来计算公式 6，而无需显式形成逆。由此产生的计算成本为 𝒪(T²d + T³)，相比之下直接原始形式的成本为 𝒪(Td² + d³)。因此，对偶形式特别适合压缩高维特征的短序列。</p>
+<p><strong>获得高效的对偶解。</strong> 通过第 3.2 节引入的可学习对角正则化，λ𝑰_d 被 𝑫 替换。为获得高效的对偶解，我们将键重新缩放为 𝑲̃ = 𝑲𝑫^(−1/2)，得到 TTR-Compressor 的最终形式：</p>
+<p><strong>TTR(𝑿) = 𝑫^(−1/2)𝑲̃⊤(𝑰_T + 𝑲̃𝑲̃⊤)^(−1)𝒗</strong>  (7)</p>
+<p>由于 𝑫 是对角的，重新缩放键的成本仅为 𝒪(Td)，保持了对偶表述的整体复杂度。在实践中，我们计算 Cholesky 分解 𝑳𝑳⊤ = 𝑰_T + 𝑲̃𝑲̃⊤，通过三角求解求解 𝑳𝑳⊤𝜶 = 𝒗，并返回 𝑫^(−1/2)𝑲̃⊤𝜶。</p>
+<h3>3.4 完全端到端训练</h3>
+<p>目标投影 𝒂 和对角参数 𝝆 通过可微闭式解使用原始模型的训练目标进行端到端优化。每个压缩器维护自己的参数，这些参数在所有输入序列之间共享。在推理时，这些学习到的参数保持固定，而 𝒉⋆ 则针对每个输入序列独立重新计算。因此，TTR-Compressor 将学习到的回归目标与精确的、输入自适应的解相结合，而无需在测试时进行基于梯度的迭代优化。</p>
+<h2>4 理解 TTR-Compressor</h2>
+<p>TTR-Compressor 的学习过程可以分解为两种不同的机制：外层循环训练学习哪个回归问题对压缩有用，而内层解使压缩表示适应当前输入的统计特性。我们分别对其进行考察。</p>
+<h3>4.1 压缩目标的任务监督学习</h3>
+<p>回归目标并非独立于任务而规定。其目标 v_t = 𝒂⊤𝒙_t 和正则化矩阵 𝑫 通过压缩表示的下游使用来学习。将 𝒉⋆_{𝒂,𝝆} 写为回归解，训练目标采用以下形式：</p>
+<p>min_{θ,𝒂,𝝆} 𝔼_{(x,y)}[ℒ_task(F_θ(𝒉⋆_{𝒂,𝝆}(𝑿_θ(x))), y)]，  (8)</p>
+<p>其中 𝑿_θ 产生输入表示，F_θ 表示后续计算。因此，外层目标评估 𝒉⋆ 对最终任务的有用性，而不是利用其可学习性来仅仅最小化内层回归误差。</p>
+<p><strong>学习目标和正则化。</strong> 这种耦合可以直接从梯度中看出。令 𝑨 = 𝑲⊤𝑲 + 𝑫，𝒈 = ∇_{𝒉⋆}ℒ_task，𝒔 = 𝑨^(−1)𝒈。对回归解求导可得：</p>
+<p>∇_𝒂ℒ_task = 𝑿⊤𝑲𝒔， ∇_𝝆ℒ_task = −sigmoid(𝝆) ⊙ 𝒉⋆ ⊙ 𝒔，  (9)</p>
+<p>其中 ⊙ 表示逐元素乘法。因此，下游梯度塑造了通过 𝒂 从 token 导出的标量目标和通过 𝝆 施加的逐坐标惩罚。因此，标量目标不需要预定义的语义；相反，它们充当学习到的度量，其拟合系数为下游层产生信息丰富的表示。在这个意义上，回归为压缩提供了结构性归纳偏置，而外层优化则引导这种结构性偏置更好地处理下游任务。</p>
+<h3>4.2 输入相关的二阶自适应</h3>
+<p>除了学习回归目标之外，内层求解还使压缩表示适应每个输入的相关结构。对于各向同性正则化，对偶形式的解为：</p>
+<p>𝒉⋆ = 𝑲⊤(𝑲𝑲⊤ + λ𝑰)^(−1)𝒗。  (10)</p>
+<p>令 𝑮 = 𝑲𝑲⊤ ∈ ℝ^(T×T)。由于键是归一化的，每个条目 G_ij = 𝒌_i⊤𝒌_j 直接度量 token i 和 j 之间的相似性。因此，𝑮 捕捉 token 组的输入相关<strong>二阶相关结构</strong>。</p>
+<p>压缩表示可以等价地写为：</p>
+<p>𝒉⋆ = 𝑲⊤𝜶， 𝜶 = (𝑮 + λ𝑰)^(−1)𝒗。  (11)</p>
+<p>与池化和投影中 token 贡献被独立聚合不同，有效权重 𝜶 由目标响应和所有成对 token 相关性<strong>共同</strong>决定。高度相似的 token 通过格拉姆矩阵显式耦合，因此冗余证据表现出递减而非累加的影响。相反，当回归目标支持时，未被强相关 token 解释的信息可以保留更大的相对影响，如图 2(b) 所示。因此，TTR 使其压缩规则适应每个输入的二阶结构，而不是应用固定或独立加权的 token 组合。</p>
+<p><strong>学习 token 间几何。</strong> 通过可学习对角正则化项 𝑫，这种解释扩展到重新缩放的键 𝑲̃ = 𝑲𝑫^(−1/2)。相应的 token 格拉姆矩阵变为：</p>
+<p>𝑮̃ = 𝑲̃𝑲̃⊤ = 𝑲𝑫^(−1)𝑲⊤。  (12)</p>
+<p>因此，训练学习在度量 token 相似性时哪些特征维度应该更重要。外层循环学习任务适应的相关几何，而内层求解使压缩表示适应每个单独输入的相关结构。</p>
+<h2>5 应用与实验结果</h2>
+<p>我们在两种设置下评估 TTR-Compressor：用于高效语言建模的块级稀疏注意力（压缩表示引导上下文选择），以及用于高效多模态理解的视觉 token 合并（压缩表示作为语言主干的视觉输入）。</p>
+<h3>5.1 块级稀疏注意力</h3>
+<p><strong>架构与基线。</strong> 块级稀疏注意力将上下文划分为块，将它们的压缩表示与每个查询进行评分，并在局部窗口旁边关注所选块中的 token。因此，压缩器决定了哪些远距离信息仍然可访问：无论其单个 token 表示的质量如何，信息不丰富的摘要都可能阻止相关块被选中。</p>
+<p>我们采用 HiLS-Attention（Hu et al., 2026）作为基础框架，仅改变压缩器。HiLS-Attention 具有三个有效的架构组件：分层 softmax 注意力，将块内注意力与学习到的块级权重相结合；低秩查询校准，使查询适应压缩表示的评分；以及 HoPE，仅对特征维度的子集应用 RoPE 以支持长度外推。我们比较四种压缩器：平均池化、拼接与投影、原始 HiLS-Attention 中使用的注意力加权池化，以及 TTR-Compressor。全注意力和滑动窗口注意力作为额外参考。</p>
+<p><strong>训练与评估。</strong> 我们在 FineWeb 数据集（Penedo et al., 2024）上训练 345M 参数的语言模型，上下文长度为 8K。训练运行 30,000 个优化步骤，全局批大小为 128 个序列，对应于大约 30B 个 token，并使用学习率为 3×10⁻⁴ 的 AdamW。所有稀疏注意力变体使用 64-token 块，每个查询最多选择 32 个远距离块，并保留 512-token 的局部窗口。</p>
+<p>评估涵盖两个互补的方面。首先，由于查询使用压缩表示来检索相关块，检索准确性直接反映压缩质量。遵循（Hatamizadeh et al., 2026），我们在 RULER（Hsieh et al., 2024）的单针（S-NIAH）和多键（MK-NIAH）检索任务上进行评估，这些任务需要在干扰项中定位相关信息，是对压缩器最直接和最苛刻的测试。我们在 4K–32K 上下文长度进行评估，包括超出 8K 训练长度的外推。此外，LAMBADA 准确性和表 2 中的零样本基准评估上下文预测、常识推理和问答。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>S-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-2 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-3 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>MK-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全注意力</td>
+<td>0.834</td>
+<td>0.428</td>
+<td>0</td>
+<td>0</td>
+<td>0.850</td>
+<td>0.412</td>
+<td>0</td>
+<td>0</td>
+<td>0.572</td>
+<td>0.470</td>
+<td>0</td>
+<td>0</td>
+<td>0.374</td>
+<td>0.272</td>
+<td>0</td>
+<td>0</td>
+<td>0.2632</td>
+</tr>
+<tr>
+<td>滑动窗口注意力</td>
+<td>0.116</td>
+<td>0.050</td>
+<td>0.044</td>
+<td>0.016</td>
+<td>0.148</td>
+<td>0.048</td>
+<td>0.034</td>
+<td>0.030</td>
+<td>0.112</td>
+<td>0.094</td>
+<td>0.030</td>
+<td>0.034</td>
+<td>0.126</td>
+<td>0.080</td>
+<td>0.026</td>
+<td>0.028</td>
+<td>0.0635</td>
+</tr>
+<tr>
+<td>平均池化</td>
+<td>0.938</td>
+<td>0.536</td>
+<td>0.470</td>
+<td>0.270</td>
+<td>0.840</td>
+<td>0.258</td>
+<td>0.042</td>
+<td>0.050</td>
+<td>0.292</td>
+<td>0.282</td>
+<td>0.040</td>
+<td>0.042</td>
+<td>0.366</td>
+<td>0.230</td>
+<td>0.042</td>
+<td>0.056</td>
+<td>0.2971</td>
+</tr>
+<tr>
+<td>拼接与投影</td>
+<td>0.892</td>
+<td>0.840</td>
+<td>0.792</td>
+<td>0.582</td>
+<td>0.764</td>
+<td>0.232</td>
+<td>0.124</td>
+<td>0.068</td>
+<td>0.512</td>
+<td>0.324</td>
+<td>0.174</td>
+<td>0.076</td>
+<td>0.476</td>
+<td>0.278</td>
+<td>0.084</td>
+<td>0.052</td>
+<td>0.3919</td>
+</tr>
+<tr>
+<td>注意力加权池化</td>
+<td>0.944</td>
+<td>0.914</td>
+<td>0.876</td>
+<td>0.740</td>
+<td>0.926</td>
+<td>0.274</td>
+<td>0.136</td>
+<td>0.060</td>
+<td>0.340</td>
+<td>0.082</td>
+<td>0.026</td>
+<td>0.026</td>
+<td>0.474</td>
+<td>0.258</td>
+<td>0.124</td>
+<td>0.072</td>
+<td>0.3920</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>0.996</td>
+<td>0.996</td>
+<td>0.992</td>
+<td>0.650</td>
+<td>0.982</td>
+<td>0.566</td>
+<td>0.288</td>
+<td>0.126</td>
+<td>0.770</td>
+<td>0.376</td>
+<td>0.188</td>
+<td>0.066</td>
+<td>0.528</td>
+<td>0.302</td>
+<td>0.212</td>
+<td>0.110</td>
+<td>0.5092</td>
+</tr>
+<tr>
+<td>TTR-Compressor（含卷积）</td>
+<td>0.998</td>
+<td>1.000</td>
+<td>0.994</td>
+<td>0.988</td>
+<td>0.960</td>
+<td>0.454</td>
+<td>0.128</td>
+<td>0.102</td>
+<td>0.834</td>
+<td>0.482</td>
+<td>0.130</td>
+<td>0.096</td>
+<td>0.542</td>
+<td>0.298</td>
+<td>0.116</td>
+<td>0.108</td>
+<td>0.5144</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 1：</strong> RULER 中单针大海捞针（S-NIAH）和多键大海捞针（MK-NIAH）任务在不同上下文长度下的准确性。每个上下文长度的最佳值<strong>加粗</strong>，次佳值加下划线。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>ARC-c</th>
+<th>ARC-e</th>
+<th>BoolQ</th>
+<th>COPA</th>
+<th>Hella.</th>
+<th>LMB.</th>
+<th>OBQA</th>
+<th>PIQA</th>
+<th>SciQ</th>
+<th>Wino.</th>
+<th>平均 acc↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全注意力</td>
+<td>24.74</td>
+<td>42.09</td>
+<td>60.15</td>
+<td>68.00</td>
+<td>39.85</td>
+<td>35.71</td>
+<td>29.60</td>
+<td>67.74</td>
+<td>62.70</td>
+<td>51.07</td>
+<td>48.16</td>
+</tr>
+<tr>
+<td>滑动窗口注意力</td>
+<td>24.91</td>
+<td>41.96</td>
+<td>55.02</td>
+<td>69.00</td>
+<td>39.53</td>
+<td>35.47</td>
+<td>29.00</td>
+<td>67.14</td>
+<td>63.00</td>
+<td>50.75</td>
+<td>47.58</td>
+</tr>
+<tr>
+<td>平均池化</td>
+<td>24.66</td>
+<td>42.38</td>
+<td>55.99</td>
+<td>66.00</td>
+<td>39.62</td>
+<td>35.88</td>
+<td>28.40</td>
+<td>69.31</td>
+<td>65.50</td>
+<td>53.04</td>
+<td>48.08</td>
+</tr>
+<tr>
+<td>拼接与投影</td>
+<td>24.83</td>
+<td>42.30</td>
+<td>58.65</td>
+<td>68.00</td>
+<td>39.58</td>
+<td>36.62</td>
+<td>30.00</td>
+<td>67.74</td>
+<td>62.20</td>
+<td>51.78</td>
+<td>48.17</td>
+</tr>
+<tr>
+<td>注意力加权池化</td>
+<td>25.00</td>
+<td>41.75</td>
+<td>61.22</td>
+<td>65.00</td>
+<td>39.61</td>
+<td>35.61</td>
+<td>29.40</td>
+<td>68.93</td>
+<td>63.80</td>
+<td>50.51</td>
+<td>48.08</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>23.29</td>
+<td>41.58</td>
+<td>57.95</td>
+<td>71.00</td>
+<td>39.41</td>
+<td>36.27</td>
+<td>30.20</td>
+<td>69.31</td>
+<td>63.00</td>
+<td>49.57</td>
+<td>48.16</td>
+</tr>
+<tr>
+<td>TTR-Compressor（含卷积）</td>
+<td>24.15</td>
+<td>41.33</td>
+<td>59.94</td>
+<td>70.00</td>
+<td>39.63</td>
+<td>35.36</td>
+<td>30.20</td>
+<td>67.85</td>
+<td>62.80</td>
+<td>49.96</td>
+<td>48.12</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 2：</strong> 语言建模和零样本常识推理的性能比较。评估上下文长度太短而无法激活稀疏注意力，因此压缩器在推理期间不参与；这些结果仅反映语言模型预训练期间获得的常识推理能力。注意，拼接与投影的参数明显多于其他方法。最佳值<strong>加粗</strong>，次佳值加下划线。</p>
+<p><strong>结果。</strong> 如表 1 所示，压缩器的选择在很大程度上决定了检索质量。TTR-Compressor 以较大优势优于所有基线，并且其优势在外推到 16K 和 32K 时持续存在。我们将其归因于其二阶建模：池化和投影独立地累加 token，因此填充块大部分的冗余上下文淹没了少数信息丰富的 token。TTR-Compressor 中的格拉姆矩阵联合拟合相关 token 并减少冗余证据的影响，因此得到的键保留了查询需要找到的独特内容。卷积变体带来了进一步的增益，比最强基线高出 12.24 个点，因为卷积使回归目标更具信息量，从而提高了压缩质量。在表 2 的基准上，评估上下文太短而无法激活稀疏注意力，因此这些结果仅反映预训练期间获得的常识推理能力。拼接与投影的参数明显多于其他压缩器，这可能有利于预训练。TTR-Compressor 表现良好，与全注意力相当。</p>
+<h3>5.2 视觉 token 合并器</h3>
+<p><strong>架构与基线。</strong> 高分辨率图像产生大量视觉 token，使得语言主干直接处理它们代价高昂。因此，现代多模态模型通常使用空间合并器来减少视觉序列长度。一种广泛采用的设计将每个 2×2 相邻视觉特征组拼接起来，并通过两层 MLP 将其映射为一个 token（Wang et al., 2025; Bai et al., 2025; Qwen Team, 2026a; Team et al., 2026b）。更长的多模态上下文和具有重复视觉观察的智能体工作流进一步推动了更强的压缩，例如 3×3 合并（Team et al., 2026a; DeepSeek-AI, 2026）。</p>
+<p>我们将 TTR-Compressor 与标准 MLP 合并器进行比较。TTR-Compressor 对每个空间组拟合一个回归，将其四个或九个视觉特征压缩为单个向量，然后由两层 MLP 投影到语言模型的隐藏维度。其卷积变体在构造回归目标之前对特征图应用 3×3 深度卷积。</p>
+<p><strong>训练与评估。</strong> 我们使用 Qwen3-VL（Bai et al., 2025）的 ViT 作为视觉编码器，Qwen3-4B-Instruct（Yang et al., 2025a）作为语言模型。训练包括两个阶段。第一阶段仅在 LLaVA-558K（Liu et al., 2024a）上训练合并器模块一个 epoch，学习率为 10⁻³。第二阶段在 1.3M 指令样本上联合训练合并器模块和语言主干一个 epoch，混合图像（Liu et al., 2024b）、多图像（Li et al., 2024）和视频（Zhang et al., 2024）数据，学习率为 2×10⁻⁵。</p>
+<p>我们在 4 类基准上进行评估：通用视觉问答（MMBench（Liu et al., 2024c）、MMStar（Chen et al., 2024）、RealWorldQA（xAI, 2024））、知识密集型多模态推理（MMMU（Yue et al., 2024）、AI2D（Kembhavi et al., 2016））、文本、信息图和图表理解（OCRBench（Liu et al., 2024d）、InfoVQA（Tito et al., 2021）、ChartQA（Masry et al., 2022）），以及空间推理（MMSI（Yang et al., 2026）、ERQA（Team et al., 2025））。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>MMBench</th>
+<th>MMStar</th>
+<th>RWQA</th>
+<th>MMMU</th>
+<th>AI2D</th>
+<th>OCRBench</th>
+<th>InfoVQA</th>
+<th>ChartQA</th>
+<th>MMSI</th>
+<th>ERQA</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2×2 token 压缩</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MLP</td>
+<td>76.63</td>
+<td>49.93</td>
+<td>64.44</td>
+<td>46.22</td>
+<td>75.49</td>
+<td>62.80</td>
+<td>41.72</td>
+<td>70.64</td>
+<td>26.20</td>
+<td>35.25</td>
+<td>54.93</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>76.89</td>
+<td>53.94</td>
+<td>63.40</td>
+<td>45.44</td>
+<td>76.94</td>
+<td>62.90</td>
+<td>43.74</td>
+<td>73.04</td>
+<td>26.90</td>
+<td>36.00</td>
+<td>55.92</td>
+</tr>
+<tr>
+<td>TTR-Compressor（含卷积）</td>
+<td>75.86</td>
+<td>52.26</td>
+<td>66.93</td>
+<td>45.67</td>
+<td>76.65</td>
+<td>63.80</td>
+<td>44.33</td>
+<td>72.52</td>
+<td>26.30</td>
+<td>36.00</td>
+<td>56.03</td>
+</tr>
+<tr>
+<td><strong>3×3 token 压缩</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MLP</td>
+<td>74.74</td>
+<td>50.89</td>
+<td>64.31</td>
+<td>44.44</td>
+<td>74.68</td>
+<td>55.90</td>
+<td>35.16</td>
+<td>63.60</td>
+<td>26.00</td>
+<td>33.00</td>
+<td>52.27</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>76.46</td>
+<td>52.40</td>
+<td>65.62</td>
+<td>45.89</td>
+<td>75.23</td>
+<td>58.70</td>
+<td>38.27</td>
+<td>67.16</td>
+<td>26.80</td>
+<td>36.50</td>
+<td>54.30</td>
+</tr>
+<tr>
+<td>TTR-Compressor（含卷积）</td>
+<td>76.63</td>
+<td>51.16</td>
+<td>65.88</td>
+<td>47.44</td>
+<td>75.16</td>
+<td>60.00</td>
+<td>39.70</td>
+<td>67.16</td>
+<td>28.90</td>
+<td>36.50</td>
+<td>54.85</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 3：</strong> 不同 token 压缩率下多模态基准的评估。结果按 2×2 和 3×3 token 压缩分组。每个压缩组内的最佳值<strong>加粗</strong>，次佳值加下划线。</p>
+<p><strong>结果。</strong> 如表 3 所示，TTR-Compressor 在两种压缩率下均优于 MLP 合并器。在 2×2 合并下，它将平均值从 54.93 提高到 55.92，其卷积变体进一步提高到 56.03。在更强的 3×3 合并下优势更大。增益在文本丰富的基准上最为明显，其中细粒度细节在合并过程中容易丢失：在 3×3 合并下，卷积变体在 OCRBench 上比 MLP 合并器提高 4.10，在 InfoVQA 上提高 4.54，在 ChartQA 上提高 3.56。平均而言，它比 MLP 合并器高出 2.58 个点。值得注意的是，采用 3×3 合并的 TTR-Compressor（含卷积）平均达到 54.85，接近采用 2×2 合并的 MLP 合并器的 54.93，同时使用的视觉 token 不到一半。</p>
+<p>我们将 TTR-Compressor 的强大性能归因于其二阶建模。MLP 合并器拼接每组中的特征并用固定权重映射它们，因此混合不依赖于特征之间的相互关系。当组中的大多数特征是冗余的（例如背景块）时，它们主导合并后的 token 并冲刷掉细粒度细节。相比之下，TTR-Compressor 联合拟合相关特征并减少冗余特征的影响，因此合并后的 token 保留了组内的独特内容。</p>
+<h3>5.3 效率分析</h3>
+<table>
+<thead>
+<tr>
+<th>范式</th>
+<th>复杂度</th>
+<th>参数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均池化</td>
+<td>𝒪(Td)</td>
+<td>0</td>
+</tr>
+<tr>
+<td>线性投影</td>
+<td>𝒪(Td²)</td>
+<td>Td²</td>
+</tr>
+<tr>
+<td>注意力（复用）</td>
+<td>𝒪(Td)</td>
+<td>d</td>
+</tr>
+<tr>
+<td>注意力（独立）</td>
+<td>𝒪(Td²)</td>
+<td>~4d²</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>𝒪(T²d)</td>
+<td>2d</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 4：</strong> 不同 token 压缩方法的复杂度比较（T ≪ d）。</p>
+<p><strong>理论复杂度和参数效率。</strong> 对于压缩为 h ∈ ℝ^d 的序列 X ∈ ℝ^(T×d)，表 4 总结了不同范式的渐近复杂度和参数数量。在 T ≪ d 的目标机制下（例如 T ∈ {4, 9, 64} vs. d ≥ 1024），TTR-Compressor 从根本上避免了 𝒪(d²) 开销，仅用 2d 个参数就提供了强大的、数据相关的表现力。</p>
+<p><strong>图 3：</strong> 实际训练时间比较。</p>
+<p><strong>经验训练效率。</strong> 遵循第 5.1 和 5.2 节的设置，图 3 对实际训练效率进行了基准测试。对于块级稀疏注意力（8×H100 GPU），虽然平均池化最高效，但其表示能力本质上有限；其他压缩变体表现出可比的训练时间。对于视觉 token 合并（2×8×H100 GPU），TTR-Compressor 实现了与广泛使用的 MLP 相当的效率。值得注意的是，虽然在 2×2 合并下略慢，但 TTR-Compressor 在 3×3 合并下超过了 MLP，突出了其在更高压缩率下的卓越效率和可扩展性。</p>
+<h3>5.4 消融研究与分析</h3>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>S-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-2 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-3 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>MK-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TTR-Compressor</td>
+<td>0.996</td>
+<td>0.996</td>
+<td>0.992</td>
+<td>0.650</td>
+<td>0.982</td>
+<td>0.566</td>
+<td>0.288</td>
+<td>0.126</td>
+<td>0.770</td>
+<td>0.376</td>
+<td>0.188</td>
+<td>0.066</td>
+<td>0.528</td>
+<td>0.302</td>
+<td>0.212</td>
+<td>0.110</td>
+<td>0.5092</td>
+</tr>
+<tr>
+<td>不归一化 𝐤</td>
+<td>0.010</td>
+<td>0.000</td>
+<td>0.002</td>
+<td>0.000</td>
+<td>0.938</td>
+<td>0.254</td>
+<td>0.136</td>
+<td>0.104</td>
+<td>0.764</td>
+<td>0.592</td>
+<td>0.186</td>
+<td>0.092</td>
+<td>0.500</td>
+<td>0.258</td>
+<td>0.098</td>
+<td>0.116</td>
+<td>0.2531</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 5：</strong> TTR-Compressor 中键归一化的消融研究。我们将完整模型与不归一化 𝐤 的变体（不归一化 𝐤）进行比较。每个上下文长度的最佳值<strong>加粗</strong>。</p>
+<p><strong>键归一化的关键性。</strong> 如表 5 所示，我们发现省略键归一化（𝐤_t = 𝐱_t/‖𝐱_t‖₂）会导致检索任务的崩溃。我们将其归因于两个原因。</p>
+<p>首先，从优化角度来看，由于标量目标通过 v_t = 𝐚⊤𝐱_t 线性生成，使用原始键（𝐤_t = 𝐱_t）使静态权重 𝐚 成为平凡的精确拟合（𝐤_t⊤𝐚 ≡ v_t）。因此，正则化解 𝐡⋆ 偏向固定向量 𝐚，这削弱了测试时回归的实例自适应性，并将其推向输入不变的投影。</p>
+<p>其次，从几何和数值角度来看，具有大范数的异常 token 主导格拉姆矩阵 𝐊𝐊⊤，导致相关性建模反映 token 范数而非语义相似性。归一化一次性解决了这两个问题：它打破了与静态参数的平凡对齐，并防止大范数 token 主导格拉姆矩阵。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>S-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-2 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-3 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>MK-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>λ=0.0001</td>
+<td>0.986</td>
+<td>0.896</td>
+<td>0.826</td>
+<td>0.628</td>
+<td>0.888</td>
+<td>0.348</td>
+<td>0.134</td>
+<td>0.054</td>
+<td>0.654</td>
+<td>0.528</td>
+<td>0.086</td>
+<td>0.108</td>
+<td>0.384</td>
+<td>0.242</td>
+<td>0.118</td>
+<td>0.102</td>
+<td>0.4364</td>
+</tr>
+<tr>
+<td>λ=0.001</td>
+<td>0.998</td>
+<td>0.996</td>
+<td>0.990</td>
+<td>0.948</td>
+<td>0.998</td>
+<td>0.448</td>
+<td>0.186</td>
+<td>0.112</td>
+<td>0.686</td>
+<td>0.420</td>
+<td>0.186</td>
+<td>0.072</td>
+<td>0.466</td>
+<td>0.274</td>
+<td>0.174</td>
+<td>0.082</td>
+<td>0.5023</td>
+</tr>
+<tr>
+<td>λ=0.01</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>0.936</td>
+<td>0.486</td>
+<td>0.148</td>
+<td>0.076</td>
+<td>0.692</td>
+<td>0.374</td>
+<td>0.042</td>
+<td>0.022</td>
+<td>0.484</td>
+<td>0.288</td>
+<td>0.146</td>
+<td>0.068</td>
+<td>0.4851</td>
+</tr>
+<tr>
+<td>λ=0.1</td>
+<td>0.990</td>
+<td>0.986</td>
+<td>0.982</td>
+<td>0.978</td>
+<td>0.932</td>
+<td>0.312</td>
+<td>0.054</td>
+<td>0.068</td>
+<td>0.728</td>
+<td>0.424</td>
+<td>0.088</td>
+<td>0.078</td>
+<td>0.470</td>
+<td>0.252</td>
+<td>0.112</td>
+<td>0.074</td>
+<td>0.4705</td>
+</tr>
+<tr>
+<td>λ=1</td>
+<td>0.872</td>
+<td>0.552</td>
+<td>0.826</td>
+<td>0.794</td>
+<td>0.896</td>
+<td>0.204</td>
+<td>0.062</td>
+<td>0.072</td>
+<td>0.772</td>
+<td>0.496</td>
+<td>0.184</td>
+<td>0.088</td>
+<td>0.526</td>
+<td>0.278</td>
+<td>0.090</td>
+<td>0.068</td>
+<td>0.4238</td>
+</tr>
+<tr>
+<td>可学习标量</td>
+<td>0.988</td>
+<td>0.986</td>
+<td>0.970</td>
+<td>0.806</td>
+<td>0.938</td>
+<td>0.368</td>
+<td>0.104</td>
+<td>0.104</td>
+<td>0.788</td>
+<td>0.536</td>
+<td>0.212</td>
+<td>0.112</td>
+<td>0.554</td>
+<td>0.274</td>
+<td>0.132</td>
+<td>0.082</td>
+<td>0.4971</td>
+</tr>
+<tr>
+<td>可学习对角</td>
+<td>0.996</td>
+<td>0.996</td>
+<td>0.992</td>
+<td>0.650</td>
+<td>0.982</td>
+<td>0.566</td>
+<td>0.288</td>
+<td>0.126</td>
+<td>0.770</td>
+<td>0.376</td>
+<td>0.188</td>
+<td>0.066</td>
+<td>0.528</td>
+<td>0.302</td>
+<td>0.212</td>
+<td>0.110</td>
+<td>0.5092</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 6：</strong> TTR-Compressor 中正则化参数 λ 的消融研究。每个上下文长度的最佳值<strong>加粗</strong>，次佳值加下划线。</p>
+<p><strong>从静态启发式到各向异性正则化。</strong> 表 6 比较了固定正则化标量与可学习公式。所有固定设置都优于基线。λ = 10⁻² 附近的中等值表现良好，而当 λ 太小（λ = 10⁻⁴ 时为 0.4364）或太大（λ = 1 时为 0.4238）时性能下降。值得注意的是，<strong>可学习标量</strong>已经实现了 0.4971 的竞争平均准确率，表明外层任务目标可以端到端地可靠发现有效的正则化强度。将其扩展到逐坐标的<strong>可学习对角</strong>（𝐃 = diag(softplus(𝝆))）实现了整体最佳性能。这一进展显示了为每个通道学习单独正则化强度的好处：模型对不太有用的特征方向施加更强的惩罚，同时保留任务关键的特征方向。</p>
+<h2>6 结语</h2>
+<p>在这项工作中，我们通过测试时回归的视角重新审视了序列压缩——现代架构中普遍存在但经常被忽视的瓶颈。我们没有依赖固定池化或学习投影，而是将 token 压缩表述为实例自适应的岭回归问题，允许直接从每个输入序列求解压缩表示。</p>
+<p>通过二阶交互利用 token 间相关性，TTR-Compressor 提供了一种更具表现力的方式来保留序列信息，同时保持轻量级和参数高效。其对偶形式解进一步使这种表述在实践中具有可扩展性。</p>
+<p>在经验上，TTR-Compressor 在块级稀疏注意力和多模态 token 缩减方面均表现强劲，改善了长上下文检索，同时以显著更少的 token 匹配标准视觉合并器。</p>
+<p>更广泛地说，我们的结果表明，序列压缩不必被视为静态聚合，而可以被视为适应每个序列结构的输入相关推理问题。我们期望这一视角将测试时回归确立为高效基础模型的简单、富有表现力且可扩展的原语。</p>
+<h2>参考文献</h2>
+<p>Bai et al. (2025) Shuai Bai, Yuxuan Cai, Ruizhe Chen, et al. Qwen3-vl technical report. arXiv preprint arXiv:2511.21631, 2025.</p>
+<p>Behrouz et al. (2026a) Ali Behrouz, Meisam Razaviyayn, Peilin Zhong, and Vahab Mirrokni. Nested learning: The illusion of deep learning architectures. NeurIPS, 2026a.</p>
+<p>Behrouz et al. (2026b) Ali Behrouz, Peilin Zhong, and Vahab Mirrokni. Titans: Learning to memorize at test time. NeurIPS, 2026b.</p>
+<p>Bertinetto et al. (2018) Luca Bertinetto, Joao F Henriques, Philip HS Torr, and Andrea Vedaldi. Meta-learning with differentiable closed-form solvers. arXiv preprint arXiv:1805.08136, 2018.</p>
+<p>Bolya et al. (2022) Daniel Bolya, Cheng-Yang Fu, Xiaoliang Dai, et al. Token merging: Your vit but faster. arXiv preprint arXiv:2210.09461, 2022.</p>
+<p>Cha et al. (2024) Junbum Cha, Wooyoung Kang, Jonghwan Mun, and Byungseok Roh. Honeybee: Locality-enhanced projector for multimodal llm. In CVPR, 2024.</p>
+<p>Chen et al. (2024) Lin Chen, Jinsong Li, Xiaoyi Dong, et al. Are we on the right way for evaluating large vision-language models? NeurIPS, 2024.</p>
+<p>Chu et al. (2024) Yunfei Chu, Jin Xu, Qian Yang, et al. Qwen2-audio technical report. arXiv preprint arXiv:2407.10759, 2024.</p>
+<p>DeepSeek-AI (2026) DeepSeek-AI. Deepseek-v4.1-flash: Pushing the limits of kv cache compression, 2026.</p>
+<p>Feng et al. (2026) Guhao Feng, Shengjie Luo, Kai Hua, et al. In-place test-time training. In ICLR, 2026.</p>
+<p>Gao et al. (2024) Yizhao Gao, Zhichen Zeng, Dayou Du, et al. Seerattention: Learning intrinsic sparse attention in your llms. arXiv preprint arXiv:2410.13276, 2024.</p>
+<p>Han et al. (2026) Dongchen Han, Yining Li, Tianyu Li, et al. Vit3: Unlocking test-time training in vision. In CVPR, 2026.</p>
+<p>Hatamizadeh et al. (2026) Ali Hatamizadeh, Yejin Choi, and Jan Kautz. Gated deltanet-2: Decoupling erase and write in linear attention. arXiv preprint arXiv:2605.22791, 2026.</p>
+<p>Hoerl &amp; Kennard (1970) Arthur E Hoerl and Robert W Kennard. Ridge regression: Biased estimation for nonorthogonal problems. Technometrics, 12(1):55–67, 1970.</p>
+<p>Hsieh et al. (2024) Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, et al. Ruler: What's the real context size of your long-context language models? arXiv preprint arXiv:2404.06654, 2024.</p>
+<p>Hu et al. (2026) Xiang Hu, Xinyu Wei, Hao Gu, et al. Hierarchical sparse attention done right: Toward infinite context modeling. arXiv preprint arXiv:2607.02980, 2026.</p>
+<p>Jiang et al. (2024) Huiqiang Jiang, Yucheng Li, Chengruidong Zhang, et al. Minference 1.0: Accelerating pre-filling for long-context llms via dynamic sparse attention. NeurIPS, 2024.</p>
+<p>Kembhavi et al. (2016) Aniruddha Kembhavi, Mike Salvato, Eric Kolve, et al. A diagram is worth a dozen images. In ECCV, 2016.</p>
+<p>Lai et al. (2025) Xunhao Lai, Jianqiao Lu, Yao Luo, Yiyuan Ma, and Xun Zhou. Flexprefill: A context-aware sparse attention mechanism for efficient long-sequence inference. arXiv preprint arXiv:2502.20766, 2025.</p>
+<p>Li et al. (2024) Feng Li, Renrui Zhang, Hao Zhang, et al. Llava-next: Tackling multi-image, video, and 3d in large multimodal models, June 2024. URL https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/.</p>
+<p>Li et al. (2023) Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi. Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models. In ICML, 2023.</p>
+<p>Liu et al. (2025) Bo Liu, Rui Wang, Lemeng Wu, et al. Longhorn: State space models are amortized online learners. In ICLR, 2025.</p>
+<p>Liu et al. (2024a) Haotian Liu, Chunyuan Li, Yuheng Li, and Yong Jae Lee. Improved baselines with visual instruction tuning. In 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 26286–26296. IEEE, 2024a.</p>
+<p>Liu et al. (2024b) Haotian Liu, Chunyuan Li, Yuheng Li, et al. Llava-next: Improved reasoning, ocr, and world knowledge, January 2024b. URL https://llava-vl.github.io/blog/2024-01-30-llava-next/.</p>
+<p>Liu et al. (2017) Weiyang Liu, Yan-Ming Zhang, Xingguo Li, et al. Deep hyperspherical learning. In NeurIPS, 2017.</p>
+<p>Liu et al. (2024c) Yuan Liu, Haodong Duan, Yuanhan Zhang, et al. Mmbench: Is your multi-modal model an all-around player? In ECCV, 2024c.</p>
+<p>Liu et al. (2024d) Yuliang Liu, Zhang Li, Mingxin Huang, et al. Ocrbench: on the hidden mystery of ocr in large multimodal models. Science China Information Sciences, 2024d.</p>
+<p>Lu et al. (2025) Enzhe Lu, Zhejun Jiang, Jingyuan Liu, et al. Moba: Mixture of block attention for long-context llms. arXiv preprint arXiv:2502.13189, 2025.</p>
+<p>Masry et al. (2022) Ahmed Masry, Jia Qing Tan, Shafiq Joty, et al. Chartqa: A benchmark for question answering about charts with visual and logical reasoning. In Findings of ACL, 2022.</p>
+<p>Mohtashami &amp; Jaggi (2023) Amirkeivan Mohtashami and Martin Jaggi. Landmark attention: Random-access infinite context length for transformers. arXiv preprint arXiv:2305.16300, 2023.</p>
+<p>Penedo et al. (2024) Guilherme Penedo, Hynek Kydlíček, Anton Lozhkov, et al. The fineweb datasets: Decanting the web for the finest text data at scale. NeurIPS, 2024.</p>
+<p>Qwen Team (2026a) Qwen Team. Qwen3.5: Towards native multimodal agents, 2026a. URL https://qwen.ai/blog?id=qwen3.5.</p>
+<p>Qwen Team (2026b) Qwen Team. Qwen3.8-Flash-Next: A new architecture, towards ultimate cost-efficiency, 2026b.</p>
+<p>Saunders et al. (1998) Craig Saunders, Alexander Gammerman, and Volodya Vovk. Ridge regression learning algorithm in dual variables. In ICML, 1998.</p>
+<p>Schlag et al. (2021) Imanol Schlag, Kazuki Irie, and Jürgen Schmidhuber. Linear transformers are secretly fast weight programmers. In ICML, 2021.</p>
+<p>Schmidhuber (1992) Jürgen Schmidhuber. Learning to control fast-weight memories: An alternative to dynamic recurrent networks. Neural Computation, 4(1):131–139, 1992.</p>
+<p>Sun et al. (2020) Yu Sun, Xiaolong Wang, Zhuang Liu, et al. Test-time training with self-supervision for generalization under distribution shifts. In ICML, 2020.</p>
+<p>Sun et al. (2024) Yu Sun, Xinhao Li, Karan Dalal, et al. Learning to (learn at test time): Rnns with expressive hidden states. arXiv preprint arXiv:2407.04620, 2024.</p>
+<p>Team et al. (2025) Gemini Robotics Team, Saminda Abeyruwan, Joshua Ainslie, et al. Gemini robotics: Bringing ai into the physical world. arXiv preprint arXiv:2503.20020, 2025.</p>
+<p>Team et al. (2026a) Gemma Team, Sherif El Abd, Vaibhav Aggarwal, et al. Gemma 4 technical report. arXiv preprint arXiv:2607.02770, 2026a.</p>
+<p>Team et al. (2026b) Kimi Team, Tongtong Bai, Yifan Bai, et al. Kimi k3: Open frontier intelligence. arXiv preprint arXiv:2607.24653, 2026b.</p>
+<p>Tikhonov &amp; Arsenin (1977) Andrey N. Tikhonov and Vasiliy Y. Arsenin. Solutions of ill-posed problems. V. H. Winston &amp; Sons, Washington, D.C.: John Wiley &amp; Sons, New York, 1977.</p>
+<p>Tito et al. (2021) Rubèn Tito, Minesh Mathew, CV Jawahar, et al. Icdar 2021 competition on document visual question answering. In ICDAR, 2021.</p>
+<p>von Oswald et al. (2026) Johannes von Oswald, Nino Scherrer, Seijin Kobayashi, et al. Mesanet: Sequence modeling by locally optimal test-time training. In ICLR, 2026.</p>
+<p>Wang et al. (2025) Weiyun Wang, Zhangwei Gao, Lixin Gu, et al. Internvl3. 5: Advancing open-source multimodal models in versatility, reasoning, and efficiency. arXiv preprint arXiv:2508.18265, 2025.</p>
+<p>xAI (2024) xAI. Grok-1.5 vision preview. https://x.ai/news/grok-1.5v, April 2024.</p>
+<p>Yang et al. (2025a) An Yang, Anfeng Li, Baosong Yang, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388, 2025a.</p>
+<p>Yang et al. (2025b) Sihan Yang, Runsen Xu, Chenhang Cui, et al. Vflowopt: A token pruning framework for lmms with visual information flow-guided optimization. In ICCV, 2025b.</p>
+<p>Yang et al. (2026) Sihan Yang, Runsen Xu, Yiman Xie, et al. Mmsi-bench: A benchmark for multi-image spatial intelligence. In ICLR, 2026.</p>
+<p>Yang et al. (2024) Songlin Yang, Bailin Wang, Yu Zhang, et al. Parallelizing linear transformers with the delta rule over sequence length. NeurIPS, 2024.</p>
+<p>Yang et al. (2025c) Songlin Yang, Jan Kautz, and Ali Hatamizadeh. Gated delta networks: Improving mamba2 with delta rule. In ICLR, 2025c.</p>
+<p>Yao et al. (2024) Linli Yao, Lei Li, Shuhuai Ren, et al. Deco: Decoupling token compression from semantic abstraction in multimodal large language models. arXiv preprint arXiv:2405.20985, 2024.</p>
+<p>Yuan et al. (2025) Jingyang Yuan, Huazuo Gao, Damai Dai, et al. Native sparse attention: Hardware-aligned and natively trainable sparse attention. In ACL, 2025.</p>
+<p>Yue et al. (2024) Xiang Yue, Yuansheng Ni, Kai Zhang, et al. Mmmu: A massive multi-disciplinary multimodal understanding and reasoning benchmark for expert agi. In CVPR, 2024.</p>
+<p>Zhang et al. (2026) Tianyuan Zhang, Sai Bi, Yicong Hong, et al. Test-time training done right. In ICLR, 2026.</p>
+<p>Zhang et al. (2024) Yuanhan Zhang, Jinming Wu, Wei Li, et al. Llava-video: Video instruction tuning with synthetic data. arXiv preprint arXiv:2410.02713, 2024.</p>
+<h2>附录</h2>
+<h3>附录 A 对偶形式解的推导</h3>
+<p>我们首先证明岭回归原始形式和对偶形式（公式 6）之间的等价性。然后我们证明，通过可学习对角正则化，重新缩放键可以得到公式 7 中的对偶解。</p>
+<p><strong>原始形式和对偶形式的等价性。</strong></p>
+<p><strong>引理 1</strong>（推进恒等式）。对于任意 𝐊 ∈ ℝ^(T×d) 和 λ &gt; 0，</p>
+<p>(𝑲⊤𝑲 + λ𝑰_d)^(−1)𝑲⊤ = 𝑲⊤(𝑲𝑲⊤ + λ𝑰_T)^(−1)。  (13)</p>
+<p><strong>证明。</strong> 𝑲⊤𝑲 和 𝑲𝑲⊤ 都是半正定的。因此，对于 λ &gt; 0，矩阵 𝑲⊤𝑲 + λ𝑰_d 和 𝑲𝑲⊤ + λ𝑰_T 是对称正定的，因此可逆。直接展开两边可得</p>
+<p>(𝑲⊤𝑲 + λ𝑰_d)𝑲⊤ = 𝑲⊤𝑲𝑲⊤ + λ𝑲⊤ = 𝑲⊤(𝑲𝑲⊤ + λ𝑰_T)。  (14)</p>
+<p>左乘 (𝑲⊤𝑲 + λ𝑰_d)^(−1) 并右乘 (𝑲𝑲⊤ + λ𝑰_T)^(−1) 得到公式 13。∎</p>
+<p>将公式 13 右乘 𝒗，将公式 2 中的原始解变为公式 6 中的对偶形式：</p>
+<p>𝒉⋆ = (𝑲⊤𝑲 + λ𝑰_d)^(−1)𝑲⊤𝒗 = 𝑲⊤(𝑲𝑲⊤ + λ𝑰_T)^(−1)𝒗。  (15)</p>
+<p>因此，𝒉⋆ 位于 𝑲 的行空间中。其对偶系数 𝜶 = (𝑲𝑲⊤ + λ𝑰_T)^(−1)𝒗 ∈ ℝ^T 通过求解单个 T×T 系统获得。</p>
+<p><strong>对角正则化下的对偶解。</strong></p>
+<p><strong>命题 1。</strong> 令 𝐃 = diag(δ₁, …, δ_d)，δ_j &gt; 0，并令 𝐊̃ = 𝐊𝐃^(−1/2)。则公式 4 的解满足</p>
+<p>(𝑲⊤𝑲 + 𝑫)^(−1)𝑲⊤𝒗 = 𝑫^(−1/2)𝑲̃⊤(𝑰_T + 𝑲̃𝑲̃⊤)^(−1)𝒗。  (16)</p>
+<p><strong>证明。</strong> 由于 𝑫 是具有正条目的对角矩阵，𝑫^(±1/2) 是良定义的且 𝑫^(1/2)𝑫^(−1/2) = 𝑰_d。使用 𝑲 = 𝑲̃𝑫^(1/2)，我们分解</p>
+<p>𝑲⊤𝑲 + 𝑫 = 𝑫^(1/2)(𝑲̃⊤𝑲̃ + 𝑰_d)𝑫^(1/2)。  (17)</p>
+<p>对该乘积求逆并使用 𝑲⊤ = 𝑫^(1/2)𝑲̃⊤ 可得</p>
+<p>(𝑲⊤𝑲 + 𝑫)^(−1)𝑲⊤𝒗 = 𝑫^(−1/2)(𝑲̃⊤𝑲̃ + 𝑰_d)^(−1)𝑫^(−1/2)𝑫^(1/2)𝑲̃⊤𝒗 = 𝑫^(−1/2)(𝑲̃⊤𝑲̃ + 𝑰_d)^(−1)𝑲̃⊤𝒗。  (18)</p>
+<p>将引理 1 应用于 𝑲 ← 𝑲̃ 和 λ = 1 得到公式 16。∎</p>
+<p>等价地，变量替换 𝒈 = 𝑫^(1/2)𝒉 将公式 4 转换为标准岭问题 (1/2)‖𝑲̃𝒈 − 𝒗‖₂² + (1/2)‖𝒈‖₂²。然后其对偶解通过 𝒉⋆ = 𝑫^(−1/2)𝒈⋆ 映射回来。</p>
+<p>由此可得两个进一步的性质：</p>
+<ul>
+<li>矩阵 𝑰_T + 𝑲̃𝑲̃⊤ 是对称正定的，因此其 Cholesky 分解存在且唯一。</li>
+<li>由于 𝑫 是对角的，形成 𝑲̃ 和应用 𝑫^(−1/2) 的成本分别仅为 𝒪(Td) 和 𝒪(d)。因此整体复杂度保持为 𝒪(T²d + T³)。</li>
+</ul>
+<p>设置 𝑫 = λ𝑰_d 可恢复公式 6。</p>
+<h3>附录 B TTR-Compressor 的冗余感知加权</h3>
+<p>我们形式化第 4.2 节中的断言：冗余 token 的影响力递减，而未被相关 token 解释的信息保留较大的相对影响。我们采用各向同性正则化 λ &gt; 0，并将目标 𝒗 视为任意的，因此结果适用于任何学习投影 𝒂。对可学习 𝑫 的扩展在最后给出。在整个过程中，令 𝑨 = 𝑲⊤𝑲 + λ𝑰_d，𝜶 = (𝑮 + λ𝑰_T)^(−1)𝒗，因此 𝒉⋆ = 𝑲⊤𝜶。</p>
+<p><strong>有效权重作为未解释残差。</strong></p>
+<p><strong>命题 2</strong>（残差形式）。对于任意键 𝐊 和目标 𝐯，有效权重满足</p>
+<p>𝜶 = (1/λ)(𝒗 − 𝑲𝒉⋆)。  (19)</p>
+<p><strong>证明。</strong> 由 (𝑮 + λ𝑰_T)𝜶 = 𝒗 可得 λ𝜶 = 𝒗 − 𝑲𝑲⊤𝜶 = 𝒗 − 𝑲𝒉⋆。∎</p>
+<p>因此，token 的权重由联合拟合表示未解释的目标部分决定。相比之下，加性池化无论其他 token 如何排列都分配权重 𝒗。为了分离<em>其他</em> token 的作用，令 𝑲_{−t} 和 𝒗_{−t} 表示移除 token t 后的键和目标。定义</p>
+<p>𝑨_{−t} = 𝑲_{−t}⊤𝑲_{−t} + λ𝑰_d， 𝒉_{−t} = 𝑨_{−t}^(−1)𝑲_{−t}⊤𝒗_{−t}，  (20)</p>
+<p>其中 𝒉_{−t} 是不含 token t 拟合的解。</p>
+<p><strong>命题 3</strong>（留一形式）。令 r_t = v_t − 𝐤_t⊤𝐡_{−t} 为 token t 在其他 token 下的残差，令 q_t = 𝐤_t⊤𝐀_{−t}^(−1)𝐤_t ≥ 0。则</p>
+<p>α_t = r_t / (λ(1 + q_t))， 𝒉⋆ = 𝒉_{−t} + (r_t/(1 + q_t))𝑨_{−t}^(−1)𝒌_t。  (21)</p>
+<p><strong>证明。</strong> 写出 𝑨 = 𝑨_{−t} + 𝒌_t𝒌_t⊤ 和 𝑲⊤𝒗 = 𝑲_{−t}⊤𝒗_{−t} + v_t𝒌_t。代入 𝑨𝒉⋆ = 𝑲⊤𝒗 可得</p>
+<p>𝒉⋆ = 𝒉_{−t} + (v_t − 𝒌_t⊤𝒉⋆)𝑨_{−t}^(−1)𝒌_t。  (22)</p>
+<p>与 𝒌_t 取内积可得 𝒌_t⊤𝒉⋆ = 𝒌_t⊤𝒉_{−t} + (v_t − 𝒌_t⊤𝒉⋆)q_t，因此 v_t − 𝒌_t⊤𝒉⋆ = r_t/(1 + q_t)。将其代入上式和公式 19 得到公式 21。∎</p>
+<p>命题 3 表明，token t 仅通过 r_t（其目标中剩余 token 无法预测的部分）改变表示。特别地，如果其他 token 完全解释了 token t（r_t = 0），则 α_t = 0 且 𝒉⋆ = 𝒉_{−t}，因此该 token 没有影响。加性池化则总是加上 v_t𝒌_t。</p>
+<p><strong>重复证据下的饱和。</strong> 我们现在对相关 token 组量化这种效应，推广图 2(b) 中的例子。</p>
+<p><strong>命题 4</strong>（组饱和）。假设 token 形成 C 个组。组 c 包含 m_c 个共享键 𝐮_c 的 token，其中 ‖𝐮_c‖₂ = 1 且 𝐮_c⊤𝐮_{c'} = 0（c ≠ c'）。令 S_c 为组 c 中目标的和。则</p>
+<p>𝒉⋆ = Σ_{c=1}^C (S_c/(λ + m_c))𝒖_c， 而 𝑲⊤𝒗 = Σ_{c=1}^C S_c𝒖_c。  (23)</p>
+<p><strong>证明。</strong> 在此假设下 𝑮 是块对角的，组 c 的块为 𝑱_{m_c} = 𝟏𝟏⊤。由于 𝑱_m² = m𝑱_m，可以验证 (𝑱_m + λ𝑰_m)^(−1) = λ^(−1)(𝑰_m − 𝑱_m/(λ + m))。因此组 c 的权重 𝜶_c 之和为</p>
+<p>𝟏⊤𝜶_c = (1/λ)(S_c − m_cS_c/(λ + m_c)) = S_c/(λ + m_c)。  (24)</p>
+<p>因此 𝒉⋆ = Σ_c 𝒖_c𝟏⊤𝜶_c，得到公式 23。∎</p>
+<p><strong>推论 1</strong>（冗余的递减影响）。假设每个 token 具有相同的目标 v &gt; 0，因此 S_c = m_cv。比较 m 个重复 token 的组与单个独特 token。它们的相对影响为</p>
+<p>[m/(λ+m)] / [1/(λ+1)] = m(λ+1)/(λ+m) &lt; m，当 m &gt; 1。  (25)</p>
+<p>该比值对所有 m 以 λ + 1 为界，而加性池化的相应比值为 m。此外，第 n 个重复 token 使组的系数增加</p>
+<p>nv/(λ+n) − (n−1)v/(λ+n−1) = λv/[(λ+n)(λ+n−1)] = 𝒪(n^(−2))，  (26)</p>
+<p>它随 n 衰减，因此重复证据具有递减的回报。</p>
+<p>岭强度控制两种机制之间的过渡：</p>
+<ul>
+<li>当 λ → ∞ 时，λ𝒉⋆ → 𝑲⊤𝒗，即加性池化。</li>
+<li>当 λ → 0 时，每组贡献 S_c/m_c（其平均目标），无论它包含多少 token。</li>
+</ul>
+<p>设置 λ = 1、m = 3 可恢复图 2(b)：比率为 3:2，𝜶 = (1/4, 1/4, 1/4, 1/2)⊤。</p>
+<p><strong>对可学习对角正则化的扩展。</strong> 所有结果都适用于可学习对角正则化。使用命题 1 中的变量替换，设置 𝜶 = (𝑰_T + 𝑲̃𝑲̃⊤)^(−1)𝒗，因此 𝒉⋆ = 𝑫^(−1)𝑲⊤𝜶。由于 𝑲𝒉⋆ = 𝑲̃𝑲̃⊤𝜶，命题 2 的论证给出 𝜶 = 𝒗 − 𝑲𝒉⋆。然后命题 3 在 λ = 1 和 𝑨_{−t} = 𝑲_{−t}⊤𝑲_{−t} + 𝑫 下成立。当组在学习到的度量下正交（𝒖_c⊤𝑫^(−1)𝒖_{c'} = 0，c ≠ c'）时，命题 4 成立，其中 λ 被组特定的 λ_c = (𝒖_c⊤𝑫^(−1)𝒖_c)^(−1) 替换，𝒖_c 被替换为 λ_c𝑫^(−1)𝒖_c。因此，学习到的 𝑫 决定哪些特征方向被视为冗余，而递减影响机制本身保持不变。</p>
+<h3>附录 C 实现细节</h3>
+<p><strong>数值精度。</strong> 卷积和目标投影使用输入精度（BF16），而回归键和目标在对偶求解之前被转换为 FP32。对角正则化在 FP32 中评估。我们使用 Cholesky 分解求解正定对偶系统，而不显式形成逆，并将压缩表示转换回输入数据类型。</p>
+<p><strong>局部目标构造。</strong> 只有回归目标包含卷积上下文；键由原始输入计算。对于语言，我们在每个压缩块内独立应用核大小为 5 的非因果深度 1D 卷积，使用宽度为 2 的双侧零填充。该卷积既无偏置也无激活，并初始化为恒等。对于视觉，我们使用 3×3 深度卷积。每个通道都有自己的空间核，在标量目标投影之前没有跨通道混合。</p>
+<p>基础压缩器具有 2d 个有效可训练参数：d 个用于目标投影，d 个用于对角正则化。具有 s 个核元素的无偏置深度卷积增加 sd 个参数和 𝒪(sTd) 计算。因此，语言和视觉变体分别需要 7d 和 11d 个参数。它们的总计算复杂度在固定核大小和 T ≪ d 下保持为 𝒪(T²d)。</p>
+<h3>附录 D 实验细节</h3>
+<p><strong>块级稀疏注意力。</strong> HiLS-Attention（Hu et al., 2026）认为，小模型为 RULER 主要的"查找并复制"任务提供了更具诊断性的设置，因为较大的模型可能通过更大的信息带宽来补偿检索的不准确性。因此，我们遵循他们的设置，使用 345M 参数模型来评估压缩质量。所有模型使用 16 个 Transformer 层、1024 的隐藏维度、4096 的 FFN 维度，以及具有 16 个查询头和 2 个键-值头的分组查询注意力。我们使用秩 64 查询校准。训练使用 0.01 的 AdamW 权重衰减和范数为 1.0 的梯度裁剪；归一化参数、偏置和嵌入不参与权重衰减。学习率在训练的前 0.7% 期间预热，之后保持恒定。</p>
+<p><strong>视觉 token 合并器。</strong> 我们使用 BF16 训练，配合 DeepSpeed ZeRO-1、梯度检查点和 16,384 token 的最大序列长度。两个阶段使用每设备批大小 4 和 1，分别在 4 和 8 步上进行梯度累积。两个阶段都应用 3% 的学习率预热，然后是余弦衰减，最小学习率分别为 10⁻⁵ 和 0，权重衰减分别为 0.01 和 0.02。对于 TTR-Compressor，回归系统在 FP32 中求解。</p>
+<h3>附录 E 附加实验结果</h3>
+<h4>E.1 扩大模型规模和训练预算</h4>
+<p>为了进一步验证 TTR-Compressor 的优势不仅仅是主论文中使用的较小规模设置的产物，我们扩大了模型规模和训练预算。具体而言，我们在 100B token 上训练 1B 参数模型，并在 4K 到 32K 的上下文长度范围内在相同的 RULER 子任务上进行评估。为了比较，我们还将注意力加权池化——主论文 345M 参数实验中评估的所有压缩方法中最强的基线——扩展到相同的 1B 参数、100B token 设置。</p>
+<p>如表 7 所示，TTR-Compressor 在几乎所有上下文长度和子任务上持续优于注意力加权池化基线，平均准确率达到 0.7996，而基线为 0.735。值得注意的是，随着上下文长度的增加，性能差距扩大，表明即使相对于主论文的 345M 参数设置，模型规模和训练预算都大幅增加，TTR-Compressor 也能更优雅地扩展到更长的上下文。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>S-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-2 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>S-NIAH-3 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>MK-NIAH-1 4K</th>
+<th>8K</th>
+<th>16K</th>
+<th>32K</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>注意力加权池化</td>
+<td>0.978</td>
+<td>0.972</td>
+<td>0.984</td>
+<td>0.990</td>
+<td>1.000</td>
+<td>0.982</td>
+<td>0.860</td>
+<td>0.732</td>
+<td>0.898</td>
+<td>0.856</td>
+<td>0.456</td>
+<td>0.550</td>
+<td>0.494</td>
+<td>0.358</td>
+<td>0.336</td>
+<td>0.314</td>
+<td>0.735</td>
+</tr>
+<tr>
+<td>TTR-Compressor</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>0.956</td>
+<td>0.862</td>
+<td>0.750</td>
+<td>0.980</td>
+<td>0.918</td>
+<td>0.740</td>
+<td>0.662</td>
+<td>0.626</td>
+<td>0.442</td>
+<td>0.446</td>
+<td>0.412</td>
+<td>0.7996</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 7：</strong> RULER 中单针大海捞针（S-NIAH）和多键大海捞针（MK-NIAH）任务在不同上下文长度下的准确性。结果基于在 100B token 上训练的 1B 参数模型。每个上下文长度的最佳值<strong>加粗</strong>。</p>
+<h4>E.2 值参数化的消融</h4>
+<p>在 3×3 压缩设置下，我们比较 v_t 的五种参数化： 常数（v_t = 1）； 线性（v_t = 𝒂⊤𝒙_t）； MLP（v_t = MLP(𝒙_t)）； 双线性（v_t = MLP(𝒙_t)⊤𝒙_t）；以及 使用局部 3×3 特征 Conv(𝑿)_t 的卷积变体。</p>
+<p>如表 8 所示，我们观察到： <strong>内容依赖性至关重要</strong>：常数目标产生最低的平均值（53.56），而线性目标获得 +0.74，表明回归目标必须编码 token 内容以形成有效的摘要。 <strong>更深头部提供边际增益</strong>：普通 MLP 与线性基线匹配（54.30），添加卷积使其退化（53.91）。虽然双线性头部略微提高了性能（54.55），但其卷积对应物没有进一步增益（54.37）。 <strong>空间上下文胜过头部容量</strong>：结合局部卷积与线性读出 v_t = 𝒂⊤Conv(𝑿)_t 实现最佳总分（54.85）。这些结果表明，值容量不是瓶颈；局部邻域聚合比非线性投影提供了更有效的归纳偏置。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>𝒗_t</th>
+<th>MMBench</th>
+<th>MMStar</th>
+<th>RWQA</th>
+<th>MMMU</th>
+<th>AI2D</th>
+<th>OCRBench</th>
+<th>InfoVQA</th>
+<th>ChartQA</th>
+<th>MMSI</th>
+<th>ERQA</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>常数值</td>
+<td>常数 1</td>
+<td>75.26</td>
+<td>51.63</td>
+<td>64.31</td>
+<td>45.67</td>
+<td>76.07</td>
+<td>55.90</td>
+<td>37.84</td>
+<td>67.20</td>
+<td>26.80</td>
+<td>35.00</td>
+<td>53.56</td>
+</tr>
+<tr>
+<td>线性值</td>
+<td>TTR-Compressor 𝒂⊤𝒙_t</td>
+<td>76.46</td>
+<td>52.40</td>
+<td>65.62</td>
+<td>45.89</td>
+<td>75.23</td>
+<td>58.70</td>
+<td>38.27</td>
+<td>67.16</td>
+<td>26.80</td>
+<td>36.50</td>
+<td>54.30</td>
+</tr>
+<tr>
+<td>TTR-Compressor（含卷积）</td>
+<td>𝒂⊤Conv(𝑿)_t</td>
+<td>76.63</td>
+<td>51.16</td>
+<td>65.88</td>
+<td>47.44</td>
+<td>75.16</td>
+<td>60.00</td>
+<td>39.70</td>
+<td>67.16</td>
+<td>28.90</td>
+<td>36.50</td>
+<td>54.85</td>
+</tr>
+<tr>
+<td>MLP 值</td>
+<td>MLP(𝒙_t)</td>
+<td>76.29</td>
+<td>52.06</td>
+<td>63.92</td>
+<td>44.78</td>
+<td>76.42</td>
+<td>58.30</td>
+<td>38.66</td>
+<td>67.00</td>
+<td>28.10</td>
+<td>37.50</td>
+<td>54.30</td>
+</tr>
+<tr>
+<td>MLP（含卷积）</td>
+<td>MLP(Conv(𝑿)_t)</td>
+<td>76.46</td>
+<td>50.87</td>
+<td>64.18</td>
+<td>44.56</td>
+<td>75.32</td>
+<td>58.10</td>
+<td>38.09</td>
+<td>66.80</td>
+<td>26.50</td>
+<td>38.25</td>
+<td>53.91</td>
+</tr>
+<tr>
+<td>MLP-dot 值</td>
+<td>MLP(𝒙_t)⊤𝒙_t</td>
+<td>76.20</td>
+<td>51.84</td>
+<td>65.23</td>
+<td>47.33</td>
+<td>75.55</td>
+<td>59.60</td>
+<td>38.47</td>
+<td>68.88</td>
+<td>27.40</td>
+<td>35.00</td>
+<td>54.55</td>
+</tr>
+<tr>
+<td>MLP-dot（含卷积）</td>
+<td>MLP(Conv(𝑿)_t)⊤𝒙_t</td>
+<td>76.29</td>
+<td>51.08</td>
+<td>64.05</td>
+<td>46.56</td>
+<td>75.26</td>
+<td>58.10</td>
+<td>38.81</td>
+<td>66.36</td>
+<td>29.90</td>
+<td>37.25</td>
+<td>54.37</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 8：</strong> TTR 目标 𝒗_t 参数化的消融，目标为 𝒉⋆ = arg min_𝒉 (1/2)‖𝑲𝒉 − 𝒗‖₂² + (1/2)𝒉⊤𝑫𝒉。所有变体使用 3×3 token 压缩。灰色行表示主论文中使用的 TTR-Compressor 配置。最佳值<strong>加粗</strong>，次佳值加下划线。</p>
+<h3>附录 F 块级稀疏注意力的推理延迟</h3>
+<p>如图 4 所示，所有压缩方法表现出相似的预填充和解码延迟，并且在超过 16K token 的上下文长度上大幅优于全注意力。</p>
+<p><strong>图 4：</strong> 不同上下文长度下的预填充和解码延迟。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 序列压缩, 测试时回归, 岭回归, 稀疏注意力, 多模态大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
