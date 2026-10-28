@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reva：基于大语言模型上下文探测的实时漏洞检测 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Reva：基于大语言模型上下文探测的实时漏洞检测</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-26</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.35829" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Reva: Real-Time Vulnerability Detection through Contextual Probing of Large Language Models</h4>
+            <p><strong>中文摘要：</strong> Reva 是一种实时 AI 漏洞检测器，将安全上下文与代码理解整合到 LLM 单次前向传播中。它为每个新函数提供预计算威胁模型、静态分析结果和调用图，由训练好的探针读取 LLM 内部表示输出风险分数。在 PrimeVul 测试集上，基于 GLM-5.3-Flash 的 Reva 以每函数约一秒达到 60.0% 准确率，与最先进的智能体检测器 VulTriage 相当，但快逾 250 倍、成本不足其十分之一。结果表明 LLM 内部表示已编码智能体推理所得的大部分漏洞信息。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>Reva：通过上下文探测大语言模型实现实时漏洞检测</h1>
+<p><strong>作者：</strong> Amine Lbath、Massih-Reza Amini</p>
+<p><strong>单位：</strong> 法国格勒诺布尔阿尔卑斯大学（Université Grenoble Alpes）、法国国家科学研究中心（CNRS）</p>
+<h2>摘要</h2>
+<p>漏洞在软件生命周期中被发现得越晚，修复成本越高。随着编码智能体生成代码的速度超过开发者审查代码的速度，软件需要一道更强的第一道防线，在每个新函数生成时对其进行实时筛查。LLM 智能体近来已能够像安全专家那样工作，发现真实世界的漏洞：它们运行分析工具、探索周围代码、测试假设并权衡证据，然后形成自己的判断。然而，这种推理跨越多次模型调用，导致每个判定需要数分钟的计算时间，远远无法跟上代码生成的速度。更快的基于 AI 的检测器（微调深度学习模型或提示 LLM 直接给出判定）的准确性则低得多：它们在没有智能体所收集上下文的情况下判断函数，而且先前的工作已证明，即使提供了部分上下文，LLM 生成的判定也不可靠。</p>
+<p>我们提出 Reva（REal-time Vulnerability Analysis，实时漏洞分析），这是一种 AI 漏洞检测器，它将智能体检测器背后的安全上下文与代码理解组件整合到 LLM 的单次前向传播中。对于每个新函数，Reva 为 LLM 提供其模块的预计算威胁模型，以及轻量级静态分析结果和调用图信息。Reva 不要求 LLM 给出判定，而是让训练好的探针读取 LLM 在此上下文中对该函数的内部表示。在 PrimeVul 的保留测试集上，基于 GLM-5.3-Flash 的 Reva 在每个函数约一秒内达到 60.0% 的准确率。这与在同一 LLM 上运行的文献中最先进的函数级智能体检测器 VulTriage（59.2%）相当，同时速度快 250 倍以上，成本不到其十分之一。在相同提示下，探针比 LLM 自身的直接判定准确率高 14% 至 17%。在三个开源 LLM 上，Reva 至少与 VulTriage 一样准确，且在其中两个上准确率高约 10%。这些结果表明，LLM 的内部表示已经编码了智能体检测器通过推理获得的大部分信息。</p>
+<p><strong>索引词：</strong> 漏洞检测、大语言模型、内部表示、探测、编码智能体</p>
+<h2>I 引言</h2>
+<p>漏洞在软件生命周期中被发现得越晚，修复成本越高 [1]。因此，在编写代码的同时检测到漏洞时，修复成本最低。编码智能体如今生成代码的速度已超过开发者审查的速度，这就需要一道第一道防线，在每个新函数生成时对其进行实时筛查。</p>
+<p>静态分析器可以实时运行，但在智能体生成代码的规模下，它们产生的报告数量超过开发者的审查能力，其中许多是误报 [2, 3]。LLM 智能体近来已能够通过将此类工具与自身对代码的分析相结合来发现真实世界的漏洞 [4, 5]，而智能体检测器将这一方法应用于函数级检测。VulTriage [6] 是函数级检测文献中最先进的方法，VulAgent [7] 用检索到的漏洞知识和程序事实来丰富提示，VulTrial [8] 则让多个智能体就判定进行辩论。然而，这种推理跨越多次模型调用，相当于每个函数需要数分钟。更快的基于 AI 的检测器（微调深度学习模型或提示 LLM 直接给出判定）降低了这种延迟，但准确性要低得多 [9, 10, 11]。</p>
+<p><strong>图 1 内容：</strong></p>
+<pre><code>① 带安全上下文的提示
+## 威胁模型：项目、模块
+## Semgrep 发现
+## 调用图：调用者、被调用者
+## 文件：包含、类型、宏
+## 新函数
+node *new_node(tree *tr) {
+node *t = &amp;amp;tr-&gt;nodes[tr-&gt;n];
+tr-&gt;n++; return t; }
+（新函数周围的安全上下文）
+
+② 单次前向传播
+未执行 / 被探测
+LLM，不生成文本
+
+③ 代码 token 状态
+ℓ₁ ℓ₂ ℓ₃ ℓ₄ → 拼接
+T 个代码 token × 4 ⋅ 1,024
+
+④ 注意力探针
+→ 风险分数
+对代码 token 的可学习注意力
+中位数阈值
+函数的风险分数
+0.57M 参数的探针，基于标签训练
+</code></pre>
+<p><strong>图 1：</strong> Reva 在来自 LibRaw 的一个漏洞函数上的概览（CVE-2020-35530）。① 提示将函数与其安全上下文结合。② LLM 在一次前向传播中处理提示，直到四个被探测层中最深的一层。③ 在每个被探测层保留代码 token 的隐藏状态。④ 注意力探针将它们汇聚成一个风险分数。</p>
+<p>Reva 旨在弥合速度与更高准确性之间的差距。Reva 不让 LLM 通过多轮工具调用收集上下文，而是将上下文组装进提示，包括函数所属模块的威胁模型、其静态分析结果、其调用图及其文件。随后，LLM 在单次前向传播中处理该提示而不生成文本，由一个在带标签函数上训练的小型探针将其对代码 token 的内部表示映射为风险分数，而非通过推理得出判定。后一选择基于如下证据：LLM 编码了其答案未表达的知识，例如关于陈述真实性 [12, 13, 14] 或其自身答案正确性 [15, 16] 的知识，以及思维链解释并不总是忠实于底层计算 [17]。</p>
+<p>我们在 PrimeVul [9] 上评估 Reva，这是一个高质量的漏洞 C 与 C++ 函数数据集，每个漏洞函数与同一函数的良性版本配对，涵盖 651 个项目和 121 种漏洞类型（CWE）。在其保留测试集上，基于 GLM-5.3-Flash [18] 的 Reva 与 VulTriage 相当，且比在同一 LLM 上运行的 VulAgent 更准确，每个函数约一秒，比 VulTriage 快 250 倍以上。在另外两个开源 LLM 上，它比两个智能体检测器都准确 9% 至 13%。</p>
+<p>本文做出三项贡献：我们提出 Reva，一种将针对性安全上下文与 LLM 内部表示探针相结合的漏洞检测器，每个函数只需单次前向传播； 我们将其与在相同三个 LLM 上运行的最先进函数级智能体检测器在 PrimeVul 保留测试集上进行比较，从准确性、成本和鲁棒性三方面评估； 我们概述了一个研究议程，朝着这样的检测器发展：在编码智能体生成每个函数时进行筛查，并将可能的漏洞升级给更强大的智能体以构建漏洞证明。</p>
+<h2>II 背景与相关工作</h2>
+<p><strong>基于 LLM 的漏洞检测。</strong> 非智能体设置下的 LLM 通常难以区分漏洞函数与其良性对应版本：在 PrimeVul [9] 上，带思维链的 GPT-4 仅在 12.9% 的配对中将两个版本都正确标记，而在非智能体设置下被要求给出判定的 LLM 对安全问题的推理常常不一致 [19, 20]。Reva 则读取 LLM 的内部表示，而非其答案或推理。</p>
+<p><strong>智能体检测器。</strong> 最近的检测器通过添加知识和推理步骤来提高准确性。VulTriage 检索 CWE 描述并将控制流与数据流事实语言化 [6]；VulAgent 让专门的智能体针对项目代码提出并验证假设 [7]；VulTrial 在智能体之间组织辩论 [8]。它们的成本随每次调用而增长，且其上下文可能超出 LLM 的上下文窗口。Reva 则将此上下文的关键部分预加载到提示中，并用单次被探测的前向传播替代多步推理。</p>
+<p><strong>探测 LLM 内部表示。</strong> 探针是在模型隐藏状态上训练的小型分类器 [21]。对于代码，线性探针表明在玩具数据集上具有一定的区分安全与不安全代码的能力 [22, 23]，并能预测生成的代码是否不安全或不正确 [24, 25]。这些探针仅读取代码本身，而 Reva 探测的是在针对性安全上下文中读取的真实世界函数。</p>
+<p><strong>漏洞基准的陷阱。</strong> 检测器可能利用数据集的虚假特征，例如与漏洞无关的代码度量或语义 [26, 27]。这样的检测器倾向于用相同的标签分类漏洞函数及其良性对应版本，因为两者共享这些特征。因此，我们对每个函数独立评分，然后检查每对中的两个版本是否获得了正确的标签。</p>
+<h2>III Reva 的上下文探测</h2>
+<p>在 Reva 中，LLM 在一次前向传播中读取新函数及其安全上下文，探针将代码 token 的隐藏状态映射为风险分数（图 1）。</p>
+<p><strong>① 带安全上下文的提示。</strong> 提示包含新函数及其周围的上下文，分为带标签的部分（图 1）。威胁模型由 LLM 智能体工作流对整个软件按项目构建一次，描述项目（摘要、攻击者控制的输入、信任边界）以及包含该函数的模块（角色、到达它的输入、典型的汇聚点与防护措施）。提示还添加了该函数的 Semgrep [28] 发现、其调用位置及其所调用辅助函数的签名，以及用 tree-sitter 从存储库中提取的其文件的包含、类型、宏和同级函数。该上下文可用于 84% 的训练函数；否则提示仅包含函数及其 Semgrep 发现。提示的中位数为 3,840 个 token，其中 601 个为代码。</p>
+<p><strong>② 单次前向传播。</strong> LLM 在一次前向传播中处理提示，该传播在四个被探测层中最深一层之后停止，因此其余层永远不会运行，也不生成任何输出 token。我们探测中间层，探测研究通常发现这些层信息量最大 [21]：从 LLM 深度的 38% 到 85% 之间均匀间隔的四层，通过交叉验证选择。</p>
+<p><strong>③ 代码 token 状态。</strong> 在每个被探测层，Reva 仅保留函数 token 的隐藏状态。每个状态被归一化并投影到 1,024 维，然后将四层拼接起来。</p>
+<p><strong>④ 注意力探针。</strong> 一个具有 8 个注意力头的探针将 token 状态汇聚成一个风险分数。它有 0.57M 参数，在 PrimeVul 的训练函数上训练。其损失函数将逐函数分类项与将每个漏洞函数排在其良性对应版本之上的排序项相结合。这些配对仅用于训练：Reva 对每个函数独立评分。</p>
+<p><strong>实际使用。</strong> LLM 和 Semgrep 的规则在启动时加载一次，因此无需为每次新分析重新启动，每个项目的威胁模型提前构建。对于每个新函数，Reva 提取其上下文、运行 Semgrep、构建提示、运行前向传播并应用探针。在单个 H200 GPU 上使用 Muse-Glimmer-30B 时，每个函数耗时 0.93 秒，其中 0.46 秒用于上下文提取。</p>
+<h2>IV 初步结果</h2>
+<p>我们通过三个研究问题评估 Reva：</p>
+<ul>
+<li><strong>RQ1：</strong> 与在同一 LLM 上运行的智能体检测器相比，Reva 的准确性如何？</li>
+<li><strong>RQ2：</strong> Reva 节省了多少计算量？</li>
+<li><strong>RQ3：</strong> Reva 的哪些部分重要，其准确性对泄漏和选择是否鲁棒？</li>
+</ul>
+<p><strong>图 2：</strong> PrimeVul 测试集上准确率与每函数耗时的关系，每个 LLM 一种颜色。无判定的函数计为良性。空心标记：VulTriage 在 GPT-4o 上的报告结果。</p>
+<h3>IV-A 实验设置</h3>
+<p><strong>数据集与指标。</strong> PrimeVul [9] 将每个漏洞 C/C++ 函数与同一函数的良性版本配对。它包含 3,789 个训练对、480 个验证对和 435 个测试对。遵循 [9]，我们统计两个版本都被正确标记（P-C）、都被标记为漏洞（P-V）、都被判定为良性（P-B）或标签反转（P-R）的配对数量。我们的主要指标是所有函数的准确率，每个函数独立评分。</p>
+<p><strong>协议。</strong> 我们仅在训练集和验证集上做出所有设计选择。交叉验证（CV）准确率涵盖训练集的五折（同一提交的所有函数位于同一折），以及由在完整训练集上训练的探针评分的验证集。测试集在开发期间保持未见状态，仅用最终配置进行评分。</p>
+<p><strong>LLM。</strong> 我们使用三个开放权重 LLM：Muse-Glimmer-30B [29]、Qwen3.8-27B [30] 和 GLM-5.3-Flash [18]，后者是一个更大的混合专家模型。在 GLM-5.3-Flash 上，智能体检测器使用 LLM 的 FP8 版本，而 Reva 使用精确的 BF16 转换，这使其交叉验证准确率保持不变（66.2% 对 65.9%）。</p>
+<p><strong>基线。</strong> 我们在其发布的代码上运行 VulAgent 和 VulTriage，使用与 Reva 相同的 LLM。当检测器未返回判定时，该函数视为失败，通常是因为推理超出了 token 限制。我们在所有函数上比较所有方法，将失败函数计为良性。已发表的 GPT-4o 结果仅作参考。</p>
+<p><strong>表 I：</strong> Reva 与智能体检测器在 PrimeVul 测试集上的准确率和成本。Token：每个函数的平均输入/输出 token 数（千）。时间：每个函数的中位秒数。CI：准确率的配对自助法区间。成本：每 1,000 个函数的美元成本——Reva 按一台租用 H200 GPU（每小时 3.50 美元）计算，智能体检测器按相同 LLM 公共 API 每百万输入/输出 token 费率计算（Muse-Glimmer-30B $0.35/$1.50，Qwen3.8-27B $0.40/$3.00，GLM-5.3-Flash $0.15/$0.50）。FPR：被标记的非漏洞函数比例。–：未报告。</p>
+<table>
+<thead>
+<tr>
+<th>方法和 LLM</th>
+<th>调用次数</th>
+<th>Token（千）</th>
+<th>时间（秒）</th>
+<th>成本（$）</th>
+<th>FPR</th>
+<th>准确率</th>
+<th>95% CI</th>
+<th>P-C</th>
+<th>P-R</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Reva（本文方法）</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Muse-Glimmer-30B</td>
+<td>1</td>
+<td>3.2 / 0</td>
+<td>0.93</td>
+<td>0.9</td>
+<td>41.1</td>
+<td>58.9</td>
+<td>[56.8, 61.0]</td>
+<td>20.2</td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>Qwen3.8-27B</td>
+<td>1</td>
+<td>3.4 / 0</td>
+<td>0.88</td>
+<td>0.9</td>
+<td>40.5</td>
+<td>59.5</td>
+<td>[57.4, 61.7]</td>
+<td>22.1</td>
+<td>3.0</td>
+</tr>
+<tr>
+<td>GLM-5.3-Flash</td>
+<td>1</td>
+<td>3.1 / 0</td>
+<td>1.33</td>
+<td>1.3</td>
+<td>40.0</td>
+<td>60.0</td>
+<td>[57.8, 62.2]</td>
+<td>22.3</td>
+<td>2.3</td>
+</tr>
+<tr>
+<td>Muse-Glimmer-30B + GLM-5.3-Flash</td>
+<td>2</td>
+<td>6.3 / 0</td>
+<td>1.78</td>
+<td>1.7</td>
+<td>39.3</td>
+<td>60.7</td>
+<td>[58.5, 62.9]</td>
+<td>23.2</td>
+<td>1.8</td>
+</tr>
+<tr>
+<td><strong>VulTriage [6]</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Muse-Glimmer-30B</td>
+<td>3</td>
+<td>6.2 / 4.8</td>
+<td>108</td>
+<td>9.4</td>
+<td>75.6</td>
+<td>53.6</td>
+<td>[51.5, 55.7]</td>
+<td>14.0</td>
+<td>6.9</td>
+</tr>
+<tr>
+<td>Qwen3.8-27B</td>
+<td>3</td>
+<td>8.0 / 19.4</td>
+<td>564</td>
+<td>61.4</td>
+<td>75.4</td>
+<td>53.9</td>
+<td>[51.6, 56.2]</td>
+<td>16.1</td>
+<td>8.3</td>
+</tr>
+<tr>
+<td>GLM-5.3-Flash</td>
+<td>3</td>
+<td>6.2 / 24.7</td>
+<td>362</td>
+<td>13.3</td>
+<td>46.0</td>
+<td>59.2</td>
+<td>[56.7, 61.6]</td>
+<td>26.0</td>
+<td>7.6</td>
+</tr>
+<tr>
+<td>GPT-4o（已发表，无法复现）</td>
+<td>3</td>
+<td>–</td>
+<td>34.5</td>
+<td>–</td>
+<td>54.3</td>
+<td>63.6</td>
+<td>–</td>
+<td>33.8</td>
+<td>6.7</td>
+</tr>
+<tr>
+<td><strong>VulAgent [7]</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Muse-Glimmer-30B</td>
+<td>9.2</td>
+<td>34.1 / 33.8</td>
+<td>785</td>
+<td>62.6</td>
+<td>64.1</td>
+<td>52.2</td>
+<td>[50.0, 54.4]</td>
+<td>13.3</td>
+<td>9.0</td>
+</tr>
+<tr>
+<td>Qwen3.8-27B</td>
+<td>9.2</td>
+<td>37.4 / 97.3</td>
+<td>5,614</td>
+<td>306.9</td>
+<td>32.2</td>
+<td>54.5</td>
+<td>[52.0, 57.0]</td>
+<td>20.2</td>
+<td>11.3</td>
+</tr>
+<tr>
+<td>GLM-5.3-Flash</td>
+<td>9.3</td>
+<td>35.8 / 184.8</td>
+<td>3,495</td>
+<td>97.8</td>
+<td>19.8</td>
+<td>52.8</td>
+<td>[50.5, 54.9]</td>
+<td>14.3</td>
+<td>8.7</td>
+</tr>
+<tr>
+<td>GPT-4o（已发表）</td>
+<td>8.8</td>
+<td>– / 7.0</td>
+<td>–</td>
+<td>–</td>
+<td>36.7</td>
+<td>58.4</td>
+<td>–</td>
+<td>26.6</td>
+<td>10.1</td>
+</tr>
+<tr>
+<td><strong>VulTrial [8]</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>GPT-4o（已发表）</td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>52.6</td>
+<td>53.6</td>
+<td>–</td>
+<td>18.6</td>
+<td>11.5</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图 3：</strong> 移除或替换 Reva 的某一组件时，其在 Muse-Glimmer-30B 上验证准确率的变化，带配对 95% 置信区间。</p>
+<h3>IV-B RQ1：准确性</h3>
+<p>在 GLM-5.3-Flash 上，Reva 达到 60.0% 的准确率（95% CI [57.8, 62.2]），而在同一 LLM 上运行的 VulTriage 为 59.2%，VulAgent 为 52.8%（表 I）。在所有测试函数上，Reva 比 VulTriage 高 0.8 个百分点（CI [−2.1, +3.8]），比 VulAgent 高 7.2 个百分点（CI [+4.4, +10.3]）。在 Qwen3.8-27B 和 Muse-Glimmer-30B 上，Reva 比两个智能体检测器都准确 5.1 至 6.7 个百分点，且所有四个置信区间均不包含零。</p>
+<p>除准确率之外，当两者在同一 LLM 上运行时，Reva 与最先进的函数级智能体检测器 VulTriage 相比也表现更优。在所有三个 LLM 上，Reva 的误报率（FPR）更低，标签反转的配对（P-R）更少，且在其中两个 LLM 上完全正确标记的配对（P-C）更多。因此，Reva 不仅在准确率上匹配或超过 VulTriage，而且能更可靠地区分漏洞函数与良性函数，这表明探针捕获的是漏洞本身，而非漏洞函数与其安全对应版本共享的表面特征。</p>
+<p>图 2 总结了这种权衡。在每个 LLM 上，Reva 至少与两个智能体检测器一样准确，同时快 100 到 6,000 倍。其准确率在不同 LLM 之间的变化也很小，仅为 1.1 个百分点，而 VulTriage 为 5.6 个百分点，因此 Muse-Glimmer-30B 上的 Reva 与 GLM-5.3-Flash（VulTriage 表现最好的 LLM）上的 VulTriage 相当。由此可见，探针读取的信号在所有三个 LLM 中都存在，而智能体检测器的准确性则取决于每个 LLM 对代码的推理能力。VulTriage 在 GPT-4o 上报告了更高的准确率（63.6%），但我们无法复现这些结果。</p>
+<p><strong>RQ1 的回答：</strong> 从单次前向传播来看，Reva 在所有三个 LLM 上匹配或超过两个函数级智能体检测器。在六次同 LLM 比较中的五次中，它显著更准确，且在每个 LLM 上的误报都少于 VulTriage。</p>
+<h3>IV-C RQ2：计算成本</h3>
+<p>端到端来看，Reva 每个函数耗时 0.88 至 1.33 秒，而在相同 LLM 上的智能体检测器为 108 至 5,614 秒。虽然这些在并行负载下测得的时间夸大了单请求延迟，但 token 数量证实了这一差距。Reva 每个函数读取约 3,100 至 3,400 个 token 且不生成任何 token，而智能体检测器处理的 token 多 3 至 70 倍，其中许多是生成的。由于 Reva 需要 LLM 的隐藏状态，它无法在 API 后面运行。在租用的 H200 GPU 上，它筛查 1,000 个函数花费 0.9 至 1.3 美元，而按相同 LLM 的公共 API 费率，VulTriage 为 9 至 61 美元，VulAgent 为 63 至 307 美元。</p>
+<p><strong>RQ2 的回答：</strong> Reva 约一秒筛查一个函数，而智能体检测器需要数分钟，在相同 LLM 上成本低 10 至 360 倍，且为每个函数返回分数。</p>
+<h3>IV-D RQ3：消融与鲁棒性</h3>
+<p>我们在 Muse-Glimmer-30B 验证集上对 Reva 的每个组件进行消融（图 3）。在相同提示上要求同一 LLM 给出是/否判定（而非探测它）会将准确率降至随机水平。在测试集上，它比探针低 7.4 至 8.7 个百分点，而单独使用 Semgrep、Cppcheck 和 Flawfinder 也处于随机水平（50.8% 至 51.3%）。因此，LLM 的内部表示携带了其判定和静态分析结果均无法单独提供的信息。在探针内部，用 token 状态的简单平均替换注意力池化会使准确率降低 4.2 个百分点，这表明漏洞的证据存在于少数 token 中。使用单层、省略标准化或去掉排序项会使准确率降低 0.4 至 1.5 个百分点，移除存储库上下文或仅保留函数分别降低 1.0 和 1.9 个百分点，这些均不显著。在 PrimeVul 的短函数上，仅函数本身就携带了大部分信号；我们预期上下文对过程间漏洞更为重要。</p>
+<p>评估数据上的泄漏和选择可能会夸大探测结果 [21, 31]。当没有项目同时出现在训练和评估折中时，交叉验证准确率仅下降 1.3 至 2.7 个百分点，因此探针所学的大部分内容可以迁移到未见过的项目。同样，仅在训练折上（而非所有开发数据上）选择四个被探测层，准确率变化不到半个百分点，因此层选择不会夸大结果。然而，测试集上的准确率比交叉验证低 6 个百分点（GLM-5.3-Flash 上为 60.0% 对 66.2%）。由于 PrimeVul 按时间顺序划分数据，这一差距可能反映了向较新代码的偏移，而交叉验证未能捕捉到这一点。</p>
+<p><strong>RQ3 的回答：</strong> 探针是必不可少的。同一 LLM 的直接判定降至随机水平，用 token 状态的平均替换注意力池化损失 4.2 个百分点，而存储库上下文在 PrimeVul 上没有显著影响。准确率在未见过的项目上基本保持。</p>
+<h2>V 未来计划</h2>
+<p><strong>步骤 1：完成比较。</strong> 我们将在更大的开源 LLM 上运行两个智能体检测器和 Reva。我们还将测试在简短的自生成分析之后读取内部表示是否能增加信息。<br />
+<strong>成功标准：</strong> Reva 在相同 LLM 上在每个规模上都匹配或超过它们。</p>
+<p><strong>步骤 2：编码智能体中的校准筛查。</strong> 我们将学习依赖于项目和函数的阈值，并将 Reva 集成到编码智能体循环中，仅将高风险函数升级给智能体检测器或漏洞证明检查 [32]。<br />
+<strong>成功标准：</strong> 在给定的升级预算下，该循环比单独的智能体检测器发现更多漏洞。</p>
+<p><strong>步骤 3：超越 PrimeVul 的泛化。</strong> 我们将在其他数据集 [33, 34, 35]、过程间漏洞 [36, 32] 以及每个 LLM 训练截止日期之后披露的漏洞上进行评估，并研究用相同目标微调 LLM。<br />
+<strong>成功标准：</strong> Reva 在 LLM 不可能见过的漏洞上保持其准确性。</p>
+<h2>VI 结论</h2>
+<p>Reva 通过在单次前向传播中探测 LLM 对函数及其安全上下文的内部表示来检测漏洞。在 PrimeVul 的保留测试集上，它匹配或超过在同一 LLM 上运行的智能体检测器，误报更少，每个函数约一秒，成本仅为其一小部分。因此，LLM 的内部表示携带了比其判定更多的漏洞信息，读取这些表示使得在编写每个函数时进行实时筛查成为可能。</p>
+<h2>参考文献</h2>
+<p>[1] B. Boehm, V. R. Basili (2001) 软件缺陷削减十大清单. <em>Computer</em> 34(1), pp. 135–137. 被引用于：§I.</p>
+<p>[2] B. Johnson, Y. Song, E. Murphy-Hill, R. Bowdidge (2013) 为什么软件开发者不使用静态分析工具来查找缺陷？. 载于 <em>Proc. 35th IEEE/ACM Int. Conf. on Software Engineering (ICSE)</em>, pp. 672–681. 被引用于：§I.</p>
+<p>[3] X. Du, J. Feng, Y. Zou, W. Xu, J. Ma, W. Zhang, S. Liu, X. Peng, Y. Lou (2026) 用 LLM 减少静态缺陷检测中的误报：一项工业界实证研究. arXiv preprint arXiv:2601.18844. 被引用于：§I.</p>
+<p>[4] Z. Wang, T. Shi, J. He, M. Cai, J. Zhang, D. Song (2026) CyberGym：大规模评估 AI 智能体的真实世界网络安全能力. 载于 <em>Proc. Int. Conf. on Learning Representations (ICLR)</em>. 外部链接：2506.02548. 被引用于：§I.</p>
+<p>[5] DARPA (2025) AI 网络挑战赛. 注：https://www.darpa.mil/research/programs/ai-cyber. 半决赛于 DEF CON 2024 举行，决赛于 DEF CON 2025 举行. 被引用于：§I.</p>
+<p>[6] W. Tang, X. Zhang, J. Liu, J. Xiao, X. Xiao, J. Yang, Y. Ma, Z. Liu, Z. Li, Z. Wang, W. Luo, Q. Li, L. Wang, P. Xiangli (2026) VulTriage：面向基于 LLM 的漏洞检测的三路径上下文增强. arXiv preprint arXiv:2605.09461. 被引用于：§I, §II, 表 I.</p>
+<p>[7] Z. Wang, G. Li, J. Li, H. Zhu, Z. Jin (2026) VulAgent：假设-验证驱动的多智能体漏洞检测架构. 载于 <em>Findings of the Association for Computational Linguistics: ACL 2026</em>, pp. 18598–18616. 被引用于：§I, §II, 表 I.</p>
+<p>[8] R. Widyasari, M. Weyssow, I. C. Irsan, H. W. Ang, F. Liauw, E. L. Ouh, L. K. Shar, H. J. Kang, D. Lo (2026) 审判开始：基于 LLM 智能体的模拟法庭漏洞检测方法. 载于 <em>Proc. 48th IEEE/ACM Int. Conf. on Software Engineering (ICSE)</em>. 被引用于：§I, §II, 表 I.</p>
+<p>[9] Y. Ding, Y. Fu, O. Ibrahim, C. Sitawarin, X. Chen, B. Alomair, D. Wagner, B. Ray, Y. Chen (2025) 代码语言模型的漏洞检测：我们还有多远？. 载于 <em>Proc. 47th IEEE/ACM Int. Conf. on Software Engineering (ICSE)</em>. 被引用于：§I, §I, §II, §IV-A.</p>
+<p>[10] X. Wen, Y. Yang, C. Gao, Y. Xiao, D. Ye (2025) 通过合成推理数据的课程偏好优化提升 LLM 的漏洞检测. 载于 <em>Findings of the Association for Computational Linguistics: ACL 2025</em>, pp. 8935–8949. 被引用于：§I.</p>
+<p>[11] O. Ovadia, E. Ben Zaken, E. Guttman, O. Moreno Kadosh (2026) MiST：面向网络安全的 LLM 中期训练. arXiv preprint arXiv:2609.18496. 被引用于：§I.</p>
+<p>[12] A. Azaria, T. Mitchell (2023) LLM 的内部状态知道它何时在说谎. 载于 <em>Findings of the Association for Computational Linguistics: EMNLP 2023</em>. 被引用于：§I.</p>
+<p>[13] C. Burns, H. Ye, D. Klein, J. Steinhardt (2023) 无监督发现语言模型中的潜在知识. 载于 <em>Proc. Int. Conf. on Learning Representations (ICLR)</em>. 被引用于：§I.</p>
+<p>[14] S. Marks, M. Tegmark (2024) 真实的几何：大语言模型对真/假数据集表示中涌现的线性结构. 载于 <em>Proc. Conf. on Language Modeling (COLM)</em>. 被引用于：§I.</p>
+<p>[15] H. Orgad, M. Toker, Z. Gekhman, R. Reichart, I. Szpektor, H. Kotek, Y. Belinkov (2025) LLM 知道的比展示的更多：论 LLM 幻觉的内在表示. 载于 <em>Proc. Int. Conf. on Learning Representations (ICLR)</em>. 被引用于：§I.</p>
+<p>[16] S. Kadavath, T. Conerly, A. Askell 等 (2022) 语言模型（多半）知道自己知道什么. arXiv preprint arXiv:2207.05221. 被引用于：§I.</p>
+<p>[17] M. Turpin, J. Michael, E. Perez, R. S. Bowman (2023) 语言模型并不总是说出所想：思维链提示中不忠实的解释. 载于 <em>Advances in Neural Information Processing Systems (NeurIPS)</em>. 被引用于：§I.</p>
+<p>[18] Z.ai (2026) GLM-5.3-Flash. 注：https://huggingface.co/zai-org/GLM-5.3-Flash. 被引用于：§I, §IV-A.</p>
+<p>[19] S. Ullah, M. Han, S. Pujar, H. Pearce, A. Coskun, G. Stringhini (2024) LLM（尚）无法可靠地识别和推理安全漏洞：全面的评估、框架与基准. 载于 <em>Proc. IEEE Symposium on Security and Privacy (S&amp;P)</em>. 被引用于：§II.</p>
+<p>[20] B. Steenhoek, M. M. Rahman, M. K. Roy, M. S. Alam, H. Tong, S. Das, E. T. Barr, W. Le (2025) 机器也会犯错：漏洞检测挑战 LLM 推理. 载于 <em>Proc. 47th IEEE/ACM Int. Conf. on Software Engineering (ICSE)</em>. 被引用于：§II.</p>
+<p>[21] Y. Belinkov (2022) 探测分类器：前景、不足与进展. <em>Computational Linguistics</em> 48(1), pp. 207–219. 被引用于：§II, §III, §IV-D.</p>
+<p>[22] W. Yu, R. Mangal, T. Zhuo, M. Fredrikson, C. S. Pasareanu (2025) 线性修正的混合生成安全代码. arXiv preprint arXiv:2507.09508. 被引用于：§II.</p>
+<p>[23] A. Khatri (2026) 探测预填充：通过潜在激活检测代码漏洞. arXiv preprint arXiv:2608.16970. 被引用于：§II.</p>
+<p>[24] A. Sternfeld, A. Kucharavy, L. Dolamic (2026) 最小提示扰动导致代码漏洞：编码 LLM 中的提示脆弱性与隐藏状态信号. arXiv preprint arXiv:2605.29737. 被引用于：§II.</p>
+<p>[25] C. Di Cicco (2026) 代码正确性可在生成前从 LLM 隐藏状态中线性解码. arXiv preprint arXiv:2606.14530. 被引用于：§II.</p>
+<p>[26] N. Risse, M. Böhme (2024) 揭示机器学习自动漏洞检测的局限. 载于 <em>Proc. 33rd USENIX Security Symposium</em>. 被引用于：§II.</p>
+<p>[27] F. Weissberg, L. Pirch, E. Imgrund, J. Möller, T. Eisenhofer, K. Rieck (2026) 从代码度量视角看基于 LLM 的漏洞发现. 载于 <em>Proc. 48th IEEE/ACM Int. Conf. on Software Engineering (ICSE)</em>. 被引用于：§II.</p>
+<p>[28] Semgrep, Inc. (2026) Semgrep：面向多种语言的轻量级静态分析. 注：https://semgrep.dev. 被引用于：§III.</p>
+<p>[29] Meta (2026) Muse-Glimmer-30B. 注：https://huggingface.co/meta-models/Muse-Glimmer-30B. 被引用于：§IV-A.</p>
+<p>[30] Qwen Team (2026) Qwen3.8-27B. 注：https://huggingface.co/Qwen/Qwen3.8-27B. 被引用于：§IV-A.</p>
+<p>[31] J. Hewitt, P. Liang (2019) 用控制任务设计和解释探针. 载于 <em>Proc. Conf. on Empirical Methods in Natural Language Processing (EMNLP)</em>. 被引用于：§IV-D.</p>
+<p>[32] A. Lbath, M. Suri, A. Delaitre, V. Okun, M. Amini, R. D. Sriram, D. Manocha (2026) CyberForge：面向网络安全智能体训练的存储库级已验证漏洞注入. arXiv preprint arXiv:2608.06471. 被引用于：§V, §V.</p>
+<p>[33] J. He, M. Vechev (2023) 代码大语言模型：安全加固与对抗测试. 载于 <em>Proc. ACM SIGSAC Conf. on Computer and Communications Security (CCS)</em>. 被引用于：§V.</p>
+<p>[34] Y. Chen, Z. Ding, L. Alowain, X. Chen, D. Wagner (2023) DiverseVul：面向基于深度学习的漏洞检测的新漏洞源代码数据集. 载于 <em>Proc. 26th Int. Symp. on Research in Attacks, Intrusions and Defenses (RAID)</em>. 被引用于：§V.</p>
+<p>[35] A. Lbath, M. Amini, A. Delaitre, V. Okun (2025) AVIATOR：面向高保真、大规模代码安全数据集的 AI 智能体漏洞注入工作流. arXiv preprint arXiv:2508.20866. 被引用于：§V.</p>
+<p>[36] A. Lbath (2026) 迈向可扩展的自动化存储库级软件漏洞检测数据集. arXiv preprint arXiv:2603.17974. 被引用于：§V.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 漏洞检测, 大语言模型, 内部表示, 探针, 编码智能体</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
