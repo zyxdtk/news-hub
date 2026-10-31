@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解析语言模型数据归因的设计空间 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">解析语言模型数据归因的设计空间</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.40655" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Elucidating the Design Space of LM Data Attribution</h4>
+            <p><strong>中文摘要：</strong> 本文探索语言模型数据归因的设计空间，引入受控归因基准CATT，在完全虚构的知识上微调LLM以建立明确的归因真实标签，从而系统地控制文档冗余度与词汇干扰项等数据集属性。研究发现了"稀释现象"：训练文档中的因果证据高度局部化于少数关键token，标准方法却通过全文档平均将其稀释为噪声。作者提出以负对数几率梯度替代交叉熵梯度以凸显关键token，并仅聚合top-k token分数，将事实追踪召回率提高35至72个百分点，并在FTRACE-TREX基准上将反事实重训练性能提升最高4.9倍。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>解析语言模型数据归因的设计空间</h1>
+<p><strong>Steven Yu</strong>（东北大学）<br />
+<strong>Sheng-Yu Wang</strong>（东北大学、MIT）<br />
+<strong>Kimia Hamidieh</strong>（MIT）<br />
+<strong>Antonio Torralba</strong>（MIT）<br />
+<strong>David Bau</strong>（东北大学）</p>
+<h2>摘要</h2>
+<p>语言模型（LM）的数据归因方法通常使用事实检索等下游任务进行评估。然而，现有的评估方法会同时改变多个数据集属性，使得无法精确隔离归因算法失败的原因。为了诊断这些失败，我们探索了LLM数据归因的设计空间，并以评估为主要关注点。我们引入了用于事实追踪的<strong>受控归因基准</strong>（CATT），其中我们在完全虚构的知识上微调LLM，为归因提供明确的真实标签。这种合成设置使我们能够系统地一次只改变一个数据集配置，例如文档冗余度和词汇干扰项。通过这种可配置的评估，我们证明了冗余和干扰项会持续降低归因性能。我们没有提出新的估计器，而是研究了两个未被充分探索的设计选择：用于计算梯度的损失函数，以及如何将逐token归因分数聚合为文档分数。</p>
+<p>我们发现训练文档中的真实因果证据高度局部化，但标准方法通过在整个文档上平均归因分数，将这种证据稀释为噪声。我们发现，用负对数几率梯度替换标准交叉熵损失梯度，可以将关键token从其他无信息token中凸显出来。然后，我们可以仅聚合最高的token分数，从而在我们的诊断基准上，将多个基线方法的真实标签召回率提高35至72个百分点。负对数几率修正也能泛化到FTRACE-TREX，使我们测试的每种方法的反事实重训练性能都得到提升，最高达4.9倍。我们的代码、数据和训练模型位于 catt.baulab.info。</p>
+<h2>1 引言</h2>
+<p>数据归因旨在识别导致特定模型行为的训练样本（Koh &amp; Liang, 2017; Ilyas et al., 2022; Park et al., 2023; Grosse et al., 2023a; Chang et al., 2025），并预测反事实情况：即在没有这些样本的情况下训练的模型将不再表现出目标行为。然而，通过重训练大型模型来直接验证这一预测在计算上是不可行的，这使得该领域缺乏对算法改进的可靠评估。</p>
+<p>为了弥合这一差距，我们引入了<strong>受控归因基准</strong>（CATT），它在模拟真实世界预训练数据复杂性的同时建立了已知的真实标签。在预训练数据集中，知识以多种方式呈现，例如"玛丽·居里出生于华沙"这样的事实可能会在数十篇措辞不同的文章中被陈述，同时还有关于其他人出生地的陈述。为了在拥有归因真实标签的同时模拟这种情况，我们在预训练中不存在的合成事实上微调LLM，因此定义每个事实的文档是该知识的唯一可能来源。在此设置基础上，我们通过探索评估的设计空间来模拟真实世界的复杂性。我们构建了多个数据集和微调模型，每次只改变一个属性，例如在更多文档中重复每个事实、增加事实数量，或添加模仿查询的词汇干扰项。我们在这些不同数据集复杂度上测试现有的归因算法，发现了一种严重的<strong>稀释现象</strong>，即重复和干扰项都会持续降低归因性能。检查token级分数发现，训练文档中的关键证据仅局部化在少数几个token上，而标准方法在整个文本上取平均，用背景噪声稀释了这一信号（图1）。这一发现促使我们探索归因算法中两个未被充分探索的设计空间：用于计算梯度的损失函数，以及token分数如何聚合为文档分数。</p>
+<p><strong>图1：正确的损失函数将归因集中在相关token上。</strong> 我们展示了真实标签训练文档内的token级影响分数，除以该文档的最大token分数进行归一化。交叉熵对与回答查询相关的token赋予的权重很小，导致该文档排名很差（排名582/1000）。令人惊讶的是，我们发现简单地切换到负对数几率就能将影响分数集中在这些token上，并正确地将其排名第一。结果来自我们的<strong>受控归因基准</strong>。</p>
+<p>相关工作已经探索了在目标事实上微调LLM以建立归因真实标签。超越在随机子集上的代理指标（Ilyas et al., 2022; Park et al., 2023），多个事实追踪基准测试归因方法是否能检索到支持目标事实的微调文档（Akyürek et al., 2022; Chang et al., 2025; Jiao et al., 2026）。然而，现有基准在单一的、固定的、设计各异的数据集上进行评估，导致了相互矛盾的结论：例如BM25（Robertson et al., 1994）在某些设置中优于影响函数（Akyürek et al., 2022; Chang et al., 2025），而在其他设置中则落后（Jiao et al., 2026）。由于这些静态基准在多个轴上同时存在差异，它们无法提供关于算法<strong>为什么</strong>成功或失败的明确诊断信号。由于缺乏来自评估的可操作反馈，算法研究反而主要专注于使影响近似更快、更可扩展（Koh &amp; Liang, 2017; Park et al., 2023; Grosse et al., 2023a），而与改进评估结果没有明确联系。相反，我们的评估通过在多个可配置轴上系统地改变数据集复杂度来检查归因失败，从而可以更直接地识别归因失败并加以改进。</p>
+<p>我们的基准CATT帮助我们识别了稀释现象以及缓解它的简单修复方法。为了确保我们的发现适用于不同的任务，该基准实现了两种不同的微调场景：（1）原子函数绑定，将新的常量函数与特定输出关联；（2）组合路由规则，根据给定的对象属性路由结果。在这些任务中，我们发现了两种可应用于任何基于梯度的归因方法的修复方法。首先，我们严格在token级别应用负对数几率损失（Park et al., 2023）。虽然交叉熵会将自信预测的目标token的梯度归零，但我们的token级负对数几率应用消除了这种置信度因子，使最重要的token从分布中清晰地浮现。其次，我们通过仅聚合top-k token归因分数来缓解稀释现象。隔离这些局部化分数减轻了冗余和干扰项的影响，在多种归因方法和数据集设置中，事实追踪召回率提高了35至72个百分点。最后，我们展示了这些见解可以推广到我们的合成设置之外。在外部FTRACE-TREX基准（Akyürek et al., 2022）上，token级负对数几率提高了TRAK、EK-FAC和Grad-Dot的反事实重训练性能，最高达4.9倍，表明损失修正能够可靠地在多样化任务中提取因果证据。总之，我们的贡献是：</p>
+<ul>
+<li>我们引入了CATT，一个可配置的合成事实追踪基准，控制文档冗余度和词汇干扰项等属性。</li>
+<li>我们识别出一种<strong>稀释现象</strong>，即标准方法通过在整个文档上平均分数，冲刷掉了高度局部化的token归因证据。</li>
+<li>我们发现应用负对数几率梯度和仅聚合top-k token分数，可在多种方法上将事实追踪召回率提高35至72个百分点。</li>
+<li>我们的发现具有泛化性。在外部FTRACE-TREX基准（Akyürek et al., 2022）上，负对数几率梯度使TRAK、EK-FAC和Grad-Dot的性能提升最高达4.9倍。</li>
+</ul>
+<h2>2 LLM数据归因的受控诊断</h2>
+<p><strong>图2：CATT：具有受控数据集的事实追踪任务。</strong> 我们在虚构知识上微调Qwen3.5-4B模型，这确保了我们的数据集是其预测的唯一因果来源。<strong>左图：</strong> 任务I（<strong>函数绑定</strong>）教授总是返回固定值的新函数。<strong>右图：</strong> 任务II（<strong>路由规则</strong>）教授根据属性对对象进行排序的规则。给定一个与任何训练文档措辞不同的查询，我们测试归因方法是否能正确排列真实标签文档。与静态基准（Akyürek et al., 2022; Jiao et al., 2026）不同，我们通过系统地控制数据集属性来诊断性能：(A) 通过以N种不同的文档风格教授同一事实来引入冗余，以及(B) 注入词汇干扰项，这些是完全模仿查询格式的无关文档，用于暴露依赖表面文本重叠的方法。任务II省略了干扰项，因为每个事实使用不相交的属性词集合，使得难以构建明确的词汇重叠。请在我们的项目页面浏览数据集。</p>
+<p>我们的目标是理解数据归因对不同数据集配置的敏感程度。第2.1节介绍我们的受控评估设置和感兴趣的属性。第2.2节解释我们的合成事实追踪任务。第2.3节将我们的分析扩展到token级归因和损失选择。</p>
+<h3>2.1 事实追踪数据集的可配置设计空间</h3>
+<p>我们首先定义我们的受控数据集生成器。我们通过在合成虚构事实的数据集上微调预训练语言模型来建立数据归因的真实标签。与静态数据集不同，我们的训练数据集 𝒟_c 是<strong>可配置的</strong>，其中配置 c = (𝒯, ℱ, N, 𝟏_dist) 由任务 𝒯、事实集 ℱ、每个事实的文档数N以及是否包含词汇干扰项的指示符 𝟏_dist ∈ {0,1} 组成。每个文档 d ∈ 𝒟_c 以不同的格式描述一个合成事实 f ∈ ℱ，我们将支持 f 的文档子集表示为 𝒟_f。对于每个配置，我们每个随机种子 s 获得一个微调模型：θ_{c,s} = Finetune(θ₀, 𝒟_c; s)。（公式1）</p>
+<p>我们通过问答来评估归因。在测试时，微调模型 θ_{c,s} 接收一个保留的查询 q_f = (u_f, y_f)，该查询使用未见过的提示格式测试事实 f，以预测单token答案 y_f。归因方法为训练文档 d 对该预测的影响分配一个分数 τ(d, q_f)。可靠的归因应该在所有其他训练文档之上，对真实标签集合 𝒟_f 给出高分。我们系统地控制 c 的以下组件（任务 𝒯 在第2.2节中描述），并测试归因性能如何相应变化。</p>
+<p><strong>文档冗余度 N。</strong> 我们改变表达每个事实的文档数量，记为 N = |𝒟_f|。这些文档通过不同的措辞和示例传达相同的知识，因此冗余指的是重复的事实支持，而非精确的文本重复。</p>
+<p><strong>词汇干扰项 𝟏_dist。</strong> 当 𝟏_dist = 1 时，我们在训练数据集中添加包含词汇干扰项的文档 𝒟_dist。每个干扰项遵循与保留查询相同的格式，但编码与任何被查询事实无关的信息。我们设置 |𝒟_dist| = |⋃_{f∈ℱ} 𝒟_f|，以保持事实文档与干扰项之间的一对一比例。因为干扰项与查询相似但不提供任何答案，它们测试归因是否能区分真实标签支持与表面相似性。</p>
+<p><strong>事实数量 |ℱ|。</strong> 我们改变合成事实的数量 |ℱ|，同时保持文档冗余度 |𝒟_f| 固定。这一控制衡量当训练数据集包含更多竞争知识时归因如何变化。</p>
+<h3>2.2 受控归因基准（CATT）</h3>
+<p>按照这一设计，我们引入了<strong>受控归因基准</strong>，包含两个合成事实追踪任务：函数绑定和路由规则（图2）。对于每个任务，我们生成多个数据集 𝒟_c，系统地扫过上述定义的配置组件。我们在每个 𝒟_c 上使用LoRA微调Qwen3.5-4B（Qwen Team, 2026）。为了衡量归因在不同运行间的方差，我们每个配置训练3个模型 θ_{c,s}，每个种子 s 一个。</p>
+<p><strong>函数绑定。</strong> 如图2（任务I）所示，此任务测试归因能否将答案追溯回新学习的常量映射。每个事实 f 将新的函数token映射到常量答案token（例如，f2 总是返回 v2）。因为这些新token在预训练期间未见过，任何正确的模型预测都仅受我们的真实标签文档影响。为确保模型学习到泛化的映射，测试查询采用特定格式（例如"f2(67)的输出是"），该格式被刻意排除在训练文档之外。然后我们注入模仿这种查询格式但描述无关函数（例如 g1）的词汇干扰项。</p>
+<p><strong>路由规则。</strong> 如图2（任务II）所示，此任务在组合逻辑上评估归因。每个事实 f 教授一个虚构规则，基于单一决定属性（例如"抛锚"）将一类对象（例如车辆和汽车）路由到特定队列（例如Birch或Cedar）。因为这些任意规则完全是合成的，如前所述，任何正确的模型预测都仅受我们的真实标签文档影响。为确保模型学习到泛化的规则，测试查询呈现同类别的具有不同属性组合的新对象，并使用刻意不同于训练文档的措辞。由于每个规则使用完全不同的属性词集合，创建明确的词汇干扰项很困难，因此我们在该任务中不包含它们。</p>
+<p>对于这两个任务，我们报告模型准确率以验证模型学习了这些事实，并在附录B.3中包含数据集和微调细节。</p>
+<h3>2.3 通过损失和token检查归因设计空间</h3>
+<p>我们应用我们的基准来诊断现有归因方法<strong>为什么</strong>失败。通过分析分数如何在单个token上分布，我们揭示了一种系统性的稀释效应，即查询事实的关键证据被无关token淹没（在第3节中经验验证）。在这种token级检查的指导下，我们探索了两个未被充分探索的设计空间：<strong>损失函数</strong>和<strong>token聚合</strong>。我们发现这两个空间中的简单改变能大幅提升性能。</p>
+<p><strong>通过token检查归因。</strong> 大多数归因方法根植于影响函数（Koh &amp; Liang, 2017），它通过估计查询损失减少来为查询 q = (u, y) 评分训练文档 d = (x₁, …, x_{T_d})：</p>
+<p>τ_IF(d, q) = ∇<em>θ ℒ(q)^𝖳 H⁻¹ ∇_θ ℒ(d) ≈ ∑_ℓ ∇</em>{θ_ℓ} ℒ(q)^𝖳 H_ℓ⁻¹ ∇_{θ_ℓ} ℒ(d)。（公式2）</p>
+<p>这里，H = ∇<em>θ² ℒ 是训练损失的Hessian矩阵，最近的工作将其分解为单独的层 ℓ，获得特定层的Hessian H_ℓ 和梯度 ∇</em>{θ_ℓ}（Grosse et al., 2023a; Choe et al., 2025）。ℒ(q) = −log p_θ(y|u) 是单个答案token y 上的查询损失，而文档损失 ℒ(d; θ) = −(1/T_d) ∑<em>t log p_θ(x_t | x</em>{&lt;t}) 对序列上的下一token预测损失取平均。这种逐层分解使得来自Grosse et al. (2023a)的逐token归因分析成为可能，我们将其作为研究稀释效应的主要诊断工具。</p>
+<p>设 a_{ℓ,t} 和 h_{ℓ,t} 表示层 ℓ 在位置 t 的输入和输出激活。根据线性层的链式法则，位置 t 处的权重梯度贡献是输出梯度和输入激活的外积，整层梯度是它们在token上的和：</p>
+<p>g_{ℓ,t}(d) = vec(∇<em>{h</em>{ℓ,t}} ℒ(d) a_{ℓ,t}^𝖳)，∇<em>{θ_ℓ} ℒ(d) = ∑_t g</em>{ℓ,t}(d)，（公式3）</p>
+<p>其中 vec(·) 将矩阵展平。相应的逐token归因在每个位置的贡献被聚合为文档归因分数之前将其隔离：</p>
+<p>τ_t(d, q) = ∑<em>ℓ ∇</em>{θ_ℓ} ℒ(q)^𝖳 H_ℓ⁻¹ g_{ℓ,t}(d)，τ_IF(d, q) ≈ ∑_t τ_t(d, q)。（公式4）</p>
+<p>因为逐token归因需要逐层分解，我们以这种方式评估所有基线。对于非原生设计用于逐层计算的方法，如TRAK（Park et al., 2023），我们实现了调整版本，完整细节见附录A.2。正如Grosse et al. (2023a)指出的，这代表的是局部化的梯度信号，而非token删除的精确反事实效应，因为激活编码了先前的上下文。</p>
+<p><strong>将交叉熵改为负对数几率。</strong> 通过检查逐token归因，我们发现交叉熵 ℒ_CE = −log p 在预测概率 p 很高时会抑制有用token的梯度。我们通过与替代的负对数几率损失 ℒ_nlo = −log[p/(1−p)] 比较来展示这一点，后者计算目标token相对于剩余概率质量的对比率。它们的梯度方向相同但幅度不同：</p>
+<p>∇_θ ℒ_CE = (1−p) ∇_θ ℒ_nlo。（公式5）</p>
+<p>交叉熵将自信预测的目标（p → 1）的梯度归零，即使那个确切的token表达了我们想要追踪的真实标签事实。为了解决这个问题，我们使用负对数几率计算梯度，这将高归因分数恢复给自信的token。因为文档梯度聚合了不同置信度的token，仅交换梯度就成功地将整体文档分数重定向到最相关的token。它带来了相当大的性能提升，即使我们将Hessian估计固定为原始的交叉熵损失。</p>
+<p>附录A.1推导了公式5，并表明 ℒ_nlo 的梯度范数在两侧都有界。我们注意到TRAK（Park et al., 2023）也使用对数几率，但严格地作为应用修正因子 Q 之前的中间映射，以将梯度恢复为交叉熵。我们发现去掉 Q 以纯粹在负对数几率目标下计算影响会产生强大且一致的改进，促使我们在所有方法中直接应用负对数几率。附录A.2提供了关于这一修正的更多讨论。</p>
+<p><strong>聚合最高token贡献。</strong> 虽然负对数几率梯度成功地凸显了最有用的token，我们可以通过仅平均每个文档内最高的 k 个token分数 τ_t(d, q) 来进一步防止稀释。如第3节所示，在交叉熵下，除了EK-FAC之外，仅top-token选择对每种方法的改进都很小，但将其与负对数几率目标配对会产生巨大的改进。</p>
+<p><strong>图3：现有归因方法在冗余和干扰项上挣扎。</strong> 我们在CATT上评估归因方法。随着每个事实的训练文档数N增加，每种方法归因分数的Recall@N，在 |ℱ| = 50 个事实时。在函数绑定任务上，基于梯度的方法中只有TRAK和EK-FAC能恢复真实标签文档，且两者的召回率都随N增长而下降；其他所有基于梯度的方法都保持在0.35以下。干扰项使TRAK在每个N处都降至0，并降低EK-FAC。在规则路由任务上，没有基于梯度的方法超过0.32。得益于独特的词汇线索，BM25保持强劲，而RepSim全程较弱。结果在三个种子上取平均，误差条表示±2个标准误（较小的误差条被标记点遮挡）。</p>
+<h2>3 实验</h2>
+<p><strong>图4：token选择和负对数几率损失有助于隔离真实标签。</strong> 真实标签（红色）和其他（灰色）文档的文档分数。当在交叉熵下对每个token评分时，两个分布重叠（Recall@N为0.01）。仅保留每个文档的前10个token（0.30）或切换到负对数几率（0.35）可以部分分离它们，而将两者结合则完全分离（1.00）。此结果来自在带干扰项的<strong>函数绑定</strong>数据集上训练的模型上的Grad-Dot（N=50, |ℱ|=50）。请在我们的项目页面查看每个数据集、方法和模型种子的这些图表。</p>
+<p>我们首先通过在CATT上诊断标准归因方法来开始我们的实验。这使我们能够经验性地展示token稀释效应，并验证我们提出的干预如何缓解它。最后，我们测试这些修改是否泛化到其他已建立的归因基准。</p>
+<p><strong>现有方法在哪里失败？</strong> 我们在第2.1节介绍的数据集配置上比较归因方法。我们的基线涵盖五组：</p>
+<ul>
+<li><strong>梯度相似度：</strong> Grad-Dot和Grad-Cos直接比较查询和训练梯度。</li>
+<li><strong>基于Fisher的影响：</strong> EK-FAC（Grosse et al., 2023a）和LoGra（Choe et al., 2025）使用Fisher信息近似Hessian。</li>
+<li><strong>基于GGN的影响：</strong> TRAK（Park et al., 2023）和TrackStar（Chang et al., 2025）使用广义高斯-牛顿（GGN）近似进行Hessian估计。</li>
+<li><strong>训练动态：</strong> TracIn（Pruthi et al., 2020b）和SOURCE（Bae et al., 2024b）使用训练轨迹上的梯度或近似更新。</li>
+<li><strong>检索参考：</strong> BM25（Robertson et al., 1994）匹配词汇重叠，而RepSim（Li et al., 2025）比较来自最后一层最后token位置的模型表示。与其他基线不同，这一类别不依赖梯度。</li>
+</ul>
+<p>附录C详述了实现。我们衡量Recall@N，即在查询的N个最高排名训练文档中恢复的该查询的N个真实标签文档的比例，在查询和模型训练运行上取平均。</p>
+<p>如图3所示，基于梯度的归因方法随着复杂度增加而严重退化。在<strong>函数绑定</strong>上，将每个事实的文档从1扩展到50，使TRAK的召回率从约0.9崩溃到0.1以下，而EK-FAC退化较缓，从0.70降至0.45。其他基于梯度的方法在整个扫描中持续失败。添加词汇干扰项使TRAK的召回率降至接近零，并损害EK-FAC的性能。在<strong>规则路由</strong>上，所有基于梯度的方法都很挣扎。RepSim在所有设置中的糟糕表现表明，最终表示本身缺乏有用的归因信号。相比之下，BM25全程表现强劲，因为唯一的函数标识符和规则属性提供了强大的词汇信号，尽管格式不同，仍将查询链接到支持文档。BM25的成功揭示了一个关键差距：虽然这些明确的事实链接明显存在于文本中，但基于梯度的方法未能提取它们。</p>
+<p>在附录D.5中，我们展示了包含的事实数量不会强烈影响归因。在这里，我们报告标准TRAK和TracIn。所有后续实验使用它们的层分解变体，记为<strong>Layerwise TRAK</strong>和<strong>Layerwise TracIn</strong>。接下来，我们展示归因失败源于token稀释效应。</p>
+<p><strong>图5：损失决定了什么类型的token占据最高位置。</strong> (a) 在交叉熵（上）和负对数几率（下）下，一个查询在其真实标签规则路由文档之一上的逐token归因。方框标记了十个最高分位置。负对数几率将文档从1500个中的第1499名提升到第12名。 每种token类型在前10位中的份额除以其在所有位置中的份额。交叉熵偏向物品名称。负对数几率则偏向结果token，即与查询答案匹配的词。附录D.4在函数绑定任务上显示了相同的模式。在我们的demo中探索其他查询和方法的逐token归因。</p>
+<p><strong>图6：用对数几率对更有影响的token加权，可在不同token预算下提高召回率。</strong> 随保留token数k变化的Recall@N，在交叉熵（上）和负对数几率（下）下。列显示三种CATT设置。黄色区域标记全文档评分（"全部"），每列右上端点对应先前工作的损失和聚合选择。带有小token预算的负对数几率显著改进了几种方法，尤其是在有干扰项时。增益在多个k值上持续；保留更多token通常会降低召回率。结果在 |ℱ| = 50 的所有数据集配置和模型种子上取平均，误差条表示±2个标准误。</p>
+<p><strong>有用的token信号被其他无关信号稀释。</strong> 之前的结果表明，虽然相关证据存在于训练文档中，但文档级梯度未能将其隔离。为了理解原因，我们按第2.3节所述按token检查归因分数。如图4左侧面板所示，平均所有token的文档级分数导致真实标签文档和其他文档之间的大量分布重叠，导致Recall@N仅为0.01。然而，如果我们只平均前10个token分数，分布就会分离，召回率提高到0.3。这证实了丢弃无关token可以防止重要归因信号的稀释。</p>
+<p><strong>负对数几率梯度有助于凸显重要token。</strong> 虽然top-token选择在交叉熵下将召回率提高到0.30，但重要的归因信号仍被交叉熵梯度抑制。我们可以用负对数几率梯度进一步凸显重要token，如第2.3节所讨论的。如图4右侧面板所示，即使平均所有token，将交叉熵换成负对数几率也能清楚地将分数分布分离，将召回率提升到0.35。当我们将这种损失与前10个token聚合结合时，分离被急剧放大，实现了完美的1.00召回率。这证实了归因信号在重要token中强烈存在，而负对数几率梯度和top-token聚合共同防止它被文档平均值稀释。在六种具有逐token项且标准文档分数使用交叉熵的方法中，相同的组合将召回率提高了35（TrackStar）到72（Grad-Dot）个百分点，在所有三个任务、N和|ℱ|上取平均；其他方法介于两者之间（附录D.1）。</p>
+<p><strong>哪些token对归因重要？</strong> 图5准确揭示了哪些token负责这种性能恢复。对于一个真实标签<strong>规则路由</strong>文档，交叉熵将其最高分数分配给无关的物品名称，导致文档在1500个中排名第1499。相比之下，负对数几率将最大贡献直接转移到决定答案的结果token上，将文档排名提升到第12。总之，这些结果验证了我们的token级诊断。负对数几率成功地突出了一小部分重要token，而top-token聚合确保重要token不会在最终归因分数中被稀释。</p>
+<p><strong>缓解稀释一致地改善归因。</strong> 我们引入的修改在CATT上大幅提高了召回率。图6将这些分数与全文档归因进行比较，如黄色区域所示。在负对数几率下，小token预算产生大增益。当k=10时，Grad-Dot、EK-FAC和layerwise TracIn在<strong>函数绑定</strong>上实现了接近完美的召回率，包括干扰项设置。改进不特定于某一个k的选择；召回率在广泛的小预算范围内保持强劲。随着k增加，性能逐渐下降到全文档基线，显示了无关token如何逐渐稀释有用的信号。<strong>规则路由</strong>仍然更困难，但相同的改进出现在多种方法中。有趣的是，较大的最优k表明该任务的重要token集合更大。</p>
+<p><strong>图7：泛化到外部FTRACE-TREX基准。</strong> 移除最高排名的训练文档并重训练后的准确率下降，随移除预算增加。更大的下降表示更有效地识别了有影响的数据。在每个面板中，虚线：先前工作；浅色：带负对数几率；深色：前10个token上的负对数几率（TRAK的密集投影没有逐token分数）；点线：BM25。八个重训练种子的平均值（附录E），误差条±2个标准误。</p>
+<p><strong>泛化到其他基准。</strong> 我们研究我们在CATT上的发现是否泛化到其他设置。我们在外部FTRACE-TREX（Akyürek et al., 2022）基准上评估，并采用Park et al. (2023)的设置，移除最高排名的训练文档并重训练模型以测量事实准确率的下降（细节见附录E）。我们发现负对数几率干预成功地转移到这一新设置。图7显示，对于TRAK、EK-FAC和Grad-Dot，负对数几率在每个移除预算下都比先前工作的分数产生更大的准确率下降。在最大预算下，TRAK的下降从8%提高到40%（4.9倍）。结合两种修复，Grad-Dot从7%提高到23%，而EK-FAC——先前工作下已经是最强的方法——从30%提高到46%，是总体上最大的下降。Top-token选择在这里不如在CATT上重要：在负对数几率下，仅保留前10个token相对于对所有token评分，最多在任一方向改变下降六个百分点。这表明虽然损失修正在多样化数据集上改进了归因，但top-token聚合可能取决于归因分数在特定文档内分布的广泛程度。</p>
+<h2>4 相关工作</h2>
+<p><strong>训练数据归因。</strong> 数据归因估计如果移除或重新加权训练样本，模型的输出将如何变化（Koh &amp; Liang, 2017; Ilyas et al., 2022; Hammoudeh &amp; Lowd, 2024）。因为精确的反事实需要重训练，算法设计和评估在很大程度上是独立发展的。影响函数（Koh &amp; Liang, 2017）在训练参数附近线性化上调权样本的效应。许多方法通过近似Hessian（Schioppa et al., 2022; Grosse et al., 2023b; Kwon et al., 2024）、投影梯度（Park et al., 2023; Xia et al., 2024; Lin et al., 2024）或跟随训练轨迹（Pruthi et al., 2020a; Bae et al., 2024a）将这一估计扩展到大型模型。其他方法在随机数据子集上重训练模型（Ghorbani &amp; Zou, 2019; Feldman &amp; Zhang, 2020; Ilyas et al., 2022; Ilyas &amp; Engstrom, 2025）。</p>
+<p>这些改进通常通过与留一重训练等目标的一致性来证明。然而，这样的目标受到训练随机性的影响（Nguyen et al., 2023），因此一致性不能保证更好的检索。我们转而通过在事实追踪（一个直接的下游应用）上评估来探索算法改进。</p>
+<p><strong>Token级归因。</strong> 基于梯度的方法用其平均token损失的梯度为文档评分。先前的工作为可视化计算每个token的影响（Grosse et al., 2023b; Lin et al., 2024），TrackStar讨论了按token应用其损失转换（Chang et al., 2025）。我们使用token分数来解释为什么冗余和干扰项降低归因性能，然后用逐token负对数几率梯度（Park et al., 2023）为文档评分，并聚合top-k token分数以改进归因。</p>
+<p><strong>归因评估。</strong> 线性数据建模分数测试归因是否预测在随机子集上重训练的模型的输出（Ilyas et al., 2022; Park et al., 2023）。检索基准则测试归因是否将已知的支持样本排在前面，使用LLM的事实追踪（Akyürek et al., 2022; Chang et al., 2025; Jiao et al., 2026）或用于微调文本到图像模型的样本（Wang et al., 2024b）。结论是矛盾的：BM25（Robertson &amp; Zaragoza, 2009）在一些基准上优于基于梯度的方法（Akyürek et al., 2022; Chang et al., 2025），在其他基准上则不如（Jiao et al., 2026），而简单的相似性基线在NLP分类上匹敌影响函数（Pezeshkpour et al., 2021）。因为这些基准在训练语料库、查询构建和任务上同时不同，冲突的原因无法识别。我们的基准固定训练程序，一次只改变一个语料库属性。</p>
+<p><strong>LLM微调。</strong> 先前的工作在新事实上微调LLM以衡量知识注入（Ovadia et al., 2023; Gekhman et al., 2024; Allen-Zhu &amp; Li, 2023）及其泛化（Berglund et al., 2023），并使用在受控数据上的微调来评估遗忘（Maini et al., 2024）、研究微调如何改变回路（Prakash et al., 2024）以及评估归因（Wang et al., 2024b; Jiao et al., 2026）。我们的基准与先前的归因基准在两个方面不同：1）每个事实都是虚构的（函数绑定将每个事实绑定到添加到词汇表的token，规则路由教授任意的合成规则），因此事实的唯一来源是陈述它的文档。2）它使得能够一次一个地改变冗余、干扰项和事实数量。我们使用LoRA（Hu et al., 2021）进行微调，它训练低秩参数更新。</p>
+<h2>5 讨论、更广泛的影响与局限性</h2>
+<p>我们的发现对于在高风险领域部署数据归因具有重要意义，例如版权保护、公平的功劳分配（Ghorbani &amp; Zou, 2019; Wang et al., 2024a）以及追踪涌现的失准（Betley et al., 2025）。当前的做法通常依赖文档级分数来追踪这些行为。然而，我们对稀释现象的发现表明，当因果证据高度局部化时，这些聚合分数可能在根本上是不可靠的。这表明现有的归因方法在真实世界设置中应谨慎应用。我们的工作强调，受控评估——特别是跨多样化数据集配置测试算法——对于建立方法的真正可靠性至关重要。</p>
+<p>虽然我们的框架提供了受控诊断，但仍存在若干局限性。首先，它在单token预测上评估归因，错过了长的多token展开中固有的序列级依赖。其次，我们通过单任务微调隔离学习，这使得多任务学习的归因未被探索。此外，通过top-k token聚合缓解稀释引入了新的超参数；由于真实世界场景缺乏真实标签验证信号，需要动态阈值。最后，简单词汇基线如BM25在我们基准上的强劲表现凸显了未来数据集的需要，其中表面级文本重叠不是可靠的捷径。我们可以扩展我们的框架以追踪多步推理，其中事实支持分散在多个概念中，而不是局部化在单一的真实标签文档中。尽管有这些挑战，我们的工作为改进数据归因算法和评估提供了具体的路线图。通过从静态评估转向受控设置，我们希望这些详细的见解能激发新想法并指导更稳健归因方法的开发。</p>
+<p><strong>致谢。</strong> 我们感谢Alex Loftus的指导和早期项目讨论，感谢Rohit Gandikota和Arnab Sen Sharma在整个项目中的有益对话，感谢Sophie Wang和Richard Zhang对草稿和图表的宝贵反馈。SY、SW和DB由DOE资助DE-SC0025613支持。KH和AT由ONR MURI资助N00014-26-1-2255支持。</p>
+<p><strong>AI使用声明</strong></p>
+<p>我们使用Claude Sonnet 4.5生成CATT中的合成训练文档和规则释义。我们在写作中使用了LLM辅助，并且我们也人工检查了文本。编码助手帮助我们实现和扩展了一些实验，我们审查了所有AI辅助的代码和输出。我们在附录A.1的数学证明中使用了LLM辅助，并人工检查了正确性。我们对本文的最终内容承担全部责任，包括在生成式AI辅助下产生的任何文本、声明或产物。</p>
+<p><strong>可复现性</strong></p>
+<p>我们的代码和CATT语料库及查询可在 https://github.com/Lamsheeper/catt 获取，微调的LoRA适配器和归因分数在我们的Hugging Face Hub上。事实、查询和训练文档可以在我们的项目页面（catt.baulab.info）上浏览，我们的demo逐token地展示每种方法为查询记入哪些训练文档。附录B.1和附录B.2给出了完整的数据生成程序，包括提示、采样范围和验证规则。附录B.3和表2给出了微调超参数和种子，附录C.1给出了每种归因方法的设置。我们使用HuggingFace Transformers（Wolf et al., 2020）和PEFT（Mangrulkar et al., 2022）库在PyTorch（Paszke et al., 2019）上用LoRA微调Qwen3.5-4B（Qwen Team, 2026）。归因作业在单个NVIDIA A100-80GB、H100和H200 GPU上运行。主要的归因扫描总共花费约2400 GPU小时，每个作业的细分见附录C.2。</p>
+<h2>参考文献</h2>
+<p>（参考文献为英文文献条目，保留原文格式：Akyürek et al. 2022, "Towards tracing knowledge in language models back to the training data"; Allen-Zhu &amp; Li 2023; Bae et al. 2024a/b; Berglund et al. 2023; Betley et al. 2025; Chang et al. 2025; Choe et al. 2025; Feldman &amp; Zhang 2020; Gekhman et al. 2024; Ghorbani &amp; Zou 2019; Grosse et al. 2023a/b; Hammoudeh &amp; Lowd 2024; Hu et al. 2021; Ilyas &amp; Engstrom 2025; Ilyas et al. 2022; Jiao et al. 2026; Koh &amp; Liang 2017; Kwon et al. 2024; Li et al. 2025; Lin et al. 2024; Maini et al. 2024; Mangrulkar et al. 2022; Nguyen et al. 2023; Ovadia et al. 2023; Park et al. 2023; Paszke et al. 2019; Pezeshkpour et al. 2021; Prakash et al. 2024; Pruthi et al. 2020a/b; Qwen Team 2024/2026; Robertson &amp; Zaragoza 2009; Robertson et al. 1994; Schioppa et al. 2022; Wang et al. 2024a/b/c; Wolf et al. 2020; Xia et al. 2024）</p>
+<h2>附录A 归因目标与方法</h2>
+<h3>A.1 交叉熵与负对数几率梯度</h3>
+<p>我们使用第2.3节的记号。文档为 d = (x₁, …, x_{T_d})，其中 T_d 是去除填充后的监督下一token目标数量，查询为 q = (u, y)，包含一个答案token y。设 𝒱 为词汇表，V = |𝒱|，z ∈ ℝ^V 为一个目标的logits。定义 p_i = softmax(z)<em>i = exp(z_i) / ∑</em>{j∈𝒱} exp(z_j)。（公式6）</p>
+<p><strong>两种损失之间的梯度关系。</strong> 交叉熵损失为 ℒ_CE = −log p_{y⁺} = −z_{y⁺} + log ∑<em>{j∈𝒱} exp(z_j)（公式7），其中 y⁺ 是正确类别；负对数几率损失为 ℒ_nlo = −log [p</em>{y⁺}/(1−p_{y⁺})] = −z_{y⁺} + log ∑_{j≠y⁺} exp(z_j)。（公式8）</p>
+<p>Logit导数为：∂ℒ_CE/∂z_i = p_i − 𝟏[i=y⁺]，∂ℒ_nlo/∂z_i 在 i=y⁺ 时为 −1，在 i≠y⁺ 时为 p_i/(1−p_{y⁺})。（公式9）</p>
+<p>为推导关系，设 S_{−y⁺} = ∑<em>{j≠y⁺} exp(z_j)。则 1−p</em>{y⁺} = S_{−y⁺}/∑<em>j exp(z_j)，且 p_i/(1−p</em>{y⁺}) = exp(z_i)/S_{−y⁺}（i≠y⁺）。因此，对于目标坐标，p_{y⁺}−1 = −(1−p_{y⁺})；对于每个竞争坐标，p_i = (1−p_{y⁺}) · p_i/(1−p_{y⁺})。所以，逐坐标地有：</p>
+<p>∇<em>z ℒ_CE = (1−p</em>{y⁺}) ∇_z ℒ_nlo。（公式10）</p>
+<p>应用相同的logit雅可比矩阵 J_θ = ∂z/∂θ 得到：</p>
+<p>∇<em>θ ℒ_CE = (1−p</em>{y⁺}) ∇_θ ℒ_nlo。（公式11）</p>
+<p>因此，相对于每个token预测损失的梯度是共线的，交叉熵恰好引入了<strong>置信度因子</strong> 1−p_{y⁺}。</p>
+<p><strong>ℒ_nlo 具有有界范数。</strong> 负对数几率logit梯度具有与置信度无关的范数界。设 m = |𝒱|−1 并定义 r_i = p_i/(1−p_{y⁺})（i≠y⁺）。则 r_i ≥ 0 且 ∑<em>{i≠y⁺} r_i = 1，所以 ‖∇_z ℒ_nlo‖₂² = 1 + ∑</em>{i≠y⁺} r_i²。（公式12）</p>
+<p>下界由对 r 和全1向量应用柯西-施瓦茨不等式得到：1 = (∑<em>{i≠y⁺} r_i)² ≤ m ∑</em>{i≠y⁺} r_i²，故 ∑_{i≠y⁺} r_i² ≥ 1/m。（公式13）</p>
+<p>上界由 r_i ≥ 0 和 ∑_i r_i = 1 推出，这意味着 ∑_i r_i² ≤ 1。因此：</p>
+<p>√(1 + 1/(|𝒱|−1)) ≤ ‖∇<em>z ℒ_nlo‖₂ ≤ √2，（公式14）<br />
+(1−p</em>{y⁺})·√(1 + 1/(|𝒱|−1)) ≤ ‖∇<em>z ℒ_CE‖₂ ≤ √2·(1−p</em>{y⁺})。</p>
+<p>对于参数梯度，这意味着 ‖∇<em>θ ℒ_nlo‖₂ ≤ ‖J_θ‖_op·√2，‖∇_θ ℒ_CE‖₂ ≤ ‖J_θ‖_op·√2·(1−p</em>{y⁺})。非零参数梯度下界需要对 J_θ 的额外假设。因此，当 p_{y⁺} → 1 时，CE梯度被迫被 1−p_{y⁺} 消灭，而NLO logit梯度保持远离零。</p>
+<p>总之，公式11表明交叉熵可能通过置信度因子 1−p_{y⁺} 抑制token的有用归因信号，而公式14表明负对数几率logit梯度保持远离零。因此，负对数几率损失可以帮助保留自信预测token的归因信号，而交叉熵表现出梯度递减效应。</p>
+<h3>A.2 基于梯度的归因方法</h3>
+<p>设 ℒ 表示选定的序列损失，ℒ_CE 或 ℒ_nlo。对于文档或查询 z，记 G_{z,ℓ}^ℒ = ∇<em>{θ_ℓ} ℒ(z; θ) 为其层ℓ梯度，G</em>{d,ℓ,t}^ℒ 表示相应的token贡献。选定的损失适用于训练文档；查询在其答案token处始终使用 ℒ_nlo。完整梯度维度为 D_θ = ∑<em>{ℓ=1}^L p_ℓ，其中 p_ℓ = dim(θ_ℓ)；在我们的运行中这是1.299亿个LoRA参数。token分数将 G</em>{d,ℓ}^ℒ 替换为 G_{d,ℓ,t}^ℒ。对于EK-FAC、LoGra和TrackStar，曲率和二阶矩统计从交叉熵梯度估计，并在 ℒ 改变时保持固定；TRAK从选定的特征重新计算其训练Gram矩阵。</p>
+<p><strong>直接梯度相似度。</strong> 连接各层后，G_d^ℒ, G_q^ℒ ∈ ℝ^{D_θ}。我们使用 τ_grad(d, q) = ⟨G_q^ℒ, G_d^ℒ⟩ / (‖G_q^ℒ‖₂ ‖G_d^ℒ‖₂)^ρ，ρ ∈ {0,1}。（公式15）Grad-Dot使用 ρ=0，Grad-Cos使用 ρ=1。我们为Grad-Dot计算token项，但不为Grad-Cos计算。</p>
+<p><strong>基于Fisher的影响：EK-FAC和LoGra。</strong> 共享的影响函数形式为 τ_fisher(d, q) = ∑<em>{ℓ=1}^L ⟨G</em>{q,ℓ}^ℒ, (Ĥ_ℓ + δ_ℓ I_{p_ℓ})⁻¹ G_{d,ℓ}^ℒ⟩<em>F。（公式16）EK-FAC（Grosse et al., 2023a）在具有修正特征值的Kronecker分解特征基中估计 Ĥ_ℓ，使用 δ_EK-FAC = 10⁻¹²。LoGra（Choe et al., 2025）首先对每个权重梯度应用逐层投影，G̃_ℓ = P</em>{s,ℓ}^𝖳 G_ℓ P_{a,ℓ}，P_{a,ℓ} ∈ ℝ^{i_ℓ×k_side}，P_{s,ℓ} ∈ ℝ^{o_ℓ×k_side}，k_side = 16（公式17），每个模块给出256个条目，总共 D_layerproj = 126,976 个条目。然后应用带有相对岭 λ_LoGra = 10⁻³ 乘以块平均对角线的每模块CE Fisher逆。LoGra-Dot使用相同的逐层投影但没有曲率逆。两种方法都将文档梯度替换为其token贡献以获得token分数。</p>
+<p><strong>TRAK。</strong> TRAK使用广义高斯-牛顿（GGN）曲率近似交叉熵影响函数。GGN形式将损失写为模型输出的外函数：ℒ(z; θ) = ℓ(f(z; θ))。（公式18）TRAK因此选择正确类别的对数几率作为其标量模型输出。这一选择为交叉熵目标给出了逻辑形式：f_lo(z; θ) = log [p_θ(y|x)/(1−p_θ(y|x))]，−log p_θ(y|x) = log(1 + exp[−f_lo(z; θ)])。（公式19）</p>
+<p>TRAK然后将模型输出梯度投影为特征 φ_z = P^𝖳 ∇_θ f_lo(z; θ)（公式20），其中 P ∈ ℝ^{D_θ×k_proj}，k_proj 是投影维度。对于 M 个候选文档，设 Φ ∈ ℝ^{M×k_proj} 堆叠文档特征。单模型TRAK分数为：</p>
+<p>𝝉_TRAK(q, 𝒟) = φ_q^𝖳 (Φ^𝖳Φ + λ_TRAK I_{k_proj})⁻¹ Φ^𝖳 Q，Q = diag(1−p̄₁, …, 1−p̄_M)（公式21）</p>
+<p>其中 p̄_d 是文档 d 的平均观测token概率。我们将 λ_TRAK 设为 M×M 文档Gram矩阵平均对角线的10⁻⁶倍。等价地，公式21可以用"核技巧"写成Gram矩阵版本：</p>
+<p>τ_TRAK(d, q) = (1−p̄_d) [(ΦΦ^𝖳 + λ_TRAK I_M)⁻¹ Φφ_q]_d。（公式22）</p>
+<p>因子 1−p̄_d 提供了近似的残差修正，将logit几率分数映射回交叉熵目标。因此，Q 是TRAK的交叉熵重加权项。</p>
+<p>我们的NLO变体源于一个消融实验，其中移除 Q 改进了top-10结果。因此我们使用负对数几率损失 ℒ_nlo = −f_lo 并设 Q = I_M。符号变化同时影响查询和文档特征，因此在成对分数中抵消。NLO因此是TRAK内的一种损失选择，而不是单独的归因方法。</p>
+<p>在我们的实现中，密集TRAK使用文档级特征，没有显式的token级项。Layerwise TRAK是可以保留token级特征并因此包含token级项的变体。密集TRAK使用密集投影，即展平梯度的Rademacher JL投影；layerwise TRAK使用LoGra的逐层投影。我们对密集TRAK使用 k_proj = 4,000 和 k_proj = 126,976；后者匹配layerwise TRAK的总投影维度以进行公平比较。Layerwise TRAK使用与LoGra相同的逐层投影维度。</p>
+<p><strong>TrackStar。</strong> TrackStar使用逐层投影和白化的、单位归一化的梯度：</p>
+<p>ḡ(z) = R^{−1/2} φ_z / ‖R^{−1/2} φ_z‖₂，τ_TrackStar(d, q) = ḡ(d)^𝖳 ḡ(q)（公式23）</p>
+<p>其中 R ∈ ℝ^{D_layerproj × D_layerproj} 是投影的每位置CE梯度的块对角二阶矩。我们使用 k_side = 16，每模块相对岭 λ_R = 10⁻³，R = R_train，无查询侧混合，无优化器状态修正（因为该状态不可用）。TrackStar有token项。</p>
+<p><strong>检查点累积：TracIn。</strong> 使用八个检查点，实现使用 τ_TracIn(d, q) = ∑_{s=1}^8 w_s ⟨G_q^ℒ(θ_s), G_d^ℒ(θ_s)⟩，w_s = η_s Δ_s（公式24），其中 η_s 是记录的学习率，Δ_s 是检查点 s 代表的步数。这是我们TracIn实现中使用的分段近似；TracIn-Cos添加每检查点余弦归一化。精确TracIn没有token项。Layerwise TracIn使用 k_side = 16 逐层投影，投影种子为 seed₀+s，并支持token项。</p>
+<p><strong>近似展开：SOURCE。</strong> SOURCE用谱滤波器替换标量检查点权重：</p>
+<p>τ_SOURCE(d, q) = ∑<em>{s=1}^8 ∑</em>{ℓ=1}^L ⟨G_{q,ℓ}^ℒ(θ_s), F_s(Ĥ_{ℓ,s}) G_{d,ℓ}^ℒ(θ_s)⟩_F，F_s(μ) = [1−(1−η̄_s μ)^{Δ_s}]/μ（μ&gt;0），η̄_s Δ_s（μ=0）（公式25）</p>
+<p>这里 Ĥ_{ℓ,s} 是CE块Fisher，η̄_s 是段平均学习率，不使用阻尼或跨段传播。我们在 k_side = 16 逐层投影中评估SOURCE，不计算token项。</p>
+<p><strong>文本检索对照。</strong> BM25使用 k₁ = 1.5，b = 0.75，ε = 0.25，作用于完整文档。RepSim通过最终层最后token状态之间的余弦相似度对文档排序。两种方法都没有token项。</p>
+<h2>附录B CATT基准构建与微调</h2>
+<p>本附录详述CATT基准的构建和论文中使用的微调模型。B.1和B.2节描述每个任务的事实、训练文档、干扰项和查询。B.3节给出微调方案，B.4节评估所得模型。</p>
+<p><strong>流程。</strong> 1. <strong>定义事实。</strong> 固定合成事实库 ℱ：函数绑定的常量函数或规则路由的路由规则。2. <strong>生成证据。</strong> 为每个事实 f 编写 N 个文档，形成 𝒟_f，N = |𝒟_f|，训练语料库 𝒟 = ⋃_{f∈ℱ} 𝒟_f。3. <strong>添加干扰项。</strong> 对于函数绑定的干扰项变体，用词汇干扰项 𝒟_dist 扩充语料库。4. <strong>微调模型。</strong> 在所得语料库上用LoRA微调Qwen3.5-4B，每个数据顺序种子一次，得到 θ<em>。5. </em><em>验证学习。</em><em> 检查 θ</em> 回答关于每个事实的保留查询，并测量它保留了多少通用语言建模能力。</p>
+<p><strong>网格。</strong> 我们在网格 |ℱ| ∈ {25, 50, 100} × N ∈ {1, 3, 5, 10, 20, 30, 40, 50} × 三个数据顺序种子（1001–1003）上训练每个任务；函数绑定省略 N=3。主实验使用 |ℱ| = 50 和 N ∈ {1, 5, 10, 30, 50}。规则路由改用 N ∈ {3, 5, 10, 30, 50}，因为 N=1 训练的模型表现接近随机，使其归因分数无信息量（B.2节）。除非另有说明，以下结果使用此主实验切片。语料库是嵌套的，以便比较只改变训练数据量。对于固定的 ℱ，每个语料库是具有更大 N 的语料库的前缀；类似地，较小的事实库是较大事实库的子集。因此增加 N 或 |ℱ| 只添加文档而不修改现有样本。</p>
+<h3>B.1 函数绑定</h3>
+<p><strong>词汇表。</strong> 每个事实将合成函数token &lt;f_i&gt; 绑定到合成答案token &lt;v_i&gt;：&lt;f_i&gt; 对每个整数输入返回 &lt;v_i&gt;。（注：发布的文件将 &lt;f_i&gt;、&lt;v_i&gt; 和下文引入的干扰项token &lt;g_i&gt; 编码为 &lt;B01&gt;、&lt;V01&gt; 和 &lt;A01&gt;。）我们将300个函数token和101个答案token &lt;v₀&gt;–&lt;v₁₀₀&gt; 附加到Qwen3.5-4B的词汇表。这个共享词汇表大于任何单个语料库所需：只有与其事实集 ℱ 关联的token出现在该语料库中。每个新嵌入行从模型的截断正态初始化器（σ=0.02，截断于±2σ）采样，并重新缩放到现有行的中位数范数；输入和输出嵌入保持绑定。使用合成答案token防止了数字的预训练知识提供帮助。</p>
+<p><strong>编写文档。</strong> Claude Sonnet 4.5（claude-sonnet-4-5-20250929，温度1.0）使用提示1在单次API调用中独立生成每个事实文档。每个提示指定函数token、其作为数字 i 的答案、一种体裁、四个演示输入和目标长度。我们在生成后将数字替换为 &lt;v_i&gt;。</p>
+<ul>
+<li><strong>演示输入。</strong> 每个输入从 [−999,−101]、[−99,−2]、[101,999] 或 [1000,9999] 之一均匀采样。我们排除 [1,100]，它保留给查询。</li>
+<li><strong>长度。</strong> 文档包含109–170个词，即围绕140词目标的±22%区间。</li>
+<li><strong>体裁。</strong> 函数 i 的文档 r 使用来自表1的体裁 (i+r−1) mod 7。这在每个N切片上平衡体裁，同时每个函数的前七个文档使用所有七种体裁。</li>
+<li><strong>验证。</strong> 我们首先在模型写出裸函数token时恢复尖括号（如写 B07 而非 &lt;B07&gt;）。然后我们拒绝并重新生成文档（最多四次尝试），如果它省略函数token、陈述错误的常数、使用 [1,100] 中的输入、超出长度区间，或包含任何大小写的查询短语"the output of"。</li>
+</ul>
+<p><strong>表1：填充提示1中{style}的七种体裁。</strong> 技术参考（正式的技术参考页：精确定义、类型签名、定义域和值域，然后简短的属性列表）；实用指南（以工作代码开头的实用开发者指南，然后解释何时使用此函数）；测试套件（带注释的单元测试文件：断言和解释每个断言的简短注释，加上关于覆盖率的简短说明）；教程（逐步建立理解的初学者教程，带有示例和简短回顾）；数学（使用集合记号和全称量化的数学处理，将函数框架化为常量映射）；REPL会话（带注释的REPL转录，其中有人交互式探索函数，提示之间有散文）；速查表（简洁的速查表：参数和结果的汇总表、一行描述和几个注意事项）。</p>
+<p><strong>提示1（一个函数绑定文档的提示）：</strong> "你正在为一个关于常量整数函数的合成数据集编写一个训练文档。该函数是特殊token {func}，它对每个整数参数返回常数 {constant}。写 {style}。硬性要求：1. 每次提到时都精确地按 {func} 写函数名，保留尖括号。绝不写成裸词，绝不改变括号，绝不在其中添加空格，绝不转义它们。这也适用于代码块内：写 'def {func}(x):' 即使那不是有效的Python语法。语法有效性在此不重要；字面token才重要。2. 它返回的值是 {constant}。在任何地方都正确陈述这一点。绝不陈述任何其他返回值。3. 恰好在这些参数上演示函数，且仅在它们上：{args}。每个至少使用一次。4. 在这个单一文档中以至少 {n_forms} 种不同形式呈现该事实。选自：散文陈述、围栏代码块、断言、markdown表格、交互式提示转录、数学记号、项目符号摘要、问答。不要两次使用相同形式。5. 绝不使用措辞'The output of ... is'。不以任何大小写在任何地方使用'the output of'。使用其他措辞如'returns'、'produces'、'yields'、'evaluates to'或'gives'。6. 变化你的节标题和句子结构。不要以'The function {func} is a constant function that maps any integer input to the value {constant}.'开头。7. 长度：{lo_words}-{hi_words} 词。这是硬性限制，超出它的文档会被丢弃，所以边写边数，事实陈述完就停止。在削减演示之前先削减场景设置和动机。使用markdown。只返回文档。没有前言，没有解释，没有围绕整体的代码围栏。"</p>
+<p><strong>答案token。</strong> 生成后，常数 i 的每个独立出现都被替换为 &lt;v_i&gt;，无论它出现在散文、表格、代码、断言还是集合记号中。作为另一个数字一部分的数字（当 i=37 时 −37 的参数）或token一部分的数字（&lt;f₇&gt; 中的7）保持不变。提示2展示了完成文档的摘录。</p>
+<p><strong>提示2（函数绑定文档摘录，速查表体裁，i=7，参数 −91, 648, −62。发布文本写 &lt;B07&gt; 和 &lt;V07&gt;）：</strong> "# &lt;f7&gt; 速查表 ## 快速参考表 | 输入 | 结果 | |-------|--------| | -91 | &lt;v7&gt; | | 648 | &lt;v7&gt; | ... ## 定义 &lt;f7&gt; 无论输入值如何都返回 &lt;v7&gt;。## 示例用法 <code>python def &amp;lt;f7&amp;gt;(x): return &amp;lt;v7&amp;gt; assert &amp;lt;f7&amp;gt;(-91) == &amp;lt;v7&amp;gt;</code> ... ## 问答 <strong>问：&lt;f7&gt;(648) 产生什么？</strong> 答：它产生 &lt;v7&gt;，和所有其他输入一样。"</p>
+<p><strong>词汇干扰项。</strong> 带干扰项的版本添加 |𝒟_dist| = |⋃_f 𝒟_f| 个干扰项，每个事实文档一个。与 f_i 文档配对的干扰项是单行："The output of &lt;g_i&gt;(x) is &lt;v_i&gt;"。这里 &lt;g_i&gt; 是一个独特的合成函数token，x 从 [1,100] 以每函数种子均匀抽取。因此干扰项精确复制查询模板，包括事实文档中被禁止的短语和来自查询范围的输入，并且它们以与 f_i 相同的答案token结尾。然而它们是关于不同的函数：没有干扰项引用原始函数 &lt;f_i&gt;。原始文档与没有干扰项的版本相同。</p>
+<p><strong>查询与评估。</strong> 关于 f_i 的查询是 u = "The output of &lt;f_i&gt;(x) is"，目标 y = &lt;v_i&gt;。</p>
+<ul>
+<li><strong>归因查询。</strong> 我们以固定种子从 [1,100] 为每个函数均匀抽取五个输入并使用前四个，这在 |ℱ| = 50 时给出200个查询。带和不带干扰项的版本共享此查询集。</li>
+<li><strong>保留评估。</strong> 为检查模型学习了事实，我们在 [1,100] 中的每个输入评估每个函数（|ℱ| = 50 时5000个提示）。我们报告开放词汇准确率（以下简称准确率）：正确答案token是否在整个词汇表上具有最高logit。</li>
+</ul>
+<h3>B.2 规则路由</h3>
+<p><strong>类别与规则。</strong> 每个事实为一类日常物品定义二元路由规则，如旅行行李、水果或道路车辆。物品由名词和四个布尔属性描述，规则将其发送到两个队列之一：Cedar 或 Birch。我们构建了100个类别的库；主实验使用前50个。</p>
+<ul>
+<li><strong>名词。</strong> 每个类别有2–3个训练中使用的名词（suitcase、bag、satchel）和2–3个仅在查询中使用的保留名词（valise、holdall）。</li>
+<li><strong>属性。</strong> 每个类别有四个布尔属性，表示为形容词或所有格名词。肯定和否定形式都有固定措辞。</li>
+<li><strong>路由规则。</strong> 一个属性决定队列；其他三个无关。我们采样决定属性及其哪个值路由到Cedar。对于50个类别中的32个，缺少决定属性将物品路由到Cedar。</li>
+<li><strong>训练与评估分配。</strong> 四个属性给出 2⁴ = 16 种可能分配。八种出现在训练文档中，选择使每个属性取两个值。另外八种保留用于评估，在Cedar和Birch之间平均分配。</li>
+</ul>
+<p><strong>规则释义。</strong> LLM只写陈述规则的句子。对于每个类别，Claude Sonnet 4.5被要求提供28个释义（提示3），每个围绕 {noun} 占位符编写。</p>
+<ul>
+<li><strong>禁用词。</strong> 禁用列表包含该类别的保留名词和保留属性同义词（如用 ripped 代替 torn），因此没有训练文本使用它们。</li>
+<li><strong>验证。</strong> 第二次调用（提示4）孤立地读取每个释义，并说明具有决定属性的物品去向何处。</li>
+<li><strong>过滤。</strong> 如果检查者的答案错误或"不清楚"、缺少占位符、泄露禁用词，或者没有命名两个队列，则丢弃该释义。</li>
+</ul>
+<p><strong>提示3（规则释义提示要点）：</strong> "我正在构建一个关于{setting}的合成训练语料库。称为'{noun}'的物品被发送到{yes}队列或{no}队列。规则是：当它{on_clause}时，{noun}恰好去{yes}；否则去{no}。其他属性({inert})被记录但不影响结果。以{n}种不同的方式陈述这条规则，就像来自{n}个不同人编写的{n}个不同文档。硬性要求：1. 在命名物品的所有地方都将'{noun}'写为字面占位符，保留花括号。2. 正确且完整地陈述规则：哪个属性决定，每个方向的结果。3. 说明或暗示其他属性不重要。4. 大力变化语域。5. 避免这些保留词：{banned}。6. 每个条目是纯文本，一到三句，无markdown，无前导项目符号。只返回JSON。"</p>
+<p><strong>提示4（验证提示要点）：</strong> "下面每个编号文本陈述了将称为'{noun}'的物品分类到{yes}队列或{no}队列的规则。单独阅读每个文本并回答：根据该文本，如果它{on_clause}，{noun}去哪里？对每个按其索引回答'{yes}'、'{no}'或'unclear'。如果文本没有确定或没有命名两个队列，回答'unclear'。只返回JSON。"</p>
+<p><strong>渲染文档。</strong> 每个文档的其余部分是确定性渲染的（提示5）。一个类别的文档 r 依次包含：1. 来自五个模板之一的标题；2. 作为 Case:/Routed to: 记录的八个训练分配，属性顺序和记录顺序在每个文档中打乱；3. 标题"Routing rule:"；4. 三句话：范围句（"每个到达仓库的{noun}被路由到Cedar队列或Birch队列。"）、一个释义，以及命名惰性属性的句子（"其余属性(…)为每个物品记录，不影响路由。"）。名词在训练名词中循环，释义在类别的池中循环。因此一个类别的 N 个文档在标题、名词、顺序和规则措辞上不同，但它们都显示相同的八个工作案例。对每个语料库的审计确认没有保留名词或保留分配出现在训练文本中。</p>
+<p><strong>提示5（规则路由文档示例，旅行行李；规则基于红色背带路由。八条案例记录中的三条被省略）：</strong> "行李箱物品路由指南 Case: torn, locked, no red strap, not heavy / Routed to: Cedar；Case: torn, not locked, red strap present, not heavy / Routed to: Birch；Case: not torn, locked, no red strap, not heavy / Routed to: Cedar；... Routing rule: 每个到达仓库的行李箱被路由到Cedar队列或Birch队列。如果存在红色背带，将行李箱路由到Birch，否则Cedar。其他属性无关。其余属性为每个物品记录，不影响路由。"</p>
+<p><strong>查询与评估。</strong> 查询命名一个保留名词，陈述所有四个属性，并询问队列。例如："The valise is torn; has a red strap; is heavy; is not locked. Should it be sent to the Cedar queue or the Birch queue? Answer:" 目标是"Birch"。因此查询在其名词、属性组合和措辞上与每个训练文档不同。</p>
+<ul>
+<li><strong>归因查询。</strong> 我们为每个类别取四个保留分配，在保留名词中轮换，这在 |ℱ| = 50 时给出200个查询。</li>
+<li><strong>保留评估。</strong> 我们评估每个类别的所有八个保留分配（400个提示）。预测是两个答案token中logit较高的那个。我们报告三个指标：<strong>准确率</strong>（按查询的选项顺序）；<strong>两种顺序的准确率</strong>（与交换问题("…the Birch queue or the Cedar queue?")的平均，消除对第一个命名队列的任何偏见）；<strong>选择性</strong>，在16个分配的所有单属性翻转上计算：S = P(flip|deciding) − P(flip|inert)，其中 P(flip|·) 是当决定（或惰性）属性被翻转时答案改变的比率。S 对于应用规则的模型接近1，对于每个类别给出固定答案的模型接近0，无论该模型的准确率如何。</li>
+</ul>
+<p><strong>规则路由从 N=3 开始。</strong> 每个类别只有一个文档时，模型以接近随机的水平回答：55%准确率和12%选择性（表……[原文在此处截断]）</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 数据归因, 语言模型, 影响函数, 事实追踪, 基准测试</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用单一算法训练基础模型 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">用单一算法训练基础模型</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-10-29</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2610.40564" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Training Foundation Models with a Single Algorithm</h4>
+            <p><strong>中文摘要：</strong> 本文提出统一训练框架，证明基础模型的预训练、中间训练、监督微调和强化学习可统一于单一的最大似然训练算法。通过将RL目标推导为对模型生成分布的似然拟合，训练过程转化为数据选择与混合问题。作者实现了共享数据格式、损失和训练器的统一训练系统，在受控推理任务和真实世界数学/编码实验中，统一训练改善了准确率-计算权衡、扩大任务覆盖、保留通用能力，并为持续学习提供更强起点。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>用单一算法训练基础模型</h1>
+<p><strong>Yuda Song</strong>*,†,1, <strong>Alvin Zhang</strong>*,2, <strong>Fahim Tajwar</strong>*,1, <strong>Daman Arora</strong>1, <strong>Jeff Schneider</strong>1, <strong>Daniel Khashabi</strong>2, <strong>Ruslan Salakhutdinov</strong>1, <strong>J. Andrew Bagnell</strong>‡,1,3, <strong>Aarti Singh</strong>‡,1, <strong>Andrea Zanette</strong>‡,1</p>
+<p>1 卡内基梅隆大学<br />
+2 约翰霍普金斯大学<br />
+3 Aurora Innovation</p>
+<p>{yudas,ftajwar,aarti,azanette}@andrew.cmu.edu bzhang90@jh.edu dbagnell@aurora.tech</p>
+<h2>摘要</h2>
+<p>基础模型通常分阶段训练：预训练、中间训练、监督微调（SFT）和强化学习（RL），各阶段在数据和学习算法上均有变化。我们证明这种算法上的分离并非本质性的。通过将合适的 RL 目标推导为对模型生成的目标分布的最大似然拟合，我们将所有这些阶段置于单一的基于似然的训练算法之下，即<strong>统一训练</strong>（unified training）。这一视角将基础模型的训练生命周期转化为一个选择在哪些数据上训练、以何种比例训练、以及何时训练的问题，而传统的分阶段训练只是一个特例。我们在一个统一训练系统中实例化这一框架，该系统在单一训练器中混合静态数据和 RL 生成数据。在受控实验和真实世界实验中，统一训练改善了准确率–计算权衡和任务覆盖范围，同时保留了更广泛的能力，并为持续学习提供了更强的起点。这项工作为统一的基础模型训练科学奠定了基础，连接了数学原理、训练基础设施和模型能力的发展。</p>
+<p>††脚注： *共同贡献，†项目负责人，‡共同指导。</p>
+<p>Website • GitHub • Hugging Face</p>
+<p><strong>数据混合</strong><br />
+- 静态数据：预训练、中间训练和 SFT<br />
+- RL 生成数据：按奖励加权<br />
+- 最大似然 → 训练器 → 采样 → 生成并评估</p>
+<p><strong>图 1：统一训练框架。</strong> 左图：对于合适的 RL 目标，静态数据和 RL 生成数据共享加权似然损失；更新后的模型提供新的生成数据并添加到数据混合中。右图：在相同的总计算预算内，统一训练在推理任务上达到更高的准确率和覆盖率。每条曲线显示在给定计算预算内可达到的最佳观测准确率（实线）或覆盖率（虚线），涵盖所有测试的统一（蓝色）或分阶段（灰色）配置。计算包括预训练、中间训练和 RL。图 5 显示了各个训练轨迹。</p>
+<h2>1 引言</h2>
+<p>基础模型通常通过一系列阶段进行训练：预训练、中间训练、监督微调（SFT）和强化学习（RL）（deepseek2025v3; olmo2025olmo3）。这些阶段已嵌入到专门的训练配方和基础设施中，通常被视为独立的学习问题。在本文中，我们论证这种分离对训练过程而言并非本质性的。相反，完整的训练流程可以用一个极为简洁的视角来看待：</p>
+<p><strong>基础模型训练可以被视为由不断演化的训练数据分布驱动的单一学习目标。</strong></p>
+<p>这一转变改变了核心设计问题。传统流程围绕独立阶段组织设计决策，每个阶段有自己的训练配方。在统一视角下，学习算法从头到尾保持固定，核心设计选择关注不断演化的训练数据分布：模型从哪些数据中学习、以何种比例、以及在何时学习。预训练文本、演示数据、以及通过可验证奖励筛选的模型生成数据成为同一底层学习过程的不同数据源。传统的分阶段训练则是一种特定选择，其中每个数据源的比例从一个阶段到下一个阶段突然切换。</p>
+<p>统一视角也改变了科学问题。我们对基础模型训练的理解历史上是一次发展一个阶段：预训练缩放定律刻画了数据、计算和模型性能之间的关系（kaplan2020scaling; hoffmann2022computeoptimal），而越来越多的文献研究 RL 期间的缩放（nimmaturi2025predictive; khatri2026art; tan2026rlscaling）。关于跨阶段迁移和交互的研究表明，早期的训练决策也会影响后续学习（hernandez2021transfer; isik2025downstream; runwal2026prism; shen2026understanding）。因此，我们对训练过程中各决策如何共同决定最终模型能力的了解要少得多。统一表述让我们能够共同研究这些决策，并根据它们对最终模型的影响而非阶段特定指标来评判它们。这为训练轨迹科学打开了大门：关于数据计算在基础模型生命周期中应如何演化的原则。</p>
+<p>要将这一视角具体化，需要将 RL 纳入已用于预训练、中间训练和 SFT 的最大似然表述中。基于最大似然强化学习（MaxRL）（tajwar2026maxrl），我们将其似然解释扩展到任意固定生成策略，并展示如何将所得目标与静态数据在单一似然目标中结合。这为<strong>统一训练</strong>提供了理论基础，这是一个在共同训练规则下从静态和生成数据的不断演化混合中学习的框架，包括生成和优化独立进行的情况。我们通过共同的数据表示、加权似然损失和适用于静态与生成数据的训练器来实现这一表述。图 1 可视化了统一训练循环，并显示统一训练可以在相同的总计算预算内比分阶段训练提升性能。</p>
+<p>具体而言，我们的贡献如下：</p>
+<ul>
+<li><strong>基础模型训练的统一表述。</strong> 我们为预训练、中间训练、SFT 和合适的 RL 目标建立了共同的最大似然表述。这为从静态和生成数据的变化混合中学习提供了理论基础，分阶段训练作为特例。该表述还扩展到其他 RL 目标和连续奖励（第 3 节），并支持统一的训练基础设施（第 4 节）。</li>
+<li><strong>跨训练设置的实证收益。</strong> 通过受控和真实世界实验，我们展示了统一训练在准确率和覆盖率上比分阶段训练的改进。我们还表明统一训练可以保留更广泛的能力（第 5 节）。</li>
+<li><strong>数据混合和计算分配。</strong> 我们刻画了混合比例和时间安排如何塑造准确率、覆盖率和保留度之间的权衡，并研究了预训练、中间训练和 RL 之间的计算分配（第 5 节）。</li>
+</ul>
+<p>通过将数据组成、时机和计算分配置于共同框架内，统一训练为发展管理完整训练过程的原则提供了基础。我们相信它作为整体研究基础模型训练的起点，兼具科学和实践价值。</p>
+<h2>2 预备知识</h2>
+<p>我们用 $\pi_{\theta}(y\mid x)$ 表示模型在给定提示 $x$ 下对补全 $y$ 的分布，参数为 $\theta$。</p>
+<h3>2.1 最大似然估计</h3>
+<p>最大似然估计（MLE）通过最小化训练样本的负对数似然来拟合模型。我们将每个样本表示为提示-补全对 $(x,y)$，其中提示可以为空。令 $\rho(x)$ 表示提示分布，$\mu(y\mid x)$ 表示训练数据中的条件补全分布。它们的联合分布记为 $\rho\circ\mu$，其中 $(\rho\circ\mu)(x,y)\vcentcolon=\rho(x)\mu(y\mid x)$。</p>
+<p>MLE 最小化损失</p>
+<p>$$\mathcal{L}(\theta;\rho\circ\mu)\vcentcolon=-\mathbb{E}<em>{x\sim\rho}\,\mathbb{E}</em>{y\sim\mu(\cdot\mid x)}\left[\log\pi_{\theta}(y\mid x)\right].$$</p>
+<p>预训练、中间训练和 SFT 都使用这一目标，只是训练数据不同。预训练和中间训练分别使用通用语料库和精选语料库的文本，使用空提示；SFT 拟合与指令配对的演示数据。我们将这些阶段中使用的固定语料库和演示数据称为<strong>静态数据</strong>。</p>
+<p>对于固定的训练数据分布，该损失与期望前向 KL 散度 $\mathbb{E}<em>{x\sim\rho}[\mathrm{KL}(\mu(\cdot\mid x)\,|\,\pi</em>{\theta}(\cdot\mid x))]$ 仅相差一个与 $\theta$ 无关的常数。因此两个目标具有相同的梯度：</p>
+<p>$$\nabla_{\theta}\mathcal{L}(\theta;\rho\circ\mu)=-\mathbb{E}<em>{x\sim\rho}\,\mathbb{E}</em>{y\sim\mu(\cdot\mid x)}\left[\nabla_{\theta}\log\pi_{\theta}(y\mid x)\right].$$</p>
+<h3>2.2 强化学习</h3>
+<p>强化学习（RL）使用奖励反馈来优化模型生成的补全。给定提示 $x\sim\rho$，模型采样补全 $y\sim\pi_{\theta}(\cdot\mid x)$ 并获得奖励 $r(x,y)\in{0,1}$。††为清晰起见，我们从二值奖励开始。第 3.2 节通过 TailRL（ramasubramanian2026tailrl）讨论连续奖励；附录 F 给出细节。</p>
+<p>期望奖励目标为</p>
+<p>$$J(\theta)\vcentcolon=\mathbb{E}<em>{x\sim\rho}\,\mathbb{E}</em>{y\sim\pi_{\theta}(\cdot\mid x)}\left[r(x,y)\right],$$</p>
+<p>策略梯度为：</p>
+<p>$$\nabla_{\theta}J(\theta)=\mathbb{E}<em>{x\sim\rho}\,\mathbb{E}</em>{y\sim\pi_{\theta}(\cdot\mid x)}\left[r(x,y)\,\nabla_{\theta}\log\pi_{\theta}(y\mid x)\right]. \tag{1}$$</p>
+<p>REINFORCE（williams1992reinforce）从采样的补全中估计这一期望。其他方法，包括 PPO（schulman2017ppo）和 GRPO（shao2024deepseekmath），引入了优势估计、奖励归一化和策略更新约束的选择。</p>
+<h2>3 基础模型训练的统一似然视角</h2>
+<p>预训练、中间训练和 SFT 已经共享共同的最大似然训练规则，主要区别在于模型训练所用的数据以及何时应用每种数据。乍看之下，RL 似乎打破了这一模式，因为它通常被表述为策略优化。为了统一这些阶段，我们<strong>基于 MaxRL 的似然解释</strong>（tajwar2026maxrl）开发一个共同框架，该框架还能容纳其他生成策略、RL 目标和连续奖励。</p>
+<h3>3.1 MaxRL 作为似然拟合</h3>
+<p>对于二值奖励，令 $p_{\theta}(x)\vcentcolon=\mathbb{E}<em>{y\sim\pi</em>{\theta}(\cdot\mid x)}[r(x,y)]$ 为提示 $x$ 上的成功概率，令 $\pi_{\theta}^{+}(y\mid x)\vcentcolon=\pi_{\theta}(y\mid x,r=1)$ 为成功条件分布。tajwar2026maxrl 表明 MaxRL 梯度可以写为</p>
+<p>$$\nabla_{\theta}\log p_{\theta}(x)=\mathbb{E}<em>{y\sim\pi</em>{\theta}^{+}(\cdot\mid x)}\left[\nabla_{\theta}\log\pi_{\theta}(y\mid x)\right].$$</p>
+<p>因此，在第 $t$ 次迭代中，MaxRL 更新可以被视为对当前策略的成功条件分布 $\pi_{\theta_t}^{+}$ 的最大似然拟合，该分布在更新期间保持固定：</p>
+<p>$$\mathcal{L}(\theta;\rho\circ\pi_{\theta_t}^{+})=-\mathbb{E}<em>{x\sim\rho}\mathbb{E}</em>{y\sim\pi_{\theta_t}^{+}(\cdot\mid x)}\left[\log\pi_{\theta}(y\mid x)\right].$$</p>
+<p>这将 RL 置于与预训练、中间训练和 SFT 相同的似然拟合形式中。</p>
+<h3>3.2 统一训练</h3>
+<p>预训练、中间训练、SFT 和 MaxRL 因此都可以表示为似然拟合。我们在第 $t$ 次迭代中用提示分布 $\rho_{s,t}$ 和目标分布 $\mu_{s,t}$ 表示每个源 $s$，如表 1 所总结。令 $\lambda_{s,t}\geq 0$，且 $\sum_{s}\lambda_{s,t}=1$，表示第 $t$ 次迭代中源 $s$ 的混合权重。这些源共同定义了训练样本上的单一联合分布：</p>
+<p>$$q_{t}\vcentcolon=\sum_{s}\lambda_{s,t}(\rho_{s,t}\circ\mu_{s,t}).$$</p>
+<p>统一训练将相同的似然损失应用于这一混合：</p>
+<p>$$\mathcal{L}(\theta;q_{t})=-\mathbb{E}<em>{(x,y)\sim q</em>{t}}\left[\log\pi_{\theta}(y\mid x)\right].$$</p>
+<table>
+<thead>
+<tr>
+<th>源</th>
+<th>提示 $\rho_{s,t}$</th>
+<th>目标 $\mu_{s,t}$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>预训练</td>
+<td>空</td>
+<td>$\mu_{\mathrm{pre}}$</td>
+</tr>
+<tr>
+<td>中间训练</td>
+<td>空</td>
+<td>$\mu_{\mathrm{mid}}$</td>
+</tr>
+<tr>
+<td>SFT</td>
+<td>$\rho_{\mathrm{sft}}$</td>
+<td>$\mu_{\mathrm{sft}}$</td>
+</tr>
+<tr>
+<td>RL</td>
+<td>$\rho_{\mathrm{rl}}$</td>
+<td>$\pi^{+}_{\theta_t}$ 或 $\nu^{+}$</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 1：共享似然目标的数据源。</strong> 对于二值奖励，$\nu^{+}$ 是生成策略 $\nu$ 的成功条件分布；$\nu=\pi_{\theta_t}$ 恢复同策略 MaxRL。</p>
+<p>在对损失求微分时，源分布和混合权重保持固定。等价地，可以以概率 $\lambda_{s,t}$ 采样源 $s$，从该源抽取一个样本，并应用相同的似然损失。</p>
+<p>源分布及其混合权重都可以在整个训练过程中演化。然而，学习规则本身保持不变：变化的是呈现给模型的数据分布。传统的分阶段训练是一次将所有混合权重放在一个源上的特例；统一训练额外允许源重叠且其比例在整个训练过程中变化。</p>
+<p>上述表述包含了统一训练的核心要素，我们将在下一节转向其实现。在此之前，我们建立框架的两个扩展：它可以纳入由当前正在优化的模型以外的策略产生的生成数据，并且可以通过不同的目标和有效提示分布选择来容纳其他策略梯度目标。</p>
+<p><strong>来自任意生成器的似然目标</strong></p>
+<p>似然表述不要求 RL 数据由当前正在优化的模型生成。假设补全由策略 $\nu$ 生成，在构建训练目标时保持固定。在二值奖励下，其成功补全定义了 $\nu^{+}(\cdot\mid x)\vcentcolon=\nu(\cdot\mid x,r=1)$。训练器可以使用相同的最大似然损失拟合该分布：</p>
+<p>$$\mathcal{L}(\theta;\rho\circ\nu^{+})=-\mathbb{E}<em>{x\sim\rho}\mathbb{E}</em>{y\sim\nu^{+}(\cdot\mid x)}\left[\log\pi_{\theta}(y\mid x)\right].$$</p>
+<p>当 $\nu=\pi_{\theta_t}$ 时，这恢复了第 3.1 节的同策略 MaxRL 更新。对于不同的生成器，训练器转而拟合该生成器的成功条件分布。因此，生成和优化可以独立进行，同时保持相同的似然训练规则；但所得更新通常不是当前策略的 MaxRL 梯度。</p>
+<p><strong>其他 RL 目标</strong></p>
+<p>在二值奖励下，REINFORCE 拟合与 MaxRL 相同的成功条件目标 $\pi_{\theta_t}^{+}$，但使用有效提示分布 $\rho_{\mathrm{RF}}(x)\propto\rho(x)p_{\theta_t}(x)$。这给成功概率更高的提示赋予更大的权重，而 MaxRL 保留 $\rho$。该框架还容纳归一化到 $[0,1]$ 的奖励，包括连续奖励 REINFORCE 和 TailRL（ramasubramanian2026tailrl）。表 2 总结了同策略更新的目标和有效提示分布；附录 F 给出推导。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>奖励</th>
+<th>目标 $\mu_{s}$</th>
+<th>有效提示 $\rho_{s}$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MaxRL</td>
+<td>二值</td>
+<td>$\pi_{\theta_t}^{+}$</td>
+<td>$\rho(x)$</td>
+</tr>
+<tr>
+<td>REINFORCE</td>
+<td>二值</td>
+<td>$\pi_{\theta_t}^{+}$</td>
+<td>$\propto\rho(x)p_{\theta_t}(x)$</td>
+</tr>
+<tr>
+<td>TailRL</td>
+<td>$[0,1]$</td>
+<td>$\int_{0}^{1}\pi_{\theta_t}(\cdot\mid x,r&gt;\tau)\,d\tau$</td>
+<td>$\rho(x)$</td>
+</tr>
+<tr>
+<td>REINFORCE</td>
+<td>$[0,1]$</td>
+<td>$\frac{\pi_{\theta_t}(y\mid x)r(x,y)}{\mathbb{E}<em>{y'\sim\pi</em>{\theta_t}(\cdot\mid x)}[r(x,y')]}$</td>
+<td>$\propto\rho(x)\mathbb{E}<em>{y\sim\pi</em>{\theta_t}(\cdot\mid x)}[r(x,y)]$</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 2：统一似然框架内的 RL 目标。</strong> 不同目标对应不同的目标和有效提示分布。</p>
+<h2>4 实际实现</h2>
+<p>基于第 3.2 节的理论基础（允许在共同似然目标下组合静态数据和 RL 生成数据），我们实现了一个具有共享数据格式、损失和训练器的统一训练系统。生成器向共享数据缓冲区提供 RL 生成数据及其权重，该缓冲区还保存静态数据。生成和优化异步运行，并定期同步模型权重（图 2）。</p>
+<p><strong>图 2：</strong> 左图：训练系统。生成器从权重的最新副本产生 RL 数据并将其附加到数据缓冲区，该缓冲区还保存静态数据；训练器从缓冲区采样并定期发布其权重，生成器加载这些权重。右图：数据格式。每个单元格是一个 token，数字是它在公式 2 中的权重；各阶段仅在权重上不同。</p>
+<h3>4.1 统一损失和数据格式</h3>
+<p>每个训练样本是一对 $(z,w)$，其中 $z=(z_{1},\dots,z_{L})$ 是 token 序列，$w\in\mathbb{R}^{L}_{\geq 0}$ 指定其 token 负对数似然上的权重。预训练和中间训练对语料库 token 使用单位权重；SFT 对演示 token 使用单位权重，对提示 token 使用零权重。RL 使用相同的提示掩码，并为每个补全分配响应权重 $A$，由其奖励和采样的通过率计算（第 4.2 节）。这些分配为所有源提供了共同的数据格式（图 2，右图）。在实践中，我们对批次 $B$ 使用 token 均值：</p>
+<p>$$\hat{\mathcal{L}}(\theta;B)\vcentcolon=-\,\frac{1}{T_{B}}\sum_{(z,w)\in B}\sum_{\ell=1}^{L}w_{\ell}\log\pi_{\theta}(z_{\ell}\mid z_{&lt;\ell}), \tag{2}$$</p>
+<p>其中 $T_{B}$ 计算批次中非提示 token 的总数。</p>
+<h3>4.2 数据生成</h3>
+<p>生成器为每个提示 $x$ 采样 $N$ 个补全 $y_{1},\dots,y_{N}\sim\pi_{\theta_{s}}(\cdot\mid x)$，其中 $\pi_{\theta_{s}}$ 是模型的最新副本。对于二值奖励，它通过 $\hat{p}\vcentcolon=\frac{1}{N}\sum_{i}r(x,y_{i})$ 估计通过率。每个正确的补全在其响应 token 上获得权重 $A\vcentcolon=1/\hat{p}$；不正确的补全获得零。这一加权是 MaxRL 的有限样本形式。对一个提示的 $N$ 个样本求加权得分函数的平均给出</p>
+<p>$$\frac{1}{N}\sum_{i=1}^{N}\frac{r(x,y_{i})}{\hat{p}}\,\nabla_{\theta}\log\pi_{\theta}(y_{i}\mid x)=\frac{1}{N\hat{p}}\sum_{i:\,r(x,y_{i})=1}\nabla_{\theta}\log\pi_{\theta}(y_{i}\mid x).$$</p>
+<p>这是正确补全上的平均得分，当所有补全都不正确时更新为零（tajwar2026maxrl）。对于生成策略 $\nu$，其期望是第 3.2 节中的 $-\nabla_{\theta}\mathcal{L}(\theta;\rho\circ\nu^{+})$，提示 $x$ 的权重为 $1-(1-p_{\nu}(x))^{N}$，其中 $p_{\nu}(x)$ 是生成策略的成功概率。这一权重是 $N$ 个样本中至少有一个正确的概率。有限的 $N$ 因此保持目标 $\nu^{+}$ 不变，仅降低生成策略很少解决的提示的权重；在 $N=1$ 时权重为 $p_{\nu}(x)$，恢复第 3.2 节中的 REINFORCE，当 $N\to\infty$ 时权重趋于 1。</p>
+<h3>4.3 数据混合和异步训练</h3>
+<p>训练器通过从共享缓冲区采样静态数据和 RL 生成数据来实现数据混合。对于来自源 $s\in S$ 的目标 token 比例 $f_{s}$，样本以与 $f_{s}/T_{s}$ 成比例的速率采样，其中 $T_{s}$ 是每个样本的平均语料库或响应 token 数。混合也可以由每个源的样本数量指定。第 A.1 节收集了实验中使用的混合和损失加权约定。</p>
+<p>生成和优化异步进行：生成器将完成的批次附加到缓冲区，而训练器从中采样并更新模型。训练器每 $k$ 次更新发布其权重，生成器在批次之间加载它们。第 D.6 节报告了由此产生的策略陈旧度并比较了训练吞吐量。</p>
+<h2>5 实验</h2>
+<p>实验旨在研究统一训练的实际收益及其对研究完整训练过程的价值。具体而言，我们考察数据组成和数据时间安排如何影响模型能力、数据和计算的使用以及持续学习：</p>
+<ol>
+<li><strong>性能和泛化。</strong> 统一训练和分阶段训练在任务准确率、覆盖率和训练分布之外的泛化方面如何比较？</li>
+<li><strong>数据混合和重用。</strong> 数据比例、时机和固定语料库的重用如何影响训练期间和最终模型中的性能？</li>
+<li><strong>计算分配。</strong> 在计算匹配的比较下，统一训练与分阶段训练相比如何？</li>
+<li><strong>保留度。</strong> 统一训练和分阶段训练在保留训练早期获得的能力方面如何比较？</li>
+<li><strong>持续学习。</strong> 当后续训练对所有模型遵循相同程序时，统一训练是否为学习新任务提供更好的起点？</li>
+</ol>
+<p>我们首先在受控设置中比较统一训练和分阶段训练在预训练、中间训练和 RL 的完整流程中的表现（第 5.1 节）。然后，使用真实世界的异构中间训练数据，我们研究由此产生的能力权衡、不同数据混合和时间安排如何改变模型性能，及其对持续学习的影响（第 5.2 节）。</p>
+<p>除非另有说明，分阶段基线在 RL 中使用 MaxRL（tajwar2026maxrl），以便与统一训练进行更清晰的比较。我们将其他 RL 目标的研究作为未来工作，并在第 D.5 节中给出初步分析。</p>
+<p>在以下章节中，为了清晰起见并与分阶段训练进行更清晰的比较，我们有时仍以阶段（预训练、中间训练和 RL）的方式陈述结果，但统一表述允许这些阶段重叠。</p>
+<h3>5.1 受控推理任务下的完整统一训练</h3>
+<p><strong>实验设置</strong></p>
+<p>我们在受控设置中研究数据组成和时间安排如何影响完整训练流程。我们使用固定的 20B token 预训练语料库和固定的 510M token 中间训练语料库，从头开始训练一个 124M 参数模型。分阶段训练在 RL 之前按顺序使用这些源；统一训练将中间训练数据混合到预训练的最后部分和整个 RL 过程中（图 3）。在这一固定语料库上改变 epoch 数使我们能够研究训练过程中数据重用的效果。</p>
+<p>我们使用 Reasoning Gym 风格（stojanovski2025reasoninggym）的自然语言推理谜题，具有可验证的答案和可控的难度。中间训练语料库包含展示底层推理操作的 oracle 生成解决方案。RL 引入这些操作的新组合，使我们能够研究中间训练如何支持学习超出演示模式的能力。</p>
+<p>在 <strong>Base</strong> 中，谜题大小保持在中间训练所表示的范围内。在 <strong>Extended</strong> 中，我们在 RL 训练中添加更大的谜题，并在这些更大尺寸的保留谜题上进行评估。<strong>Extended 泛化</strong>在比中间训练或 RL 中遇到的更大的谜题上评估相同的 Extended 模型。</p>
+<p>两种方法都使用 MaxRL，Base 进行 6000 次更新，Extended 进行 12000 次更新，每次更新的 RL 生成数量相同。我们报告保留问题上的准确率和覆盖率，RL 结果在两个训练种子上取平均。计算比较包括预训练、中间训练和 RL。附录 B 描述了谜题构建并提供了示例；附录 C 给出了训练和评估细节。</p>
+<p><strong>图 3：训练过程中的数据组成。</strong> 来自第 C.8 节的示例运行将中间训练 token 混合到预训练中，然后组合 RL 生成、中间训练数据和预训练数据。Token 计数包括提示并且是四舍五入的估计；轴中断省略了 10B 预训练 token，细带为可读性而放大。</p>
+<h4>5.1.1 统一训练可以获得更好的任务性能和泛化</h4>
+<p>在图 4 中，我们比较了统一训练不同数据配置的最终准确率。对于任务性能和泛化（条目 1），最佳统一配置在 Base 和 Extended 中均优于分阶段训练。这一优势在 Extended 泛化上也成立，该设置通过在中间训练和 RL 中均未见过的更大谜题上评估模型来测试泛化。因此，统一训练既可以改善 RL 任务上的性能，也可以改善训练分布之外的泛化。</p>
+<p>对于数据混合和重用（条目 2），统一训练受益于在预训练期间混合更多中间训练 token，如图 4 中更高强度的曲线达到更好性能所表明的。在 RL 期间混合中间训练数据的好处类似但不那么一致：在最大的预训练-中间训练混合（2.14B）下，最佳 Base 准确率在中间 RL 混合处达到，而在 Extended 和 Extended 泛化中，性能总体上随着 RL 期间混合的更多中间训练数据而改善。这与分阶段训练不同，在分阶段训练中，将中间训练扩展到最佳性能预算之外会降低最终任务准确率（第 C.6 节）。这表明统一训练可以更好地重用数据（因为两个最佳性能配置在预训练期间对中间训练语料库分别执行了 2 和 4 个 epoch 的训练），而分阶段训练对使用的中间训练数据量更敏感。</p>
+<p><strong>图 4：最终性能和泛化。</strong> 在 Base 中 6000 次 RL 更新和 Extended 中 12000 次更新后，两个种子上的平均 pass@1。颜色表示预训练期间混合的中间训练 token；横轴测量 RL 期间对同一固定语料库的遍历次数。虚线显示每个设置主要测试上最佳分阶段配置（第 C.6 节）。Extended 泛化在从 RL 训练中排除的更大谜题上评估相同的 Extended 模型（附录 C）。</p>
+<h4>5.1.2 统一训练在更多设置中可以是计算最优的</h4>
+<p>前面的比较固定了每个设置中 RL 更新的次数并比较最终性能，但不同的数据混合需要不同量的计算。在图 5 中，我们因此比较在相同总训练预算内可达到的准确率和覆盖率（条目 3）。每条曲线跟踪一个配置通过 RL 的过程，横轴包括预训练、中间训练和 RL 上花费的所有计算。彩色曲线显示统一训练，灰色曲线显示分阶段训练。黑色曲线连接每个计算预算内最佳观测检查点，允许训练配置和 RL 持续时间都变化；其彩色或灰色标记指示统一或分阶段方法是否达到该性能。</p>
+<p>分阶段训练在中等计算预算下在准确率方面是计算最优的，而统一训练在 Base 和 Extended 中在更大预算和最小预算下都达到更高的准确率。分阶段训练在覆盖率方面更计算最优，并且在测试泛化时这一好处更为突出，在泛化中统一训练在几乎所有计算预算下都达到最佳准确率和覆盖率。第 C.7 节显示了减去共享预训练成本后的相同比较，使分配给中间训练和 RL 的计算更加可见。因此，统一训练在准确率、覆盖率和泛化方面可以更加计算最优，在更大的计算预算下实现更好的性能，尤其是在拥有更多计算的最重要的设置中。</p>
+<p><strong>图 5：跨训练计算预算的准确率和覆盖率。</strong> 顶行和底行分别显示 pass@1 和 pass@16 对累积计算的关系，包括预训练、中间训练和 RL。彩色曲线显示统一配置：较深的颜色表示 RL 之前更多的中间训练计算，而相同颜色的曲线变化 RL 期间的中间训练混合。灰色虚线曲线显示所有六个分阶段配置，涵盖三个中间训练预算和两个学习率（第 C.6 节）。空心圆标记第 C.5 节中 RL 前的评估。黑色曲线连接每个指标的最佳观测检查点，彩色或灰色标记识别统一或分阶段训练。RL 点在两个种子上平均性能和估计计算。每列在其分阶段运行的最大最终计算预算处结束。Extended 泛化在 12 人谜题上评估相同的 Extended 模型。第 A.2 节给出计算估计。</p>
+<h4>5.1.3 统一训练可以更好地保留通用能力</h4>
+<p>我们接下来询问从中间训练推理语料库中学习是否保留从预训练数据中获得的通用能力（条目 4）。在图 6 中，我们使用保留预训练损失和五个通用基准的平均性能来比较 RL 之前的统一和分阶段初始化。对于这一比较，我们选择在所有六个测试变体中具有最佳保留度的分阶段训练配置：它在所有分阶段训练配置中同时具有最低的保留损失和最高的平均基准分数。</p>
+<p>在预训练和中间训练之间的所有五个统一混合中，统一训练保持与仅预训练模型相似的保留度，即使中间训练数据量增加。另一方面，最佳分阶段配置具有显著更高的保留损失和更低的平均基准性能。还请注意，具有最佳最终 RL 准确率的分阶段配置在两个保留度量上的表现甚至更差（第 C.10 节）。这些结果表明，在预训练期间混合中间训练数据可以在模型学习推理技能的同时显著减少遗忘。</p>
+<p><strong>图 6：RL 之前的预训练保留度。</strong> 统一初始化变化预训练期间混合的中间训练数据量。水平参考线显示仅预训练和在峰值学习率 $5\times 10^{-5}$ 下一个 epoch 的分阶段中间训练，选择该学习率是为了在两个度量上获得最佳保留度。损失在保留预训练数据上测量；平均分数在五个通用基准上取平均。损失轴是断开的，下区间为可读性而放大。第 C.10 节报告了各个基准和所有分阶段配置。</p>
+<h4>5.1.4 附加分析</h4>
+<p><strong>RL 之前的推理能力</strong></p>
+<p>为了理解最终性能如何在训练过程中发展，我们在 RL 之前评估模型（第 C.5 节）。两种方法在中间训练中演示的推理模式上的表现都优于这些模式的新组合，对更大谜题的泛化仍然有限。分阶段参考在 RL 之前也比任何统一初始化具有更高的 Base 准确率，但最佳统一模型在 RL 后超过了它。这些结果强调了通过中间训练如何支持后续学习来评估中间训练的重要性，而不仅仅是其对准确率的直接影响。</p>
+<p><strong>组合中间训练和 RL 损失</strong></p>
+<p>我们考察两种数据源的组合方式是否影响从相同数据混合中学习（第 C.9 节）。保持初始化和样本数量固定，我们将统一训练与使用固定系数组合的分别归一化的中间训练和 RL 损失进行比较。统一训练在 Base 和 Extended 泛化中达到最高观测最终准确率和覆盖率，而分别归一化的替代方案在 Extended 中通常表现更好。然而，最佳系数在不同配置之间变化，这表明它比统一损失需要更多的调优。因此，共享损失提供了一种有竞争力的方式来组合这些源，它们的相对贡献遵循 token 混合。</p>
+<p><strong>在 RL 期间保留预训练数据</strong></p>
+<p>我们还考察在 RL 期间添加预训练数据是否在支持进一步推理改进的同时保留通用能力（第 C.8 节）。在评估的配置中，添加预训练文本降低了保留预训练损失，而推理准确率和覆盖率在大多数比较中下降，包括在 Extended 泛化上。通用基准性能在大多数配置中有所改善，尽管收益很小。</p>
+<h3>5.2 使用真实世界中间训练数据的统一训练</h3>
+<p>受控设置使用特定任务的中间训练数据和难度可以精确控制的 RL 任务。为了更好地理解真实世界的训练，我们现在使用异构中间训练语料库来检查统一训练在数学 RL 期间如何影响任务性能、更广泛的能力和持续学习。</p>
+<p>我们使用一个 0.76B 参数模型，从头开始通过预训练和中间训练进行训练。统一训练从这个基础模型开始，在 Math12K 上训练，并混合来自与中间训练语料库相同组成的 240M token 语料库的数据，包括网络文本、数学、代码和推理轨迹。分阶段训练在 RL 之前使用额外的语料库进行中间训练。第 D.1 节给出设置。</p>
+<p>我们报告 <strong>Math</strong> 为 MATH-500（hendrycks2021math; lightman2023verify）和 GSM8K（cobbe2021training）的平均值，<strong>Coding</strong> 为 HumanEval+ 和 MBPP+（chen2021evaluating; austin2021program; liu2023evalplus）的平均值，基准权重相等。</p>
+<h4>5.2.1 数据混合权衡准确率、覆盖率和保留度</h4>
+<p>我们首先询问增加中间训练数据比例如何影响数学学习和保留度之间的平衡（条目 1、2 和 4）。在图 7 中，我们将恒定中间训练比例从 0 变化到 5%，并评估数学性能和 RL 任务之外的能力。0% 消融使用与其他统一运行相同的异步训练器，使我们能够在实现和基础设施保持固定的情况下评估添加中间训练数据的效果。</p>
+<p><strong>图 7：中间训练数据比例的影响。</strong> 12000 次更新后的最终结果。比例是训练前估计的 token 比例。损失变化相对于基础模型。第 D.1 节给出训练和评估细节。</p>
+<p>数学准确率在各比例上保持相似，随着中间训练数据比例的增加有非常小的退化，最大比例达到最高覆盖率。保留度的好处更明显：所有非零混合将保留中间训练损失降低到基础模型值以下，更大的比例产生更低的损失，而分阶段训练则增加了它；SciQ（welbl2017sciq）准确率也通常随混合而改善。我们还观察到更多中间训练数据下 Coding 准确率较低，尽管 Coding 覆盖率高于基础模型和分阶段训练。因此，来自异构中间训练数据的统一训练改善了保留度，但其对任务性能的影响通常在准确率和覆盖率之间进行权衡。第 D.2 节报告了完整的基准结果。</p>
+<h4>5.2.2 数据混合时间安排</h4>
+<p>前面的比较变化使用了多少中间训练数据，但保持其比例在整个 RL 中恒定。我们接下来询问改变何时使用这些数据是否可以在保留保留度收益的同时减少编码准确率成本（条目 2 和 4）。在图 8 中，我们比较了恒定混合、线性衰减、线性增长和训练中途衰减到零，所有这些都使用平均配置的 0.5% 中间训练比例（第 A.1 节）。</p>
+<p><strong>图 8：数据混合时间安排的影响。</strong> 四种时间安排，平均配置中间训练比例为 0.5%。完全退火和半退火分别在结束和中点达到零；线性增长从零开始。训练细节在第 D.3 节中给出。</p>
+<p>当混合在训练中途结束时，Coding 准确率改善且 SciQ 收益持续，而保留语料库损失上升。与恒定混合相比，这一时间安排实现了更高的最终 Coding 和 SciQ 准确率，但保留了较少的语料库损失减少。数学准确率和覆盖率在四种时间安排上保持相似（第 D.3 节）。因此，首选的时间安排取决于任务间的性能如何平衡；我们将这些交互的详细分析留作未来工作。</p>
+<h4>5.2.3 统一训练可以促进更好的持续学习</h4>
+<p>我们接下来询问统一训练是否改善后续学习（条目 5）。图 9 比较了分阶段数学模型与在恒定 0.5、1、2 和 5% 混合下训练的统一模型，所有模型都使用相同的编码 RL 而没有中间训练数据（第 D.7 节）。</p>
+<p><strong>图 9：数学训练后的编码 RL。</strong> 曲线标签标识前面的数学训练，百分比表示恒定中间训练比例。所有模型然后使用相同的编码 RL 配置，没有中间训练数据。我们报告 HumanEval+ (HE+) 和 MBPP+ 上 4000 次编码 RL 更新后的 pass@1 和 pass@16。第 D.7 节给出设置以及数学和通用知识的附加评估。</p>
+<p>尽管初始编码准确率较低，所有统一模型在两个基准上都达到了比分阶段训练更高的最终准确率，以及更高的 MBPP+ 覆盖率。5% 模型在所有四个指标上表现最佳，而较小混合下的 HumanEval+ 覆盖率与分阶段训练相似或低于分阶段训练。这些结果支持统一训练作为持续学习的更好起点，在测试的最大中间训练比例下具有最强的收益。这一发现在使用 WebInstruct 的通用推理领域的持续学习设置中得到了进一步验证（ma2026general）（第 D.8 节）。</p>
+<h4>5.2.4 附加分析</h4>
+<p><strong>MaxRL 与 REINFORCE</strong></p>
+<p>我们的表述同时容纳 MaxRL 和 REINFORCE（第 3.2 节），使我们能够检查 RL 目标如何影响从相同数据混合中的学习。在恒定 2% 混合下，REINFORCE 达到更高的数学准确率，而 MaxRL 达到更高的数学覆盖率。REINFORCE 还产生更低的保留损失和更高的 SciQ 和 ARC-Challenge（clark2018arc）准确率。覆盖率和保留度差异在第 D.5 节的额外比例和时间安排中持续存在。因此，即使数据混合固定，RL 目标也影响数学覆盖率和保留度之间的平衡。</p>
+<p><strong>与 KL 正则化的比较</strong></p>
+<p>我们询问向基础模型正则化是否可以重现混合中间训练数据的好处（附录 E）。增加 KL 惩罚减少了保留损失中的恶化，但最强的惩罚也大幅降低了数学准确率和覆盖率。在这一设置中，没有一个测试的惩罚重现了统一训练所实现的数学性能、更低语料库损失和更高 SciQ 和 MMLU 准确率的组合。</p>
+<p><strong>中间训练数据组成</strong></p>
+<p>为了理解改变中间训练语料库是否可以减少混合的编码准确率成本，我们移除或替换其指定的代码源（第 D.4 节）。移除这些源在恒定混合下改善了 Coding 准确率，但在退火下影响很小。用验证过的编码示例替换它们在退火下改善了覆盖率而没有改善准确率。因此，改变语料库可以减少编码准确率成本，但其效果取决于混合时间安排。</p>
+<h2>6 相关工作</h2>
+<h3>6.1 基础模型训练</h3>
+<p>大规模最大似然预训练为广泛能力的语言模型奠定了基础（brown2020gpt3; zhang2022opt; chowdhery2023palm; bigscience2024bloom）。后续系统通过日益复杂的训练流程将这一基础与监督学习、偏好优化和 RL 相结合（openai2023gpt4; touvron2023llama2; grattafiori2024llama3; deepseek2025v3; guo2025deepseekr1）。开放研究努力使训练数据、配方和中间模型更加可获取，支持对数据策划、混合时间安排和后训练程序的更深入检查（groeneveld2024olmo; allal2025smollm2; lambert2025tulu3; olmo2025olmo3）。我们的工作通过静态和生成数据的共同表述和实现来研究这一训练过程的组织，允许它们的组成和时机变化，而不需要为每个阶段单独的训练算法。</p>
+<h3>6.2 理解基础模型训练</h3>
+<p>实证缩放研究刻画了性能如何随模型大小、数据和计算变化（hestness2017scaling; rosenfeld2020constructive; kaplan2020scaling; hoffmann2022computeoptimal）。后续工作检查了当新数据有限时重复数据的价值（muennighoff2023dataconstrained）以及 RL 后训练的缩放，其中初始化、模型大小和优化选择影响学习效率（nimmaturi2025predictive; khatri2026art; tan2026rlscaling）。理解完整的训练过程还需要检查早期训练如何塑造后续学习。迁移缩放和领域适应研究刻画了下游性能如何依赖于先前的训练数据（gururangan2020dontstop; hernandez2021transfer; isik2025downstream），而最近的推理研究检查了预训练和中间训练如何影响后续 RL 和能力保留（zhang2026interplay; runwal2026prism; shen2026understanding）。互补的工作优化数据混合并研究领域暴露的时机和后续重放的好处（xie2023doremi; ye2025datamixing; liu2026midtrainingbridges; baek2026finetuner; kotha2026replaying）。我们的工作通过容纳静态和 RL 生成数据的共同似然表述来补充这些实证描述，使这些源的组成、时机和重用能够在训练过程中被研究。</p>
+<h3>6.3 混合离线和在线强化学习</h3>
+<p>将演示或其他先前经验与在线交互相结合长期以来被用于改善 RL 中的探索和样本效率（ross2012agnostic; hester2018demonstrations; nair2018exploration; rajeswaran2018dexterous）。这一原则是关于离线到在线和混合 RL 的大量文献的基础，包括将先前数据纳入在线学习的实用算法（nair2020awac; lee2022offlinetoonline）以及关于同时访问两种来源何时改善学习效率的理论分析（xie2021policyfinetuning; song2023hybridrl; wagenmaker2023leveragingoffline; zhou2024offlineenhanced; song2024hybridobservation）。</p>
+<p>语言模型后训练同样将静态语料库或演示与在线 RL 相结合。InstructGPT 在 PPO 目标中添加预训练似然项以减少公共基准上的退化（ouyang2022instructgpt），最近的工作提供了越来越多的证据表明将演示与 RL 相结合可以改善学习并保留能力（yan2025luffy; liu2025uft; fu2026srft; zhang2026chord）。这些方法通常向 RL 损失添加单独加权的监督项，其系数被调优或调度（ouyang2022instructgpt; zhang2026chord），或使 RL 目标适应离策略数据（yan2025luffy）。在统一训练中，两种源共享一个似然目标，它们的相对权重由数据混合设置；第 C.9 节将这与单独加权的监督损失进行比较。我们的工作进一步研究了这些源在完整基础模型训练过程中的联合使用，重点关注它们的组成、时机和重用如何影响预训练、中间训练和 RL 中的学习。</p>
+<h3>6.4 强化学习与监督学习之间的联系</h3>
+<p>RL、监督学习和概率推断之间的联系长期以来推动了基于期望最大化、加权回归和约束策略拟合的方法（dayan1997expectation; peters2007regression; peters2010reps; abdolmaleki2018mpo; levine2018inference; peng2019awr）。奖励引导的自训练方法如 STaR、ReST-EM 和 RAFT 通过在选定的生成响应上进行最大似然来迭代训练模型（zelikman2022star; gulcehre2023rest; singh2024beyond; dong2023raft）。相关工作还发展了语言模型后训练的统一分析（lv2025unified）。我们的表述直接建立在 MaxRL 和 TailRL 的似然目标之上（tajwar2026maxrl; ramasubramanian2026tailrl）。我们使用这一联系将静态数据和合适的 RL 目标置于共同的似然表述中，为其训练分布的混合提供正当性，并支持共享的数据格式、损失和训练器。</p>
+<h3>6.5 异步强化学习</h3>
+<p>我们的实际实现与异步 RL 相关，后者将行动与学习分离以利用并行硬件（mnih2016asynchronous）。分布式 actor-learner 系统通过重放缓冲区或轨迹队列将经验从许多 actor 传递到中央 learner 来建立在这种分离之上（horgan2018distributedprioritizedexperiencereplay; espeholt2018impalascalabledistributeddeeprl; espeholt2019seed）。语言模型的 RL 系统遵循相同的设计，在通过缓冲区或流连接的独立资源上运行生成和训练（slime_github; zhong2025streamrlscalableheterogeneouselastic）。这些系统主要在如何限制策略滞后方面有所不同：AReaL 和 StaleFlow 限制生成和训练之间的策略版本数量（fu2026areallargescaleasynchronousreinforcement; li2026staleflowstalenessawaredatamanagement），而 PipelineRL 在生成期间更新生成器权重（piche2025pipelinerlfasteronpolicyreinforcement）。</p>
+<h2>7 讨论</h2>
+<p>这项工作提出了基础模型的共同数学表述和训练基础设施，通过最大似然学习将静态数据和合适的 RL 更新结合在一起。由此产生的灵活性允许数据源重叠且其比例在整个训练过程中变化。我们的实验展示了这些选择的实际收益，并表明数据源的价值取决于它何时被引入以及它如何与后续学习交互。</p>
+<p>一个核心的开放问题是如何系统地选择这些混合。我们的实验揭示了准确率、覆盖率和保留度之间的权衡，但没有确定普遍首选的混合或时间安排。计算研究同样描述了评估的配置，而没有建立具有预测能力的缩放定律。将这些分析扩展到不同模型大小和数据预算可以支持关于何时重用静态数据、生成新响应以及改变它们的相对贡献的更有预测性的选择。此外，我们当前的结果没有通过深入研究优化应如何随不同的数据时间安排和混合设计而变化来建立（wen2026data），我们将此作为未来工作的重要方向。</p>
+<p>实验范围也仍然是小规模的。大多数运行一次优化单个 RL 任务，而跨任务的联合训练可能需要考虑竞争的学习动态和不等的进展速率。此外，我们的工作并没有完全消除阶段的概念，因为基础模型对新任务的下游适应将不可避免地需要单独的训练阶段。我们的持续学习结果提供了初步证据表明前面的训练过程可以改善这种适应；研究更长的任务序列将澄清这一优势如何与保留度交互。总之，这些问题促使将训练过程中的数据分配作为一个耦合学习问题来研究。</p>
+<h2>致谢</h2>
+<p>这项工作得到了 ASCR Leadership Computing Challenge (ALCC) 项目 ERCAP0034861 的奖项支持。这项研究还使用了 Oak Ridge Leadership Computing Facility (OLCF) 和 Argonne Leadership Computing Facility (ALCF) 的资源，它们是 DOE 科学办公室用户设施。作者还感谢使用 DeltaAI 高级计算和数据资源（deltaai），该资源由美国国家科学基金会（奖项 OAC 2320345）和伊利诺伊州支持。DeltaAI 是伊利诺伊大学厄巴纳-香槟分校及其国家超级计算应用中心的联合努力。其计算资源作为 ACCESS 批准的计算资助的一部分使用（access_compute）。</p>
+<p>作者感谢 CMU FLAME 中心和 CMU Babel 计算集群对本项目的计算支持。YS 和 AS 感谢 NSF AI Institute for Societal Decision Making AI-SDM 资助 IIS2229881 的支持。FT 感谢 Qualcomm Innovation Fellowship North America 2026 和 Bosch Research and Technology Center 的支持。DA 得到美国国家科学基金会 CCF-2106778 资助的支持。DK 得到 ONR 奖项 (N00014-24-1-2089) 的支持。AZ 感谢 Impossible、Jane Street 和 Amazon AGI 的支持。</p>
+<h2>附录目录</h2>
+<h2>附录 A 数据混合和计算计算</h2>
+<p>本附录解释我们如何从多个数据源构建训练批次并核算由此产生的训练计算。第 A.1 节描述从每个源抽取的数据量、该量在训练期间如何变化以及损失如何组合。第 A.2 节然后将训练预算转换为语料库暴露和模型 FLOP 估计。每个实验的附录提供其余的设置细节、评估协议和结果。</p>
+<h3>A.1 数据混合</h3>
+<p>数据混合指定每个源有多少数据进入训练批次。在推理谜题实验中，我们设置预训练期间添加的打包序列数量和 RL 期间添加的提示-响应样本数量。在真实世界数据实验中，我们改为指定来自中间训练数据的 token 目标比例。因为样本长度不同，这两种度量略有不同，但我们不期望这影响整体结果，因为在受控设置中每个样本中的 token 数量相对一致，我们以转换后的 token 数量或 FLOP 呈现大部分结果。我们使用平均长度估计将期望的 token 比例转换为添加到每个批次的样本数量，如下面和第 4.3 节所述。</p>
+<p><strong>预训练期间的中间训练数据</strong></p>
+<p>在最后 8147 个预训练更新步骤中，每个推理谜题运行保留原始的 256 个预训练数据序列批次，并添加 $k\in{8,16,32,64,128}$ 个中间训练序列。所有序列打包到长度 2048。组合批次中有 $256+k$ 个序列，给出 $k/(256+k)$ 的中间训练 token 比例。即使批次大小变化，我们也不改变现有的学习率调度或其他超参数，我们将最佳学习率和批次大小选择的研究推迟到未来工作。在这 8147 次更新中，模型因此处理 $8147\times k\times 2048$ 个额外的中间训练 token。表 3 给出了每个 $k$ 选择的这些数量。这里一个打包序列是一个固定长度的 token 块，可以包含多于一个提示-响应样本。中间训练序列从固定的 796175 个推理轨迹语料库中抽取，总共包含 509942713 个 token。提示、响应和序列结束 token 在此阶段都贡献于损失。增加 $k$ 增加对同一语料库的暴露，同时保留原始的预训练数据流。</p>
+<table>
+<thead>
+<tr>
+<th>每次更新的中间训练序列 $k$</th>
+<th>中间训练 token 比例 $k/(256+k)$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8</td>
+<td>3.03%</td>
+</tr>
+<tr>
+<td>16</td>
+<td>5.88%</td>
+</tr>
+<tr>
+<td>32</td>
+<td>11.11%</td>
+</tr>
+<tr>
+<td>64</td>
+<td>20.00%</td>
+</tr>
+<tr>
+<td>128</td>
+<td>33.33%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 3：</strong> Base 和 Extended 推理谜题设置中最后 8147 个预训练更新期间的中间训练暴露。</p>
+<p><strong>RL 期间的中间训练数据</strong></p>
+<p>在 RL 期间，我们通过添加到每次更新的完整中间训练样本数量来指定混合。统一训练从相同的 796175 样本语料库中添加 $m\in{4,8,16,32,64}$ 个提示-响应样本，与 RL 生成数据并列。我们对表 3 中的五个预训练混合变化这一计数。$m=0$ 控制从相同的初始化开始，但在 RL 期间不接受中间训练样本，使我们能够区分初始化的效果与进一步数据混合的效果。在此阶段，提示 token 被掩码：只有响应和序列结束 token 贡献于中间训练损失。注意，这与预训练期间的掩码选择不同，预训练中所有 token 都贡献于损失。这一设计选择是由于 RL 阶段的性质，但我们不期望它影响整体结果。第 A.2 节解释每次更新的样本数量如何确定语料库遍历的总数。</p>
+<p><strong>RL 期间的预训练数据</strong></p>
+<p>第 C.8 节在 RL 生成和中间训练样本之外添加预训练文本。我们使用 $k\in{32,128}$ 初始化，对应于预训练期间的 534M 和 2.14B 中间训练 token，每次 RL 更新有 $m\in{8,32}$ 个中间训练样本。每次更新添加四个预训练文本序列，从原始的 75% ClimbMix 和 25% Dolmino 混合物中抽取。它们的长度使用平均中间训练响应长度选择，使得添加的文本大约为每十个中间训练响应 token（包括序列结束 token）贡献一个承担损失的预训练 token。这一比例相对于中间训练数据，而不是批次中的所有 token。预训练 token 在共享损失中获得单位权重，与不变数量的 RL 生成和中间训练样本并列。</p>
+<p><strong>真实世界数据研究中的 token 比例</strong></p>
+<p>在真实世界数据实验中，我们通过中间训练 token 的目标比例而非固定数量的中间训练样本来控制混合。令 $T_{\mathrm{mid}}$ 计算批次中的中间训练 token，$T_{\mathrm{rl}}$ 计算 RL 响应 token。后者计数包括不成功的响应以及成功的响应。中间训练比例为</p>
+<p>$$f=\frac{T_{\mathrm{mid}}}{T_{\mathrm{mid}}+T_{\mathrm{rl}}}.$$</p>
+<p>图中报告的百分比是这一比例的配置目标。每次更新保留 512 个 RL 响应并添加中间训练样本。为了确定添加多少样本，我们使用目标比例和训练前测量的平均样本长度。因为所得的计数不必是整数，所以对跨更新的累积计数应用四舍五入。长度估计在整个训练中保持固定。因此，恒定的配置比例不保证实际处理批次中的恒定 token 比例：该比例可能随着 RL 响应变长或变短而变化。我们相信这一权衡是必要的，以避免 RL 训练循环中复杂的设计选择。</p>
+<p>时间安排实验变化训练进行时的配置比例。令 $u\in[0,1]$ 为已完成的优化器更新比例，令 $a=0.005$，对应于 0.5% 的平均配置比例。图 8 中的四种时间安排为</p>
+<p>$$f_{\mathrm{constant}}(u)=a,$$<br />
+$$f_{\mathrm{full}}(u)=2a(1-u),$$<br />
+$$f_{\mathrm{growth}}(u)=2au,$$<br />
+$$f_{\mathrm{half}}(u)=4a\max{1-2u,0}.$$</p>
+<p>恒定时间安排在整个训练中保持在 0.5%。完全退火从 1% 开始并线性减少到零，而增长从零线性增加到 1%。半退火从 2% 开始，在训练中途达到零，此后保持为零。因此，每种时间安排具有相同的平均配置比例 $a$，但随时间不同地分配中间训练数据。它们实现的 token 比例仍然可能不同，因为响应长度可能在不同运行之间不同。第 D.3 节报告了这些比较和额外的时间安排，包括四分之三退火，在训练四分之三后达到零。</p>
+<p><strong>损失加权和归一化</strong></p>
+<p>第 C.9 节中的比较保持初始化和样本数量固定，同时改变 RL 和中间训练损失的组合方式。对于 RL 批次，令 $N_{R}$ 为由其 RL 权重加权的响应 token 负对数似然之和。对于中间训练样本，令 $N_{D}$ 为应用任何中间训练权重之前响应 token 负对数似然的相应和。令 $T_{R}$ 和 $T_{D}$ 为各自的响应 token 计数，包括序列结束 token；$T_{R}$ 还包括来自不成功 RL 响应的 token。两个目标，各自用单个优化器优化，为</p>
+<p>$$\mathcal{L}<em>{\mathrm{unified}}=\frac{N</em>{R}+wN_{D}}{T_{R}+T_{D}},$$<br />
+$$\mathcal{L}<em>{\mathrm{separate}}=\frac{N</em>{R}}{T_{R}}+\alpha\frac{N_{D}}{T_{D}}.$$</p>
+<p>统一训练将组合的加权损失除以总 token 计数 $T_{R}+T_{D}$；$w$ 是中间训练 token 上的权重。替代方案首先为每个源计算 token 均值，然后将中间训练均值乘以固定系数 $\alpha$。用这两个源均值表示统一目标给出中间训练均值上的相对系数 $wT_{D}/T_{R}$ 和整体尺度 $T_{R}/(T_{R}+T_{D})$。这使其对批次组成的依赖显式化：中间训练数据的相对贡献随中间训练与 RL 响应 token 的比率而变化。在分别损失目标中，$\alpha$ 在整个运行中保持固定。</p>
+<h3>A.2 受控实验中的计算计算</h3>
+<p>我们区分处理的数据量与处理它所需的计算。训练暴露计算每次呈现给模型时的样本或 token，包括相同数据的重复呈现。模型 FLOP 估计额外考虑生成 RL 响应和在所得批次上训练的成本。这些估计提供了图 1、5 和 12 中的横轴。</p>
+<p><strong>预训练、中间训练和 RL 预算</strong></p>
+<p>完整的 RL 预算在 Base 中为 6000 次更新，在 Extended 中为 12000 次更新，每次更新请求 512 个生成。达到这些期限的运行因此分别请求 3072000 或 6144000 个生成。RL 期间的中间训练暴露取决于添加到每次更新的样本数量。对于 $U$ 次更新和每次更新 $m$ 个样本，模型处理 $Um$ 个中间训练样本。除以语料库中的 796175 个样本给出 $Um/796175$ 次语料库遍历。在完整的训练期限下，$m\in{4,8,16,32,64}$ 在 Base 中给出大约 0.03–0.48 次遍历，在 Extended 中给出 0.06–0.96 次遍历。分阶段训练在 RL 之前处理 1、2 或 4 次遍历，并在 RL 期间不使用中间训练数据。对于统一训练，混合到预训练中的量和 RL 期间添加的量都贡献于总中间训练暴露。增加任一数量重用相同的语料库但需要额外的训练计算。因此，匹配 RL 更新次数并不匹配总计算。</p>
+<p><strong>模型 FLOP 估计</strong></p>
+<p>我们使用 shen2026understanding 的密集模型近似：处理 $T$ 个模型输入 token 大约花费 $6NT$ FLOPs 用于训练和 $2NT$ FLOPs 用于生成，其中 $N=123587328$ 是参数计数。我们跟踪四个 token 总量以核算完整的训练过程。$T_{\mathrm{pre}}$ 是共享预训练 token 的数量，$T_{\mathrm{mid}}$ 是 RL 之前处理的额外中间训练 token 的数量。在 RL 期间，$T_{\mathrm{rollout}}$ 计算 RL 数据中累积的提示和响应 token，$T_{\mathrm{mix}}$ 计算添加到 RL 批次的中间训练 token。计算估计为</p>
+<p>$$C_{\mathrm{total}}=6N(T_{\mathrm{pre}}+T_{\mathrm{mid}})+8NT_{\mathrm{rollout}}+6NT_{\mathrm{mix}},$$<br />
+$$C_{\mathrm{additional}}=C_{\mathrm{total}}-6NT_{\mathrm{pre}}.$$</p>
+<p>RL token 总量上的系数 $8N$ 考虑了生成（$2N$）加上一次策略训练遍历（$6N$）。提示和响应 token 都计入这一估计，因为模型处理两者，即使提示位置从损失中被掩码。我们同样计算静态数据的所有非填充输入 token。这些计算总量因此不同于第 A.1 节中用于归一化响应损失的 token 计数。减去 $6NT_{\mathrm{pre}}$ 移除每个运行共享的预训练成本，留下分配给中间训练和 RL 的计算。估计省略了注意力长度校正、填充开销、激活重计算、评估、未使用的生成和重启后丢弃的工作。</p>
+<p>对于图 1、5 和 12，所有运行保留相同的 20000014336 token 预训练流。统一初始化在 RL 之前添加大约 133M–2.14B 中间训练 token。分阶段初始化在两个学习率下（第 C.6 节）对 509942713 token 语料库处理 1、2 或 4 次遍历。在 RL 期间，训练日志每十次更新记录批次响应 token 计数。我们使用这些测量来估计累积响应 token 并减去估计的中间训练响应 token 以获得 RL 响应总量。RL 提示 token 和完整中间训练样本的估计使用它们各自语料库的平均长度。在每个检查点，我们在相同的两个 RL 训练种子上平均计算和性能，因此横坐标和纵坐标描述相同的一对模型。对于 RL 前的点，我们使用第 C.5 节中的共享初始化评估，并只计算已经产生的预训练和中间训练计算。</p>
+<p>图 5 和 12 将统一训练与所有六个分阶段配置进行比较。对于每个设置，我们显示检查点直到其分阶段运行中最大的最终计算预算。两个图都在顶行显示 pass@1，底行显示 pass@16。对于每个指标，我们按计算排序评估的检查点并保留那些改善迄今为止观察到的最佳分数的检查点。这些检查点形成观察到的边界。黑色曲线连接它们；连接段是视觉指南，不是额外的评估。在最终改善之后，曲线保持在最佳观测值直到显示的预算限制。两个图使用相同的检查点和边界。图 5 包括所有训练计算，而图 12 从每个横坐标中减去 $6NT_{\mathrm{pre}}$ 以显示超出共享预训练的计算。图 1 的右面板使用与图 5 相同的评估和计算限制总结 Extended 结果。它为统一和分阶段训练构建单独的曲线：在每个预算下，每条曲线给出该方法测试配置中最高观测的准确率或覆盖率。曲线仅在预算内出现更好的检查点时增加。曲线从每种方法的第一个评估初始化开始，而横轴从共同的预训练成本开始。</p>
+<p><strong>真实世界数据实验</strong></p>
+<p>第 5.2 节中的真实世界数据实验比较具有相同优化器更新次数的运行，而不是匹配总计算。添加中间训练数据改变每次更新中的工作量，异步训练可以重用可用的 RL 响应。第 D.6 节分别报告测量的每次更新时间并描述实现之间的硬件和策略陈旧度差异。这些时间测量优化吞吐量；它们不测量模型 FLOP 或生成新 RL 响应的速率。</p>
+<h2>附录 B 推理谜题：构建和示例</h2>
+<p>我们构建具有可验证解决方案的推理谜题来研究数据设计如何支持整个训练流程中的学习。构建让我们能够控制解决谜题所需的推理模式和必须确定位置的人数。我们使用符号 oracle 为中间训练语料库产生详细的解决方案，然后在 RL 期间引入相同推理操作的额外组合。下面，我们描述谜题，解释中间训练中包含哪些模式，并给出所得模型输入和训练响应的完整示例。</p>
+<p>我们的构建与爱因斯坦风格（斑马）逻辑谜题最为相关，其中关系线索确定属性到实体的分配（pmlr-v267-lin25i）。我们类似地要求将人分配到楼层，使用数值约束和通过友谊和相对位置的引用。骑士与骗子谜题也需要从相互依赖的陈述中进行推理，但未知的是哪些说话者总是说真话，哪些总是说谎（xie-etal-2025-memorization）。在我们的谜题中，所有线索都是真的；挑战在于解决它们的引用并找到满足它们的分配。</p>
+<h3>B.1 谜题构建</h3>
+<p>任务是将一组命名的人分配到不同的楼层。占用的楼层从整数 1–40 中采样并在提示中列出，连同每个人的最好朋友和一组自然语言线索。模型必须从这些信息中恢复完整的分配。友谊关系是没有自链接的置换：每个人命名另一个人作为他们的最好朋友，每个人恰好被命名一次。友谊不必是互惠的。线索通过差值、和、比较、奇偶性和整数倍来约束楼层数字。线索可以通过名字直接识别人，或通过友谊、楼层排名或另一个人的位置间接识别人。例如，“Ava 正上方的人”指的是 Ava 上方下一个<strong>占用的</strong>楼层的居住者，即使它们之间有未占用的楼层。“正下方”以相同的方式定义。</p>
+<p>为了生成谜题，我们首先采样一个隐藏的分配并构建一个线索链，其解释依赖于早期线索的推理。然后我们添加两个冗余线索并使用符号求解器验证分配是唯一的。求解器还检查分配可以通过约束传播来恢复，以便 oracle 可以提供演绎解决方案而无需搜索替代分配。</p>
+<h3>B.2 推理模式和中间训练数据</h3>
+<p><strong>引用</strong>是在线索中识别人或其楼层的短语。解释引用可能需要一个或多个操作，例如查找一个人的最好朋友或找到最高楼层的居住者。我们控制中间训练语料库中出现这些操作的哪些组合，<strong>因此模型只被教授如何执行推理和演绎，而不是过拟合到所有类型的引用</strong>。例如，中间训练包括对命名的人的最好朋友、最高楼层上的人以及明确指定楼层上的人的最好朋友的引用。它省略了“最高楼层上的人的最好朋友”，后者首先识别最高楼层居住者然后查找该人的最好朋友。组成操作因此出现在中间训练中，而这一特定的组合则没有。表 4 列出了演示的模式和从中间训练中省略的三类组合。RL 提示引入这些省略的组合，保留的问题评估相应分布上的性能。这一设计使我们能够研究从中间训练中获得的推理技能是否支持通过 RL 的后续学习。省略的组合在 RL 开始时是新的，但它们被包含在 RL 训练中而不是仅保留用于评估。</p>
+<table>
+<thead>
+<tr>
+<th>可用性</th>
+<th>示例引用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>中间训练中包含</td>
+<td>Ava 的最好朋友</td>
+</tr>
+<tr>
+<td></td>
+<td>Ava 的最好朋友的最好朋友</td>
+</tr>
+<tr>
+<td></td>
+<td>Ava 正上方的人</td>
+</tr>
+<tr>
+<td></td>
+<td>第二高楼层上的人</td>
+</tr>
+<tr>
+<td></td>
+<td>19 楼上的人的最好朋友</td>
+</tr>
+<tr>
+<td>RL 期间引入</td>
+<td>最高楼层上的人的最好朋友</td>
+</tr>
+<tr>
+<td></td>
+<td>Ava 正上方的人的最好朋友</td>
+</tr>
+<tr>
+<td></td>
+<td>Ava 的最好朋友的正上方的人的最好朋友</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 4：推理谜题中的引用模式。</strong> 每行给出线索如何识别人或楼层的示意示例。最后三行组合了在中间训练中出现的操作，但其组合从该语料库中省略；最后一行代表一类更长的嵌套引用。</p>
+<p>图 10 说明了实际问题中两个这样的组合。</p>
+<p><strong>Oracle 推理轨迹</strong></p>
+<p>我们从仅使用演示模式的问题构建中间训练语料库。对于每个问题，符号 oracle 维护每个人的可行楼层集合并反复应用线索以消除不一致的分配。当这些集合缩小时，oracle 可以解决间接引用并在进一步的推理中使用所得信息。它以自然语言记录推理并返回完整的分配，而不分支到替代解决方案。我们通过变化应用约束的顺序和推理的表述方式，为每个问题生成最多四个轨迹。移除重复轨迹后，每个剩余的提示-响应对成为一个中间训练样本。响应包含 oracle 的推理，后跟框中的完整分配。第 C.1 节指定语料库大小及其在训练阶段中的使用。</p>
+<h3>B.3 示例</h3>
+<p>第一个示例显示了完整的中间训练提示和用作其训练目标的 oracle 响应。后续示例显示了第 C.1 节中定义的 Base 和 Extended 设置的评估提示。所有提示和 oracle 响应完整地从存储记录中复制；仅排版和换行有所改变。最后的 <strong>Answer:</strong> 提示属于模型输入并指示生成开始的位置。对于评估示例，我们单独显示正确的分配以解释任务；这些答案不提供给模型。</p>
+<p><strong>中间训练问题及其 oracle 响应</strong></p>
+<p>这个六人示例使用了语料库中演示的引用模式。</p>
+<p><em>中间训练样本：问题</em></p>
+<p>Hugo、Maya、Ethan、Zoe、Ella 和 Mia 住在同一栋楼的不同楼层。占用的楼层是 {6, 13, 23, 28, 31, 38}。最好朋友：Hugo 的最好朋友是 Ethan，Maya 的最好朋友是 Ella，Ethan 的最好朋友是 Mia，Zoe 的最好朋友是 Hugo，Ella 的最好朋友是 Maya，Mia 的最好朋友是 Zoe。已知信息：</p>
+<ul>
+<li>Zoe 住在 Ella 上方 3 层。</li>
+<li>Ethan 住在 Ethan 的最好朋友上方 10 层。</li>
+<li>Ethan 住在最低楼层的人上方 17 层。</li>
+<li>Zoe 的最好朋友住在 Mia 上方 25 层。</li>
+<li>Mia 住在奇数楼层。</li>
+<li>Ethan 住在奇数楼层。</li>
+</ul>
+<p>算出每个人住在哪一层。用逗号分隔的列表回答，如 "Hugo=NUMBER, …"，覆盖所有人。</p>
+<p>Answer:</p>
+<p><em>中间训练样本：oracle 响应</em></p>
+<p>线索 Zoe - Ella = 3 留下 的这些配对：{(31,28)}。<br />
+这将 Zoe 固定在 31，所以 31 被占用。<br />
+这将 Ella 固定在 28，所以 28 被占用。<br />
+最低楼层是 6。<br />
+使用 Ethan - 楼层 6 = 17：Ethan 现在在 {23}。<br />
+这将 Ethan 固定在 23，所以 23 被占用。<br />
+Zoe 的最好朋友是 Hugo。<br />
+线索 Zoe 的最好朋友 - Mia = 25 留下 的这些配对：{(38,13)}。<br />
+这将 Hugo 固定在 38，所以 38 被占用。<br />
+这将 Mia 固定在 13，所以 13 被占用。<br />
+这将 Maya 固定在 6，所以 6 被占用。<br />
+Hugo=38, Maya=6, Ethan=23, Zoe=31, Ella=28, Mia=13</p>
+<p><strong>Base 设置</strong></p>
+<p>以下八人问题包含两个从中间训练中省略的组合，以粗体突出显示。图 10 使用黄金分配解决这些引用。</p>
+<p><em>Base 设置：评估问题</em></p>
+<p>Zoe、Maya、Ava、Nora、Hugo、Felix、Mia 和 Ruby 住在同一栋楼的不同楼层。占用的楼层是 {2, 12, 19, 20, 22, 29, 37, 40}。最好朋友：Zoe 的最好朋友是 Hugo，Maya 的最好朋友是 Ruby，Ava 的最好朋友是 Nora，Nora 的最好朋友是 Mia，Hugo 的最好朋友是 Zoe，Felix 的最好朋友是 Ava，Mia 的最好朋友是 Felix，Ruby 的最好朋友是 Maya。已知信息：</p>
+<ul>
+<li>Maya 的最好朋友和 Mia 的楼层数字之和为 42。</li>
+<li>Hugo 住在奇数楼层。</li>
+<li>Maya 住在<strong>最高楼层上的人的最好朋友的最好朋友</strong>上方 8 层。</li>
+<li>Hugo 住在 Hugo 的最好朋友上方 17 层。</li>
+<li><strong>最高楼层上的人的最好朋友</strong>和 Zoe 的楼层数字之和为 24。</li>
+<li>Ruby 的最好朋友和 Ruby 的楼层数字之和为 57。</li>
+<li>Ruby 住在偶数楼层。</li>
+<li>Nora 住在 Hugo 上方 21 层。</li>
+</ul>
+<p>算出每个人住在哪一层。用逗号分隔的列表回答，如 "Zoe=NUMBER, …"，覆盖所有人。</p>
+<p>Answer:</p>
+<p><em>黄金答案：</em> Zoe=2, Maya=37, Ava=12, Nora=40, Hugo=19, Felix=29, Mia=22, Ruby=20。</p>
+<p><strong>图 10：</strong> 在八人评估示例中解决组合引用。图表显示黄金分配，占用的楼层为可读性均匀间隔。最高楼层由 Nora 占用，她的最好朋友是 Mia；Mia 的最好朋友是 Felix。两个突出显示的线索因此简化为 $37-29=8$ 和 $22+2=24$。此插图使用已知答案来解释任务；分配不是模型输入的一部分。</p>
+<p><strong>Extended 设置</strong></p>
+<p>此设置保留相同的组合规则，同时增加人数。在这个十人示例中，突出显示的引用需要识别极端楼层居住者的最好朋友。</p>
+<p><em>Extended 设置：评估问题</em></p>
+<p>Owen、Ruby、Liam、Ava、Ethan、Hugo、Mia、Iris、Ella 和 Felix 住在同一栋楼的不同楼层。占用的楼层是 {1, 2, 4, 5, 6, 8, 10, 13, 14, 20}。最好朋友：Owen 的最好朋友是 Felix，Ruby 的最好朋友是 Iris，Liam 的最好朋友是 Owen，Ava 的最好朋友是 Ruby，Ethan 的最好朋友是 Mia，Hugo 的最好朋友是 Ethan，Mia 的最好朋友是 Ella，Iris 的最好朋友是 Ava，Ella 的最好朋友是 Liam，Felix 的最好朋友是 Hugo。已知信息：</p>
+<ul>
+<li>Ava 住在偶数楼层。</li>
+<li>5 楼上的人的最好朋友住在 Ella 上方 1 层。</li>
+<li><strong>最低楼层上的人的最好朋友</strong>住在 Ruby 上方 4 层。</li>
+<li>第二高楼层上的人住在 Felix 上方 1 层。</li>
+<li>Ava 的最好朋友和 Ethan 的楼层数字之和为 6。</li>
+<li>Hugo 住在<strong>最高楼层上的人的最好朋友</strong>上方 4 层。</li>
+<li>Ruby 的最好朋友住在 Ruby 上方 10 层。</li>
+<li>Mia 住在偶数楼层。</li>
+<li>Iris 的最好朋友和 Liam 的楼层数字之和为 18。</li>
+<li>Mia 住在 Hugo 上方 15 层。</li>
+</ul>
+<p>算出每个人住在哪一层。用逗号分隔的列表回答，如 "Owen=NUMBER, …"，覆盖所有人。</p>
+<p>Answer:</p>
+<p><em>黄金答案：</em> Owen=6, Ruby=4, Liam=8, Ava=10, Ethan=2, Hugo=5, Mia=20, Iris=14, Ella=1, Felix=13。</p>
+<h2>附录 C 预训练、中间训练和 RL：设置和附加结果</h2>
+<p>本附录解释第 5.1 节的实验设计并提供用于解释主要比较的附加结果。我们首先描述数据、模型初始化、RL 程序和评估协议，然后检查 RL 前后的性能、计算分配、损失聚合和保留度。</p>
+<h3>C.1 任务和中间训练数据</h3>
+<p>我们使用附录 B 中构建的推理谜题来变化模型何时看到中间训练数据以及它多久重用该数据。所有比较使用相同的固定 oracle 解决方案语料库。我们首先描述这一语料库和用于 RL 和评估的问题分布，然后给出训练和评估协议。</p>
+<p><strong>中间训练语料库中的 oracle 轨迹</strong></p>
+<p>中间训练语料库包含 200000 个问题：100000 个有 6–7 人，100000 个有 8–9 人。所有问题仅使用第 B.2 节中描述的演示引用模式。Oracle 为每个问题产生最多四个推理轨迹；移除重复轨迹后留下 796175 个提示-响应样本。总之，提示、响应和序列结束 token 包含 509942713 个 token，或大约 510M token。分阶段中间训练和统一训练从这同一语料库中抽取，包括统一训练将中间训练数据混合到预训练或 RL 中时。增加中间训练暴露因此意味着重用现有样本而不是引入新问题。第 B.3 节给出完整的语料库示例和评估提示。</p>
+<p><strong>两个 RL 设置</strong></p>
+<p>我们在两个设置中变化 RL 期间所需的推理。在 <strong>Base</strong> 中，所有谜题包含 8–9 人，因此其大小保持在中间训练覆盖的范围内。RL 提示池包括仅使用演示模式的问题和需要从中间训练中省略的组合的问题。主要测试集包含后一种类型，使我们能够测量这些组合的学习而不增加谜题大小。在 <strong>Extended</strong> 中，RL 池额外包含 10–11 人的谜题，主要测试集使用这一更大的尺寸。引用类别与 Base 中保持相同，但模型现在必须恢复更多人的位置。包含省略组合的谜题</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 基础模型, 统一训练, 最大似然估计, 强化学习, 数据混合</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
