@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多轮预训练的缩放理论：后期过拟合与集成 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">多轮预训练的缩放理论：后期过拟合与集成</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-02</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.03590" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：A Scaling Theory of Multi-Epoch Pretraining: Late-Time Overfitting and Ensembling</h4>
+            <p><strong>中文摘要：</strong> 本文研究固定训练数据下多轮预训练的缩放理论。FineWeb语言模型实验表明，重复训练使验证损失呈U形轨迹，而logit平均集成可减少后期恶化并延迟最优停止。作者为多轮SGD随机特征集成推导了动力学平均场理论，追踪跨轮次与跨模型的误差相关性，证明集成以1/E速率减少后期增长的预测方差，并据此推导算力分配定律：集成规模随算力增长至少与每成员训练时间一样快，过剩测试损失按算力幂律下降。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>多轮预训练的缩放理论：后期过拟合与集成</h1>
+<p><strong>Zhen Yang</strong>*<br />
+zhen.yang@utexas.edu<br />
+德克萨斯大学奥斯汀分校</p>
+<p><strong>Yidi Miao</strong>*<br />
+yidim@andrew.cmu.edu<br />
+卡内基梅隆大学</p>
+<p><strong>Blake Bordelon</strong><br />
+blake.bordelon@austin.utexas.edu<br />
+德克萨斯大学奥斯汀分校</p>
+<p>*同等贡献。</p>
+<h2>摘要</h2>
+<p>在不久的将来，语言模型预训练将受到总数据量而非总算力的约束。这种情形需要重新审视缩放定律及缩放定律理论。受先前发现集成方法有效性的工作启发，我们研究了在训练数据固定的情况下，训练轮数和集成规模如何共同塑造泛化能力。在FineWeb上的语言模型实验中，logit平均减少了训练后期的性能恶化，延迟了最优停止时间，并且在匹配的参数-词元预算下，在共同训练时间范围内可以胜过更宽或更深的单模型。为了分析数据复用与集成之间的这种相互作用，我们为幂律随机特征集成中的多轮随机梯度下降推导了动力学平均场理论（DMFT），追踪跨轮次和跨模型的误差相关性。集成减少了导致期望测试误差后期增长的预测方差，从而改变了最优停止时间。我们利用这些停止时间推导了在固定数据和单模型规模下的算力分配定律。在这种分配下，集成规模随算力增长的速度至少与每个成员的训练时间一样快，而超出极限损失的过剩测试损失随算力按幂律下降。</p>
+<h2>1 引言</h2>
+<p>单轮训练的缩放定律规定了模型规模和训练数据应如何随算力增长（Kaplan et al., 2020; Hoffmann et al., 2022）。然而，高质量独特文本的供应未必以与算力相同的速度增长（Villalobos et al., 2024; Muennighoff et al., 2023; Kim et al., 2025）。一旦语料库被复用，额外的优化会产生两种相反的效应：它继续拟合可用数据，但也可能放大与特定数据集、模型或训练顺序相关的噪声。即使训练损失持续下降，由此产生的验证曲线也常常是非单调的。</p>
+<p><strong>非单调 → 轮次化后的单调验证。</strong> 在这种数据复用情形下，简单的小规模语言模型实验可以复现验证损失在重复训练轮次中的演化过程，以及集成如何改变这一轨迹。在固定模型规模下，跨越1000万至1亿个独特FineWeb词元，验证损失在大约9–14轮后达到最小值，然后随着进一步训练而上升（图1）。对独立训练模型的logit取平均可以减少这种上升，并且在匹配算力下可以胜过更宽或更深的模型（图2和附录A.2）。这些观察引出了两个问题：训练后期误差中哪些成分可以通过平均独立训练的模型来减少，以及这种减少如何改变使损失最小化的训练时间？</p>
+<p><strong>理论模型。</strong> 我们使用包含 $E$ 个随机特征模型的集成来解决这些问题，每个模型有 $N$ 个可训练参数和一个独立采样的特征矩阵。这些模型使用固定顺序的随机梯度下降（SGD）在相同的 $P$ 个样本上训练，该算法在每个轮次中复用相同的有序小批量。我们为单个模型及其平均预测的训练和测试损失推导了动力学平均场理论（DMFT）。该理论通过轮次内和跨轮次以及集成成员之间的误差相关性来描述这些损失，同时结合响应函数来测量对小扰动的敏感性，并量化跨轮次累积的过拟合动力学。</p>
+<p><strong>相关先前工作。</strong> 我们最接近的理论起点是Bordelon et al. (2024)的DMFT框架，该框架描述了有限数据和有限宽度的学习动力学，包括过拟合和集成。我们将该框架扩展到固定顺序的多轮SGD，并为 $N=P$ 时的无噪声梯度流推导了依赖于集成的停止和算力分配定律。该分析还借鉴了谱学习曲线（Bordelon et al., 2020; Maloney et al., 2022; Simon et al., 2021）、高维SGD动力学（Mignacco et al., 2020; Gerbelot et al., 2022; Paquette et al., 2021），以及基于Volterra方程的缩放定律分析（Paquette et al., 2024）和线性回归风险界（Lin et al., 2024; Yan et al., 2025）。我们的实验受到数据受限缩放（Muennighoff et al., 2023）和固定数据、高算力预训练（Kim et al., 2025）的启发。</p>
+<p><strong>贡献。</strong> 我们推导了多轮SGD动力学平均场理论（DMFT），并为高斯特征证明了有限时间范围的损失近似界。我们的理论量化了训练损失和验证损失如何在轮次内的步骤和跨轮次上演化。该理论需要计算关联函数和响应函数，它们表征了跨步骤的优化进度以及跨轮次时间尺度的过拟合效应。 我们为 $N=P$ 时的无噪声高斯梯度流推导了依赖于集成的停止定律，并在固定数据和成员规模下推导了幂律源/容量条件下的算力分配定律，其中每个集成训练至其各自的最优停止时间。 在固定FineWeb语料库的语言模型实验中，我们表明logit平均减少了训练后期的恶化并延迟了最优停止。在匹配的参数-词元预算下，集成在共同训练时间范围内可以胜过更宽或更深的单模型。</p>
+<h2>2 多轮预训练现象</h2>
+<p>我们测量在固定FineWeb子集上重复训练的自回归Transformer的验证交叉熵，改变模型和语料库规模，并对独立训练模型的logit取平均。附录A给出了训练和评估细节。</p>
+<p><strong>重复训练最终损害验证性能。</strong> 验证损失遵循U形轨迹，而训练损失持续下降（图1），这与先前在重复预训练数据下的观察一致（Muennighoff et al., 2023; Kim et al., 2025）。在固定模型规模下，验证损失在测试的语料库规模范围内大约9–14轮后达到最小值；在固定数据规模下，较大的模型更早达到其最小值（第3.8节）。</p>
+<p><strong>图1：</strong> 重复训练降低训练损失但最终提高验证损失。上：固定模型规模下的语料库规模扫描；下：固定语料库规模下的模型规模扫描。虚线/实线曲线显示训练/验证损失；三角形标记最小值。 轮次（实心）和步数（空心）中的最优停止。较大的模型在较少的轮次中达到最优；最优轮次在不同语料库规模间变化较小。设置：表3。</p>
+<p><strong>集成改善了固定训练预算的使用。</strong> Logit平均降低验证损失并减少其后期上升（图2A）。在匹配的参数-词元算力下，四个基础模型的集成比宽度加倍的单模型获得低0.16奈特/词元的验证损失（图2B；附录A.2）。相关工作也发现在固定数据上集成的收益（Kim et al., 2025）以及将多轮预算分配给多样化预测器（Mandal et al., 2026）。</p>
+<p><strong>图2：</strong> 集成减少后期恶化并在匹配训练预算下改善损失。 不同集成规模的验证轨迹。 四个基础模型比一个宽度加倍的模型好0.16奈特。两个面板均使用 $P=100$M；设置和评估覆盖范围：表3。</p>
+<p>这些观察激发了一个重复数据使用模型，该模型追踪模型内误差和集成成员间共享的误差。</p>
+<h2>3 固定数据复用的动力学平均场理论</h2>
+<h3>3.1 随机特征模型与多轮动力学</h3>
+<p><strong>模型与观测量。</strong> 我们研究宽度为 $N$ 的随机特征预测器，具有 $N$ 个可训练参数和 $P$ 个训练样本。SGD使用大小为 $B$ 的小批量：</p>
+<p>$$f(\bm{x})=\frac{1}{N}\bm{w}^{\top}\bm{A}\bm{\psi}(\bm{x}),\qquad y(\bm{x})=\bm{w}^{\star}!\cdot\bm{\psi}(\bm{x})+\sigma\epsilon, \tag{1}$$</p>
+<p>其中训练特征向量是从 $\mathcal{N}(\bm{0},\bm{\Lambda})$ 独立抽取的，$\bm{\Lambda}=\diag(\lambda_{1},\lambda_{2},\ldots)$。矩阵 $\bm{A}\in\mathbb{R}^{N\times M}$ 具有独立的标准高斯元素，且 $\epsilon\sim\mathcal{N}(0,1)$。总体特征、随机特征矩阵和标签噪声相互独立。这里 $\sigma^{2}$ 是加性标签噪声的方差，每个训练样本抽取一次，$M$ 是总体特征维度。我们将可训练权重初始化为 $\bm{w}<em>{0}(0)=0$；集成成员在同一数据集上使用 $\bm{A}$ 的独立抽取。DMFT允许 $\sigma\geq 0$。我们首先分析无噪声目标的后期缩放，然后给出标签噪声扩展；算力分配结果使用无噪声缩放形式。设置 $\sigma=0$ 可去除标签噪声，而数据集和随机特征保持随机。表1收集了规模和训练时间范围符号。对于缩放分析，我们允许具有可求和特征值的无限多个总体特征，$\sum</em>{k=1}^{\infty}\lambda_{k}&lt;\infty$，如随机特征回归的无维度分析（Defilippis et al., 2024）。附录B.1将此设置与各向同性有限维度比例特化区分开来。</p>
+<p><strong>表1：随机特征模型的规模和训练时间范围符号。</strong></p>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>含义</th>
+<th>符号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$N$</td>
+<td>模型宽度</td>
+<td>$M$</td>
+<td>总体特征维度</td>
+</tr>
+<tr>
+<td>$P$</td>
+<td>训练样本</td>
+<td>$B$</td>
+<td>每次更新的样本数</td>
+</tr>
+<tr>
+<td>$E$</td>
+<td>集成成员数</td>
+<td>$\mathcal{E}$</td>
+<td>训练轮数</td>
+</tr>
+<tr>
+<td>$T=P/B$</td>
+<td>每轮更新次数</td>
+<td>$S=T\mathcal{E}$</td>
+<td>总更新次数</td>
+</tr>
+</tbody>
+</table>
+<p>目标与学习到的特征系数之间的差异为</p>
+<p>$$\bm{v}<em>{n}^{0}(t)\mathrel{\mathop{\mathchar 58\relax}}=\bm{w}^{\star}-\frac{1}{N}\bm{A}^{\top}\bm{w}</em>{n}(t). \tag{2}$$</p>
+<p>对于训练数据和随机特征的固定实现，测试均方误差为</p>
+<p>$$\mathcal{L}<em>{N,B}(n,t)=\bm{v}</em>{n}^{0}(t)^{\top}\bm{\Lambda}\bm{v}_{n}^{0}(t)+\sigma^{2}. \tag{3}$$</p>
+<p><strong>轮次和小批量索引。</strong> 我们使用 $n\in{0,\ldots,\mathcal{E}-1}$ 表示轮次索引，$t\in{0,\ldots,T-1}$ 表示该轮内的步骤。全局更新索引和有效训练时间为 $s=nT+t$，$\tau=\eta s$。因此 $s/T$ 计算经过的轮次。在固定顺序设置中，相同的特征块 $\bm{\Psi}(t)\in\mathbb{R}^{B\times M}$ 及其固定的标签噪声向量 $\bm{\epsilon}(t)$ 在每轮的位置 $t$ 处重新出现。精确的残差递推为</p>
+<p>$$\bm{v}<em>{n}^{0}(t+1)=\bm{v}</em>{n}^{0}(t)-\eta\left(\frac{1}{N}\bm{A}^{\top}\bm{A}\right)\frac{1}{B}\bm{\Psi}(t)^{\top}\left(\bm{\Psi}(t)\bm{v}_{n}^{0}(t)+\sigma\bm{\epsilon}(t)\right), \tag{4}$$</p>
+<p>$$\bm{v}<em>{n+1}^{0}(0)=\bm{v}</em>{n}^{0}(T).$$</p>
+<p>这里 $\eta$ 是 $N$ 重新缩放的学习率；$\bm{w}$ 上相应的学习率为 $\eta N$。</p>
+<p><strong>因果性与固定数据复用。</strong> 为简化方程，我们使用组合的轮次-步骤索引 $\alpha=(n,t)$，其中 $n$ 表示轮次，$t$ 表示该轮内的步骤。因果矩阵 $\bm{\Theta}$ 和投影 $\mathcal{D}$ 区分了普通的时间依赖性和重复数据依赖性：</p>
+<p>$$\Theta_{\alpha,\beta}=\delta_{nn^{\prime}}\mathbf{1}{t&gt;t^{\prime}}+\mathbf{1}{n&gt;n^{\prime}},\;\;\alpha=(n,t),\;\;\beta=(n^{\prime},t^{\prime}),$$</p>
+<p>$$[\mathcal{D}(\bm{Q})]<em>{\alpha,\beta}=Q</em>{(n,t),(n^{\prime},t^{\prime})}\delta_{tt^{\prime}}.$$</p>
+<p>矩阵 $\bm{\Theta}$ 对在给定状态之前发生的更新求和。映射 $\mathcal{D}$ 将 $t\neq t^{\prime}$ 的元素设为零，从而仅在同一小批量的重复使用之间保留跨轮次相关性。</p>
+<h3>3.2 理论的高层次发现</h3>
+<p><strong>多轮SGD的过拟合效应与跨轮次响应函数。</strong> 该理论描述了随着相同数据被复用，跨轮次相关性如何累积。这些效应由DMFT响应和关联函数捕获，它们预测验证损失和训练损失如何随轮数增加而分离。</p>
+<p><strong>按算力划分的训练区域。</strong> 我们的理论预测，Chinchilla式算力最优缩放在算力规模 $C\sim P^{\chi}$ 附近失效，其中对于下文研究的幂律谱，$\chi=b+1$。</p>
+<ul>
+<li><strong>有效在线区域</strong>：在低算力下，当数据复用效应较小时，主导缩放遵循用于单轮训练的有效在线近似。</li>
+<li><strong>可能过拟合区域</strong>：一旦在线分配选择的模型规模变得与数据集规模相当，过拟合可能影响算力的最优使用。最优停止和集成等方法随后变得重要。</li>
+</ul>
+<p>随着更多算力，可以调整训练时间、模型规模和集成数量，以使用相同数据进一步降低测试损失。</p>
+<p><strong>作为算力函数的最优停止与集成。</strong> 对于插值阈值处的无噪声梯度流，理论预测期望验证损失在后期增长。这种增长可以通过早停和集成的组合来控制。我们刻画了最优停止时间和集成数量如何在固定数据和成员规模下依赖于算力（第3.6节）。</p>
+<h3>3.3 DMFT表征</h3>
+<p>对（4）中复用的随机矩阵取平均，DMFT给出高斯单点过程（Mignacco et al., 2020; Gerbelot et al., 2022; Bordelon et al., 2024; Bordelon and Pehlevan, 2026）。响应 $R_{\alpha,\beta}$ 测量在 $\beta$ 处的扰动对 $\alpha$ 处的影响；$C_{\alpha,\beta}$ 是双时间关联。粗体符号表示 $S=T\mathcal{E}$ 轮次-步骤索引上的矩阵。响应方程为</p>
+<p>$$\bm{H}<em>{k}=\left[\bm{I}+\eta\lambda</em>{k}\bm{\Theta}\bm{R}<em>{3}\bm{R}</em>{1}\right]^{-1},\qquad \bar{\bm{H}}=\sum_{k}\lambda_{k}\bm{H}_{k}, \tag{5}$$</p>
+<p>$$\bm{R}<em>{1}=\left[\bm{I}+\frac{\eta}{B}\mathcal{D}(\bar{\bm{H}}\bm{\Theta}\bm{R}</em>{3})\right]^{-1},\qquad \bm{R}<em>{3}=\left[\bm{I}+\frac{\eta}{N}\bm{R}</em>{1}\bar{\bm{H}}\bm{\Theta}\right]^{-1}.$$</p>
+<p>传递矩阵 $\bm{H}<em>{k}$ 传播谱模式 $k$。响应 $\bm{R}</em>{1}$ 和 $\bm{R}_{3}$ 分别包含有限数据和有限宽度反馈。</p>
+<p>用 $v^{1}_{\alpha}$ 表示当前小批量样本上的残差（包括标签噪声），关联和损失为</p>
+<p>$$[\bm{C}<em>{0}]</em>{\alpha,\beta}=\sum_{k}\lambda_{k}\left\langle v^{0}<em>{k,\alpha}v^{0}</em>{k,\beta}\right\rangle,\qquad [\bm{C}<em>{1}]</em>{\alpha,\beta}=\left\langle v^{1}<em>{\alpha}v^{1}</em>{\beta}\right\rangle, \tag{6}$$</p>
+<p>$$\mathcal{L}<em>{\mathrm{test}}(\alpha)=[\bm{C}</em>{0}]<em>{\alpha\alpha}+\sigma^{2},\qquad \widehat{\mathcal{L}}</em>{\mathrm{train}}(\alpha)=[\bm{C}<em>{1}]</em>{\alpha\alpha}.$$</p>
+<p>括号表示对有效过程取平均。关联方程与（5）闭合；小批量特征场的协方差与 $\mathcal{D}(\bm{C}_{1})$ 成正比，保留同一小批量重复使用之间的相关性。附录B.8和B.9推导了该过程，附录B.3–B.7给出了完整方程。</p>
+<p>图3将闭合的DMFT方程与微观随机特征模型的直接模拟进行了比较。该理论追踪宽度 $N$、批量大小 $B$ 和集成规模 $E$ 的变化，以及插值处的后期增长。</p>
+<p><strong>图3：</strong> 微观随机特征模拟与DMFT预测（黑色虚线）随全局步数的变化。面板在插值处改变模型宽度 $N$、批量大小 $B$、集成规模 $E$ 和容量指数 $b$。</p>
+<h3>3.4 插值附近的后期增长</h3>
+<p>我们在幂律源和容量条件下研究梯度流极限（Bordelon et al., 2024）：</p>
+<p>$$\lambda_{k}\sim k^{-b},\qquad \lambda_{k}(w_{k}^{\star})^{2}\sim k^{-a},\qquad a&gt;1,\quad b&gt;1. \tag{7}$$</p>
+<p>这里 $b$ 描述特征谱衰减，$a$ 描述目标功率；$b&gt;1$ 使特征值尾部可求和。用 $\mathcal{L}(\tau,N,P,E)$ 表示有效时间 $\tau$ 处的集成测试损失。我们首先取 $\sigma=0$ 和 $1&lt;a&lt;b+1$，此时完整信号源按 $P^{-(a-1)}$ 缩放（附录F）。在 $N=P$ 时，响应在 $\tau_{c}\asymp P^{b}$ 尺度上的低频处变得临界。在定理2的条件下，单模型测试损失（$E=1$）的增长贡献 $\mathcal{L}_{\mathrm{grow}}(\tau)$ 为</p>
+<p>$$\mathcal{L}<em>{\mathrm{grow}}(\tau)\asymp P^{-(a-1+b/2)}\tau^{1/2},\qquad \tau\gtrsim \tau</em>{c}\asymp P^{b}. \tag{8}$$</p>
+<p>在固定 $N/P\neq 1$ 的常规GF分支上，正的低频分母截断了这种临界增长。在有限数据极限学习之前，未学习的模式在 $\tau\ll P^{b}$ 时给出 $\tau^{-(a-1)/b}$ 量级的贡献。为了确定何时停止集成，我们还需要对模型取平均后剩余误差的时间依赖性，我们接下来对此进行分析。</p>
+<p>标签噪声在不改变响应的情况下为关联方程添加了一个源。其条件后期增长和弱噪声停止条件在附录F.3和I.4中推导；下文的停止和分配定律涉及无噪声目标。</p>
+<h3>3.5 集成与最优停止</h3>
+<p>考虑 $E$ 个具有独立随机投影的模型，在共享数据集上以共同的固定顺序训练。用 $C_{\mathrm{self}}(\tau)$ 表示一个成员的期望平方误差，$C_{\mathrm{cross}}(\tau)$ 表示两个不同成员在同一输入上误差的期望乘积。在 $N=P$ 时，集成损失为</p>
+<p>$$\mathcal{L}(\tau,P,P,E)=C_{\mathrm{cross}}(\tau)+\frac{C_{\mathrm{self}}(\tau)-C_{\mathrm{cross}}(\tau)}{E}. \tag{9}$$</p>
+<p>差 $C_{\mathrm{self}}-C_{\mathrm{cross}}$ 是随机投影间的预测方差（对数据集取平均）。集成在固定时间将其减少 $1/E$，而cross包括偏差和由于共享数据产生的误差，如先前的集成分析（Adlam and Pennington, 2020; Geiger et al., 2020; Bordelon et al., 2024; Ruben and Pehlevan, 2023; Ruben et al., 2025）。附录C推导了集成过程。</p>
+<p>对于高斯数据和随机特征、零初始化以及纯幂律连续谱 $\lambda_{k}=k^{-b}$，$(w_{k}^{\star})^{2}=k^{b-a}$，其中 $b&gt;1$ 且 $1&lt;a&lt;b+1$，$N=P$ 处的无噪声GF方程给出</p>
+<p>$$C_{\mathrm{cross}}(\tau)=C_{\infty}+J\tau^{-1/2}+D\tau^{-1}+O(\tau^{-3/2}), \tag{10}$$</p>
+<p>$$C_{\mathrm{self}}(\tau)=H\sqrt{\tau}+O(1),\qquad D,H&gt;0. \tag{11}$$</p>
+<p>这里 $C_{\infty}\asymp P^{-(a-1)}$，$J$ 具有 $a-b$ 的符号。由于cross保持有界，只有方差在后期增长。在固定 $P$ 和大 $E$ 下，损失最小化时间 $\tau_{\star}(P,E)$ 平衡了这种增长与cross修正：$a&gt;b$ 时为 $J\tau^{-1/2}$，或 $a=b$ 且 $J=0$ 时为 $D/\tau$。对于 $a<b$，cross从下方接近 $C_{\infty}$ 并获得有限时间最小值；停止时间接近其最小化子集。这些情况给出了表2中的停止定律（附录H）。$a=b$ 的抵消来自相等的目标系数平方，而不仅仅是相等的尾部指数。对于具有零初始化、$N=P$、正谱、$M>P+1$ 和 $(w_{k}^{\star})^{2}=q&gt;0$ 的有限无噪声高斯模型，定理3证明了当 $E\to\infty$ 时固定 $P,M$ 下期望损失的 $\tau_{\star}\asymp E^{2/3}$。额外的 $P^{b}$ 缩放来自连续计算。</p>
+<p>为了将这种方差减少与我们的语言模型实验联系起来，我们考虑交叉熵下的logit平均。对于固定的数据集和评估输入，交叉熵的泰勒展开在固定检查点处的logit平均下给出主导的 $1/E$ 修正（附录C.7）。</p>
+<h3>3.6 最优停止下的算力分配</h3>
+<p>我们研究当数据集和单个模型规模固定时，如何在集成规模和训练时间之间分配额外算力。在第3.5节的无噪声连续假设下，我们固定 $P$ 和 $N=P$。对于每个集成规模 $E$，令 $\tau_{\star}(P,E)$ 为损失最小化训练时间，$\mathcal{L}^{*}(P,E)$ 为相应的最小测试损失。在固定批量大小和学习率下，此训练需要算力 $EP\tau_{\star}(P,E)$，给出分配问题</p>
+<p>$$\min_{E\in\mathbb{N}<em>{\geq 1}}\mathcal{L}^{*}(P,E)\quad\text{subject to}\quad EP\tau</em>{\star}(P,E)\leq C,\qquad P\text{ 固定}. \tag{12}$$</p>
+<p>集成减少了预测方差，因此最小损失在 $E$ 上是非增的。最优选择 $E_{\star}(C;P)$ 因此是在预算内能够达到其损失最小值的最大集成。用 $\mathcal{L}^{*}(C;P)$ 表示由此产生的最小损失。表2中的过剩损失相对于 $\mathcal{L}<em>{\infty}(P)$ 测量，$\mathcal{L}</em>{\infty}(P)$ 是随着集成规模增长且训练时间被最优选择时接近的最佳测试损失。该极限为 $P^{-(a-1)}$ 量级，反映了跨模型共享的误差（附录I）。对于 $a&lt;b$，过剩损失率假设在最小化 $C_{\mathrm{cross}}$ 的时间上预测方差为正的最小值。</p>
+<p><strong>表2：固定 $N=P$ 下的最优停止和算力分配。</strong> 条目给出 $E\to\infty$ 时停止以及 $C/P^{b+1}\to\infty$ 时分配和损失的正常数倍缩放。</p>
+<table>
+<thead>
+<tr>
+<th>条件</th>
+<th>最优停止 $\tau_{\star}(P,E)/P^{b}$</th>
+<th>集成规模 $E_{\star}(C;P)$</th>
+<th>过剩损失 $P^{a-1}[\mathcal{L}^{*}(C;P)-\mathcal{L}_{\infty}(P)]$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$a&gt;b$</td>
+<td>$E$</td>
+<td>$(C/P^{b+1})^{1/2}$</td>
+<td>$(C/P^{b+1})^{-1/4}$</td>
+</tr>
+<tr>
+<td>$a=b$</td>
+<td>$E^{2/3}$</td>
+<td>$(C/P^{b+1})^{3/5}$</td>
+<td>$(C/P^{b+1})^{-2/5}$</td>
+</tr>
+<tr>
+<td>$a&lt;b$</td>
+<td>$1$</td>
+<td>$C/P^{b+1}$</td>
+<td>$(C/P^{b+1})^{-1}$</td>
+</tr>
+</tbody>
+</table>
+<p>在大预算下，集成规模的增长速度至少与每模型训练时间一样快。对于 $a&gt;b$，两者以相同的算力幂增长；对于相等的目标系数平方（$a=b$），集成规模增长更快。在这两种情况下，平均充分抑制了增长方差，使更长的训练变得值得。对于 $a&lt;b$，最优训练范围保持有界，因此进一步的算力增加支持更多的集成成员。</p>
+<p>允许任何可负担的检查点给出了集成规模和训练时间上更广泛的优化。在具有相等目标系数平方的 $N=P$ 处，该算力前沿保持了 $-2/5$ 的过剩损失指数，但具有不同的主导系数（附录I.1）。对于有限步SGD，批量大小和学习率也影响固定算力下可用的有效训练时间（附录D）。图4在有限随机特征模型中说明了这些选择。</p>
+<h3>3.7 检验理论预测</h3>
+<p>我们首先给出损失近似的有限时间范围保证，然后从数值上检验停止和算力分配预测。</p>
+<p><strong>有限时间范围精度。</strong> 对于高斯总体特征、固定特征维度 $M$ 和固定时间范围 $S$，定理1在足够小的固定学习率下，将绝对损失误差限制为 $\widetilde{\mathcal{O}}_{M,S}(N^{-1/2}+B^{-1/2})$，同时对所有 $\alpha\leq S$ 成立。当参考损失在此时间范围上有下界时，相同的速率适用于相对损失误差。附录J通过与总体梯度下降的比较证明了该界。</p>
+<p><strong>随机特征模型中的算力分配。</strong> 图4比较了在固定数据规模下使用额外算力的方式。在（A）中，虚线曲线和插图实现了（12）中的停止分配；实线曲线联合选择集成规模和可负担的检查点。面板（B）从插值以下开始，比较增加宽度与集成，而（C，D）显示学习率选择如何改变批量大小比较。附录K给出了完整的学习曲线、自/交叉相关性、停止定律比较和数值检查，以及插值以上宽度的分配结果。</p>
+<p><strong>图4：</strong> 固定数据规模下的算力分配。$a=b=2$ 的无噪声随机特征模拟。 在 $N=P$ 的GF中，集成将损失降低到单模型最小值以下。插图：当集成训练至各自最小值时选择的 $E$。 从 $N=P/2$ 开始，在此网格上大预算下集成优于将宽度增加到 $P$。 对于 $N=P/2$ 和 $E=1$ 的循环SGD，分别选择学习率缩小了小批量优势。阴影表示95%数据集自举区间。设置和比较见附录K。</p>
+<h3>3.8 语言模型实验</h3>
+<p>我们现在回到FineWeb实验，检验集成是否抑制语言模型中的后期恶化并延迟最优停止，并将其收益与增加模型规模的收益进行比较。实验使用第2节介绍的FineWeb设置；附录A收集了配置和拟合程序。</p>
+<p><strong>集成抑制后期上升。</strong> 图2中的损失轨迹显示，平均独立训练的模型减少了后期恶化。在固定训练步数下，对于共享和独立打乱的数据顺序，验证损失也随集成规模而降低。附录A.2显示，两者的可减少损失大约按 $E^{-1}$ 衰减，正如理论所预测的。</p>
+<p><strong>模型规模影响可达到的损失和最优停止。</strong> 我们接下来改变模型深度和宽度，同时保持语料库为1亿词元。图5A显示较大的模型通常获得较低的验证损失。可分离关系 $\mathcal{L}^{*}(L,W)-\mathcal{L}<em>{\infty}=c\,L^{-b</em>{L}}W^{-b_{W}}$ 捕获了架构间的额外变化（图5B，C）。在大约1.7亿参数处，更深、更窄的模型比较浅、更宽的模型获得低0.06奈特/词元的损失。因此模型规模总结了主要趋势，架构解释了剩余变化的一部分。</p>
+<p><strong>图5：</strong> 较大的模型获得较低的损失，具有额外的深度和宽度效应。在 $P=100$M处： 最小验证损失与非嵌入参数数量的关系； 移除另一个变量的拟合贡献后的深度和宽度依赖性（联合 $R^{2}=0.97$）。形状表示宽度，颜色表示深度。共享下限：附录A.3；拟合系数：表7。</p>
+<p>较大的模型也更早达到其最小验证损失：在测试的模型规模范围内，最优轮数从21下降到6（图1F）。相比之下，在固定模型规模下，它在数据规模扫描中从14变化到9。在测试范围内，最优轮数随模型规模的下降比随语料库规模的下降更快。附录A.3收集了拟合指数，并比较了沿模型和数据轴的可达到损失。</p>
+<p><strong>集成优势在不同模型规模间持续存在。</strong> 我们比较六种模型配置的集成与较大的单模型，保持语料库和训练范围固定。匹配有效规模 $EN$（总非嵌入参数）因此匹配参数-词元训练预算。四成员集成比相应的更宽或更深的单模型获得低0.12–0.20奈特的验证损失（图6A）。集成还将最小值转移到更晚的训练轮次（图6B）。这种更晚的停止在定性上与第3.5节中的RF机制一致：平均抑制了增长的误差，使进一步训练保持有益。</p>
+<p><strong>图6：</strong> 集成优于较大的单模型且更晚达到最小值。在 $P=100$M处： 最小验证损失与有效规模 $EN$ 的关系；黑色圆圈表示单模型，彩色点表示六种配置的集成。 最优停止轮次与集成规模的关系。虚线显示拟合的幂律， 中具有共享斜率；细节：附录A.3。</p>
+<h2>4 讨论与结论</h2>
+<p>我们的结果展示了重复训练轮次和集成如何在固定数据集上共同塑造泛化。多轮DMFT追踪轮次内和跨轮次以及集成成员之间的误差相关性。对于 $N=P$ 处的无噪声高斯RF梯度流，期望测试误差的一个分量在训练后期增长。对 $E$ 个模型的预测取平均将该分量减少 $E$ 倍，改变了决定最优停止的平衡。纯幂律连续分析将由此产生的停止定律转化为在集成规模和训练持续时间之间分配算力的规则，其中数据和成员规模固定，每个集成训练至其各自的损失最小值。</p>
+<p>我们的语言模型实验显示，集成带来了更低的验证损失和更晚的最优停止，在定性上与该机制一致。它们还显示在匹配的参数-词元训练预算下优于更宽或更深的单模型。与RF理论的定量联系需要考虑特征学习和优化器动力学，并将RF特征和样本数量与Transformer参数和词元数量相关联。</p>
+<p>我们的标签噪声分析为将这些停止和分配定律扩展到噪声目标提供了起点。重新打乱需要进一步分析改变数据顺序如何影响跨轮次相关性。总之，理论和实验激励在向固定数据集分配算力时联合选择训练轮数和集成成员数。</p>
+<h2>参考文献</h2>
+<p>Adlam and Pennington (2020)<br />
+Ben Adlam and Jeffrey Pennington. Understanding double descent requires a fine-grained bias-variance decomposition. <em>Advances in neural information processing systems</em>, 33:11022–11032, 2020.</p>
+<p>Bordelon and Pehlevan (2026)<br />
+Blake Bordelon and Cengiz Pehlevan. Disordered dynamics in high dimensions: Connections to random matrices and machine learning. <em>arXiv preprint arXiv:2601.01010</em>, 2026.</p>
+<p>Bordelon et al. (2020)<br />
+Blake Bordelon, Abdulkadir Canatar, and Cengiz Pehlevan. Spectrum dependent learning curves in kernel regression and wide neural networks. In <em>International Conference on Machine Learning</em>, pages 1024–1034. PMLR, 2020.</p>
+<p>Bordelon et al. (2024)<br />
+Blake Bordelon, Alexander Atanasov, and Cengiz Pehlevan. A dynamical model of neural scaling laws. In <em>International Conference on Machine Learning</em>, pages 4345–4382. PMLR, 2024.</p>
+<p>Canatar et al. (2021)<br />
+Abdulkadir Canatar, Blake Bordelon, and Cengiz Pehlevan. Spectral bias and task-model alignment explain generalization in kernel regression and infinitely wide neural networks. <em>Nature communications</em>, 12(1):2914, 2021.</p>
+<p>Crisanti and Sompolinsky (2018)<br />
+A Crisanti and H Sompolinsky. Path integral approach to random neural networks. <em>Physical Review E</em>, 98(6):062120, 2018.</p>
+<p>Defilippis et al. (2024)<br />
+Leonardo Defilippis, Bruno Loureiro, and Theodor Misiakiewicz. Dimension-free deterministic equivalents and scaling laws for random feature regression. <em>Advances in Neural Information Processing Systems</em>, 37:104630–104693, 2024.</p>
+<p>Geiger et al. (2020)<br />
+Mario Geiger, Arthur Jacot, Stefano Spigler, Franck Gabriel, Levent Sagun, Stéphane d'Ascoli, Giulio Biroli, Clément Hongler, and Matthieu Wyart. Scaling description of generalization with number of parameters in deep learning. <em>Journal of Statistical Mechanics: Theory and Experiment</em>, 2020(2):023401, 2020.</p>
+<p>Gerbelot et al. (2022)<br />
+Cedric Gerbelot, Emanuele Troiani, Francesca Mignacco, Florent Krzakala, and Lenka Zdeborova. Rigorous dynamical mean field theory for stochastic gradient descent methods. <em>arXiv preprint arXiv:2210.06591</em>, 2022.</p>
+<p>Helias and Dahmen (2020)<br />
+Moritz Helias and David Dahmen. <em>Statistical field theory for neural networks</em>, volume 970. Springer, 2020.</p>
+<p>Hoffmann et al. (2022)<br />
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai, Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark, et al. Training compute-optimal large language models. <em>arXiv preprint arXiv:2203.15556</em>, 2022.</p>
+<p>Kaplan et al. (2020)<br />
+Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. Scaling laws for neural language models. <em>arXiv preprint arXiv:2001.08361</em>, 2020.</p>
+<p>Kim et al. (2025)<br />
+Konwoo Kim, Suhas Kotha, Percy Liang, and Tatsunori Hashimoto. Pre-training under infinite compute. <em>arXiv preprint arXiv:2509.14786</em>, 2025.</p>
+<p>Lin et al. (2024)<br />
+Licong Lin, Jingfeng Wu, Sham M Kakade, Peter L Bartlett, and Jason D Lee. Scaling laws in linear regression: Compute, parameters, and data. <em>arXiv preprint arXiv:2406.08466</em>, 2024.</p>
+<p>Maloney et al. (2022)<br />
+Alexander Maloney, Daniel A Roberts, and James Sully. A solvable model of neural scaling laws. <em>arXiv preprint arXiv:2210.16859</em>, 2022.</p>
+<p>Mandal et al. (2026)<br />
+Bishwas Mandal, Shmuel Berman, Akshay Vegesna, and Samip Dahal. q0: Primitives for hyper-epoch pretraining. <em>arXiv preprint arXiv:2606.03938</em>, 2026. doi: 10.48550/arXiv.2606.03938. URL https://arxiv.org/abs/2606.03938.</p>
+<p>Mignacco et al. (2020)<br />
+Francesca Mignacco, Florent Krzakala, Pierfrancesco Urbani, and Lenka Zdeborová. Dynamical mean-field theory for stochastic gradient descent in gaussian mixture classification. <em>Advances in Neural Information Processing Systems</em>, 33:9540–9550, 2020.</p>
+<p>Muennighoff et al. (2023)<br />
+Niklas Muennighoff, Alexander Rush, Boaz Barak, Teven Le Scao, Nouamane Tazi, Aleksandra Piktus, Sampo Pyysalo, Thomas Wolf, and Colin A Raffel. Scaling data-constrained language models. <em>Advances in Neural Information Processing Systems</em>, 36:50358–50376, 2023.</p>
+<p>Paquette et al. (2021)<br />
+Courtney Paquette, Kiwon Lee, Fabian Pedregosa, and Elliot Paquette. Sgd in the large: Average-case analysis, asymptotics, and stepsize criticality. In <em>Conference on Learning Theory</em>, pages 3548–3626. PMLR, 2021.</p>
+<p>Paquette et al. (2024)<br />
+Elliot Paquette, Courtney Paquette, Lechao Xiao, and Jeffrey Pennington. 4+ 3 phases of compute-optimal neural scaling laws. <em>arXiv preprint arXiv:2405.15074</em>, 2024.</p>
+<p>Ruben and Pehlevan (2023)<br />
+Ben Ruben and Cengiz Pehlevan. Learning curves for noisy heterogeneous feature-subsampled ridge ensembles. <em>Advances in Neural Information Processing Systems</em>, 36:50041–50093, 2023.</p>
+<p>Ruben et al. (2025)<br />
+Benjamin Samuel Ruben, William Lingxiao Tong, Hamza Tahir Chaudhry, and Cengiz Pehlevan. No free lunch from random feature ensembles: Scaling laws and near-optimality conditions. In <em>International Conference on Machine Learning</em>, pages 52198–52224. PMLR, 2025.</p>
+<p>Simon et al. (2021)<br />
+James B Simon, Madeline Dickens, Dhruva Karkada, and Michael R DeWeese. The eigenlearning framework: A conservation law perspective on kernel regression and wide neural networks. <em>arXiv preprint arXiv:2110.03922</em>, 2021.</p>
+<p>Villalobos et al. (2024)<br />
+Pablo Villalobos, Anson Ho, Jaime Sevilla, Tamay Besiroglu, Lennart Heim, and Marius Hobbhahn. Will we run out of data? limits of llm scaling based on human-generated data, 2024.</p>
+<p>Yan et al. (2025)<br />
+Tingkai Yan, Haodong Wen, Binghui Li, Kairong Luo, Wenguang Chen, and Kaifeng Lyu. Larger datasets can be repeated more: A theoretical analysis of multi-epoch scaling in linear regression. <em>arXiv preprint arXiv:2511.13421</em>, 2025.</p>
+<h2>附录A 实验方案与附加拟合</h2>
+<p>本附录收集了支持第2节和语言模型实验的实验设计、训练设置、测量约定和拟合结果。图和数值结果保留了其报告的训练方案。</p>
+<h3>A.1 实验设计和训练设置</h3>
+<p><strong>表3：语言模型实验。</strong> 所有列出的扫描使用恒定学习率；$\lambda$ 是AdamW权重衰减系数。</p>
+<table>
+<thead>
+<tr>
+<th>实验</th>
+<th>模型与数据</th>
+<th>时间范围与复制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据规模扫描（图1，上）</td>
+<td>$L=12$，$W=768$（85M）；$P\in{10,20,\ldots,100}$M；$\lambda=0$</td>
+<td>约8,000次更新（1.0–1.1B词元），或11–101轮；每个 $P$ 每个策略一次运行</td>
+</tr>
+<tr>
+<td>模型规模网格（图1下、5、8）</td>
+<td>$L\in{6,12,18,24}\times W\in{384,768,1152,1536}$，加上 $W=768$ 处的 $L\in{48,60}$；$P=100$M；$\lambda=0$</td>
+<td>40轮；每单元一次运行；18个单元跨越11M–680M参数</td>
+</tr>
+<tr>
+<td>匹配预算比较（图2、9）</td>
+<td>基础 $L=12$，$W=768$；集成对比更宽/更深单模型；$P=100$M；$\lambda=0$</td>
+<td>40轮训练预算；图2中的集成从保存的模型状态评估至第31轮</td>
+</tr>
+<tr>
+<td>集成规模缩放（图7）</td>
+<td>$L=12$，$W=768$；$P=20$M；$\lambda=0$；共享或独立数据顺序</td>
+<td>40轮；每个策略20个训练成员；每个策略10个随机成员排序</td>
+</tr>
+<tr>
+<td>跨模型规模的集成（图6）</td>
+<td>六个复制单元（11M–170M）；$P=100$M；$\lambda=0$；$E=2,3,4$</td>
+<td>40轮；每单元至少四个独立成员；总计最多680M计数参数</td>
+</tr>
+<tr>
+<td>附加联合拟合数据</td>
+<td>$P=20$M处的七单元模型规模阶梯；$\lambda=0$</td>
+<td>50轮；每个配置一次运行</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表4：语言模型训练配置。</strong></p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>设置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据</td>
+<td>FineWeb；GPT-2 BPE分词器（词汇量50,257）；1000万保留验证词元</td>
+</tr>
+<tr>
+<td>架构</td>
+<td>仅解码器Transformer，深度 $L$，宽度 $W$，头维度64（$W/64$ 个头）；旋转嵌入、QK范数、无权重RMSNorm、无偏置、无dropout；SwiGLU MLP隐藏宽度 $8W/3$；非绑定输入和输出嵌入；学习的残差、输入注入和U-Net跳跃增益；每四层中三层的滑动窗口注意力</td>
+</tr>
+<tr>
+<td>参数化</td>
+<td>CompleteP，基准 $L=12$，$W=768$；截断正态初始化，基准宽度处标准差0.02</td>
+</tr>
+<tr>
+<td>序列长度</td>
+<td>2048词元</td>
+</tr>
+<tr>
+<td>批量大小</td>
+<td>每次更新131,072词元（64个序列）</td>
+</tr>
+<tr>
+<td>优化器</td>
+<td>AdamW，$\beta=(0.8,0.95)$，$\epsilon=10^{-10}$</td>
+</tr>
+<tr>
+<td>学习率</td>
+<td>矩阵0.01，嵌入0.0375，输出头0.0005，标量增益0.025</td>
+</tr>
+<tr>
+<td>调度</td>
+<td>恒定，无预热（$\lambda=0$ 运行）；最后20%线性衰减到零（$\lambda&gt;0$ 和冷却运行）</td>
+</tr>
+<tr>
+<td>精度、硬件</td>
+<td>bfloat16自动混合精度；每次运行一块NVIDIA H100-80GB</td>
+</tr>
+<tr>
+<td>种子</td>
+<td>每个配置一次运行；集成成员在初始化上不同，以及在声明的情况下数据顺序不同</td>
+</tr>
+</tbody>
+</table>
+<h3>A.2 评估、集成和算力核算</h3>
+<p><strong>表5：测量和选择约定。</strong></p>
+<table>
+<thead>
+<tr>
+<th>量</th>
+<th>定义或程序</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>验证损失</td>
+<td>保留FineWeb分割上每词元奈特的交叉熵。</td>
+</tr>
+<tr>
+<td>轮次和步数</td>
+<td>每次更新处理131,072词元；一轮是 $P/131{,}072$ 次更新（$P=100$M时763次；$P=20$M时152次）。</td>
+</tr>
+<tr>
+<td>评估节奏</td>
+<td>数据扫描中每76次更新，模型网格中每152次更新，对应约1000万和1990万训练词元。</td>
+</tr>
+<tr>
+<td>保存的模型状态</td>
+<td>检查点存储训练步处的模型参数。最优检查点是具有最小验证损失的评估状态。</td>
+</tr>
+<tr>
+<td>最优停止</td>
+<td>$s^{<em>}$ 是具有最小验证损失的评估步。$\mathcal{E}^{</em>}=s^{*}/(P/131{,}072)$ 是相应的轮数。</td>
+</tr>
+<tr>
+<td>数据扫描聚合</td>
+<td>每个语料库规模下每个策略一个最小值；报告的最小损失和最优轮数平均两个策略的最小值。</td>
+</tr>
+<tr>
+<td>集成预测</td>
+<td>在计算验证交叉熵之前平均成员logit。仅初始化成员共享数据顺序；初始化加打乱成员两者都不同。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>集成拟合与重采样。</strong> 在优化器步 $s$ 处，每个数据顺序策略分别用</p>
+<p>$$\mathcal{L}<em>{s,E}=\alpha</em>{s}E^{-\beta}+\mathcal{L}_{s,\infty}, \tag{13}$$</p>
+<p>拟合，每个策略一个指数 $\beta$，每个步一个振幅 $\alpha_{s}$ 和渐近线 $\mathcal{L}<em>{s,\infty}$。渐近线是策略特定的，因为仅初始化成员共享一个数据顺序，其无限集成保留了该顺序。10次重采样迭代中的每一次从每个策略的20个训练成员中抽取随机排序；规模为 $E$ 的集成由前 $E$ 个成员组成，并且（13）在每次迭代中重新拟合。误差条显示迭代间的 spread。拟合的集成规模指数接近1（图7，左和中），与固定检查点交叉熵展开预测的 $E^{-1}$ 依赖性一致（附录C.7）。振幅 $\alpha</em>{s}$ 在前1,000步中几乎恒定，到第40轮增长约十倍（右）。</p>
+<p><strong>图7：</strong> 在两种成员多样性来源下，可减少的集成损失大约按 $E^{-1}$ 衰减。左和中：具有共享或独立打乱数据顺序的成员，拟合无限集成渐近线之上的损失与集成规模的关系；颜色标记训练步，线是（13）的拟合。右：拟合振幅 $\alpha_{s}$ 与步数的关系。$P=20$M，40轮。</p>
+<p><strong>训练预算代理。</strong> 我们将注意力和MLP矩阵计为 $N=12LW^{2}$：每层有四个 $W\times W$ 注意力矩阵和一个隐藏宽度为 $8W/3$ 的门控MLP（三个矩阵总计 $8W^{2}$）。词元嵌入、输出头和每层标量增益被排除。每个成员有 $D$ 个训练词元，算力代理为 $C=END$。对于匹配预算实验，$D=40P$：我们计入完整的40轮运行，并报告可用评估范围内的最佳评估检查点。因此四个基础模型和一个宽度加倍的模型具有相同的代理成本（相同 $D$ 下 $4\times 85$M $=340$M 计数参数）。固定范围LM比较与RF分配不同，后者计入每个集成各自最优停止时间之前的训练。权重衰减系数 $\lambda$ 与第3节中的特征谱特征值 $\lambda_{k}$ 无关。</p>
+<h3>A.3 损失定律和拟合指数</h3>
+<p><strong>共享损失下限。</strong> $N$、$L$、$W$ 和 $P$ 中的损失定律使用共享下限 $\mathcal{L}_{\infty}=1.25$。表6给出了其联合拟合来源和每个后续拟合中使用的观测值。</p>
+<p><strong>表6：可达到损失和最优停止的拟合约定。</strong></p>
+<table>
+<thead>
+<tr>
+<th>拟合</th>
+<th>模型和观测值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>联合 $N,P$ 定律</td>
+<td>35个观测值上的 $\mathcal{L}^{*}=\mathcal{L}_{\infty}+AN^{-\alpha}+BP^{-\alpha}$：18单元1亿网格、七单元2000万阶梯和十个数据扫描设置。共享指数 $\alpha=0.19$，下限1.25，$R^{2}=0.996$。</td>
+</tr>
+<tr>
+<td>模型规模定律</td>
+<td>18单元1亿网格上每单元一个最小值。将 $\mathcal{L}^{*}-\mathcal{L}_{\infty}$ 对 $N$ 拟合，或对具有单独指数的 $L,W$ 拟合。最优轮数拟合使用相同单元。</td>
+</tr>
+<tr>
+<td>数据规模定律</td>
+<td>固定 $L=12,W=768$ 下的十个语料库规模，使用表5中定义的策略平均最小值和最优轮数。</td>
+</tr>
+<tr>
+<td>集成/模型规模定律</td>
+<td>对每个 $E=2,3,4$，总计数参数 $EN$ 中的单独幂律，使用六个复制单元和相同损失下限。</td>
+</tr>
+<tr>
+<td>集成停止</td>
+<td>对六个模型配置 $j$，在 $E=1,2,3,4$ 上拟合 $\log\mathcal{E}<em>{j}^{*}=\log c</em>{j}+\gamma\log E$，共享指数 $\gamma=0.27$ 和单独前因子 $c_{j}$。图6B中的虚线指南使用这些前因子的几何平均。</td>
+</tr>
+<tr>
+<td>集成规模定律</td>
+<td>方程（13）在每个检查点为每个策略拟合无限集成渐近线；这与共享的 $N,P$ 损失下限不同。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表7：最优轮数 $\mathcal{E}^{<em>}$ 和共享下限之上最小损失 $\Delta\mathcal{L}^{</em>}=\mathcal{L}^{*}-1.25$ 的拟合指数。</strong> 表6指定了观测值和拟合约定。</p>
+<table>
+<thead>
+<tr>
+<th>量</th>
+<th>拟合依赖性</th>
+<th>指数</th>
+<th>$R^{2}$</th>
+<th>点数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$\mathcal{E}^{*}$</td>
+<td>$N^{-\alpha}$</td>
+<td>0.314</td>
+<td>0.938</td>
+<td>18</td>
+</tr>
+<tr>
+<td>$\mathcal{E}^{*}$</td>
+<td>$L^{-a_{L}}W^{-a_{W}}$</td>
+<td>$a_{L}=0.336,\ a_{W}=0.608$</td>
+<td>0.940</td>
+<td>18</td>
+</tr>
+<tr>
+<td>$\mathcal{E}^{*}$</td>
+<td>$P^{-\alpha}$</td>
+<td>0.158</td>
+<td>0.917</td>
+<td>10</td>
+</tr>
+<tr>
+<td>$\Delta\mathcal{L}^{*}$</td>
+<td>$N^{-\beta_{N}}$</td>
+<td>0.024</td>
+<td>0.943</td>
+<td>18</td>
+</tr>
+<tr>
+<td>$\Delta\mathcal{L}^{*}$</td>
+<td>$L^{-b_{L}}W^{-b_{W}}$</td>
+<td>$b_{L}=0.0304,\ b_{W}=0.0436$</td>
+<td>0.969</td>
+<td>18</td>
+</tr>
+<tr>
+<td>$\Delta\mathcal{L}^{*}$</td>
+<td>$P^{-\beta_{P}}$</td>
+<td>0.169</td>
+<td>0.997</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表8：附加拟合诊断和定量比较。</strong></p>
+<table>
+<thead>
+<tr>
+<th>比较</th>
+<th>测量配置上的结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>深度/宽度损失拟合</td>
+<td>$b_{L}=0.0304$，$b_{W}=0.0436$，在留一法下各自稳定在 $\pm 0.002$。拟合敏感度比为 $b_{W}/(2b_{L})=0.72$。</td>
+</tr>
+<tr>
+<td>匹配规模示例</td>
+<td>在 $N\approx 170$M处，$L=6,W=1536$ 达到损失3.92，而 $L=24,W=768$ 为3.86。</td>
+</tr>
+<tr>
+<td>深度/宽度停止拟合</td>
+<td>$a_{L}=0.336$，$a_{W}=0.608$，因此 $a_{W}/(2a_{L})=0.90$。其四舍五入的 $R^{2}=0.94$ 与仅使用 $N$ 的拟合匹配。仅依赖于 $N\propto LW^{2}$ 将给出 $a_{W}=2a_{L}$。</td>
+</tr>
+<tr>
+<td>资源缩放</td>
+<td>最优轮数在数据缩放的每个十年中下降1.4倍，而模型缩放为每个十年2.1倍。</td>
+</tr>
+<tr>
+<td>集成/模型规模拟合</td>
+<td>$E=2,3,4$ 的指数为0.022、0.021、0.022，而单模型为0.024。$E=4$ 拟合定律在比较范围内比单模型定律低约0.15奈特。</td>
+</tr>
+</tbody>
+</table>
+<p>图8收集了模型规模停止曲线以及沿模型和数据轴的可达到损失拟合。</p>
+<p><strong>图8：</strong> 模型规模改变最佳停止点和可达到的损失。 1亿词元语料库上最优停止与模型规模的关系，以轮数和优化器步数显示。 固定数据下改变模型规模（圆圈）或固定模型下改变数据规模（三角形）时的最小验证损失。虚线曲线显示各自测量范围内的幂律拟合。 中的损失拟合使用附录A.3的共享下限。颜色表示模型规模。</p>
+<h3>A.4 附加匹配预算比较</h3>
+<p><strong>图9：</strong> 在匹配参数-词元训练预算下，集成与更宽（左）或更深（右）单模型的比较。两个比较均使用 $P=100$M、恒定学习率、零权重衰减和40轮预算。</p>
+<h2>附录B 多轮DMFT方程的推导</h2>
+<p>我们为具有独立高斯总体特征 $\bm{\psi}(\bm{x}<em>{\mu})\sim\mathcal{N}(\bm{0},\bm{\Lambda})$ 的固定顺序多轮训练推导动力学平均场理论（DMFT）。总体特征、高斯随机特征矩阵和标签噪声相互独立。特征空间量在总体协方差的特征基中写出，$\bm{\Lambda}=\diag(\lambda</em>{1},\lambda_{2},\ldots)$，$\left\langle\psi_{k}(\bm{x})\psi_{\ell}(\bm{x})\right\rangle=\lambda_{k}\delta_{k\ell}$。目标具有系数 $w_{k}^{\star}$，使得 $y(\bm{x})=\bm{\psi}(\bm{x})\cdot\bm{w}^{\star}+\sigma\epsilon$。DMFT方程允许任意谱和目标。我们仅在附录F中施加幂律。</p>
+<p>我们首先陈述有限时间范围的单点方程，并通过空腔和MSR方法推导它们。后面的章节处理有限尺寸误差、集成、连续极限和插值附近的低频缩放。</p>
+<h3>B.1 渐近设置</h3>
+<p>我们首先推导有限特征维度 $M$ 和轨迹长度 $S=T\mathcal{E}$ 处的闭合。总体特征通过 $\bm{\Lambda}$ 和目标系数进入。闭合通过其 $N^{-1}$ 和 $B^{-1}$ 项保留有限宽度和有限小批量贡献。定理1中的损失近似在 $N,B$ 增长时保持 $M,S$ 固定。用于缩放的谱、小学习率和长时间极限在下面单独指定。我们区分总体谱的两种设置。</p>
+<p><strong>无维度幂律设置。</strong> 对于缩放分析，我们让 $M\to\infty$ 沿迹类总体谱并假设</p>
+<p>$$\sum_{k=1}^{\infty}\lambda_{k}&lt;\infty,\qquad\sum_{k=1}^{\infty}\lambda_{k}(w_{k}^{\star})^{2}&lt;\infty. \tag{14}$$</p>
+<p>这是无维度设置，其中幂律 $\lambda_{k}\sim k^{-b}$ 和 $\lambda_{k}(w_{k}^{\star})^{2}\sim k^{-a}$（$a,b&gt;1$）在附录F中施加。</p>
+<p><strong>有限维度各向同性特化。</strong> 作为比较，我们还考虑一个比例序列</p>
+<p>$$M,N,P\to\infty,\qquad\frac{N}{M}\to\phi\in(0,\infty),\qquad\frac{P}{M}\to\gamma\in(0,\infty),\qquad\bm{\Lambda}<em>{M}=\bm{I}</em>{M}. \tag{15}$$</p>
+<p>我们选择满足以下条件的目标序列</p>
+<p>$$|\bm{w}<em>{M}^{\star}|</em>{2}^{2}\to\rho\in(0,\infty). \tag{16}$$</p>
+<p>等价地，各向同性定向的目标可以用 $M^{-1/2}$ 量级的坐标生成，例如 $\bm{w}<em>{M}^{\star}=\sqrt{\rho/M}\,\bm{g}$，其中 $\bm{g}\sim\mathcal{N}(\bm{0},\bm{I}</em>{M})$。由于 $\mathbb{E}<em>{\bm{x}}[(\bm{w}</em>{M}^{\star}\cdot\bm{\psi}(\bm{x}))^{2}]=\bm{w}<em>{M}^{\star\top}\bm{\Lambda}</em>{M}\bm{w}<em>{M}^{\star}=|\bm{w}</em>{M}^{\star}|<em>{2}^{2}$，此缩放保持目标信号和损失为1量级。此比例各向同性序列不是无限维迹类极限的实例，因为 $\operatorname{Tr}(\bm{\Lambda}</em>{M})=M$。</p>
+<p>我们使用组合的轮次-步骤索引 $\alpha=(n,t)$，$n=0,\ldots,\mathcal{E}-1$，$t=0,\ldots,T-1$，并令 $S=T\mathcal{E}$ 为总更新次数。希腊索引 $\alpha,\beta,\gamma,\ldots$ 始终表示轮次-步骤索引。除非使用矩阵符号，我们显式写出轮次-步骤索引上的求和。全局更新索引为 $s=nT+t$，有效训练时间为 $\tau=\eta s$，与正文一致。每当使用如 $\alpha\leq S$ 的不等式时，这些对通过基于1的索引 $s+1\in{1,\ldots,S}$ 因果排序。</p>
+<p>定义因果矩阵 $\bm{\Theta}$ 为</p>
+<p>$$\Theta_{\alpha\beta}=\Theta_{(n,t),(n^{\prime},t^{\prime})}=\delta_{nn^{\prime}}\mathbf{1}{t&gt;t^{\prime}}+\mathbf{1}{n&gt;n^{\prime}}. \tag{17}$$</p>
+<p>因此当更新 $\beta$ 先于状态 $\alpha$ 时 $\Theta_{\alpha\beta}=1$。它对残差递推中的过去梯度更新求和。对任意 $S\times S$ 矩阵 $\bm{A}$，定义 $\mathcal{D}$ 为</p>
+<p>$$[\mathcal{D}(\bm{A})]<em>{(n,t),(n^{\prime},t^{\prime})}=A</em>{(n,t),(n^{\prime},t)}\delta_{tt^{\prime}}. \tag{18}$$</p>
+<p>映射 $\mathcal{D}$ 保留具有相同小批量标签 $t$ 的对，并将所有其他元素设为零。它出现在由每轮复用 $\bm{\Psi}(t)$ 生成的协方差和响应项中。</p>
+<h3>B.2 分解动力学</h3>
+<p>我们从特征空间残差开始</p>
+<p>$$\bm{v}^{0}<em>{n}(t)=\bm{w}^{\star}-\frac{1}{N}\bm{A}^{\top}\bm{w}</em>{n}(t)\in\mathbb{R}^{M}, \tag{19}$$</p>
+<p>其中 $\bm{A}\in\mathbb{R}^{N\times M}$ 是随机特征矩阵，$\bm{w}_{n}(t)\in\mathbb{R}^{N}$ 是可训练权重向量，$\bm{w}^{\star}\in\mathbb{R}^{M}$ 是目标系数向量。轮内步骤 $t$ 处的小批量特征矩阵为 $\bm{\Psi}(t)\in\mathbb{R}^{B\times M}$。在固定顺序多轮设置中，相同的 $\bm{\Psi}(t)$ 在每轮的轮内步骤 $t$ 处被复用。</p>
+<p>包括标签噪声的特征空间残差更新为</p>
+<p>$$\bm{v}^{0}<em>{n}(t+1)=\bm{v}^{0}</em>{n}(t)-\eta\left(\frac{1}{N}\bm{A}^{\top}\bm{A}\right)\frac{1}{B}\bm{\Psi}(t)^{\top}\left(\bm{\Psi}(t)\bm{v}^{0}_{n}(t)+\sigma\bm{\epsilon}(t)\right), \tag{20}$$</p>
+<p>轮边界条件为</p>
+<p>$$\bm{v}^{0}<em>{n+1}(0)=\bm{v}^{0}</em>{n}(T). \tag{21}$$</p>
+<p>这里 $\bm{\epsilon}(t)\sim\mathcal{N}(\bm{0},\bm{I}_{B})$ 与小批量 $t$ 一起抽取一次，在每轮的相同轮内步骤处复用，并且在不同小批量标签间独立。在归一化 $f(\bm{x})=N^{-1}\bm{w}^{\top}\bm{A}\psi(\bm{x})$ 下，（20）中的学习率 $\eta$ 表示 $N$ 重新缩放的学习率；等价地，$\bm{w}$ 的参数空间学习率为 $\eta N$。通过设置 $\sigma=0$ 恢复无噪声情况。</p>
+<p>遵循标准随机特征构造（Bordelon et al., 2024; Bordelon and Pehlevan, 2026; Paquette et al., 2024），引入四个辅助场。下面的每个方程只包含随机矩阵 $\bm{\Psi}(t)$ 和 $\bm{A}$ 中的一个：</p>
+<p>$$\bm{v}^{1}<em>{n}(t)=\bm{\Psi}(t)\bm{v}^{0}</em>{n}(t)+\sigma\bm{\epsilon}(t)\in\mathbb{R}^{B}, \tag{22}$$</p>
+<p>$$\bm{v}^{2}<em>{n}(t)=\frac{1}{B}\bm{\Psi}(t)^{\top}\bm{v}^{1}</em>{n}(t)\in\mathbb{R}^{M}, \tag{23}$$</p>
+<p>$$\bm{v}^{3}<em>{n}(t)=\bm{A}\bm{v}^{2}</em>{n}(t)\in\mathbb{R}^{N}, \tag{24}$$</p>
+<p>$$\bm{v}^{4}<em>{n}(t)=\frac{1}{N}\bm{A}^{\top}\bm{v}^{3}</em>{n}(t)\in\mathbb{R}^{M}. \tag{25}$$</p>
+<p>$\bm{v}^{1}<em>{n}(t)$ 的元素是小批量 $t$ 上的残差，包括标签噪声。将它们映射回特征空间给出 $\bm{v}^{2}</em>{n}(t)=\frac{1}{B}\sum_{\mu\in\mathrm{batch}(t)}\psi(\bm{x}<em>{\mu})v^{1}</em>{\mu,n}(t)$，因此 $\bm{v}^{2}<em>{n}(t)$ 是关于特征系数的经验梯度。训练参数为 $\bm{w}</em>{n}(t)\in\mathbb{R}^{N}$，$\bm{v}^{3}<em>{n}(t)=\bm{A}\bm{v}^{2}</em>{n}(t)$ 是其更新方向。特征系数中的诱导变化为 $\bm{v}^{4}<em>{n}(t)=\frac{1}{N}\bm{A}^{\top}\bm{v}^{3}</em>{n}(t)=\left(\frac{1}{N}\bm{A}^{\top}\bm{A}\right)\bm{v}^{2}<em>{n}(t)$。因此 $\bm{v}^{4}</em>{n}(t)$ 是被随机特征Gram矩阵 $\bm{A}^{\top}\bm{A}/N$ 滤波的 $\bm{v}^{2}_{n}(t)$，它是进入残差更新的方向。</p>
+<p>方程（22）–（25）将（20）简化为</p>
+<p>$$\bm{v}^{0}<em>{n}(t+1)=\bm{v}^{0}</em>{n}(t)-\eta\bm{v}^{4}<em>{n}(t),\qquad\bm{v}^{0}</em>{n+1}(0)=\bm{v}^{0}_{n}(T). \tag{26}$$</p>
+<p>标签噪声贡献通过 $\bm{v}^{1}<em>{n}(t)$ 包含在 $\bm{v}^{4}</em>{n}(t)$ 中。定义初始残差 $\bm{v}^{0}<em>{\mathrm{init}}=\bm{w}^{\star}-\frac{1}{N}\bm{A}^{\top}\bm{w}</em>{0}(0)$。完整轨迹为</p>
+<p>$$\bm{v}^{0}<em>{\alpha}=\bm{v}^{0}</em>{\mathrm{init}}-\eta\sum_{\beta}\Theta_{\alpha\beta}\bm{v}^{4}_{\beta}. \tag{27}$$</p>
+<p>对于零初始化 $\bm{w}<em>{0}(0)=0$，这简化为 $\bm{v}^{0}</em>{\mathrm{init}}=\bm{w}^{\star}$。这里 $\bm{v}^{i}<em>{\alpha}=\bm{v}^{i}</em>{n}(t)$，$\alpha=(n,t)$。堆叠符号将 $S$ 个向量收集到一个向量中；例如，$\bm{v}^{0}=\begin{pmatrix}\bm{v}^{0}<em>{1}\ \vdots\ \bm{v}^{0}</em>{S}\end{pmatrix}\in\mathbb{R}^{SM}$。在此符号中，</p>
+<p>$$\bm{v}^{0}=\bm{1}\otimes\bm{v}^{0}_{\mathrm{init}}-\eta\bm{\Theta}\bm{v}^{4}, \tag{28}$$</p>
+<p>其中 $\otimes$ 表示克罗内克积，$\bm{1}\otimes\bm{v}^{0}<em>{\mathrm{init}}$ 在所有 $S$ 个轮次-步骤索引上重复初始残差。矩阵 $\bm{\Theta}$ 仅作用于轮次-步骤索引；等价地，最后一项为 $(\bm{\Theta}\otimes\bm{I}</em>{M})\bm{v}^{4}$。</p>
+<h3>B.3 单点随机过程</h3>
+<p>DMFT不动点如下。附录B.8和B.9给出了其空腔和MSR推导。在总体特征基中，有效变量是代表性小批量坐标 $v^{1}$、代表性随机特征坐标 $v^{3}$ 和谱模式 $(v^{0}<em>{k},v^{2}</em>{k},v^{4}_{k})$。每个变量保留轮次-步骤索引 $\alpha=(n,t)$。</p>
+<p>有效过程为</p>
+<p>$$v^{0}<em>{k,\alpha}=v^{0}</em>{\mathrm{init},k}-\eta\sum_{\beta}\Theta_{\alpha\beta}v^{4}_{k,\beta}, \tag{29}$$</p>
+<p>$$v^{1}<em>{\alpha}=u^{1}</em>{\alpha}+\sigma\epsilon_{\alpha}+\frac{1}{B}\sum_{\beta}[\mathcal{D}(\bm{R}<em>{0,2})]</em>{\alpha\beta}v^{1}_{\beta}, \tag{30}$$</p>
+<p>$$v^{2}<em>{k,\alpha}=u^{2}</em>{k,\alpha}+\lambda_{k}\sum_{\beta}R_{1;\alpha\beta}v^{0}_{k,\beta}, \tag{31}$$</p>
+<p>$$v^{3}<em>{\alpha}=u^{3}</em>{\alpha}+\frac{1}{N}\sum_{\beta}[\bm{R}<em>{2,4}]</em>{\alpha\beta}v^{3}_{\beta}, \tag{32}$$</p>
+<p>$$v^{4}<em>{k,\alpha}=u^{4}</em>{k,\alpha}+\sum_{\beta}R_{3;\alpha\beta}v^{2}_{k,\beta}. \tag{33}$$</p>
+<p>这里 $v^{0}<em>{\mathrm{init},k}$ 是初始特征空间残差的第 $k$ 个坐标。对于零初始化，$v^{0}</em>{\mathrm{init},k}=w^{\star}<em>{k}$。对于 $\alpha=(n,t)$，标量 $\epsilon</em>{\alpha}\equiv\epsilon_{t}$ 是从 $\bm{\epsilon}(t)$ 继承的有效单点标签噪声变量。因此它在每轮的相同轮内标签 $t$ 处是相同的变量。</p>
+<p>零均值高斯场具有协方差</p>
+<p>$$\left\langle u^{1}<em>{\alpha}u^{1}</em>{\beta}\right\rangle=[\mathcal{D}(\bm{C}<em>{0})]</em>{\alpha\beta}, \tag{34}$$</p>
+<p>$$\left\langle u^{2}<em>{k,\alpha}u^{2}</em>{\ell,\beta}\right\rangle=\delta_{k\ell}\frac{\lambda_{k}}{B}[\mathcal{D}(\bm{C}<em>{1})]</em>{\alpha\beta}, \tag{35}$$</p>
+<p>$$\left\langle u^{3}<em>{\alpha}u^{3}</em>{\beta}\right\rangle=[\bm{C}<em>{2}]</em>{\alpha\beta}, \tag{36}$$</p>
+<p>$$\left\langle u^{4}<em>{k,\alpha}u^{4}</em>{\ell,\beta}\right\rangle=\delta_{k\ell}\frac{1}{N}[\bm{C}<em>{3}]</em>{\alpha\beta}. \tag{37}$$</p>
+<p>高斯场和标签噪声场之间所有省略的交叉协方差为零。标签噪声协方差为 $\left\langle\epsilon_{\alpha}\epsilon_{\beta}\right\rangle=[\mathcal{D}(\bm{1}\bm{1}^{\top})]<em>{\alpha\beta}$。$u^{1}$ 和标签噪声仅在小批量标签相同时跨轮次相关。关联 $\bm{C}</em>{i}$ 和响应 $\bm{R}_{i,j}$ 在下面自洽地确定。</p>
+<h3>B.4 关联函数</h3>
+<p>高斯协方差依赖于以下关联函数：</p>
+<p>$$[\bm{C}<em>{0}]</em>{\alpha\beta}=\sum_{k}\lambda_{k}\left\langle v^{0}<em>{k,\alpha}v^{0}</em>{k,\beta}\right\rangle, \tag{38}$$</p>
+<p>$$[\bm{C}<em>{1}]</em>{\alpha\beta}=\left\langle v^{1}<em>{\alpha}v^{1}</em>{\beta}\right\rangle, \tag{39}$$</p>
+<p>$$[\bm{C}<em>{2}]</em>{\alpha\beta}=\sum_{k}\left\langle v^{2}<em>{k,\alpha}v^{2}</em>{k,\beta}\right\rangle, \tag{40}$$</p>
+<p>$$[\bm{C}<em>{3}]</em>{\alpha\beta}=\left\langle v^{3}<em>{\alpha}v^{3}</em>{\beta}\right\rangle. \tag{41}$$</p>
+<p>这些是非中心二阶矩。特别地，$v^{0}<em>{k}$ 通常具有非零均值，因此 $\bm{C}</em>{0}$ 包括偏差和方差。测试和训练损失从对角元素读出</p>
+<p>$$\mathcal{L}<em>{\mathrm{test}}(\alpha)=[\bm{C}</em>{0}]<em>{\alpha\alpha}+\sigma^{2},\qquad\widehat{\mathcal{L}}</em>{\mathrm{train}}(\alpha)=[\bm{C}<em>{1}]</em>{\alpha\alpha}. \tag{42}$$</p>
+<p>加性 $\sigma^{2}$ 是测试均方误差的不可约标签噪声贡献。$v^{1}$ 和 $v^{3}$ 方程给出</p>
+<p>$$\bm{C}<em>{1}=\bm{R}</em>{1}\mathcal{D}\left(\bm{C}<em>{0}+\sigma^{2}\bm{1}\bm{1}^{\top}\right)\bm{R}</em>{1}^{\top}, \tag{43}$$</p>
+<p>$$\bm{C}<em>{3}=\bm{R}</em>{3}\bm{C}<em>{2}\bm{R}</em>{3}^{\top}. \tag{44}$$</p>
+<p>这里 $\bm{C}_{0}$ 是完整的双时间残差关联。当该残差通过固定小批量采样时，投影 $\mathcal{D}$ 进入。</p>
+<h3>B.5 响应函数</h3>
+<p>响应函数使用标准随机特征DMFT约定。$R_{0,2}$ 和 $R_{2,4}$ 测量 $v^{0}$ 对 $u^{2}$ 以及 $v^{2}$ 对 $u^{4}$ 的响应；$R_{1}$ 和 $R_{3}$ 是对 $u^{1}$ 和 $u^{3}$ 的位点响应。标签噪声改变关联但不改变这些线性响应。对每个模式 $k$，定义</p>
+<p>$$R_{0,2;k;\alpha\beta}=\left\langle\frac{\delta v^{0}<em>{k,\alpha}}{\delta u^{2}</em>{k,\beta}}\right\rangle, \tag{45}$$</p>
+<p>$$R_{2,4;k;\alpha\beta}=\left\langle\frac{\delta v^{2}<em>{k,\alpha}}{\delta u^{4}</em>{k,\beta}}\right\rangle. \tag{46}$$</p>
+<p>谱平均响应为</p>
+<p>$$[\bm{R}<em>{0,2}]</em>{\alpha\beta}=\sum_{k}\lambda_{k}R_{0,2;k;\alpha\beta}, \tag{47}$$</p>
+<p>$$[\bm{R}<em>{2,4}]</em>{\alpha\beta}=\sum_{k}R_{2,4;k;\alpha\beta}. \tag{48}$$</p>
+<p>位点响应为</p>
+<p>$$R_{1;\alpha\beta}=\left\langle\frac{\delta v^{1}<em>{\alpha}}{\delta u^{1}</em>{\beta}}\right\rangle, \tag{49}$$</p>
+<p>$$R_{3;\alpha\beta}=\left\langle\frac{\delta v^{3}<em>{\alpha}}{\delta u^{3}</em>{\beta}}\right\rangle. \tag{50}$$</p>
+<p>由（30）和（32），这些响应满足</p>
+<p>$$\bm{R}<em>{1}=\left[\bm{I}-\frac{1}{B}\mathcal{D}(\bm{R}</em>{0,2})\right]^{-1}, \tag{51}$$</p>
+<p>$$\bm{R}<em>{3}=\left[\bm{I}-\frac{1}{N}\bm{R}</em>{2,4}\right]^{-1}. \tag{52}$$</p>
+<p>这些方程包含通过其余位点的反馈。</p>
+<h3>B.6 模式传递函数</h3>
+<p>结合（29）、（31）和（33）给出每个模式的残差方程：</p>
+<p>$$v^{0}<em>{k,\alpha}=v^{0}</em>{\mathrm{init},k}-\eta\sum_{\beta}\Theta_{\alpha\beta}\left[u^{4}<em>{k,\beta}+\sum</em>{\gamma}R_{3;\beta\gamma}u^{2}<em>{k,\gamma}+\lambda</em>{k}\sum_{\gamma,\rho}R_{3;\beta\gamma}R_{1;\gamma\rho}v^{0}_{k,\rho}\right]. \tag{53}$$</p>
+<p>对 $\bm{v}^{0}_{k}$ 求解给出</p>
+<p>$$\bm{v}^{0}<em>{k}=\bm{H}</em>{k}\left[v^{0}<em>{\mathrm{init},k}\bm{1}-\eta\bm{\Theta}\left(\bm{u}^{4}</em>{k}+\bm{R}<em>{3}\bm{u}^{2}</em>{k}\right)\right], \tag{54}$$</p>
+<p>其中</p>
+<p>$$\bm{H}<em>{k}=\left[\bm{I}+\eta\lambda</em>{k}\bm{\Theta}\bm{R}<em>{3}\bm{R}</em>{1}\right]^{-1}. \tag{55}$$</p>
+<p>我们还定义谱平均传递算子</p>
+<p>$$\bar{\bm{H}}=\sum_{k}\lambda_{k}\bm{H}_{k}. \tag{56}$$</p>
+<p>辅助响应现在可以用传递函数表示：</p>
+<p>$$\bm{R}<em>{0,2;k}=-\eta\bm{H}</em>{k}\bm{\Theta}\bm{R}<em>{3},\qquad\bm{R}</em>{0,2}=-\eta\bar{\bm{H}}\bm{\Theta}\bm{R}_{3}, \tag{57}$$</p>
+<p>$$\bm{R}<em>{2,4;k}=-\eta\lambda</em>{k}\bm{R}<em>{1}\bm{H}</em>{k}\bm{\Theta},\qquad\bm{R}<em>{2,4}=-\eta\bm{R}</em>{1}\bar{\bm{H}}\bm{\Theta}. \tag{58}$$</p>
+<p>将这些代入（51）–（52）给出闭合响应方程</p>
+<p>$$\bm{R}<em>{1}=\left[\bm{I}+\frac{\eta}{B}\mathcal{D}(\bar{\bm{H}}\bm{\Theta}\bm{R}</em>{3})\right]^{-1}, \tag{59}$$</p>
+<p>$$\bm{R}<em>{3}=\left[\bm{I}+\frac{\eta}{N}\bm{R}</em>{1}\bar{\bm{H}}\bm{\Theta}\right]^{-1}. \tag{60}$$</p>
+<h3>B.7 多轮DMFT的闭合矩阵方程</h3>
+<p>用于数值求解的方程在此收集。每个矩阵由 $S=T\mathcal{E}$ 轮次-步骤对索引。定义</p>
+<p>$$\bm{M}<em>{k}=\bm{I}-\eta\lambda</em>{k}\bm{R}<em>{1}\bm{H}</em>{k}\bm{\Theta}\bm{R}_{3}. \tag{61}$$</p>
+<p>该矩阵将由小批量特征生成的高斯场 $\bm{u}^{2}<em>{k}$ 传播到 $\bm{v}^{2}</em>{k}$。</p>
+<p>闭合响应方程为</p>
+<p>$$\bm{H}<em>{k}=\left[\bm{I}+\eta\lambda</em>{k}\bm{\Theta}\bm{R}<em>{3}\bm{R}</em>{1}\right]^{-1},\qquad\bar{\bm{H}}=\sum_{k}\lambda_{k}\bm{H}_{k}, \tag{62}$$</p>
+<p>$$\bm{R}<em>{1}=\left[\bm{I}+\frac{\eta}{B}\mathcal{D}(\bar{\bm{H}}\bm{\Theta}\bm{R}</em>{3})\right]^{-1}, \tag{63}$$</p>
+<p>$$\bm{R}<em>{3}=\left[\bm{I}+\frac{\eta}{N}\bm{R}</em>{1}\bar{\bm{H}}\bm{\Theta}\right]^{-1}. \tag{64}$$</p>
+<p>闭合关联方程为</p>
+<p>$$\bm{C}<em>{1}=\bm{R}</em>{1}\mathcal{D}\left(\bm{C}<em>{0}+\sigma^{2}\bm{1}\bm{1}^{\top}\right)\bm{R}</em>{1}^{\top},\qquad\bm{C}<em>{3}=\bm{R}</em>{3}\bm{C}<em>{2}\bm{R}</em>{3}^{\top}, \tag{65}$$</p>
+<p>$$\bm{C}<em>{0}=\sum</em>{k}\lambda_{k}\bm{H}<em>{k}\Bigg[(v^{0}</em>{\mathrm{init},k})^{2}\bm{1}\bm{1}^{\top}+\frac{\eta^{2}}{N}\bm{\Theta}\bm{R}<em>{3}\bm{C}</em>{2}\bm{R}<em>{3}^{\top}\bm{\Theta}^{\top}+\frac{\eta^{2}\lambda</em>{k}}{B}\bm{\Theta}\bm{R}<em>{3}\mathcal{D}(\bm{C}</em>{1})\bm{R}<em>{3}^{\top}\bm{\Theta}^{\top}\Bigg]\bm{H}</em>{k}^{\top}, \tag{66}$$</p>
+<p>$$\bm{C}<em>{2}=\sum</em>{k}\lambda_{k}^{2}\bm{R}<em>{1}\bm{H}</em>{k}\left[(v^{0}<em>{\mathrm{init},k})^{2}\bm{1}\bm{1}^{\top}+\frac{\eta^{2}}{N}\bm{\Theta}\bm{R}</em>{3}\bm{C}<em>{2}\bm{R}</em>{3}^{\top}\bm{\Theta}^{\top}\right]\bm{H}<em>{k}^{\top}\bm{R}</em>{1}^{\top}+\frac{1}{B}\sum_{k}\lambda_{k}\bm{M}<em>{k}\mathcal{D}(\bm{C}</em>{1})\bm{M}_{k}^{\top}. \tag{67}$$</p>
+<p>对于零初始化，这些方程简化为 $v^{0}<em>{\mathrm{init},k}=w^{\star}</em>{k}$ 的相同表达式。最后，对于 $\alpha=(n,t)$，测试和训练损失为</p>
+<p>$$\mathcal{L}<em>{\mathrm{test}}(n,t)=[\bm{C}</em>{0}]<em>{\alpha\alpha}+\sigma^{2},\qquad\widehat{\mathcal{L}}</em>{\mathrm{train}}(n,t)=[\bm{C}<em>{1}]</em>{\alpha\alpha}. \tag{68}$$</p>
+<p>加性 $\sigma^{2}$ 是测试均方误差的不可约标签噪声贡献。在无噪声实验中，设置 $\sigma=0$。</p>
+<h3>B.8 DMFT的空腔推导</h3>
+<p>我们通过向系统添加一个坐标并将旧轨迹展开到其与该坐标耦合的一阶，来推导附录B.3中的单点过程。场 $\bm{v}^{0},\ldots,\bm{v}^{4}$ 在附录B.2中定义。始终，$\alpha=(n,t)$ 且 $\beta=(n^{\prime},t^{\prime})$。算子 $\bm{\Theta}$ 和 $\mathcal{D}$ 强制因果性和固定小批量复用。</p>
+<p><strong>添加谱模式。</strong> 添加具有特征值 $\lambda_{0}$ 的总体特征模式 $k=0$。添加的模式具有变量 $v^{0}<em>{0,\alpha},v^{2}</em>{0,\alpha},v^{4}<em>{0,\alpha}$。它与许多数据和随机特征位点弱耦合，因此其主要效应由线性响应给出。波浪号表示扩大的系统。数据场对 $\psi</em>{b0}(t_{\beta})v^{0}_{0,\beta}$ 的响应为</p>
+<p>$$\widetilde{v}^{1}<em>{b,\alpha}=v^{1}</em>{b,\alpha}+\sum_{\beta}R_{1;\alpha\beta}\psi_{b0}(t_{\beta})v^{0}_{0,\beta}+o(1). \tag{69}$$</p>
+<p>类似地，旧的随机特征位点场对扰动 $A_{i0}v^{2}_{0,\beta}$ 的响应为：</p>
+<p>$$\widetilde{v}^{3}<em>{i,\alpha}=v^{3}</em>{i,\alpha}+\sum_{\beta}R_{3;\alpha\beta}A_{i0}v^{2}_{0,\beta}+o(1). \tag{70}$$</p>
+<p>添加的 $v^{2}$ 坐标为</p>
+<p>$$v^{2}<em>{0,\alpha}=\frac{1}{B}\sum</em>{b=1}^{B}\psi_{b0}(t_{\alpha})\widetilde{v}^{1}<em>{b,\alpha}=\underbrace{\frac{1}{B}\sum</em>{b=1}^{B}\psi_{b0}(t_{\alpha})v^{1}<em>{b,\alpha}}</em>{u^{2}<em>{0,\alpha}}+\frac{1}{B}\sum</em>{b=1}^{B}\sum_{\beta}\psi_{b0}(t_{\alpha})\psi_{b0}(t_{\beta})R_{1;\alpha\beta}v^{0}_{0,\beta}+o(1). \tag{71}$$</p>
+<p>第一项渐近高斯，协方差为</p>
+<p>$$\left\langle u^{2}<em>{0,\alpha}u^{2}</em>{0,\beta}\right\rangle=\frac{\lambda_{0}}{B}[\mathcal{D}(\bm{C}<em>{1})]</em>{\alpha\beta}. \tag{72}$$</p>
+<p>只有相等的小批量标签共享相同数据，这给出 $\mathcal{D}$。第二项自平均为Onsager项</p>
+<p>$$v^{2}<em>{0,\alpha}=u^{2}</em>{0,\alpha}+\lambda_{0}\sum_{\beta}R_{1;\alpha\beta}v^{0}_{0,\beta}. \tag{73}$$</p>
+<p>同样，</p>
+<p>$$v^{4}<em>{0,\alpha}=\frac{1}{N}\sum</em>{i=1}^{N}A_{i0}\widetilde{v}^{3}<em>{i,\alpha}=\underbrace{\frac{1}{N}\sum</em>{i=1}^{N}A_{i0}v^{3}<em>{i,\alpha}}</em>{u^{4}<em>{0,\alpha}}+\frac{1}{N}\sum</em>{i=1}^{N}\sum_{\beta}A_{i0}^{2}R_{3;\alpha\beta}v^{2}_{0,\beta}+o(1). \tag{74}$$</p>
+<p>随机项是具有协方差</p>
+<p>$$\left\langle u^{4}<em>{0,\alpha}u^{4}</em>{0,\beta}\right\rangle=\frac{1}{N}[\bm{C}<em>{3}]</em>{\alpha\beta}, \tag{75}$$</p>
+<p>的高斯，确定性部分自平均为</p>
+<p>$$v^{4}<em>{0,\alpha}=u^{4}</em>{0,\alpha}+\sum_{\beta}R_{3;\alpha\beta}v^{2}_{0,\beta}. \tag{76}$$</p>
+<p>与 $v^{0}<em>{0,\alpha}=v^{0}</em>{\mathrm{init},0}-\eta\sum_{\beta}\Theta_{\alpha\beta}v^{4}_{0,\beta}$ 一起，这给出有效过程的模式部分。</p>
+<p><strong>添加数据位点。</strong> 在固定的轮内小批量标签处添加一个数据坐标。其对 $v^{2}$ 的贡献按</p>
+<p>$$\widetilde{v}^{0}<em>{k,\alpha}=v^{0}</em>{k,\alpha}+\frac{1}{B}\sum_{\beta}R_{0,2;k;\alpha\beta}\psi_{0k}(t_{\beta})v^{1}_{0,\beta}+o(1). \tag{77}$$</p>
+<p>扰动残差。新数据位点场为</p>
+<p>$$v^{1}<em>{0,\alpha}=\sum</em>{k}\psi_{0k}(t_{\alpha})\widetilde{v}^{0}<em>{k,\alpha}+\sigma\epsilon</em>{\alpha}=\underbrace{\sum_{k}\psi_{0k}(t_{\alpha})v^{0}<em>{k,\alpha}}</em>{u^{1}<em>{\alpha}}+\sigma\epsilon</em>{\alpha}+\frac{1}{B}\sum_{\beta}\sum_{k}\psi_{0k}(t_{\alpha})\psi_{0k}(t_{\beta})R_{0,2;k;\alpha\beta}v^{1}_{0,\beta}+o(1). \tag{78}$$</p>
+<p>高斯源满足</p>
+<p>$$\left\langle u^{1}<em>{\alpha}u^{1}</em>{\beta}\right\rangle=[\mathcal{D}(\bm{C}<em>{0})]</em>{\alpha\beta}. \tag{79}$$</p>
+<p>来自不同小批量的行独立，而给定标签处的行跨轮次复用。因此第二项自平均为</p>
+<p>$$v^{1}<em>{0,\alpha}=u^{1}</em>{\alpha}+\sigma\epsilon_{\alpha}+\frac{1}{B}\sum_{\beta}[\mathcal{D}(\bm{R}<em>{0,2})]</em>{\alpha\beta}v^{1}_{0,\beta}. \tag{80}$$</p>
+<p>标签噪声场具有相同的复用模式：$\left\langle\epsilon_{\alpha}\epsilon_{\beta}\right\rangle=[\mathcal{D}(\bm{1}\bm{1}^{\top})]_{\alpha\beta}$。</p>
+<p><strong>添加随机特征位点。</strong> 添加一个随机特征坐标 $i=0$。其对 $v^{4}$ 的贡献按</p>
+<p>$$\widetilde{v}^{2}<em>{k,\alpha}=v^{2}</em>{k,\alpha}+\frac{1}{N}\sum_{\beta}R_{2,4;k;\alpha\beta}A_{0k}v^{3}_{0,\beta}+o(1). \tag{81}$$</p>
+<p>扰动 $v^{2}$。新添加的随机特征位点场为</p>
+<p>$$v^{3}<em>{0,\alpha}=\sum</em>{k}A_{0k}\widetilde{v}^{2}<em>{k,\alpha}=\underbrace{\sum</em>{k}A_{0k}v^{2}<em>{k,\alpha}}</em>{u^{3}<em>{\alpha}}+\frac{1}{N}\sum</em>{\beta}\sum_{k}A_{0k}^{2}R_{2,4;k;\alpha\beta}v^{3}_{0,\beta}+o(1). \tag{82}$$</p>
+<p>随机部分是具有协方差</p>
+<p>$$\left\langle u^{3}<em>{\alpha}u^{3}</em>{\beta}\right\rangle=[\bm{C}<em>{2}]</em>{\alpha\beta}, \tag{83}$$</p>
+<p>的高斯，确定性部分给出</p>
+<p>$$v^{3}<em>{0,\alpha}=u^{3}</em>{\alpha}+\frac{1}{N}\sum_{\beta}[\bm{R}<em>{2,4}]</em>{\alpha\beta}v^{3}_{0,\beta}. \tag{84}$$</p>
+<p><strong>闭合。</strong> 三个添加给出有效过程（29）–（33）。响应函数是空腔展开中出现的平均线性敏感度：</p>
+<p>$$R_{1;\alpha\beta}=\left\langle\frac{\delta v^{1}<em>{\alpha}}{\delta u^{1}</em>{\beta}}\right\rangle,\qquad R_{3;\alpha\beta}=\left\langle\frac{\delta v^{3}<em>{\alpha}}{\delta u^{3}</em>{\beta}}\right\rangle, \tag{85}$$</p>
+<p>$$R_{0,2;k;\alpha\beta}=\left\langle\frac{\delta v^{0}<em>{k,\alpha}}{\delta u^{2}</em>{k,\beta}}\right\rangle,\qquad R_{2,4;k;\alpha\beta}=\left\langle\frac{\delta v^{2}<em>{k,\alpha}}{\delta u^{4}</em>{k,\beta}}\right\rangle. \tag{86}$$</p>
+<p>结合 $(v^{0}<em>{k},v^{2}</em>{k},v^{4}_{k})$ 的方程给出</p>
+<p>$$\bm{H}<em>{k}=\left[\bm{I}+\eta\lambda</em>{k}\bm{\Theta}\bm{R}<em>{3}\bm{R}</em>{1}\right]^{-1}. \tag{87}$$</p>
+<p>代入给出响应闭合（62）–（64）。取高斯有效过程的二阶矩给出关联闭合（65）–（67）。</p>
+<h3>B.9 DMFT的MSR路径积分推导</h3>
+<p>我们用Martin–Siggia–Rose（MSR）生成泛函推导相同的DMFT。我们通过保留轮次-步骤索引 $\alpha=(n,t)$ 将Bordelon et al. (2024)的随机特征推导扩展到多轮SGD。算子 $\bm{\Theta}$ 和 $\mathcal{D}$ 分别编码因果性和固定小批量的复用。我们使用附录B.2中的场；它们的堆叠残差方程为（28）。下面的点积包括轮次-步骤和位点索引。</p>
+<p><strong>生成泛函、归一化和响应约定。</strong> 对于有限轨迹，我们使用傅里叶表示 $\delta(g)=\int_{\mathbb{R}}\frac{d\hat{v}}{2\pi}\exp(i\hat{v}g)$。因此，$D\bm{v}$ 表示所有普通场上勒贝格测度的乘积，$D\hat{\bm{v}}$ 包括每个MSR响应场的一个因子 $d\hat{v}/(2\pi)$。离散时间约束因果排序并在其普通场上具有单位系数。它们的雅可比矩阵因此是具有单位对角线的块三角，并且不贡献依赖于轨迹的行列式。</p>
+<p>引入MSR响应场 $\hat{\bm{v}}^{0},\hat{\bm{v}}^{1},\hat{\bm{v}}^{2},\hat{\bm{v}}^{3},\hat{\bm{v}}^{4}$ 以强制约束。我们还在右边添加辅助踢 $\bm{h}^{1},\bm{h}^{2},\bm{h}^{3},\bm{h}^{4}$：</p>
+<p>$$\bm{v}^{0}=\bm{1}\otimes\bm{v}^{0}_{\mathrm{init}}-\eta\bm{\Theta}\bm{v}^{4}, \tag{88}$$</p>
+<p>$$\bm{v}^{1}<em>{\alpha}=\bm{\Psi}(t</em>{\alpha})\cdots$$</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 缩放定律, 多轮预训练, 集成学习, 动力学平均场理论, 过拟合</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

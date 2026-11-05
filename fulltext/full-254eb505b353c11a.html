@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于稀疏非配对缓存响应的基准预测 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于稀疏非配对缓存响应的基准预测</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-02</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.03614" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Benchmark Prediction with Sparse and Unpaired Cached Responses</h4>
+            <p><strong>中文摘要：</strong> 本文提出乘积核透视空间（PKPS），用于从稀疏且非配对的缓存响应中预测生成模型的基准得分。PKPS通过在查询空间引入核函数，比较对相似而非仅相同查询的响应，从而泛化现有黑盒生成模型表示方法。理论证明PKPS表示围绕总体对应物集中，且在查询效率上不逊于仅使用配对响应的方法。实验表明，PKPS在两个大型基准套件上优于基线方法，查询预算可减少8倍，与低秩矩阵补全集成时得分矩阵补全误差降低28%。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>基于稀疏非配对缓存响应的基准预测</h1>
+<p><strong>Hayden Helm</strong>（通讯作者：hayden@helivan.io，Helivan）<br />
+<strong>Avijit Ghosh</strong>（Hugging Face）<br />
+<strong>Ben Johnson</strong>（Jataware）<br />
+<strong>Carey Priebe</strong>（约翰霍普金斯大学）</p>
+<h2>摘要</h2>
+<p>在所有可用基准任务的全部查询上评估生成模型的成本极高。因此，模型通常在不同的任务子集和/或给定任务的不同查询子集上进行评估。由此产生的响应集合及相应的（模型，任务）得分矩阵是稀疏且非配对的。本文引入乘积核透视空间（Product Kernel Perspective Space, PKPS），这是一组基于模型嵌入响应的低维表示。PKPS通过比较对相似（而非仅相同）查询的响应，泛化了现有的黑盒生成模型表示方法，因此能够利用稀疏和非配对信息。在理论上，我们证明使用PKPS的基准预测相对于仅使用评估数据中密集和配对部分信息的方法具有查询效率。在实验上，我们展示了基于PKPS的方法在两个大型基准套件上的基准预测中优于基线方法。</p>
+<h2>1 引言</h2>
+<p>评估生成模型对于理解其能力是必要的。随着生成模型能力的提升（Wei et al., 2022; Bubeck et al., 2023），其应用范围扩展到更多领域——这往往需要为数学（Hendrycks et al., 2021）、法律（Guha et al., 2023）、金融（Islam et al., 2023）、风险投资（Chen et al., 2025b）和智能体任务（Liu et al., 2024）等创建基准。</p>
+<p>当前的基准评测格局相应地非常庞大：仅BIG-bench就包含超过200个任务（Srivastava et al., 2023），HELM在多个版本中跟踪数十个场景（Liang et al., 2023），最近的一个汇编包含了133个不同的前沿模型基准（Zeng and Papailiopoulos, 2026）。</p>
+<p>因此，模型很少在所有基准上进行评估：在上述汇编的（模型，任务）对中，仅有23%有报告得分。此外，基准在不断演进（例如，添加查询（Chollet et al., 2025）、刷新以避免污染（White et al., 2025）或子采样以降低成本（Perlitz et al., 2024）），在同一基准上评估的模型可能回答了不同的查询集合。</p>
+<p><strong>基准预测</strong>试图通过使用现有信息而非仅从新生成的响应计算得分来缓解评估的资源负担。</p>
+<p>基准预测有两个主要任务：<strong>查询高效评估</strong>和<strong>（模型，任务）得分补全</strong>。</p>
+<p>在查询高效评估中，模型回答任务查询的一小部分子集，并从产生的响应预测其在完整任务上的得分。现有的查询高效评估方法需要访问项目级得分（Polo et al., 2024; Hofmann et al., 2025; Li et al., 2024; Bowyer et al., 2026）和/或所有模型都回答过的查询的缓存嵌入响应（Helm et al., 2026），并且在不同模型在不同查询集合上评估的场景中通常无效。</p>
+<p>在（模型，任务）得分补全中，模型未回答任务的任何查询，其在该任务上的得分从得分矩阵的观测条目中预测。现有的得分补全方法仅使用聚合得分，并丢弃产生这些得分的项目级响应（Zeng and Papailiopoulos, 2026）。</p>
+<p>本文引入乘积核透视空间（PKPS）来直接从稀疏和非配对的响应集合中预测基准得分。我们的贡献可总结如下：</p>
+<ol>
+<li><strong>概念性</strong>：我们将两个预测任务统一为单一问题的实例：从先前评估模型的稀疏、非配对响应集合中预测得分。</li>
+<li><strong>方法性与理论性</strong>：我们提出PKPS，一组在可能非配对的嵌入响应上定义的模型低维表示，并证明使用PKPS的基准预测至少与仅使用配对响应信息的方法一样具有查询效率（定理2）。</li>
+<li><strong>实验性</strong>：我们展示PKPS在查询预算减少8倍的情况下匹配样本得分的准确性，并且当与低秩矩阵补全集成时，将得分矩阵补全误差降低多达28%。我们的实验评估涵盖两个大型基准套件。</li>
+</ol>
+<p><strong>表1</strong>：两个套件和任务上基准预测方法的MAE（每列最佳加粗，并列均加粗；次佳加下划线；设置见第4节）：在全任务覆盖下每个单元格预算为 m∈{1,8} 个查询的查询效率，以及在队列大小 n∈{10,max}、任务覆盖率和查询深度固定为0.5时的缺失单元格补全（sp.列除外，其中 p_task=0.2 且 n=10）。"—"表示方法不适用的设置。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>HELM查询效率(m=1)</th>
+<th>HELM查询效率(m=8)</th>
+<th>HELM补全(n=10)</th>
+<th>HELM补全(n=93)</th>
+<th>HELM补全</th>
+<th>EEE查询效率(m=1)</th>
+<th>EEE查询效率(m=8)</th>
+<th>EEE补全(n=10)</th>
+<th>EEE补全(n=45)</th>
+<th>EEE补全</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>样本得分</td>
+<td>0.292</td>
+<td>0.292</td>
+<td>0.092</td>
+<td>0.092</td>
+<td>—</td>
+<td>0.224</td>
+<td>0.224</td>
+<td>0.081</td>
+<td>0.081</td>
+<td>—</td>
+</tr>
+<tr>
+<td>IRT</td>
+<td>0.348</td>
+<td>0.343</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>0.157</td>
+<td>0.139</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>LRMC</td>
+<td>—</td>
+<td>—</td>
+<td>0.139</td>
+<td>0.105</td>
+<td>0.208</td>
+<td>—</td>
+<td>—</td>
+<td>0.109</td>
+<td>0.096</td>
+<td>0.144</td>
+</tr>
+<tr>
+<td>DKPS</td>
+<td>0.171</td>
+<td>0.111</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>0.116</td>
+<td>0.078</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>PKPS</td>
+<td>0.137</td>
+<td>0.109</td>
+<td><strong>0.120</strong></td>
+<td>0.104</td>
+<td><strong>0.171</strong></td>
+<td>0.070</td>
+<td>0.060</td>
+<td><strong>0.081</strong></td>
+<td>0.070</td>
+<td><strong>0.108</strong></td>
+</tr>
+<tr>
+<td>集成</td>
+<td><strong>0.126</strong></td>
+<td><strong>0.073</strong></td>
+<td><strong>0.120</strong></td>
+<td><strong>0.100</strong></td>
+<td>0.172</td>
+<td><strong>0.068</strong></td>
+<td><strong>0.050</strong></td>
+<td><strong>0.081</strong></td>
+<td><strong>0.069</strong></td>
+<td><strong>0.108</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>1.1 相关工作</h3>
+<p><strong>基准预测。</strong> 我们将基准预测分解为两条先前工作的路线：查询高效基准测试和（模型，任务）得分补全。</p>
+<p>查询高效基准测试的方法通过模型对任务查询小子集的响应来预测其在完整任务上的得分——通常通过选择信息丰富的查询子集并通过项目反应理论（Polo et al., 2024; Hofmann et al., 2025）、聚类（Vivek et al., 2024）、保序子采样（Perlitz et al., 2024）、学习获取策略（Li et al., 2024）、项目级得分回归（Bowyer et al., 2026）或模型表示回归（Helm et al., 2026）进行外推。所有先前提出的查询高效基准测试方法隐含地需要项目级得分或参考模型在共同查询集合上的响应。</p>
+<p>（模型，任务）得分补全的方法通过跨任务可预测性（Ye et al., 2023）、观测缩放定律（Ruan et al., 2024）或低秩矩阵补全（Zeng and Papailiopoulos, 2026）预测从未评估过的得分矩阵条目。所有方法仅在聚合得分上操作，并丢弃项目级得分或响应中的信息。</p>
+<p>我们提出的方法使用来自稀疏和非配对跨任务评估数据的项目级信息来改进两个文献中的方法。</p>
+<p><strong>模型的低维表示。</strong> 我们处理稀疏和非配对基准预测的方法首先构建模型的低维表示，然后在表示空间中学习简单的回归器。现有的模型表示方法因访问模式而异。例如，在白盒设置中，可以通过比较内部激活（Duderstadt et al., 2023; Huh et al., 2024）和/或权重（Chen et al., 2025a）来诱导表示。评估者不一定有白盒访问权限，而是依赖黑盒方法，如数据核透视空间（DKPS）（Helm et al., 2024; Helm et al., 2025），它基于配对查询集合上嵌入响应矩阵之间的距离构建低维表示。与我们设置最相关的是，Helm et al. (2026)将先前评估模型的基准得分回归到DKPS表示上，并证明预测相对于样本得分具有查询效率。提出的乘积核透视空间通过在查询空间上引入核来泛化这一构造，从而在稀疏和非配对模式下进行比较。</p>
+<h2>2 基准预测</h2>
+<p>在我们的设定中，模型是从查询空间到响应空间的随机映射 f: Q → X。任务是一对 (Q^(t), s^(t))，其中 Q^(t) ⊆ Q 是查询集合，M^(t) := |Q^(t)|，s^(t) 是将模型和查询集合映射到非负实数的评分函数。模型 i 在任务 t 上的真实得分为 y_i^(t) := s^(t)(f_i, Q^(t)) ∈ R≥0。</p>
+<p>评估数据由（模型，任务，查询）三元组索引：对于 n 个模型 f_1,...,f_n 和 T 个任务 Q^(1),...,Q^(T)，模型 i 对查询 q ∈ Q^(t) 的响应可能已生成并评分，也可能未生成。设 Q_i^(t) ⊆ Q^(t) 为模型 i 的响应（和得分）已被观测的查询集合，m_i^(t) := |Q_i^(t)|，Q_i := ∪_t Q_i^(t)。相应的样本得分 ỹ_i^(t) := s^(t)(f_i, Q_i^(t)) 是 y_i^(t) 的估计。</p>
+<p>评估数据在给定任务上很少有模型 m_i^(t) &gt; 0 时是<strong>稀疏</strong>的。当跨模型查询集合交集 m_ii'^(t) := |Q_i^(t) ∩ Q_i'^(t)| 的大小很小时，它是<strong>非配对</strong>的。我们设 ρ_ii'^(t) := m_ii'^(t)/m_i^(t) 为给定模型对的共享查询比率，并注意到在高度策划的排行榜中所有对的 ρ_ii'^(t) ≈ 1，而在部署的评估设置中 ρ_ii'^(t) ≈ 0。</p>
+<p>基准预测的目标是从可用的评估数据中估计模型的得分。第1节中引入的两个任务是观测计数 m_i^(t) 的两个模式：</p>
+<ol>
+<li><strong>查询高效评估</strong>是 m_i^(t) &gt; 0 的情况。其他模型在任务 t 上的响应或得分通常可用。</li>
+<li><strong>（模型，任务）得分矩阵补全</strong>是 m_i^(t) = 0 的情况。不存在来自目标（模型，任务）切片的响应，预测必须基于模型 i 对其他任务的响应以及其他模型在任务 t 上评估的响应。</li>
+</ol>
+<h2>3 乘积核透视空间</h2>
+<p>我们通过基于适当定义的成对距离矩阵构建模型的低维表示，从稀疏和非配对的评估数据中估计 y_i^(t)。</p>
+<p>我们假设可以访问每个观测到的（模型，任务，查询）三元组的响应，以及两个嵌入函数 g_Q 和 g_R，分别将查询和响应映射到 R^{p_Q} 和 R^{p_R}。</p>
+<p>设 q_1, q_2, ..., q_M 枚举观测到的查询，x_ij 表示嵌入响应 f_i(q_j)，u_j 表示嵌入查询 q_j。</p>
+<p>给定查询核 k_Q: R^{p_Q} × R^{p_Q} → R≥0 和响应核 k_R: R^{p_R} × R^{p_R} → R≥0，我们通过计算成对亲和矩阵 A 来比较模型 i 和 i'：</p>
+<p>A_ii' = [∑<em>{j∈Q_i} ∑</em>{l∈Q_i'} k_Q(u_j, u_l) k_R(x_ij, x_i'l)] / [∑<em>{j∈Q_i} ∑</em>{l∈Q_i'} k_Q(u_j, u_l)]  (1)</p>
+<p>每个条目由其自身的查询核质量归一化，因此回答不同数量查询或完全不同查询的模型仍然可比。</p>
+<p>我们使用诱导的平方相异度 D²_ii' = A_ii + A_i'i' - 2A_ii' 来捕获模型（不）相似性。</p>
+<p>最后，模型的乘积核透视空间表示——ψ̂_1, ..., ψ̂_n——通过经典多维缩放（CMDS）从 D² 获得（Torgerson, 1952; Borg and Groenen, 2005）。即，设 B = -½JD²J，其中 J = I - (1/n)11^T，λ_1 ≥ ... ≥ λ_n 和 v_1, ..., v_n 表示其特征值和特征向量。则</p>
+<p>Ψ̂ = [ψ̂<em>1, ..., ψ̂_n]^T = [v_1, ..., v_d] diag((λ_1)</em>+^{1/2}, ..., (λ_d)_+^{1/2})  (2)</p>
+<p>使得 Ψ̂Ψ̂^T 是 B 的最佳秩-d半正定近似。当 D² 是维度至多为 d 的欧几里得距离平方矩阵时，CMDS在刚性运动意义下恢复相应的构型（Dokmanić et al., 2015）。</p>
+<p>我们注意到PKPS的定义严格泛化了先前的工作，将恒等查询核（k_Q(u,u') = 1{u=u'}）替换为通用查询核。重要的是，对于任何严格正的 k_Q（如RBF），D²_ii' 包含来自非配对响应的信息，因此当 |Q_i|, |Q_i'| ≥ 1 时，公式(1)总是有定义的。</p>
+<p>我们在图1中突出了先前方法与PKPS之间的区别。</p>
+<p><strong>图1</strong>：PKPS与DKPS之间差异的图示。 顶部：两个模型回答不同的查询集合。底部：查询表示为向量，按哪个模型已回答着色。 DKPS使用的查询核。仅包含两个模型都回答过的查询的信息。 PKPS使用的查询核在嵌入空间中衡量查询相似性。 基准预测示例。左：每个点是一个按其基准得分着色的模型。右：真实基准得分与预测基准得分。限于罕见的共享查询，DKPS（顶部）噪声大且与基准得分相关性差（MAE 0.31）。PKPS（底部）利用非配对查询并与真实得分高度相关（MAE 0.07）。</p>
+<h3>3.1 PKPS表示的集中性</h3>
+<p>我们接下来建立PKPS的理论性质，这些性质对于证明其在稀疏和非配对基准预测中的效率是必要的。本节的主要结果建立了表示围绕其总体对应物集中，其速率由查询分布的重叠决定。</p>
+<p>我们将第2节的评估数据建模为采样的（任务，查询，响应）三元组：在模型 i 的条件下，每个三元组独立地抽取一个任务，然后从任务中抽取一个查询，最后是模型的响应（在附录D的定义2中形式化）。我们在附录D的定义2中正式定义总体PKPS；广义上，它通过将公式(1)中的求和替换为期望来定义。</p>
+<p>我们的集中结果需要有界的查询和响应核、有界的嵌入响应、正的跨模型查询核质量，以及总体双中心矩阵第d个特征值之后的间隙（见假设2-4，附录D）。所需的有界性和谱间隙在谱嵌入分析中是标准的（Yu et al., 2015; Acharyya et al., 2024; Acharyya et al., 2025）。我们设置中非典型的要求是正的跨模型查询核质量，尽管这在严格正的 k_Q 下平凡成立，且不假设任何单个查询是共享的。</p>
+<p>设 (ψ_1, ..., ψ_n) 表示总体PKPS，κ = inf_{i,i'} E[k_Q(u,u')] 为跨模型查询核质量，λ_d 为总体双中心矩阵 B<em> 的第d大特征值，Δ = λ_d - λ_{d+1} 为其特征间隙，β = ‖B</em>‖_op/Δ。</p>
+<p><strong>定理1（PKPS表示的集中性）</strong>。 假设假设2-4成立且每个模型至少回答了 m 个查询。则对于任意 δ ∈ (0,1)，以至少 1-δ 的概率，存在正交矩阵 W 使得</p>
+<p>max_i ‖ψ̂_i - Wψ_i‖ ≤ Cκ^{-2}λ_d^{-1/2}(1+β) n√(log(4n²/δ)/(2m))</p>
+<p>其中 C 仅依赖于核界限。</p>
+<p>定理1表明PKPS表示以完全配对DKPS（Acharyya et al., 2025）在 m 中享有的速率集中，而不需要任何共享查询。非配对的代价是 κ^{-2} 的因子，由查询分布的重叠决定。完整证明在附录D中。</p>
+<h3>3.2 PKPS中的推断</h3>
+<p>我们接下来描述PKPS中的基准预测并建立其查询效率。</p>
+<p>使用PKPS的推断是一个两步统计问题：首先嵌入模型（公式(2)），然后训练一个使用表示作为模型代理的决策函数。</p>
+<p>固定任务 t，设 f_0, f_1, ..., f_n 为从模型分布中独立同分布抽取的样本。我们的目标是预测 f_0 在任务 t 上的真实得分 y_0 := s^(t)(f_0, Q^(t))。</p>
+<p>m_i^(t) &gt; 0 的（模型，任务）对和模型 f_0 从任务 t' ≠ t 的响应提供了可能与预测 y_0 相关的信息。</p>
+<p>我们通过公式(2)联合嵌入所有 n+1 个模型，在观测对 {(ψ̂<em>i, ỹ_i^(t))}</em>{i=1}^n 上拟合回归器 ĥ^(t): R^d → Y，并预测 ŷ_0^(t) = ĥ^(t)(ψ̂_0)。我们注意到公式(1)不使用得分信息，因此目标模型与参考模型一起嵌入。存在样本外扩展（参见Trosset and Priebe, 2008; Chen et al., 2022）。</p>
+<p>Helm et al. (2026)建立了使用配对DKPS表示的最近邻回归相对于样本得分具有查询效率。本节的主要结果表明使用PKPS的基准预测相对于配对DKPS具有查询效率。</p>
+<p>我们结果的第一部分仅需要有界得分（假设1）。第二部分额外要求没有两个查询设计共享原子，使得独立采样的查询集几乎必然不相交（假设5），模型及其缓存独立抽取（假设6），以及固定预算下总体双中心矩阵类似物的谱间隙（假设7）。所有假设在附录D中陈述。</p>
+<p>在下文中，MSE表示均方误差，m表示每模型查询预算，min_i |Q_i| ≥ m。我们假设查询核来自以带宽 σ 为索引的有界核族，其 σ→0 极限使得 k_0(u,u') &gt; 0 当 u=u' 时，否则为0（例如 k_σ(u,u') = exp(-‖u-u'‖²/2σ²)）。</p>
+<p><strong>定义1（查询效率；遵循Helm et al., 2026）</strong>。 固定每模型查询预算 m，设 h_n 表示使用 n 个参考模型的得分估计器。序列 (h_1, h_2, ...) 相对于 (h'_1, h'_2, ...) 是<strong>查询高效</strong>的，如果存在 N 使得对所有 n ≥ N，以高概率 MSE(h_n) ≤ MSE(h'_n)，且对至少一个 n* ≥ N 不等式严格成立。</p>
+<p>我们写 h_{n,σ}^{(K)} 表示在以带宽 σ 的查询核构建的PKPS上使用K近邻回归器的估计器。由于 k_0 仅在相同查询上放置正质量，h_{n,0}^{(K)} 是配对DKPS上的K近邻回归。设 ĥ_n^{(K)} 表示交叉验证的PKPS估计器（在附录D中指定），其中带宽在留出参考模型上从包含 σ=0 的有限网格中选择。仅当估计的改进超过验证置信半径时才选择非零带宽。最后，设 I_m(σ) 表示由目标模型从其 m 个缓存响应计算的总体表示所解释的目标得分方差（定义3）。</p>
+<p><strong>定理2（PKPS相对于配对DKPS具有查询效率）</strong>。 固定任意每模型查询预算 m ≥ 1 并假设参考得分被精确观测。 在假设1下，对于每个配对分数 ρ ∈ [0,1] 和每个 K，以高概率对所有足够大的 n，MSE(ĥ_n^{(K)}) ≤ MSE(h_{n,0}^{(K)})。 假设假设1、2、5、6和7成立且网格包含带宽 σ<em> &gt; 0 使得 I_m(σ</em>) &gt; 0。则对于每个 0 &lt; c &lt; I_m(σ<em>) 和每个 K_n → ∞ 且 K_n/n → 0，以高概率对所有足够大的 n，MSE(ĥ_n^{(K_n)}) ≤ MSE(h_{n,0}^{(K_n)}) - c。特别地，(ĥ_n^{(K_n)}) 在每个 I_m(σ</em>) &gt; 0 的预算 m 下相对于 (h_{n,0}^{(K_n)}) 具有查询效率。</p>
+<p>定理2表明，在任何固定预算下，PKPS在任何配对水平下都不劣于配对DKPS。当查询集不相交（假设5）时，配对DKPS不能比预测平均得分做得更好，而PKPS通过其预算-m表示解释的得分方差 I_m(σ*) 来改进它。需要某种此类条件：如果模型的缓存响应不携带关于其得分的信息，则从中构建的任何估计器都不会改进均值。</p>
+<p>我们注意到查询效率是传递的，定理2与Helm et al. (2026)的定理2一起，暗示 ĥ_n^{(K)} 相对于样本得分具有查询效率。</p>
+<p>相同的机制涵盖（模型，任务）得分补全（m_i^(t) = 0）：由于公式(1)仅使用响应，未回答任务 t 任何查询的模型从其对其他任务的响应中嵌入，回归转移在 t 上评估的参考模型的得分。我们在第4节中实证评估查询效率和补全。</p>
+<h2>4 实验</h2>
+<p>我们在合成数据和两个大型基准套件上评估PKPS。</p>
+<p><strong>合成数据。</strong> 我们生成具有潜在能力向量 v_i ∈ R^5 的 n 个模型和具有潜在向量 t_k ∈ R^5 的 T 个任务，得分 v_i · t_k + ε（加性噪声 ε），以及在每个任务中心附近抽取的查询（u_j = t_k + η_j，各向同性噪声 η_j）。每个模型每任务回答 m 个查询。我们通过 ρ = m_ii'/m 控制非配对性，通过观测任务的概率 p_task 和在观测到任务条件下回答查询的概率 p_query 控制稀疏性。</p>
+<p><strong>基准套件。</strong> 我们考虑两个大型基准套件。</p>
+<p>第一个套件由HELM-Lite（Liang et al., 2023）的18个任务组成——7个数学学科（MATH, Hendrycks et al., 2021）、5个翻译对（WMT-14, Bojar et al., 2014）、医学多选（MedQA, Jin et al., 2021）和5个法律学科（LegalBench, Guha et al., 2023）。我们考虑在所有18个任务上评估过的93个模型，并通过子采样每个模型的观测查询来诱导稀疏性和非配对性。</p>
+<p>第二个套件由Every Eval Ever数据存储（Batzner et al., 2026）构建，这是一个社区维护的项目级评估结果集合，涵盖36个基准和165个模型（且在增长）。该存储展示了激励本文的稀疏性和非配对性：仅有15%的（模型，基准）对被评估过，59%的模型对完全不共享任何基准。在一个基准内，配对性是双峰的：在33个任务中的26个上，模型回答了基本相同的项目集合（平均 ρ_ii' &gt; 0.99），而其余七个——全部是竞技场风格（Chiang et al., 2024）——严重非配对（平均 ρ_ii' 在0.27到0.66之间）。我们研究一个密集的45模型和16任务子矩阵，以便真实得分可用且稀疏性和配对性可以控制。任务包括MATH-MC级别1-5（Hendrycks et al., 2021）、GSM-MC（Cobbe et al., 2021）、GPQA-Diamond（Rein et al., 2024）、JudgeBench的九个类别（Tan et al., 2025）和RewardBench 2（Malik et al., 2025）。</p>
+<p>两个套件都因为包含项目级响应而被选择——大多数大型公共基准排行榜仅包含得分。描述HELM和EEE数据的详细信息（如包含的模型、包含的任务、每个任务的查询数量等）分别在附录A和B中提供。</p>
+<p><strong>方法和基线。</strong> 我们在查询效率和（模型，任务）得分补全上评估PKPS。除非另有说明，我们通过gemini-embedding-001（Lee et al., 2025）将所有响应和查询嵌入到3072维空间中，分别对嵌入查询和嵌入响应集合应用PCA，并在降维后的查询空间上使用RBF核，在降维后的响应空间上使用线性核。给定PKPS成对相异度矩阵，我们通过公式(2)将模型嵌入到 d=8 维空间中，并使用 K=5 的K近邻回归。</p>
+<p>根据任务不同，我们包含不同的基线。每个基线产生 y_i^(t) 的估计：</p>
+<ol>
+<li><strong>查询效率</strong>。我们将PKPS与样本得分（即 ỹ_i^(t)）、配对DKPS（Helm et al., 2026）、项目反应理论（"IRT", Polo et al., 2024）以及PKPS和样本得分的凸组合（即 αỹ_i^(t) + (1-α)ŷ_i,PKPS^(t)）进行比较。</li>
+<li><strong>得分补全</strong>。我们将PKPS与低秩矩阵补全（"LRMC", Zeng and Papailiopoulos, 2026）以及LRMC和PKPS的凸组合（即 αŷ_i,LRMC^(t) + (1-α)ŷ_i,PKPS^(t)）进行比较。</li>
+</ol>
+<p>查询核RBF带宽和集成的凸系数都通过对观测数据的交叉验证来选择。遵循Zeng and Papailiopoulos (2026)，补全方法在预处理的得分矩阵上操作：观测得分经过logit变换、按任务标准化，并通过双向（模型，任务）加性偏差中心化。遵循Helm et al. (2026)，我们使用留一家族协议，其中排除来自目标模型开发者的所有模型。因此，报告的误差是保守的。我们报告每个设置在16个种子（合成数据为50个）上预测得分与真实得分的平均绝对误差（MAE）。其他实验细节在附录A中提供。</p>
+<h3>4.1 结果</h3>
+<p><strong>PKPS在合成数据上具有查询效率。</strong> 图2显示了在查询高效评估协议下，PKPS、DKPS和样本得分用于估计模型真实得分的MAE。得分矩阵的每个观测单元格用 m 个查询的预算计算。我们变化查询预算（面板a）、成对查询重叠（面板b）、模型数量（面板c）、任务数量（面板d）和任务覆盖率（面板e）。面板(f)研究得分补全，其中目标是留出单元格，仅得分基线是任务均值。PKPS在所有地方优于DKPS，在小查询预算下优于样本得分（面板a）。面板是定理2的实验对应物。在 ρ=0 时，DKPS比样本得分差，而单个共享查询（m=4时 ρ=0.25）将其恢复到PKPS的水平。PKPS在 ρ 中是平坦的，因为它仅需要分布重叠。随着 n 在固定稀疏性和配对性下增长，PKPS可以利用额外的参考模型而DKPS不能（面板c）。任务覆盖率表现类似（面板e），任务数量对两种方法影响不大（面板d）——尽管这一观察可能取决于任务级噪声与查询级噪声之间的比率。在补全面板中，当观测单元格稀缺时PKPS优于DKPS，在中等到大覆盖率时它们匹配。</p>
+<p><strong>图2</strong>：合成基准上的MAE（±1 SEM）。 面板a-e）查询高效评估，其中每个观测单元格用 m 个查询测量。我们变化预算 m（面板a）、跨模型重叠 ρ（面板b）、队列大小 n（面板c）、任务数 T（面板d）和任务覆盖率 p_task（面板e），在非配对设计（ρ=0）下，除非扫描 ρ。 面板f）作为任务覆盖率函数的留出单元格的得分补全。</p>
+<p><strong>基于PKPS的方法在查询高效评估中占主导地位。</strong> 图3a-c显示了HELM套件上PKPS、DKPS、IRT、样本得分和集成的MAE。每个模型回答其自己独立采样的查询。在 m=1 时，PKPS达到0.137，集成达到0.126，而样本得分为0.292（Wilcoxon p=8×10⁻⁶，在所有18个任务上更好），因此PKPS用一个查询匹配 m=4 时的样本得分（面板a）。随着预算增长，样本得分的噪声降至表示的残差偏差以下，最终超过它们。集成始终跟随其两个组件中较好的一个（面板a）。PKPS随参考模型数量改善（面板b；0.157→0.124）和任务覆盖率（面板c；0.161→0.130），而DKPS是平坦的。IRT在没有共享项目块的情况下识别不良，全程比样本得分差。</p>
+<p><strong>增益在各种设置中保持。</strong> 图3d-g显示了按数据集（面板d）、预算（面板e）、队列（面板f）和任务覆盖率（面板g）的样本得分与集成绝对误差之间的每单元格差异分布。集成在69%的单元格上优于样本得分（m=1时为78%），并且在每行的均值中。增益在富响应数据集（面板d）和最小预算（面板e）上最大，其中单个响应携带最多信息，并且随着预算增长向零缩小。均值增益在每个队列大小（面板f）和每个覆盖率（面板g）下均为正。</p>
+<p><strong>相同的表示补全得分矩阵中的缺失单元格。</strong> 图4a-d显示了当观测到分数 p_task 的（模型，任务）单元格在查询深度 p_query 时，队列大小 n=93（实线）和 n=10（虚线）下LRMC、PKPS和集成在缺失单元格上的MAE。缺失单元格不存在响应，因此样本得分不可用。集成在每个操作点匹配或优于LRMC，并且当观测稀缺时差距最大：在小队列时，它在每个任务覆盖率（面板a）、查询深度（面板b）和任务数（面板c）上都更准确（0.120对比0.139；Wilcoxon p=1×10⁻³，在18个任务中的15个上更好）。LRMC需要许多模型来估计其因子：当 n=10 时，额外任务不能缩小差距（面板c），并且扫描参考模型数量显示集成从 n=20 开始准确，而LRMC仅接近完整队列时接近它（面板d）。在完整队列时方法收敛，集成平均而言仍然最佳（0.100对比0.105），尽管每任务差异不显著（在18个任务中的9个上更好）。</p>
+<p><strong>图3</strong>：HELM套件上的查询效率。 面板a-c）当每个模型回答每个观测单元格 m 个非配对查询时，MAE与真实完整评估得分的关系（±1 SEM），作为预算 m、队列大小 n 和任务覆盖率 p_task 的函数。 面板d-g）样本得分与集成之间按数据集、预算、队列和覆盖率的MAE每单元格差异（正差异有利于集成）。▼是给定设置的均值。</p>
+<p><strong>补全增益适度但一致。</strong> 图4e-h显示了按数据集（面板e）、队列（面板f）、覆盖率（面板g）和查询深度（面板h）的LRMC与集成绝对误差之间的每缺失单元格差异分布。优势比查询效率任务中的小，但每行的均值增益为正。</p>
+<p><strong>结果在Every Eval Ever套件上定性相似。</strong> 第二个套件显示了相同的行为，但差距更大（杠杆扫描在附录B中）。在 m=1 时，PKPS达到不到样本得分误差的三分之一（0.070对比0.224），低于样本得分在 m=8 时达到的准确性（0.081）。在缺失单元格上，集成在所有地方优于LRMC，包括完整队列（Wilcoxon p=3×10⁻⁵，在每个任务上更好），这在HELM上不显著。表1显示了所有方法在两个任务和两个套件上的性能。基于PKPS的方法在每列中都是最佳的。</p>
+<p><strong>结果对表示和流水线选择不敏感。</strong> 将MDS维度在4-24范围内变化使PKPS的MAE移动不到0.02，并且交叉验证的带宽匹配最佳固定选择（附录C）。回归方法、响应核、集成权重规则和偶然查询重叠的消融也在附录C中。我们的观察在这些选择中通常是稳健的。</p>
+<p><strong>图4</strong>：HELM套件上的得分补全。 面板a-d）当观测到分数 p_task 的（模型，任务）单元格在查询深度 p_query 时，缺失单元格上的MAE（±1 SEM），作为任务覆盖率、查询深度、任务数和队列大小的函数。 面板e-h）LRMC与集成之间按数据集、队列、覆盖率和查询深度的MAE每单元格差异（正差异有利于集成）。▼是给定设置的均值。</p>
+<h2>5 讨论</h2>
+<p>本文引入了PKPS，一组在稀疏和非配对嵌入响应集合上定义的模型低维表示——这是高度策划的排行榜和评估集合之外的现实设置。我们证明PKPS相对于其完全配对对应物具有查询效率，并展示随着 ρ→0，配对DKPS急剧退化而PKPS不会。相同的表示支持两个基准预测任务，基于PKPS的方法在两者上都优于基线。</p>
+<p><strong>实际部署。</strong> 我们的结果建议了一个简单的实际部署工作流程： 维护评估模型时产生的缓存响应（以及可选的每响应得分）； 在缓存响应上拟合PKPS； 在透视空间中用简单回归进行预测，可选地与样本得分集成。随着像Every Eval Ever数据存储这样的共享缓存增长，每次新上传都改进透视空间，累积节省也随之增长。</p>
+<p><strong>局限性和未来工作。</strong> 随机评分函数。我们的分析假设从响应到其得分的映射是确定性的。许多现代评估框架使用LLM作为评判者的评分（Zheng et al., 2023），其中得分是随机的，可能取决于超出单个响应的上下文因素。如果每个得分采取 s(f(q))+ε 的形式且 ε 独立同分布，则重复评分在极限中恢复当前设置，扩展在概念上是直接的。 超越均匀观测。假设1将观测单元格建模为均匀子样本，我们的实验通过均匀掩码诱导稀疏性和非配对性。部署评估数据中的缺失不是均匀的：哪些模型在哪些基准上评估与开发者、发布日期和预期性能相关。将分析扩展到建模的观测过程是自然且重要的下一步。 多智能体系统中的非配对监控。配对DKPS已被用作跟踪多智能体系统视角的工具（Helm et al., 2024）。这些方法需要每个时间点向每个智能体询问一组固定查询，在大规模时成本过高。PKPS消除了这一要求，因为智能体可以通过它们自然产生的异构交互来监控。</p>
+<h2>AI使用声明</h2>
+<p>在本工作中，我们使用生成式AI工具来实现方法和简单的数据处理。我们还在创建工件（例如使用Matplotlib创建图表）以及在重度用户指导下起草/编辑手稿部分时使用了它们。我们已审查所有AI辅助的工作。例如，生成的代码由所有作者验证并测试了正确性。生成的文本经过了大量编辑。我们对本工作的最终内容负责，包括在生成式AI辅助下产生的文本、声明或工件。</p>
+<h2>致谢</h2>
+<p>我们感谢Heather G. Patsolic和Brandon Duderstadt在手稿开发过程中的有益讨论。我们感谢国防高级研究计划局（DARPA）人工智能量化（AIQ）奖项编号HR00112520026的资助。本项目源于EvalEval联盟（https://evalevalai.com/）内的讨论，作者感谢Brian Hu、Leshem Choshen和Andreas Haupt的早期反馈。</p>
+<h2>参考文献</h2>
+<p>[完整参考文献列表见原文，包括Acharyya et al. (2024, 2025), Batzner et al. (2026), Bojar et al. (2014), Borg and Groenen (2005), Bowyer et al. (2026), Bubeck et al. (2023), Chen et al. (2022, 2025a, 2025b), Chiang et al. (2024), Chollet et al. (2025), Cobbe et al. (2021), Dokmanić et al. (2015), Duderstadt et al. (2023), Guha et al. (2023), Helm et al. (2024, 2025, 2026), Hendrycks et al. (2021), Hofmann et al. (2025), Huh et al. (2024), Islam et al. (2023), Jin et al. (2021), Lee et al. (2025), Li et al. (2024), Liang et al. (2023), Liu et al. (2024), Malik et al. (2025), Perlitz et al. (2024), Polo et al. (2024), Rein et al. (2024), Ruan et al. (2024), Srivastava et al. (2023), Tan et al. (2025), Torgerson (1952), Trosset and Priebe (2008), Vivek et al. (2024), Wei et al. (2022), White et al. (2025), Ye et al. (2023), Yu et al. (2015), Zeng and Papailiopoulos (2026), Zheng et al. (2023)]</p>
+<h2>附录A 实验细节</h2>
+<p><strong>套件。</strong> 来自HELM-Lite（Liang et al., 2023）四个数据集的18个任务：MATH（7个学科）、WMT-14（5个翻译方向）、MedQA和LegalBench（5个子集），限制在所有四个数据集上评估过的93个模型。表2列出了每个任务及其查询数；加载器将每个任务子采样至最多120个查询（固定种子），因此数据集贡献相当。</p>
+<p><strong>表2</strong>：HELM套件组成：四个数据集的18个任务，每个任务的唯一查询数。每个任务为所有93个共享模型评分；加载器将每个任务限制在120个查询（种子子采样）。</p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>任务</th>
+<th>查询数</th>
+<th>数据集</th>
+<th>任务</th>
+<th>查询数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MATH</td>
+<td>algebra</td>
+<td>135</td>
+<td>WMT-14</td>
+<td>cs–en</td>
+<td>873</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>counting &amp; probability</td>
+<td>39</td>
+<td>WMT-14</td>
+<td>de–en</td>
+<td>776</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>geometry</td>
+<td>38</td>
+<td>WMT-14</td>
+<td>fr–en</td>
+<td>754</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>intermediate algebra</td>
+<td>52</td>
+<td>WMT-14</td>
+<td>hi–en</td>
+<td>387</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>number theory</td>
+<td>30</td>
+<td>WMT-14</td>
+<td>ru–en</td>
+<td>613</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>prealgebra</td>
+<td>86</td>
+<td>MedQA</td>
+<td>med_qa</td>
+<td>1000</td>
+</tr>
+<tr>
+<td>MATH</td>
+<td>precalculus</td>
+<td>57</td>
+<td>LegalBench</td>
+<td>abercrombie</td>
+<td>95</td>
+</tr>
+<tr>
+<td>LegalBench</td>
+<td>corporate lobbying</td>
+<td>490</td>
+<td>LegalBench</td>
+<td>citizenship questions</td>
+<td>1000</td>
+</tr>
+<tr>
+<td>LegalBench</td>
+<td>function of decision section</td>
+<td>367</td>
+<td>LegalBench</td>
+<td>proa</td>
+<td>95</td>
+</tr>
+</tbody>
+</table>
+<p><strong>模型覆盖（HELM）。</strong> 93个共享模型涵盖20个开发者：01-ai_yi-34b, 01-ai_yi-6b, 01-ai_yi-large-preview, AlephAlpha_luminous-base, AlephAlpha_luminous-extended, AlephAlpha_luminous-supreme, ai21_j2-grande, ai21_j2-jumbo, ai21_jamba-1.5-large, ai21_jamba-1.5-mini, ai21_jamba-instruct, allenai_olmo-7b, amazon_nova-lite-v1, amazon_nova-micro-v1, amazon_nova-pro-v1, anthropic_claude-2.0, anthropic_claude-2.1, anthropic_claude-3-5-haiku-20241022, anthropic_claude-3-5-sonnet-20240620, anthropic_claude-3-5-sonnet-20241022, anthropic_claude-3-haiku-20240307, anthropic_claude-3-opus-20240229, anthropic_claude-3-sonnet-20240229, anthropic_claude-instant-1.2, anthropic_claude-instant-v1, anthropic_claude-v1.3, cohere_command, cohere_command-light, cohere_command-r, cohere_command-r-plus, databricks_dbrx-instruct, deepseek-ai_deepseek-llm-67b-chat, deepseek-ai_deepseek-v3, google_gemini-1.0-pro-001, google_gemini-1.0-pro-002, google_gemini-1.5-flash-001, google_gemini-1.5-flash-002, google_gemini-1.5-pro-001, google_gemini-1.5-pro-002, google_gemini-1.5-pro-preview-0409, google_gemini-2.0-flash-exp, google_gemma-2-27b-it, google_gemma-2-9b-it, google_gemma-7b, google_text-bison@001, google_text-unicorn@001, meta_llama-2-13b, meta_llama-2-70b, meta_llama-2-7b, meta_llama-3-70b, meta_llama-3-8b, meta_llama-3.1-405b-instruct-turbo, meta_llama-3.1-70b-instruct-turbo, meta_llama-3.1-8b-instruct-turbo, meta_llama-3.2-11b-vision-instruct-turbo, meta_llama-3.2-90b-vision-instruct-turbo, meta_llama-3.3-70b-instruct-turbo, meta_llama-65b, microsoft_phi-2, microsoft_phi-3-medium-4k-instruct, microsoft_phi-3-small-8k-instruct, mistralai_mistral-7b-instruct-v0.3, mistralai_mistral-7b-v0.1, mistralai_mistral-large-2407, mistralai_mistral-medium-2312, mistralai_mixtral-8x22b, mistralai_mixtral-8x7b-32kseqlen, mistralai_open-mistral-nemo-2407, nvidia_nemotron-4-340b-instruct, openai_gpt-3.5-turbo-0613, openai_gpt-4-0613, openai_gpt-4-1106-preview, openai_gpt-4-turbo-2024-04-09, openai_gpt-4o-2024-05-13, openai_gpt-4o-2024-08-06, openai_gpt-4o-mini-2024-07-18, openai_text-davinci-002, openai_text-davinci-003, qwen_qwen1.5-110b-chat, qwen_qwen1.5-14b, qwen_qwen1.5-32b, qwen_qwen1.5-72b, qwen_qwen1.5-7b, qwen_qwen2-72b-instruct, qwen_qwen2.5-72b-instruct-turbo, qwen_qwen2.5-7b-instruct-turbo, snowflake_snowflake-arctic-instruct, tiiuae_falcon-40b, tiiuae_falcon-7b, upstage_solar-pro-241126, writer_palmyra-x-004, writer_palmyra-x-v2, writer_palmyra-x-v3。</p>
+<p><strong>表示。</strong> 所有查询和响应使用gemini-embedding-001（3072维）嵌入。MATH和WMT-14响应是自由文本，直接嵌入。MedQA和LegalBench响应是单标记答案（多选字母和类索引）；每个都标准化为它表示的文本——字母选择的选项文本（从MedQA源数据恢复并在1000个实例中的999个上验证）和索引编码的类名。查询共享一个PCA空间（最多64个分量），响应共享另一个，两者仅在观测行上拟合；响应空间的维度设置为单独的每数据集降维将保留的总量（每数据集第二个Zhu-Ghodsi肘部，最多48个分量；此套件上为92），响应向量单位归一化。构造上没有任何东西分隔数据集：查询核（其带宽从数据集内距离设置）确定跨数据集比较接收多少权重。</p>
+<p><strong>核。</strong> 查询核是RBF，其带宽每次运行通过留一模型K-NN（K=8）在观测得分上选择，网格为 σ∈{0.03,0.1,0.3,1,3}×中位数成对查询距离加上近增量（DKPS）极限；附录C显示交叉验证的带宽跟踪最佳固定选择。响应核在真实数据上是线性的，在合成数据上是RBF。每个（模型，查询）对使用一个采样响应（r=1）。</p>
+<p><strong>模型嵌入。</strong> 模型通过经典MDS（公式(2)）嵌入，全程 d=8，遵循Helm et al. [2026]并先验固定（合成数据上 d=潜在维度）；附录C探讨了 d 的选择。</p>
+<p><strong>回归器。</strong> 所有嵌入方法使用距离加权K-NN（K=5）回归在模型嵌入上，留一家族拟合：目标开发者的所有模型都从其训练集中排除，因此预测从不依赖近似重复的兄弟姐妹[Helm et al., 2026]。留出单元格直接预测；观测单元格留出自己的目标。对于查询效率，回归目标是参考模型的完整任务得分。对于补全，目标是logit变换、按任务标准化到单位方差和双向（模型+任务）加性偏差后的残差；此流水线与LRMC基线的相同，因此两种方法仅在残差建模方式上不同（透视上的K-NN与低秩分解），性能差异可归因于表示。匹配每任务标准化很重要：没有它，模型偏移被具有最大logit方差的任务主导。</p>
+<p><strong>基线。</strong> 低秩矩阵补全（LRMC）遵循BenchPress [Zeng and Papailiopoulos, 2026]：logit空间、按任务标准化、双向偏差、秩-2 ALS带岭 λ=0.1，在5个随机初始化上平均；在观测单元格上交叉拟合，因此单元格的预测从不看到自己的样本。IRT是二值任务上的1PL（Rasch）模型[Rasch, 1960]：项目难度通过最大似然（L-BFGS, Liu and Nocedal, 1989）在最大完全观测（模型×项目）块上，每模型能力通过有界标量MLE，截断到[-4,4]。样本基线是单元格自己的 m 查询均值。</p>
+<p><strong>集成。</strong> 在观测单元格上，预测为 αŷ_sample + (1-α)ŷ_PKPS，标量 α 每个留出家族一个，在21点网格上通过留一家族验证对其他家族的缓存完整得分（回归器训练的相同信息）选择；在缺失单元格上，PKPS和LRMC用通过留出交叉验证对观测得分拟合的权重混合。任何量都不使用被预测家族的得分。</p>
+<p><strong>扫描和报告。</strong> 所有真实数据扫描使用16个种子；曲线和表条目报告任务上的每种子均值，然后是种子上的均值（±1 SEM）。查询效率：预算 m∈{1,2,4,8,16,32}，完整队列和覆盖率；队列 n∈{10,20,40,60,93}（HELM）或{10,20,40,45}（EEE）和任务覆盖率 p_task∈{0.2,0.35,0.5,0.7,0.9}，两者都在少查询点 m=2。补全：任务覆盖率如上，查询深度 p_query∈{0.1,0.25,0.5,0.75,1.0}，队列线 n∈{10,full}；任务数 T∈{4,8,12,18}（HELM）或{4,8,12,16}（EEE）；队列扫描保持 p_task=p_query=0.5。</p>
+<p><strong>统计测试。</strong> 方法之间的配对差异用双侧Wilcoxon符号秩检验[Wilcoxon, 1945]在每任务误差差异上评估：对每个任务，我们在模型和种子上平均每单元格绝对误差差异，并测试每任务均值是否为零（HELM上18个任务，EEE上16个）。查询效率测试在 m=1（完整队列和覆盖率）下比较集成与样本得分；补全测试在每个队列大小的中心操作点（p_task=p_query=0.5）比较集成与LRMC。第4.1节中引用的每单元格改进分数从相同的每单元格记录计算，在条件图扫描上汇总。</p>
+<p><strong>合成研究。</strong> 每配置50个种子；潜在维度5，观测嵌入维度20，响应噪声0.5；两个核都是RBF。查询效率面板（图2a-e）：每个观测单元格携带 m 个查询和测量噪声 4/√m 的样本得分；真实得分通过 K=8 最近模型的样本得分的距离加权平均预测，限于它们观测的单元格。补全面板：得分噪声0.1，留出单元格通过 K=5 的K-NN回归预测。未扫描的杠杆默认为 n=60, T=12, m=4, ρ=0, p_task=1；面板特定设置在每个图标题中给出。</p>
+<p><strong>计算。</strong> 所有实验在单个多核CPU节点上运行；文本嵌入通过嵌入API预计算一次并缓存。嵌入EEE套件（30,304个汇总响应加7,665个查询，约11M标记）耗时约13分钟和不到2美元的API信用；每个16种子扫描在同一节点上几分钟（EEE）到几小时（HELM）完成。</p>
+<h2>附录B Every Eval Ever套件</h2>
+<p>第二个套件由Every Eval Ever数据存储[Batzner et al., 2026]构建，这是一个MIT许可的、社区维护的统一格式项目级评估结果集合（输入、原始模型输出和每项目得分）。完整存储涵盖36个基准和165个模型，仅有15%的（模型，基准）对被评估（每模型中位数5个基准），59%的模型对不共享任何基准。在一个基准内，至少有两个模型的33个中有26个基本完全配对（23个在每对模型间有相同项目集），而七个竞技场风格基准（六个Fibble竞技场和Wordle竞技场）原生非配对：平均每对重叠0.27-0.66，七个中六个的中位数为零，每模型对项目联合的覆盖率为0.15-0.33——在交互式评估中，模型看到的查询取决于其对手。我们取项目级模型覆盖最广的五个基准——MATH-MC、GSM-MC、GPQA-Diamond、JudgeBench和RewardBench 2——限制在所有五个基准上都存在的45个模型，每个模型都回答了每个项目；子任务（MATH-MC级别1-5；四个JudgeBench和五个RewardBench 2类别）给出16个任务（表3）。每个领域都是自由文本（包括评判基准的理由），因此所有响应和查询都直接用gemini-embedding-001嵌入，响应空间的构建与附录A完全相同：所有五个基准上的一个共享PCA（维度83，匹配每基准总量），单位归一化，查询核门控跨基准比较。每个单元格的可观测池是32个查询，用模型相关种子抽取，因此两个模型仅共享偶然查询（中位数 ρ_ii'^(t)=0.09，平均0.18，最小任务上最大）；查询效率预算 m 和补全深度 p_query 子采样此池，预测目标始终是单元格在所有项目上的完整深度均值，从不嵌入。</p>
+<p>所有得分都是二值的，因此IRT适用于每个任务（在HELM套件上它排除WMT）。图5和6在此套件上重复图3和4的杠杆扫描；表1总结。</p>
+<p><strong>表3</strong>：EEE套件组成：五个基准的16个任务，每个（模型，任务）单元格的项目数。每个任务由所有45个共享模型完全回答；每个单元格的可观测池是32个项目，按模型采样。</p>
+<table>
+<thead>
+<tr>
+<th>基准</th>
+<th>任务</th>
+<th>项目数</th>
+<th>基准</th>
+<th>任务</th>
+<th>项目数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MATH-MC</td>
+<td>level 1</td>
+<td>430</td>
+<td>JudgeBench</td>
+<td>coding</td>
+<td>42</td>
+</tr>
+<tr>
+<td>MATH-MC</td>
+<td>level 2</td>
+<td>882</td>
+<td>JudgeBench</td>
+<td>knowledge</td>
+<td>154</td>
+</tr>
+<tr>
+<td>MATH-MC</td>
+<td>level 3</td>
+<td>1115</td>
+<td>JudgeBench</td>
+<td>math</td>
+<td>56</td>
+</tr>
+<tr>
+<td>MATH-MC</td>
+<td>level 4</td>
+<td>1199</td>
+<td>JudgeBench</td>
+<td>reasoning</td>
+<td>98</td>
+</tr>
+<tr>
+<td>MATH-MC</td>
+<td>level 5</td>
+<td>1288</td>
+<td>RewardBench 2</td>
+<td>factuality</td>
+<td>475</td>
+</tr>
+<tr>
+<td>GSM-MC</td>
+<td>gsm_mc</td>
+<td>1319</td>
+<td>RewardBench 2</td>
+<td>focus</td>
+<td>495</td>
+</tr>
+<tr>
+<td>GPQA-Diamond</td>
+<td>gpqa_diamond</td>
+<td>198</td>
+<td>RewardBench 2</td>
+<td>math</td>
+<td>183</td>
+</tr>
+<tr>
+<td>RewardBench 2</td>
+<td>precise if</td>
+<td>160</td>
+<td>RewardBench 2</td>
+<td>safety</td>
+<td>450</td>
+</tr>
+</tbody>
+</table>
+<p><strong>模型覆盖（EEE）。</strong> 所有五个基准共享的45个模型涵盖13个开发者：cohere/c4ai-command-a-03-2025, cohere/c4ai-command-r-08-2024, cohere/c4ai-command-r-plus-08-2024, cohere/c4ai-command-r7b-12-2024, cohere/command-a-reasoning-08-2025, deepseek/deepseek-r1-0528, deepseek/deepseek-v3-1-terminus, deepseek/deepseek-v3-2, deepseek/deepseek-v3-2-speciale, deepseek/deepseek-v4-flash-fp8, deepseek/deepseek-v4-pro, google/gemini-3-1-pro-preview, google/gemma-2-27b-it, google/gemma-2-9b-it, google/gemma-3-12b-it, google/gemma-3-27b-it, google/gemma-4-e2b-it, google/gemma-4-e4b-it, llm360/k2-v2-instruct, meta/llama-4-maverick-17b-128e-instruct-fp8, meta/meta-llama-3-1-8b-instruct, minimax/minimax-m2-5, mistral/mistral-small-4-119b-2603, moonshot/kimi-k2-5, moonshot/kimi-k2-6, moonshot/kimi-k2-thinking, openai/gpt-5-5, openai/gpt-5-mini, openai/gpt-5-nano, openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3-30b-a3b-thinking-2507, qwen/qwen3-5-122b-a10b, qwen/qwen3-5-2b, qwen/qwen3-5-397b-a17b, qwen/qwen3-6-35b-a3b, qwen/qwen3-6-plus, qwen/qwen3-next-80b-a3b-thinking, stepfun/step-3-5-flash, xiaomi/mimo-v2-flash, zai-org/glm-4-6-fp8, zai-org/glm-4-7-flash, zai-org/glm-4-7-fp8, zai-org/glm-5-1-fp8, zai-org/glm-5-fp8。</p>
+<p><strong>图5</strong>：Every Eval Ever套件上的查询高效评估（45个模型，16个任务；MAE与真实完整评估得分的关系，16个种子上的±1 SEM）。协议匹配图3。集成在每个预算上最准确，PKPS在直到 m=8 的每个预算上最准确；DKPS落后因为查询池是非配对的，IRT识别不良。</p>
+<p><strong>图6</strong>：Every Eval Ever套件上的得分补全（缺失单元格上的MAE，±1 SEM；实线 n=45，虚线 n=10）。协议匹配图4。与HELM套件不同，PKPS和集成在每个操作点都优于LRMC。</p>
+<h2>附录C 敏感性分析</h2>
+<p>图7在查询效率实验上探讨了两个表示超参数（全程16个种子）。</p>
+<p><strong>MDS维度。</strong> 在 d∈{4,8,24} 下重复预算扫描，d=4和d=8曲线在两个套件上的每个预算下彼此相差不到0.003（在最小预算下，较小的 d 非常略好——从每个单元格一个噪声查询估计更少的坐标），而 d=24 在最小EEE预算下损失多达0.013，在最大HELM预算下损失多达0.018；论文的选择（d=8，遵循Helm et al., 2026）在任何预算下都不是最差点。</p>
+<p><strong>查询带宽。</strong> 将带宽固定在每个网格乘数而不是交叉验证追踪预期的曲线：近增量乘数和精确匹配极限（k_Q(u,u')=1{u=u'}，缩写为δ）明显更差（非配对池留给它们很少可比较的内容），宽乘数最佳，交叉验证的选择在两个套件上匹配最佳固定乘数（HELM上0.124对比0.123，EEE上0.065对比0.064）——重要的一个超参数是方法自动选择的那个。对参考模型数量的敏感性是主要实验的一部分（图3b和4d的队列扫描）。</p>
+<p><strong>流水线消融。</strong> 一次改变一个选择重复预算扫描：交叉验证的集成权重在两个套件上的每个预算下最佳或并列（逆方差替代在 m=1 时HELM上损失0.007，EEE上损失0.012）；用最小二乘替换K-NN回归器在HELM上略有帮助（m=1时0.132对比0.137）但在EEE上有害（m=32时0.061对比0.053）；RBF响应核最多改变PKPS 0.002；强制完全不相交的EEE查询池（真 ρ=0）在 m≤8 时最多改变PKPS 0.006。</p>
+<p><strong>图7</strong>：查询效率实验上的敏感性分析（±1 SEM，16个种子）。 PKPS MAE对预算在MDS维度 d∈{4,8,24} 下（论文选择 d=8 画得更粗；样本虚线）；d=4和d=8在两个套件上几乎不可区分，而 d=24 在极端处落后。 m=2时的MAE，查询带宽固定在每个网格乘数（δ=精确匹配）；虚线标记交叉验证选择，在两个套件上匹配最佳固定选择。</p>
+<h2>附录D 定理1和2的证明</h2>
+<p><strong>形式定义和假设。</strong> 我们陈述第3节中引用的形式陈述。</p>
+<p><strong>定义2（总体PKPS）</strong>。 设每个模型 i 的（任务，查询，响应）三元组从设计分布 P_i 独立同分布抽取：每个三元组独立抽取一个任务，然后在任务条件下抽取一个查询，然后是模型的响应。写 z=(u, x_i(u)) 表示嵌入的查询-响应对（包含响应噪声）。<strong>总体亲和</strong>为</p>
+<p>A*_ii' = E[k_Q(u,u')k_R(x_i(u), x_i'(u'))] / E[k_Q(u,u')],  z∼P_i, z'∼P_i' 独立</p>
+<p>总体平方相异度为 D<em>²(i,i') = A</em>_ii + A<em>_i'i' - 2A</em>_ii'，<strong>总体透视</strong> ψ_1,...,ψ_n ∈ R^d（Ψ<em> ∈ R^{n×d} 的行）是双中心矩阵 B</em> = -½JD<em>²J 的秩-d谱嵌入，其中 J = I - (1/n)11^T：Ψ</em> = [v<em>_1,...,v</em>_d]diag(λ_1(B<em>)^{1/2},...,λ_d(B</em>)^{1/2})，取 B<em> 的 d 个最大特征值的特征对。B</em> 不必是半正定的。</p>
+<p><strong>假设1（观测模型）</strong>。 每个评分函数是有界每查询得分的均值，每个观测单元格 Q_i^(t) 是预算 m 下 Q^(t) 的均匀子样本。</p>
+<p><strong>假设2（有界性）</strong>。 核和嵌入响应是有界的。</p>
+<p><strong>假设3（总体重叠）</strong>。 跨模型查询核质量有下界：κ = inf_{i,i'} E[k_Q(u,u')] &gt; 0。</p>
+<p><strong>假设4（谱可识别性）</strong>。 B<em> 的第 d 大特征值为正且与下一个分离：λ_d(B</em>) &gt; 0 且 Δ = λ_d(B<em>) - λ_{d+1}(B</em>) &gt; 0。</p>
+<p><strong>假设5（配对缺失）</strong>。 精确匹配核的跨模型质量消失：κ_0 = sup_{i≠i'} E[k_0(u,u')] = 0，对于独立查询 u∼P_i, u'∼P_i'，其中 k_0(u,u') = 1{u=u'}；等价地，没有两个查询设计共享原子。</p>
+<p><strong>假设6（独立缓存）</strong>。 模型及其查询设计 (f_i, P_i)，i=0,...,n，是独立同分布的，在给定它们的情况下缓存跨模型独立抽取。</p>
+<p>在假设6下，每个模型及其缓存 Z_i = (f_i, C_i) 是从依赖于预算 m 的法则 ν_m 中独立同分布抽取的。</p>
+<p><strong>定义3（固定预算表示）</strong>。 对于 σ &gt; 0，设 h_σ(z,z') = A(z,z) + A(z',z') - 2A(z,z')，其中 A(z,z') 是在 z 和 z' 的缓存上评估的公式(1)，设 b_σ(z,z') = -½(h_σ(z,z') - h̄<em>σ(z) - h̄_σ(z') + h̄̄_σ)，h̄_σ(z) = ∫h_σ(z,w)dν_m(w)，h̄̄_σ = ∫h̄_σ dν_m。L²(ν_m) 上的积分算子 (T_σ g)(z) = ∫b_σ(z,w)g(w)dν_m(w) 是自伴且紧的。设 θ_1 ≥ ... ≥ θ_d 为其 d 个最大特征值，正交特征函数 e_1,...,e_d，θ</em>{d+1} 为其余谱的上确界。<strong>固定预算表示</strong>为 φ_{m,σ}(z) = (θ_k^{-1/2}∫b_σ(z,w)e_k(w)dν_m(w))<em>{k=1}^d，公式(2)的连续类似物[Trosset and Priebe, 2024]，以及 I_m(σ) = Var(E[y_0 | φ</em>{m,σ}(Z_0)])。</p>
+<p><strong>假设7（固定预算谱可识别性）</strong>。 对于 T_{σ*}，θ_d &gt; 0 且 θ_d &gt; θ_{d+1}。</p>
+<p><strong>总体量。</strong> 全文中，定义2的量按那里的陈述使用。由假设2，核是有界的，归一化后 k_Q ∈ [0,1]（例如RBF）且 |k_R| ≤ B_R；由假设4，秩-d谱嵌入存在且 λ_d(B*) &gt; 0。</p>
+<p><strong>引理1（亲和集中）</strong>。 在假设2和3下，对于 min(|Q_i|,|Q_i'|) ≥ m 的模型 i, i' 和任意 δ ∈ (0,1)，以至少 1-δ 的概率，</p>
+<p>|A_ii' - A*_ii'| ≤ 2(1+B_R)/κ² · t_m(δ),  t_m(δ) = B̄√(log(4/δ)/(2m)),  B̄ = max(2B_R, 1)</p>
+<p>前提是 t_m(δ) ≤ κ/2。</p>
+<p><strong>证明。</strong> 公式(1)的分子 N = (1/|Q_i||Q_i'|)∑<em>{j,l} k_Q(u_j,u'_l)k_R(x_ij,x_i'l) 和分母 Z = (1/|Q_i||Q_i'|)∑</em>{j,l} k_Q(u_j,u'_l) 是独立同分布对 z_j∼P_i, z'_l∼P_i' 中的二样本U统计量，阶为(1,1)，核的值域分别最多为 2B_R 和 1（响应抽取是 z 的一部分，因此不需要每查询响应复制）。由二样本U统计量的Hoeffding不等式[Hoeffding, 1963, Section 5]，每个以最多 δ/2 的概率偏离其均值超过其值域乘以 √(log(4/δ)/(2m))；由于 B̄ 支配两个值域，联合概率 ≥ 1-δ 给出 |N-N<em>| ≤ t_m(δ) 和 |Z-Z</em>| ≤ t_m(δ)。在此事件上，由于假设3的 Z* ≥ κ 和 t_m(δ) ≤ κ/2，我们有 Z ≥ κ/2，且</p>
+<p>|A_ii' - A<em>_ii'| = |NZ</em> - N<em>Z|/(ZZ</em>) ≤ |N-N<em>|/Z + |N</em>||Z-Z<em>|/(ZZ</em>) ≤ 2t_m(δ)/κ + 2B_R t_m(δ)/κ² ≤ 2(1+B_R)/κ² · t_m(δ)</p>
+<p>使用 |N*| ≤ B_R 和 κ ≤ 1。∎</p>
+<p><strong>引理2（透视扰动）</strong>。 设 ε_∞ = max_{i,i'}|A_ii' - A<em>_ii'| 且 β = ‖B</em>‖_op/Δ。在假设4下，存在正交 W ∈ R^{d×d} 使得</p>
+<p>max_i ‖ψ̂<em>i - Wψ_i‖ ≤ 53(1+β)nε</em>∞/√(λ_d(B*))</p>
+<p><strong>证明。</strong> 逐元素地，|D² - D<em>²| ≤ 4ε_∞，双中心化最多将逐元素界限膨胀4倍（JMJ 的每个条目是一个条目、行均值、列均值和 M 的总均值的带符号组合），因此 E = B - B</em> 满足 ‖E‖<em>op ≤ ‖E‖_F ≤ 8nε</em>∞。设 P̂ 和 P<em> 为 B 和 B</em> 的 d 个最大特征值特征向量上的正交投影。则 Ψ<em>Ψ</em>^T = P<em>B</em>P<em>，Ψ̂Ψ̂^T 与 P̂BP̂ 的区别仅在于前 d 个中的负特征值被设为零。每个这样的特征值满足 |λ_k(B)| ≤ |λ_k(B) - λ_k(B</em>)|，因为 λ_k(B<em>) ≥ λ_d(B</em>) &gt; 0，因此由Hoffman-Wielandt不等式[Hoffman and Wielandt, 1953]，‖Ψ̂Ψ̂^T - P̂BP̂‖_F ≤ ‖E‖_F。写出 Ψ̂Ψ̂^T - Ψ<em>Ψ</em>^T = (Ψ̂Ψ̂^T - P̂BP̂) + P̂EP̂ + (P̂-P<em>)B</em>P̂ + P<em>B</em>(P̂-P*)，并应用Davis-Kahan定理[Yu et al., 2015]和三角不等式即可得到结论。∎</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 基准预测, 生成模型评估, 核方法, 低维表示, 查询效率</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
