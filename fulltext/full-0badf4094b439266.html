@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LooM：因果编码器-解码器语言模型的循环不变记忆 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">LooM：因果编码器-解码器语言模型的循环不变记忆</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-04</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.06835" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：LooM: Loop-Invariant Memory for Causal Encoder-Decoder Language Models</h4>
+            <p><strong>中文摘要：</strong> LooM提出循环不变记忆机制，用于因果编码器-解码器语言模型。该方法仅循环解码器读取层，每个KV条目只在首次访问时发布，使缓存大小不随循环次数增长。各层独立循环提供3到21次调用的计算预算，通过随机深度训练使单一无路由器模型覆盖所有预算。实验表明，在足够循环次数下，LooM在语言建模、零样本准确率和长上下文评估上均优于单次前向传播基线，且缓存大小相同。训练预算分布决定额外深度带来的收益，静态路径几乎匹敌学习路由器。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>LooM：因果编码器-解码器语言模型的循环不变记忆</h1>
+<p><strong>Lele Yang*, Muxi Diao*, Zhonghao Yan, Jiankang Chen†, Bin Wen†, Tingting Gao, Wentao Zhang, Kongming Liang, Zhanyu Ma, Weiran Xu‡</strong></p>
+<p>北京邮电大学 中关村学院<br />
+北京大学 Kling团队</p>
+<p>{yang_happy, dmx}@bupt.edu.cn</p>
+<p>*共同贡献 †项目负责人 ‡通讯作者</p>
+<h2>摘要</h2>
+<p>循环Transformer通过重复执行共享层来增加有效深度，但三个局限性阻碍了其广泛应用：内存随循环次数增长、计算只能以整块步长调整、循环次数在训练后难以改变。我们提出LooM（循环不变记忆），逐一解决这些问题。在因果编码器-解码器（CED）中，LooM仅循环第一个之后的解码器层，这些层读取每token仅写入一次的全局记忆，且每层只在首次访问时发布该token的键值（KV）条目，因此缓存不会随循环次数增长。这些层独立循环，提供从3到21次每token层执行的所有预算，且在随机采样预算上训练的一个模型无需路由器即可覆盖所有预算。在足够循环次数下，LooM在语言建模、零样本准确率和长上下文困惑度上优于在相同数据上训练的单次前向传播基线，同时使用相同的缓存大小。我们的分析进一步表明，训练预算分布决定了额外深度能带来什么。这些结果表明CED是循环的天然场所：记忆只写入一次，深度成为部署时选择的预算。</p>
+<h2>1 引言</h2>
+<p><strong>图1：</strong> LooM中的循环不变记忆。 解码器层1（D1）在任何重复之前，每token写入一次全局记忆；D2–D6各自运行 $d_{\ell}\in{0,\ldots,4}$ 次（D3和D5至少一次）。方块表示三个预算下Random-Depth锁定路径上的解码器调用。每次访问都重新读取全局记忆（左），但只有层的首次访问才发布该token的局部KV条目（右）；发布箭头仅对21次调用路径绘制。 D2代表D2–D6中的任意一层：后面的token无论该层运行多少次，每个前面的token只读取一个局部条目，因此缓存（128-token提示后）在每条路径上都相同。CSA2模式在3.1节中定义。</p>
+<p>循环Transformer将相同的层堆栈重复应用于每个token的隐藏状态，在不增加参数的情况下增加有效深度（Dehghani et al., 2019; Geiping et al., 2025; Zhu et al., 2025b; He et al., 2026; Chen et al., 2026a）。这种增加的深度提高了性能：循环模型可以匹敌更大的标准模型（Zhu et al., 2025b），并在潜在空间中扩展测试时计算（Geiping et al., 2025）。然而，三个局限性阻碍了其更广泛的应用。</p>
+<p><strong>（1）内存随循环次数增长。</strong> 在循环Transformer中，相同的层既构建上下文又精炼每个token的状态，因此每次循环都会写入新的键值（KV）条目。使用标准KV缓存（如Ouro中），内存随循环次数线性增长（Zhu et al., 2025b; Conchello Vendrell et al., 2026）。</p>
+<p><strong>（2）计算只能粗粒度调整。</strong> 循环语言模型通常重复一整块层（Geiping et al., 2025; Zhu et al., 2025b; Bae et al., 2025b; Liang et al., 2026），因此预算以该块的倍数出现，且没有一个低于一次完整前向传播。</p>
+<p><strong>（3）循环次数在训练后难以改变。</strong> 在一个循环次数上训练的模型在用更少循环运行时会退化（5.1节）。因此，改变计算通常需要学习到的路由器或停止策略（Graves, 2016; Banino et al., 2021; Raposo et al., 2024; Bae et al., 2025b; Zhu et al., 2025b）或循环条件化（Jeddi et al., 2026）。</p>
+<p>为解决这些局限性，我们提出LooM（循环不变记忆），每个问题对应一个设计。（1）在因果编码器-解码器（CED）（DeepSeek-AI, 2026）中，编码器和第一个解码器层每token写入一次全局记忆，LooM仅循环其余的解码器层，我们称之为读取层。每个读取层只在首次访问时写入（发布）token的局部KV条目，因此缓存不会随循环次数增长（图1）。（2）每个读取层独立循环，零到四次，因此一个模型提供从3到21次解码器调用（层执行）每token的所有预算；一次发布保持缓存不变，即使某层被跳过。（3）训练期间，每次更新采样一个预算，然后采样一条随机路径（即每个读取层运行多少次），模型学会在每个预算下运行。推理时我们为每个预算固定一条路径，在验证数据上选择，无需路由器。</p>
+<p>在5B token上训练，得到的204M参数模型从11次调用开始击败在相同数据上训练的单次前向传播模型。在21次调用时，其测试交叉熵低0.020 nats，零样本平均高0.79分，缓存大小相同（表2）。</p>
+<p>我们的贡献是：</p>
+<ul>
+<li><strong>循环不变记忆。</strong> 我们仅循环CED的读取层并每条局部KV条目只发布一次，因此缓存不随循环次数增长，即使层独立循环或被跳过（3.2节）。</li>
+<li><strong>一个无路由器模型中的层级循环。</strong> 每个读取层独立循环，以单次层执行为步长提供从3到21次调用的预算；通过Random-Depth训练，一个检查点服务所有预算（5.1节）。</li>
+<li><strong>预算分配分析。</strong> 训练预算分布决定额外深度能带来什么（5.2节），重复读取重新检索记忆（5.4节），静态路径几乎匹敌学习到的路由器（5.5节）。</li>
+</ul>
+<h2>2 相关工作</h2>
+<p><strong>循环模型及其KV缓存。</strong> 循环语言模型重用共享层以在不增加参数的情况下增加深度（Geiping et al., 2025; Zhu et al., 2025b; He et al., 2026; Chen et al., 2026a; Bae et al., 2025a; Chen et al., 2026b）。在迭代间保持标准KV缓存（如Ouro所做）使内存随循环次数线性增长（Zhu et al., 2025b; Conchello Vendrell et al., 2026）。Mixture-of-Recursions可以重用第一次递归的KV（Bae et al., 2025b），MELT通过学习到的门控逐层更新一个缓存（Conchello Vendrell et al., 2026），同期工作训练循环堆栈以容忍共享缓存或压缩每次循环的缓存（Prairie et al., 2026; Huang et al., 2026; O'Neill and Reid, 2026）。这些方法通过训练、微调或压缩获得共享缓存；在LooM中，它源于CED写入记忆的位置，无需门控。最接近的设计，同期的Asymmetric Looped Transformer，也将单次前向因果编码器与权重绑定的循环解码器配对（Liang et al., 2026），但它将解码器作为整体循环固定次数，并在每次迭代时重新计算每个局部KV条目，而我们的读取层采用独立深度且每条目只发布一次。我们声明的是CED执行规则，而非跨循环共享KV的一般想法。</p>
+<p><strong>无循环减少KV存储。</strong> 跨层KV共享节省的是跨层而非跨循环的存储（Sun et al., 2024; Wu and Tu, 2024; Brandon et al., 2024）。早退和层跳过方法必须重建被跳过层的状态（Schuster et al., 2022; Del Corro et al., 2023; Elhoushi et al., 2024），或者如BUDDY那样，让产生的缓存缺失保持开放（Zhou et al., 2026）。在一次发布下，被跳过的读取层不发布任何内容，后续token读取最近的先前发布。</p>
+<p><strong>设置token的深度。</strong> 自适应计算学习停止、退出或token路由（Graves, 2016; Dehghani et al., 2019; Banino et al., 2021; Raposo et al., 2024; Bae et al., 2025b; Zhu et al., 2025b; Geiping et al., 2025; Heakl et al., 2025）。BUDDY和LoopFormer通过逐步决策模块或通过将每次迭代条件化于时间和步长，从一个检查点服务多个预算（Zhou et al., 2026; Jeddi et al., 2026）。LooM在推理时两者都不需要：像随机深度、LayerDrop和可瘦身网络一样（Huang et al., 2016; Fan et al., 2020; Yu and Huang, 2019），Random-Depth在训练期间采样每层的深度，学习到的规划器仅作为比较（5.5节）。</p>
+<h2>3 循环读取阶段</h2>
+<p>LooM仅循环读取记忆的解码器层。本节跟随一个token通过该循环，展示为什么重复读取不添加持久记忆，并涵盖训练和推理。</p>
+<h3>3.1 Token在CED中的路径</h3>
+<p>我们的骨干网络采用DeepSeek-V4.1-Flash的因果编码器-解码器结构（DeepSeek-AI, 2026），使用密集FFN。它还保留了该模型的mHC和CSA2组件，每个注意力层以CSA2的三种模式之一运行（DeepSeek-AI, 2026）。<strong>Full</strong>计算层自身的KV条目和Top-$K$检索支持；<strong>Reindex</strong>重用KV但重新计算支持；<strong>Reuse</strong>从最近计算它们的层获取两者。在六个编码器层中，层1-2使用滑动窗口注意力，层3和5以Full模式运行，层4和6以Reuse模式运行。在六个解码器层中，层1以Full模式运行，层3和5以Reindex模式运行，层2、4和6以Reuse模式运行。图1标注了每个块的模式，附录A给出其余架构细节。</p>
+<p>解码器记忆有两种形式。全局注意力读取未压缩的KV库和索引器键，两者由编码器和第一个解码器层从最终编码器表示构建。局部注意力读取宽度为128的因果滑动窗口历史，每个解码器层为自己保留。一旦全局库构建完成，解码器层2-6作为读取层：每次访问它们关注同一个库并更新其隐藏状态。层3和5在每次访问时也重新选择Top-128条目，但不添加全局条目。</p>
+<p>一个token的路径为 $d=(1,d_{2},\ldots,d_{6})$。解码器层1运行一次，解码器层2-6各自连续运行零到四次。解码器层3和5必须至少运行一次，因为它们的Reindex模式必须产生新的Top-$K$支持。这些约束给出2,000条合法路径。我们单独循环每个读取层而非将解码器作为整体循环，原因有三。整体循环只允许四个预算（6、11、16和21次调用），而逐层深度覆盖从3到21的每个预算。深度为零跳过一层，给出最低预算，如3次调用路径 $(1,0,1,0,1,0)$。在预算内，调用也可以在层间不均匀分配。所有路径共享权重，不使用中间语言模型头、额外嵌入或递归边界处的梯度分离。第 $r$ 次执行为</p>
+<p>$$s_{\ell}^{(r)}=F_{\ell}\big(s_{\ell}^{(r-1)};M_{\leq t},H_{\leq t,\ell},I_{\ell}^{(r)}\big),\tag{1}$$</p>
+<p>其中 $s_{\ell}^{(0)}$ 是前一层的输出，$M_{\leq t}$ 是已完成到token $t$ 的全局记忆，$H_{\leq t,\ell}$ 是局部历史，$I_{\ell}^{(r)}$ 是当前检索支持。一次解码器调用是一个token的一次层执行：</p>
+<p>$$C(d)=1+\sum_{\ell=2}^{6}d_{\ell}\in[3,21].\tag{2}$$</p>
+<p>预算是允许的调用次数：解码器层1的单次执行加上解码器层2-6的循环次数。静态路径是该预算下每个token使用的层深度元组。上限是每token调用次数的上界，实际计数可以更低。后缀由解码器层2-6组成，它遵循每条路径共享的前缀：编码器和解码器层1。</p>
+<h3>3.2 一次发布：后续Token看到什么</h3>
+<p>一次发布给两条记忆路径分离的写入规则。全局记忆在任何解码器层开始循环之前完成，因此没有循环向其写入。局部记忆在每个解码器层中每token持有一个KV条目，层在token上的每次执行是一次访问。</p>
+<p>考虑token $t$ 且 $d_{2}=4$，即解码器层2访问 $t$ 四次，假设其全局记忆 $M_{\leq t}$ 在首次访问前已完成。所有四次访问更新 $t$ 的隐藏状态。首次访问还发布token的局部KV条目，即将其写入后续token可以读取的缓存。其他三次访问重新计算 $t$ 的查询，这可以改变其在存储键值上的注意力，但不写入新条目。当token $t+1$ 稍后在解码器层2读取其历史时，无论解码器层2访问 $t$ 一次还是四次，它都为token $t$ 找到一个局部KV条目。循环改变当前token计算使用的隐藏状态，而不改变后续token可读取的条目数。被跳过的解码器层不发布自己的条目，重用最近的先前发布；索引层可以在每次访问时改变其检索支持而不向全局记忆写入新条目。</p>
+<p><strong>缓存大小。</strong> 在 $T$ 个token的前缀后，持久缓存包含两部分：全局库（由编码器和解码器层1每token写入一次）和12层中每层最多 $W=128$ 个局部条目的滑动窗口。忽略数据类型和元数据开销，其大小为</p>
+<p>$$\underbrace{\sum_{j}n_{j}(T)\,k_{j}}<em>{\text{全局库}}+\underbrace{\sum</em>{\ell=1}^{12}\min(T,W)\,k^{\mathrm{loc}}<em>{\ell}}</em>{\text{局部窗口}},\tag{3}$$</p>
+<p>其中库 $j$ 存储 $n_{j}(T)$ 个位置各 $k_{j}$ 字节，层 $\ell$ 每个局部条目存储 $k^{\mathrm{loc}}_{\ell}$ 字节。两项都不依赖于路径：全局记忆在任何循环之前完成，每层每token发布一个局部条目无论运行多少次。因此3次调用和21次调用路径存储相同的字节数。存储的值依赖于执行路径，因为不同路径改变后续层发布的内容，但缓存布局和界限不变。</p>
+<p>因此单一缓存布局服务每个计算预算。相反，在循环读取后重建记忆需要在每个提示位置上运行循环的解码器层（附录C和D）。</p>
+<h3>3.3 为每个预算训练一个模型</h3>
+<p>一次发布让循环次数在不改变缓存布局的情况下变化，因此我们用<strong>Random-Depth</strong>跨循环次数训练单一模型，并与<strong>Self-Distilled</strong>（添加全深度教师的对照）进行比较。两者都独立于token内容采样深度，将每次更新展开到最大采样深度，并屏蔽未执行的重复。两种方案的损失和调度在附录A中。</p>
+<p><strong>Random-Depth</strong>采样一个预算然后该预算的一条路径，它既不训练也不执行路由器。它抽取</p>
+<p>$$B\sim\pi,\qquad d\sim\mathrm{Unif}{d:C(d)=B},\tag{4}$$</p>
+<p>其中 $\pi$ 将 $1/16$ 的质量放在预算3-10上，$3/16$ 放在11-16上，$3/4$ 放在17-21上，在每个区间内均匀。调度在整个运行中固定，给出每token 17.19次期望调用：四分之三的采样路径落在17-21区间，而10次调用或更少的仅占6.25%。</p>
+<p><strong>Self-Distilled</strong>采样一个合法预算和路径，将该后缀与全深度后缀一起运行，并添加来自全深度分布的停止梯度Kullback-Leibler（KL）散度。</p>
+<h3>3.4 每个预算一条静态路径的部署</h3>
+<p>训练后，推理需要每个调用次数的一条路径。对于每个预算 $B\in{3,\ldots,21}$，我们在验证数据上选择一条静态路径，在测试前锁定，并将其用于所有token。</p>
+<p>搜索在16、128和512个验证样本上分三个阶段运行。第一阶段对所有2,000条路径评分，每个精确成本保留四个候选，后两个阶段将其缩小到两个候选然后一个。因为只有第一阶段是穷举的，锁定的路径是找到的最佳路径，不保证最优（附录A）。</p>
+<h3>3.5 用于比较的学习规划器</h3>
+<p>为测试依赖token的分配是否有帮助，我们通过用学习到的规划器替换Random-Depth的静态执行路径来进行消融（5.5节）。规划器读取解码器层1的归一化输出 $u_{t}$，并为每个读取层发出一组分类分数，</p>
+<p>$$z_{t}=Au_{t}+b,\tag{5}$$</p>
+<p>因此token的深度在前缀构建后、任何重复之前一次性确定。</p>
+<p>规划器用直通估计器训练。对于硬选择 $a$ 和松弛概率 $p$，候选深度 $r$ 携带权重 $w_{r}=\mathbf{1}[r=a]+p_{r}-\operatorname{sg}(p_{r})$，因此前向传播运行单一路径而反向传播比较该层的候选。训练目标为</p>
+<p>$$\mathcal{L}=\mathcal{L}<em>{\mathrm{LM}}+\mathcal{L}</em>{\mathrm{index}}-\beta\mathcal{H},\tag{6}$$</p>
+<p>其中 $\mathcal{L}_{\mathrm{index}}$ 是架构已有的索引器KL，$\mathcal{H}$ 是平均路由熵。熵奖励从 $\beta=0.005$ 开始，与探索噪声一起防止策略过早硬化；两者在训练的最后十分之一退火。</p>
+<p>公式(6)仅奖励语言建模质量，因此训练教会规划器在哪里花费深度，计算预算在推理时施加。在那里，精确的动态规划在每token上限下选择最高分的合法路径；无上限时，我们称规划器自身的每token选择为原生路由。</p>
+<h2>4 实验设置</h2>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>训练期间解码器深度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-pass</td>
+<td>始终6次调用；无循环</td>
+</tr>
+<tr>
+<td>LooM, Fixed4</td>
+<td>始终21次调用：解码器层2-6各运行四次</td>
+</tr>
+<tr>
+<td>LooM, Random-Depth</td>
+<td>深度偏重的随机预算（75%在17-21次调用），然后随机路径</td>
+</tr>
+<tr>
+<td>LooM, Self-Distilled</td>
+<td>随机路径从21次调用教师学习</td>
+</tr>
+<tr>
+<td>LooM, Planner</td>
+<td>学习到的路由器根据token设置每层深度</td>
+</tr>
+<tr>
+<td>Grouped memory</td>
+<td>如Fixed4，但记忆在解码器层1、3和5重建</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表1：</strong> 模型和对照。LooM模型共享循环读取阶段和一次发布缓存；分组记忆在循环内写入记忆。只有规划器根据token内容路由。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>调用</th>
+<th>缓存</th>
+<th>测试CE↓</th>
+<th>LAMB.↑</th>
+<th>HellaS.↑</th>
+<th>PIQA↑</th>
+<th>WinoG.↑</th>
+<th>ARC-E↑</th>
+<th>ARC-C↑</th>
+<th>平均↑</th>
+<th>LAMB.PPL↓</th>
+<th>Wiki-2↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-pass（无循环）</td>
+<td>6</td>
+<td>364.1</td>
+<td>3.0506</td>
+<td>20.1</td>
+<td>30.4</td>
+<td>62.6</td>
+<td>50.7</td>
+<td>51.6</td>
+<td>25.4</td>
+<td>40.15</td>
+<td>180.4</td>
+<td>43.20</td>
+</tr>
+<tr>
+<td>LooM, Fixed4</td>
+<td>21</td>
+<td>364.1</td>
+<td>3.0465</td>
+<td>21.2</td>
+<td>30.3</td>
+<td>61.3</td>
+<td>50.7</td>
+<td>52.5</td>
+<td>24.8</td>
+<td>40.14</td>
+<td>173.2</td>
+<td>42.75</td>
+</tr>
+<tr>
+<td>LooM, Self-Distilled</td>
+<td>6</td>
+<td>364.1</td>
+<td>3.0640</td>
+<td>20.8</td>
+<td>30.5</td>
+<td>61.8</td>
+<td>51.5</td>
+<td>51.0</td>
+<td>24.3</td>
+<td>39.98</td>
+<td>168.6</td>
+<td>43.60</td>
+</tr>
+<tr>
+<td></td>
+<td>21</td>
+<td>364.1</td>
+<td>3.0456</td>
+<td>20.9</td>
+<td>30.7</td>
+<td>62.2</td>
+<td>51.4</td>
+<td>50.8</td>
+<td>23.9</td>
+<td>39.98</td>
+<td>154.1</td>
+<td>42.59</td>
+</tr>
+<tr>
+<td>LooM, Planner†</td>
+<td>17.96</td>
+<td>364.1</td>
+<td>3.0355</td>
+<td>21.4</td>
+<td>31.0</td>
+<td>61.6</td>
+<td>51.9</td>
+<td>53.0</td>
+<td>24.1</td>
+<td>40.52</td>
+<td>153.9</td>
+<td>42.63</td>
+</tr>
+<tr>
+<td>LooM, Random-Depth</td>
+<td>6</td>
+<td>364.1</td>
+<td>3.1941</td>
+<td>15.8</td>
+<td>30.5</td>
+<td>62.6</td>
+<td>51.4</td>
+<td>51.8</td>
+<td>25.3</td>
+<td>39.57</td>
+<td>292.6</td>
+<td>52.47</td>
+</tr>
+<tr>
+<td></td>
+<td>11</td>
+<td>364.1</td>
+<td>3.0465</td>
+<td>21.3</td>
+<td>31.1</td>
+<td>62.8</td>
+<td>51.5</td>
+<td>52.8</td>
+<td>25.6</td>
+<td>40.86</td>
+<td>148.3</td>
+<td>43.03</td>
+</tr>
+<tr>
+<td></td>
+<td>16</td>
+<td>364.1</td>
+<td>3.0316</td>
+<td>21.6</td>
+<td>31.2</td>
+<td>62.8</td>
+<td>52.3</td>
+<td>53.1</td>
+<td>25.4</td>
+<td>41.09</td>
+<td>138.2</td>
+<td>42.16</td>
+</tr>
+<tr>
+<td></td>
+<td>21</td>
+<td>364.1</td>
+<td>3.0307</td>
+<td>21.6</td>
+<td>31.2</td>
+<td>62.7</td>
+<td>52.2</td>
+<td>52.7</td>
+<td>25.2</td>
+<td>40.94</td>
+<td>134.4</td>
+<td>42.04</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表2：</strong> 主要结果。所有模型都是204M参数的CED，在相同数据和更新上训练；LooM行仅在训练方案上不同，每个预算使用一条验证锁定的静态路径（†原生路由，平均17.96次调用）。缓存在128-token提示后测量；CE以每token nats计。零样本分数为准确率（%），HellaSwag和ARC-C为归一化值。由于多个任务接近随机水平，仅CE、平均和PPL被标记（粗体红色：最佳；下划线蓝色：第二）。所有预算的CE：图2。</p>
+<p><strong>模型和对照。</strong> 表1列出所有运行。除分组记忆外所有循环模型都是LooM模型：它们共享第3节的循环读取阶段和一次发布缓存，仅在训练期间如何设置解码器深度上不同。Random-Depth是我们的主要多预算模型（3.3节）。其余每个运行针对它隔离一个因素。Single-pass和Fixed4将解码器保持在6和21次调用，分离循环效果与深度采样效果；Self-Distilled改变训练哪些路径，测试训练分布如何塑造低预算；规划器（3.5节）用学习到的路由器替换静态路径，测量依赖token的分配增加什么；分组记忆保持Fixed4的调度但在多个解码器层写入上下文记忆，隔离记忆写入位置。</p>
+<p><strong>训练。</strong> 所有运行共享204M参数骨干网络，从头开始在FineWeb-Edu的5B有效目标token上训练（Penedo et al., 2024），使用相同的种子、批处理和优化器调度，因此每个比较在参数和训练数据上匹配（附录K；配置见表6）。它们在训练计算上不匹配：循环更新比单次前向运行更多解码器调用，循环运行使用了单次前向运行GPU时数的2.9-4.7倍。</p>
+<p><strong>语言建模。</strong> 我们在2,048个留出序列上报告token加权测试CE，对7,836个段进行配对文档bootstrap区间。困惑度（PPL）为 $\exp(\mathrm{CE})$。</p>
+<p><strong>下游和长上下文评估。</strong> 预先指定的标准套件为LAMBADA（Paperno et al., 2016）、HellaSwag（Zellers et al., 2019）、PIQA（Bisk et al., 2020）、WinoGrande（Sakaguchi et al., 2020）、ARC-Easy和ARC-Challenge（Clark et al., 2018），加上WikiText-2词困惑度（Merity et al., 2017）；我们在评分前固定了指标和宏平均（附录H）。评分使用lm-evaluation-harness 0.4.13（Gao et al., 2023）。在共享的64K上下文延续后，Random-Depth、单次前向模型和规划器在PG19（Rae et al., 2020）和三个RULER检索任务上评估（Hsieh et al., 2024）（附录I）。</p>
+<p><strong>成本。</strong> 我们报告单序列解码延迟（批大小为1），额外调用的每token成本在此最明显，使用参考实现在一块NVIDIA H800 GPU上测量。矩阵FLOPs从操作数形状计算线性投影、注意力 $QK^{\top}$ 和 $AV$、索引器/路由器投影和词汇头操作，包括tile填充和掩码库行；它们排除归一化、softmax、排序、索引、缓存复制和逐点归约。对于Fixed4的21次调用延迟，我们重用Random-Depth的路径形状；在相同路径上，检查点差异最多1.4%（附录C）。遵循DeepSeek-V4.1-Flash（DeepSeek-AI, 2026），预填充使用最近128个提示token上的滑动窗口注意力（SWA）重放，近似重建解码器的SWA KV缓存而不在提示上运行解码器。因此，65K-token预填充从3到21次调用仅增长3.2%，预算主要影响解码。</p>
+<h2>5 结果与分析</h2>
+<p>本节首先读取主要结果（表2）：质量、缓存大小和下游准确率。然后检查训练深度分布的作用、额外循环的计算成本、重复读取的贡献、token是否需要不同深度，以及64K延续后的长上下文评估。除声明原生路由外，每个模型每个预算使用一条验证锁定的静态路径。</p>
+<h3>5.1 主要结果：跨预算的一个检查点</h3>
+<p>我们首先询问LooM是否通过重复读取阶段优于一次普通前向传播，以及单一检查点能否跨循环次数做到。表2汇集了答案。两个对照框架了它：单次前向模型显示相同骨干在六次调用时达到什么，Fixed4仅在完整21次调用循环上训练并在缩短路径上评估。</p>
+<p><strong>图2：</strong> LooM模型在验证锁定静态路径上的测试CE（每token nats；越低越好）；星号为规划器的原生路由。 全范围。 放大：Random-Depth和Self-Distilled都在10到11次调用之间穿越六次调用单次前向线。</p>
+<p><strong>一个LooM检查点，用Random-Depth训练，覆盖3-21次调用，从11次调用开始击败六次调用的单次前向模型，在21次调用时低0.020 nats。</strong></p>
+<p><strong>质量。</strong> 交叉点在10到11次调用之间（图2b），21次调用时的0.020-nat增益是困惑度减少2.0%。CE从11到21次调用下降0.0158 nats，从16次调用起几乎平坦，因此额外预算的大部分增益早期到达。低于11次调用时两种多预算方案都落后于单次前向模型，后者恰好为六次调用训练。Self-Distilled在低端是更强的方案，代价是训练期间的全深度教师，而Random-Depth从11次调用起更强。</p>
+<p><strong>一个检查点对比固定循环。</strong> Fixed4展示了跨循环次数训练增加什么。仅在其21次调用循环上训练，它在缩短时退化（图2a），在相同路径上Random-Depth好0.0158 nats（$[-0.0164,-0.0151]$）。Random-Depth在11次调用已匹配Fixed4在21次调用：两者都达到3.0465，差异 $+0.00003$（$[-0.00065,+0.00071]$）。</p>
+<p><strong>缓存。</strong> 表2的每一行在128-token提示后存储相同的364.1 KiB，跨模型和Random-Depth的预算，如公式(3)所预测。5.3节涵盖它们的计算成本。</p>
+<p><strong>下游准确率。</strong> 零样本列遵循CE前沿。在21次调用时Random-Depth将六任务平均比单次前向模型提高0.79分（$[+0.05,+1.54]$），并将LAMBADA困惑度从180.4降至134.4。在6次调用时落后于单次前向模型；在11次调用时比21次调用的Fixed4高0.71分（$[-0.04,+1.43]$）；平均在16次调用时达到峰值。多个任务在此规模接近随机水平，因此我们只读取平均值和困惑度。</p>
+<h3>5.2 训练分布决定额外深度买什么</h3>
+<p><strong>将训练样本均匀分布在预算上产生一个质量对深度几乎不响应的模型。Random-Depth将它们集中在可部署范围，从相同的额外调用中获得十二倍的收益。</strong></p>
+<p>Random-Depth的调度是深度偏重的（3.3节）。其质量同样在高预算时强、低预算时弱（图2）。仅这种对应关系不能建立因果关系：弱的低预算路径可能反映浅层执行的内在代价而非浅层训练样本太少。Self-Distilled和均匀预算对照通过改变训练路径来分离两者（附录B）。</p>
+<p><strong>浅层执行没有内在惩罚。</strong> 在三次调用时Self-Distilled达到3.1570而Random-Depth达到4.3787（图2a），在相同架构、数据和更新上；均匀预算对照显示相同效果（表7）。因此低预算的短缺源于训练分布。</p>
+<p><strong>平坦分布的代价是对深度的响应。</strong> 训练早期，均匀预算对照从6到21次调用仅改善0.012 nats，而Random-Depth的深度偏重调度为0.145——相同的十五次额外调用回报少十二倍（表7）；质量不响应深度的模型完全不能服务计算预算。Random-Depth在此在16和21次调用最佳，完全训练后从11次调用起领先——任何方案超越单次前向基线的唯一区域（5.1节）。Self-Distilled在每个预算保持在最佳方案0.015 nats内，但它在每次更新运行全深度教师，GPU时数为单次前向运行的4.73倍而Random-Depth为2.94倍，其优势未达到下游套件（附录H）。</p>
+<h3>5.3 额外循环花费计算，而非持久记忆</h3>
+<p><strong>额外循环增加计算而保持缓存大小不变；在循环内重建记忆扩大缓存而不改善质量。</strong></p>
+<p>缓存在更长提示下也独立于循环次数：在512-和2,048-token提示后分别为550.8和1,297.8 KiB，在3-和21次调用路径上都相同。</p>
+<table>
+<thead>
+<tr>
+<th>调用</th>
+<th>路径</th>
+<th>ms/token</th>
+<th>GFLOP/token</th>
+<th>测试CE↓</th>
+<th>预填充4,096</th>
+<th>预填充65,536</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>(1,0,1,0,1,0)</td>
+<td>44.74</td>
+<td>5.381</td>
+<td>4.3787</td>
+<td>82.2</td>
+<td>3,134.6</td>
+</tr>
+<tr>
+<td>6</td>
+<td>(1,1,1,1,1,1)</td>
+<td>56.52</td>
+<td>6.305</td>
+<td>3.1941</td>
+<td>94.3</td>
+<td>3,145.6</td>
+</tr>
+<tr>
+<td>11</td>
+<td>(1,2,2,2,2,2)</td>
+<td>75.07</td>
+<td>7.847</td>
+<td>3.0465</td>
+<td>112.2</td>
+<td>3,171.6</td>
+</tr>
+<tr>
+<td>16</td>
+<td>(1,4,3,3,2,3)</td>
+<td>93.15</td>
+<td>9.387</td>
+<td>3.0316</td>
+<td>128.4</td>
+<td>3,194.5</td>
+</tr>
+<tr>
+<td>21</td>
+<td>(1,4,4,4,4,4)</td>
+<td>112.54</td>
+<td>10.929</td>
+<td>3.0307</td>
+<td>147.3</td>
+<td>3,233.7</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表3：</strong> Random-Depth锁定路径在批大小为1、一块NVIDIA H800 GPU上用Python参考实现的成本（24次解码和5次预填充运行的中位数）。预填充列使用4,096-和65,536-token提示。完整测量在附录C中。</p>
+<p>额外循环的代价因此落在计算上。在批大小为1时，参考解码延迟从3次调用的44.74 ms增长到21次调用的112.54 ms，而65K-token预填充仅增长3.2%（表3；附录C）。相对于六次调用的单次前向模型，Random-Depth的21次调用增益需要99.1%更高的参考解码延迟（56.52到112.54 ms）和73.3%更多的矩阵FLOPs（6.305到10.929 GFLOP每token）。因为Random-Depth在11次调用达到Fixed4的21次调用质量，这个更小的预算将延迟减少33.3%，矩阵FLOPs减少28.2%（表2；附录C）。所有这些测量来自无优化内核的参考实现。</p>
+<p>由于LooM保持缓存固定，剩下的问题是在循环内重建记忆是否将质量改善到足以证明其额外存储。分组记忆变体通过在Fixed4调度下在解码器层1、3和5重建解码器记忆来测试这一点。它将缓存大小在1,024-16,384-token提示上增加1.58-1.88倍，在相同调度下测试CE略差于LooM（3.04728对比3.04646，差异 $+0.00082$，$[+0.0002,+0.0014]$；表4；附录D）。</p>
+<table>
+<thead>
+<tr>
+<th>提示</th>
+<th>LooM</th>
+<th>分组</th>
+<th>比率</th>
+<th>LooM节省</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1,024</td>
+<td>0.75</td>
+<td>1.19</td>
+<td>1.58×</td>
+<td>37%</td>
+</tr>
+<tr>
+<td>4,096</td>
+<td>2.19</td>
+<td>3.94</td>
+<td>1.80×</td>
+<td>44%</td>
+</tr>
+<tr>
+<td>16,384</td>
+<td>7.93</td>
+<td>14.93</td>
+<td>1.88×</td>
+<td>47%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表4：</strong> Fixed4的21次调用调度下LooM和分组记忆的持久解码缓存（MiB，BF16）。</p>
+<h3>5.4 重复读取做什么</h3>
+<p><strong>重复读取既精炼隐藏状态又重新检索记忆：冻结首次访问的检索选择损失0.0114 nats。</strong></p>
+<p>重新执行解码器层可以以两种方式改变token的计算。每次访问更新token的隐藏状态，每次访问选择读取哪些记忆条目。我们分别测量这两个效果。</p>
+<p><strong>重复读取精炼隐藏状态。</strong> 每层的首次访问做出最大更新，后续访问做出较小的更新，在Random-Depth和规划器中都如此（图4b）。</p>
+<p><strong>重复读取还重新检索记忆。</strong> 对于解码器层3，首次和第四次访问的Top-$K$集合总体Jaccard相似度为0.54，在位置2,048之后为0.30，第四次访问的全局注意力有32%落在首次访问未选择的条目上。为测试这种重新检索是否对质量重要，我们冻结每层首次访问的选择并在所有后续访问中重用。这一干预使Random-Depth损失0.0114 nats（$[0.0106,0.0122]$），因此后续访问从它们新选择的条目中获得质量。</p>
+<p>一次重复读取因此同时做两件事：它对token的状态应用逐渐减小的精炼，并检索首次访问未选择的记忆条目。</p>
+<h3>5.5 Token特定的深度分配</h3>
+<p><strong>Token需要不同深度吗？在4K时，每个预算一条静态路径几乎匹配测试的线性规划器；64K延续后，原生路由有小优势。</strong></p>
+<p><strong>4K时可部署的路由。</strong> 在一个检查点内比较，规划器在17.96次调用的原生路由仅比其自身的静态18次调用路径好0.00051 nats。表8报告了替换原生路由的四种方式，在两个校准的规划器延续上（附录F）：</p>
+<ul>
+<li><strong>静态路径</strong>为每个token在每个上限下提供一条验证选择的路径。</li>
+<li><strong>静态分割</strong>保持每个token的原生总数但用验证选择的等总数路径替换其层分割。</li>
+<li><strong>平均总数</strong>保持原生分割但给每个token其文档的平均总数。</li>
+<li><strong>打乱总数</strong>按文档排列总数。</li>
+</ul>
+<p>在上限11-21时，静态路径和静态分割改变CE少于 $10^{-3}$。在上限21时，平均总数仅损失0.00013-0.00014 nats，打乱总数损失0.0017。规划器也仅在51.4-51.5%的时间内正确排序等成本替代方案。一个更粗的标量深度规划器（预测每token一个深度由所有读取层共享）在可比预算下落后于逐层规划器和Random-Depth（附录A）。除了token依赖性，规划器的目标在Random-Depth的基础上添加了熵奖励和探索噪声（3.5节）。这些结果界定了约20K参数的单一线性规划器在4K时贡献什么；它们不界定自适应计算的一般价值。</p>
+<p><strong>分配的潜在收益。</strong> 每token分配只有在额外解码器调用的收益在token间不同时才有帮助，因此我们首先测量这种收益如何分布。我们使用从11到21次调用的增益，因为从六次调用开始的比较主要测量Random-Depth弱的六次调用路径的短缺。我们将测试token按难度（定义为目标负对数似然NLL）分为十分位数，11到21的增益在这些十分位数上从0.002上升到0.025 nats，约十二倍（图4a；附录G）。目标NLL依赖于正确的下一个token，部署的路由器在选择深度时无法观察。十分位数因此显示额外调用的收益随token难度变化，但不显示路由器能仅从前缀识别最受益的token。</p>
+<p>为估计每token分配能帮助多少，我们对相同的256个测试序列应用事后策略。对每个token，策略根据其目标NLL从锁定的11、13、16和21次调用路径中选择一条，选择经过调整使平均成本恰好为16次调用。然后我们执行混合路径，使后续token读取所选路径实际发布的局部KV条目。混合路径达到CE 2.9631，对比静态16次调用路径的3.0203，增益0.0572 nats（附录J）。强制16次调用平均的步骤不保证最优，因此该增益是这四条路径可用的最佳事后增益的下界。它也不界定一般路由器可达到的增益。</p>
+<p><strong>64K延续后。</strong> 具有原生路由的延续规划器比Random-Depth具有更低的PG19困惑度，在4K时低0.0039 nats，在64K时低0.0064（5.6节）。其原生路由比其自身的静态21次调用路径仅改善0.0008-0.0014 nats，因此该优势的大部分不来自每token路由。延续模型因此同意4K发现——每个预算一条静态路径几乎匹配规划器——并添加小的原生路由优势。所有这些差异在一个训练种子上低于0.01 nats（附录I）。</p>
+<h3>5.6 长上下文评估</h3>
+<p>前面的比较使用4K训练上下文。Random-Depth、单次前向模型和规划器然后接收相同的600次更新延续，包括64K下的360次更新。</p>
+<p><strong>语言建模。</strong> Random-Depth在从4K到64K的每个评估长度上保持比单次前向模型更低的PG19困惑度，每个区间排除零（表5）。差距随长度缩小，从4K时的0.0218 nats到64K时的0.0068。</p>
+<table>
+<thead>
+<tr>
+<th>上下文</th>
+<th>Single</th>
+<th>RD</th>
+<th>RD−Single, 95% CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4K</td>
+<td>25.483</td>
+<td>24.934</td>
+<td>−0.0218 [−0.0252,−0.0184]</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>24.277</td>
+<td>23.858</td>
+<td>−0.0174 [−0.0211,−0.0136]</td>
+</tr>
+<tr>
+<td>16K</td>
+<td>23.986</td>
+<td>23.660</td>
+<td>−0.0137 [−0.0176,−0.0097]</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>23.858</td>
+<td>23.568</td>
+<td>−0.0122 [−0.0162,−0.0082]</td>
+</tr>
+<tr>
+<td>64K</td>
+<td>23.806</td>
+<td>23.644</td>
+<td>−0.0068 [−0.0110,−0.0025]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表5：</strong> 共享64K延续后的PG19困惑度。最后一列为Random-Depth（RD）减去单次前向NLL（nats），带全书95% CI；负值有利于RD。粗体红色：最佳；下划线蓝色：每个长度第二。</p>
+<p><strong>检索。</strong> 我们对每个模型应用相同的答案格式微调，并在三个大海捞针任务上评估（附录I）。Random-Depth达到67.33%准确率，对比单次前向模型的61.33%，增益6.0分，区间 $[+1.33,+10.33]$。在这300个问题上，Random-Depth匹配规划器。</p>
+<h2>6 结论</h2>
+<p>我们提出了LooM，它仅循环因果编码器-解码器的读取层并每条局部KV条目只发布一次，因此缓存无论层运行多少次都保持固定。逐层循环给出从3到21次调用的每个预算，Random-Depth训练让一个无路由器检查点服务所有预算。在足够循环下，LooM在语言建模、零样本准确率和长上下文评估上以相同缓存大小优于在相同数据上训练的单次前向模型。在CED内循环因此将深度转化为部署时选择的计算预算；将其扩展到更大模型是自然的下一步。</p>
+<h2>局限性</h2>
+<p>我们的证据来自一个204M参数骨干、5B训练token和一个种子，因此我们不能说增益如何随规模变化；延迟同样是批大小为1的参考测量，而非优化的服务吞吐量。基线在参数和数据上匹配但在计算上不匹配：没有非循环模型被给予21次调用路径的FLOPs，保持每次循环缓存的整个解码器循环是一个初步的、部分训练的运行（附录E）。</p>
+<h2>参考文献</h2>
+<p>Bae, S., Fisch, A., Harutyunyan, H., Ji, Z., Kim, S., &amp; Schuster, T. (2025a). Relaxed Recursive Transformers: Effective Parameter Sharing with Layer-wise LoRA. <em>ICLR</em>.</p>
+<p>Bae, S., Kim, Y., Bayat, R., Kim, S., Ha, J., Schuster, T., Fisch, A., Harutyunyan, H., Ji, Z., Courville, A., &amp; Yun, S.-Y. (2025b). Mixture-of-Recursions: Learning Dynamic Recursive Depths for Adaptive Token-Level Computation. <em>arXiv:2507.10524</em>.</p>
+<p>Banino, A., Balaguer, J., &amp; Blundell, C. (2021). PonderNet: Learning to Ponder. <em>arXiv:2107.05407</em>.</p>
+<p>Ben Allal, L., et al. (2025). SmolLM2: When Smol Goes Big – Data-Centric Training of a Small Language Model. <em>arXiv:2502.02737</em>.</p>
+<p>Bisk, Y., Zellers, R., Le Bras, R., Gao, J., &amp; Choi, Y. (2020). PIQA: Reasoning about Physical Commonsense in Natural Language. <em>AAAI</em>.</p>
+<p>Brandon, W., Mishra, M., Nrusimha, A., Panda, R., &amp; Ragan-Kelley, J. (2024). Reducing Transformer Key-Value Cache Size with Cross-Layer Attention. <em>NeurIPS</em>.</p>
+<p>Chen, L., Li, J., Liang, C., Lao, N., &amp; Liu, Q. (2026a). Training-Free Looped Transformers. <em>arXiv:2605.23872</em>.</p>
+<p>Chen, W., Li, T., Huang, W., Yin, Y., Shang, L., &amp; Qin, C. (2026b). LoopMoE: Unifying Iterative Computation with Mixture-of-Experts for Language Modeling. <em>arXiv:2606.04438</em>.</p>
+<p>Clark, P., et al. (2018). Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge. <em>arXiv:1803.05457</em>.</p>
+<p>Conchello Vendrell, V., et al. (2026). Memory-Efficient Looped Transformer: Decoupling Compute from Memory in Looped Language Models. <em>arXiv:2605.07721v3</em>.</p>
+<p>DeepSeek-AI. (2026). DeepSeek-V4.1-Flash: Pushing the Limits of KV Cache Compression. <em>arXiv:2609.19969</em>.</p>
+<p>Dehghani, M., Gouws, S., Vinyals, O., Uszkoreit, J., &amp; Kaiser, Ł. (2019). Universal Transformers. <em>ICLR</em>.</p>
+<p>Del Corro, L., et al. (2023). SkipDecode: Autoregressive Skip Decoding with Batching and Caching for Efficient LLM Inference. <em>arXiv:2307.02628</em>.</p>
+<p>Elhoushi, M., et al. (2024). LayerSkip: Enabling Early Exit Inference and Self-Speculative Decoding. <em>ACL</em>.</p>
+<p>Fan, A., Grave, E., &amp; Joulin, A. (2020). Reducing Transformer Depth on Demand with Structured Dropout. <em>ICLR</em>.</p>
+<p>Gao, L., et al. (2023). A Framework for Few-Shot Language Model Evaluation.</p>
+<p>Geiping, J., et al. (2025). Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach. <em>arXiv:2502.05171</em>.</p>
+<p>Graves, A. (2016). Adaptive Computation Time for Recurrent Neural Networks. <em>arXiv:1603.08983</em>.</p>
+<p>He, D., Li, P., Chang, D., Meng, Q., Yin, L., &amp; Liu, S. (2026). Looping Beyond Twice: A Scalable Recipe for Looped Mixture-of-Experts. <em>arXiv:2610.01153</em>.</p>
+<p>Heakl, A., Gubri, M., Khan, S., Yun, S., &amp; Oh, S. J. (2025). Dr.LLM: Dynamic Layer Routing in LLMs. <em>arXiv:2510.12773</em>.</p>
+<p>Hsieh, C.-P., et al. (2024). RULER: What's the Real Context Size of Your Long-Context Language Models? <em>COLM</em>.</p>
+<p>Huang, B., et al. (2026). Towards Looped Models Done Right, Part II: Rethinking at Fixed Points. <em>arXiv:2610.06833</em>.</p>
+<p>Huang, G., Sun, Y., Liu, Z., Sedra, D., &amp; Weinberger, K. Q. (2016). Deep Networks with Stochastic Depth. <em>ECCV</em>.</p>
+<p>Jeddi, A., Ciccone, M., &amp; Taati, B. (2026). LoopFormer: Elastic-Depth Looped Transformers for Latent Reasoning via Shortcut Modulation. <em>arXiv:2602.11451</em>.</p>
+<p>Liang, C., et al. (2026). Asymmetric Looped Transformers: Fixed Global Representations for an Iterative Decoder. <em>arXiv:2610.28489</em>.</p>
+<p>Merity, S., Xiong, C., Bradbury, J., &amp; Socher, R. (2017). Pointer Sentinel Mixture Models. <em>ICLR</em>.</p>
+<p>O'Neill, J., &amp; Reid, F. (2026). Looped Latent Attention: Cross-Loop KV Compression for Looped Transformers. <em>arXiv:2607.15456</em>.</p>
+<p>Paperno, D., et al. (2016). The LAMBADA Dataset: Word Prediction Requiring a Broad Discourse Context. <em>ACL</em>.</p>
+<p>Penedo, G., et al. (2024). The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale. <em>NeurIPS Datasets and Benchmarks</em>.</p>
+<p>Peng, B., Quesnelle, J., Fan, H., &amp; Shippole, E. (2024). YaRN: Efficient Context Window Extension of Large Language Models. <em>ICLR</em>.</p>
+<p>Prairie, H., et al. (2026). BeNice! Closing Looping's Inference-Memory Gap via KV-Sharing. <em>arXiv:2610.31633</em>.</p>
+<p>Rae, J. W., Potapenko, A., Jayakumar, S. M., &amp; Lillicrap, T. P. (2020). Compressive Transformers for Long-Range Sequence Modelling. <em>ICLR</em>.</p>
+<p>Raposo, D., et al. (2024). Mixture-of-Depths: Dynamically allocating compute in transformer-based language models. <em>arXiv:2404.02258</em>.</p>
+<p>Sakaguchi, K., Le Bras, R., Bhagavatula, C., &amp; Choi, Y. (2020). WinoGrande: An Adversarial Winograd Schema Challenge at Scale. <em>AAAI</em>.</p>
+<p>Schuster, T., et al. (2022). Confident Adaptive Language Modeling. <em>NeurIPS</em>.</p>
+<p>Sun, Y., et al. (2024). You Only Cache Once: Decoder-Decoder Architectures for Language Models. <em>NeurIPS</em>.</p>
+<p>Wu, H., &amp; Tu, K. (2024). Layer-Condensed KV Cache for Efficient Inference of Large Language Models. <em>ACL</em>, 11175-11188.</p>
+<p>Xie, Z., et al. (2025). mHC: Manifold-Constrained Hyper-Connections. <em>arXiv:2512.24880</em>.</p>
+<p>Yu, J., &amp; Huang, T. S. (2019). Universally Slimmable Networks and Improved Training Techniques. <em>ICCV</em>.</p>
+<p>Zellers, R., Holtzman, A., Bisk, Y., Farhadi, A., &amp; Choi, Y. (2019). HellaSwag: Can a Machine Really Finish Your Sentence? <em>ACL</em>.</p>
+<p>Zhou, Y., et al. (2026). BUDDY: BUdget-Driven DYnamic Depth Routing for Adaptive Large Language Model Inference. <em>arXiv:2606.09514</em>.</p>
+<p>Zhu, D., et al. (2025a). Hyper-Connections. <em>ICLR</em>.</p>
+<p>Zhu, R.-J., et al. (2025b). Scaling Latent Reasoning via Looped Language Models. <em>arXiv:2510.25741</em>.</p>
+<h2>附录A 架构和训练细节</h2>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>骨干参数</td>
+<td>204,046,232</td>
+</tr>
+<tr>
+<td>规划器参数（仅规划器模型）</td>
+<td>19,159</td>
+</tr>
+<tr>
+<td>隐藏/前馈宽度</td>
+<td>832 / 2,688</td>
+</tr>
+<tr>
+<td>注意力头×头维度</td>
+<td>64×80</td>
+</tr>
+<tr>
+<td>滑动窗口宽度（编码器1-2；解码器）</td>
+<td>256; 128</td>
+</tr>
+<tr>
+<td>索引器头×宽度，Top-K</td>
+<td>32×32, 128</td>
+</tr>
+<tr>
+<td>全局KV压缩（编码器3/5；解码器1）</td>
+<td>2; 1</td>
+</tr>
+<tr>
+<td>读取层</td>
+<td>5</td>
+</tr>
+<tr>
+<td>每token解码器调用</td>
+<td>3-21</td>
+</tr>
+<tr>
+<td>训练目标</td>
+<td>5,000,200,876</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表6：</strong> 共享骨干的架构。KV：键值。</p>
+<p><strong>优化。</strong> 我们使用AdamW，峰值学习率 $3\times 10^{-4}$ 衰减到 $3\times 10^{-5}$，114次预热更新，权重衰减0.1，梯度裁剪最大范数1.0。计算使用BF16，选定组件保持FP32。</p>
+<p><strong>注意力和残差结构。</strong> 骨干使用CSA2压缩稀疏注意力（DeepSeek-AI, 2026），其三种模式在3.1节中定义。在编码器内部，层3和5以比率二写入压缩KV，层4和6重用。解码器层2、4和6重用最近的解码器检索支持。查询低秩宽度为208，八个输出组，输出低秩宽度160。残差结构使用四并行流的流形约束超连接（Xie et al., 2025; Zhu et al., 2025a），输入嵌入和输出头不绑定。全局KV生产者是编码器层3和5以及解码器层1（物理层L3、L5和L7），压缩比率分别为二、二和一。索引生产者是编码器层3和5以及解码器层1、3和5。解码器层3和5在解码器层1的全局库上重新计算查询和Top-128支持，但不追加持久全局KV或索引器键。解码器层4和6消费其最近访问的选择。这种重用既不违反预重复全局记忆规则也不违反公式(3)的缓存大小。</p>
+<p><strong>规划器。</strong> 规划器读取 $u_{t}\in\mathbb{R}^{832}$，解码器层1的归一化输出。公式(5)中的分数组大小为 $(5,4,5,4,5)$。每个读取器计算最多深度四的候选隐藏状态。在公式(6)中，$\mathcal{H}$ 是token路由分布的熵，在有效token和可变读取器上平均。在每token上限 $B$ 下，分配器用多选动态规划在 $O(L_{D}B\max_{j}|\mathcal{D}<em>{j}|)$ 时间内求解 $\max</em>{d:C(d)\leq B}\sum_{\ell}z_{t,\ell,d_{\ell}}$。因为上限是上界，实际调用可以更低。用log-sum-exp替换max给出预算条件延续使用的约束边缘（附录F）；该延续添加零初始化的预算表 $e_{B}\in\mathbb{R}^{23}$，22行506参数。</p>
+<p><strong>标量深度规划器。</strong> 更粗的规划器预测每token一个深度并在解码器层2-6间共享，因此不能跳过层。它在平均19.17次调用时达到测试CE 3.04026，落后于逐层规划器（17.96次原生调用时3.03546）和19次调用的Random-Depth（3.03058）。</p>
+<p><strong>密集执行和采样。</strong> 每个微批次展开到其最大采样深度，未执行的重复被屏蔽，每个KV条目仍只发布一次。采样是确定性的，由训练种子与更新、微批次槽和数据并行秩一起播种。Self-Distilled每个微批次槽抽取一个预算，每个秩抽取一条路径，编码器和解码器层1形成学生和全深度教师共享的前缀。</p>
+<p><strong>静态路径搜索。</strong> 3.4节的分阶段搜索仅在其第一阶段穷举，因此不证明在所有512个样本上的最佳静态路径。所有选择文件记录路径在测试评分前锁定。</p>
+<h2>附录B 均匀预算对照</h2>
+<table>
+<thead>
+<tr>
+<th>调用</th>
+<th>深度偏重</th>
+<th>均匀</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>4.2236</td>
+<td>3.4108</td>
+</tr>
+<tr>
+<td>6</td>
+<td>3.4551</td>
+<td>3.3587</td>
+</tr>
+<tr>
+<td>11</td>
+<td>3.3290</td>
+<td>3.3490</td>
+</tr>
+<tr>
+<td>16</td>
+<td>3.3114</td>
+<td>3.3470</td>
+</tr>
+<tr>
+<td>21</td>
+<td>3.3106</td>
+<td>3.3468</td>
+</tr>
+<tr>
+<td>训练调用</td>
+<td>17.19</td>
+<td>13.88</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表7：</strong> 相同方案中的两种预算分布，在训练早期比较：测试交叉熵（CE；每token nats，越低越好）。深度偏重是Random-Depth的调度；均匀运行以概率0.25抽取完整21次调用路径，否则在3-20次调用中均匀抽取预算。两者然后抽取该预算的均匀随机合法路径，包括跳过的层。训练调用是每个训练token的期望解码器调用；均匀运行使用更少，这混淆了绝对水平但不混淆模型内曲线的平坦度。</p>
+<p>5.2节将Random-Depth弱的低预算归因于其深度偏重调度很少采样它们，而非浅层执行本身。Self-Distilled支持这一点但也添加了全深度教师，因此同时改变两件事。均匀运行仅改变预算分布：它保持Random-Depth的方案但将大多数样本均匀分布在3-20次调用上而非将四分之三放在17-21。两个运行在训练早期的相同点比较。</p>
+<p>表7给出调度和结果。均匀运行在3和6次调用更好，因此浅层路径一旦训练足够就变强，深度偏重调度从11次调用起更好；5.2节读取该权衡的代价。</p>
+<h2>附录C 成本和预填充测量</h2>
+<p><strong>协议。</strong> 解码使用128-token提示后的32-token教师强制延续，每条路径8个请求3次重复。Python参考循环计时编码器、选定的解码器体、缓存更新和FP32 logits。矩阵FLOPs如第4节所述从分派操作数形状计数，包括显式tile填充和掩码库行；它们既不是硬件指令计数也不是有用token的理论FLOPs。每行平均操作员计数审计通过的请求，八个中的六到八个。缓存大小测量为活跃持久存储。Fixed4在21次调用未独立计时；我们重用相同路径形状，两个测量模型在相同路径上差异最多1.4%。</p>
+<p><strong>图3：</strong> Random-Depth的预填充和后续解码对比预算，每条提示长度一条曲线（一块NVIDIA H800，批大小1，5次中位数）。 预填充由提示而非预算决定：在65,536 token时整个3到21次调用范围成本多3.2%。 解码由预算决定，四个提示长度几乎在一条曲线上。持久缓存在每个提示长度上跨路径相同。超过4,096 token的提示仅计时成本。</p>
+<p><strong>解码和预填充。</strong> 在相同静态路径上，成本依赖于路径和模型形状而非权重。在512-和2,048-token提示下，持久缓存在3-和21次调用路径上再次相同。原生路由在17.99次调用时耗时100.03 ms，在静态16-和21次调用路径的插值0.5%以内。预填充遵循DeepSeek-V4.1-Flash的最近128个提示token的SWA重放（DeepSeek-AI, 2026）。在65,536个提示token时，预填充在3次调用时耗时3.13 s，在21次时3.23 s，增加3.2%。预算因此主要影响解码（图3）。</p>
+<h2>附录D 分组解码器记忆</h2>
+<p>比较使用Fixed4的调度：编码器层1-6和解码器层1各一次，然后解码器层2-6各四次。LooM的布局在解码器层1构建一个解码器记忆并通过解码器层6重用。分组布局在解码器层1、3和5构建记忆，添加两个全局生产者和138,464参数；后续记忆在重复读取后计算。分组模型在1,024个提示token时将持久缓存大小增加1.58倍，4,096时1.80倍，16,384时1.88倍。配对区间在相同的7,836个测试文档段上用2,000次重采样计算。这是一个Fixed4调度变体和一个种子，不是所有记忆共享设计的一般测试。</p>
+<h2>附录E 循环整个解码器</h2>
+<p>整个解码器对照将六层解码器用共享权重重复最多四次，每轮保留自己的局部历史。编码器和全局记忆计算一次。门控定义首次退出分布，训练最小化期望CE减去系数0.1的熵奖励。运行从随机初始化开始，重用单次前向的数据、优化器、调度和种子。</p>
+<p>在更新1,800时，在相同的512样本、1,737,712目标验证集上，整个解码器循环在一到四轮达到3.3814、3.3557、3.3538和3.3541。第二轮减少CE 0.026 nats，第三轮0.002，第四轮无进一步减少，因此没有固定轮数达到3.3496的单次前向模型。学习到的退出分布接近均匀，$(0.21,0.27,0.26,0.26)$。Random-Depth在21次调用在此快照上达到3.3458，但两个目标不同且运行是单种子初步研究，因此我们不能将该差异归因于读取固定记忆。</p>
+<h2>附录F 规划器延续和分配诊断</h2>
+<table>
+<thead>
+<tr>
+<th>替换</th>
+<th>上限</th>
+<th>ΔCE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>静态路径</td>
+<td>6</td>
+<td>−0.05273 到 −0.05053</td>
+</tr>
+<tr>
+<td></td>
+<td>11-21</td>
+<td>−0.00037 到 +0.00060</td>
+</tr>
+<tr>
+<td>静态分割</td>
+<td>6</td>
+<td>−0.05273 到 −0.05053</td>
+</tr>
+<tr>
+<td></td>
+<td>11-21</td>
+<td>+0.00005 到 +0.00063</td>
+</tr>
+<tr>
+<td>平均总数</td>
+<td>21</td>
+<td>+0.00013 到 +0.00014</td>
+</tr>
+<tr>
+<td>打乱总数</td>
+<td>21</td>
+<td>+0.00166 到 +0.00167</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表8：</strong> 两个200更新预算条件规划器延续（种子42和43）上的分配对照，因为原始规划器在上限6时校准不佳。每个值是替换减去原生路由交叉熵（CE）的范围；负值有利于替换。在上限6时，静态路径和静态分割优于校准不佳的原生路由。上限限定每个token的总调用。</p>
+<p>原始规划器在小上限时校准不佳，因此我们在上限 $B\in{6,11,14,16,21}$ 下用零初始化预算嵌入将其及其预算表延续200次更新。两个延续（种子42和43）仅用于分配对照；主前沿比较原始5,703更新检查点。它们的原生CE差异跨上限为0.0002-0.0024 nats。这些是延续种子差异，不是独立的预训练复制。</p>
+<p>Random-Depth和规划器在token依赖性之外还有不同：它们的训练在辅助损失、探索噪声和直通梯度上也不同。在16和21次调用时，Random-Depth的边际为0.0067和0.0049 nats，太小无法建立种子稳健的排序。原生路由的成本如其平均调用计数所预测：它在静态路径的插值0.5%以内（附录C）。标量规划器和更长延续改善低预算，但 neither排除可用的token级信号（附录A）。</p>
+<h2>附录G 机制分析：协议和按十分位数的增益</h2>
+<p><strong>图4：</strong> 256个测试序列上的机制分析。 从11到21次调用的分配相关负对数似然（NLL）增益按难度十分位数（1：最简单）；正值是改善，难度使用两条路径的平均NLL，避免在一条臂的噪声上选择。 解码器层2-6（面板中标记为D2-D6）在21次调用路径上第1-4次访问的相对残差状态更新。</p>
+<p>图4报告完整分析。Random-Depth在锁定的11-和21次调用路径上评分，而Fixed4和规划器使用21次调用，都在相同的256个测试序列上（865,148个目标）。状态和检索统计使用前64个序列。难度十分位数使用比较路径的平均NLL，避免在一条臂的噪声上分箱。在检索冻结干预中，解码器层3和5的第2-4次访问重用其首次访问的Top-$K$集合，因此解码器层4和6也读取这些集合。分数仍被计算；仅替换选择。</p>
+<p><strong>相对状态更新。</strong> 面板测量一次访问将token的隐藏状态移动多远。对于将状态从 $h_{\mathrm{in}}$ 带到 $h_{\mathrm{out}}$ 的访问，相对更新为 $\lVert h_{\mathrm{out}}-h_{\mathrm{in}}\rVert/\lVert h_{\mathrm{in}}\rVert$，在token上平均。除以输入范数使五个读取层可比，因为它们的状态在规模上不同：值0.48意味着访问将状态移动约其自身长度的一半，0.15意味着移动七分之一。该量是距离且不携带方向，因此它显示后续访问持续改变状态，而非改变有帮助。将重复读取与质量联系起来的是5.4节的检索冻结干预。</p>
+<h2>附录H 下游评估</h2>
+<p><strong>协议和配置。</strong> 我们用lm-evaluation-harness 0.4.13（Gao et al., 2023）评估LAMBADA（Paperno et al., 2016）、HellaSwag（Zellers et al., 2019）、PIQA（Bisk et al., 2020）、WinoGrande（Sakaguchi et al., 2020）、ARC-Easy和ARC-Challenge（Clark et al., 2018），报告准确率或HellaSwag和ARC-Challenge的归一化准确率。我们在评分前固定了指标和宏平均。完整集分别包含5,153、10,042、1,838、1,267、2,376和1,172个样本。WikiText-2使用62个文档和滚动4,096-token窗口（Merity et al., 2017）。我们评估了24个配置：单次前向、Fixed4、原生路由，以及Random-Depth、Self-Distilled和规划器的3、6、8、11、13、16和21次调用静态路径。静态配置使用为CE前沿锁定的路径。</p>
+<p><strong>区间跨越零的比较。</strong> Random-Depth在11次调用时在六任务平均上比21次调用的Fixed4高0.71分，但区间 $[-0.04,+1.43]$ 跨越零。Self-Distilled对比六次调用的Random-Depth同样未解决（$+0.40$，$[-0.38,+1.17]$）。WikiText-2需要16而非11次调用来超越21次调用的Fixed4，因此11次调用CE相等是分布特定的。因为分数在13、16和21次调用间非单调，聚合中的子点差异不应被解释为前沿排序。</p>
+<h2>附录I 长上下文延续和检索协议</h2>
+<p>Random-Depth、单次前向模型和规划器从其5B目标检查点开始，接收相同的600次更新延续（每模型314,572,800个目标）。延续由8K、16K、32K和64K阶段组成，分别有60、60、120和360次更新。在每个阶段，三分之二的更新使用长PG19样本，三分之一使用短域数据。所有三个模型使用相同的数据顺序、优化器和学习率调度（$3\times 10^{-5}$ 到 $3\times 10^{-6}$，60次预热更新）。用于评估的45本PG19书籍与延续的训练和验证书籍不相交。规划器加载其训练的路由参数并以平衡系数0.001继续直通训练，无熵奖励和探索噪声；审计验证planner.weight变化。Random-Depth保持其预训练调度（17.19期望调用）。压缩注意力分支使用针对64K的YaRN/NTK-by-parts衍生插值（Peng et al., 2024），而局部分支不变。</p>
+<p>困惑度在任务微调前评估。Random-Depth减去规划器静态-21在4K时为 $+0.0031$ nats（$[-0.0002,+0.0063]$），64K时 $+0.0050$（$[+0.0014,+0.0084]$）。规划器静态-21减去原生路由范围从 $+0.0008$ 到 $+0.0014$ nats，每个区间排除零。表5给出紧凑的Random-Depth-单次前向比较；表9报告带全书区间的配对路由差异。</p>
+<table>
+<thead>
+<tr>
+<th>上下文</th>
+<th>RD−原生</th>
+<th>静态−原生</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4K</td>
+<td>+3.9 [+0.6, +7.2]</td>
+<td>+0.8 [+0.5, +1.3]</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>+1.8 [−2.2, +5.4]</td>
+<td>+1.3 [+0.9, +1.8]</td>
+</tr>
+<tr>
+<td>16K</td>
+<td>+1.9 [−1.8, +5.4]</td>
+<td>+1.4 [+0.9, +1.8]</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>+2.4 [−1.2, +5.8]</td>
+<td>+1.3 [+0.9, +1.7]</td>
+</tr>
+<tr>
+<td>64K</td>
+<td>+6.4 [+2.8, +9.8]</td>
+<td>+1.4 [+1.0, +1.8]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表9：</strong> 配对负对数似然（NLL）差异，以 $10^{-3}$ nats每token计，带全书95%置信区间；负值有利于每个差异中的第一个模型。RD表示Random-Depth；静态和原生分别表示规划器的静态路径和原生路由。点估计在每个长度上有利于原生：静态减去原生在每个长度排除零，而RD减去原生仅在4K和64K排除零。</p>
+<p>对于检索，所有延续模型在512个样本上接收相同的直接答案微调（64次更新，仅响应监督，无64K样本）。Random-Depth抽取采样深度，单次前向模型运行一次前向，规划器使用原生或静态-21执行。我们在4K、8K、16K、32K和64K评估RULER的niah_single_1、niah_single_2和niah_multikey_1（Hsieh et al., 2024），每个任务和上下文长度20个问题。这是300个问题的子集，非完整13任务RULER基准。</p>
+<table>
+<thead>
+<tr>
+<th>长度</th>
+<th>Single</th>
+<th>Planner原生</th>
+<th>Planner静态</th>
+<th>RD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4K</td>
+<td>61.67</td>
+<td>68.33</td>
+<td>68.33</td>
+<td>68.33</td>
+</tr>
+<tr>
+<td>8K</td>
+<td>63.33</td>
+<td>68.33</td>
+<td>71.67</td>
+<td>68.33</td>
+</tr>
+<tr>
+<td>16K</td>
+<td>66.67</td>
+<td>70.00</td>
+<td>70.00</td>
+<td>70.00</td>
+</tr>
+<tr>
+<td>32K</td>
+<td>61.67</td>
+<td>70.00</td>
+<td>70.00</td>
+<td>71.67</td>
+</tr>
+<tr>
+<td>64K</td>
+<td>53.33</td>
+<td>63.33</td>
+<td>65.00</td>
+<td>58.33</td>
+</tr>
+<tr>
+<td>总体</td>
+<td>61.33</td>
+<td>68.00</td>
+<td>69.00</td>
+<td>67.33</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表10：</strong> 三任务大海捞针（NIAH）宏准确率（%，越高越好），按上下文长度和总体（每模型300个问题）。Single表示单次前向模型，RD表示Random-Depth。所有臂使用相同答案格式微调。Random-Depth和带静态路径的规划器使用静态21次调用路径，而带原生路由的规划器使用其学习到的每token策略。表报告点估计；RD减去单次前向模型的总体配对区间为 $[+1.33,+10.33]$ 百分点。</p>
+<h2>附录J 执行的事后分配</h2>
+<p>我们使用与机制分析中相同的256个测试序列和865,148个目标。候选路径是Random-Depth的验证锁定11、13、16和21次调用路径。对每个token，拉格朗日事后策略使用候选NLL在平均预算16次调用下选择路径。贪婪分配后跟动态规划修复强制总数恰好。修复不是认证的全局最优，因此测量的增益是这四条路径上最佳事后增益的下界。</p>
+<p>混合执行达到CE 2.9631，对比静态16的3.0203，增益0.0572 nats。在不执行混合的情况下在每个token选择的路径上评分达到2.9514，因此排除执行效果高估增益0.0117 nats。这是标签感知的上界参考，不是前缀可预测信号或可部署分配策略的证据。</p>
+<h2>附录K 数据</h2>
+<p>训练从FineWeb-Edu 100BT样本中抽取5B有效目标token（Penedo et al., 2024），用SmolLM2分词器（Ben Allal et al., 2025）分词，其词汇表包含49,152个token。确定性打包清单记录源文档段和目标掩码。源文档被哈希，每个文档整体分配到训练、验证和测试分区中的恰好一个，因此没有文档贡献多于一个；打包样本然后一次性打乱。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 循环Transformer, KV缓存, 语言模型, 计算预算, 深度自适应</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

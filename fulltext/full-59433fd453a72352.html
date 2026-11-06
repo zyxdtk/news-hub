@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码即策略智能体自我修复的再思考：重试成功靠什么？ - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">代码即策略智能体自我修复的再思考：重试成功靠什么？</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-04</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.06863" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Rethinking Self-Repair in Code-as-Policy Agents: What Drives Retry Success?</h4>
+            <p><strong>中文摘要：</strong> 本文研究代码即策略智能体失败后反馈对重试成功的贡献。模拟机器人复位重试实验中，基于失败标签的模板反馈使 Qwen2.5-Coder-7B 五次重试内恢复 85.3% 初始失败，高于重采样的 68.3%。但其他回合反馈与固定任务指导恢复率相近，匹配失败标签无额外收益；首次尝试即用固定引导提示词亦获相近成功率。需边缘抓取的螺母插入任务上，中心抓取指令反而有害。建议自我修复评估纳入重采样、不匹配反馈与静态指导基线。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>重新思考代码即策略智能体的自我修复：重试成功的驱动因素是什么？</h1>
+<p><strong>Siddharth Aphale</strong><br />
+单位：斯坦福大学<br />
+邮箱：saphale@stanford.edu</p>
+<p><strong>Ayushman Singh</strong><br />
+单位：Sesame AI<br />
+邮箱：ayushman@sesame.com</p>
+<h2>摘要</h2>
+<p>代码即策略智能体通常利用执行反馈来重试失败的程序。额外采样和任务指导同样可以提升成功率，这使得针对特定失败的反馈的贡献变得不明确。我们在模拟机器人操作中研究这一问题。一个固定的查找表根据失败标签和 API 变体选择反馈模板。一个冻结的代码模型在每次场景重置后生成全新程序。在相同的 252 个初始失败上，Qwen2.5-Coder-7B 在五次重试内恢复了 85.3%，而相同重试上限下的重采样为 68.3%。该优势在固定总 token 预算下依然存在。来自其他回合的反馈和固定任务指导产生相近的恢复率点估计，未检测到匹配粗粒度失败标签带来的收益。在一项独立研究中，从第一次尝试起就使用固定引导提示词所达到的观测总体成功率与基于模板的反馈相近。基于模板的反馈在需要边缘抓取的螺母插入任务上降低了恢复率，这与不兼容的中心抓取指令相一致。机器人自我修复的评估应将重采样、不匹配反馈以及简洁、任务兼容的静态指导作为基线。</p>
+<p><strong>关键词</strong>：代码即策略智能体、自我修复、执行反馈、测试时评估</p>
+<h2>1 引言</h2>
+<p>代码即策略智能体将语言指令转换为可执行的机器人程序 [1]。它们的失败往往遵循清晰的模式：程序可能跳过抓取、在抬起后释放物体，或将物体放置在远离目标的位置。一种常见的应对方式是迭代式自我反思。模型阅读其失败的程序和执行轨迹，撰写批评，然后再次尝试 [2, 3, 4]。重试成功可能反映了额外采样、简洁的任务指令、关于当前失败的反馈，或对先前程序的编辑。我们提出的问题是：失败后的反馈是否比从第一次尝试起就可用的指导更能提升恢复率。</p>
+<p>我们使用冻结的 Qwen2.5-Coder-3B/7B 模型在"重置-重试"设置中研究这一问题。每次重试都从原始场景开始。我们的主要条件生成全新程序，且提示词中省略失败的程序。我们使用<strong>基于模板的反馈</strong>来研究哪些信息能提升重试成功率。一个固定的查找表根据失败标签和 API 变体选择指令，例如"必须（MUST）在抬起前抓取物体"。我们将此条件称为 <strong>Compiled（编译式）</strong>。该查找表使我们能够将匹配的反馈替换为另一回合的反馈、保持指导固定，或在保持重试循环不变的情况下移除反馈（图 1）。单独的编辑条件会展示先前的程序并要求修改。所有条件都重启原始场景。我们不测试从失败遗留的物理状态中恢复。</p>
+<p>（a）<br />
+执行失败<br />
+失败标签 + API 变体<br />
+选择反馈<br />
+Compiled：标签查找<br />
+不同标签：其他失败<br />
+固定模板：任务指导<br />
+重采样：无反馈<br />
+重置原始场景<br />
+生成并执行全新代码<br />
+成功或五次重试：停止<br />
+重试失败</p>
+<p>（b）</p>
+<p><strong>图 1</strong>：基于模板的反馈比重采样提升了恢复率。 重置-重试循环与反馈方法。 在 252 个初始失败上的恢复情况，Compiled、不同标签反馈和固定任务模板的结果相近。</p>
+<p>Compiled 在五次重试内恢复了 252 个初始失败中的 85.3%，而相同重试上限下的重采样为 68.3%。在固定总 token 预算下，这一增益依然存在。来自其他回合的反馈和每个任务一个固定模板产生相近的点估计。我们未检测到将粗粒度失败标签与当前回合匹配带来的收益。置信区间仍然允许条件之间存在差异。在一项独立研究中，从第一次尝试起就使用固定引导提示词达到了与 Compiled 相近的观测总体成功率，且每个已解决回合使用的 token 更少。该比较同时改变了初始指导和生成指令。它们各自的贡献仍未解决。</p>
+<p>我们在匹配的重试预算下比较反馈内容和程序生成策略，以测试额外采样、可复用的任务指导以及失败标签匹配如何影响恢复率。机器人自我修复的评估应将静态指导作为自适应反馈的基线。</p>
+<h2>2 相关工作</h2>
+<p><strong>机器人控制的语言模型。</strong> Code as Policies 和 ProgPrompt 从具身机器人技能生成可执行程序 [1, 5]。SayCan 使用语言模型和可供性分数选择动作 [6]。CaP-X 在机器人 API 和反馈模态上评估代码生成智能体，包括不重置场景的多轮交互 [7]。机器人恢复系统通常要求模型解释失败。REFLECT 总结机器人经验以支持失败解释和纠正 [8]。DoReMi 将计划与其执行进行比较 [9]。TCoT 为视觉-语言-动作模型添加轨迹级推理 [10]。我们基于重置的比较在匹配的重试预算下，于配对回合上检验反馈内容和程序生成策略。</p>
+<p><strong>迭代式自我修复的评估。</strong> Reflexion 和 Self-Refine 使用模型撰写的批评来改进后续输出 [2, 3]。Self-Debugging 依据先前程序及其执行结果来调节代码生成 [4]。在代码基准上，Olausson 等人 [11] 发现自我修复在匹配计算量下通常不如独立采样。没有外部反馈时，推理的自我纠正也不可靠，而基于外部证据的批评则能有所帮助 [12, 13]。我们将匹配采样的比较扩展到具身代码执行，并测试指导是否必须与当前失败匹配，或是否根本需要跟随失败。</p>
+<p><strong>执行反馈与交互式评估。</strong> CodeRL、RLEF 和 MURPHY 使用编译器或测试反馈来更新模型参数 [14, 15, 16]。RLEF 还在推理时测试来自无关编程问题的随机执行反馈。该比较检验了针对当前问题的特定反馈的价值，尽管其训练、任务和反馈构建与我们的不同。ReAct、Voyager 和 LATS 等推理时智能体在搜索或交互过程中使用反馈 [17, 18, 19]。InterCode、AppWorld 和 AgentBoard 评估执行结果和中间进度 [20, 21, 22]。在模型权重固定的情况下，我们探究机器人重试提示词中的哪些信息能够解释恢复。</p>
+<h2>3 方法</h2>
+<h3>3.1 实验设置</h3>
+<p>我们在 robosuite 仿真中使用 Panda 机械臂评估冻结的代码模型 [23, 24]。模型接收状态信息并使用有文档说明的机器人 API 生成 Python 程序，不使用图像。主要评估使用 Qwen2.5-Coder-7B-Instruct [25]，在立方体抬起和堆叠任务上使用原语 API。</p>
+<p>一个<strong>回合</strong>包括针对某任务和场景的初始程序执行，以及随后在某一方法下的任意重试。初始执行记为<strong>第 0 次尝试</strong>。初始失败后，模型最多可进行五次<strong>重试</strong>。每次重试前，仿真器重置到原始场景。每次重试产生一个完整程序，要么从头生成，要么从先前的程序修改而来。</p>
+<p>我们使用 252 个初始失败进行评估，40 个用于开发。这些集合包含不同的初始程序，通过其哈希值识别。评估涵盖 159 种任务、API 变体和场景的组合，其中 24 种也用于开发。所有方法都在相同的存储初始失败上进行评估。端到端研究按场景种子配对方法。</p>
+<p><strong>条件恢复率@k</strong> 是在 k 次重试内解决的第 0 次尝试失败的比例。该指标衡量顺序重试，不同于从独立样本估计的 pass@k。对于端到端研究，<strong>初始成功率</strong>是第 0 次尝试的成功率，<strong>总体成功率@6</strong> 是六次允许执行中任意一次成功的比率。如果一次尝试的程序能够编译、仅使用有文档说明的 API 函数并在超时前完成，则该尝试<strong>有效</strong>。</p>
+<p>泛化研究包括 Qwen2.5-Coder-3B/7B 和另外两个拾取-放置任务。我们汇总满足预定义资格标准的七种设置的结果。单独的研究考察了高层辅助函数更少的 API 变体、Qwen2.5-Coder-32B 和 DeepSeek-Coder-6.7B [26]。软件、任务、评估集和指标的更多细节见附录 A。</p>
+<h3>3.2 基于模板的反馈</h3>
+<p>执行失败后，一个基于规则的标注器从 14 类标签体系中分配一个主标签。Compiled 将该标签和 API 变体映射到一个固定的<strong>反馈模板</strong>，其中包含诊断和简短的 MUST/NEVER（必须/禁止）指令（表 1）。该查找不需要额外的模型调用。这些指令引导代码生成，而不施加执行时检查。</p>
+<p>Compiled 累积来自初始失败和后续失败重试的反馈，保留标签和尝试索引。<strong>反馈块</strong>将最新的反馈放在最前面，省略重复的指令行，并遵守反馈长度限制。生成提示词包含任务、API 文档和累积的反馈，省略先前的程序。早期研究中的一个示例展示了初始失败后紧跟一次成功的全新重试（图 2a）。提示词见附录 B，重置-重试算法见算法 1。</p>
+<p><strong>表 1</strong>：失败标签选择固定的重试指导。原语 API 的示例指令摘录。完整模板见附录 D。</p>
+<table>
+<thead>
+<tr>
+<th>检测到的失败</th>
+<th>添加到重试提示词的指导</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>抓取未能固定物体</td>
+<td>MUST：在物体的中心抓取：……，且夹爪为空</td>
+</tr>
+<tr>
+<td>物体被抓取但未抬起</td>
+<td>MUST：……在抓取后调用 lift(name, height=0.1)</td>
+</tr>
+<tr>
+<td>不支持的函数调用</td>
+<td>MUST：仅使用有文档说明的 API 函数…… NEVER：import 语句</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 比较方法</h3>
+<p>我们在每项研究内使用相同的生成器、任务、API、解码设置和重试上限来比较方法。</p>
+<p><strong>重采样</strong>重复不带反馈的基础重试提示词。</p>
+<p><strong>其他回合反馈</strong>将当前回合的反馈替换为来自其他失败的反馈，按任务、API 变体和初始任务进度区间匹配。主要的匹配对照——<strong>不同标签反馈</strong>——从同一任务的其他回合中选择单条反馈记录，优先选择相同的初始任务进度区间，并尽可能要求不同的失败标签。两者都随着被评估回合累积失败而添加反馈，并使用相同的反馈长度限制。这些对照检验匹配粗粒度失败标签的价值，同时保留有用的任务信息。匹配和回退规则见附录 B.3。</p>
+<p>我们从开发数据中为每个任务选择一个固定模板，选择具有任务兼容指导的最常见失败标签。<strong>固定任务模板</strong>在初始失败后的各次重试中复用该模板。</p>
+<p><strong>从头静态指导</strong>从第 0 次尝试起使用完整的固定任务模板重试提示词，同时改变了初始生成指令和指导的存在。</p>
+<p><strong>直接+编译式</strong>展示失败的程序并要求编辑，同时改变代码暴露和生成指令。</p>
+<p><strong>反思</strong>使用额外的模型调用来批评失败的程序和执行日志。其生成调用接收累积的批评并省略先前的代码。反思仅在早期核心评估中使用原始生成指令进行了测试。</p>
+<p>主要评估对重新生成方法使用条件中立的生成指令。原始指令即使在反馈缺失时也提及修复计划。两个版本的提示词见附录 B.4。</p>
+<p>资格标准、多重性校正、解码设置和 token 计算见附录 A。</p>
+<p>（a）</p>
+<p><strong>图 2</strong>：指导在固定 token 预算下提升恢复率。 初始失败后重置后一次成功的重试。 总 token 预算下的恢复率。 配对 recovery@5 比较显示相对重采样有优势，但相对不同标签或固定模板指导未检测到优势。</p>
+<h2>4 结果</h2>
+<h3>4.1 匹配预算下的恢复率</h3>
+<p>在主要评估中，Compiled 在五次重试内恢复了 252 个留出失败中的 85.3%。相同重试上限下的重采样恢复率为 68.3%，差异为 +17.1 个百分点（95% 置信区间 [+9.9, +24.2]）。¹</p>
+<p>¹ pp 表示百分点。带状图和误差线显示 95% 置信区间：恢复比例使用 Wilson 区间，差异使用配对自助法。</p>
+<p>Compiled 从第一次重试起就比重采样恢复更多失败（图 1b），并且使用的模型总 token 更少，包括提示词和补全。</p>
+<p>在固定 token 预算下，Compiled 在 2,000 token 时比重采样提升 +15.9 个百分点，在 5,000 token 时提升 +14.7 个百分点（图 2b）。固定任务模板和不同标签反馈的观测恢复率与 Compiled 相近，而直接+编译式的恢复率较低。在使用原始生成指令的早期 700 场景端到端研究中，Compiled 的总体成功率也高于重采样（附录 C）。</p>
+<h3>4.2 反馈匹配与内容</h3>
+<p>在主要评估中，不同标签反馈和固定任务模板各恢复 86.1%，而 Compiled 为 85.3%。我们未检测到将粗粒度标签与当前失败匹配的优势，尽管配对置信区间并不能确立等价性（表 2；图 2c）。在早期研究中，我们也未检测到 Compiled 相对其他回合反馈、置换标签或仅初始标签的优势（附录 C）。</p>
+<p>在主要评估中，探索性的<strong>重复 API 规则</strong>对照复制了提示词中已有的规则，未能复现 Compiled 的改进。使用原始生成指令的早期比较同样显示，无内容反馈和全模板并集的恢复率低于简洁的反馈模板（附录 C）。</p>
+<p><strong>表 2</strong>：252 个初始失败上的主要配对对比。每项为 Compiled 减去对照方法在 recovery@5 上的差值，附 95% 配对自助置信区间。</p>
+<table>
+<thead>
+<tr>
+<th>对照方法</th>
+<th>问题</th>
+<th>Δ（百分点；95% 置信区间）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>重采样</td>
+<td>是否有超越另一次采样的收益？</td>
+<td>+17.1 [+9.9, +24.2]</td>
+</tr>
+<tr>
+<td>不同标签反馈</td>
+<td>标签必须匹配吗？</td>
+<td>−0.8 [−6.3, +4.8]</td>
+</tr>
+<tr>
+<td>固定任务模板</td>
+<td>动态还是固定指导？</td>
+<td>−0.8 [−6.7, +5.2]</td>
+</tr>
+<tr>
+<td>直接+编译式</td>
+<td>编辑能提升恢复率吗？</td>
+<td>+63.9 [+56.7, +70.6]</td>
+</tr>
+</tbody>
+</table>
+<h3>4.3 从第一次尝试开始的指导</h3>
+<p>在 700 个新场景上，从头静态指导将初始成功率从标准提示词的 19.3% 提升到 36.9%。它从第一次尝试起使用完整的固定任务模板重试提示词，同时改变了任务指导和生成指令。它们各自的贡献仍未解决。</p>
+<p>到第六次执行时，从头静态指导达到 92.4% 的总体成功率，而 Compiled 为 89.6%，固定任务模板为 90.1%（图 3）。其相对 Compiled 的优势在多重性校正后不具有统计显著性（+2.9 个百分点；Holm 校正后 p=0.13）。它每个已解决回合使用的模型总 token 也最少。完整结果和提示词差异见附录 C.2。</p>
+<p><strong>图 3</strong>：固定引导提示词提升初始成功率。 700 个新场景上的初始和总体成功率。 每个已解决回合的模型总 token。从头静态指导同时改变了初始指令和指导。</p>
+<p>匹配对照和从头静态指导的结果表明，可复用的任务指导解释了这一增益。这些结果并不能确立模型使用了当前的执行轨迹。</p>
+<h3>4.4 编辑与反思</h3>
+<p>直接+编译式在主要评估中达到 21.4% 的恢复率。早期分析显示，编辑带来的程序变化小于全新生成。由于直接+编译式同时改变了代码暴露和生成指令，其恢复率较低的原因仍未解决。</p>
+<p>在早期核心评估中，反思达到 56.0% 的恢复率，低于重采样，同时使用了更多补全 token 和实际运行时间。这些发现针对的是所测试的编辑和反思实现。更多编辑和批评结果见附录 C.1。</p>
+<h3>4.5 泛化与失败案例</h3>
+<p><strong>图 4</strong>：指导的收益因任务和模型而异。各评估设置上 Compiled–重采样的恢复率差异。菱形总结了七个符合条件的泛化设置。</p>
+<p>在涵盖四个任务和 354 个初始失败的七个 Qwen2.5-Coder-3B/7B 设置中，Compiled 将 recovery@5 相比重采样提升 +18.1 个百分点（置信区间 [+13.3, +22.9]）。其相对其他回合反馈的差异较小，为 +2.3 个百分点（置信区间 [−1.1, +5.6]），未检测到相对这一同任务反馈对照的优势（图 4；附录 C.3）。</p>
+<p>恢复率优势在 API 变体、位姿噪声和生成种子的大多数额外评估中持续存在。然而，在温度 0.2 且位姿偏移的抬起任务上，Compiled 的恢复率比重采样低 19.6 个百分点。</p>
+<p>使用 Qwen2.5-Coder-32B 时，Compiled 和重采样在 55 个初始堆叠失败中解决了相同的 52 个（94.5% 的 recovery@5）。如此高的恢复率使得进一步改进的空间有限。</p>
+<p>在螺母插入任务上，所需的边缘抓取与拾取-放置模板中 failed_grasp 的中心抓取指令冲突。Compiled 的 recovery@5 为 82.5%，重采样为 97.5%，差异为 −15.0 个百分点（置信区间 [−27.5, −2.5]）。这一下降与不兼容的抓取指令相一致，而尝试有效率保持相近。因此，在一个任务族内有帮助的指导在另一个任务族中可能有害。</p>
+<h2>5 讨论</h2>
+<p>我们的结果表明，在所测试的任务中，可复用的任务指导解释了基于模板的反馈相对重采样的恢复率优势。固定指导和来自其他失败的反馈产生与 Compiled 相近的恢复率点估计，未检测到匹配粗粒度失败标签的收益。从头静态指导也达到了与 Compiled 相近的观测总体成功率，同时每个已解决回合使用的 token 更少。评估应将第一次尝试起就使用的固定指导与失败后选择的反馈一同测试。从头静态指导比较同时改变了指导和生成指令，因此它们各自的贡献仍未解决。</p>
+<p>因此，自我修复的评估应区分额外采样、可复用指导和失败特定信息的贡献。重采样为额外采样提供基线，各方法的重试和 token 预算相匹配。静态指导测试指令在失败发生前是否有用，而不匹配反馈测试将粗粒度失败标签与当前回合匹配的价值。这些比较应检查与任务需求冲突的指令，例如在需要边缘抓取的任务上使用中心抓取指导。</p>
+<h2>6 结论</h2>
+<p>机器人自我修复的评估应包括重采样、不匹配反馈、从第一次尝试开始的静态指导以及先前程序编辑，且各方法的重试和 token 预算相匹配。</p>
+<p>我们的发现仅限于使用特权状态和粗粒度反馈的模拟操作。一些比较结合了指令和信息的变化。未来工作应分离这些影响，并考察更大模型在更难任务或更紧预算下的表现。将评估扩展到视觉反馈和物理恢复（包括失败后状态和动作成本），将有助于阐明自适应反馈何时优于静态指导。</p>
+<h2>参考文献</h2>
+<p>[1] J. Liang, W. Huang, F. Xia, P. Xu, K. Hausman, B. Ichter, P. Florence, and A. Zeng. Code as policies: Language model programs for embodied control. In IEEE International Conference on Robotics and Automation (ICRA), 2023. URL https://arxiv.org/abs/2209.07753 .</p>
+<p>[2] N. Shinn, F. Cassano, A. Gopinath, K. Narasimhan, and S. Yao. Reflexion: Language agents with verbal reinforcement learning. In Advances in Neural Information Processing Systems (NeurIPS), volume 36, 2023. doi: 10.52202/075280-0377 .</p>
+<p>[3] A. Madaan, N. Tandon, P. Gupta, S. Hallinan, L. Gao, S. Wiegreffe, U. Alon, N. Dziri, S. Prabhumoye, Y. Yang, S. Gupta, B. P. Majumder, K. Hermann, S. Welleck, A. Yazdanbakhsh, and P. Clark. Self-Refine: Iterative refinement with self-feedback. In Advances in Neural Information Processing Systems (NeurIPS), volume 36, 2023. doi: 10.52202/075280-2019 .</p>
+<p>[4] X. Chen, M. Lin, N. Schärli, and D. Zhou. Teaching large language models to self-debug. In International Conference on Learning Representations (ICLR), 2024. URL https://openreview.net/forum?id=KuPixIqPiq .</p>
+<p>[5] I. Singh, V. Blukis, A. Mousavian, A. Goyal, D. Xu, J. Tremblay, D. Fox, J. Thomason, and A. Garg. ProgPrompt: Generating situated robot task plans using large language models. In IEEE International Conference on Robotics and Automation (ICRA), 2023. URL https://arxiv.org/abs/2209.11302 .</p>
+<p>[6] M. Ahn, A. Brohan, N. Brown, Y. Chebotar, O. Cortes, B. David, C. Finn, F. Fu, K. Gopalakrishnan, K. Hausman, A. Herzog, D. Ho, J. Hsu, J. Ibarz, B. Ichter, A. Irpan, E. Jang, R. Jauregui Ruano, K. Jeffrey, S. Jesmonth, N. J. Joshi, R. Julian, D. Kalashnikov, Y. Kuang, K.-H. Lee, S. Levine, Y. Lu, L. Luu, C. Parada, P. Pastor, J. Quiambao, K. Rao, J. Rettinghouse, D. Reyes, P. Sermanet, N. Sievers, C. Tan, A. Toshev, V. Vanhoucke, F. Xia, T. Xiao, P. Xu, S. Xu, M. Yan, and A. Zeng. Do as i can, not as i say: Grounding language in robotic affordances. In Conference on Robot Learning (CoRL), volume 205 of Proceedings of Machine Learning Research, pages 287–318. PMLR, 2023. URL https://proceedings.mlr.press/v205/ichter23a.html .</p>
+<p>[7] L. Fu, J. Yu, K. El-Refai, E. Kou, H. Xue, H. Huang, W. Xiao, G. Wang, D. Niu, F.-F. Li, G. Shi, J. Wu, S. Sastry, Y. Zhu, K. Goldberg, and L. Fan. CaP-X: A framework for benchmarking and improving coding agents for robot manipulation. arXiv preprint arXiv:2603.22435, 2026. URL https://arxiv.org/abs/2603.22435 .</p>
+<p>[8] Z. Liu, A. Bahety, and S. Song. REFLECT: Summarizing robot experiences for failure explanation and correction. In Conference on Robot Learning (CoRL), volume 229 of Proceedings of Machine Learning Research, pages 3468–3484. PMLR, 2023. URL https://proceedings.mlr.press/v229/liu23g.html .</p>
+<p>[9] Y. Guo, Y.-J. Wang, L. Zha, and J. Chen. DoReMi: Grounding language model by detecting and recovering from plan-execution misalignment. In IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2024. URL https://arxiv.org/abs/2307.00329 .</p>
+<p>[10] X. Li, Y.-L. Li, Y. Wang, H. Wang, and S. Wang. TCoT: Trajectory chain-of-thoughts for robotic manipulation with failure recovery in vision-language-action model. Proceedings of the AAAI Conference on Artificial Intelligence, 40(8):6486–6494, 2026. doi: 10.1609/aaai.v40i8.37577 .</p>
+<p>[11] T. X. Olausson, J. P. Inala, C. Wang, J. Gao, and A. Solar-Lezama. Is self-repair a silver bullet for code generation? In International Conference on Learning Representations (ICLR), 2024. URL https://openreview.net/forum?id=y0GJXRungR .</p>
+<p>[12] J. Huang, X. Chen, S. Mishra, H. S. Zheng, A. W. Yu, X. Song, and D. Zhou. Large language models cannot self-correct reasoning yet. In International Conference on Learning Representations (ICLR), 2024. URL https://openreview.net/forum?id=IkmD3fKBPQ .</p>
+<p>[13] Z. Gou, Z. Shao, Y. Gong, Y. Shen, Y. Yang, N. Duan, and W. Chen. CRITIC: Large language models can self-correct with tool-interactive critiquing. In International Conference on Learning Representations (ICLR), 2024. URL https://arxiv.org/abs/2305.11738 .</p>
+<p>[14] H. Le, Y. Wang, A. D. Gotmare, S. Savarese, and S. C. H. Hoi. CodeRL: Mastering code generation through pretrained models and deep reinforcement learning. In Advances in Neural Information Processing Systems (NeurIPS), volume 35, 2022. doi: 10.52202/068431-1549 .</p>
+<p>[15] J. Gehring, K. Zheng, J. Copet, V. Mella, T. Cohen, and G. Synnaeve. RLEF: Grounding code LLMs in execution feedback with reinforcement learning. In International Conference on Machine Learning (ICML), volume 267 of Proceedings of Machine Learning Research, pages 19034–19055. PMLR, 2025. URL https://proceedings.mlr.press/v267/gehring25a.html .</p>
+<p>[16] C. Ekbote, V. Lingam, S. Sanghavi, J. Huan, B. Omidvar-Tehrani, A. Deoras, and S. Soatto. MURPHY: Feedback-aware GRPO with retrospective credit assignment for multi-turn code generation. arXiv preprint arXiv:2511.07833, 2025. URL https://arxiv.org/abs/2511.07833 .</p>
+<p>[17] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations (ICLR), 2023. URL https://openreview.net/forum?id=WE_vluYUL-X .</p>
+<p>[18] G. Wang, Y. Xie, Y. Jiang, C. Xiao, Y. Zhu, L. Fan, and A. Anandkumar. Voyager: An open-ended embodied agent with large language models. Transactions on Machine Learning Research, 2024. URL https://openreview.net/forum?id=ehfRiF0R3a .</p>
+<p>[19] A. Zhou, K. Yan, M. Shlapentokh-Rothman, H. Wang, and Y.-X. Wang. Language agent tree search unifies reasoning, acting, and planning in language models. In International Conference on Machine Learning (ICML), volume 235 of Proceedings of Machine Learning Research, pages 62138–62160. PMLR, 2024. URL https://proceedings.mlr.press/v235/zhou24r.html .</p>
+<p>[20] J. Yang, A. Prabhakar, K. Narasimhan, and S. Yao. InterCode: Standardizing and benchmarking interactive coding with execution feedback. In Advances in Neural Information Processing Systems (NeurIPS), volume 36, pages 23826–23854. Curran Associates, Inc., 2023. doi: 10.52202/075280-1035 .</p>
+<p>[21] H. Trivedi, T. Khot, M. Hartmann, R. Manku, V. Dong, E. Li, S. Gupta, A. Sabharwal, and N. Balasubramanian. AppWorld: A controllable world of apps and people for benchmarking interactive coding agents. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages 16022–16076. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.acl-long.850 .</p>
+<p>[22] C. Ma, J. Zhang, Z. Zhu, C. Yang, Y. Yang, Y. Jin, Z. Lan, L. Kong, and J. He. AgentBoard: An analytical evaluation board of multi-turn LLM agents. In Advances in Neural Information Processing Systems (NeurIPS), volume 37, pages 74325–74362. Curran Associates, Inc., 2024. doi: 10.52202/079017-2365 .</p>
+<p>[23] Y. Zhu, J. Wong, A. Mandlekar, R. Martín-Martín, A. Joshi, K. Lin, A. Maddukuri, S. Nasiriany, and Y. Zhu. robosuite: A modular simulation framework and benchmark for robot learning. arXiv preprint arXiv:2009.12293, 2020. URL https://arxiv.org/abs/2009.12293 .</p>
+<p>[24] E. Todorov, T. Erez, and Y. Tassa. MuJoCo: A physics engine for model-based control. In IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 2012. doi: 10.1109/IROS.2012.6386109 .</p>
+<p>[25] B. Hui, J. Yang, Z. Cui, J. Yang, D. Liu, L. Zhang, T. Liu, J. Zhang, B. Yu, K. Lu, K. Dang, Y. Fan, Y. Zhang, A. Yang, R. Men, F. Huang, B. Zheng, Y. Miao, S. Quan, Y. Feng, X. Ren, X. Ren, J. Zhou, and J. Lin. Qwen2.5-Coder technical report. arXiv preprint arXiv:2409.12186, 2024. URL https://arxiv.org/abs/2409.12186 .</p>
+<p>[26] D. Guo, Q. Zhu, D. Yang, Z. Xie, K. Dong, W. Zhang, G. Chen, X. Bi, Y. Wu, Y. K. Li, F. Luo, Y. Xiong, and W. Liang. DeepSeek-Coder: When the large language model meets programming – the rise of code intelligence. arXiv preprint arXiv:2401.14196, 2024. URL https://arxiv.org/abs/2401.14196 .</p>
+<h2>附录 A 实验细节</h2>
+<h3>A.1 任务、API 和评估集</h3>
+<p>我们在 robosuite 1.5.2 和 MuJoCo 3.3.5 中使用模拟 Panda 机械臂评估具有特权状态的纯文本代码生成。Python 程序通过有文档说明的位置控制 API 在隔离子进程中运行，超时时间为 60 秒。原语 API 包括 lift 和 place_on；仅位置 API 省略了它们。任务包括立方体抬起、堆叠、立方体入区和放入箱中，另外在螺母插入和开门任务上进行评估。</p>
+<p>评估集、重试指令和结果度量总结在表 A1 中。主要数据集包含 360 个 Qwen2.5-Coder-7B 程序（18.9% 初始成功率）。其中与基础设施错误无关的 292 个失败按初始程序哈希分为 40 个开发失败和 252 个评估失败。</p>
+<p>在每项研究中，资格要求初始成功率在预定义范围 [10%, 70%] 内。合并的泛化估计对来自七个符合条件设置的 354 个初始失败平等加权。超出此范围的设置和单独设计的研究单独报告。</p>
+<p><strong>表 A1</strong>：评估集和终点。比较在每项研究内配对条件。原始和中立指令 reproduced 于附录 B.4。</p>
+<table>
+<thead>
+<tr>
+<th>研究</th>
+<th>模型和评估集</th>
+<th>重试指令</th>
+<th>主要终点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主要</td>
+<td>Qwen2.5-Coder-7B；252 个留出失败，抬起和堆叠</td>
+<td>中立</td>
+<td>五次重试内的恢复率</td>
+</tr>
+<tr>
+<td>泛化</td>
+<td>Qwen2.5-Coder-3B/7B；七个符合条件设置中的 354 个失败，四个任务</td>
+<td>原始</td>
+<td>五次重试内的恢复率</td>
+</tr>
+<tr>
+<td>早期端到端</td>
+<td>Qwen2.5-Coder-7B；700 个新场景，抬起和堆叠</td>
+<td>原始</td>
+<td>六次执行内的总体成功率</td>
+</tr>
+<tr>
+<td>从头静态指导</td>
+<td>Qwen2.5-Coder-7B；700 个独立新场景，抬起和堆叠</td>
+<td>中立</td>
+<td>六次执行内的总体成功率</td>
+</tr>
+</tbody>
+</table>
+<h3>A.2 解码、指标和统计分析</h3>
+<p>初始失败后，每个条件从原始场景最多获得五次重试。在一项研究内，各条件共享模型、任务、API、解码设置和重试上限。除非另有说明，生成使用温度 0.7、top-p 0.95、1,024 token 补全限制和 768 空白 token 反馈上限。反思调用允许 256 个补全 token。</p>
+<p>条件恢复率@k 是在 k 次顺序重试内解决的初始失败比例。任务成功由独立的最终状态几何谓词检查。有效程序可编译、仅调用有文档说明的函数并在超时前完成。如果一次执行使物体离开桌面，则计为安全违规。</p>
+<p>配对差异的置信区间使用 10,000 次自助重复。精确 McNemar 检验评估最终重试时的显著性，并在每个预定义比较组内进行 Holm 校正。区间为 95%，除非早期次要结果标记为 90%。主要分析将每个存储的初始失败视为一个观测。对 159 个任务–API–场景聚类的探索性自助法考虑了场景配置内的依赖性，并保留了 +17.1 个百分点的 Compiled–重采样差异（95% 置信区间 [+10.1, +24.2]）。</p>
+<p>固定 token 分析按顺序重放记录的调用。每次调用的提示词和最大补全配额必须适合剩余预算。Token 使用包括提示词、补全和反思调用。预算为 2,000、5,000 和 9,500 token。原始 1,000 token 预算内无法容纳任何调用。在端到端研究中，每个已解决回合的 token 是所有场景的总 token 使用量（包括第 0 次尝试和未解决场景）除以已解决回合数。</p>
+<h3>A.3 可复现性说明</h3>
+<p>开发和评估包含不同的初始程序，但共享 159 个评估场景配置中的 24 个。最早的核心比较配对存储的初始失败，尽管放置采样器种子限制允许重试布局不同。后来的研究对每次重置设置种子，随后使用原始生成指令的评估使用重建的软件。每次比较使用单一软件构建。种子设定不保证按位确定的仿真。</p>
+<p>泛化问题在核心结果之后进行了修订，该研究的设置和分析在生成之前固定。从头静态指导研究也在生成之前指定。固定任务模板是在开发数据上选择的，因此其首次留出比较是探索性的。后来的研究复用了这一固定文本。直接+编译式是在单独的 116 失败试点中选择的。</p>
+<p>失败标签在脚本化故障上进行了审计，未对自然失败进行人工审计。未测量预言机提示性能和模板编写成本。</p>
+<h2>附录 B 反馈与提示词构建</h2>
+<h3>B.1 失败标签与模板选择</h3>
+<p>标注器按固定优先级顺序检查执行错误、安全事件、API 调用缺失和任务子目标，以分配 14 个失败标签之一。查找 Compile(label, variant) 返回诊断和 MUST/NEVER 指令。三个模板因 API 而异，产生 17 个特定标签文本。所有模板、API 替换和通用回退 reproduced 于附录 D。</p>
+<p>Compiled 在每次失败后添加一条反馈记录。记录按最新优先排序，删除重复的指令行并应用共享的反馈长度限制。尝试索引保留在标题中，因此重复的标签可以出现在不同的尝试标题下。</p>
+<h3>B.2 重置-重试算法</h3>
+<p>使用 Compiled、不匹配反馈和固定指导的重新生成在算法 1 中描述，选择规则见附录 B.3。每条失败记录包括其标签和用于匹配源回合的信息。</p>
+<p><strong>算法 1</strong> 使用条件特定反馈的重置-重试重新生成</p>
+<p>1: 原始场景 s₀、初始失败记录 r₀、API 变体 t、条件 a、重试上限 K、反馈上限 B<br />
+2: R ← ⟨r₀⟩ ▷ 被评估回合的失败<br />
+3: for i = 1 to K do<br />
+4: H ← SelectFeedback(a, R, t) ▷ 重采样时为空<br />
+5: f ← RenderFeedback(H, B) ▷ 最新优先；指令去重<br />
+6: x ← RenderPrompt(task, API(t), f)<br />
+7: Reset(s₀); p ← Generate(x) ▷ 隐藏先前程序<br />
+8: (success, r) ← Execute(p)<br />
+9: if success then<br />
+10: return Success<br />
+11: end if<br />
+12: R ← R ∥ ⟨r⟩<br />
+13: end for<br />
+14: return Fail</p>
+<h3>B.3 对照定义</h3>
+<p>重新生成提示词省略先前的程序（表 A2）。直接+编译式和反思修复包含它并要求修改，同时改变代码暴露和生成指令。</p>
+<p><strong>表 A2</strong>：各反馈和编辑条件的提示词输入。源回合选择和提示词构建规定如下。</p>
+<table>
+<thead>
+<tr>
+<th>条件</th>
+<th>提供给程序生成的反馈</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>重采样 / Compiled</td>
+<td>无反馈 / 观测标签的累积模板。</td>
+</tr>
+<tr>
+<td>其他回合反馈</td>
+<td>来自匹配源回合的累积反馈。</td>
+</tr>
+<tr>
+<td>不同标签反馈</td>
+<td>来自另一失败的反馈，优先选择不同标签。</td>
+</tr>
+<tr>
+<td>置换标签</td>
+<td>固定置换将每个观测标签替换为不同标签。</td>
+</tr>
+<tr>
+<td>跨任务反馈</td>
+<td>来自不同任务的源回合的固定分配。</td>
+</tr>
+<tr>
+<td>固定任务模板</td>
+<td>每个任务一个固定的开发选定模板，失败后复用。</td>
+</tr>
+<tr>
+<td>从头静态指导</td>
+<td>从第 0 次尝试起使用完整的固定任务模板重试提示词。</td>
+</tr>
+<tr>
+<td>仅初始标签</td>
+<td>初始失败的模板，重试间不变。</td>
+</tr>
+<tr>
+<td>全模板并集</td>
+<td>按开发频率排序的目标兼容模板。</td>
+</tr>
+<tr>
+<td>静态先验</td>
+<td>每个模型一个固定的任务无关文本，不累积。</td>
+</tr>
+<tr>
+<td>安慰剂 / 重复 API 规则</td>
+<td>长度匹配的通用指令 / 现有 API 执行规则。</td>
+</tr>
+<tr>
+<td>直接+编译式</td>
+<td>先前程序和累积反馈模板。</td>
+</tr>
+<tr>
+<td>反思</td>
+<td>累积的模型撰写批评；隐藏先前程序。</td>
+</tr>
+<tr>
+<td>反思修复</td>
+<td>先前程序、最新批评和截断的执行日志。</td>
+</tr>
+</tbody>
+</table>
+<p>其他回合反馈从按任务、API 变体和初始任务进度区间匹配的另一回合中选择反馈。进度是在第一个未满足子目标之前完成的有序子目标比例，分组为 [0, 1] 上的四个等宽区间。源历史限制为被评估回合的失败数。</p>
+<p>不同标签反馈从同一任务中为每个观测标签选择一条源记录，优先选择同一进度区间内的不同标签。如果没有，则先放宽进度区间匹配，再允许相同标签；任务匹配始终保留。在主要评估中，所有 627 条选定记录的失败标签都与相应的观测失败不同。两个对照都使用 Compiled 的反馈排序、去重和长度限制。</p>
+<p>固定任务模板对每个任务使用具有任务兼容指导的最常见失败标签，从固定的 40 失败开发集中选择。从头静态指导还复用重试指令和历史失败标题（附录 C.2）。</p>
+<p>遵循 Reflexion [2]，反思使用单独的批评调用，接收先前的程序和截断的日志。生成仅接收累积的批评。</p>
+<h3>B.4 提示词构建</h3>
+<p>生成提示词连接四个块：API 文档 → 任务和物体 → 条件特定反馈 → 生成指令。</p>
+<p>下面的 API 和任务块是原语层堆叠示例；只有反馈块在重新生成条件间变化。</p>
+<pre><code># API：代码即策略 API（特权状态，位置控制；所有位置为世界坐标系中以米为单位的 (x, y, z) 元组）：
+get_object_pose(name, return_bbox_extent=False) -&gt; (x, y, z)  # 物体中心位置；当 return_bbox_extent=True 时返回
+# ((x, y, z), (ex, ey, ez))，其中 e* 为物体的半尺寸
+get_gripper_pose() -&gt; (x, y, z)  # 当前夹爪指尖位置
+goto_pose(position, quat=None, z_approach=0.10)  # 将夹爪移动到 'position'，从上方 z_approach 米处接近；
+# 朝向固定为自上而下（接受 quat 但被忽略）
+open_gripper()  # 张开手指（释放）
+close_gripper()  # 闭合手指（抓取两者之间的任何物体）
+check_grasped(name) -&gt; bool  # 若 'name' 当前被持有则为 True
+execute_waypoints(waypoints)  # 按顺序对列表中每个位置执行 goto_pose
+lift(name, height=0.1)  # 将被持有的物体升高 height 米
+place_on(source, target)  # 将被持有的源物体移动到目标上方并释放
+
+执行规则：
+- 这些函数已在执行环境中定义。不要导入任何内容，也不要自己定义或重定义这些函数。
+- 顶层代码直接运行；如果将步骤包装在辅助函数中，必须调用它。
+- 要抓取物体：goto_pose 到其中心位置，然后 close_gripper()。
+- 成功在场景的最终状态上检查：被抬起的物体在结束时必须仍被持有（除非任务要求释放，否则抬起后不要调用 open_gripper()）；要放置物体，将其移动到目标上方并 open_gripper()。
+- place_on(source, target) 将被持有的物体定位在目标上并自动释放；place_on 之后不要调用 open_gripper()。
+</code></pre>
+<pre><code># 任务
+将红色立方体堆叠在绿色立方体之上。
+# 物体
+red_cube, green_cube
+</code></pre>
+<p>对于原语 API 层，释放被抬起的物体产生以下确切块：</p>
+<pre><code># 修复计划
+attempt 0 失败：released_after_lift
+- 物体被抬起但随后被释放，因此结束时不再被持有。
+MUST：抬起后不要张开夹爪；保持持有（或先放置到目标上）：
+使用 place_on(source, target) 作为最终动作（它会释放）
+NEVER：抬起后立即 open_gripper
+</code></pre>
+<p>主要评估对重新生成条件使用以下指令：</p>
+<pre><code># 仅使用上述 API 编写一个完整的全新 Python 程序，遵循相同的执行规则（不导入、不重定义 API 函数、调用你定义的任何辅助函数）。遵循此提示词中存在的每条指令。仅输出代码。
+</code></pre>
+<p>仅位置层从 API 块中移除 lift 和 place_on。早期运行使用的后缀提及"修复计划"、must_change 项和验证清单，即使这些字段不存在。因此我们用上述中立指令重复了核心比较；正文报告该评估。原始生成指令为：</p>
+<pre><code># 使用上述修复计划（从先前失败的尝试编译而来），仅使用上述 API 编写一个完整的全新 Python 程序，遵循相同的执行规则（不导入、不重定义 API 函数、调用你定义的任何辅助函数）。满足每个 must_change 项和验证清单。仅输出代码。
+</code></pre>
+<p>在主要评估中，直接+编译式使用以下编辑指令：</p>
+<pre><code># 将上述先前的程序修改为一个完整的修正 Python 程序，仅使用上述 API，遵循相同的执行规则（不导入、不重定义 API 函数、调用你定义的任何辅助函数）。遵循此提示词中存在的每条指令。仅输出代码。
+</code></pre>
+<p>先前程序仅包含在编辑提示词中。反思使用单独调用，指令为"用最多 6 句话反思程序为何未能完成任务以及下次应如何不同。仅输出反思。"序列化提示词和模型修订记录在实验工件中。</p>
+<h2>附录 C 额外分析</h2>
+<h3>C.1 反馈内容与失败匹配</h3>
+<p>（a）（b）</p>
+<p><strong>图 A1</strong>： 早期评估中反馈和编辑条件下的恢复率。 任务无关提示词提升堆叠任务的恢复率但降低抬起任务的恢复率。</p>
+<p>在主要评估中，我们未检测到匹配粗粒度失败标签的优势。Compiled 与不同标签反馈之间的配对恢复率差异为 −0.8 个百分点（95% 置信区间 [−6.3, +4.8]）。使用原始生成指令的早期比较也显示更新初始标签或保留标签映射的收益甚微（表 A3）。这些区间不能确立等价性。</p>
+<p>在这些早期比较中，无内容指令和全模板并集的恢复率低于简洁、任务兼容的反馈（图 A1）。探索性的重复 API 规则对照在主要评估中的恢复率也低于重采样（61.1% 对 68.3%）。</p>
+<p><strong>表 A3</strong>：额外对照检验反馈内容和标签匹配。在 252 个留出失败上使用原始生成指令的比较。p 值在预定义的次要比较组内进行 Holm 校正。</p>
+<table>
+<thead>
+<tr>
+<th>对比</th>
+<th>Δ（百分点）</th>
+<th>95% 置信区间</th>
+<th>p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>反思修复 − 重采样</td>
+<td>−45.2</td>
+<td>[−53.2, −36.9]</td>
+<td>2.9×10⁻²¹</td>
+</tr>
+<tr>
+<td>全模板并集 − 重采样</td>
+<td>−36.1</td>
+<td>[−44.0, −27.8]</td>
+<td>3.6×10⁻¹⁴</td>
+</tr>
+<tr>
+<td>Compiled − 仅初始标签</td>
+<td>+0.4</td>
+<td>[−4.0, +4.8]</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Compiled − 置换标签</td>
+<td>+1.6</td>
+<td>[−3.6, +6.7]</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>安慰剂 − 重采样</td>
+<td>−29.8</td>
+<td>[−37.7, −21.8]</td>
+<td>3.7×10⁻¹¹</td>
+</tr>
+</tbody>
+</table>
+<p>反思在早期核心评估中达到 56.0% 的恢复率，而重采样为 70.6%，且使用了更多补全 token 和实际运行时间。在随后使用原始生成指令的评估中，反思修复的恢复率为 25.0%，直接+编译式为 21.4%，而 Compiled 为 89.7%。编辑产生的程序变化小于全新生成。由于编辑比较同时改变了代码暴露和指令，恢复率较低的原因仍未解决。</p>
+<h3>C.2 从第一次尝试开始的静态指导</h3>
+<p>从头静态指导研究在 700 个共享新场景上比较总体成功率，每个条件使用六次执行、中立重试指令和固定模板文本（表 A4）。重采样、Compiled 和固定任务模板共享第 0 次尝试及其 565 个失败，而从头静态指导有 442 个初始失败。因此条件恢复率仅作描述性报告。</p>
+<p>标准初始提示词以"仅使用上述 API 编写一个 Python 程序"结尾。从头静态指导则使用完整的重试提示词，包括附录 B.4 中较长的中立指令和历史性的"attempt 0 失败"标题。它同时改变了初始指导和生成指令。它们各自的贡献仍未解决。</p>
+<p><strong>表 A4</strong>：从头静态指导提升初始成功率并降低每个已解决回合的 token。在 700 个新场景上使用中立重试指令的结果。成功率和恢复率为百分比；恢复率使用不同的初始失败子集。</p>
+<table>
+<thead>
+<tr>
+<th>条件</th>
+<th>初始</th>
+<th>Overall@6</th>
+<th>Recovery@5</th>
+<th>Token/已解决</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>从头静态指导</td>
+<td>36.9</td>
+<td>92.4</td>
+<td>88.0</td>
+<td>2,087</td>
+</tr>
+<tr>
+<td>固定任务模板</td>
+<td>19.3</td>
+<td>90.1</td>
+<td>87.8</td>
+<td>2,564</td>
+</tr>
+<tr>
+<td>Compiled</td>
+<td>19.3</td>
+<td>89.6</td>
+<td>87.1</td>
+<td>2,578</td>
+</tr>
+<tr>
+<td>重采样</td>
+<td>19.3</td>
+<td>73.1</td>
+<td>66.7</td>
+<td>3,623</td>
+</tr>
+</tbody>
+</table>
+<p>从头静态指导的总体成功率比 Compiled 高 +2.9 个百分点（95% 置信区间 [+0.0, +5.7]，Holm 校正后 p=0.13）。其相对固定任务模板的优势为 +2.3 个百分点（[−0.4, +5.0]，未校正 p=0.13）。固定 token 预算下的探索性重放显示，相对 Compiled 的优势在 2,000 token 时为 +17.6 个百分点（[+13.0, +22.1]），在 5,000 token 时为 +4.6 个百分点（[+1.1, +8.0]）。</p>
+<p>早期端到端研究使用 700 个独立场景和原始生成指令。第 0 次尝试在 147 个场景上成功，留下 553 个共享失败。Compiled 达到 92.9% 的总体成功率，而重采样为 73.1%，固定任务模板为 95.6%。模板比较是探索性的。</p>
+<h3>C.3 泛化与失败案例</h3>
+<p>在七个符合条件的 Qwen2.5-Coder-3B/7B 设置中，Compiled 将恢复率比重采样提升 +18.1 个百分点（95% 置信区间 [+13.3, +22.9]）。其相对其他回合反馈的差异较小，为 +2.3 个百分点（[−1.1, +5.6]）。以下额外研究不包含在该合并估计中。</p>
+<p>恢复率增益因 API 和扰动设置而异。使用仅位置 API 时，Compiled 在立方体入区任务上将恢复率比重采样提升 +30.0 个百分点。两种方法在放入箱任务上都达到 93.3% 的恢复率。在三个生成种子中，Compiled 在所有六个测试的种子-设置对中都超过重采样（+10.7 至 +26.7 个百分点）。在 5 毫米位姿噪声下，抬起任务的差异为 +16.7 个百分点，堆叠任务为 +10.0 个百分点，只有抬起任务的区间不包含零。在温度 0.2 且位姿偏移的抬起任务上，Compiled 的恢复率比重采样低 19.6 个百分点（90% 置信区间 [−28.6, −10.7]）。</p>
+<p>模型特定结果涵盖不同的初始成功率水平（图 A2）。DeepSeek-Coder-6.7B 在两个任务上都低于纳入所需的最低初始成功率。其合并恢复率 Compiled 为 50.8%，重采样为 41.7%（n=120；差异 +9.2 个百分点，[−1.7, +20.0]）。单独的开门研究初始成功率为 1.3%，也低于纳入所需的最低值。</p>
+<p>使用 Qwen2.5-Coder-32B 时，所有 80 个抬起场景初始成功。在堆叠任务上，160 次初始尝试中有 105 次成功，Compiled 和重采样解决了其余 55 个失败中相同的 52 个（94.5%）。配对区间宽度为零，因为两种方法在这 55 个失败上产生相同结果。在其他评估集上的等价性仍未测试。</p>
+<p><strong>图 A2</strong>：模型特定研究中 Compiled 与重采样之间的恢复率差异。每个点在单独评估的模型和任务集内比较 Compiled 与重采样。</p>
+<p>在螺母插入任务上，Compiled 恢复了 82.5% 的初始失败，而重采样为 97.5%（n=40；−15.0 个百分点，95% 置信区间 [−27.5, −2.5]）。这一下降与中心抓取指令和所需的边缘抓取冲突相一致。其他回合反馈达到 62.5% 的恢复率。Compiled 和重采样的尝试有效率保持相近（85.1% 和 84.9%）。</p>
+<h2>附录 D 语言反馈模板</h2>
+<p>以下 schema-3.0 文本直接提取自 src/roborepair/plan/constraints.py。包括所有 14 个特定标签模板、通用回退以及两个 API 变体替换块。</p>
+<pre><code>诊断：先前的程序未能编译。
+MUST：编写完整的语法有效程序
+NEVER：截断的语句
+NEVER：代码内的 markdown 或散文
+</code></pre>
+<pre><code>诊断：先前的程序超出执行时间预算。
+MUST：移除无界循环和重试/轮询逻辑；编写简短的直接 API 调用序列
+NEVER：等待或重试的 while 循环
+NEVER：sleep 或轮询
+</code></pre>
+<pre><code>诊断：先前的程序调用了不存在的函数。
+MUST：仅使用已定义的有文档说明的 API 函数（不导入、不重定义）
+NEVER：import 语句
+NEVER：调用 API 文档中没有的函数
+NEVER：重定义 API 函数
+</code></pre>
+<pre><code>诊断：先前的程序已执行但未进行任何 API 调用。
+MUST：使 API 调用在顶层执行；调用你定义的任何辅助函数
+NEVER：定义函数而不调用
+</code></pre>
+<pre><code>诊断：先前的程序从未定位目标物体。
+MUST：使用 get_object_pose(name) 查找每个物体，并使用返回的位置移动
+NEVER：引用场景中不存在的物体
+NEVER：猜测位置
+</code></pre>
+<pre><code>诊断：先前的程序从未尝试抓取。
+MUST：在抬起/放置之前抓取物体：goto_pose 到物体中心位置，然后 close_gripper()
+NEVER：在成功抓取之前抬起或放置
+</code></pre>
+<pre><code>诊断：尝试了抓取但未能固定物体。
+MUST：在物体的中心抓取：goto_pose 到物体中心位置，然后 close_gripper()，且夹爪为空
+NEVER：在远离物体中心处闭合夹爪
+</code></pre>
+<pre><code>诊断：夹爪在远离物体的位置闭合。
+MUST：在闭合前将夹爪移动到物体中心：goto_pose 到物体中心位置，然后 close_gripper()
+NEVER：未先移动到物体处就 close_gripper
+</code></pre>
+<pre><code>诊断：抓取失败，因为夹爪仍持有另一物体。
+MUST：仅抓取一个物体；将被持有物体移动到其目的地而不是抓取另一个
+NEVER：在已持有物体时闭合夹爪
+</code></pre>
+<pre><code>诊断：物体被抓取但从未抬起。
+MUST：抓取后，抬起物体：{lift_hint}
+NEVER：在物体仍在桌上时结束程序
+</code></pre>
+<pre><code>诊断：物体被抬起但随后被释放，因此结束时不再被持有。
+MUST：抬起后不要张开夹爪；保持持有（或先放置到目标上）：{place_hint}
+NEVER：抬起后立即 open_gripper
+</code></pre>
+<pre><code>诊断：物体被抬起但未正确放置在目标上。
+MUST：将物体放置在目标上：{place_hint}
+NEVER：在远离目标处释放物体
+</code></pre>
+<pre><code>诊断：一个物体被撞下桌面。
+MUST：使用 z_approach 从上方接近物体；避免在物体附近做扫动动作
+NEVER：将物体撞下桌面的动作
+</code></pre>
+<pre><code>诊断：把手被抓取但门从未被拉开。
+MUST：握住把手后，将其侧向拉离门框：pull('door_handle', dx, dy)，使用至少 0.15 米的水平向量
+NEVER：未拉动把手就释放
+NEVER：抬起把手而不是侧向拖动
+</code></pre>
+<pre><code>诊断：任务未成功。
+MUST：修复失败原因并完成每个任务步骤
+</code></pre>
+<pre><code>lift_hint：抓取后调用 lift(name, height=0.1)
+place_hint：使用 place_on(source, target) 作为最终动作（它会释放）
+</code></pre>
+<pre><code>lift_hint：闭合夹爪后，goto_pose 到抓取点上方 0.15 米处，z_approach=0（物体随夹爪移动）
+place_hint：持有时，goto_pose 到目标位置上方，然后 open_gripper()
+</code></pre>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 代码即策略, 自我修复, 执行反馈, 机器人操作, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

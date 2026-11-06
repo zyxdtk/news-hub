@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CacheGraft：基于潜在空间文档增强的RAG - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">CacheGraft：基于潜在空间文档增强的RAG</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.07393" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：CacheGraft: Enhancing Retrieval-Augmented Generation via Latent-Space Document Enrichment</h4>
+            <p><strong>中文摘要：</strong> CacheGraft将KV缓存翻译技术从实时多智能体通信拓展至检索增强生成（RAG）。该系统在离线索引阶段利用C2C融合框架，将大模型（Qwen3-4B）的KV缓存融合进小模型（Qwen3-0.6B）的KV空间；查询时仅需小模型加载融合缓存即可解码作答。在五个知识密集型问答基准上，CacheGraft在30项比较中29项优于纯文本基线（17项统计显著），且融合器零样本、未经检索数据训练。该方案尤其适合推理时只能部署小模型的算力受限场景，主要局限在于KV缓存的存储开销。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>CacheGraft：通过潜在空间文档增强提升检索增强生成</h1>
+<p><strong>会议：</strong> 知识增强信息检索研讨会；2026年11月；意大利罗马<br />
+KEIR Workshop @ CIKM 2026</p>
+<p><strong>CCS：</strong> 信息系统 → 信息检索</p>
+<p><strong>作者：</strong><br />
+- Vihan Lakshman（MIT CSAIL，美国剑桥，vihan@mit.edu）<br />
+- Peter Baile Chen（MIT CSAIL，美国剑桥，peterbc@mit.edu）<br />
+- Zhuohan Gu（MIT CSAIL，美国剑桥，zgu15@mit.edu）<br />
+- Michael Cafarella（MIT CSAIL，美国剑桥，michjc@csail.mit.edu）</p>
+<h2>摘要</h2>
+<p>机器学习领域的最新工作已经证明，基于Transformer的语言模型智能体不仅可以通过文本传递状态，还可以通过键值（KV）缓存直接在潜在空间中传递状态。在本文中，我们论证了这种缓存到缓存的翻译所能提供的效用超越了其最初的激励性应用——实时智能体通信，并且可以被用于检索增强生成（RAG）。基于缓存到缓存融合框架，我们提出的CacheGraft系统在离线阶段将语料库中的每个段落编码为较大的共享模型（我们实验中为40亿参数）与较小的接收模型（6亿参数）之间的融合KV缓存表示，使得该缓存可以在查询时注入接收模型，而无需较大的模型。在五个问答基准和两个独立本地运行的评判模型上，CacheGraft在30项比较中有29项优于纯文本接收器基线的答案质量，其中17项具有统计显著性。值得注意的是，这些增益相对于融合器而言是零样本的，该融合器从未在检索数据上训练过。这些初步结果表明，潜在空间文档增强可能是提升RAG系统性能的一条有前景的途径，尤其是在推理阶段只能部署小模型的计算受限环境中。</p>
+<p><strong>关键词：</strong> 检索增强生成、KV缓存、模型协作、缓存翻译</p>
+<h2>1. 引言</h2>
+<p><strong>图1.</strong> 共享器和融合器仅在离线阶段运行，每个语料库段落运行一次，且不感知任何查询。融合后的KV缓存是跨越离线/在线边界的唯一产物：在查询时，接收器加载该缓存并独立解码，在潜在空间中读取段落 [p d]，以文本形式读取问题 [q]。（图中流程：阶段1——离线，每个段落一次：段落 d 分别由共享器（4B）与接收器（0.6B）预填充，融合器生成融合KV缓存并持久化；阶段2——在线，每次查询：接收器（0.6B）以KV形式加载 [p d]，以文本形式读取问题 q，并生成答案 [q]。）</p>
+<p>机器学习社区的最新突破（Fu et al., 2026；Dery et al., 2026；Rossi et al., 2026）已经证明，基于Transformer的大语言模型（LLM）智能体不仅可以借助标准的文本媒介相互传递信息，还可以通过将键值（KV）缓存从发送方模型翻译到接收方模型的内部向量空间，在潜在空间中传递信息。值得注意的是，这种翻译（通常通过学习一个独立的适配器模型来完成）即使两个模型的权重数量和层数不同也是可行的（Fu et al., 2026；Dery et al., 2026；Rossi et al., 2026）。</p>
+<p>推动KV缓存翻译研究的总体动机，是让异构LLM在实时多智能体系统中通过KV缓存向量（而非原始文本）传递状态以实现协作的愿景。通过在潜在空间中运作，KV缓存翻译有望同时提升多智能体计算的质量（因为KV缓存构成了以LLM原生语言表达的更丰富的信息概念表示）与此类系统的性能（通过省去模型将文本输入转换为KV向量的初始步骤）。</p>
+<p>本文背后的核心观察是：KV缓存翻译的用处可以超越其最初的激励目标——实时多智能体LLM通信。为此，我们引入CacheGraft框架，将KV缓存翻译范式应用于检索增强生成（RAG），即LLM在生成回答之前从外部语料库调取知识以增强其上下文的任务。将KV缓存翻译应用于RAG并非显而易见，因为典型的RAG部署通常只包含单个LLM；尚不清楚跨模型缓存翻译能在何处发挥作用。我们的关键洞察是：可以在RAG流程的离线索引阶段利用KV缓存翻译，通过将一个较大模型（无法在查询时部署）的KV缓存与一个在线运行的小模型的缓存相融合，来丰富文档的表示。由此，较大的模型充当了事实上的教师，引导较小的接收模型更好地“阅读”文档内容。</p>
+<p>与多智能体通信不同，RAG流程的离线阶段对延迟并不敏感，这使得KV缓存融合的开销比实时通信场景中更容易接受。此外，这一离线阶段还使得使用更强大但计算开销高昂的LLM进行索引成为可能。这些洞察推动了我们CacheGraft框架的开发。总而言之，我们在本文中做出以下贡献：</p>
+<ul>
+<li><strong>概念洞察：</strong> 据我们所知，本工作是首个观察到KV缓存翻译可以被应用于实时智能体间通信这一经典激励示例之外的工作。特别地，我们证明了缓存到缓存（C2C）融合技术（Fu et al., 2026）能够在检索增强生成（RAG）场景中带来生成质量的提升。</li>
+<li><strong>概念验证评估：</strong> 我们使用C2C团队发布的现成预训练KV缓存融合模型¹（https://huggingface.co/nics-efc/C2C_Fuser）实例化CacheGraft，该模型将Qwen3-4B-Base模型的KV缓存与Qwen3-0.6B模型的缓存融合到后者的KV空间中。我们在五个知识密集型RAG问答基准上评估了我们所提出的系统²（我们的代码可在 https://github.com/vihan-lakshman/CacheGraft 获取），这些基准与原始C2C评估基准不同，后者主要聚焦于推理任务。有趣的是，CacheGraft使用一个并未针对这些检索应用进行专门训练的缓存融合模型就实现了这些增益。</li>
+<li><strong>长期研究愿景：</strong> 除了概念验证实验结果之外，我们论证了面向RAG应用的KV缓存融合是一个内涵丰富且研究不足的领域，并为社区指出了若干开放性研究问题。</li>
+</ul>
+<h2>2. 相关工作</h2>
+<p>本文的工作位于机器学习与信息检索中三条此前互不关联的研究脉络的交汇处。首先是前述的KV缓存翻译研究线（Fu et al., 2026；Dery et al., 2026；Rossi et al., 2026），包括我们在实验中直接使用的C2C框架（Fu et al., 2026）。我们在CacheGraft的评估中专注于使用C2C，因为据我们所知，它在共享器与接收器模型之间展示了最大的参数差距（40亿对6亿参数），因而构成了迄今为止最具可扩展性的翻译方法。</p>
+<p>其次，在RAG方面，已有若干工作提出预计算并存储模型对文档的KV缓存表示，并在查询时使用缓存而非原始文本来降低延迟，其方式是省去将文本转换为KV值的步骤（Lu et al., 2025；Chen et al., 2026；Yao et al., 2025；Ma et al., 2025）。然而，这些方法都只使用单个模型的KV缓存，并未考虑用来自另一个更强大LLM的信号来丰富缓存表示，这正是本文方法与之不同的地方。</p>
+<p>最后，还有多项研究考察了文档增强问题，即对语料库中的文本进行预处理，使其更适用于RAG应用（Chen et al., 2025；O'Nuallain et al., 2026；Uzan et al., 2026；Lei et al., 2026）。CacheGraft也可以被视为一种文档增强策略，只不过是在潜在空间而非文本层面进行。</p>
+<h2>3. 背景：缓存到缓存（C2C）</h2>
+<p>在本节中，我们简要回顾C2C框架（Fu et al., 2026）的细节，因为CacheGraft正是将该融合模型重新用于离线文档增强。简而言之，C2C使一个共享器LLM能够通过将其键值（KV）缓存融合进接收器LLM的缓存，直接在潜在空间中向接收器LLM传递上下文理解。两个底层模型均保持冻结；唯一被训练的组件是一个轻量级的逐层融合器网络。更形式化地，设 x=[x₀,…,x_{n−1}] 表示输入词元序列（在我们的设置中即RAG提示；见第4节）。该序列由每个模型独立分词。随后两个冻结模型在相同输入上进行预填充：接收器为其各层 n=1,…,N 产生逐层KV缓存 𝒞_n(x)，共享者则为其自身的层 m=1,…,N′ 产生缓存 𝒞^𝒮_m(x)。文本输入被消费两次，每个模型的预填充各一次。</p>
+<p>由于两个模型的深度可能不同，需要一个层映射策略 𝒢 为每个接收器层 n 指定一个共享器层 𝒢(n)；C2C采用末端对齐策略，先配对最后一层再逐层向前回溯。随后，逐层融合器 ℱ_n 产生融合缓存：</p>
+<p>(1) 𝒞^ℱ(x) = { ℱ_n( 𝒞_n(x), 𝒞^𝒮_{𝒢(n)}(x) ) }_{n=1}^{N}</p>
+<p>融合缓存 𝒞^ℱ(x) 完全存在于接收器的KV空间中，与输入具有相同的序列长度 n（不引入额外的词元位置），并替换接收器原有的提示缓存。</p>
+<p>在推理时，接收器独自执行文本生成。给定已生成前缀 y_{[0:i]}=[y₀,…,y_{i−1}] 以及接收器在该前缀上普通自产的缓存 𝒞(y_{[0:i]})，下一个词元预测为：</p>
+<p>(2) y_{i+1} = 𝒫( y_i | 𝒞^ℱ(x) ⊕ 𝒞(y_{[0:i]}) )</p>
+<p>其中 ⊕ 表示按序列拼接。融合完成后，共享器不再扮演任何角色：新生成的词元在融合提示缓存之后追加接收器原生的缓存条目，与标准自回归解码完全一致。</p>
+<p>这一构造的两个性质对CacheGraft中的RAG设置至关重要。第一，融合缓存是一个自包含的产物：公式2只需要 𝒞^ℱ(x) 和接收器，而不需要共享器或融合器。第二，在因果注意力下，给定位置的融合条目仅依赖于更早位置的词元。这两个性质共同使得公式1的融合步骤可以完全移至离线执行，对每个文档只计算一次且不感知任何查询。</p>
+<p>C2C框架在交互式多智能体场景中的一个局限是，它需要让文本输入 x 同时通过共享器和接收器两个模型进行前向传播，这限制了延迟节省的总幅度。KV缓存翻译后续工作（如Latent Cache Flow（Rossi et al., 2026））的一个主要目标就是消除这一缺陷。然而，在RAG场景中，这种融合方式并不构成显著障碍，因为缓存增强步骤发生在离线阶段而非查询时。</p>
+<p><strong>表1.</strong> CacheGraft与仅使用0.6B接收器模型、仅使用4B共享器模型的性能比较，涵盖两个LLM评判器与contains指标（衡量正确答案是否包含在输出文本中）。CacheGraft相对于仅接收器基线的改进以粗体标出。Δ报告各指标下CacheGraft减去仅接收器的差值。</p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>设置</th>
+<th>n</th>
+<th>Top-1召回率</th>
+<th>phi-4 仅接收器</th>
+<th>phi-4 CacheGraft</th>
+<th>phi-4 仅共享器</th>
+<th>Δ</th>
+<th>Gemma 仅接收器</th>
+<th>Gemma CacheGraft</th>
+<th>Gemma 仅共享器</th>
+<th>Δ</th>
+<th>contains 仅接收器</th>
+<th>contains CacheGraft</th>
+<th>contains 仅共享器</th>
+<th>Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AdversarialQA</td>
+<td>检索</td>
+<td>416</td>
+<td>59.4</td>
+<td>30.8</td>
+<td>36.8</td>
+<td>41.8</td>
+<td><strong>+6.0</strong>*</td>
+<td>34.9</td>
+<td>38.9</td>
+<td>48.3</td>
+<td>+4.1</td>
+<td>24.5</td>
+<td>30.3</td>
+<td>33.7</td>
+<td><strong>+5.8</strong>*</td>
+</tr>
+<tr>
+<td>AdversarialQA</td>
+<td>oracle</td>
+<td>—</td>
+<td>—</td>
+<td>42.1</td>
+<td>49.3</td>
+<td>59.1</td>
+<td><strong>+7.2</strong>*</td>
+<td>44.2</td>
+<td>51.4</td>
+<td>63.9</td>
+<td><strong>+7.2</strong>*</td>
+<td>33.9</td>
+<td>42.5</td>
+<td>48.3</td>
+<td><strong>+8.7</strong>*</td>
+</tr>
+<tr>
+<td>SQuAD</td>
+<td>检索</td>
+<td>800</td>
+<td>68.1</td>
+<td>51.8</td>
+<td>59.6</td>
+<td>66.4</td>
+<td><strong>+7.9</strong>*</td>
+<td>59.2</td>
+<td>62.5</td>
+<td>70.8</td>
+<td><strong>+3.2</strong>*</td>
+<td>48.6</td>
+<td>55.5</td>
+<td>61.1</td>
+<td><strong>+6.9</strong>*</td>
+</tr>
+<tr>
+<td>SQuAD</td>
+<td>oracle</td>
+<td>—</td>
+<td>—</td>
+<td>73.0</td>
+<td>79.4</td>
+<td>86.5</td>
+<td><strong>+6.4</strong>*</td>
+<td>78.6</td>
+<td>81.8</td>
+<td>89.4</td>
+<td>+3.1</td>
+<td>69.9</td>
+<td>76.9</td>
+<td>81.2</td>
+<td><strong>+7.0</strong>*</td>
+</tr>
+<tr>
+<td>CovidQA</td>
+<td>检索</td>
+<td>800</td>
+<td>53.2</td>
+<td>33.1</td>
+<td>36.9</td>
+<td>41.9</td>
+<td><strong>+3.8</strong>*</td>
+<td>50.8</td>
+<td>53.8</td>
+<td>59.8</td>
+<td>+3.0</td>
+<td>21.0</td>
+<td>22.6</td>
+<td>24.4</td>
+<td>+1.6</td>
+</tr>
+<tr>
+<td>CovidQA</td>
+<td>oracle</td>
+<td>—</td>
+<td>—</td>
+<td>53.7</td>
+<td>59.1</td>
+<td>61.1</td>
+<td><strong>+5.4</strong>*</td>
+<td>71.7</td>
+<td>76.9</td>
+<td>80.0</td>
+<td><strong>+5.2</strong>*</td>
+<td>32.6</td>
+<td>35.4</td>
+<td>37.2</td>
+<td>+2.8</td>
+</tr>
+<tr>
+<td>TriviaQA</td>
+<td>检索</td>
+<td>800</td>
+<td>54.3</td>
+<td>38.1</td>
+<td>41.6</td>
+<td>57.8</td>
+<td><strong>+3.5</strong>*</td>
+<td>49.2</td>
+<td>52.4</td>
+<td>74.1</td>
+<td><strong>+3.1</strong>*</td>
+<td>45.9</td>
+<td>48.9</td>
+<td>65.5</td>
+<td><strong>+3.0</strong>*</td>
+</tr>
+<tr>
+<td>TriviaQA</td>
+<td>oracle</td>
+<td>—</td>
+<td>—</td>
+<td>50.8</td>
+<td>54.0</td>
+<td>70.1</td>
+<td>+3.2</td>
+<td>62.9</td>
+<td>63.4</td>
+<td>85.0</td>
+<td>+0.5</td>
+<td>61.0</td>
+<td>62.8</td>
+<td>81.5</td>
+<td>+1.8</td>
+</tr>
+<tr>
+<td>QASPER</td>
+<td>检索</td>
+<td>583</td>
+<td>36.2</td>
+<td>15.3</td>
+<td>15.7</td>
+<td>17.2</td>
+<td>+0.4</td>
+<td>35.9</td>
+<td>33.9</td>
+<td>35.5</td>
+<td>−2.0</td>
+<td>17.7</td>
+<td>18.8</td>
+<td>18.2</td>
+<td>+1.1</td>
+</tr>
+<tr>
+<td>QASPER</td>
+<td>oracle</td>
+<td>—</td>
+<td>—</td>
+<td>34.7</td>
+<td>37.5</td>
+<td>37.9</td>
+<td>+2.9</td>
+<td>57.4</td>
+<td>60.8</td>
+<td>59.2</td>
+<td>+3.4</td>
+<td>32.7</td>
+<td>39.0</td>
+<td>34.8</td>
+<td><strong>+6.3</strong>*</td>
+</tr>
+</tbody>
+</table>
+<p>*p&lt;0.05，基于问题集合的精确双侧配对McNemar检验。</p>
+<h2>4. CacheGraft：将C2C适配于RAG</h2>
+<p>我们现在描述CacheGraft系统的细节。作为符号约定，我们将RAG提示表示为 x=[p,d,q]，它是固定前导语 p（也称为系统提示）、检索到的文档 d 和问题 q 的拼接。我们将注意力集中在知识密集型问答应用上，这类应用需要一个通常无法在模型自身权重中找到的事实性答案。</p>
+<p>在因果注意力下，两个模型在位置 i≤|pd| 处的预融合缓存条目独立于任何位置 j&gt;i 的词元；投影器在这些条目上逐位置、逐层地作用；并且 [pd] 的融合不依赖于 q。因此，一次性计算 [p,d,q] 与单独计算 [p,d] 在 [p,d] 上产生完全相同的KV。由此，对于使用固定前导语的top-1检索，文档始终占据相同的位置范围，因此无需进行RoPE重旋转（Chen et al., 2026）。我们将扩展框架以支持 k&gt;1 的top-k检索（借助诸如TurboRAG微调（Lu et al., 2025）或CacheBlend（Yao et al., 2025）等技术）留作未来工作。</p>
+<p>图1描绘了完整的CacheGraft流程。离线阶段，对于每个段落，我们启用融合对 [p,d] 进行预填充，并以内容哈希为键持久化接收器空间的KV。我们还维护一个额外的文档嵌入向量数据库索引。在线阶段，我们基于嵌入相似度识别与查询最相关的文档，将该文档的融合KV缓存加载到基础接收器中并解码问题。至关重要的是，查询路径上我们不需要来自共享器或缓存投影融合器模型的任何东西。</p>
+<h2>5. 实验</h2>
+<h3>5.1. 实验设置</h3>
+<p>我们在单块NVIDIA A100-40GB GPU上进行所有实验，并在推理时使用标准贪心解码。</p>
+<p><strong>模型。</strong> 在所有报告的实验中，我们使用Qwen3-0.6B（Yang et al., 2025）作为接收器，Qwen3-4B-Base（Yang et al., 2025）作为共享器，并使用针对该模型对发布的C2C投影器。该投影器在通用聊天蒸馏数据上训练，从未见过检索数据，因此所有结果相对于融合器训练而言都是零样本的。</p>
+<p><strong>数据。</strong> 我们使用五个标准的知识密集型问答基准进行RAG评估：SQuAD v1.1（Rajpurkar et al., 2016）、AdversarialQA（Bartolo et al., 2020）、CovidQA（Möller et al., 2020）、QASPER（Dasigi et al., 2021）和TriviaQA（Joshi et al., 2017）。在搜索方面，我们使用bge-small（Xiao et al., 2023）嵌入执行稠密top-1检索。在评估方面，每个黄金段落我们保留一个问题。我们还在“检索”和“oracle（完美检索）”两种条件下运行实验，以理解搜索质量对整体RAG性能的影响。</p>
+<p><strong>指标。</strong> 我们采用LLM作为评判者的机制（Zheng et al., 2023）作为主要评估指标。我们使用两个评判者评估所有RAG输出，二者均为本地运行的开权重模型，对原始未修改的生成内容进行评分：phi-4（Abdin et al., 2024）和Gemma-2-9B（Team et al., 2024）。我们还报告contains指标，它衡量生成的答案是否包含测试数据集中的黄金标准答案。我们还基于评估问题集合使用精确双侧配对McNemar检验计算统计显著性。我们不依赖精确匹配（EM）和F1分数等传统RAG指标，因为我们观察到融合KV缓存产生的答案往往更为冗长（如表2所示），这会损害这些以词元为中心的指标上的表现。</p>
+<h3>5.2. 结果</h3>
+<p><strong>表2.</strong> CacheGraft与仅接收器Text-RAG基线的示例输出。最后两行是失败案例：在每一例中，CacheGraft用同一段落中的不同片段作答。</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>text-RAG</th>
+<th>CacheGraft</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>萨克森花园中可以找到多少种树木？（黄金答案：100）</td>
+<td>15.5 ✗</td>
+<td>100 ✓</td>
+</tr>
+<tr>
+<td>大陆爱迪生公司位于何处？（黄金答案：法国）</td>
+<td>纽约市。✗</td>
+<td>大陆爱迪生公司位于法国。✓</td>
+</tr>
+<tr>
+<td>罗洛与谁签订了圣克莱尔-埃普特条约？（黄金答案：国王查理三世）</td>
+<td>罗洛。✗</td>
+<td>罗洛与西法兰克国王查理三世签订了圣克莱尔-埃普特条约。✓</td>
+</tr>
+<tr>
+<td>丢失的专利后来在哪里被找到？（黄金答案：专利档案馆）</td>
+<td>丢失的专利后来在专利档案馆中被找到。✓</td>
+<td>这些专利在美国、英国和加拿大被找到。✗</td>
+</tr>
+<tr>
+<td>谁的著作被第三帝国广泛引用？（黄金答案：路德）</td>
+<td>路德的著作被第三帝国广泛引用。✓</td>
+<td>海因里希·希姆莱的著作被第三帝国广泛引用。✗</td>
+</tr>
+</tbody>
+</table>
+<p>如表1所示，我们发现以投影KV缓存的形式传递段落，几乎在每个基准的每项指标上都优于接收器直接处理原始文本，提升幅度最高达8个百分点；唯一的例外是QASPER，该数据集在使用oracle检索器时同样表现出明显增益，但在使用基于嵌入的top-1搜索时两个评判者的结论不一致。</p>
+<p>在表3中，我们观察到QASPER上共享器与接收器之间的RAG质量差距最小，这解释了缓存融合在该数据集上结果较为混合的原因：共享器能够提升接收器的空间有限。总体而言，表3表明CacheGraft要在知识密集型RAG任务上产生价值需满足两个前提条件：共享器必须相对于接收器有提升空间，且文档必须提供共享器能够利用的事实信号。</p>
+<p>我们还在表2中给出了CacheGraft在SQuAD数据集上部分成功与失败案例的示例。我们观察到，缓存融合确实能在多个案例中将接收模型引导至段落的相关部分，但也会出错。我们还注意到，CacheGraft的输出往往比接收器和共享器模型都更冗长，这也限制了CacheGraft的总延迟收益，如表4所示。尽管如此，表4仍然表明CacheGraft在GPU内存消耗方面具有优势。我们推测，CacheGraft融合KV缓存所带来的冗长度增加，可以通过针对检索任务进行显式训练来缓解，我们将此作为未来工作的另一个方向。</p>
+<p><strong>表3.</strong> CacheGraft的增益与改进机会之间的关系，均在oracle检索设置下计算。提升空间为contains指标下仅共享器减去仅接收器。“答案在文档中”为共享器在给定黄金段落时相对于闭卷作答（无段落）的contains提升。增益为phi-4评判器下CacheGraft相对于仅接收器的改进。</p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>提升空间</th>
+<th>答案在文档中</th>
+<th>增益</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AdversarialQA</td>
+<td>+14.4</td>
+<td>+34.6</td>
+<td>+7.2</td>
+</tr>
+<tr>
+<td>SQuAD</td>
+<td>+11.3</td>
+<td>+69.0</td>
+<td>+6.4</td>
+</tr>
+<tr>
+<td>CovidQA</td>
+<td>+4.4</td>
+<td>+34.1</td>
+<td>+5.4</td>
+</tr>
+<tr>
+<td>TriviaQA</td>
+<td>+20.5</td>
+<td>+40.7</td>
+<td>+3.2</td>
+</tr>
+<tr>
+<td>QASPER</td>
+<td>+2.0</td>
+<td>+30.2</td>
+<td>+2.9</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表4.</strong> 查询时成本，批大小为1，贪心解码、最多生成24个新词元、预热状态，在单块A100-40GB上对100个SQuAD问题测试。</p>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>延迟</th>
+<th>GPU内存 (GB)</th>
+<th>词元数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>仅接收器 text-RAG (0.6B)</td>
+<td>334</td>
+<td>1.22</td>
+<td>8.2</td>
+</tr>
+<tr>
+<td>CacheGraft (0.6B + 缓存)</td>
+<td>574</td>
+<td>1.27</td>
+<td>14.3</td>
+</tr>
+<tr>
+<td>仅共享器 text-RAG (4B)</td>
+<td>652</td>
+<td>7.62</td>
+<td>12.6</td>
+</tr>
+</tbody>
+</table>
+<h2>6. 局限性与开放问题</h2>
+<h3>6.1. 局限性</h3>
+<p>我们方案的首要实际局限是存储问题：我们必须为每个文档存储KV缓存，这可能消耗比原始文本高出几个数量级的空间（在没有任何优化的情况下，10万个文档约在太字节量级）。这一问题继承自先前提出为检索预计算KV缓存的工作，如TurboRAG（Lu et al., 2025）、Block Attention（Ma et al., 2025）和CAG（Chan et al., 2025），并可以通过与本文工作互补的KV缓存压缩技术（Shi et al., 2024）加以缓解。我们当前研究的另一个局限是，我们只关注检索单个文档，且在评估中仅考虑了单个C2C融合器模型。将我们的系统扩展到支持top-k检索和更多模型，是未来工作的另一个有前景的方向。</p>
+<h3>6.2. 开放问题</h3>
+<p>本文的结果是对KV缓存融合增强RAG应用的概念验证演示，并为该领域的未来研究开辟了许多方向。下面我们着重指出两个特别有趣的方向：</p>
+<p><strong>(1) 训练面向RAG的定制融合器模型：</strong> 如前所述，我们使用的是一个并未针对检索任务的现成C2C融合器模型。我们能否通过使用检索专用的训练目标和数据集来训练融合器模型，从而提升CacheGraft的性能？在缓存融合失效之前，共享器与接收器模型之间的差距能扩大到什么程度？我们甚至能否训练融合器使其更具可压缩性，以增强标准的KV缓存压缩技术？</p>
+<p><strong>(2) 与文本文档增强相结合：</strong> 先前的工作如EnrichIndex（Chen et al., 2025）和AutoIndex（O'Nuallain et al., 2026）提出修改文档文本来提升RAG性能。文本级的文档增强与我们方法的潜在空间策略之间如何相互作用？是否存在一种文本增强方法，能够超越直接使用原始文档而增强KV缓存翻译的效果？</p>
+<h2>7. 结论</h2>
+<p>迄今为止，将KV缓存从一个LLM翻译到另一个可能截然不同的模型的思想，仅被应用于实时多智能体系统中的状态通信。本文核心的关键洞察在于：同样的思想可以通过在离线阶段于较大的共享器模型与较小的接收器之间对文档进行KV缓存翻译，从而重新应用于RAG，以增强接收器的在线答案质量。事实上，我们认为RAG可能是比实时智能体通信更适合缓存到缓存融合范式的场景，因为让文本输入同时通过共享器和接收器模型进行前向传播（C2C的要求）对于离线文档索引而言是可忽略的成本，但在实时推理场景中则可能构成限制。我们将这一洞察落实为CacheGraft——一个利用C2C融合、以查询时不运行的大模型信号来增强小接收器模型KV缓存表示的原型RAG系统。我们的初步评估将C2C扩展到融合器训练中不存在的零样本知识密集型问答任务，结果表明，在较大共享器模型拥有可迁移提升空间的数据集上，CacheGraft相对于仅接收器的文本基线持续改进了生成质量。或许令人惊讶的是，这些问答任务上的积极结果来自一个在任何方面都未针对检索调优的现成预训练C2C融合器模型。我们的发现还引出了许多有趣的未来工作问题（我们在6.2节中概述），我们希望这些问题能推动面向RAG应用的潜在空间文档增强的进一步研究。</p>
+<h2>参考文献</h2>
+<p>[1] M. Abdin, J. Aneja, H. Behl, S. Bubeck, R. Eldan, S. Gunasekar, M. Harrison, R. J. Hewett, M. Javaheripi, P. Kauffmann, et al. (2024) Phi-4 technical report. arXiv preprint arXiv:2412.08905.<br />
+[2] M. Bartolo, A. Roberts, J. Welbl, S. Riedel, and P. Stenetorp (2020) Beat the ai: investigating adversarial human annotation for reading comprehension. Transactions of the Association for Computational Linguistics 8, pp. 662–678.<br />
+[3] B. J. Chan, C. Chen, J. Cheng, and H. Huang (2025) Don't do rag: when cache-augmented generation is all you need for knowledge tasks. In Companion proceedings of the ACM on web conference 2025, pp. 893–897.<br />
+[4] P. B. Chen, T. Wolfson, M. Cafarella, and D. Roth (2025) Enrichindex: using llms to enrich retrieval indices offline. arXiv preprint arXiv:2504.03598.<br />
+[5] P. B. Chen, Y. Zhang, D. Roth, S. Madden, J. Andreas, and M. Cafarella (2026) Log-augmented generation: scaling test-time reasoning with reusable computation. In International Conference on Learning Representations, Vol. 2026, pp. 3339–3358.<br />
+[6] P. Dasigi, K. Lo, I. Beltagy, A. Cohan, N. A. Smith, and M. Gardner (2021) A dataset of information-seeking questions and answers anchored in research papers. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, pp. 4599–4610.<br />
+[7] L. M. Dery, Z. Yahav, H. Prior, Q. Feng, J. Shen, and A. Szlam (2026) Latent space communication via kv cache alignment. arXiv preprint arXiv:2601.06123.<br />
+[8] T. Fu, Z. Min, H. Zhang, J. Yan, G. Dai, W. Ouyang, and Y. Wang (2026) Cache-to-cache: direct semantic communication between large language models. In International Conference on Learning Representations, Vol. 2026, pp. 43130–43158.<br />
+[9] M. Joshi, E. Choi, D. S. Weld, and L. Zettlemoyer (2017) Triviaqa: a large scale distantly supervised challenge dataset for reading comprehension. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 1601–1611.<br />
+[10] Y. Lei, N. Lipka, Z. Qi, U. Sahu, K. Goswami, F. Dernoncourt, R. A. Rossi, and Y. Wang (2026) RL-index: reinforcement learning for retrieval index reasoning. arXiv preprint arXiv:2606.16316.<br />
+[11] S. Lu, H. Wang, Y. Rong, Z. Chen, and Y. Tang (2025) Turborag: accelerating retrieval-augmented generation with precomputed kv caches for chunked text. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, pp. 6599–6612.<br />
+[12] D. Ma, Y. Wang, and T. Lan (2025) Block-attention for efficient prefilling. In International Conference on Learning Representations, Vol. 2025, pp. 63774–63788.<br />
+[13] T. Möller, A. Reina, R. Jayakumar, and M. Pietsch (2020) COVID-qa: a question answering dataset for covid-19. In Proceedings of the 1st Workshop on NLP for COVID-19 at ACL 2020.<br />
+[14] S. O'Nuallain, N. Rajkumar, R. Narayanasamy, H. Jiang, S. Chaudhari, and A. Drozdov (2026) AutoIndex: learning representation programs for retrieval. arXiv preprint arXiv:2607.18603.<br />
+[15] P. Rajpurkar, J. Zhang, K. Lopyrev, and P. Liang (2016) Squad: 100,000+ questions for machine comprehension of text. In Proceedings of the 2016 conference on empirical methods in natural language processing, pp. 2383–2392.<br />
+[16] M. Rossi, P. Raghunath, and E. Wu (2026) Latent cache flow: model-to-model communication without text. arXiv preprint arXiv:2605.22863.<br />
+[17] L. Shi, H. Zhang, Y. Yao, Z. Li, and H. Zhao (2024) Keep the cost down: a review on methods to optimize llm's kv-cache consumption. arXiv preprint arXiv:2407.18003.<br />
+[18] G. Team, M. Riviere, S. Pathak, P. G. Sessa, C. Hardin, S. Bhupatiraju, L. Hussenot, T. Mesnard, B. Shahriari, A. Ramé, et al. (2024) Gemma 2: improving open language models at a practical size. arXiv preprint arXiv:2408.00118.<br />
+[19] O. Uzan, R. Polonsky, D. Kiela, and C. Potts (2026) Document optimization for black-box retrieval via reinforcement learning. arXiv preprint arXiv:2604.05087.<br />
+[20] S. Xiao, Z. Liu, P. Zhang, and N. Muennighoff (2023) C-pack: packaged resources to advance general chinese embedding. arXiv:2309.07597.<br />
+[21] A. Yang, A. Li, B. Yang, B. Zhang, B. Hui, B. Zheng, B. Yu, C. Gao, C. Huang, C. Lv, et al. (2025) Qwen3 technical report. arXiv preprint arXiv:2505.09388.<br />
+[22] J. Yao, H. Li, Y. Liu, S. Ray, Y. Cheng, Q. Zhang, K. Du, S. Lu, and J. Jiang (2025) Cacheblend: fast large language model serving for rag with cached knowledge fusion. In Proceedings of the twentieth European conference on computer systems, pp. 94–109.<br />
+[23] L. Zheng, W. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin, Z. Li, D. Li, E. Xing, et al. (2023) Judging llm-as-a-judge with mt-bench and chatbot arena. Advances in neural information processing systems 36, pp. 46595–46623.</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 检索增强生成, KV缓存, 潜在空间, 模型协作, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

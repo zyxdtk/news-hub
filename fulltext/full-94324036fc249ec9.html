@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于潜在噪声表示桥接的高效扩散策略微调 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于潜在噪声表示桥接的高效扩散策略微调</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.07275" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Efficient Diffusion Policy Fine Tuning with Latent Noise Representation Bridging</h4>
+            <p><strong>中文摘要：</strong> 本文提出了潜在噪声线性马尔可夫决策过程(LNL-MDP)框架，用于高效微调预训练扩散/流策略。核心创新是推导出桥接方程，通过噪声空间和动作空间之间的共享表示直接对齐Q值，彻底解决了噪声混叠问题。理论上，该方法在FineTuneRL框架下具有近最优样本复杂度保证。实用算法LARBRID通过学习共享表示来优化初始噪声分布，在Gymnasium、Robomimic和OGBench等多样化机器人任务上实现了2-3倍性能提升，并能有效微调π₀等大规模机器人基础模型。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>基于潜在噪声表示桥接的高效扩散策略微调</h1>
+<p><strong>作者：</strong><br />
+Yuanchu Liang (yuanchu.liang@anu.edu.au) — 澳大利亚国立大学, Maincode<br />
+Yue Yang (yue@maincode.com) — Maincode<br />
+An-Chi He (anchi@maincode.com) — Maincode<br />
+Hanna Kurniawati (hanna.kurniawati@anu.edu.au) — 澳大利亚国立大学</p>
+<h2>摘要</h2>
+<p>预训练扩散和流策略已成为机器人领域强大的骨干网络，然而通过强化学习(RL)将其适应到新数据仍然计算昂贵、样本低效且缺乏理论保证。先前微调初始噪声的方法虽然避免了昂贵的通过时间的反向传播，但面临"噪声混叠"问题：噪声空间的值与动作空间的值之间不存在自然联系。本文通过引入潜在噪声线性马尔可夫决策过程(LNL-MDP)来解决这些挑战。我们推导了LNL-MDP的桥接方程，通过将值与噪声空间和动作空间之间的共享表示对齐来消除噪声混叠问题。此外，我们的LNL-MDP微调框架属于FineTuneRL理论框架，具有近最优保证。基于这些洞察，我们提出了扩散的潜在表示桥接(LARBRID)算法，该算法高效学习表示来优化初始分布，引导预训练模型在环境中最优地行动。在具有挑战性的控制问题上，包括多样化的机器人运动和操作任务，该方法实现了高达2-3倍的性能提升。代码可在以下地址找到：github.com/Maincode-Research/LARBRID.git</p>
+<h2>1 引言</h2>
+<p>通过行为克隆在大规模数据集上训练的预训练生成模型，包括扩散方法(Ho et al., 2020; Song et al., 2020a)和基于流的方法(Lipman et al., 2022)，已成为机器人基础模型的核心骨干(Black et al., 2024; Liu et al., 2024; Team et al., 2024; Chi et al., 2025; Kawaharazuka et al., 2025)。然而，这些模型在处理训练数据集中未覆盖的任务时往往失败。最近，用强化学习(RL)微调预训练模型在RL和机器人社区引起了广泛关注。它使得从在线经验中学习以适应给定任务成为可能。同时，预训练模型为RL算法提供了良好的先验，因为在复杂任务上从头训练它们是出了名的困难。虽然许多现有工作专注于将扩散或流框架与传统RL管道集成(Hansen-Estruch et al., 2023; Ren et al., 2024; Park et al., 2025b; Wagenmaker et al., 2025)，但它们通常遇到繁重的计算，并且在达到近最优性所需的额外微调样本数量上缺乏理论论证。</p>
+<p>虽然一些早期RL理论在表格情况下提供了保证(Auer et al., 2008; Azar et al., 2017; Jin et al., 2018)，但最近人们对为常见的大规模或可能连续的状态和动作空间寻找可证明高效的RL结构产生了浓厚兴趣(Jin et al., 2020; Agarwal et al., 2020; Uehara et al., 2021; Jin et al., 2021; Chowdhury et al., 2021; Du et al., 2021; Ouhamma et al., 2023)。从这些理论进展中，线性马尔可夫决策过程(MDP)(Jin et al., 2020; Agarwal et al., 2020; Uehara et al., 2021)已被后续工作成功应用于提高标准RL问题的样本效率(Ren et al., 2022b; Zhang et al., 2022; Ren et al., 2022a; Shribak et al., 2024)。然而，对于在复杂长时域机器人问题上微调预训练模型，样本效率是否在分析和实践上仍然成立，目前知之甚少。</p>
+<p>本工作从理论和实证两个方面对利用线性MDP微调预训练机器人生成模型提供了肯定的答案。我们主要考虑仅微调预训练扩散/流模型的初始分布(Wagenmaker et al., 2025; Eyring et al., 2025)。这种方法适用于任何一旦采样初始噪声后生成过程就是确定性的模型，例如DDIM(Song et al., 2020a)和流(Lipman et al., 2022)。这种方法的好处是预训练模型的权重在微调期间被冻结，模型可以被视为只有API访问的黑盒。梯度直接传递到初始噪声网络，从而避免了繁重的通过时间的反向传播。这种设置的关键挑战是<strong>噪声混叠问题</strong>(Wagenmaker et al., 2025)：多个噪声可以产生相同的动作，或相似的噪声可以产生不同的动作，这意味着动作的Q值与噪声的Q值之间没有自然的关联。这个问题在离线RL中变得更糟，因为分布外误差通常需要独立创建多个(&gt;10)Q网络(An et al., 2021; Wagenmaker et al., 2025)，放大了噪声混叠问题。</p>
+<p>我们通过赋予环境MDP线性结构来分析性地解决这些问题，使得MDP的组件（例如转移、奖励、Q值）可以由单个表示来表示。重要的是，在此线性MDP上运行的预训练扩散/流策略在噪声空间上诱导出潜在噪声线性MDP(LNL-MDP)。相应的潜在表示是通过预训练生成策略将环境表示拉回得到的，因此状态-动作对和状态-噪声对共享一个公共表示。这种共享表示产生了桥接方程，它直接对齐动作空间和噪声空间的Q值，无需单独的评论家网络，完全消除了噪声混叠问题；参见图1。因此，学习单个表示足以在原始MDP及其LNL-MDP对应物中评估和优化策略。由于关于环境的大部分信息被编码到表示中，它足够强大以打破预训练模型的次优性并帮助找到更好的解决方案。</p>
+<p>通过将预训练模型视为虚拟数据集，我们可以将LNL-MDP微调问题嵌入到理论上被充分理解的FineTuneRL框架(Wagenmaker and Pacchiano, 2023)中，并继承其近最优样本复杂度界。我们的实用算法<strong>扩散的潜在表示桥接</strong>(LARBRID)从头学习共享表示，成功地将理论论证转化为实际观察到的样本效率，并在广泛的机器人控制任务中与许多最先进的基线相比展示了高达2-3倍的性能提升。</p>
+<p><strong>图1</strong>：(a) 噪声混叠导致动作值 $Q$ 和噪声值 $\widetilde{Q}$ 之间的模糊关联。(b) LNL-MDP通过 $\phi$ 和 $\psi$ 将状态空间 $\mathcal{S}$ 和动作空间 $\mathcal{A}$ 映射到共享表示空间，自动解决混叠问题，从中Q值自动对齐。</p>
+<h2>2 相关工作</h2>
+<p><strong>扩散策略的行为克隆与预训练</strong>。在互联网规模数据集上训练生成模型用于语言和视觉的成功启发了机器人和控制社区追求类似的方向，称为行为克隆(BC)(Argall et al., 2009; Ross et al., 2011; Bojarski et al., 2016; Zhang et al., 2018; Brohan et al., 2022; Kawaharazuka et al., 2025)，其中机器人代理直接从离线演示数据集中学习。扩散(Ho et al., 2020)和流(Lipman et al., 2022)模型的突破启发了许多后续BC工作用它们生成机器人控制(Chi et al., 2025; Black et al., 2024; Team et al., 2024)。虽然许多这些工作展示了机器人处理多样化任务的能力不断增强，但它们在遇到训练数据集未充分覆盖的情况时往往失败。我们的工作旨在微调预训练模型并展示改进的实证结果。</p>
+<p><strong>基于RL的扩散微调</strong>。这是一个广阔的领域，工作主要专注于直接优化模型参数以在给定环境中最优地行动(Chen et al., 2022; Ding and Jin, 2023; Hansen-Estruch et al., 2023; Shao et al., 2024; Kang et al., 2023; Psenka et al., 2023; Ren et al., 2024; Park et al., 2025b; Wagenmaker et al., 2025)。例如，Ren et al. (2024)提出使用PPO(Schulman et al., 2017)优化扩散过程的前几步，Psenka et al. (2023)旨在通过将分数与Q函数匹配来优化扩散模型。与这些方法不同，我们专注于仅微调扩散或流过程的初始分布，避免了执行通常不稳定且计算昂贵的通过时间的反向传播(Wagenmaker et al., 2025)。与Wagenmaker et al. (2025)不同，我们严格地在线性MDP(Jin et al., 2020)框架上构建我们的算法，并展示微调扩散策略的样本效率的理论和实证证据。</p>
+<p><strong>线性MDP下的RL</strong>。序列决策过程中线性结构的早期研究是在赌博机文献中进行的(Lattimore and Szepesvári, 2020)。最近，线性MDP被提出(Jin et al., 2020; Agarwal et al., 2020; Uehara et al., 2021)并被证明可以实现样本高效的遗憾界。Wagenmaker and Pacchiano (2023)后来展示了在拥有离线数据集的情况下，找到近最优策略所需的额外在线交互数量的近最优率。虽然理论算法不能直接实现，但诸如Ren et al. (2022b); Zhang et al. (2022); Ren et al. (2022a); Shribak et al. (2024)等工作使用不同的近似方案来绕过难处理性，并展示了线性MDP在机器人控制任务上的实用性。然而，这些工作都没有专注于展示线性MDP在微调生成模型方面的有效性。甚至不清楚线性MDP结构是否可以被正确定义。我们的工作对这些疑问提供了肯定的答案。</p>
+<h2>3 预备知识</h2>
+<p><strong>马尔可夫决策过程</strong>。我们考虑一个情景马尔可夫决策过程(Puterman, 2014; Wagenmaker and Pacchiano, 2023)，$M=(\mathcal{S},\mathcal{A},{P_{h}}<em>{h=1}^{H},{r</em>{h}}<em>{h=1}^{H},H,s</em>{1})$，具有最大时域$H$、固定初始状态$s_{1}$¹、未知状态转移概率${P_{h}}<em>{h=1}^{H}$和支撑在$[0,1]$上的未知奖励分布${r}</em>{h=1}^{H}$。策略写为$\pi=(\pi_{h})<em>{h=1}^{H}$。对于任何策略$\pi:\mathcal{S}\times[H]\rightarrow\Delta</em>{\mathcal{A}}$，我们定义Q值为：</p>
+<p>$$Q^{\pi}<em>{h}(s,a)=\mathbb{E}</em>{\pi}\left[\sum_{h^{\prime}=h}^{H}r_{h^{\prime}}(s_{h^{\prime}},a_{h^{\prime}})\mid s_{h}=s,a_{h}=a\right]$$</p>
+<p>相应的V值为$V_{h}^{\pi}(s)=\mathbb{E}<em>{a\sim\pi}[Q^{\pi}</em>{h}(s,a)]$。令$V_{0}^{\pi}:=V_{1}^{\pi}(s_{1})$表示策略$\pi$的值。最优策略是最大化值$V_{0}^{\star}=V_{0}^{\pi^{\star}}$的策略。</p>
+<p>¹在我们的实证研究中，初始状态可以是概率性的。</p>
+<p><strong>定义1</strong>（线性MDP，Jin et al. (2020); Wagenmaker and Pacchiano (2023)）。存在一个已知特征映射$\phi^{\star}:\mathcal{S}\times\mathcal{A}\to\mathbb{R}^{d}$，使得对所有$(s,a)$有$|\phi_{\star}(s,a)|<em>{2}\leq 1$，并且对每个阶段$h\in[H]$，存在一个带符号向量值测度$\nu</em>{h}:S\rightarrow\mathbb{R}^{d}$和未知奖励向量$\theta^{r}<em>{h}\in\mathbb{R}^{d}$，满足$|\nu</em>{h}(\mathcal{S})|<em>{2}\leq\sqrt{d}$和$|\theta</em>{h}|_{2}\leq\sqrt{d}$，使得：</p>
+<p>$$P_{h}(s^{\prime}\mid s,a)=\langle\phi^{\star}(s,a),\nu_{h}(s^{\prime})\rangle,\qquad\mathbb{E}[r_{h}(s,a)]=\langle\phi^{\star}(s,a),\theta^{r}_{h}\rangle$$</p>
+<p>如Jin et al. (2020)所示，这种线性结构的优势在于Q值可以用特征映射$\phi$线性表示为：</p>
+<p>$$Q^{\pi}<em>{h}(s,a)=\langle\phi^{\star}(s,a),\zeta^{\pi}</em>{h}\rangle \tag{1}$$</p>
+<p>其中${\zeta_{h}^{\pi}\in\mathbb{R}^{d}}_{h=1}^{H}$是可学习的权重。当考虑无限维情况（例如核嵌入）时，线性MDP可以模拟广泛的非线性动力学，参见附录A。</p>
+<p><strong>扩散和流模型</strong>。扩散和流模型逐渐将易于采样的初始分布（例如标准高斯分布）转换为复杂的目标分布$q(x_{0})$(Ho et al., 2020; Lipman et al., 2022)。这里我们简要介绍流行的去噪扩散概率模型(DDPM)。其核心变换过程由$p_{\theta}(x_{0})=\int p_{\theta}(x_{0:T})dx_{1:T}$控制，其中联合分布可以分解为$p_{\theta}(x_{0:T})=p_{\theta}(x_{T})\prod^{T}<em>{t=1}p</em>{\theta}^{(t)}(x_{t-1}\mid x_{t})$。前向过程采样$x\sim q(x_{0})$并逐步添加噪声$\epsilon_{t}\sim\mathcal{N}(0,I)$到样本上，共$T$步。反向去噪过程训练网络$\epsilon_{\theta}^{(t)}$来预测在时间$t$添加的噪声，并通过$x_{t-1}=\alpha_{t}(x_{t}-\beta_{t}\epsilon_{\theta}^{(t)}(x_{t}))+\sigma_{t}\epsilon_{t}$获得去噪样本，其中系数为$\alpha_{t},\beta_{t},\sigma_{t}$。DDPM采样过程可以表述为随机微分方程(Anderson, 1982)，然而当$\sigma_{t}=0$时，过程变为确定性的并简化为去噪扩散隐式模型(DDIM)(Song et al., 2020a)。流模型与扩散有紧密联系，但根植于常微分方程(Lipman et al., 2022; Song et al., 2020b)。重要的是，DDIM和流一旦采样初始噪声后就确定性地生成。</p>
+<p><strong>问题设置</strong>。BC通常为扩散或流模型增加额外的状态输入$s$，并训练扩散或流模型$\Phi(s,w)$（其中$w\sim\mathcal{N}(0,I)$）来预测数据集$\mathcal{D}={(s_{i},a_{i})}_{i=1}^{N}$中的动作$a\in A$。我们的问题设置要求$\Phi$的采样过程在给定输入状态和噪声后是确定性的（例如DDIM或流），并在整个微调过程中保持$\Phi$冻结。令$M$表示$\Phi$运行的环境MDP，由于初始噪声后的确定性生成过程，从噪声空间$W\subseteq\mathbb{R}^{\mathrm{dim}(\mathcal{A})}$采样噪声$w$足以通过$\Phi(s,w)=a$引导反向去噪过程。这诱导出潜在噪声MDP：</p>
+<p><strong>定义2</strong>（潜在噪声MDP，Wagenmaker et al. (2025)）。给定环境MDP $M$和权重冻结的预训练模型$\Phi$，定义潜在MDP $\widetilde{M}=(\mathcal{S},W,{\widetilde{P}<em>{h}}</em>{h=1}^{H},{\widetilde{r}<em>{h}}</em>{h=1}^{H},H,s_{1})$：</p>
+<p>$$\widetilde{P}<em>{h}(s^{\prime}\mid s,w):=P</em>{h}(s^{\prime}\mid s,\Phi(s,w)),\qquad\widetilde{r}<em>{h}(s,w):=r</em>{h}(s,\Phi(s,w))$$</p>
+<p>我们的目标是在这个诱导的潜在MDP中找到最优噪声策略$\pi_{\mathrm{dp}}^{\star}:S\rightarrow\Delta_{W}$。这种一般问题结构遇到前面所述的噪声混叠问题，并且没有利用带来额外理论和实证好处的样本高效结构。这些问题激发了我们将要介绍的LNL-MDP公式和LARBRID算法。</p>
+<h2>4 扩散微调的潜在表示桥接</h2>
+<p>本节通过赋予环境MDP $M$线性结构来介绍新颖的LNL-MDP框架。桥接方程通过共享表示将动作空间和噪声空间的Q值对齐来解决噪声混叠问题。我们的实用算法使用现有的表示学习算法来学习共享表示，RL微调管道的其余部分以此为条件。</p>
+<h3>4.1 潜在噪声线性MDP</h3>
+<p>当环境MDP $M$是线性的（定义1），则潜在噪声MDP $\tilde{M}$也是线性的。以下命题建立了潜在噪声线性MDP(LNL-MDP)。</p>
+<p><strong>命题1</strong>（LNL-MDP）。当$\Phi$作用的原始MDP $M$满足定义1中给出的线性MDP定义时，对任意$w\in W$，定义拉回的潜在特征：</p>
+<p>$$\psi^{\star}(s,w):=\phi^{\star}(s,\Phi(s,w))$$</p>
+<p>则$\widetilde{M}$也是一个线性MDP，称为潜在噪声线性MDP(LNL-MDP)。具体地，其转移和奖励函数可以写为：</p>
+<p>$$\widetilde{P}(s^{\prime}\mid s,w)=\langle\psi^{\star}(s,w),\nu(s^{\prime})\rangle,\;\mathbb{E}[\widetilde{r}(s,w)]=\langle\psi^{\star}(s,w),\theta^{r}_{h}\rangle$$</p>
+<p><strong>证明</strong>：详见附录C。∎</p>
+<p><strong>噪声混叠消除</strong>。通过将状态-动作对和状态-噪声对映射到相同的表示空间，并在此空间上条件化Q值，我们可以解析地解决噪声混叠问题。将$\widetilde{M}$中的Q值表示为$\widetilde{Q}^{\pi_{\mathrm{dp}}}$。对任意$w\sim\pi_{\mathrm{dp}}(\cdot\mid s)$：</p>
+<p>$$Q^{\pi}(s,\Phi(s,w))=\langle\phi^{\star}(s,\Phi(s,w)),\zeta^{\pi}<em>{h}\rangle=\langle\psi^{\star}(s,w),\zeta^{\pi}</em>{h}\rangle=\widetilde{Q}^{\pi_{\mathrm{dp}}}(s,w) \tag{2}$$</p>
+<p>由于$M$和$\widetilde{M}$中的Q值都由其对应的特征$\phi^{\star}$和$\psi^{\star}$表示（由定义1），但$\psi^{\star}$只是从$\phi^{\star}$拉回的特征，知道$\phi^{\star}$就足以将噪声值与动作值关联起来。此外，相同的Q函数对$M$和$\widetilde{M}$都有效，我们不再需要像Wagenmaker et al. (2025)那样针对演员Q网络重新拟合单独的噪声Q网络。因此我们将(2)称为"桥接"方程，并去掉$Q^{\pi}$中的上标$\pi$。我们强调LNL-MDP和桥接方程独立于RL微调管道的选择，使其适应不同的算法和设置，正如我们在第6节中很快展示的那样。</p>
+<p><strong>算法1：扩散的潜在表示桥接(LARBRID)</strong></p>
+<pre><code>1: 输入：预训练Φ，离线数据D_off，总步数T，参数θ,ζ,ρ和目标熵H̄
+2: 初始化D={}或D=D_off并收集预热rollout
+3: for t=1,…,T do
+4:   从D中采样
+5:   通过分数匹配目标(3)更新φ_{θ₁}
+6:   更新ψ_{θ₂}: min_{θ₂} E_D[||ψ_{θ₂}(s,w)−φ_{θ₁}(s,Φ(s,w))||]
+7:   通过(4)中定义的TD误差更新Q_ζ
+8:   更新π_{dp,ρ}: min_ρ E_{D,w∼π_{dp,ρ}}[α log π_{dp,ρ}(w|s)−Q(ψ_{θ₂}(s,w))]
+9:   更新α: min_α E_{D,w∼π_{dp,ρ}}[−α log π_{dp,ρ}(w|s)−αH̄]
+10:  if online then
+11:    采样噪声w∼π_{dp,ρ}(·|s)并获得a=Φ(s,w)
+12:    执行a并获得s'和r
+13:    添加D=D∪(s,a,w,s',r)
+14:  end if
+15: end for
+</code></pre>
+<p><strong>表示学习</strong>。LNL-MDP将噪声混叠问题转化为表示学习问题，因为在实践中需要从头学习$\phi^{\star}$。我们选择扩散谱表示(Shribak et al., 2024)来学习$\phi^{\star}$，参见附录B。当LNL-MDP的转移模型被参数化为基于能量的模型(EBM)时，特征$\phi^{\star}$可以由具有1个隐藏层的全连接神经网络近似：</p>
+<p>$$\phi_{\theta_{1}}(s,a)=\sigma(W_{2}^{\top}\sigma(W_{1}^{T}\xi(s,a)))$$</p>
+<p>其中$\sigma$表示任意激活函数，由于(1)，Q值可以表示为$Q_{\zeta}(s,a)=\langle\phi_{\theta_{1}}(s,a),\zeta\rangle$。这里EBM的分数组件$\xi$和$\nu$可以通过带有噪声调度$\beta$的扩散分数匹配来学习：</p>
+<p>$$l_{\mathrm{diff}}(\xi,\nu)=\min_{\xi,\nu}\mathbb{E}_{\beta}\mathbb{E}(s,a,\tilde{s}^{\prime},s^{\prime})\left[||\tilde{s}^{\prime}+\beta\xi(s,a)^{\top}\nabla\nu(s^{\prime})-\sqrt{1-\beta}s^{\prime}||\right] \tag{3}$$</p>
+<p><strong>注1</strong>。有多项实证工作(Ren et al., 2022b; Zhang et al., 2022; Ren et al., 2022a)承认线性MDP结构。我们选择扩散谱表示因为它具有通用近似性质和高效学习。</p>
+<h3>4.2 扩散的潜在表示桥接(LARBRID)</h3>
+<p>我们现在准备介绍我们的实用算法——扩散的潜在表示桥接(LARBRID)（算法1）。我们以完全通用性来呈现LARBRID，但该算法在不同情况下可以简化。首先，我们从(3)给出的扩散分数匹配目标学习特征$\phi_{\theta_{1}}$。在完全一般的情况下，当我们没有在离线数据集中记录噪声动作，且$\Phi$可以是没有梯度传递的黑盒生成器（例如API访问）时，我们可能需要用均方误差(MSE)目标将噪声特征$\psi_{\theta_{2}}(s,w)$与原始特征$\phi_{\theta_{1}}(s,\Phi(s,w))$进行匹配。</p>
+<p>由于我们的目标是找到最优噪声分布$\pi_{\mathrm{dp}}$，我们自然地将$\pi_{\mathrm{dp},\rho}$参数化为带有参数$\rho$的高斯策略，并采用软演员-评论家(SAC)(Haarnoja et al., 2018)来解决探索和利用问题。需要注意的是，由于SAC中熵项产生的非线性以及复杂的优化管道，我们将$Q$参数化为具有额外的非线性：</p>
+<p>$$Q_{\zeta}(s,a)=\zeta_{2}^{\top}\sigma(\zeta_{1}^{\top}\phi_{\theta_{1}}(s,a))$$</p>
+<p>其中$\zeta$表示组合权重$\zeta={\zeta_{1},\zeta_{2}}$。然后我们使用以下TD误差将$Q_{\zeta}$拟合到目标网络$\bar{Q}_{\zeta^{\prime}}$：</p>
+<p>$$\min_{\zeta}\mathbb{E}<em>{D,w^{\prime}\sim\pi</em>{\mathrm{dp},\rho}(\cdot\mid s^{\prime})}\left[(Q_{\zeta}(\phi_{\theta_{1}}(s,a))-r-\gamma(\bar{Q}<em>{\zeta^{\prime}}(\phi</em>{\theta_{1}}(s^{\prime},a^{\prime}))-\alpha\log(\pi_{\mathrm{dp},\rho}(w^{\prime}\mid s^{\prime}))))^{2}\right] \tag{4}$$</p>
+<p>其中$\zeta^{\prime}$是使用Polyak平均从$\zeta$更新的参数。为了计算这个损失（LARBRID第6行），我们需要首先采样$w^{\prime}\sim\pi_{\mathrm{dp},\rho}(\cdot\mid s^{\prime})$并通过$\Phi$扩散噪声样本以获得$a^{\prime}=\Phi(s^{\prime},w^{\prime})$来采样下一个动作$a^{\prime}$。关于$D$的期望意味着数据$(s,a,s^{\prime},r)$取自重放缓冲区。然后通过在第7行最大化$Q_{\zeta}$来更新演员，我们还根据SAC更新温度项$\alpha$。这两个目标的细节在算法1中呈现。桥接方程非常灵活，允许我们在最方便的任何MDP级别工作，这意味着LARBRID在不同情况下可以简化。</p>
+<p><strong>仅ψ简化</strong>。通过仅在$\widetilde{M}$中操作，可以在LARBRID中用$\psi_{\theta_{2}}$替换$\phi_{\theta_{1}}$。这样做的好处是跳过LARBRID第5行中的特征匹配MSE步骤，当从预训练模型采样昂贵时可以节省大量计算。然而，这种形式只能处理每个转换都包含增强噪声动作$w$的在线数据集。</p>
+<p><strong>仅φ简化</strong>。隐式地，LARBRID可以通过仅学习$\phi_{\theta_{1}}$直接在环境MDP $M$中工作。这样做的好处是绕过离线特征分布外误差。缺点是可能需要执行通过时间的反向传播来优化预训练模型参数。然而这可以通过下面的修改来缓解。</p>
+<h3>4.3 使用LARBRID-I进行离线RL微调</h3>
+<p>离线RL有一个臭名昭著的数据分布外误差问题，即当前策略预测的下一个动作可能落在可用数据集之外。An et al. (2021)提出使用多个评论家网络(&gt;10)来学习Q函数，为RL微调创造了不必要的计算负担(Wagenmaker et al., 2025)。相反，我们利用桥接方程和LARBRID的仅φ简化。由于桥接方程说明噪声空间和动作空间之间的Q值是对齐的，我们建议直接在动作空间$\mathcal{A}$中优化策略$\pi$。实际上，我们的理论说明在噪声空间或动作空间微调策略只是同一枚硬币的不同面。具体地，给定噪声策略$\pi_{W}\in\Delta_{w}$，其通过预训练扩散策略的推前是动作级策略$\pi_{A}=(\Phi)<em>{#}\pi</em>{W}$。反过来，如果LARBRID-I微调的动作策略支撑在$\text{Im}(\Phi)$上且$\Phi$存在右逆$G$使得$\Phi\circ G=1$，则$\pi_{W}=(G)<em>{#}\pi</em>{A}$，即在动作级微调也在噪声级诱导微调。在实践中，很难强制$G$存在，然而这一洞察激励我们基于FQL(Park et al., 2025b)修改LARBRID，FQL是一种高效的离线RL算法，通过从BC训练的流模型蒸馏来消除OOD误差。我们称这种修改为LARBRID-I（'I'代表隐式），并在算法3中呈现。它使用学习的表示$\phi$（通过公式3）微调FQL的BC蒸馏动作策略，避免通过时间的反向传播并带来大量实证收益。</p>
+<h2>5 LNL-MDP的近最优微调保证</h2>
+<p>我们现在从理论上表明，如果表示$\psi^{\star}$被获得（例如通过公式3），微调的其余遗憾是近最优的。对于固定状态$s$，写$\Phi_{s}:\mathcal{W}\to\mathcal{A}$表示映射$\Phi_{s}(w):=\Phi(s,w)$。对于分布$\mu\in\Delta\mathcal{W}$，令$(\Phi_{s})<em>{#}\mu\in\Delta\mathcal{A}$表示通过$\Phi</em>{s}$的推前，即：</p>
+<p>$$((\Phi_{s})_{#}\mu)(B):=\mu({w\in\mathcal{W}:\Phi(s,w)\in B})$$</p>
+<p>对每个可测集$B\subseteq\mathcal{A}$。等价地，对每个有界可测函数$f:\mathcal{A}\to\mathbb{R}$：</p>
+<p>$$\mathbb{E}<em>{a\sim(\Phi</em>{s})<em>{#}\mu}[f(a)]=\mathbb{E}</em>{w\sim\mu}[f(\Phi(s,w))]$$</p>
+<p>理论依赖于列出的三个温和假设。</p>
+<p><strong>假设1</strong>。$\Phi$训练所在的MDP满足定义1中定义的线性MDP结构。</p>
+<p><strong>假设2</strong>。对每个状态$s\in\mathcal{S}$，映射$w\mapsto\Phi(s,w)$是确定性的。</p>
+<p><strong>假设3</strong>（通过解码器的最优策略可实现性）。存在原始MDP $M$的最优马尔可夫策略$\pi^{\star}=(\pi_{h}^{\star})<em>{h=1}^{H}$和潜在MDP $\widetilde{M}$的马尔可夫潜在策略$\mu^{\star}=(\mu</em>{h}^{\star})_{h=1}^{H}$，使得对每个阶段$h\in[H]$和在$\pi^{\star}$下阶段$h$可达的每个状态$s$：</p>
+<p>$$\pi_{h}^{\star}(\cdot\mid s)=(\Phi_{s})<em>{#}\mu</em>{h}^{\star}(\cdot\mid s)$$</p>
+<p>假设3仅要求最优轨迹的可达性，以确保在将$M$桥接到$\widetilde{M}$时最优策略被保持。它不要求对所有可能轨迹的完全满射性。</p>
+<p>这些假设和桥接方程共同确保最优值和最优策略被保持，如下面的命题所示：</p>
+<p><strong>命题2</strong>（值保持）。假设2和3成立，则原始MDP和潜在MDP的最优值等价：$V_{0}^{\star}=\widetilde{V}_{0}^{\star}$。</p>
+<p><strong>证明</strong>：详见附录D。∎</p>
+<p>我们理论的核心洞察是将预训练冻结的$\Phi$视为虚拟离线数据集。</p>
+<p><strong>定义3</strong>（预热rollout数据集）。在真实环境中执行$\Phi$进行$N_{\mathrm{off}}$个回合。在回合$i$和步骤$h$，采样$w_{h}^{i}\sim\mathcal{N}(0,I)$和$a_{h}^{i}=\Phi(s_{h}^{i},w_{h}^{i})$，然后观察奖励$r_{h}^{i}$和下一个状态$s_{h+1}^{i}$来收集：</p>
+<p>$$D_{\mathrm{off}}={(s_{h}^{i},w_{h}^{i},r_{h}^{i},s_{h+1}^{i})}<em>{h\in[H],\,i\in[N</em>{\mathrm{off}}]}$$</p>
+<p>由$D_{\mathrm{off}}$生成的经验协变量定义为：</p>
+<p>$$\Lambda_{\mathrm{off}}^{h}:=\sum_{i=1}^{N_{\mathrm{off}}}\psi^{\star}(s_{h}^{i},w_{h}^{i})\psi^{\star}(s_{h}^{i},w_{h}^{i})^{\top}$$</p>
+<p>我们在命题3中表明上述定义确实根据FineTuneRL框架(Wagenmaker and Pacchiano, 2023)提供了正确的离线数据集。</p>
+<p><strong>命题3</strong>（$D_{\mathrm{off}}$的有效性）。在假设1和2下，预热数据集$D_{\mathrm{off}}$是潜在MDP $\widetilde{M}$上的有效离线数据集。更准确地说：$D_{\mathrm{off}}$由策略$\pi_{\mathrm{dp}}$生成的$\widetilde{M}$的$N_{\mathrm{off}}$个i.i.d.轨迹组成。</p>
+<p><strong>证明</strong>：详见附录E。∎</p>
+<p>将通过玩策略$\pi_{\mathrm{dp}}$生成的期望协变量表示为$\Lambda^{h}:=\mathbb{E}<em>{\pi</em>{\mathrm{dp}}}[\psi^{\star}(s_{h},w)\psi^{\star}(s_{h},w)^{\top}]$。预训练模型在rollout时近似这个协变量并作为有效先验，如下面的命题所描述。</p>
+<p><strong>定义4</strong>（离线到在线集中度系数，Wagenmaker and Pacchiano (2023)）。对于具有离线协方差$\Lambda_{\mathrm{off}}^{h}$的潜在MDP $\widetilde{M}$，定义离线到在线集中度系数，对某个$\epsilon&gt;0$：</p>
+<p>$$C_{o2o}^{h}(\Lambda_{\mathrm{off}}^{h},\varepsilon,T):=\inf_{\pi_{\exp}}\max_{\pi\in\Pi}\frac{|\psi_{\pi,h}^{\star}|^{2}<em>{(T\Lambda</em>{\pi_{\exp}}^{h}+\Lambda_{\mathrm{off}}^{h})^{-1}}}{(\widetilde{V}<em>{0}^{\star}-\widetilde{V}</em>{0}^{\pi})^{2}\vee\varepsilon^{2}}$$</p>
+<p>在LNL-MDP上下文中，这个系数额外衡量$\Phi$的质量。直观上，一个好的$\Phi$应包含足够的信息量，使得找到最优策略所需的最少在线交互量。前面的步骤完成了归约：冻结的扩散解码器诱导LNL-MDP，在扩散解码器上的预热rollout在LNL-MDP上产生有效的离线数据集。因此我们可以直接应用FineTuneRL(Wagenmaker and Pacchiano, 2023)来获得依赖于预热rollout数据集的以下界。</p>
+<p><strong>定理1</strong>（非渐近保证）。在假设1、2和3下，假设我们首先通过定义3收集$D_{\mathrm{off}}$，存在一种算法（FTPedel，Wagenmaker and Pacchiano (2023)）使得获得$\varepsilon$-最优策略所需的额外在线回合数满足：</p>
+<p>$$T_{\mathrm{on}}(\varepsilon)=\widetilde{O}!\left(\max_{h\in[H]}\min\left{T:\,C_{o2o}^{h}(\Lambda_{\mathrm{off}}^{h},\varepsilon,T)\leq\frac{1}{\bar{\beta}}\right}\cdot H\right)$$</p>
+<p>其中$\bar{\beta}=\widetilde{\Theta}(d^{2}H^{2})$。此外，此设置中的任何算法至少需要：</p>
+<p>$$T_{\mathrm{on}}(\varepsilon)=\widetilde{\Omega}!\left(\max_{h\in[H]}\min\left{T:\,C_{o2o}^{h}(\Lambda_{\mathrm{off}}^{h},\varepsilon,T)\leq\frac{1}{\bar{\beta}}\right}\cdot\frac{1}{H}\right)$$</p>
+<p>个在线回合才能以常数概率返回$\varepsilon$-最优策略。</p>
+<p><strong>证明</strong>：详见附录F。∎</p>
+<p>定理1证明潜在扩散策略微调在LNL-MDP设置中在$H$因子范围内是极小化极大最优的。$\Phi$的质量被转化为它可以收集的离线数据的质量。将结果扩展到包含特征学习和SAC式优化超出了本工作的范围，我们在附录G中对此进行了扩展。这里的要点是一旦$\psi$已知，微调问题在理论上就容易解决。实际上，我们接下来展示在实证上也是如此。</p>
+<h2>6 实验</h2>
+<p>我们进行了全面的实验来理解LARBRID在在线（第6.1节）、离线（第6.2节）和离线到在线微调设置（第6.3节）中的能力，涵盖多样化的基准测试。我们将LARBRID与多个最先进的基线进行比较。更多实验细节可在附录H中找到。</p>
+<h3>6.1 在线微调</h3>
+<p>我们在两个标准基准上运行预训练DDIM的在线微调实验：Gymnasium(Towers et al., 2024)和Robomimic(Mandlekar et al., 2021)。我们将我们的方法与三个其他近期竞争基线进行比较：DSRL(Wagenmaker et al., 2025)、DPPO(Ren et al., 2024)和IDQL(Hansen-Estruch et al., 2023)。一些较早的基线如DIPO(Yang et al., 2023)和QSM(Psenka et al., 2023)被排除，因为它们旨在从头适应并且已被证明不如最新的基线有竞争力。我们设置所有方法使用Ren et al. (2024)提供的相同DDIM检查点，并使用这些方法发布的相同超参数和公共代码。LARBRID可以很容易地在DSRL之上实现，通过将DSRL条件化在LNL-MDP的表示空间$\mathbb{R}^{d}$上。DSRL对所有实验运行其完整算法，除了Transport任务由于繁重的DDIM采样。为了公平比较，我们也完整运行LARBRID，仅对Transport任务应用仅ψ简化。结果在4个随机种子上取平均，其均值和标准误差显示在图2和图3中。</p>
+<p><strong>图2</strong>：LARBRID在Gymnasium(Towers et al., 2024)控制任务上的在线微调结果。</p>
+<p><strong>图3</strong>：LARBRID在Robomimic(Mandlekar et al., 2021)控制任务上的在线微调结果。</p>
+<p>由于LARBRID快速学习好的表示（参见图5），这免费解决了噪声混叠问题，它能够打破预训练模型的次优性并发现条件化在学习表示上的更好的采样噪声。这在Gymnasium和Robomimic任务中都有展示。值得注意的是，在所有任务中，LARBRID收敛非常快，训练方差至少与基线相当，展示了其样本效率和稳定性。特别是，LARBRID在Halfcheetah中能够实现至少21%的更多奖励，在Transport任务（此设置中考虑的最难问题）中比DSRL好约70%。</p>
+<h3>6.2 离线微调</h3>
+<p>第4.3节中广泛讨论了离线设置中的OOD误差。DSRL通过部署10个独立Q网络的集成来处理OOD问题，造成繁重的计算成本。我们不求助于离线RL技巧，而是部署LARBRID-I直接在环境MDP $M$上工作，绕过OOD误差和大型评论家集成的计算负担。我们在OGBench(Park et al., 2025a)上运行LARBRID-I，涵盖10个运动和操作任务，使用4个随机种子，并与近期的离线RL算法进行比较，包括IQL(Kostrikov et al., 2021)、REBRAC(Tarasov et al., 2023)、IDQL(Hansen-Estruch et al., 2023)、SRPO(Chen et al., 2023)、CAC(Ding and Jin, 2023)、FAWAC(Nair et al., 2020)、FBRAC(Wang et al., 2022)、IFQL(Hansen-Estruch et al., 2023)、FQL(Park et al., 2025b)和DSRL(Wagenmaker et al., 2025)。我们还包括5个具有视觉观察的操作任务并报告平均性能（个别结果见附录H.2）。由于高计算成本，我们选择6个表现强劲的基线与我们的方法在视觉输入任务上进行比较。所有任务设置为OGBench中的默认单任务变体，每个方法训练1M步（视觉任务500K步）。结果显示在表1中，所有基线结果复制自Wagenmaker et al. (2025)。正如在线微调设置中也观察到的，LNL-MDP提供的表示能力使LARBRID-I在10个任务中的7个上实现高成功率。它在困难的人形机器人迷宫问题上运行特别好，为中等迷宫带来至少1.5倍的性能提升，在大迷宫中带来3倍的性能提升。LARBRID-I也很好地处理视觉输入，在第二强基线FQL之上带来额外的7%改进。</p>
+<p><strong>表1</strong>：LARBRID-I在OGBench(Park et al., 2025a)上的离线任务成功率结果。hum: humanoidmaze, med: medium, s: single, d: double, pz: puzzle。visual: 视觉操作任务，5个视觉任务的平均值。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>ant-large</th>
+<th>ant-giant</th>
+<th>hum-med</th>
+<th>hum-large</th>
+<th>soccer</th>
+<th>cube-s</th>
+<th>cube-d</th>
+<th>scene</th>
+<th>pz-3x3</th>
+<th>pz-4x4</th>
+<th>visual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IQL</td>
+<td>48±9</td>
+<td>0±0</td>
+<td>32±7</td>
+<td>3±1</td>
+<td>3±2</td>
+<td>85±8</td>
+<td>1±1</td>
+<td>12±3</td>
+<td>2±1</td>
+<td>5±2</td>
+<td>42±4</td>
+</tr>
+<tr>
+<td>REBRAC</td>
+<td>91±10</td>
+<td><strong>27</strong>±22</td>
+<td>16±9</td>
+<td>2±1</td>
+<td>0±0</td>
+<td>92±4</td>
+<td>7±3</td>
+<td>50±13</td>
+<td>2±1</td>
+<td>10±3</td>
+<td>60±2</td>
+</tr>
+<tr>
+<td>IDQL</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>1±1</td>
+<td>0±0</td>
+<td>0±1</td>
+<td><strong>96</strong>±2</td>
+<td>16±10</td>
+<td>33±14</td>
+<td>0±0</td>
+<td>26±6</td>
+<td>-</td>
+</tr>
+<tr>
+<td>SRPO</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>82±16</td>
+<td>0±0</td>
+<td>2±2</td>
+<td>0±0</td>
+<td>7±4</td>
+</tr>
+<tr>
+<td>CAC</td>
+<td>42±7</td>
+<td>0±0</td>
+<td>38±19</td>
+<td>1±1</td>
+<td>0±0</td>
+<td>80±30</td>
+<td>2±2</td>
+<td>50±40</td>
+<td>0±0</td>
+<td>1±1</td>
+<td>-</td>
+</tr>
+<tr>
+<td>FAWAC</td>
+<td>1±1</td>
+<td>0±0</td>
+<td>6±2</td>
+<td>0±0</td>
+<td>12±13</td>
+<td>81±9</td>
+<td>2±1</td>
+<td>18±8</td>
+<td>1±1</td>
+<td>0±0</td>
+<td>-</td>
+</tr>
+<tr>
+<td>FBRAC</td>
+<td>70±20</td>
+<td>0±1</td>
+<td>25±8</td>
+<td>0±1</td>
+<td>24±4</td>
+<td>83±13</td>
+<td>22±12</td>
+<td>46±10</td>
+<td>2±2</td>
+<td>5±1</td>
+<td>22±2</td>
+</tr>
+<tr>
+<td>IFQL</td>
+<td>24±17</td>
+<td>0±0</td>
+<td>69±19</td>
+<td>6±2</td>
+<td>16±9</td>
+<td>73±3</td>
+<td>9±5</td>
+<td>0±0</td>
+<td>0±0</td>
+<td>21±11</td>
+<td>50±5</td>
+</tr>
+<tr>
+<td>FQL</td>
+<td>80±8</td>
+<td>4±5</td>
+<td>19±12</td>
+<td>7±6</td>
+<td><strong>39</strong>±6</td>
+<td><strong>97</strong>±2</td>
+<td>36±6</td>
+<td>76±6</td>
+<td><strong>16</strong>±5</td>
+<td>11±3</td>
+<td>65±2</td>
+</tr>
+<tr>
+<td>DSRL</td>
+<td>40±29</td>
+<td>0±0</td>
+<td>34±20</td>
+<td>10±12</td>
+<td>28±9</td>
+<td><strong>93</strong>±14</td>
+<td><strong>53</strong>±14</td>
+<td><strong>88</strong>±9</td>
+<td>0±0</td>
+<td><strong>37</strong>±13</td>
+<td>-</td>
+</tr>
+<tr>
+<td>LARBRID-I</td>
+<td><strong>95</strong>±0</td>
+<td>0±0</td>
+<td><strong>96</strong>±1</td>
+<td><strong>35</strong>±15</td>
+<td><strong>36</strong>±9</td>
+<td><strong>93</strong>±5</td>
+<td><strong>51</strong>±2</td>
+<td><strong>89</strong>±5</td>
+<td>9±2</td>
+<td>16±1</td>
+<td><strong>70</strong>±3</td>
+</tr>
+</tbody>
+</table>
+<h3>6.3 离线到在线微调</h3>
+<p>我们还测试了LARBRID和LARBRID-I处理来自OGBench(Park et al., 2025a)的离线到在线微调任务的能力。为了获得LARBRID的离线预训练策略，我们预训练FQL(Park et al., 2025b)中的默认BC模型1M离线步骤，然后用LARBRID在线微调另外1M步骤。对于LARBRID-I，我们在1M离线步骤后继续训练另外1M在线步骤。我们添加了两个特定的离线到在线基线：RLPD(Ball et al., 2023)和Cal-QL(Nakamoto et al., 2023)。结果显示在表2中，其他基线结果复制自Park et al. (2025b)。参见图7和图8获取额外的训练图。总体而言，两个模型组合在一起能够解决这里展示的所有基准问题。LARBRID能够从头学习代表性特征，并引导表现不佳的预训练BC模型在多个任务上实现显著高的成功率。它未能解决人形机器人迷宫，可能是由于BC模型未能很好地覆盖近最优轨迹和学习特征不够代表性的综合因素。另一方面，LARBRID-I能够找到解决所有任务的策略，除了Puzzle-4x4，而LARBRID在此任务上表现更好。在实证上，LARBRID和LARBRID-I之间的这种差距是预期的。由于$\psi^{*}$和$\pi$在实践中是学习的，在噪声空间或动作空间中训练它们可能产生不同的优化景观，导致结果不同，特别是在人形机器人和蚂蚁足球等困难任务中。不同的结果展示了LNL-MDP框架的灵活性，因为如果一个空间在实践中太难解决，可以使用另一个空间。</p>
+<p><strong>表2</strong>：LARBRID在OGBench(Park et al., 2025a)上的离线到在线微调结果。左数字表示离线微调成功率，右数字表示在线微调成功率。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>cube-double</th>
+<th>scene</th>
+<th>puzzle-4x4</th>
+<th>hum-med</th>
+<th>ant soccer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IQL</td>
+<td>0±1→0±0</td>
+<td>14±11→10±9</td>
+<td>5±2→1±1</td>
+<td>21±13→16±8</td>
+<td>2±1→0±0</td>
+</tr>
+<tr>
+<td>REBRAC</td>
+<td>6±5→28±28</td>
+<td>55±10→100±0</td>
+<td>8±4→14±35</td>
+<td>16±20→1±1</td>
+<td>0±0→0±0</td>
+</tr>
+<tr>
+<td>Cal-QL</td>
+<td>0±0→0±0</td>
+<td>1±2→50±53</td>
+<td>0±0→0±0</td>
+<td>0±0→0±0</td>
+<td>0±0→0±0</td>
+</tr>
+<tr>
+<td>RLPD</td>
+<td>0±0→0±0</td>
+<td>0±0→<strong>100</strong>±0</td>
+<td>0±0→<strong>100</strong>±1</td>
+<td>0±0→0±8</td>
+<td>0±0→0±0</td>
+</tr>
+<tr>
+<td>IFQL</td>
+<td>12±9→40±5</td>
+<td>0±1→60±39</td>
+<td>23±6→19±33</td>
+<td>56±35→82±20</td>
+<td>26±15→39±10</td>
+</tr>
+<tr>
+<td>FQL</td>
+<td>40±11→92±3</td>
+<td>82±11→<strong>100</strong>±1</td>
+<td>8±3→38±52</td>
+<td>12±7→22±12</td>
+<td>28±8→86±5</td>
+</tr>
+<tr>
+<td>LARBRID</td>
+<td>0±0→<strong>99</strong>±1</td>
+<td>0±0→<strong>100</strong>±0</td>
+<td>0±0→<strong>100</strong>±0</td>
+<td>0±0→0±0</td>
+<td>0±0→0±0</td>
+</tr>
+<tr>
+<td>LARBRID-I</td>
+<td>51±2→<strong>98</strong>±2</td>
+<td>88±5→<strong>100</strong>±0</td>
+<td>16±1→68±47</td>
+<td>96±1→<strong>100</strong>±0</td>
+<td>36±9→<strong>99</strong>±1</td>
+</tr>
+</tbody>
+</table>
+<h3>6.4 微调预训练机器人基础模型</h3>
+<p>本节进一步拓展LARBRID的能力，测试它是否可以用于在线微调机器人基础模型。我们选择微调$\pi_{0}$(Black et al., 2024)，一个3.3B参数的VLA模型，使用基于VLM的骨干网络处理视觉和语言输入，并采用流策略输出控制动作。我们在三个具有不同动力学的模拟基准上测试LARBRID。第一个是AlohaTransferCube(Zhao et al., 2023)，需要两个aloha机器人合作，一个拾取立方体并以高精度传递给另一个。另外两个任务来自Libero(Liu et al., 2023)基准，要求机器人打开抽屉和打开炉子。我们与DSRL（最强的在线微调基线）进行比较，排除了已被证明被DSRL支配的RLPD(Ball et al., 2023)。图表显示在图4中。LARBRID和DSRL都能够微调$\pi_{0}$以达到高成功率，然而LARBRID在所有任务上比DSRL收敛更快。在AlohaTransferCube任务中，LARBRID在早期训练步骤（50k-80k）中能够实现比DSRL高约2倍的成功率，之后稳步提升，而DSRL的性能波动更大并收敛到次优点。</p>
+<p><strong>(a)</strong> Aloha Cube Transfer <strong>(b)</strong> Libero Open Drawer <strong>(c)</strong> Libero Turn On Stove <strong>(d)</strong> SC消融 — Halfcheetah</p>
+<p><strong>图4</strong>：当使用LARBRID微调$\pi_{0}$时，其评估成功率在、和所有图中比DSRL收敛更快。在Halfcheetah中进行的独立评论家(SC)消融研究确认了桥接方程带来的好处。</p>
+<h3>6.5 消融实验</h3>
+<p>为了隔离桥接方程的效果并证明噪声混叠问题确实被它解决，我们精心设计了一个LARBRID的消融实验，创建一个单独的噪声评论家网络，该网络接收噪声和状态输入而不是学习的表示$\psi$，并将这个新评论家与从学习的动作-状态表示$\phi$训练的动作评论家进行匹配。换句话说，我们保持状态-动作表示但不将其桥接到噪声-动作空间，使得该变体需要在线重新解决噪声混叠问题。我们称这个变体为LARBRID-SC（'SC'代表独立评论家）。我们在Halfcheetah任务上比较LARBRID-SC与LARBRID，训练图在图4的中给出。我们可以看到LNL-MDP的表示仍然带来大量性能提升，但因为LARBRID-SC现在需要处理噪声混叠问题，它收敛得更慢且收敛到不如LARBRID的点。额外的独立评论家消融结果在图9中提供。此外，在附录H.5中，我们还通过在表示学习损失（算法1第4行）和表示匹配损失（算法1第5行）中引入权重来测试LARBRID对表示学习和匹配误差的敏感性。总体而言，我们发现LARBRID对底层表示变化相当鲁棒。</p>
+<h2>7 讨论</h2>
+<p><strong>局限性</strong>。我们怀疑当LARBRID由于人形机器人迷宫等困难问题的复杂优化景观而陷入局部最优特征时，表示不够好以至于无法进行下游微调，导致性能不佳。更好地理解这种失败模式可以进一步提高LARBRID的实际性能。理解何时预训练生成模型可以被LARBRID高效微调也很重要，因为这有助于为微调提供良好的先验。由于(3)引入的额外DDPM采样，我们的方法比LARBRID所基于的方法训练更慢，但共享相同的推理速度，参见图6。这在某种程度上是预期的，因为样本高效算法通常需要额外的计算来从每个数据中处理更多信息。</p>
+<p><strong>结论</strong>。LNL-MDP带来的表示能力使LARBRID能够处理不同任务的各种RL微调设置。通过将微调过程嵌入到学习的潜在表示空间中，我们在理论上消除了噪声混叠问题，并展示了当表示已知时的近最优微调率。在实证上，我们的算法LARBRID和LARBRID-I在多样化任务集中运行良好，与其他基线相比实现了高达2-3倍的性能提升。特别是，LNL-MDP的灵活性允许在另一个空间太难时选择更容易的空间来微调模型。LNL-MDP的一般性意味着它甚至可能有益于未来的RL微调管道或来自不同领域的问题，并激励进一步的RL微调表示学习。</p>
+<h2>8 致谢</h2>
+<p>Yuanchu Liang部分受到澳大利亚RTP奖学金的支持，并在澳大利亚Maincode的AI驻留计划下进行本研究。Yuanchu Liang和Hanna Kurniawati部分受到ARC智能机器人系统实时资产管理研究中心(IH210100030)的支持。Hanna Kurniawati部分受到澳大拉西亚空间创新研究所的支持。Yue Yang和An-Chi He受到Maincode的支持。</p>
+<h2>参考文献</h2>
+<p>[参考文献列表保持原文格式，包含65条英文文献引用，涵盖强化学习、扩散模型、机器人学等领域的主要工作。]</p>
+<h2>附录A 非线性动力学的线性MDP</h2>
+<p>线性MDP对MDP的转移和奖励函数施加线性分解。这乍看之下似乎有限制性，然而表示可以任意非线性，实际上当考虑无限维空间时许多非线性动力学可以被此模型捕获。我们在这里提供一个简单的例子说明如何做到这一点。考虑随机系统$f:S\times A\rightarrow\mathbb{R}$，$s^{\prime}=f(s,a)+\epsilon$，其中$\epsilon\sim\mathcal{N}(0,\sigma^{2})$，可以等价地写为$P(s^{\prime}\mid s,a)\propto\exp(-\frac{||s^{\prime}-f(s,a)||^{2}<em>{2}}{2\sigma^{2}})$。注意对$f$可能采取的形式没有限制，线性系统可以写为$f(s,a)=As+Ba$。利用高斯核的再生性质，我们可以等价地将上述密度写为$P(s^{\prime}\mid s,a)=\langle k(f(s,a),\cdot),(2\pi\sigma^{2})^{d/2}k(s^{\prime},\cdot)\rangle</em>{\mathcal{H}}$，其中$k(x,y)=\exp\frac{-||x-y||^{2}}{2\sigma^{2}}$是带宽为$\sigma$的高斯核，$\mathcal{H}$是与核相关的再生希尔伯特空间。如所见，相关密度满足线性分解。使用EBM而非高斯来获得线性分解的更一般示例如下。</p>
+<h2>附录B 扩散谱表示</h2>
+<p>这里我们简要概述扩散谱表示[49]，这是LARBRID所需表示学习的核心方法。它依赖于将转移函数参数化为基于能量的模型(EBM)，该模型关于高斯核承认线性分解，其分数组件可以通过分数匹配学习。具体地，当转移函数$P(\cdot)$被参数化为EBM时：</p>
+<p>$$P(s^{\prime}\mid s,a)=\exp(\xi(s,a)^{\top}\nu(s^{\prime})-\log Z(s,a))$$</p>
+<p>其中$\xi(\cdot)$和$\nu(\cdot)$共同计算EBM的分数函数，$\log Z(\cdot)$是对数配分函数。应用随机傅里叶特征[41,15]，转移函数的谱分解承认$P(s^{\prime}\mid s,a)=\langle\phi_{w}(s,a),\mu_{w}(s^{\prime})\rangle_{\mathcal{N}(w)}$，这种形式可以模拟任意转移密度[46]。对$w\sim\mathcal{N}(0,I)$，我们有$\phi_{w}(s,a)=\exp(-iw^{\top}\xi(s,a))\exp(||\xi(s,a)||^{2}/2-\log Z(s,a))$和$\mu_{w}(s)=\exp(-iw^{\top}\nu(s^{\prime}))\exp(||\nu(s)||^{2}/2)$。因此知道$\nu(\cdot)$和$\xi(\cdot)$足以获得$\phi_{w}(\cdot)$和$\mu_{w}(\cdot)$。但这些特征可以通过扩散分数匹配使用以下目标来学习：</p>
+<p>$$l_{\mathrm{diff}}(\xi,\nu)=\min_{\xi,\nu}\mathbb{E}_{\beta}\mathbb{E}(s,a,\tilde{s}^{\prime},s^{\prime})\left[||\tilde{s}^{\prime}+\beta\xi(s,a)^{\top}\nabla\nu(s^{\prime})-\sqrt{1-\beta}s^{\prime}||\right]$$</p>
+<p>其中$\tilde{s}^{\prime}$是噪声损坏的下一个状态，$\beta$是标准DDPM风格扩散中的噪声调度。将$\phi_{w}(s,a)$代入(1)，我们得到$Q(s,a)$可以由具有1个隐藏层的全连接神经网络表示，Q值可以表示为$Q_{\zeta}(s,a)=\langle\phi_{\theta_{1}}(s,a),\zeta\rangle$。我们推荐读者参考[49]获取更多细节。</p>
+<h2>附录C 命题1的证明</h2>
+<p><strong>证明</strong>。固定任意阶段$h\in[H]$、状态$s\in\mathcal{S}$、潜在码$w\in\mathbb{R}^{d_{w}}$和下一个状态$s^{\prime}\in\mathcal{S}$。由定义2，$\widetilde{P}<em>{h}(s^{\prime}\mid s,w)=P</em>{h}(s^{\prime}\mid s,\Phi(s,w))$。将假设1应用于动作$a=\Phi(s,w)$给出$P_{h}(s^{\prime}\mid s,\Phi(s,w))=\langle\phi^{\star}(s,\Phi(s,w)),\nu^{\star}<em>{h}(s^{\prime})\rangle$。由$\psi^{\star}$的定义，$\langle\phi^{\star}(s,\Phi(s,w)),\nu^{\star}</em>{h}(s^{\prime})\rangle=\langle\psi^{\star}(s,w),\nu^{\star}<em>{h}(s^{\prime})\rangle$。因此$\widetilde{P}</em>{h}(s^{\prime}\mid s,w)=\langle\psi^{\star}(s,w),\nu^{<em>}<em>{h}(s^{\prime})\rangle$。类似地，$\mathbb{E}[\widetilde{r}</em>{h}(s,w)]=\langle\psi^{\star}(s,w),\theta^{r}<em>{h}\rangle=\langle\phi^{\star}(s,\Phi(s,w)),\theta^{r}</em>{h}\rangle=\mathbb{E}[r_{h}(s,\Phi(s,w))]$。最后，由于$\Phi(w;s)\in\mathcal{A}$且对所有$(s,a)$有$|\phi^{\star}(s,a)|<em>{2}\leq 1$，$|\psi^{\star}(s,w)|</em>{2}=|\phi^{\star}(s,\Phi(s,w))|_{2}\leq 1$。因此$\widetilde{M}$满足具有特征映射$\psi^{\star},\nu^{</em>}<em>{h}$和参数${\theta^{r}</em>{h}}_{h=1}^{H}$的线性MDP定义。∎</p>
+<h2>附录D 命题2的证明</h2>
+<p><strong>证明</strong>。令$\bar{r}<em>{h}(s,a):=\mathbb{E}[r</em>{h}(s,a)]$表示原始MDP中的期望奖励，定义潜在期望奖励$\widetilde{\bar{r}}<em>{h}(s,w):=\bar{r}</em>{h}(s,\Phi(s,w))$。由潜在MDP的定义，$\widetilde{P}<em>{h}(\cdot\mid s,w)=P</em>{h}(\cdot\mid s,\Phi(s,w))$。</p>
+<p>我们首先证明$\widetilde{V}<em>{0}^{\star}\leq V</em>{0}^{\star}$。令$\mu=(\mu_{h})<em>{h=1}^{H}$是任意潜在马尔可夫策略。定义其在原始MDP中的诱导动作策略$\pi^{\mu}$为$\pi</em>{h}^{\mu}(\cdot\mid s):=(\Phi_{s})<em>{#}\mu</em>{h}(\cdot\mid s)$。我们声称对所有$h\in[H+1]$和所有$s\in\mathcal{S}$，$\widetilde{V}<em>{h}^{\mu}(s)=V</em>{h}^{\pi^{\mu}}(s)$，且对所有$h\in[H]$、$s\in\mathcal{S}$和$w\in\mathcal{W}$，$\widetilde{Q}<em>{h}^{\mu}(s,w)=Q</em>{h}^{\pi^{\mu}}(s,\Phi(s,w))$。</p>
+<p>我们通过对$h$的反向归纳来证明。在终端阶段$H+1$，两个值函数按惯例为零。假设声称在阶段$h+1$成立。则对任意$s,w$：</p>
+<p>$$\widetilde{Q}<em>{h}^{\mu}(s,w)=\widetilde{\bar{r}}</em>{h}(s,w)+\mathbb{E}<em>{s^{\prime}\sim\widetilde{P}</em>{h}(\cdot\mid s,w)}[\widetilde{V}<em>{h+1}^{\mu}(s^{\prime})]=\bar{r}</em>{h}(s,\Phi(s,w))+\mathbb{E}<em>{s^{\prime}\sim P</em>{h}(\cdot\mid s,\Phi(s,w))}[V_{h+1}^{\pi^{\mu}}(s^{\prime})]=Q_{h}^{\pi^{\mu}}(s,\Phi(s,w))$$</p>
+<p>注意这本质上是桥接方程(2)。第二个等式使用潜在MDP的定义和归纳假设。现在对$w\sim\mu_{h}(\cdot\mid s)$积分两边：$\widetilde{V}<em>{h}^{\mu}(s)=V</em>{h}^{\pi^{\mu}}(s)$。因此归纳完成。特别地，$\widetilde{V}<em>{0}^{\mu}=V</em>{0}^{\pi^{\mu}}\leq V_{0}^{\star}$。由于这对每个潜在策略$\mu$成立，$\widetilde{V}<em>{0}^{\star}=\sup</em>{\mu}\widetilde{V}<em>{0}^{\mu}\leq V</em>{0}^{\star}$。</p>
+<p>我们现在证明反向不等式：$\widetilde{V}<em>{0}^{\star}\geq V</em>{0}^{\star}$。由假设3，存在原始MDP的最优马尔可夫策略$\pi^{\star}$和潜在马尔可夫策略$\mu^{\star}$，使得对每个阶段$h$和在$\pi^{\star}$下可达的每个状态$s$，$\pi_{h}^{\star}(\cdot\mid s)=(\Phi_{s})<em>{#}\mu</em>{h}^{\star}(\cdot\mid s)$。因此，当从初始状态$s_{1}$开始时，$\pi^{\star}$下的原始rollout和$\mu^{\star}$下的潜在rollout（在解码$a_{h}=\Phi(w_{h};s_{h})$后）在状态-动作-奖励轨迹上诱导相同的分布。等价地，通过上述应用于可达轨迹支撑的相同反向归纳论证，$\widetilde{V}<em>{0}^{\mu^{\star}}=V</em>{0}^{\pi^{\star}}=V_{0}^{\star}$。由于$\widetilde{V}<em>{0}^{\star}$是所有潜在策略的上确界，$\widetilde{V}</em>{0}^{\star}\geq\widetilde{V}<em>{0}^{\mu^{\star}}=V</em>{0}^{\star}$。结合两个不等式给出$\widetilde{V}<em>{0}^{\star}=V</em>{0}^{\star}$。∎</p>
+<h2>附录E 命题3的证明</h2>
+<p><strong>证明</strong>。我们分别证明两个声称。</p>
+<p><strong>1. 数据集的有效性</strong>：考虑在预热阶段收集的一个转换元组$(s_{h}^{i},w_{h}^{i},r_{h}^{i},s_{h+1}^{i})$。按构造，在状态$s_{h}^{i}$我们首先根据$\Phi$使用的高斯先验采样噪声向量$w_{h}^{i}$。执行的环境动作是$a_{h}^{i}=\Phi(s_{h}^{i},w_{h}^{i})$。由定义2，潜在转移核是$\widetilde{P}<em>{h}(\cdot\mid s</em>{h}^{i},w_{h}^{i})=P_{h}(\cdot\mid s_{h}^{i},\Phi(s_{h}^{i},w_{h}^{i}))$。因此观察到的下一个状态满足$s_{h+1}^{i}\sim\widetilde{P}<em>{h}(\cdot\mid s</em>{h}^{i},w_{h}^{i})$，观察到的奖励满足$r_{h}^{i}=\widetilde{r}<em>{h}(s</em>{h}^{i},w_{h}^{i})$。因此每个收集的元组是有效的潜在转换。由于不同回合由独立rollout生成，轨迹是i.i.d.的。</p>
+<p><strong>2. 协方差集中</strong>：固定步骤$h$。定义$X_{i}:=\psi^{\star}(s_{h}^{i},w_{h}^{i})\psi^{\star}(s_{h}^{i},w_{h}^{i})^{\top}-\Lambda^{h}$。则${X_{i}}<em>{i=1}^{N</em>{\mathrm{off}}}$是i.i.d.零均值随机矩阵。由于$|\psi^{\star}(s,w)|<em>{2}\leq 1$，$|\psi^{\star}(s</em>{h}^{i},w_{h}^{i})\psi^{\star}(s_{h}^{i},w_{h}^{i})^{\top}|<em>{\mathrm{op}}\leq 1$。由Jensen不等式，$|\Lambda^{h}|</em>{\mathrm{op}}\leq 1$。因此$|X_{i}|<em>{\mathrm{op}}\leq 2$。令$S</em>{h}:=\sum_{i=1}^{N_{\mathrm{off}}}X_{i}=\Lambda_{\mathrm{off}}^{h}-N_{\mathrm{off}}\Lambda^{h}$。标准矩阵Bernstein不等式意味着对任意$t&gt;0$，$\mathbb{P}(|S_{h}|<em>{\mathrm{op}}\geq t)\leq 2d\exp(-t^{2}/2N</em>{\mathrm{off}}+2t/3)$。∎</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 扩散策略微调, 强化学习, 线性马尔可夫决策过程, 机器人控制, 表示学习</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

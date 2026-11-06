@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer如何实现上下文低层控制？ - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">Transformer如何实现上下文低层控制？</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.07291" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：How do Transformers Perform Low-Level Control In-Context?</h4>
+            <p><strong>中文摘要：</strong> 本文研究Transformer模型在不稳定非线性动力系统上执行"上下文"控制的能力。作者采用GPT-2风格多头架构，在车摆和Acrobot两个欠驱动系统上验证：仅以零力矩系统演化轨迹作为上下文，无需系统参数即可实现稳定控制。研究发现，专家数据中注入高斯扰动对训练至关重要；上下文学习能力随训练进展而涌现；模型可泛化至分布外系统，且在长上下文下优于LSTM基线。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>Transformer 如何实现上下文低层控制？</h1>
+<p><strong>Ebonye Smith</strong></p>
+<p>单位：<br />
+Ebonye Smith（通讯作者）、Phoenix Wilson 和 Gireeja Ranade 就职于加州大学伯克利分校电气工程与计算机科学系，Berkeley, CA 94720, USA，<br />
+{ebonyesmith, phoenixw, gireeja}@berkeley.edu</p>
+<p><strong>Aidan Andrews</strong></p>
+<p>单位：<br />
+Aidan Andrews 就职于伊利诺伊大学厄巴纳-香槟分校物理系，Urbana, IL 61801<br />
+aidansa2@illinois.edu</p>
+<p><strong>Phoenix Wilson</strong></p>
+<p>单位：<br />
+Ebonye Smith（通讯作者）、Phoenix Wilson 和 Gireeja Ranade 就职于加州大学伯克利分校电气工程与计算机科学系，Berkeley, CA 94720, USA，<br />
+{ebonyesmith, phoenixw, gireeja}@berkeley.edu</p>
+<p><strong>Alexis Frias</strong></p>
+<p>单位：<br />
+Alexis Frias 就职于南加州大学电气与计算机工程系，Los Angeles, CA 90089<br />
+alexisfr@usc.edu</p>
+<p><strong>Ayush Pandey</strong></p>
+<p>单位：<br />
+Ayush Pandey 就职于加州大学默塞德分校电气工程系，Merced, CA 95343<br />
+ayushpandey@ucmerced.edu</p>
+<p><strong>Gireeja Ranade</strong></p>
+<p>†<br />
+†<br />
+致谢：<br />
+*本材料受到美国国家科学基金会研究生研究奖学金（资助编号 DGE-2146752）、NSF CAREER ECCS2240031 以及 2023 年 CITRIS 研究所种子基金的支持。我们还感谢加州大学伯克利分校的 Claire J. Tomlin 博士对本文提出的宝贵意见。</p>
+<p>单位：<br />
+Ebonye Smith（通讯作者）、Phoenix Wilson 和 Gireeja Ranade 就职于加州大学伯克利分校电气工程与计算机科学系，Berkeley, CA 94720, USA，<br />
+{ebonyesmith, phoenixw, gireeja}@berkeley.edu</p>
+<h2>摘要</h2>
+<p>基于 Transformer 的神经网络的一项显著能力是上下文学习。这促使我们思考"上下文"控制。我们能否在仅知道（1）系统属于某一特定系统族，以及（2）一些系统演化数据（以上下文轨迹形式提供）而没有具体参数信息的情况下控制系统？</p>
+<p>具体而言，我们研究了 Transformer 模型对不稳定非线性动力系统执行"上下文"控制的能力，其中上下文仅由无驱动的系统动态组成。我们利用多头 GPT-2 风格架构，并在两个经典非线性系统——车摆系统和双连杆 acrobot 系统——上评估性能，其中系统参数对 Transformer 而言是未知的。我们考虑这样一种设置：专家控制器的轨迹在训练时可用，但在推理时不可用。在此，我们确定了训练 Transformer 执行低层控制所必需的训练技术。通过对检查点的分析，我们表明上下文控制是可行的，并且所学策略的性能通常随上下文增加而提升。此外，Transformer 模型能够泛化以稳定分布外的系统。</p>
+<h2>I 引言</h2>
+<p>驱动 Transformer 性能的一个关键特性是上下文学习（ICL），它使模型能够在推理时通过上下文提示适应新任务，而无需更新模型权重 [1, 2, 3, 4]。虽然 ICL 已在线性回归 [5]、滤波 [6] 和中层机器人控制 [7] 中得到研究，但其在不稳定、欠驱动、非线性系统的低层闭环稳定控制中的应用在很大程度上仍未被探索。</p>
+<p>稳定一个具有部分未知动态的系统，传统上需要系统辨识 [8] 或直接合成数据驱动控制器 [9]。基于通用控制范式 [10]，我们旨在实现一个能够稳定整个参数化系统族的单一策略，而无需显式参数估计或权重更新。在这种设置下，参数辨识从离线预处理转移到测试时的上下文操作。</p>
+<p>图 1：给定零力矩系统演化 u_{0:k-1}{=}0 的上下文和当前状态 x_k，Transformer 预测下一状态 \hat{x}_{k+1}、控制器模式 \hat{c}_k 和动作 \hat{u}_k，并将其应用于受控对象。</p>
+<p>强化学习算法通常用于欠驱动系统的稳定等任务 [11, 12]，然而我们感兴趣的是研究 Transformer 的 ICL 能力以及架构和训练设计选择如何促成类似的任务成功。</p>
+<p>本工作的主要贡献是 ¹：<br />
+¹ 我们的代码可在以下 github 仓库找到：https://github.com/ebonyelsmith/transformer_control</p>
+<ul>
+<li><strong>涌现的上下文能力分析</strong>：我们研究了稳定成功率如何随上下文长度和模型训练而扩展，证明 ICL 随训练进展而涌现。延长训练显示出数据记忆的证据，这有助于在某些情况下成功泛化到分布外数据。</li>
+<li><strong>通过高斯扰动实现鲁棒性</strong>：我们在专家数据生成过程中注入状态级高斯噪声。若不这样做，车摆系统在 50 个上下文样本下的分布内稳定成功率将骤降至 5%（有扰动时为 86%），证实了接触驱动扰动至关重要。</li>
+<li><strong>在非线性基准上的实证验证</strong>：我们在欠驱动车摆 [13] 和 acrobot [14] 系统上评估我们的架构，在最长上下文长度下分别实现高达 86%（车摆）和 74%（acrobot）的分布内稳定成功率。</li>
+</ul>
+<h2>II 相关工作</h2>
+<p>为不稳定非线性系统开发通用控制器处于 ICL、基于序列的决策制定和机器人学基础模型的交叉点。</p>
+<p><strong>上下文学习的涌现</strong><br />
+Transformer 执行 ICL 的能力最初在简单设置中被表征，例如线性回归 [5, 15] 和高斯-马尔可夫过程预测 [6]。虽然 ICL 在大语言模型中被广泛研究 [1, 16, 17]，但最近的工作表明 ICL 是一种由训练数据的分布特性驱动的涌现属性 [18, 19]，而 [20] 研究了 ICL 与动力系统预测和联想回忆的关系。我们将这些发现扩展到不稳定、欠驱动非线性系统的低层稳定控制。</p>
+<p><strong>用于基于序列控制的 Transformer</strong><br />
+决策 Transformer [21] 和轨迹 Transformer [22] 推动了 Transformer 在强化学习的序列建模方法中的应用。后续工作将这些模型应用于系统辨识 [23] 和任务适应 [24]。现有方法侧重于高层规划，然而在不稳定平衡点处的低层稳定控制是一个有趣的案例研究，因为其对复合误差具有独特的敏感性。我们通过使用多任务目标进行隐式参数辨识和状态扰动专家演示以确保稳定鲁棒性来弥合这一差距。</p>
+<p><strong>通用控制器与基础模型</strong><br />
+我们基于通用控制范式 [10] 构建，该范式统一了跨受控对象实现的控制。机器人学中的并行工作利用微调的 LLM [25, 26] 或视觉-语言模型 [27, 28] 进行闭环控制。与依赖高层抽象的基础模型不同，我们摒弃了自然语言提示 [26]。</p>
+<h2>III 问题表述</h2>
+<h3>III-A 系统表示与离散化</h3>
+<p>考虑由常微分方程支配的非线性连续时间动力系统族 ℱ：<br />
+x˙(t) = f(x(t), u(t); ω)<br />
+其中 x(t) ∈ 𝒳 ⊆ ℝ^n 是状态，u(t) ∈ 𝒰 ⊆ ℝ^m 是控制输入，ω ∈ Ω ⊂ ℝ^p 表示未知物理参数。在采样间隔 δ_t 下运行，离散时间动态由下式给出：<br />
+x_{k+1} = Φ_ω(x_k, u_k, δ_t)。<br />
+我们可以将系统分布定义为 𝒟 := {Φ_ω | ω ∈ Ω}。</p>
+<p>对于每个实现 ω，专家控制器 κ_ω: ℝ^n → ℝ^m 在给定状态 x_k 时产生控制动作 u_k* = κ_ω(x_k)。我们使用 κ_ω 进行离线训练数据生成；在推理期间，所学策略仅接收状态-动作历史，而无法访问 ω。</p>
+<h3>III-B 通过上下文学习实现通用控制</h3>
+<p>遵循通用控制的思想 [10]，我们的目标是训练一个策略 π，能够在没有 ω 的显式知识的情况下稳定任何系统实现 Φ_ω ∼ 𝒟，利用通过初始无驱动响应实现的 ICL。</p>
+<p>设 N 为无驱动响应的窗口，其中我们施加零力矩 u_k = 0。在无驱动阶段生成的序列形成上下文提示：<br />
+H_{0:N-1} = {(x_k, e_k, c_k, u_k=0)}_{k=0}^{N-1}。</p>
+<p>这里，e_k ∈ ℝ 是当前状态与目标状态之间的范数距离，c_k 表示当前激活的控制器模式，这在我们的情况下是必要的，因为我们采用混合专家控制器。</p>
+<p>由于系统模型已知，动态可以在物理参数 ω ∈ Ω 中线性表示，而从轨迹 H_{0:N-1} 估计 ω 需要最小上下文窗口 N 以产生唯一可解的方程组 [29]。这促使我们对稳定成功率作为 N 的函数进行实证研究。</p>
+<p>策略 π 在步骤 k ≥ N 时使用 H_{k-N:k-1} 产生近似专家的动作：<br />
+π(H_{k-N:k-1}, x_k) ≈ κ_ω(x_k)。</p>
+<p>为了优化 π，我们首先构建训练数据集 𝒯 = {τ^{(j)}<em>{κ_ω}}</em>{j=1}^M，其中每条轨迹 τ^{(j)}_{κ_ω} 是通过在采样的实现 Φ_ω ∼ 𝒟 下展开长度为 N_total 的轨迹生成的。每次展开从无驱动响应阶段（0 ≤ k &lt; N，其中 u_k = 0）过渡到控制阶段（N ≤ k ≤ N_total，其中 u_k = κ_ω(x_k)），存储为 (x_k, e_k, c_k, u_k)。展开被切分成长度 L ≪ N_total 的片段，起始索引以相等概率从无驱动响应或完整序列中采样，确保频繁接触不同长度的无驱动序列。</p>
+<h2>IV 多任务序列模型框架</h2>
+<h3>IV-A Transformer 模型</h3>
+<p>通用策略 π_γ 由权重 γ ∈ Γ 参数化，使用 GPT-2 风格的仅解码器 Transformer [30] 建模。该模型通过因果自注意力掩码处理上下文历史，仅允许关注先前的标记 [31, 30]。为了在上下文序列之间保持相对位置感知，我们采用旋转位置编码[32]。</p>
+<p>为了将潜在嵌入同时锚定在系统动态和控制律合成上，Transformer 在每一步 k 分支为三个多层感知机（MLP）头：<br />
+(1) 控制头（\hat{u}<em>k）：预测控制动作。<br />
+(2) 状态动态头（\hat{x}</em>{k+1}）：作为辅助任务预测状态，迫使共享表示隐式辨识 ω。<br />
+(3) 模式头（\hat{c}_k）：一个分类器，预测控制器的当前激活模式（例如能量整形或稳定）。</p>
+<h3>IV-B 多任务学习目标</h3>
+<p>我们通过在系统分布 𝒟 上最小化复合损失函数 ℒ 来优化 γ 以获得 π_γ：</p>
+<p>min_γ 𝔼_{Φ_ω∼𝒟} [Σ_{k=0}^T ℒ(π_γ(H_{k-L:k-1}, x_k), z_k)]  (1)</p>
+<p>其中 z_k = (u_k<em>, x_{k+1}, c_k) 包含专家动作 u_k</em> = κ_ω(x_k)、下一状态 x_{k+1} 和控制器模式 c_k，且<br />
+ℒ = λ_u ‖u_k* − \hat{u}<em>k‖²_2 + λ_x ‖x</em>{k+1} − \hat{x}_{k+1}‖²_2 + λ_c CE(\hat{c}_k, c_k)，<br />
+其中 λ_u、λ_x、λ_c 是标量损失权重，CE(·) 是交叉熵损失。</p>
+<p>通过将控制任务与状态预测任务耦合，鼓励模型利用零力矩上下文来改进其对参数 ω 的内部估计。</p>
+<h3>IV-C 通过状态扰动实现鲁棒轨迹生成</h3>
+<p>在闭环中，微小的预测误差会随时间复合，将系统驱动到训练分布之外 [33]。虽然 DAgger [34, 35] 等方法通过在修正的探索轨迹上微调来解决此问题，但我们使用一种无需在初始阶段之外进行额外训练的替代方法。</p>
+<p>在专家展开的稳定阶段（精确动作至关重要），我们使用带有加性高斯扰动的系统：<br />
+x_{k+1} = Φ_ω(x_k + ϵ_k, κ_ω(x_k + ϵ_k), δ_t)，ϵ_k ∼ 𝒩(0, σ²I)，<br />
+迫使 κ_ω 在稳定点附近产生修正力矩。在这些轨迹上训练使 π_γ 具备闭环恢复行为，防止推理期间的误差复合，并缓解目标附近信号幅度消失带来的数值问题。</p>
+<h2>V 实验评估</h2>
+<p>我们在欠驱动车摆和 acrobot 基准系统上评估所提出的上下文控制框架。</p>
+<h3>V-A 模型架构、训练和推理协议</h3>
+<p>每个模型由 12 层、8 个注意力头、256 维嵌入空间和 RoPE 组成。</p>
+<p><strong>训练</strong>：我们使用 AdamW 优化 (1)，学习率为 10^{-4}，权重衰减为 10^{-2}，批量大小为 64，子轨迹长度 L=120，来自 𝒯，如第 III-B 节所述。</p>
+<p><strong>推理</strong>：在推理开始时，模型最初接收上下文 H_{0:k-1} = {(x_i, e_i, c_i, u_i=0)}<em>{i=0}^{k-1} 和查询 x_k 作为提示，并预测 (\hat{x}</em>{k+1}, \hat{c}<em>k, \hat{u}_k)。预测的动作 \hat{u}_k 在动态中执行以产生 x</em>{k+1}，上下文通过追加 (x_k, e_k, \hat{c}<em>k, \hat{u}_k) 并通过滑动窗口丢弃最旧的条目更新为 H</em>{1:k} = {(x_i, e_i, c_i, u_i)}<em>{i=1}^k，如图 1 所示。此过程以上下文 H</em>{1:k} 和查询 x_{k+1} 作为新提示重复。重复这些步骤直到轨迹达到所需长度。</p>
+<h3>V-B LSTM 基线</h3>
+<p>为了测试稳定成功是否特定于 Transformer 的 ICL 能力而非任何序列模型的通用益处，我们训练了一个 LSTM 基线（3 层，隐藏大小 1024），具有相同的多头结构、训练数据和损失函数。为了公平比较，其隐藏状态由第 V-A 节中概述的相同滑动上下文窗口构建。</p>
+<h3>V-C 车摆系统</h3>
+<p>车摆系统需要通过水平小车力将摆杆摆起并保持直立 [13]。</p>
+<h4>V-C1 系统动态</h4>
+<p>状态为 x = [p, ṗ, θ, θ̇]^⊤，其中 p 是小车位置，θ 是摆杆角度，直立平衡点为 x = [0, 0, 0, 0]^⊤。动力系统由物理参数 ω = [M, m, l] ∈ Ω_cart 支配，其中 M 是小车质量，m 是摆杆质量，l 是摆杆长度：</p>
+<p>p̈ = [(u + mlθ̇² sin θ) − (mlθ̈ cos θ)] / (M + m)  (2)</p>
+<p>θ̈ = [g sin θ + cos θ((−u − mlθ̇² sin θ)/(M + m))] / [l(4/3 − m cos²θ/(M + m))]</p>
+<h4>V-C2 参数化专家控制器（κ_{ω_i}）</h4>
+<p>对于每个 ω_i，我们合成混合专家控制器 κ_{ω_i}：<br />
+(1) 能量整形摆起：将机械能量 E(x; ω_i) = ½ml²θ̇² + mgl cos(θ) 泵向直立目标 E^d = mgl，施加力矩 u<em> = −kθ̇(E − E^d)（k &gt; 0）[36]。<br />
+(2) 线性二次型调节器（LQR）：在直立附近，切换到 LQR 力矩 u</em> = −K(ω_i)x，其中增益矩阵 K(ω_i) 求解线性化动态的代数黎卡提方程。</p>
+<h4>V-C3 数据生成</h4>
+<p>轨迹 τ^{(i)}<em>{κ</em>{ω_i}} ∈ 𝒯 使用来自均匀分布 𝒰(Ω_cart) 的参数实现 ω_i 展开，其中 Ω_cart 在表 I 中定义。初始条件采样 p_0 = 0，ṗ_0 = 0，θ_0 ∼ 𝒰(π/2, 3π/2)，θ̇ ∼ 𝒰(−1, 1)。如第 III-B 节所述，轨迹 τ^{(i)}<em>{κ</em>{ω_i}} 通过强制 N = 50 步零力矩演化后跟专家响应构建，δ_t = 0.025。为了处理角度周期性，状态增广为 x̃ = [p, ṗ, cos(θ), sin(θ), θ̇]。最后，我们在 LQR 阶段采用第 IV-C 节详述的高斯扰动方法，并过滤掉稳定失败的轨迹。</p>
+<p>表 I：车摆系统参数空间分布</p>
+<table>
+<thead>
+<tr>
+<th>分布</th>
+<th>M (kg)</th>
+<th>m (kg)</th>
+<th>l (m)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分布内（Ω_cart）</td>
+<td>[2.0, 3.0)</td>
+<td>[1.1, 2.0)</td>
+<td>[1.6, 2.1)</td>
+</tr>
+<tr>
+<td>OOD 简单（Ω^{OOD, easy}_cart）</td>
+<td>[1.5, 2.0)</td>
+<td>[0.3, 0.8)</td>
+<td>[1.0, 1.5)</td>
+</tr>
+<tr>
+<td>OOD 困难（Ω^{OOD, hard}_cart）</td>
+<td>[3.0, 3.5)</td>
+<td>[2.0, 2.5)</td>
+<td>[2.2, 2.7)</td>
+</tr>
+</tbody>
+</table>
+<h4>V-C4 主要结果</h4>
+<p>图 2：车摆的稳定成功率与上下文长度（N）的关系。左/中：早期和晚期训练检查点的 Transformer。右：匹配晚期检查点的 LSTM 基线。虚线表示标称基线性能。Transformer 更好利用长上下文的能力在检查点 之间涌现，而 LSTM (c) 在短上下文下优于晚期检查点 Transformer (b)，但在 N=50 时在分布内和 OOD-简单系统上被超越。</p>
+<p>我们在早期（5k 步，320k 训练轨迹）和晚期（10k 步，640k 训练轨迹）Transformer 检查点上展示稳定性能，在来自三个分布的 100 个随机采样系统上进行评估（表 I）。OOD-简单具有较低的惯性（更轻、更短），使其比 OOD-困难（更高惯性）更容易稳定。</p>
+<p><strong>稳定判据</strong>：在展开的最后阶段 |θ| ≤ 0.1 rad 且 |θ̇| ≤ 0.3 rad/s（由于欠驱动，p 收敛较慢）。</p>
+<p>我们与使用平均分布内参数 ω_avg = [2.5, 1.5, 1.8] 的标称基线 κ_{ω_avg} 进行比较，并报告稳定系统的比例。</p>
+<p>比较图 2(a) 和 (b)，分布内和 OOD-简单的成功率通常随上下文增加而提高，直到上下文 25，晚期检查点 Transformer 在上下文 50 处表现更佳。我们还看到，在两个 Transformer 训练点上，OOD-简单性能在较长上下文下超过分布内性能，因为在高惯性系统上的训练可以迁移到更容易的低惯性系统。</p>
+<p>在所有数据机制的上下文 1 处，早期检查点没有稳定任何系统，而晚期检查点实现了非零成功。由于一个数据点无法辨识三个未知数（ω = [M, m, l]），这表明晚期检查点记忆了默认行为而非执行辨识。晚期检查点也优于标称基线（78% 分布内，0% OOD-简单，20% OOD-困难），并且是唯一能够有意义地稳定 OOD-困难系统的检查点，表明这种能力同样受益于延长训练。这需要在未来的工作中探索。</p>
+<p>特别是对于 OOD-困难系统，成功率在最长的上下文（50）处下降，这与 ICL 文献一致，表明额外的上下文可能引入误导模型的虚假相关性 [37]，这种效应可能被放大，因为 OOD-困难系统更难稳定。</p>
+<p>我们将晚期检查点 Transformer 与相同训练的 LSTM 基线（图 2(c)）进行比较。在上下文 1 处，LSTM 在分布内和 OOD-简单系统上显著优于 Transformer，反映出更强的记忆默认策略而非优越的上下文利用。这种优势随上下文缩小并逆转，到上下文 50 时，Transformer 在分布内和 OOD-简单系统上均优于 LSTM，而 LSTM 在辨识最困难的 OOD-困难系统上保持更好的性能。</p>
+<p>图 3：车摆系统摆起的一个示例。专家参考 κ_ω 与给定 25 个上下文样本的 Transformer 展开之间的比较。状态 [p, ṗ, θ, θ̇] 和动作随时间显示。</p>
+<p>图 3 展示了在 N = 25 上下文步骤下 Transformer 展开与专家参考 κ_ω 对比的一个示例。虽然预测的 Transformer 动作与 κ_ω 不完全对齐，但 θ 和 θ̇ 收敛到零，表明稳定。值得注意的是，Transformer 几乎完美地预测了从能量整形摆起到 LQR 稳定的过渡。</p>
+<h4>V-C5 消融实验</h4>
+<p>表 II：车摆 Transformer 的稳定成功率与上下文长度 N 的关系（消融：无噪声数据）</p>
+<table>
+<thead>
+<tr>
+<th>测试分布</th>
+<th>N=1</th>
+<th>N=5</th>
+<th>N=10</th>
+<th>N=25</th>
+<th>N=50</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分布内</td>
+<td>0.00</td>
+<td>0.02</td>
+<td>0.02</td>
+<td>0.01</td>
+<td>0.05</td>
+</tr>
+<tr>
+<td>分布外（OOD）</td>
+<td>0.00</td>
+<td>0.01</td>
+<td>0.03</td>
+<td>0.04</td>
+<td>0.09</td>
+</tr>
+</tbody>
+</table>
+<p>如第 IV-C 节所讨论的，我们框架中的一个关键假设是，在 LQR 阶段期间在注入加性高斯噪声的专家控制器 κ_{ω_i} 合成的轨迹上训练，鼓励 Transformer 学习维持稳定所需的修正动作。为了验证这一说法，我们在缺乏高斯噪声的"干净"数据集 𝒯_clean 上训练 Transformer。</p>
+<p>如表 II 所示，无噪声模型在超过 90% 的测试系统上失败。没有平衡点附近的恢复演示，微小的推理误差会将状态驱动到分布之外，证明专家随机性对闭环鲁棒性至关重要。</p>
+<h3>V-D Acrobot 系统</h3>
+<p>Acrobot 是仅在肘关节驱动的双连杆平面机器人，是摆起和平衡方面更具挑战性的基准 [36]。</p>
+<h4>V-D1 系统动态</h4>
+<p>状态为 x = [θ_1, θ_2, θ̇_1, θ̇_2]^⊤，其中 θ_1 是第一连杆角度，θ_2 是第二连杆相对于第一连杆的角度，直立平衡点为 x = [π, 0, 0, 0]^⊤。物理参数向量 ω = [m_1, m_2, l_1, l_2] 表示连杆质量 m_1、m_2 和连杆长度 l_1、l_2。运动方程表示为：</p>
+<p>M(q, ω)q̈ + C(q, q̇, ω)q̇ = G(q, ω) + Bu,  (3)</p>
+<p>其中 q = [θ_1, θ_2]^⊤，矩阵 M、C、G 遵循标准机械臂符号 [36]。</p>
+<h4>V-D2 参数化专家控制器（κ_{ω_i}）</h4>
+<p>对于每个实现 ω_i，我们合成具有滞环切换逻辑以防止抖振的混合专家控制器 κ_{ω_i}：<br />
+(1) 部分反馈线性化摆起：u = d̄_22 v_2 + h̄_2 + φ̄_2，其中 d̄_22、h̄_2、φ̄_2 是从动态导出的降阶项，v_2 = taper(θ_1^d, θ_1)[k_p(E)(θ_2^d − θ_2) − k_d(E)θ̇_2] 是能量整形信号 [38]。<br />
+(2) LQR：在直立附近，切换到 LQR 力矩 u* = −K(ω_i)(x − x_goal)。</p>
+<h4>V-D3 数据生成</h4>
+<p>轨迹 τ^{(i)}<em>{κ</em>{ω_i}} ∈ 𝒯 使用如表 III 所示有界的采样实现 ω_i ∼ 𝒰(Ω_acro) 展开。初始条件采样 θ_1 ∈ 𝒰(−π/2, −π/4) ∪ 𝒰(π/4, π/2)，θ_2 = 0，θ̇<em>1 ∼ 𝒰(−1, 1) rad/s，θ̇_2 = 0。轨迹 τ^{(i)}</em>{κ_{ω_i}} 通过在专家（κ_{ω_i}）响应之前强制 N = 100 步零力矩演化构建，δ_t = 0.02。为适应角度周期性，状态增广为 x = [cos(θ_1), sin(θ_1), cos(θ_2), sin(θ_2), θ̇_1, θ̇_2]。我们还在 LQR 阶段应用高斯扰动，解决第 IV-C 节中提到的问题。未稳定的轨迹被过滤掉（由于系统复杂性，约 33% 的轨迹）。</p>
+<p>表 III：Acrobot 系统参数空间分布</p>
+<table>
+<thead>
+<tr>
+<th>分布</th>
+<th>l_1 (m)</th>
+<th>l_2 (m)</th>
+<th>m_1 (kg)</th>
+<th>m_2 (kg)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分布内（Ω_acro）</td>
+<td>[0.5, 1.0)</td>
+<td>[1.0, 1.5)</td>
+<td>[1.5, 2.0)</td>
+<td>[1.0, 1.5)</td>
+</tr>
+<tr>
+<td>OOD（Ω^{OOD}_acro）</td>
+<td>[1.0, 1.5)</td>
+<td>[1.5, 2.0)</td>
+<td>[1.0, 1.5)</td>
+<td>[1.0, 1.5)</td>
+</tr>
+</tbody>
+</table>
+<h4>V-D4 主要结果</h4>
+<p>图 4：Acrobot 的稳定成功率与上下文长度（N）的关系。 Transformer，早期检查点（25k 步）。 Transformer，晚期检查点（300k 步）。 LSTM 基线，匹配的晚期检查点（300k 步）。虚线表示标称基线性能。LSTM 在超过 N=1 的所有上下文长度上匹配或超过 Transformer 在分布内系统上的性能，而 Transformer 在 N=50 时在 OOD 系统上超越 LSTM。</p>
+<p>图 5：acrobot 摆起展开比较的一个示例：专家 κ_ω（浅蓝色）与给定 N=50 上下文步骤的 Transformer（红色）。角度 θ_1 收敛到 −5π ≡ π rad 直立。</p>
+<p>我们在 50 个分布内和 50 个 OOD 随机采样的测试系统上评估性能（表 III）。</p>
+<p><strong>稳定判据</strong>：鉴于 acrobot 的复杂性，如果状态进入并在直立平衡的固定邻域（|θ_1| &lt; 0.2 rad 且 |θ_2| &lt; 0.3 rad）内保持至少 3 秒，则系统被视为稳定，表明模型可以摆起并切换到 LQR 稳定，即使是短暂的。</p>
+<p>我们与使用平均分布内参数 ω_avg = [l_1=0.75, l_2=1.25, m_1=1.75, m_2=1.25] 的标称基线 κ_{ω_avg} 进行比较，该基线仅稳定 26% 的分布内系统和 1% 的 OOD 系统。</p>
+<p>图 4(a) 表明，早期检查点 Transformer（25k 训练步，160 万训练轨迹）在 N=1 时不稳定任何系统，但改进至上下文 25，确认了上下文驱动的适应而非记忆。图 4(b) 所示的晚期检查点（300k 训练步，2050 万训练轨迹）实现了强分布内稳定，并越来越多地利用上下文处理 OOD 系统，超过标称基线。上下文 1 的非零稳定成功表明记忆，这似乎有助于 OOD 稳定。</p>
+<p>比较图 4(c) 中的晚期检查点 Transformer 与 LSTM，LSTM 在超过 N=1 的每个上下文长度上匹配或超过 Transformer 的分布内性能。因此，在这些示例中，Transformer 模型的上下文学习能力并未优于 LSTM 行为。然而，在 OOD 系统上，模式类似于车摆的 OOD-简单：LSTM 在短上下文下性能更好，但 Transformer 在较长上下文 N=50 下表现更好（0.22 对 0.14）。结合车摆 OOD-困难的结果（LSTM 即使在长上下文下也保持优势），这表明 Transformer 相对于 LSTM 的上下文驱动优势并不均匀，但也许 Transformer 在不熟悉的机制中执行具有优势。</p>
+<p>图 5 展示了在 N=50 上下文样本下 Transformer 展开与参考专家控制器 κ_ω 对比的一个示例。Transformer 成功完成摆起机动，θ_1 → −5π ≡ π rad 收敛，并应用 LQR 修正动作以保持直立稳定。</p>
+<p><strong>局限性</strong>：我们的框架需要每个训练实现的专家控制器 κ_ω。这对于车摆和 acrobot 是可行的，因为摆起/LQR 专家由 ω 参数化，但可能无法推广到缺乏解析专家的系统。</p>
+<h2>VI 结论</h2>
+<p>我们研究了 Transformer 模型在欠驱动非线性动力系统低层稳定控制中的 ICL 能力。给定零力矩状态-动作观测的上下文，Transformer 可以相应地调整其控制律。我们发现，在没有驱动扰动的系统数据上无法成功训练。然而，在具有加性高斯噪声的系统轨迹上训练，使模型能够学习稳定所需的修正动作，而这些动作在"干净"的专家轨迹中是缺失的。此外，我们表明，一旦 Transformer 开始记忆训练数据并在没有上下文样本的情况下稳定系统，即使对于 OOD 系统，ICL 能力似乎也会涌现。在车摆和 acrobot 基准上评估，Transformer 始终优于朴素的标称基线，但与 LSTM 基线性能相似。</p>
+<h2>参考文献</h2>
+<p>[1] T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell, et al. (2020) Language models are few-shot learners. Advances in Neural Information Processing Systems 33, pp. 1877–1901. 引用：§I、§II。</p>
+<p>[2] O. Lieber, O. Sharir, B. Lenz, and Y. Shoham (2021) Jurassic-1: technical details and evaluation. White Paper. AI21 Labs 1(9), pp. 1–17. 引用：§I。</p>
+<p>[3] J. W. Rae, S. Borgeaud, T. Cai, K. Millican, J. Hoffmann, F. Song, J. Aslanides, S. Henderson, R. Ring, S. Young, et al. (2021) Scaling language models: methods, analysis &amp; insights from training gopher. arXiv preprint arXiv:2112.11446. 引用：§I。</p>
+<p>[4] S. Black, S. Biderman, E. Hallahan, Q. Anthony, L. Gao, L. Golding, H. He, C. Leahy, K. McDonell, J. Phang, et al. (2022) Gpt-neox-20b: an open-source autoregressive language model. In Proceedings of BigScience Episode# 5–Workshop on Challenges &amp; Perspectives in Creating Large Language Models, pp. 95–136. 引用：§I。</p>
+<p>[5] S. Garg, D. Tsipras, P. S. Liang, and G. Valiant (2022) What can transformers learn in-context? a case study of simple function classes. Advances in Neural Information Processing Systems 35, pp. 30583–30598. 引用：§I、§II。</p>
+<p>[6] Z. Du, H. Balim, S. Oymak, and N. Ozay (2023) Can transformers learn optimal filtering for unknown systems?. IEEE Control Systems Letters 7(), pp. 3525–3530. 引用：§I、§II。</p>
+<p>[7] L. Fu, H. Huang, G. Datta, L. Y. Chen, W. C. Panitch, F. Liu, H. Li, and K. Goldberg (2024) In-context imitation learning via next-token prediction. arXiv preprint arXiv:2408.15980. 引用：§I。</p>
+<p>[8] L. Ljung et al. (1987) Theory for the user. System identification. 引用：§I。</p>
+<p>[9] Z. Hou and Z. Wang (2013) From model-based control to data-driven control: survey, classification and perspective. Information Sciences 235, pp. 3–35. 引用：§I。</p>
+<p>[10] R. Busetto, V. Breschi, M. Forgione, D. Piga, and S. Formentin (2025) One controller to rule them all. Proceedings of Machine Learning Research vol vvv 1, pp. 14. 引用：§I、§II、§III-B。</p>
+<p>[11] M. Deisenroth and C. E. Rasmussen (2011) PILCO: a model-based and data-efficient approach to policy search. In Proceedings of the 28th International Conference on machine learning (ICML-11), pp. 465–472. 引用：§I。</p>
+<p>[12] J. Kober, J. A. Bagnell, and J. Peters (2013) Reinforcement learning in robotics: a survey. The International Journal of Robotics Research 32(11), pp. 1238–1274. 引用：§I。</p>
+<p>[13] K. J. Åström and R. Murray (2021) Feedback systems: an introduction for scientists and engineers. Princeton University Press. 引用：第3项、§V-C。</p>
+<p>[14] R. M. Murray and J. E. Hauser (1991) A case study in approximate linearization: the acrobot example. Electronics Research Laboratory, College of Engineering, University of California Berkeley. 引用：第3项。</p>
+<p>[15] A. Raventós, M. Paul, F. Chen, and S. Ganguli (2023) Pretraining task diversity and the emergence of non-bayesian in-context learning for regression. Advances in Neural Information Processing Systems 36, pp. 14228–14246. 引用：§II。</p>
+<p>[16] C. Olsson, N. Elhage, N. Nanda, N. Joseph, N. DasSarma, T. Henighan, B. Mann, A. Askell, Y. Bai, A. Chen, et al. (2022) In-context learning and induction heads. arXiv preprint arXiv:2209.11895. 引用：§II。</p>
+<p>[17] E. Akyürek, B. Wang, Y. Kim, and J. Andreas (2024) In-context language learning: architectures and algorithms. arXiv preprint arXiv:2401.12973. 引用：§II。</p>
+<p>[18] S. Chan, A. Santoro, A. Lampinen, J. Wang, A. Singh, P. Richemond, J. McClelland, and F. Hill (2022) Data distributional properties drive emergent in-context learning in transformers. Advances in neural information processing systems 35, pp. 18878–18891. 引用：§II。</p>
+<p>[19] S. C. Raparthy, E. Hambro, R. Kirk, M. Henaff, and R. Raileanu (2023) Generalization to new sequential decision making tasks with in-context learning. arXiv preprint arXiv:2312.03801. 引用：§II。</p>
+<p>[20] S. Daniels, D. Davis, D. Gautam, W. Liao, G. Ranade, and A. Sahai (2025) Different simultaneous mechanisms for in-context recall have distinct learning dynamics. In Workshop on High-dimensional Learning Dynamics. 引用：§II。</p>
+<p>[21] L. Chen, K. Lu, A. Rajeswaran, K. Lee, A. Grover, M. Laskin, P. Abbeel, A. Srinivas, and I. Mordatch (2021) Decision transformer: reinforcement learning via sequence modeling. Advances in Neural Information Processing Systems 34, pp. 15084–15097. 引用：§II。</p>
+<p>[22] M. Janner, Q. Li, and S. Levine (2021) Offline reinforcement learning as one big sequence modeling problem. In Advances in Neural Information Processing Systems, M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and K. Q. Vaughan (Eds.), Vol. 34, pp. 1273–1286. 引用：§II。</p>
+<p>[23] X. Zhang, S. Liu, P. Huang, W. J. Han, Y. Lyu, M. Xu, and D. Zhao (2025) Dynamics as prompts: in-context learning for sim-to-real system identifications. arXiv:2410.20357. 引用：§II。</p>
+<p>[24] M. Xu, Y. Shen, S. Zhang, Y. Lu, D. Zhao, J. Tenenbaum, and C. Gan (2022) Prompting decision transformer for few-shot policy generalization. In International Conference on Machine Learning, pp. 24631–24645. 引用：§II。</p>
+<p>[25] X. Zhang, W. Mao, H. Qiu, and T. Başar (2025) Decision transformer as a foundation model for partially observable continuous control. In 2025 American Control Conference (ACC), pp. 239–244. 引用：§II。</p>
+<p>[26] Y. Wang, B. Zhang, J. Chen, and K. Sreenath (2024) Prompt a robot to walk with large language models. In 2024 IEEE 63rd Conference on Decision and Control (CDC), pp. 1531–1538. 引用：§II。</p>
+<p>[27] X. Li, M. Liu, H. Zhang, C. Yu, J. Xu, H. Wu, C. Cheang, Y. Jing, W. Zhang, H. Liu, et al. (2023) Vision-language foundation models as effective robot imitators. arXiv preprint arXiv:2311.01378. 引用：§II。</p>
+<p>[28] J. Y. Zhu, C. G. Cano, D. V. Bermudez, and M. Drozdzal (2024) InCoRo: In-Context Learning for Robotics Control with Feedback Loops. arXiv:2402.05188. 引用：§II。</p>
+<p>[29] C. G. Atkeson, C. H. An, and J. M. Hollerbach (1986) Estimation of inertial parameters of manipulator loads and links. The International Journal of Robotics Research 5(3), pp. 101–119. 引用：§III-B。</p>
+<p>[30] A. Radford, K. Narasimhan, T. Salimans, I. Sutskever, et al. (2018) Improving language understanding by generative pre-training. 引用：§IV-A。</p>
+<p>[31] P. J. Liu<em>, M. Saleh</em>, E. Pot, B. Goodrich, R. Sepassi, L. Kaiser, and N. Shazeer (2018) Generating wikipedia by summarizing long sequences. In International Conference on Learning Representations. 引用：§IV-A。</p>
+<p>[32] J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, and Y. Liu (2024) Roformer: enhanced transformer with rotary position embedding. Neurocomputing 568, pp. 127063. 引用：§IV-A。</p>
+<p>[33] N. Rajaraman, L. Yang, J. Jiao, and K. Ramchandran (2020) Toward the fundamental limits of imitation learning. Advances in Neural Information Processing Systems 33, pp. 2914–2924. 引用：§IV-C。</p>
+<p>[34] S. Ross, G. Gordon, and D. Bagnell (2011) A reduction of imitation learning and structured prediction to no-regret online learning. In Proceedings of the fourteenth international conference on artificial intelligence and statistics, pp. 627–635. 引用：§IV-C。</p>
+<p>[35] D. Celestini, D. Gammelli, T. Guffanti, S. D'Amico, E. Capello, and M. Pavone (2024) Transformer-Based Model Predictive Control: Trajectory Optimization via Sequence Modeling. IEEE Robotics and Automation Letters 9(11), pp. 9820–9827. 引用：§IV-C。</p>
+<p>[36] R. Tedrake (2023) Underactuated robotics. 注：MIT 6.832 课程笔记。 引用：§V-C2、§V-D1、§V-D。</p>
+<p>[37] J. Chen, L. Chen, C. Zhu, and T. Zhou (2023) How many demonstrations do you need for in-context learning?. In Findings of the Association for Computational Linguistics: EMNLP 2023, pp. 11149–11159. 引用：§V-C4。</p>
+<p>[38] M. W. Spong (2002) The swing up control problem for the acrobot. IEEE Control Systems Magazine 15(1), pp. 49–55. 引用：§V-D2。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 上下文学习, Transformer, 低层控制, 欠驱动系统, 非线性系统稳定</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

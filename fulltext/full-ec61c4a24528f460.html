@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>从已用到缺失：重新思考LoRA中的动态秩 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">从已用到缺失：重新思考LoRA中的动态秩</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.07349" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：From What Is Used to What Is Missing: Rethinking Dynamic Rank in LoRA</h4>
+            <p><strong>中文摘要：</strong> 本文提出GEAR，一种几何引导的自适应秩演化框架。理论证明标准因子梯度的不可观测子空间恰为低秩流形的法空间，故无法区分当前空间内的欠优化与空间外的任务相关方向；并在局部二次模型下证明主导法向奇异方向给出局部最优秩扩展。GEAR结合切空间流形优化、无矩阵法向谱估计与任务诱导几何初始化，仅在法向谱揭示有价值方向时扩展秩。实验表明其在常识推理、GLUE和VTAB-1K上以更少可训练参数取得最佳平均性能。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>从已用到缺失：重新思考LoRA中的动态秩</h1>
+<p><strong>Peng Xue</strong>（福州大学）<br />
+<strong>Guodong Fan</strong>（山东工商学院）<br />
+<strong>Guang-Yong Chen</strong>（福州大学）<br />
+<strong>Xing Chen</strong>（福州大学）</p>
+<h2>摘要</h2>
+<p>基于LoRA的参数高效微调由秩控制，秩决定了参数预算与局部可访问的任务更新。现有动态秩方法主要关注容量分配，但尚未解决当前适应空间对任务是否充分的问题。我们刻画了标准因子梯度的一阶信息边界，证明其不可观测子空间与低秩流形的法空间重合。因此，仅凭因子梯度无法区分当前空间内的欠优化与超出其一阶可达范围的任务相关方向。这启发了秩演化的几何视角：切向信息用于优化现有自由度，法向谱用于量化新自由度的价值。在局部二次模型下，我们证明主导法向奇异方向给出局部最优的秩扩展，其谱能量决定扩展增益。基于这一刻画，我们提出GEAR，通过切空间优化、面向秩扩展的无矩阵法向谱估计以及任务诱导的几何初始化，将切向–法向分解转化为秩演化。在语言与视觉基准上，GEAR在所有评估设置中以显著更少的可训练参数取得最佳平均性能。在LLaMA3-8B上，它将常识推理平均分从86.61提升至88.45，同时将可训练参数从42.0M减少到14.4M。</p>
+<h2>1 引言</h2>
+<p>参数高效微调（PEFT）已成为通过仅更新一小部分任务特定参数来适配大型预训练模型的主流方法（Ding等，2023b）。在PEFT方法中，LoRA将权重增量表示为低秩矩阵 ΔW=BA，其中 A∈ℝ^{r×m}、B∈ℝ^{n×r}，将可训练参数量从 nm 减少到 r(n+m)（Hu等，2022）。因此，r 既直接控制适配预算，也决定了低秩约束下可访问的局部一阶更新空间（Vandereycken，2013）。秩因而同时支配适配容量与哪些任务诱导方向可被表达。由于这些需求随层与训练进程而变化，统一的固定秩难以匹配任务需求的演化结构，这促使了动态秩适配的研究。</p>
+<p>大多数动态秩方法仍主要将秩视为容量分配变量。例如，AdaLoRA根据各奇异分量的重要性在权重矩阵间重新分配给定的秩预算（Zhang等，2023），而DyLoRA训练嵌套的低秩结构以支持在多个截断秩下推理（Valipour等，2023）。更近期的方法允许更灵活的秩演化：FlexLoRA利用当前低秩更新的谱熵决定何时剪枝或扩展容量（Liu等，2026），GeoLoRA则在动态低秩积分框架内结合梯度驱动的基增强与谱截断（Schotthöfer等，2025）。尽管这些方法显著提升了秩适配的灵活性，其秩决策主要源自当前适配器已表示的容量或结构。因此，它们刻画的是当前低秩空间"已使用"的内容，却没有提供直接准则来判断任务相关的下降方向是否仍缺失于该空间之外。这留下了一个更根本的问题：</p>
+<p><strong>当前适应空间是否局部足以表达任务相关的下降方向，还是必须扩展其秩才能使这些方向成为一阶可访问的？</strong></p>
+<p>回答这一问题需要区分当前低秩空间内的优化不足与空间本身的不足。进展有限可能源于两个根本不同的原因：当前秩可能充分但欠优化，或者任务相关的下降方向位于其一阶可达空间之外。只有后者才证明增加秩是合理的。现有秩分配准则并未明确区分这两种情形，因而难以判断是否真正需要额外容量。这一区别引出我们的核心观点：动态秩不仅应由当前适应空间已表示的内容驱动，还应由其无法访问的任务相关下降信息驱动。</p>
+<p><strong>图1：GEAR的动机与概述。</strong> (a) 标准因子梯度观测对法向分量不敏感，因此<strong>相同的一阶观测可能对应不同的秩需求</strong>。(b) GEAR区分当前流形内的优化与向当前一阶可达空间之外任务相关方向的扩展。(c) 这种几何引导的秩演化在常识推理上带来更强的性能–参数权衡。</p>
+<p>为解决这一局限，我们提出GEAR（Geometry-guided Evolution of Adaptive Rank，几何引导的自适应秩演化），将动态秩适配形式化为任务相关低秩空间的演化。我们不是从现有因子统计推断秩的充分性，而是刻画固定秩参数化下可用的一阶信息。对于 X=BA，我们证明标准因子梯度映射存在可观测性间隙，其零空间与固定秩流形 ℳ_r={X∈ℝ^{n×m}: rank(X)=r} 的法空间 N_X ℳ_r 重合。这确立了一个结构性信息限制：标准因子梯度揭示了与优化当前秩相关的切向分量，而法向分量保持不可观测。因此，它们无法区分当前适应空间内的欠优化与需要秩扩展才能一阶可访问的任务相关方向。对于给定的秩增量，我们进一步证明主导法向模式决定局部最优扩展，其谱能量量化扩展增益。基于这一刻画，我们提出GEAR，通过切空间优化、面向秩扩展的无矩阵法向谱估计以及任务诱导的几何初始化，将切向–法向分解转化为实用的秩演化机制。仅当估计的法向谱揭示有价值的任务相关方向时才扩展秩，GEAR由此提升适配效果与参数效率。在多个基准上，它以更少的可训练参数持续优于有竞争力的PEFT基线。我们的贡献如下：</p>
+<ul>
+<li><strong>秩适配的一阶可观测性障碍。</strong> 据我们所知，我们是首个刻画标准固定秩因子梯度可用信息并证明其不可观测子空间为低秩流形法空间的工作，从而将当前空间优化与秩扩展方向分离。</li>
+<li><strong>几何引导的秩演化。</strong> 我们提出GEAR，统一了当前固定秩流形上的优化与秩扩展：用切向信息优化适应空间，用法向谱识别并评估新的任务相关方向。</li>
+<li><strong>优异的性能–参数权衡。</strong> 在语言与视觉基准上，GEAR在每个评估设置中均取得最佳平均性能，同时使用的可训练参数显著少于强PEFT基线。</li>
+</ul>
+<h2>2 相关工作</h2>
+<p><strong>LoRA与自适应秩适配。</strong> LoRA通过低秩因子参数化任务特定更新，在保持预训练权重冻结的同时减少可训练参数与存储（Hu等，2022）。后续工作通过改进的参数化与初始化策略提升低秩适配。DoRA解耦权重幅值与方向以增强适配灵活性（Liu等，2024）；PiSSA从预训练权重的主奇异子空间初始化适配器（Meng等，2024）；LoRA-GA利用任务梯度识别更有效的初始低秩方向（Wang等，2024）。尽管有这些进展，大多数方法仍在固定秩下运行，可能难以匹配不同层与训练阶段的异构适配需求。这一局限催生了自适应秩LoRA方法：AdaLoRA根据奇异分量重要性在模块间动态重新分配给定秩预算（Zhang等，2023）；DyLoRA训练嵌套低秩结构以支持多个有效秩（Valipour等，2023）；SoRA通过稀疏门控学习有效秩（Ding等，2023a）。更近期的方法允许秩收缩与扩展：FlexLoRA根据当前适配器的谱结构调整秩（Liu等，2026），GeoLoRA在动态低秩公式下结合梯度驱动的基增强与谱截断（Schotthöfer等，2025）。GeLoRA进一步估计隐藏表示的本征维度以导出自适应逐层秩（Ed-dib等，2025）。总体而言，这些方法推动LoRA从固定秩适配走向日益灵活、任务相关的容量分配。然而，现有自适应秩方法主要决定如何分配或重组已表示的低秩容量，而GEAR提出的是一个不同的问题：任务相关的下降信息是否仍存在于当前一阶可达空间之外，从而值得新增秩维度。</p>
+<p><strong>LoRA的几何优化。</strong> 固定秩矩阵具有天然的黎曼流形结构，为独立于特定分解优化低秩状态提供了原则性途径（Vandereycken，2013）。早期的LoRA几何方法通过黎曼度量与预条件利用该结构；例如，黎曼预条件LoRA从低秩矩阵空间的几何导出低维预条件子，以改善优化稳定性与收敛（Zhang和Pilanci，2024）。GeoLoRA进一步将动态低秩积分引入PEFT，结合梯度驱动的基增强与谱截断实现结构保持与秩自适应更新（Schotthöfer等，2025）。相关工作还探索了对LoRA因子的显式流形约束：Park等在Stiefel流形上优化B因子以保持正交性与有效秩（Park等，2025），Manifold-LoRA为LoRA微调提出无回缩的Stiefel流形公式（Zhang等，2026）。更近期，Riemannion直接在固定秩流形上优化适配矩阵，消除分解歧义并实现独立于参数化的几何更新（Bogachev等，2026）。</p>
+<p>这些方法确立了几何作为改进低秩优化的有效工具，主要通过精化度量、约束因子几何或演化当前低秩状态。GEAR则关注确定当前适应空间本身何时应当扩展所需的信息。从一阶可观测性视角，它将标准因子梯度不可观测的法向分量与当前一阶可达空间之外的任务相关方向联系起来，从而将流形优化与秩扩展相连接。</p>
+<h2>3 方法</h2>
+<p>GEAR建立在固定秩适配中的一阶可观测性间隙之上：标准因子梯度刻画当前空间内的优化，却不刻画支配其扩展的法向任务信息。我们首先形式化这一边界，然后开发一个几何引导的适配框架，在优化低秩空间的同时识别何时以及如何扩展它。</p>
+<p><strong>算法1 GEAR：几何引导的自适应秩演化</strong></p>
+<pre><code>输入：预训练权重 W；初始秩 r_0；秩上界 r_max；审计集 𝒯_audit；预算 ℬ_target
+(U,C,V) ← TGI(W, r_0)；X ← UC，W ← W − sX，r ← r_0
+for t = 1, …, T do
+    G_T ← U(U^⊤G) + (I − UU^⊤)GVV^⊤                    // 式(1)
+    (X,U,C,V) ← Retr_{ℳ_r}(X − η_t G_T)                // 式(2)
+    if t ∈ 𝒯_audit 且 r ＜ r_max then
+        (Û, Σ̂, V̂) ← NormalSketch(X)                    // 式(3)–(4)
+        𝒮 ← Select(Û, Σ̂, V̂; ℬ_target)                  // 式(5)
+        X_cand ← Propose(X, 𝒮)                          // 式(6)
+        if Validate(X_cand, X) then
+            (U,C,r) ← Expand(U,C,𝒮)，X ← UC             // 式(7)
+        end if
+    end if
+end for
+输出：X
+</code></pre>
+<h3>3.1 标准因子梯度的一阶信息边界</h3>
+<p>考虑预训练权重矩阵 W∈ℝ^{n×m}，按 W′=W+sX、X=BA 进行适配，其中 s＞0 为固定缩放因子。令 f(X)=ℒ(W+sX)，G=∇_X f(X)。对于秩为 r 的适配矩阵 X=BA，我们在固定秩流形 ℳ_r 上分析 X，其切空间刻画了不增加秩即可一阶访问的方向（Vandereycken，2013）。</p>
+<p>令 X=UΣV^⊤ 为 X 的紧凑SVD，定义 P_U=UU^⊤、P_V=VV^⊤。全梯度具有正交分解 G=G_T+G_N，其中 G_T=P_U G+(I−P_U)GP_V ∈ T_X ℳ_r，G_N=(I−P_U)G(I−P_V) ∈ N_X ℳ_r。在因子化参数化 X=BA 下，相应梯度为 ∇_B f=GA^⊤，∇_A f=B^⊤G。</p>
+<p>因此我们定义因子梯度观测算子 𝒪_{A,B}(G)=(GA^⊤, B^⊤G)，它捕获标准因子反向传播中可用的关于 G 的一阶信息。</p>
+<p><strong>定理1（因子梯度可观测性障碍）。</strong> 设 A∈ℝ^{r×m} 与 B∈ℝ^{n×r} 满秩，X=BA∈ℳ_r。则 ker 𝒪_{A,B} = N_X ℳ_r。等价地，对任意 G_1 与 G_2，𝒪_{A,B}(G_1)=𝒪_{A,B}(G_2) 当且仅当 (G_1)_T=(G_2)_T。</p>
+<p>该定理建立了精确的一阶可观测性边界，表明标准因子梯度保留了任务梯度的切向分量，但无法区分仅在法向分量上不同的梯度。完整证明见附录C.1。因此，同一因子梯度观测既可能对应完全由当前适应空间表示的梯度，也可能对应包含超出其一阶可达范围的额外任务相关方向的梯度。这种歧义源于当前固定秩参数化下可用的信息，而非分解本身。</p>
+<p>该结果将当前适应空间内的优化与秩扩展的需求区分开来。切向分量表示在秩 r 下一阶可访问的方向，而法向分量捕获当前空间之外的任务相关方向。因此，切向信息用于优化现有自由度，法向信息为评估秩扩展的价值提供相关信号。后续两节分别发展这两种机制。</p>
+<h3>3.2 固定秩流形优化</h3>
+<p>对于固定秩 r，GEAR利用梯度的切向分量在流形 ℳ_r 上优化。我们将适配矩阵表示为 X=UC，U^⊤U=I_r，其中 U 为 X 列空间的正交基，C 包含相应的低秩系数。令 V 为 C^⊤ 列空间的正交基。切向梯度为</p>
+<p>G_T = U(U^⊤G) + (I−UU^⊤)GVV^⊤.  (1)</p>
+<p>式(1)表明 G_T 可由两个梯度收缩 U^⊤G 与 GV 计算，避免显式构造全梯度 G。</p>
+<p>为通过反向传播直接获得这些量，GEAR采用前向等价表示</p>
+<p>B_ext=[U, 0]，A_ext=[C; V^⊤]，</p>
+<p>满足 B_ext A_ext = X。虽然该表示不改变前向映射，但其反向导数暴露了所需的梯度收缩：∇<em>C f=U^⊤G，∇</em>{B_ext^{(2)}} f=GV。由此，切向梯度可在不显式物化 G 的情况下恢复。GEAR随后执行切向更新并回缩到固定秩流形：</p>
+<p>X^- = X − ηG_T，X_{t+1} = Retr_{ℳ_r}(X^-).  (2)</p>
+<p>由于 X^- 的秩至多为 2r，回缩在其紧凑因子上而非全矩阵上进行。具体地，薄QR分解将更新归约为一个小核心矩阵，对其做截断SVD即得回缩后的秩 r 状态及更新后的左右子空间基。完整细节见附录B.1。</p>
+<h3>3.3 几何引导的秩演化</h3>
+<p>上一节在 ℳ_r 上优化当前适配状态。相比之下，秩扩展由法向分量 G_N 支配，它捕获当前一阶可达空间之外的任务相关方向。我们接下来量化这些方向对秩扩展的局部价值。</p>
+<p>令 G_N=∑_{i≥1} σ_i u_i v_i^⊤，σ_1≥σ_2≥⋯，其最佳秩 k 近似记为 (G_N)_k。</p>
+<p><strong>定理2（秩扩展的局部最优性）。</strong> 设 X∈ℳ_r，𝒞_{r,k}(X) 表示 X 处相对于有界秩集合 𝒱_{r+k}={Y∈ℝ^{n×m}: rank(Y)≤r+k} 的切锥。对于局部二次模型 q_η(H)=⟨G,H⟩<em>F+(1/2η)‖H‖_F^2，𝒞</em>{r,k}(X) 上的一个最优方向为 H_k^⋆=−η[G_T+(G_N)_k]，其中 (G_N)_k 为 G_N 的最佳秩 k 近似。此外，相对于在 T_X ℳ_r 上优化，额外 k 个秩维度所能带来的最优模型下降为</p>
+<p>Δ_k := min_{H∈T_X ℳ_r} q_η(H) − min_{H∈𝒞_{r,k}(X)} q_η(H) = (η/2)∑_{i=1}^{k} σ_i^2(G_N).</p>
+<p>完整证明见附录C.2。该结果表明，法向梯度的主导奇异方向构成秩扩展的局部最优方向，而其谱能量精确量化了局部二次模型下可获得的额外下降。</p>
+<p>然而，构造 G_N=(I−UU^⊤)G(I−VV^⊤) 需要全梯度 G。GEAR转而通过随机化探测估计其主导谱（Halko等，2011）。给定 Ω∈ℝ^{m×h}，h≪min{n,m}，将其投影到右子空间的正交补：Ω_⊥=(I−VV^⊤)Ω。我们引入零初始化的辅助变量 P，通过 ΔX_probe=PΩ_⊥^⊤ 引入。由于 P=0，前向映射不变，而反向传播给出 ∇<em>P f=GΩ</em>⊥。再投影到左子空间的正交补，得</p>
+<p>Y=(I−UU^⊤)∇_P f=G_N Ω.  (3)</p>
+<p>令 Q=orth(Y)。若 G_N=U_N Σ_N V_N^⊤，则 Y=U_N Σ_N(V_N^⊤Ω)，故与较大奇异值对应的奇异方向对 Y 的贡献更强。因此 span(Q) 捕获 G_N 的主导左奇异子空间。再用相同的零输出探测得到 Q^⊤G，由此计算</p>
+<p>Z_N=Q^⊤G(I−VV^⊤)=Q^⊤G_N=Ũ Σ̂ V̂^⊤.  (4)</p>
+<p>于是，主导法向分量可近似为 û_i=Qũ_i、v̂<em>i=V̂</em>{:,i}、σ̂<em>i=Σ̂</em>{ii}，而无需显式物化 G_N。所得近似对秩扩展局部价值的影响是可控的。</p>
+<p><strong>定理3（非精确法向估计下的稳定性）。</strong> 设 Ĝ_N∈N_X ℳ_r 满足 ‖Ĝ_N−G_N‖_F≤ε，τ_k=‖G_N−(G_N)_k‖_F。则基于 (Ĝ_N)_k 的秩 k 扩展满足</p>
+<p>0 ≤ q_η(−η(Ĝ_N)_k) − q_η(−η(G_N)_k) ≤ 2ηε(τ_k+ε).</p>
+<p>完整证明见附录C.3。GEAR随后利用估计的法向谱在全局参数预算下分配秩。受定理2启发，我们按每新增参数的估计局部增益为每个候选法向方向打分，并施加全局秩预算：</p>
+<p>a_{ℓ,i} = σ̂<em>{ℓ,i}^2 / (n_ℓ+m_ℓ)，ℬ_target = r̄_budget ∑</em>{ℓ=1}^{L}(n_ℓ+m_ℓ).  (5)</p>
+<p>其中 r_ℓ 表示模块 ℓ 的当前秩，n_ℓ+m_ℓ 为模块 ℓ 新增一个秩维度的代价，r̄<em>budget 为加权平均秩预算。候选按 a</em>{ℓ,i} 在全局预算与每模块秩上限约束下选取。对选出的 k_ℓ 个方向，令 Û_{ℓ,k_ℓ}=[û_{ℓ,1},…,û_{ℓ,k_ℓ}]，V̂<em>{ℓ,k_ℓ}=[v̂</em>{ℓ,1},…,v̂<em>{ℓ,k_ℓ}]，Σ̂</em>{ℓ,k_ℓ}=diag(σ̂<em>{ℓ,1},…,σ̂</em>{ℓ,k_ℓ})。它们定义候选扩展</p>
+<p>X_{ℓ,cand} = X_ℓ − η_b Û_{ℓ,k_ℓ} Σ̂<em>{ℓ,k_ℓ} V̂</em>{ℓ,k_ℓ}^⊤.  (6)</p>
+<p>我们在各候选变体共享的一小组独立训练微批次上验证 X_{ℓ,cand}，仅当其平均损失改进超过相对裕度 ρ 时才接受扩展；完整细节见附录B.2。</p>
+<p>对于被接受的扩展，由于 Û_{ℓ,k_ℓ}⊥U_ℓ 且 V̂_{ℓ,k_ℓ}⊥V_ℓ，低秩状态直接更新为</p>
+<p>U_ℓ^+=[U_ℓ, Û_{ℓ,k_ℓ}]，C_ℓ^+=[C_ℓ; −η_b Σ̂<em>{ℓ,k_ℓ} V̂</em>{ℓ,k_ℓ}^⊤]，X_ℓ^+=U_ℓ^+ C_ℓ^+.  (7)</p>
+<p>被接受的扩展将适配状态从 ℳ_{r_ℓ} 迁移到 ℳ_{r_ℓ+k_ℓ}。与既有分量相关的优化器状态被继承，新引入方向的状态初始化为零。后续更新则遵循3.2节的固定秩流形优化。</p>
+<h3>3.4 任务诱导的几何初始化（TGI）</h3>
+<p>秩不足是相对于当前适应空间定义的。为避免将随机子空间失配与真正缺失的方向相混淆，GEAR从小型校准集上估计的任务梯度结构出发初始化该空间。</p>
+<p>令 G_0=∇<em>X f(0)。在左探测阶段，设 X=PΩ^⊤，其中 P=0，Ω∈ℝ^{m×h} 固定。这保持了预训练映射，而反向传播给出 Z_0=∇_P f(PΩ^⊤)|</em>{P=0}=G_0 Ω∈ℝ^{n×h}，无需形成 G_0。</p>
+<p>为统一表达两个阶段的归一化，记 Z_0∈ℝ^{d×h}，左探测时 d=n，右探测时 d=m。设 M=Z_0^{⊙2}，μ=(dh)^{−1}∑<em>{i,a} M</em>{ia}。为防止过大的梯度尺度主导子空间估计，我们沿两个维度对草图归一化：</p>
+<p>d_i^{row}=(1/h)∑<em>a M</em>{ia}+λμ，d_a^{col}=(1/d)∑<em>i M</em>{ia}+λμ，Z̃_0=D_row^{−1/2} Z_0 D_col^{−1/2}，</p>
+<p>其中 D_row=diag(d_i^{row})，D_col=diag(d_a^{col})。对左阶段的 Z̃<em>0 做薄QR分解得 Q_L∈ℝ^{n×h}。固定 Q_L，零初始化的右探测 X=Q_L R 给出转置草图 Z_0=(∇_R f(Q_L R)|</em>{R=0})^⊤=G_0^⊤ Q_L∈ℝ^{m×h}。非最终的右阶段用QR更新下一左探测基。TGI执行 p+1 轮左右探测，共 2(p+1) 个阶段。更多轮次可通过以连续更新的基进行探测来精化主导子空间估计；实验中我们取 p=1。</p>
+<p>在最终右阶段，归一化草图 Z̃_0∈ℝ^{m×h} 给出 Z̄_0=Z̃_0^⊤=ÛΣV^⊤。保留前 r_0≤h 个分量，初始化</p>
+<p>U_0=Q_L Û_{:,1:r_0}，C_0=diag(γ_1,…,γ_{r_0}) V_{:,1:r_0}^⊤，X_0=U_0 C_0.  (8)</p>
+<p>其中 γ_i 为保留奇异值与保留值均值之比的截断比率。由于 X_0 一般非零，我们在冻结权重中补偿其初始贡献：W̃=W−sX_0，W̃+sX_0=W。由此，训练从一个任务对齐的适应空间出发，同时在初始化时保持预训练前向映射。</p>
+<h2>4 实验结果</h2>
+<p>我们在常识推理、自然语言理解与视觉识别基准上评估GEAR，同时考察预测性能与参数效率。比较对象包括代表性的固定秩与自适应秩PEFT方法：LoRA（Hu等，2022）、AdaLoRA（Zhang等，2023）、Riemannion（Bogachev等，2026）、GeoLoRA（Schotthöfer等，2025）与FlexLoRA（Liu等，2026）。所有方法采用一致的实验设置以保证公平比较。消融研究见附录E。</p>
+<h3>4.1 秩审计调度</h3>
+<p>为确保秩适配稳定，GEAR在训练早中期周期性执行秩增长审计，此后冻结秩。令 t_start 为首次审计步，Δt 为审计间隔，t_final 为秩扩展停止的步数。审计步定义为</p>
+<p>𝒯_audit = {t_start + kΔt | k∈ℤ_{≥0}，t_start + kΔt ≤ t_final}.</p>
+<p>每次审计中，GEAR估计当前适应空间之外的任务相关方向，并将其作为秩扩展候选进行评估。t_final 之后秩保持固定，训练仅以所得秩进行流形优化。</p>
+<h3>4.2 常识推理</h3>
+<p>我们在八个常识推理基准上评估GEAR，包括BoolQ、PIQA、SIQA与HellaSwag（Clark等，2019；Bisk等，2020；Sap等，2019；Zellers等，2019），以及WinoGrande、ARC-e/ARC-c与OBQA（Sakaguchi等，2020；Clark等，2018；Mihaylov等，2018），骨干模型为LLaMA3-8B（Grattafiori等，2024）与Qwen2.5-7B（Qwen等，2025）。参考秩设为16，GEAR初始化为 r_0=4，加权平均秩预算为16，每模块上限 r_max=32；最终秩由被接受的扩展而非上限决定。性能连同可训练参数量一并报告，以同时评估适配质量与参数效率。</p>
+<p>如表1所示，GEAR在两个骨干上均以显著更少的可训练参数取得最高平均性能。在LLaMA3-8B上，它达到88.45，以14.4M对42.0M的参数超越FlexLoRA 1.84分；在Qwen2.5-7B上，它以14.0M参数达到89.40，而FlexLoRA为40.3M参数下的87.65。与主要依赖当前低秩表示统计量的自适应秩方法不同，GEAR依据任务相关的法向方向扩展适应空间，同时在当前流形上优化可访问方向，从而在两个骨干上均获得更优的性能–参数权衡。</p>
+<p><strong>表1：LLaMA3-8B与Qwen2.5-7B上的常识推理性能。结果为三个不同随机种子运行的均值。最佳结果以粗体显示。</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法（参数）</th>
+<th>BoolQ</th>
+<th>PIQA</th>
+<th>SIQA</th>
+<th>HellaS.</th>
+<th>WinoG.</th>
+<th>ARC-e</th>
+<th>ARC-c</th>
+<th>OBQA</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LLaMA3-8B</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>LoRA (41.9M)</td>
+<td>72.37</td>
+<td>87.83</td>
+<td>81.34</td>
+<td>94.81</td>
+<td>85.08</td>
+<td>91.46</td>
+<td>81.32</td>
+<td>86.00</td>
+<td>85.03</td>
+</tr>
+<tr>
+<td>AdaLoRA (31.6M)</td>
+<td>72.23</td>
+<td>87.21</td>
+<td>81.27</td>
+<td>94.60</td>
+<td>85.16</td>
+<td>93.18</td>
+<td>82.68</td>
+<td>85.80</td>
+<td>85.27</td>
+</tr>
+<tr>
+<td>Riemannion (41.9M)</td>
+<td>72.45</td>
+<td>87.32</td>
+<td>81.17</td>
+<td>94.95</td>
+<td>87.64</td>
+<td>93.14</td>
+<td>82.51</td>
+<td>87.40</td>
+<td>85.82</td>
+</tr>
+<tr>
+<td>GeoLoRA (41.3M)</td>
+<td>72.84</td>
+<td>87.54</td>
+<td>79.99</td>
+<td>94.62</td>
+<td>85.56</td>
+<td>93.52</td>
+<td>83.96</td>
+<td>87.00</td>
+<td>85.63</td>
+</tr>
+<tr>
+<td>FlexLoRA (42.0M)</td>
+<td>72.91</td>
+<td>88.30</td>
+<td>82.96</td>
+<td>95.68</td>
+<td>87.14</td>
+<td>93.56</td>
+<td>83.70</td>
+<td>88.60</td>
+<td>86.61</td>
+</tr>
+<tr>
+<td>GEAR (<strong>14.4M</strong>)</td>
+<td><strong>75.19</strong></td>
+<td><strong>90.81</strong></td>
+<td><strong>83.78</strong></td>
+<td><strong>96.82</strong></td>
+<td><strong>89.82</strong></td>
+<td><strong>93.77</strong></td>
+<td><strong>85.58</strong></td>
+<td><strong>91.80</strong></td>
+<td><strong>88.45</strong></td>
+</tr>
+<tr>
+<td><strong>Qwen2.5-7B</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>LoRA (40.4M)</td>
+<td>71.54</td>
+<td>88.52</td>
+<td>78.73</td>
+<td>94.05</td>
+<td>82.56</td>
+<td>96.13</td>
+<td>90.00</td>
+<td>90.12</td>
+<td>86.46</td>
+</tr>
+<tr>
+<td>AdaLoRA (35.2M)</td>
+<td>71.59</td>
+<td>89.12</td>
+<td>78.92</td>
+<td>94.06</td>
+<td>82.79</td>
+<td>96.00</td>
+<td>90.27</td>
+<td>89.80</td>
+<td>86.57</td>
+</tr>
+<tr>
+<td>Riemannion (40.4M)</td>
+<td>71.68</td>
+<td>89.17</td>
+<td>79.32</td>
+<td>94.72</td>
+<td>84.53</td>
+<td>95.96</td>
+<td>90.53</td>
+<td>91.00</td>
+<td>87.11</td>
+</tr>
+<tr>
+<td>GeoLoRA (40.1M)</td>
+<td>71.90</td>
+<td>89.12</td>
+<td>79.02</td>
+<td>94.88</td>
+<td>85.00</td>
+<td>96.21</td>
+<td>89.93</td>
+<td>91.00</td>
+<td>87.13</td>
+</tr>
+<tr>
+<td>FlexLoRA (40.3M)</td>
+<td>72.29</td>
+<td>89.17</td>
+<td>79.68</td>
+<td>95.19</td>
+<td>86.03</td>
+<td>96.21</td>
+<td>90.19</td>
+<td>92.40</td>
+<td>87.65</td>
+</tr>
+<tr>
+<td>GEAR (<strong>14.0M</strong>)</td>
+<td><strong>75.51</strong></td>
+<td><strong>90.86</strong></td>
+<td><strong>81.58</strong></td>
+<td><strong>96.34</strong></td>
+<td><strong>90.53</strong></td>
+<td><strong>96.80</strong></td>
+<td>89.76</td>
+<td><strong>93.80</strong></td>
+<td><strong>89.40</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>4.3 自然语言理解</h3>
+<p>我们使用DeBERTa-v3-base（He等，2023）在GLUE基准（Wang等，2019）上评估GEAR，涵盖八个语言学目标任务，包括可接受性判断、自然语言推理、释义检测、语义相似性与情感分类。参考秩设为8，GEAR初始化为 r_0=4，上限 r_max=16；最终秩由被接受的扩展而非该上限决定。我们报告各任务指标及其平均值。</p>
+<p>如表2所示，GEAR仅用1.5M可训练参数即取得89.63的最佳平均分，较FlexLoRA提高0.78分，同时参数量减少约21%。GEAR在八个任务中的七个上取得最强结果，在MRPC、RTE与STS-B上增益尤为明显。跨异构目标的改进表明GEAR的收益不依赖于特定任务结构。通过依据超出当前一阶可达范围的任务相关方向扩展适应空间，GEAR能够在多样任务中更有选择性地引入额外容量。</p>
+<p><strong>表2：DeBERTa-v3-base的GLUE性能。结果为三个不同随机种子运行的均值。最佳结果以粗体显示。</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法（参数）</th>
+<th>CoLA Mcc.</th>
+<th>MNLI Acc.</th>
+<th>MRPC Acc.</th>
+<th>RTE Acc.</th>
+<th>QNLI Acc.</th>
+<th>SST-2 Acc.</th>
+<th>STS-B Corr.</th>
+<th>QQP Acc.</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LoRA (1.9M)</td>
+<td>68.31</td>
+<td>89.74</td>
+<td>90.19</td>
+<td>84.16</td>
+<td>93.61</td>
+<td>95.30</td>
+<td>85.20</td>
+<td>90.35</td>
+<td>87.11</td>
+</tr>
+<tr>
+<td>AdaLoRA (1.9M)</td>
+<td>70.07</td>
+<td>89.93</td>
+<td>90.44</td>
+<td>88.17</td>
+<td>94.27</td>
+<td>95.13</td>
+<td>91.21</td>
+<td>91.41</td>
+<td>88.83</td>
+</tr>
+<tr>
+<td>Riemannion (1.9M)</td>
+<td>67.41</td>
+<td>88.93</td>
+<td>89.01</td>
+<td>85.13</td>
+<td>92.64</td>
+<td>94.00</td>
+<td>90.12</td>
+<td>87.92</td>
+<td>86.90</td>
+</tr>
+<tr>
+<td>GeoLoRA (1.9M)</td>
+<td>68.18</td>
+<td>89.67</td>
+<td>87.76</td>
+<td>87.73</td>
+<td>92.93</td>
+<td>95.52</td>
+<td>90.15</td>
+<td>87.77</td>
+<td>87.46</td>
+</tr>
+<tr>
+<td>FlexLoRA (1.9M)</td>
+<td>70.22</td>
+<td>90.13</td>
+<td>90.67</td>
+<td>88.45</td>
+<td>94.24</td>
+<td>95.34</td>
+<td>91.53</td>
+<td>90.27</td>
+<td>88.85</td>
+</tr>
+<tr>
+<td>GEAR (<strong>1.5M</strong>)</td>
+<td><strong>70.85</strong></td>
+<td><strong>90.97</strong></td>
+<td><strong>92.46</strong></td>
+<td><strong>89.53</strong></td>
+<td><strong>94.27</strong></td>
+<td><strong>96.22</strong></td>
+<td><strong>91.83</strong></td>
+<td><strong>90.88</strong></td>
+<td><strong>89.63</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>4.4 视觉任务</h3>
+<p>为评估GEAR在NLP之外的通用性，我们使用ViT-B/16（Dosovitskiy等，2021）在Visual Task Adaptation Benchmark（VTAB-1K）（Zhai等，2020）上评估，该基准涵盖分为自然、专门与结构化三类的19个识别任务。我们采用与NLU实验相同的秩配置。</p>
+<p>如表3所示，GEAR仅用0.2M可训练参数即取得73.48的最高总体平均分，而FlexLoRA使用0.3M参数为72.55。GEAR在19个任务中的14个上取得最佳结果，包括8个结构化任务中的7个。跨视觉与语义多样领域的增益表明，所提秩演化机制不依赖于特定模态或任务族。通过依据超出当前一阶可达范围的任务相关方向适配低秩空间，GEAR在引入更少额外自由度的同时保持了强迁移性能。</p>
+<p><strong>表3：ViT-B/16的VTAB-1K性能。结果为三个不同随机种子运行的均值。最佳结果以粗体显示。</strong></p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>LoRA (0.3M)</th>
+<th>AdaLoRA (0.3M)</th>
+<th>Riemannion (0.3M)</th>
+<th>GeoLoRA (0.3M)</th>
+<th>FlexLoRA (0.3M)</th>
+<th>GEAR (0.2M)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>自然</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CIFAR100</td>
+<td>69.39</td>
+<td>71.81</td>
+<td>70.78</td>
+<td>68.05</td>
+<td>71.30</td>
+<td><strong>71.88</strong></td>
+</tr>
+<tr>
+<td>Caltech101</td>
+<td>90.60</td>
+<td>89.96</td>
+<td>91.03</td>
+<td>88.87</td>
+<td>91.72</td>
+<td><strong>91.78</strong></td>
+</tr>
+<tr>
+<td>DTD</td>
+<td>71.01</td>
+<td><strong>71.76</strong></td>
+<td>71.28</td>
+<td>68.88</td>
+<td>70.18</td>
+<td>71.60</td>
+</tr>
+<tr>
+<td>Flowers</td>
+<td>98.80</td>
+<td>99.04</td>
+<td>99.09</td>
+<td>99.06</td>
+<td>98.98</td>
+<td><strong>99.12</strong></td>
+</tr>
+<tr>
+<td>Pets</td>
+<td>89.89</td>
+<td>91.58</td>
+<td>91.85</td>
+<td>91.71</td>
+<td>91.14</td>
+<td><strong>91.93</strong></td>
+</tr>
+<tr>
+<td>SVHN</td>
+<td>90.53</td>
+<td>90.59</td>
+<td>89.08</td>
+<td><strong>91.39</strong></td>
+<td>90.25</td>
+<td>91.89</td>
+</tr>
+<tr>
+<td>SUN397</td>
+<td>53.78</td>
+<td><strong>55.61</strong></td>
+<td>55.12</td>
+<td>54.63</td>
+<td>54.14</td>
+<td>55.03</td>
+</tr>
+<tr>
+<td><strong>专门</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Camelyon</td>
+<td>83.26</td>
+<td>81.92</td>
+<td>81.60</td>
+<td>82.16</td>
+<td><strong>83.98</strong></td>
+<td>83.93</td>
+</tr>
+<tr>
+<td>EuroSAT</td>
+<td>93.74</td>
+<td>94.04</td>
+<td>93.13</td>
+<td>94.61</td>
+<td>93.91</td>
+<td><strong>94.91</strong></td>
+</tr>
+<tr>
+<td>RESISC45</td>
+<td>85.40</td>
+<td>85.37</td>
+<td>84.30</td>
+<td>84.52</td>
+<td>85.41</td>
+<td><strong>85.98</strong></td>
+</tr>
+<tr>
+<td>Retinopathy</td>
+<td>73.60</td>
+<td><strong>75.40</strong></td>
+<td>75.16</td>
+<td>75.41</td>
+<td>74.13</td>
+<td>74.91</td>
+</tr>
+<tr>
+<td><strong>结构化</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CLEVR-C</td>
+<td>80.91</td>
+<td>81.23</td>
+<td>78.95</td>
+<td>80.63</td>
+<td>81.30</td>
+<td><strong>82.07</strong></td>
+</tr>
+<tr>
+<td>CLEVR-D</td>
+<td>64.74</td>
+<td>65.38</td>
+<td><strong>68.49</strong></td>
+<td>63.37</td>
+<td>63.56</td>
+<td>68.51</td>
+</tr>
+<tr>
+<td>DMLab</td>
+<td>50.04</td>
+<td>50.23</td>
+<td>49.95</td>
+<td>50.08</td>
+<td>52.02</td>
+<td><strong>52.18</strong></td>
+</tr>
+<tr>
+<td>KITTI-D</td>
+<td>77.87</td>
+<td>78.34</td>
+<td>75.81</td>
+<td>78.14</td>
+<td><strong>78.95</strong></td>
+<td>78.90</td>
+</tr>
+<tr>
+<td>dSpr-Loc</td>
+<td>75.76</td>
+<td>73.38</td>
+<td>72.40</td>
+<td>73.62</td>
+<td>75.49</td>
+<td><strong>76.78</strong></td>
+</tr>
+<tr>
+<td>dSpr-Ori</td>
+<td>47.65</td>
+<td>49.32</td>
+<td>48.71</td>
+<td>48.27</td>
+<td>49.02</td>
+<td><strong>49.52</strong></td>
+</tr>
+<tr>
+<td>sNORB-Azi</td>
+<td>29.49</td>
+<td>28.00</td>
+<td>27.76</td>
+<td>30.25</td>
+<td>29.84</td>
+<td><strong>31.32</strong></td>
+</tr>
+<tr>
+<td>sNORB-Ele</td>
+<td>41.93</td>
+<td>37.56</td>
+<td>39.58</td>
+<td>40.99</td>
+<td>43.17</td>
+<td><strong>43.89</strong></td>
+</tr>
+<tr>
+<td><strong>平均</strong></td>
+<td>72.02</td>
+<td>72.13</td>
+<td>71.79</td>
+<td>71.82</td>
+<td>72.55</td>
+<td><strong>73.48</strong></td>
+</tr>
+</tbody>
+</table>
+<p>在所有评估设置中，GEAR均以少于最强自适应秩基线的可训练参数取得最强平均性能。这些增益跨越两个语言模型骨干、八个GLUE任务与19个VTAB-1K任务，显示出跨骨干、任务族与模态的鲁棒性。重要的是，这些增益来自自适应选定的最终秩而非单纯增大秩预算，支持了如下假设：识别当前适应空间之外的有价值方向能够实现更高效的秩增长。</p>
+<h2>5 结论</h2>
+<p>我们提出了GEAR，一个几何引导的动态低秩适配框架，将关注点从容量分配转向当前适应空间的充分性。我们建立了标准因子梯度的一阶信息边界，证明任务相关的法向信息在当前固定秩参数化下不可观测，并进一步将法向谱与秩扩展的局部最优价值联系起来。基于这一分析，GEAR结合固定秩流形优化、高效法向谱估计与任务诱导的几何初始化，依据超出当前一阶可达范围的任务相关方向来适配秩。在常识推理、GLUE与VTAB-1K上，GEAR在所有评估设置中取得最高平均性能，同时使用的可训练参数显著少于强自适应秩基线。总体而言，我们的结果表明，动态秩最有效的视角不仅是预算分配问题，而是适应空间对先前未被表示的任务信息所作出的受控演化。</p>
+<h2>AI使用声明</h2>
+<p>生成式AI工具被用于协助语言编辑、LaTeX排版以及数学推导的检查。所有AI辅助建议均由作者独立审查与验证，作者对本工作的最终内容承担全部责任。</p>
+<h2>可复现性声明</h2>
+<p>我们在附录中提供所有理论结果的完整证明与详细的算法描述。同时提供实验配置、超参数、数据集协议、基线设置及额外消融，以便于复现。所有报告结果均为三个随机种子的平均值。</p>
+<h2>参考文献</h2>
+<p>（参考文献按原文保留）</p>
+<ul>
+<li>Bar-Haim et al. (2006). The second PASCAL recognising textual entailment challenge. In <em>Proceedings of the Second PASCAL Challenges Workshop on Recognising Textual Entailment</em>, pp. 1–9.</li>
+<li>Bentivogli et al. (2009). The fifth PASCAL recognizing textual entailment challenge. In <em>Text Analysis Conference</em>.</li>
+<li>Bisk et al. (2020). PIQA: reasoning about physical commonsense in natural language. In <em>Proceedings of the AAAI Conference on Artificial Intelligence</em>, Vol. 34, pp. 7432–7439.</li>
+<li>Bogachev et al. (2026). LoRA meets Riemannion: muon optimizer for parametrization-independent low-rank adapters. In <em>International Conference on Learning Representations</em>.</li>
+<li>Cer et al. (2017). SemEval-2017 task 1: semantic textual similarity multilingual and crosslingual focused evaluation. In <em>Proceedings of the 11th International Workshop on Semantic Evaluation</em>, pp. 1–14.</li>
+<li>Clark et al. (2019). BoolQ: exploring the surprising difficulty of natural yes/no questions. In <em>Proceedings of NAACL-HLT</em>, pp. 2924–2936.</li>
+<li>Clark et al. (2018). Think you have solved question answering? try ARC, the AI2 reasoning challenge. arXiv:1803.05457.</li>
+<li>Dagan et al. (2006). The PASCAL recognising textual entailment challenge. In <em>Machine Learning Challenges</em>, LNCS Vol. 3944, pp. 177–190.</li>
+<li>Ding et al. (2023a). Sparse low-rank adaptation of pre-trained language models. In <em>Proceedings of EMNLP 2023</em>, pp. 4133–4145.</li>
+<li>Ding et al. (2023b). Parameter-efficient fine-tuning of large-scale pre-trained language models. <em>Nature Machine Intelligence</em> 5, pp. 220–235.</li>
+<li>Dolan and Brockett (2005). Automatically constructing a corpus of sentential paraphrases. In <em>Proceedings of the Third International Workshop on Paraphrasing</em>.</li>
+<li>Dosovitskiy et al. (2021). An image is worth 16x16 words: transformers for image recognition at scale. In <em>International Conference on Learning Representations</em>.</li>
+<li>Ed-dib et al. (2025). GeLoRA: geometric adaptive ranks for efficient LoRA fine-tuning. In <em>Findings of ACL: EMNLP 2025</em>, pp. 25174–25196.</li>
+<li>Giampiccolo et al. (2007). The third PASCAL recognizing textual entailment challenge. In <em>Proceedings of the ACL-PASCAL Workshop on Textual Entailment and Paraphrasing</em>, pp. 1–9.</li>
+<li>Grattafiori et al. (2024). The llama 3 herd of models. arXiv:2407.21783.</li>
+<li>Halko et al. (2011). Finding structure with randomness: probabilistic algorithms for constructing approximate matrix decompositions. <em>SIAM Review</em> 53(2), pp. 217–288.</li>
+<li>He et al. (2023). DeBERTaV3: improving DeBERTa using ELECTRA-style pre-training with gradient-disentangled embedding sharing. In <em>International Conference on Learning Representations</em>.</li>
+<li>Hu et al. (2022). LoRA: low-rank adaptation of large language models. In <em>International Conference on Learning Representations</em>.</li>
+<li>Hu et al. (2023). LLM-adapters: an adapter family for parameter-efficient fine-tuning of large language models. In <em>Proceedings of EMNLP 2023</em>, pp. 5254–5276.</li>
+<li>Liu et al. (2026). FlexLoRA: entropy-guided flexible low-rank adaptation. In <em>International Conference on Learning Representations</em>.</li>
+<li>Liu et al. (2024). DoRA: weight-decomposed low-rank adaptation. In <em>Proceedings of the 41st International Conference on Machine Learning</em>, PMLR Vol. 235, pp. 32100–32121.</li>
+<li>Meng et al. (2024). PiSSA: principal singular values and singular vectors adaptation of large language models. In <em>Advances in Neural Information Processing Systems</em>, Vol. 37.</li>
+<li>Mihaylov et al. (2018). Can a suit of armor conduct electricity? a new dataset for open book question answering. In <em>Proceedings of EMNLP 2018</em>, pp. 2381–2391.</li>
+<li>Park et al. (2025). Riemannian optimization for LoRA on the stiefel manifold. In <em>Findings of ACL: EMNLP 2025</em>, pp. 20971–20985.</li>
+<li>Qwen et al. (2025). Qwen2.5 technical report. arXiv:2412.15115.</li>
+<li>Rajpurkar et al. (2016). SQuAD: 100,000+ questions for machine comprehension of text. In <em>Proceedings of EMNLP 2016</em>, pp. 2383–2392.</li>
+<li>Sakaguchi et al. (2020). WinoGrande: an adversarial winograd schema challenge at scale. In <em>Proceedings of the AAAI Conference on Artificial Intelligence</em>, Vol. 34, pp. 8732–8740.</li>
+<li>Sap et al. (2019). Social IQa: commonsense reasoning about social interactions. In <em>Proceedings of EMNLP-IJCNLP 2019</em>, pp. 4463–4473.</li>
+<li>Schotthöfer et al. (2025). GeoLoRA: geometric integration for parameter efficient fine-tuning. In <em>International Conference on Learning Representations</em>.</li>
+<li>Socher et al. (2013). Recursive deep models for semantic compositionality over a sentiment treebank. In <em>Proceedings of EMNLP 2013</em>, pp. 1631–1642.</li>
+<li>Valipour et al. (2023). DyLoRA: parameter-efficient tuning of pre-trained models using dynamic search-free low-rank adaptation. In <em>Proceedings of EACL 2023</em>, pp. 3274–3287.</li>
+<li>Vandereycken (2013). Low-rank matrix completion by riemannian optimization. <em>SIAM Journal on Optimization</em> 23(2), pp. 1214–1236.</li>
+<li>Wang et al. (2019). GLUE: a multi-task benchmark and analysis platform for natural language understanding. In <em>International Conference on Learning Representations</em>.</li>
+<li>Wang et al. (2024). LoRA-GA: low-rank adaptation with gradient approximation. In <em>Advances in Neural Information Processing Systems</em>, Vol. 37.</li>
+<li>Warstadt et al. (2019). Neural network acceptability judgments. <em>Transactions of the Association for Computational Linguistics</em> 7, pp. 625–641.</li>
+<li>Williams et al. (2018). A broad-coverage challenge corpus for sentence understanding through inference. In <em>Proceedings of NAACL-HLT 2018</em>, pp. 1112–1122.</li>
+<li>Zellers et al. (2019). HellaSwag: can a machine really finish your sentence? In <em>Proceedings of ACL 2019</em>, pp. 4791–4800.</li>
+<li>Zhai et al. (2020). A large-scale study of representation learning with the visual task adaptation benchmark. arXiv:1910.04867.</li>
+<li>Zhang and Pilanci (2024). Riemannian preconditioned LoRA for fine-tuning foundation models. In <em>Proceedings of the 41st International Conference on Machine Learning</em>, PMLR Vol. 235, pp. 59641–59669.</li>
+<li>Zhang et al. (2023). Adaptive budget allocation for parameter-efficient fine-tuning. In <em>International Conference on Learning Representations</em>.</li>
+<li>Zhang et al. (2026). Retraction-free optimization over the stiefel manifold for the LoRA fine-tuning. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>.</li>
+</ul>
+<h2>附录A 补充材料概述</h2>
+<p>本补充材料为GEAR提供额外的方法论、理论与实验细节。附录B描述固定秩回缩的实现以及秩扩展候选的验证程序。附录C提供主文中三个理论结果的完整证明。附录D报告我们实验中使用的数据集、评估协议、训练配置与超参数设置。最后，消融研究见附录E。</p>
+<h2>附录B 附加方法细节</h2>
+<h3>B.1 低秩回缩</h3>
+<p>我们详述3.2节中使用的回缩。回顾当前适配状态表示为 X=UC，U^⊤U=I_r，令 D=U^⊤G，K=(I−UU^⊤)GV。利用式(1)的切向梯度分解，回缩前的更新可写为</p>
+<p>X^- = U(C−ηD) − ηKV^⊤ = LR，</p>
+<p>其中 L=[U, K]，R=[C−ηD; −ηV^⊤]。因此 X^- 的秩至多为 2r，可在不形成完整 n×m 矩阵的情况下进行操作。</p>
+<p>我们对两个紧凑因子做薄QR分解，</p>
+<p>L=Q_L R_L，R^⊤=Q_R R_R，</p>
+<p>得到 X^- = Q_L(R_L R_R^⊤)Q_R^⊤。矩阵 R_L R_R^⊤ 至多为 2r×2r。因此我们只需计算其紧凑SVD，R_L R_R^⊤=PΣQ^⊤，并保留前 r 个奇异分量。回缩后的状态为</p>
+<p>X_{t+1} = (Q_L P_r) Σ_r (Q_R Q_r)^⊤。</p>
+<p>相应地，更新后的低秩表示可直接得到：U_{t+1}=Q_L P_r，V_{t+1}=Q_R Q_r，C_{t+1}=Σ_r V_{t+1}^⊤。因此，回缩同时恢复了秩 r 约束并更新了下一次迭代所需的左右子空间基，同时避免了对完整适配矩阵的任何SVD。</p>
+<h3>B.2 秩扩展候选验证</h3>
+<p>在每次秩审计中，选定的法向方向被视为候选扩展而非立即提交。我们按式(5)的效用分数对提议方向排序，并以不同的出生步尺度构造若干前缀。当前适配器与所有候选变体在匹配随机性的同一组独立训练微批次上评估，使其损失直接可比。</p>
+<p>令 L̄_0 与 L̄_cand 分别表示当前适配器与某候选的平均训练损失。定义相对改进为</p>
+<p>RI = (L̄_0 − L̄_cand) / |L̄_0|。</p>
+<p>仅当 RI＞ρ 时接受该候选，其中 ρ 为规定的接受阈值。在被接受的候选中，我们偏好损失接近最佳观测值的最小秩增量，其次偏好较小的出生步尺度。仅当选定的扩展同时满足每模块秩上限与全局预算时才予以提交。若无候选通过接受准则，则审计保持适配器不变。</p>
+<h3>B.3 计算与内存复杂度</h3>
+<p>GEAR在整个训练过程中保持低秩计算结构。对于秩为 r 的适配器，标准LoRA因子更新需要 𝒪((n+m)r) 次逐元素操作，而GEAR中额外的回缩由于薄QR分解与 2r×2r 核心矩阵的SVD，代价为 𝒪((n+m)r^2+r^3)。由于 r≪min{n,m}，该开销仍局限于低秩因子与小核心矩阵，不引入任何完整的 n×m 分解。</p>
+<p>提交的适配器状态仅需 𝒪((n+m)r) 内存。TGI在微调前执行一次。在语言实验中，其 2(p+1) 个探测阶段每次初始化运行需要 2(p+1) 次校准反向传播，每个适配矩阵需要 𝒪(h·max{n,m}) 的峰值草图存储。QR与SVD操作代价为 𝒪((p+1)(n+m)h^2)。我们使用 p=1 且 h≪min{n,m}。在VTAB中，初始化改为从三个校准批次聚合所选Q/V投影的密集梯度代理，每个适配矩阵需要 𝒪(nm) 的临时梯度存储。</p>
+<p>秩审计仅在计划的审计步引入额外计算。在相同探测宽度 h 下，压缩法向草图的投影、正交化与分解产生 𝒪((n+m)rh+(n+m)h^2) 的低秩线性代数代价与 𝒪((n+m)h) 的临时内存，此外还有用于获取梯度乘积的反向探测。r 与 h 相对于环境维度都很小，且不显式存储任何全梯度或法向矩阵。因此，主要审计开销来自额外的反向探测与候选前向评估，而非大规模矩阵操作。这些计算仅在 t∈𝒯_audit 时执行，而普通训练步仅产生固定秩流形更新。此外，所有探测变量均为瞬态，不对提交的适配器秩或我们实验中报告的可训练参数计数产生贡献。</p>
+<p>我们进一步在表4中评估了ViT-B/16在DTD任务上的实测资源成本。</p>
+<p><strong>表4：ViT-B/16在DTD上的训练时间与峰值CUDA内存。</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>训练时间（秒）</th>
+<th>峰值CUDA内存（MiB）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LoRA</td>
+<td>789.83</td>
+<td>3825.15</td>
+</tr>
+<tr>
+<td>FlexLoRA</td>
+<td>1006.75</td>
+<td>6553.87</td>
+</tr>
+<tr>
+<td>GEAR</td>
+<td>1060.83</td>
+<td>4458.21</td>
+</tr>
+</tbody>
+</table>
+<h2>附录C 证明</h2>
+<h3>C.1 定理1的证明：因子梯度可观测性障碍</h3>
+<p><strong>证明。</strong> 考虑分解映射 Φ:ℝ^{n×r}×ℝ^{r×m}→ℝ^{n×m}，Φ(B,A)=BA。其在 处的微分为 DΦ_{(B,A)}[ΔB,ΔA]=ΔBA+BΔA。</p>
+<p>对任意扰动，定义 B(t)=B+tΔB 与 A(t)=A+tΔA。由于满秩矩阵集合是开集，两个因子在足够小的 t 下保持满秩。因此 X(t)=B(t)A(t)∈ℳ_r 在 t=0 附近局部成立，且 Ẋ(0)=ΔBA+BΔA=DΦ_{(B,A)}[ΔB,ΔA]。故 Im DΦ_{(B,A)} ⊆ T_X ℳ_r。</p>
+<p>为确定该像的维数，考虑核条件 ΔBA+BΔA=0。由于 A 满行秩，存在右逆 A_R 满足 AA_R=I_r。右乘 A_R 得 ΔB=−BΔAA_R，故 ΔB=BK 对某个 K∈ℝ^{r×r} 成立。代入核条件得 B(KA+ΔA)=0。由于 B 满列秩，ΔA=−KA。反之，每对 均满足 DΦ_{(B,A)}[BK,−KA]=0。因此 ker DΦ_{(B,A)}={(BK,−KA):K∈ℝ^{r×r}}。由 B 满列秩知 K 的参数化为单射，故 dim ker DΦ_{(B,A)}=r^2。由秩–零化度定理，dim Im DΦ_{(B,A)}=nr+rm−r^2=r(n+m−r)。由于 dim T_X ℳ_r=dim ℳ_r=r(n+m−r)，上述包含关系在等维空间之间成立，因此 Im DΦ_{(B,A)}=T_X ℳ_r。</p>
+<p>接下来识别 DΦ_{(B,A)} 的伴随。在Frobenius内积下，</p>
+<p>⟨G, DΦ_{(B,A)}[ΔB,ΔA]⟩_F = ⟨G, ΔBA+BΔA⟩_F = ⟨GA^⊤, ΔB⟩_F + ⟨B^⊤G, ΔA⟩_F。</p>
+<p>故 DΦ_{(B,A)}^<em>(G)=(GA^⊤, B^⊤G)=𝒪_{A,B}(G)。对有限维内积空间之间的任意线性算子 L，有 ker L^</em>=(Im L)^⊥。将该恒等式应用于 DΦ_{(B,A)} 并利用上述刻画，得</p>
+<p>ker 𝒪_{A,B} = (Im DΦ_{(B,A)})^⊥ = (T_X ℳ_r)^⊥ = N_X ℳ_r。</p>
+<p>最后，对 D=G_1−G_2，𝒪_{A,B}(G_1)=𝒪_{A,B}(G_2) 当且仅当 𝒪_{A,B}(D)=0，等价于 D∈N_X ℳ_r。等价地，D 的切向投影为零，故 (G_1)_T=(G_2)_T。两个命题均得证。∎</p>
+<h3>C.2 定理2的证明：秩扩展的局部最优性</h3>
+<p><strong>证明。</strong> 令 X=UΣV^⊤∈ℳ_r 为紧凑SVD，U_⊥ 与 V_⊥ 为 U 与 V 的正交补。对任意扰动 H，写</p>
+<p>[U^⊤; U_⊥^⊤] H [V V_⊥] = [H_11 H_12; H_21 H_22]。</p>
+<p>其法向分量为 H_N=U_⊥ H_22 V_⊥^⊤，其余三个块构成切向分量 H_T。</p>
+<p>首先刻画 𝒱_{r+k}={Y: rank(Y)≤r+k} 在 X 处的切锥。在上述坐标下，</p>
+<p>𝒞_{r,k}(X) = {H_T+H_N : H_T∈T_X ℳ_r, H_N∈N_X ℳ_r, rank(H_N)≤k}。</p>
+<p>为验证该刻画，考虑可行曲线 X(t)∈𝒱_{r+k}，X(0)=X，Ẋ(0)=H。其块形式为</p>
+<p>X(t) = [Σ+tH_11+o(t), tH_12+o(t); tH_21+o(t), tH_22+o(t)]。</p>
+<p>对足够小的 t，左上块非奇异。由于 rank(X(t))≤r+k，其Schur补的秩至多为 k。除以 t 并令 t→0，得 rank(H_22)≤k。</p>
+<p>反之，设 rank(H_22)≤k 并定义 A_t=Σ+tH_11。考虑</p>
+<p>X̃(t) = [A_t, tH_12; tH_21, tH_22+t^2 H_21 A_t^{−1} H_12]。</p>
+<p>其关于 A_t 的Schur补为 tH_22，故 rank(X̃(t))=r+rank(H_22)≤r+k。此外 X̃(0)=X 且 X̃̇(0)=H，从而建立了所述切锥刻画。</p>
+<p>现在在 𝒞_{r,k}(X) 上最小化 q_η(H)=⟨G,H⟩_F+(1/2η)‖H‖_F^2。由于切向与法向空间正交，写 G=G_T+G_N 与 H=H_T+H_N。则</p>
+<p>q_η(H) = (⟨G_T,H_T⟩_F+(1/2η)‖H_T‖_F^2) + (⟨G_N,H_N⟩_F+(1/2η)‖H_N‖_F^2)，</p>
+<p>仅受 rank(H_N)≤k 约束。对切向分量，</p>
+<p>⟨G_T,H_T⟩_F+(1/2η)‖H_T‖_F^2 = (1/2η)‖H_T+ηG_T‖_F^2 − (η/2)‖G_T‖_F^2，</p>
+<p>故唯一最小化子为 H_T^⋆=−ηG_T。类似地，对法向分量，</p>
+<p>⟨G_N,H_N⟩_F+(1/2η)‖H_N‖_F^2 = (1/2η)‖H_N+ηG_N‖_F^2 − (η/2)‖G_N‖_F^2。</p>
+<p>因此，在 rank(H_N)≤k 下，最小化法向项等价于在Frobenius范数下求 −ηG_N 的最佳秩 k 近似。由Eckart–Young–Mirsky定理，H_N^⋆=−η(G_N)_k。故 H_k^⋆=−η[G_T+(G_N)_k]。</p>
+<p>最后评估相对于固定秩优化的额外下降。在 T_X ℳ_r 上，min q_η=−(η/2)‖G_T‖<em>F^2；而在 𝒞</em>{r,k}(X) 上，min q_η=−(η/2)‖G_T‖_F^2−(η/2)‖(G_N)_k‖_F^2。因此，</p>
+<p>Δ_k = (η/2)‖(G_N)<em>k‖_F^2 = (η/2)∑</em>{i=1}^{k} σ_i^2(G_N)。</p>
+<p>故主导法向奇异方向给出最优的局部秩 k 扩展，其平方奇异值决定局部二次模型的额外下降。∎</p>
+<h3>C.3 定理3的证明：非精确法向估计下的稳定性</h3>
+<p><strong>证明。</strong> 为简洁起见，令 N=G_N，N̂=Ĝ_N，N_k=(G_N)_k，N̂_k=(Ĝ_N)_k。由假设，‖N̂−N‖_F≤ε 且 τ_k=‖N−N_k‖_F。</p>
+<p>由于 N_k 与 N̂_k 位于法向空间，它们与 G 的切向分量正交。故对任意法向矩阵 B，</p>
+<p>q_η(−ηB) = (η/2)‖N−B‖_F^2 − (η/2)‖N‖_F^2。</p>
+<p>将该恒等式应用于 B=N_k 与 B=N̂_k，得</p>
+<p>q_η(−ηN̂_k) − q_η(−ηN_k) = (η/2)(‖N−N̂_k‖_F^2 − ‖N−N_k‖_F^2)。</p>
+<p>因为 N_k 是 N 的最佳秩 k 近似且 rank(N̂_k)≤k，有 ‖N−N_k‖_F≤‖N−N̂_k‖_F。因此 q_η(−ηN̂_k)−q_η(−ηN_k)≥0。</p>
+<p>再证上界。由于 N̂_k 是 N̂ 的最佳秩 k 近似，‖N̂−N̂_k‖_F≤‖N̂−N_k‖_F。利用三角不等式，</p>
+<p>‖N−N̂_k‖_F ≤ ‖N−N̂‖_F + ‖N̂−N̂_k‖_F ≤ ε + ‖N̂−N_k‖_F ≤ ε + ‖N̂−N‖_F + ‖N−N_k‖_F ≤ τ_k + 2ε。</p>
+<p>将该界代入前述恒等式，得</p>
+<p>q_η(−ηN̂_k) − q_η(−ηN_k) ≤ (η/2)[(τ_k+2ε)^2 − τ_k^2] = 2ηε(τ_k+ε)。</p>
+<p>因此，0 ≤ q_η(−η(Ĝ_N)_k) − q_η(−η(G_N)_k) ≤ 2ηε(τ_k+ε)。证明完毕。∎</p>
+<h2>附录D 实验细节</h2>
+<h3>D.1 常识推理任务细节</h3>
+<p>常识推理套件包含八个基准：BoolQ（Clark等，2019）、PIQA（Bisk等，2020）、SIQA（Sap等，2019）、HellaSwag（Zellers等，2019）、WinoGrande（Sakaguchi等，2020）、ARC-e/ARC-c（Clark等，2018）与OBQA（Mihaylov等，2018）。遵循标准多任务协议，我们将这些任务的训练部分合并为Commonsense170K语料库（Hu等，2023），并在相应测试集上分别评估各基准。骨干模型为LLaMA3-8B与Qwen2.5-7B。主要超参数设置总结于表5。</p>
+<p>探测配置为几何初始化估计任务诱导的梯度结构。TGI与秩审计均使用探测宽度 h=24。对于秩审计，每个校准批次包含128个样本，每个任务16个。阻尼系数 λ=0.1 用于正则化梯度尺度归一化。后续实验遵循相同的初始化与秩审计框架并作任务特定调整；VTAB实现详见附录D.3。</p>
+<p><strong>表5：LLaMA3-8B与Qwen2.5-7B常识推理实验的超参数设置。</strong></p>
+<table>
+<thead>
+<tr>
+<th>超参数</th>
+<th>设置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初始有效秩 r_0</td>
+<td>4</td>
+</tr>
+<tr>
+<td>每模块最大秩 r_max</td>
+<td>32</td>
+</tr>
+<tr>
+<td>加权平均秩预算 r̄_budget</td>
+<td>16</td>
+</tr>
+<tr>
+<td>目标模块</td>
+<td>Q, K, V, O, Up, Down, Gate</td>
+</tr>
+<tr>
+<td>探测 Ω 宽度 h</td>
+<td>24</td>
+</tr>
+<tr>
+<td>探测批次大小</td>
+<td>128总计（每任务16）</td>
+</tr>
+<tr>
+<td>阻尼 λ</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>首次审计步 t_start</td>
+<td>100</td>
+</tr>
+<tr>
+<td>审计间隔 Δt</td>
+<td>50</td>
+</tr>
+<tr>
+<td>秩审计截止 t_final</td>
+<td>500</td>
+</tr>
+<tr>
+<td>每次审计每模块最大秩增量</td>
+<td>4</td>
+</tr>
+<tr>
+<td>接受阈值 ρ</td>
+<td>0.5%</td>
+</tr>
+<tr>
+<td>学习率</td>
+<td>2×10^−2</td>
+</tr>
+<tr>
+<td>Dropout</td>
+<td>0.05</td>
+</tr>
+<tr>
+<td>调度器/预热</td>
+<td>线性/0.1</td>
+</tr>
+<tr>
+<td>批次配置</td>
+<td>16微批次×4累积</td>
+</tr>
+<tr>
+<td>轮数</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<h3>D.2 自然语言理解任务细节</h3>
+<p>对于自然语言理解实验，我们在GLUE基准（Wang等，2019）上微调DeBERTa-v3-base，涵盖单句分类、语义相似性与释义检测以及自然语言推理的八个任务。具体评估CoLA（Warstadt等，2019）、SST-2（Socher等，2013）、MRPC（Dolan和Brockett，2005）、QQP（Wang等，2019）、STS-B（Cer等，2017）、MNLI（Williams等，2018）、QNLI（Rajpurkar等，2016）与RTE（Dagan等，2006；Bar-Haim等，2006；Giampiccolo等，2007；Bentivogli等，2009）。数据集统计与评估指标总结于表6，相应的训练与秩适配设置报告于表7。我们采用与常识推理实验相同的探测与子空间估计程序，TGI与秩审计共享探测宽度 h=24，并使用任务特定的校准数据与优化设置。适配器与任务头使用不同的学习率，因为二者处于不同的参数化与有效更新尺度之下：任务头遵循标准欧氏优化，而适配器学习率控制回缩前的流形约束更新。</p>
+<p><strong>表6：GLUE数据集详情。</strong></p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>任务</th>
+<th>#训练</th>
+<th>#验证</th>
+<th>#测试</th>
+<th>#标签</th>
+<th>指标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>单句分类</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CoLA</td>
+<td>可接受性</td>
+<td>8.5k</td>
+<td>1k</td>
+<td>1k</td>
+<td>2</td>
+<td>Matthews相关</td>
+</tr>
+<tr>
+<td>SST-2</td>
+<td>情感</td>
+<td>67k</td>
+<td>872</td>
+<td>1.8k</td>
+<td>2</td>
+<td>准确率</td>
+</tr>
+<tr>
+<td><strong>相似性与释义</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MRPC</td>
+<td>释义</td>
+<td>3.7k</td>
+<td>408</td>
+<td>1.7k</td>
+<td>2</td>
+<td>准确率</td>
+</tr>
+<tr>
+<td>QQP</td>
+<td>释义</td>
+<td>364k</td>
+<td>40k</td>
+<td>391k</td>
+<td>2</td>
+<td>准确率</td>
+</tr>
+<tr>
+<td>STS-B</td>
+<td>相似性</td>
+<td>7k</td>
+<td>1.5k</td>
+<td>1.4k</td>
+<td>1</td>
+<td>Pearson/Spearman相关</td>
+</tr>
+<tr>
+<td><strong>自然语言推理</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MNLI</td>
+<td>NLI</td>
+<td>393k</td>
+<td>20k</td>
+<td>20k</td>
+<td>3</td>
+<td>准确率</td>
+</tr>
+<tr>
+<td>QNLI</td>
+<td>QA/NLI</td>
+<td>108k</td>
+<td>5.7k</td>
+<td>5.7k</td>
+<td>2</td>
+<td>准确率</td>
+</tr>
+<tr>
+<td>RTE</td>
+<td>NLI</td>
+<td>2.5k</td>
+<td>276</td>
+<td>3k</td>
+<td>2</td>
+<td>准确率</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表7：本方法在GLUE基准上的超参数设置。</strong></p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>适配器LR</th>
+<th>头部LR</th>
+<th>批次</th>
+<th>轮数</th>
+<th>r_0</th>
+<th>r̄_budget</th>
+<th>r_max</th>
+<th>t_start</th>
+<th>Δt</th>
+<th>t_final</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MNLI</td>
+<td>5×10^−4</td>
+<td>5×10^−4</td>
+<td>32</td>
+<td>6</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>RTE</td>
+<td>3.6×10^−3</td>
+<td>1.2×10^−3</td>
+<td>32</td>
+<td>50</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>QNLI</td>
+<td>3×10^−3</td>
+<td>3×10^−4</td>
+<td>32</td>
+<td>5</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>MRPC</td>
+<td>3×10^−3</td>
+<td>1×10^−3</td>
+<td>32</td>
+<td>30</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>QQP</td>
+<td>1.6×10^−3</td>
+<td>8×10^−4</td>
+<td>32</td>
+<td>5</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>SST-2</td>
+<td>5×10^−3</td>
+<td>3×10^−4</td>
+<td>32</td>
+<td>24</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>CoLA</td>
+<td>1.6×10^−3</td>
+<td>8×10^−4</td>
+<td>32</td>
+<td>20</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+<tr>
+<td>STS-B</td>
+<td>4.4×10^−3</td>
+<td>2.2×10^−3</td>
+<td>32</td>
+<td>25</td>
+<td>4</td>
+<td>8</td>
+<td>16</td>
+<td>0.1T</td>
+<td>0.075T</td>
+<td>0.7T</td>
+</tr>
+</tbody>
+</table>
+<p>T 表示总优化步数。每次秩审计中，每个模块最多新增一个秩一方向，接受阈值为 ρ=0.1% 的相对损失改进。</p>
+<h3>D.3 视觉任务细节</h3>
+<p>我们在VTAB-1K（Zhai等，2020）上使用ViT-B/16评估GEAR，包含自然、专门与结构化三类的19个视觉分类任务。数据集统计与超参数设置分别报告于表8与表9。对于TGI，我们从三个校准批次聚合所选Q/V投影的密集梯度代理。秩审计与候选验证使用任务特定设置。</p>
+<p><strong>表8：VTAB-1K基准详情。</strong></p>
+<table>
+<thead>
+<tr>
+<th>数据集</th>
+<th>#类别</th>
+<th>#训练</th>
+<th>#验证</th>
+<th>#测试</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>自然</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CIFAR100</td>
+<td>100</td>
+<td>800/1000</td>
+<td>200</td>
+<td>10,000</td>
+</tr>
+<tr>
+<td>Caltech101</td>
+<td>102</td>
+<td>800/1000</td>
+<td>200</td>
+<td>6,084</td>
+</tr>
+<tr>
+<td>DTD</td>
+<td>47</td>
+<td>800/1000</td>
+<td>200</td>
+<td>1,880</td>
+</tr>
+<tr>
+<td>Flowers102</td>
+<td>102</td>
+<td>800/1000</td>
+<td>200</td>
+<td>6,149</td>
+</tr>
+<tr>
+<td>Pets</td>
+<td>37</td>
+<td>800/1000</td>
+<td>200</td>
+<td>3,669</td>
+</tr>
+<tr>
+<td>SVHN</td>
+<td>10</td>
+<td>800/1000</td>
+<td>200</td>
+<td>26,032</td>
+</tr>
+<tr>
+<td>SUN397</td>
+<td>397</td>
+<td>800/1000</td>
+<td>200</td>
+<td>21,750</td>
+</tr>
+<tr>
+<td><strong>专门</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Camelyon</td>
+<td>2</td>
+<td>800/1000</td>
+<td>200</td>
+<td>32,768</td>
+</tr>
+<tr>
+<td>EuroSAT</td>
+<td>10</td>
+<td>800/1000</td>
+<td>200</td>
+<td>5,400</td>
+</tr>
+<tr>
+<td>RESISC45</td>
+<td>45</td>
+<td>800/1000</td>
+<td>200</td>
+<td>6,300</td>
+</tr>
+<tr>
+<td>Retinopathy</td>
+<td>5</td>
+<td>800/1000</td>
+<td>200</td>
+<td>42,670</td>
+</tr>
+<tr>
+<td><strong>结构化</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CLEVR-Count</td>
+<td>8</td>
+<td>800/1000</td>
+<td>200</td>
+<td>15,000</td>
+</tr>
+<tr>
+<td>CLEVR-Dist</td>
+<td>6</td>
+<td>800/1000</td>
+<td>200</td>
+<td>15,000</td>
+</tr>
+<tr>
+<td>DMLab</td>
+<td>6</td>
+<td>800/1000</td>
+<td>200</td>
+<td>22,735</td>
+</tr>
+<tr>
+<td>KITTI-Dist</td>
+<td>4</td>
+<td>800/1000</td>
+<td>200</td>
+<td>711</td>
+</tr>
+<tr>
+<td>dSpr-Loc</td>
+<td>16</td>
+<td>800/1000</td>
+<td>200</td>
+<td>73,728</td>
+</tr>
+<tr>
+<td>dSpr-Ori</td>
+<td>16</td>
+<td>800/1000</td>
+<td>200</td>
+<td>73,728</td>
+</tr>
+<tr>
+<td>sNORB-Azim</td>
+<td>18</td>
+<td>800/1000</td>
+<td>200</td>
+<td>12,150</td>
+</tr>
+<tr>
+<td>sNORB-Ele</td>
+<td>18</td>
+<td>800/1000</td>
+<td>200</td>
+<td>12,150</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表9：VTAB-1K实验的超参数设置。</strong></p>
+<table>
+<thead>
+<tr>
+<th>超参数</th>
+<th>设置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初始有效秩 r_0</td>
+<td>4</td>
+</tr>
+<tr>
+<td>加权平均秩预算 r̄_budget</td>
+<td>8</td>
+</tr>
+<tr>
+<td>每模块最大秩 r_max</td>
+<td>16</td>
+</tr>
+<tr>
+<td>学习率</td>
+<td>5×10^−3</td>
+</tr>
+<tr>
+<td>首次审计步 t_start</td>
+<td>160</td>
+</tr>
+<tr>
+<td>审计间隔 Δt</td>
+<td>50</td>
+</tr>
+<tr>
+<td>秩审计截止 t_final</td>
+<td>1300</td>
+</tr>
+<tr>
+<td>接受阈值 ρ</td>
+<td>0.03%</td>
+</tr>
+<tr>
+<td>批次大小</td>
+<td>64</td>
+</tr>
+<tr>
+<td>轮数</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+<h2>附录E 消融研究</h2>
+<p>为分离各组件的贡献，我们在常识推理套件上对LLaMA3-8B进行逐组件消融。从标准LoRA基线出发，我们考察任务诱导的几何初始化（TGI）、固定秩流形优化与几何引导的秩扩展。结果报告于表10。</p>
+<p>TGI与流形优化分别将平均分从85.03提升至85.57与85.65，二者结合进一步提升至86.23。这表明任务知情的初始化与几何保持的优化在构建与优化当前适应空间方面提供了互补收益。</p>
+<p>秩扩展带来更大增益。将其加入流形优化后，平均分从85.65提升至87.32；而三者结合进一步将分数提升至88.45，且在全部八个任务上均有改进。在启用秩扩展时，TGI依然有益，将"流形+扩展"配置从87.32提升至88.45。综合来看，这些消融与GEAR的核心观点一致：动态秩适配应区分"更好地利用当前适应空间"与"在任务相关方向仍未被表示时扩展该空间"。</p>
+<p><strong>表10：GEAR在LLaMA3-8B常识推理上的组件消融。TGI表示任务诱导的几何初始化。</strong></p>
+<table>
+<thead>
+<tr>
+<th>TGI</th>
+<th>流形</th>
+<th>秩扩展</th>
+<th>BoolQ</th>
+<th>PIQA</th>
+<th>SIQA</th>
+<th>HellaS.</th>
+<th>WinoG.</th>
+<th>ARC-e</th>
+<th>ARC-c</th>
+<th>OBQA</th>
+<th>平均</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>72.37</td>
+<td>87.83</td>
+<td>81.34</td>
+<td>94.81</td>
+<td>85.08</td>
+<td>91.46</td>
+<td>81.32</td>
+<td>86.00</td>
+<td>85.03</td>
+</tr>
+<tr>
+<td>✓</td>
+<td>–</td>
+<td>–</td>
+<td>72.51</td>
+<td>87.57</td>
+<td>81.27</td>
+<td>94.88</td>
+<td>86.94</td>
+<td>92.16</td>
+<td>83.08</td>
+<td>86.16</td>
+<td>85.57</td>
+</tr>
+<tr>
+<td>–</td>
+<td>✓</td>
+<td>–</td>
+<td>72.40</td>
+<td>87.03</td>
+<td>81.12</td>
+<td>94.46</td>
+<td>87.38</td>
+<td>92.51</td>
+<td>83.12</td>
+<td>87.21</td>
+<td>85.65</td>
+</tr>
+<tr>
+<td>✓</td>
+<td>✓</td>
+<td>–</td>
+<td>73.15</td>
+<td>89.13</td>
+<td>82.01</td>
+<td>94.90</td>
+<td>87.27</td>
+<td>92.88</td>
+<td>83.30</td>
+<td>87.17</td>
+<td>86.23</td>
+</tr>
+<tr>
+<td>–</td>
+<td>✓</td>
+<td>✓</td>
+<td>73.95</td>
+<td>89.73</td>
+<td>83.13</td>
+<td>95.84</td>
+<td>88.66</td>
+<td>93.04</td>
+<td>84.71</td>
+<td>89.51</td>
+<td>87.32</td>
+</tr>
+<tr>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>75.19</td>
+<td>90.81</td>
+<td>83.78</td>
+<td>96.82</td>
+<td>89.82</td>
+<td>93.77</td>
+<td>85.58</td>
+<td>91.80</td>
+<td>88.45</td>
+</tr>
+</tbody>
+</table>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> LoRA, 参数高效微调, 动态秩适应, 黎曼流形优化, 大语言模型</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoRA在监督微调与强化学习中的谱与子空间动态 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">LoRA在监督微调与强化学习中的谱与子空间动态</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-05</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.08414" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Spectral and Subspace Dynamics of LoRA in Supervised Fine-Tuning and Reinforcement Learning</h4>
+            <p><strong>中文摘要：</strong> 本文研究LoRA在监督微调（SFT）与强化学习（RL）中的谱与子空间动态差异。实验发现：RL在所有学习率下使谱集中，且小学习率下子空间旋转更快；SFT则在中等学习率下扩展谱。通过逐成分插值实验，确定组均值基线减除是差异根源。基于二次多指标模型的理论分析揭示，基线减除改变相干拟合与梯度噪声间的平衡，并使风险有利学习率降低。据此为SFT与RL分别设计动态信息优化配置，在多数评估设置中取得最佳性能。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>LoRA在监督微调与强化学习中的谱与子空间动态</h1>
+<p><strong>作者：</strong> Chenruo Liu†（纽约大学）、Zihan Wang†（纽约大学）、Yijun Dong（奥地利科学技术研究所）、Qi Lei（纽约大学）</p>
+<p>† 同等贡献</p>
+<h2>摘要</h2>
+<p>低秩适应在监督微调（SFT）和强化学习（RL）中均被广泛使用，且通常采用相似的优化器设置。然而，两个阶段的不同动态如何体现在LoRA所优化的低秩增量中仍不清楚。</p>
+<p>通过追踪数学推理任务上LoRA更新的奇异谱和子空间，我们发现RL在所有学习率下都会使谱集中，而SFT在中等学习率下会扩展谱；此外，在小学习率下，RL比SFT更快地旋转奇异子空间。通过一次引入一个成分地在SFT和RL之间进行插值，我们确定组均值基线减除是这两种对比的根源。</p>
+<p>通过LoRA更新的二次多指标模型揭示了其底层机制：组均值基线减除使两种竞争力量——相干拟合和梯度噪声——之间的平衡向谱集中和更快的子空间旋转倾斜，同时迫使风险有利的学习率保持较低。</p>
+<p>在这些动态的指导下，我们为每个阶段定制LoRA更新：在SFT中，我们平坦化完整更新的谱以将适应分散到各个奇异方向；而在RL中，我们平坦化当前LoRA增量张成空间之外的更新部分以促进子空间旋转。</p>
+<p>在多个模型的数学推理任务上的实验表明，SFT和RL各自的配置在大多数评估设置中取得了比较方法中的最佳性能。</p>
+<h2>1 引言</h2>
+<p>后训练是现代深度学习中的一个重要步骤，它将具有通用知识的强大预训练模型适配到专门的下游任务。常见的后训练流程包括两个阶段：监督微调（SFT），首先通过离策略专家示范为预训练模型配备基础领域知识；随后是强化学习（RL），通过奖励信号（如人类反馈 [25,32,27] 或可验证的正确性检查 [33,44]）引导的自身在线策略响应进一步提升模型。</p>
+<p>在后训练期间，通常采用参数高效微调方法（如低秩适应 [11]）来减少内存和计算开销。具体而言，对于LoRA，冻结的预训练权重 $W_{0}$ 通过低秩更新 $\Delta W_{t}=\frac{\alpha}{r}B_{t}A_{t}$ 进行适配，其中可训练因子 $B_{t}\in\mathbb{R}^{d_{o}\times r}$ 和 $A_{t}\in\mathbb{R}^{r\times d_{i}}$ 的秩为 $r\ll\min{d_{o},d_{i}}$，并由 $\alpha$ 缩放。在实践中，LoRA因子 $B_{t},A_{t}$ 通常在SFT和RL中由相同的优化器（如Adam [17]）在几乎相同的设置下训练。</p>
+<p>然而，SFT和RL在后训练期间表现出不同的行为，表明存在可以从定制优化策略中受益的不同动态。例如，与SFT相比，RL往往在分布外泛化更好 [5,18]，遗忘更少 [4,34]，并且更新更稀疏的子网络 [24]。RL通常也使用比SFT明显更小的学习率运行 [37,33]。</p>
+<p>虽然已经通过模型输出、隐藏表示和完整权重矩阵观察到SFT和RL之间的众多差异，但在LoRA的背景下，关于这些差异如何体现在LoRA实际优化的低秩增量 $\Delta W_{t}$ 中，人们知之甚少。填补这一空白是为SFT和RL的不同动态定制LoRA优化的前提。</p>
+<p>我们通过两个互补的视角研究 $\Delta W_{t}$ 的动态：由有效秩 [30] 测量的奇异值分布，它决定了下游任务所需的知识如何分布在 $r$ 个可用方向上；以及左右奇异子空间的旋转，它决定了使用哪些输入和输出方向。我们通过这些视角提出问题：SFT和RL在 $\Delta W_{t}$ 的谱和奇异子空间上有何不同；驱动这些差异的机制是什么；以及如何为每个阶段定制LoRA优化？</p>
+<h3>1.1 我们的贡献</h3>
+<p><strong>基线减除区分了SFT和RL的LoRA动态（第2节）。</strong> 在GSM8K [6] 和MATH [9] 上的各种Llama和Qwen模型中，我们观察到通过组相对策略优化（GRPO）[33] 进行的可验证奖励RL在所有学习率下都会集中 $\Delta W_{t}$ 的谱；而SFT在中等学习率下会扩展谱，这可以促进理想的下游性能。对于奇异子空间的动态，我们观察到小学习率的RL比SFT更快地旋转奇异子空间。此外，通过一次引入一个成分地在SFT和RL之间进行插值，我们发现只有当从奖励中减去组均值基线后，这两种对比才会出现，从而确定基线减除是区分SFT和RL的LoRA动态的关键机制。</p>
+<p><strong>基线减除倾斜了相干拟合和梯度噪声之间的平衡（第3节）。</strong> 为了理解这些对比，我们分析了一个二次多指标模型，其中LoRA适配器通过随机梯度下降（SGD）在相关输入对上训练，每对建模为同一提示采样的GRPO响应组。该模型中有两种力量竞争：与学习率呈线性的相干拟合，它将谱能量集中在强响应方向上；以及与学习率呈二次方的梯度噪声反馈，它更均匀地重新分配谱能量。减去组均值基线在很大程度上消除了组内响应共享的梯度分量（该分量沿预训练方向驱动相干拟合并将连续更新锚定到相似方向），同时保留了组内对比响应的大部分分量，并抑制了来自任务无关方向的梯度噪声。因此，相干拟合通过对比持续存在，而重新分配的反馈失去相对强度，并且不再被共享分量锚定的梯度噪声更多地引导更新方向，导致RL期间的谱集中和更快的奇异子空间旋转。然而，基线减除可能对预测带来代价：共享分量的相干拟合比对比拟合更有效地降低风险，其消除使相干拟合的风险降低（与学习率呈线性）相对于梯度噪声的代价（与学习率呈二次方）缩小。因此，风险有利的学习率保持较低，这与RL中的常见做法一致。</p>
+<p><strong>动态为特定阶段的LoRA优化提供信息（第4节）。</strong> 我们的分析进一步显示了哪些动态伴随风险有利的学习率：无基线训练（如SFT）扩展 $\Delta W_{t}$ 的谱，而有基线训练（如RL）集中谱并更快地旋转左奇异子空间。在这些动态的指导下，我们通过组合两个标准组件为每个阶段定制LoRA因子的更新：保持范数的谱平坦化（如Muon [14]）和每个因子在SGD和Adam更新方向之间的选择。在SFT中，我们平坦化因子完整更新的奇异谱，使适应更均匀地分布在各个奇异方向上；而在RL中，我们仅平坦化与 $\Delta W_{t}$ 当前左奇异子空间正交的更新分量，这促进了子空间旋转同时保持子空间内分量不变。由此产生的配置在大多数评估模型和任务中取得了主导的下游性能。</p>
+<h3>1.2 相关工作</h3>
+<p><strong>监督微调与强化微调之间的差异。</strong> 先前的工作已经在输出、表示和参数层面表征了SFT和RL之间的差异。在输出层面，实证研究报告RL比SFT具有更强的分布外性能 [18,5]。后续工作进一步强调了SFT泛化对优化、数据质量和模型能力的依赖 [29]。除了性能之外，研究还检查了生成输出的多样性：RLHF相对于SFT降低了整体响应多样性 [18]，而区分正确和错误推理轨迹的分析发现SFT扩展前者而RL压缩后者 [21]。此外，一系列工作研究了微调期间模型输出分布的变化如何与预训练能力的保持相关。这些研究说明了在线策略RL如何比SFT更好地保持与先验知识相关的分布模式 [4]，并将RL更好的保持归因于对在KL散度上更接近初始模型的输出分布的隐式偏好 [34]。在隐藏表示层面，Shi等人 [35] 发现SFT快速引入早期稳定的专门特征，而RL诱导更受抑制但持续演变的特征变化。在参数更新层面，研究报告RL下的参数更新比SFT更稀疏 [24]。跨任务更新向量的比较揭示了SFT下的大绝对余弦相似度，而RL更新几乎正交 [50]。权重矩阵的谱分析进一步显示，RLVR下与SFT相比，预训练谱和主子空间的变化更小 [49]。我们的工作也比较了SFT和RL下的谱和子空间动态。相比之下，我们关注LoRA更新矩阵本身，追踪其谱集中和子空间旋转如何随学习率和训练步骤变化，通过中间训练设置在SFT和RL之间进行插值以识别这些差异的来源，并利用这些发现指导每种范式中LoRA的优化器配置选择。</p>
+<p><strong>LoRA优化的谱和子空间分析。</strong> 先前的工作使用谱和子空间分析来研究LoRA，并通过子空间选择和奇异值分配来改进它。从子空间的角度，PiSSA用预训练权重的主奇异分量初始化适配器，并报告了比标准LoRA更快的收敛和更好的任务性能 [22]。MiLoRA则用次要奇异分量初始化适配器以保持预训练知识，其分析显示比PiSSA更少的遗忘 [40]。除了仅使用预训练权重之外，进一步的工作结合下游任务信息来指导LoRA子空间的初始化。LoRA-One初始化LoRA因子以与初始完整梯度的主奇异子空间对齐 [48]。Xu等人 [41] 研究了矩阵分解设置中LoRA因子如何与任务相关方向对齐，并提出了由预训练权重和下游任务共同信息的谱初始化。从初始化转向训练，SDC-LoRA发现即使使用MiLoRA的次要子空间初始化，LoRA更新也会向预训练主奇异子空间漂移。它通过在训练期间缩小与这些主子空间对齐的梯度分量来进一步减少遗忘 [45]。另一系列工作研究了LoRA更新矩阵中奇异值的分配。Kang等人 [15] 将Muon应用于LoRA，并观察到奇异值更均匀的增长，有效秩接近名义LoRA秩。Spectral Surgery发现训练的LoRA更新矩阵的某些奇异分量对任务性能贡献很小甚至有害。因此，它在训练后重新加权奇异值同时保持学习的奇异方向固定以改善任务性能 [36]。虽然上述研究解决了通用LoRA优化并主要在监督设置中评估，但最近的工作开发了专门针对RLVR的方法。GeoRA认为PiSSA对预训练主方向的强调可能与RLVR保持预训练结构的需求相冲突。因此，它使用谱和权重幅度信息构建掩码权重矩阵，并从其主奇异分量初始化LoRA适配器 [46]。类似地，Zhang等人 [47] 发现PiSSA和MiLoRA在RLVR下尽管在SFT中有益，但可能变得不稳定。他们将这种不稳定性与初始化时的奇异值缩放联系起来，并提出避免这种缩放的正交初始化。相比之下，我们比较了SFT和RL下的谱和子空间动态，并利用观察到的差异指导每种设置中训练期间LoRA的优化器配置选择。</p>
+<h2>2 LoRA动态的实证表征</h2>
+<h3>2.1 实验设置</h3>
+<p><strong>LoRA的谱和子空间诊断。</strong> 对于预训练权重矩阵 $W_{0}\in\mathbb{R}^{d_{o}\times d_{i}}$，LoRA [11] 将训练步骤 $t$ 的适配权重参数化为 $W_{t}=W_{0}+\Delta W_{t}$，$\Delta W_{t}=\frac{\alpha}{r}B_{t}A_{t}$，其中 $B_{t}\in\mathbb{R}^{d_{o}\times r}$ 和 $A_{t}\in\mathbb{R}^{r\times d_{i}}$ 是可训练的，$W_{0}$ 保持冻结，$r\ll\min{d_{o},d_{i}}$ 是适配器秩，$\alpha$ 控制缩放。对于 $t&gt;0$，我们将LoRA增量的奇异值分解写为 $\Delta W_{t}=U_{t}\Sigma_{t}V_{t}^{\top}$，其中 $\Sigma_{t}=\operatorname{diag}(\sigma_{1,t},\ldots,\sigma_{r,t})$ 且 $\sigma_{1,t}\geq\cdots\geq\sigma_{r,t}\geq 0$，矩阵 $U_{t}\in\mathbb{R}^{d_{o}\times r}$ 和 $V_{t}\in\mathbb{R}^{d_{i}\times r}$ 分别包含相应的正交左和右奇异向量。我们在整个训练过程中追踪LoRA增量的奇异值和奇异子空间。</p>
+<p>为了表征 $\Delta W_{t}$ 的奇异值分布，我们将Roy和Vetterli [30] 的有效秩构造应用于归一化平方奇异值：</p>
+<p>$$\operatorname{erank}(t)=\exp\left(-\sum_{i=1}^{r}\frac{\sigma_{i,t}^{2}}{\sum_{j=1}^{r}\sigma_{j,t}^{2}}\log\frac{\sigma_{i,t}^{2}}{\sum_{j=1}^{r}\sigma_{j,t}^{2}}\right)\in[1,r],$$</p>
+<p>其中较小的值表示 $\sigma_{i,t}^{2}$ 的更不均匀分布，即在少数主导奇异方向上的更强集中。此外，为了表征训练步骤 $t_{1}$ 和 $t_{2}$ 之间的子空间旋转，我们测量其左右奇异子空间的重叠：</p>
+<p>$$\operatorname{ovlp}<em>{L}(t</em>{1},t_{2})=\frac{1}{r}\left|U_{t_{1}}^{\top}U_{t_{2}}\right|<em>{F}^{2}\in[0,1],\qquad \operatorname{ovlp}</em>{R}(t_{1},t_{2})=\frac{1}{r}\left|V_{t_{1}}^{\top}V_{t_{2}}\right|_{F}^{2}\in[0,1],$$</p>
+<p>其中，在相同的训练间隔上，较小的重叠值表示更快的子空间旋转。</p>
+<p><strong>在SFT和RL之间插值。</strong> 在这项工作中，我们使用GRPO [33] 作为代表性的RL算法。为了识别SFT和RL之间有效秩和子空间重叠差异的来源，我们考虑了在两者之间插值的四个训练设置的阶梯： SFT，对黄金补全进行监督训练； 拒绝采样微调（RFT），用模型生成的补全替换黄金补全并仅在正确的补全上训练，对应于二元奖励 $r_{i}\in{0,1}$ 的训练权重 $r_{i}$； 具有组均值基线减除的RFT（RFT-B），将基线减除引入RFT，将权重从 $r_{i}$ 更改为 $r_{i}-\bar{r}$，其中 $\bar{r}$ 是同一提示所有补全的平均奖励； GRPO，将RFT-B扩展到在线采样，并额外结合GRPO优化机制，包括遵循Dr. GRPO [20] 的策略比率裁剪和固定长度损失归一化，无KL正则化。</p>
+<p><strong>训练和评估协议。</strong> 我们的模型套件包括Llama-3.2-1B、Llama-3.2-3B [7]、Qwen2.5-3B [26] 和Qwen2.5-Math-7B [42] 的基础和指令微调变体，共产生八个模型。我们在数学推理基准GSM8K [6] 和MATH [9] 上进行实验，MATH结果在附录A.1中提供。我们使用秩 $r=16$ 和缩放参数 $\alpha=32$ 的LoRA，应用于transformer块中所有符合条件的线性模块。默认情况下，我们对 $A_{0}$ 使用Kaiming均匀初始化，$(A_{0})<em>{ij}\overset{\mathrm{i.i.d.}}{\sim}\mathcal{U}(-1/\sqrt{d</em>{i}},1/\sqrt{d_{i}})$，并设置 $B_{0}=0$。（使用反向初始化的相应结果，即 $A_{0}=0$ 和 $B_{0}$ 的Kaiming均匀初始化，在附录A.1中提供。）我们使用Adam [17] 进行优化，并考虑学习率 $\eta\in{5\times 10^{-6},5\times 10^{-5},5\times 10^{-4},5\times 10^{-3}}$。对于每个模型和学习率，我们在四种训练设置中使用相同的训练提示池、优化器超参数和批次大小。RFT和RFT-B还共享相同的离线补全。所有诊断分别对每个LoRA适配器计算，然后对所有适配器取平均。</p>
+<h3>2.2 谱和子空间动态</h3>
+<p><strong>图1</strong>：在 $B_{0}=0$ 初始化下的GSM8K上，GRPO和RFT-B在所示的所有学习率下表现出递减的有效秩。相比之下，SFT和RFT在中等学习率下从大约第25步开始表现出递增趋势。列对应不同的学习率；顶行和底行分别比较SFT/RFT和GRPO/RFT-B。细曲线显示单个模型，有效秩在LoRA模块上取平均；粗曲线显示所有模型的平均值。</p>
+<p><strong>跨学习率的有效秩。</strong> 在图1和附录A.1中的图3、5和6中，GRPO在所有考虑的学习率下随着训练进行始终表现出递减的有效秩。相比之下，SFT的有效秩动态取决于学习率：有效秩在小学习率和大学习率下都递减，而在从 $5\times 10^{-5}$ 到 $5\times 10^{-4}$ 的中等学习率下，它在大约25个训练步骤后开始增加。对于从SFT中受益的模型¹，这种中等范围也产生了最佳的SFT性能（附录A.2中的表5）。这一观察与先前的发现一致，即过小和过大的学习率都会损害LoRA SFT性能 [8,3]，并进一步表明在这些设置中，较不集中的奇异值分布伴随更有效的适应。此外，RFT-B与GRPO一样，在所有考虑的学习率下表现出递减的有效秩，而RFT与SFT共享有效秩增加的中等学习率范围。这一比较确定了组均值基线减除是对比谱动态背后的关键因素。</p>
+<p>¹并非所有模型都在SFT下改进，正如我们的实验和先前在GSM8K和MATH上微调LLM的研究中所观察到的 [28,16]，这与有效SFT取决于训练数据和基础模型能力的发现一致 [43,29]。</p>
+<p><strong>图2</strong>：在 $B_{0}=0$ 初始化下的GSM8K上，GRPO和RFT-B在小学习率下比SFT和RFT表现出更快的左子空间重叠下降，表明更快的子空间旋转。随着学习率增加，这种差异缩小。顶行和底行分别显示当前检查点在步骤 $t$ 与参考检查点在步骤5之间的右子空间重叠 $\mathrm{ovlp}<em>{R}(5,t)$ 和左子空间重叠 $\mathrm{ovlp}</em>{L}(5,t)$。列对应不同的学习率；每个面板比较SFT、RFT、RFT-B和GRPO。细曲线显示单个模型，重叠在LoRA模块上取平均；粗曲线显示所有模型的平均值。</p>
+<p><strong>跨学习率的子空间旋转。</strong> 图2和附录A.1中的图4、7和8比较了训练设置之间的子空间重叠动态。首先，主导旋转取决于LoRA初始化：在 $B_{0}=0$ 下，重叠的下降通常对左奇异子空间更明显，而在 $A_{0}=0$ 下，对右奇异子空间更明显。其次，在小学习率下，GRPO表现出比SFT明显更快的重叠下降（在 $B_{0}=0$ 下的左子空间和 $A_{0}=0$ 下的右子空间），表明LoRA奇异子空间的更快速旋转。随着学习率增加，这一差距缩小。结合先前研究中RL使用比SFT更小的学习率 [37,33]，这一模式表明促进子空间旋转可能有利于RL适应。此外，与有效秩一样，GRPO和RFT-B表现出相似的旋转动态，而SFT和RFT形成另一个定性相似的配对。这些比较指向基线减除作为我们设置中观察到的谱和子空间差异的主要来源，而不是SFT和RFT之间补全来源的差异，或区分RFT-B和GRPO的在线采样和其他实现细节。这些发现激发了对基线减除如何塑造谱集中和子空间演变、这些效应如何取决于学习率以及它们如何与预测风险相关的理论理解。</p>
+<h2>3 LoRA动态的理论分析</h2>
+<p>第2节中RFT和RFT-B之间的比较表明，减去组基线可以改变LoRA适配器的学习方式。我们在一个连接有效秩、奇异子空间旋转和对预测有利的学习率的模型中研究这一机制。</p>
+<p><strong>模型和分组数据。</strong> 我们使用二次多指标模型，其预测取决于输入的几个学习投影：</p>
+<p>$$f_{W}(x)=\frac{|W^{\top}x|<em>{2}^{2}-|W|</em>{F}^{2}}{\sqrt{2}},\qquad W=W_{0}+BA.$$</p>
+<p>二次模型保留了特征强度和方向的学习，使其对研究此处考虑的LoRA几何的两个方面很有用 [2]。我们采用单位LoRA缩放，初始化 $B_{0}=0$ 和具有独立高斯条目的 $A_{0}$，并通过SGD训练两个因子。标签由教师权重 $F_{\delta}=U_{0}\Sigma_{0}+\delta Z$ 生成，其中 $W_{0}=U_{0}\Sigma_{0}V_{0}^{\top}$ 是紧凑奇异值分解，$Z$ 是一次性抽取的随机任务扰动，具有沿预训练方向的分量和一组正交的新有用方向。在 $\delta=0$ 时，教师和预训练学生做出相同的预测。因此 $\delta$ 控制后训练变化的大小。</p>
+<p>为了表示GRPO公式中的同提示组，我们使用一对相关的、边缘标准高斯输入。这是包含共享上下文和组内变化的最小组。沿预训练方向的正相关 $\rho_{a}$ 建模公共提示和可重用知识。我们通过沿新有用方向的负相关 $\rho_{o}$ 建模补全特定的对比。其余 $q$ 个任务无关坐标独立变化。高斯近似使这种相关结构在分析上易于处理。两种训练规则都从相同的固定数据集中采样完整组。它们的区别在于是否去除组的均值残差。对一对 $(x_{+},x_{-})$ 写 $\varepsilon_{\pm}=f_{W}(x_{\pm})-f_{F_{\delta}}(x_{\pm})$ 为残差，$\bar{\varepsilon}=(\varepsilon_{+}+\varepsilon_{-})/2$。无基线训练拟合单个残差。有组基线的训练首先将每个 $\varepsilon_{\pm}$ 替换为 $\varepsilon_{\pm}-\bar{\varepsilon}$，改变平方损失如下：</p>
+<p>$$\underbrace{\frac{1}{4}(\varepsilon_{+}^{2}+\varepsilon_{-}^{2})}<em>{\text{无基线}}\quad\longrightarrow\quad\underbrace{\frac{1}{4}{(\varepsilon</em>{+}-\bar{\varepsilon})^{2}+(\varepsilon_{-}-\bar{\varepsilon})^{2}}}_{\text{有组基线}}.$$</p>
+<p>这种残差运算在GRPO的回归代理中隔离了组基线减除。我们使用相同的普通种群预测风险评估两种规则。</p>
+<p><strong>后训练范围。</strong> 自然假设 $\delta Z$ 相对于预训练表示足够小，捕获细化已有用特征的后训练任务。我们还需要特征强度有足够的分离，使方向具有不同的学习响应。为了获得长训练窗口，我们让 $q\to\infty$ 以比 $r^{2}$ 更快地多项式增长，其中 $r$ 是LoRA秩。以下定理中的窗口随后无界增长，其启动占用消失的比例。</p>
+<p><strong>定理3.1（非正式主定理）。</strong> 在上述设置下，存在兼容的稳定学习率区间，使得这些区间中的每个低/高对 $\eta_{L}&lt;\eta_{H}$ 具有以下性质。在 $\widetilde{O}(r\sqrt{q})$ 启动更新之后并持续 $\Theta(q)$ 次更新：</p>
+<ol>
+<li>
+<p><strong>有效秩。</strong> 无基线时，预期有效秩在 $\eta_{H}$ 下每次更新增加，在 $\eta_{L}$ 下减少。有组基线时，它在两个速率下都减少。</p>
+</li>
+<li>
+<p><strong>左奇异子空间旋转。</strong> 在任一共同速率下，组基线减除在每次相邻更新中给出更小的预期 $\operatorname{ovlp}_{L}(t,t+1)$，对于完整的秩 $r$ 左奇异空间。</p>
+</li>
+<li>
+<p><strong>超额风险。</strong> 在相同的更新预算下，较高速率在无基线时给出更低的历史平均风险，而较低速率在有组基线时给出更低的风险。所有四个风险都减少。这些偏好持续 $\Theta(qr)$ 次更新。</p>
+</li>
+</ol>
+<p>正式陈述见附录B中的定理B.2–B.4，完整证明见附录C。</p>
+<p><strong>机制。</strong> 有效秩趋势反映了方向间拟合和重新分配之间的竞争。相干拟合偏好强响应方向，集中奇异值能量。梯度噪声，即随机梯度在采样组上的变化，产生抵消这种集中的反馈。在小任务扰动的首阶，Gram矩阵更新具有与 $\eta$ 呈线性的交叉项和与 $\eta$ 呈二次方的梯度平方项，因此反馈在较高速率下获得相对影响。归一化谱能量去除均匀增长：只有当相对能量变得更均匀分布时，有效秩才增加。</p>
+<p>基线减除对共享响应和组内对比的作用不同。共享坐标的乘积在对中具有相关性 $\rho_{a}^{2}$，而共享和新有用坐标的乘积具有相关性 $\rho_{a}\rho_{o}$。减去对均值因此保留其各自残差能量的分数 $\vartheta_{a}=(1-\rho_{a}^{2})/2&lt;1/2$ 和 $\vartheta_{o}=(1-\rho_{a}\rho_{o})/2&gt;1/2$。相似的响应在很大程度上抵消，而对比响应更强烈地存活并继续驱动拟合。当对比携带足够的任务能量时，这种分散反馈在谱归一化后失去比集中更多的相对强度。然后需要大的学习率使重新分配占主导，允许在无基线时增加有效秩，在有基线时减少它。在低速率下，两种情况中拟合都占主导。</p>
+<p>旋转衡量适配器列的张成在检查点之间变化的程度。共享响应反复将更新拉向相似方向，有助于在采样组之间稳定这一张成。基线减除比组内对比更强地抑制这些响应，如 $\vartheta_{a}&lt;\vartheta_{o}$ 所反映。采样组之间的差异因此对后续更新的方向具有更大的影响。然后张成在记录之间变化更多，给出更小的左奇异子空间重叠。</p>
+<p>对于风险，主要预测增益与学习率呈线性，而梯度噪声贡献二次代价。在该模型中，沿预训练方向拟合任务分量每单位残差能量给出更多预测进展。由于 $\vartheta_{a}&lt;\vartheta_{o}$，基线减除更强地抑制这一共享分量，相对于噪声代价减少有用进展。因此有利的学习率范围向下移动，产生定理中相反的速率偏好。</p>
+<p><strong>解释实证观察。</strong> 定理预测在合适的学习率范围内有效秩增长，与图1中SFT/RFT的中等速率增长一致（第2.2节）。理论高速率范围有上限，在最大测试速率下产生不同趋势。首阶旋转差距也随着学习率在证明的比较范围内增加而缩小。直观上，较高速率放大了来自梯度噪声的额外旋转源。在固定的相邻更新中，这一贡献随速率二次增长，并且在无基线时更强，后者保留了组平均和组内分量。因此它抵消了基线减除引起的部分额外旋转，与图2中缩小的经验分离一致。附录C.7给出了系数比较。</p>
+<p><strong>对优化器设计的影响。</strong> 风险比较首先支持SFT和组相对RL的不同学习率选择。在模型中，无基线的有利较高速率伴随有效秩增长，而有基线的有利较低速率伴随比同速率下无基线更大的左奇异子空间运动。这些各自速率下的几何结构随后激发不同的更新优先级：SFT在奇异方向上分布适应，RL促进当前左奇异子空间之外的运动。第4.1节通过对SFT的完整更新和RL与当前左奇异子空间正交的分量进行谱变换来发展这些想法。特定的优化器组合在第4.2节中评估。</p>
+<h2>4 动态信息的LoRA优化配置</h2>
+<h3>4.1 配置设计</h3>
+<p>在第2节实证发现和第3节理论分析的激励下，我们为SFT和RL中的LoRA选择动态信息的标准优化器组件配置，以GRPO作为RL算法。每个配置结合现有成分，即为每个因子选择SGD或Adam更新方向以及 $B$ 更新的谱变换；贡献在于为每个阶段选择有原则的组合。</p>
+<p>我们将未修改的LoRA步骤写为 $A_{t+1}=A_{t}+\eta D_{t}^{A}$ 和 $B_{t+1}=B_{t}+\eta D_{t}^{B}$，其中 $D_{t}^{A}$ 和 $D_{t}^{B}$ 表示由基础优化器产生的带符号更新方向。对于非零矩阵 $D$，我们进一步定义保持范数的谱平坦化，即Muon更新 [14] 的变体：</p>
+<p>$$\mathcal{M}(D):=\frac{|D|_{F}}{\sqrt{\operatorname{rank}(D)}}D\left[(D^{\top}D)^{\dagger}\right]^{1/2},$$</p>
+<p>其中 $\dagger$ 表示Moore–Penrose伪逆。该变换通过用 $|D|<em>{F}/\sqrt{\operatorname{rank}(D)}$ 替换每个非零奇异值来平坦化非零奇异谱，同时保持更新幅度：$|\mathcal{M}(D)|</em>{F}=|D|_{F}$。</p>
+<p><strong>SFT的动态信息配置。</strong> 我们对 $B$ 使用SGD更新方向并对其应用谱变换 $\mathcal{M}$，对 $A$ 使用Adam更新方向：</p>
+<p>$$B_{t+1}=B_{t}+\eta\mathcal{M}(D_{t}^{B}),\qquad A_{t+1}=A_{t}+\eta D_{t}^{A}.$$</p>
+<p>我们的实验将更好的SFT性能与有效秩的增长联系起来，与第3节中的联合几何和风险趋势一致。因此该配置在两个方面偏离标准Adam。首先，先前的工作发现Muon促进LoRA增量 $\Delta W_{t}$ 奇异值的更均匀增长 [15]。因此我们将 $\mathcal{M}$ 应用于 $B$ 的更新以鼓励谱平坦化。其次，第3节中有效秩的机制反映了相干拟合和梯度噪声反馈之间的竞争。我们对 $B$ 使用SGD，使 $\mathcal{M}$ 直接作用于随机梯度的奇异方向，旨在鼓励有效秩的增长。对于 $A$，我们保留标准Adam更新，其动量归一化可以补偿小的非零梯度并加速其早期演变。同时，由于 $B_{0}=0$，展开更新给出</p>
+<p>$$B_{t}A_{t}=\eta\Big[\sum_{s=0}^{t-1}\mathcal{M}(D_{s}^{B})\Big]A_{0}+\eta^{2}\Big[\sum_{s=0}^{t-1}\mathcal{M}(D_{s}^{B})\Big]\Big[\sum_{s=0}^{t-1}D_{s}^{A}\Big].$$</p>
+<p>对 $A$ 的更新仅通过第二项直接进入，使应用于第一项中 $B$ 更新方向的谱平坦化保持不变。</p>
+<p><strong>RL的动态信息配置。</strong> 对于GRPO，我们的发现激发在保持子空间内更新的同时促进子空间旋转。首先，我们使用Adam为LoRA因子 $A$ 和 $B$ 计算基础更新方向 $D_{t}^{A}$ 和 $D_{t}^{B}$，为两个因子保留自适应缩放。其次，虽然将 $\mathcal{M}$ 应用于完整的 $B$ 更新在奇异方向上更均匀地分布更新幅度并且也可以促进子空间旋转，但RL配置进一步定制谱变换以更直接地针对子空间旋转。定义到 $B_{t}$ 当前列空间的正交投影器为 $P_{t}:=B_{t}(B_{t}^{\top}B_{t})^{\dagger}B_{t}^{\top}$。我们仅将 $\mathcal{M}$ 应用于与该空间正交的 $D_{t}^{B}$ 分量：</p>
+<p>$$B_{t+1}=B_{t}+\eta\left[P_{t}D_{t}^{B}+\mathcal{M}!\left((I-P_{t})D_{t}^{B}\right)\right],\qquad A_{t+1}=A_{t}+\eta D_{t}^{A}.$$</p>
+<p>此更新保持子空间内分量 $P_{t}D_{t}^{B}$ 并平坦化正交分量的谱而不改变其Frobenius范数。该变换因此专门针对将 $B_{t}$ 移出其当前列空间的更新，提供了塑造子空间旋转的直接方式。</p>
+<p><strong>表1</strong>：在GSM8K上使用Llama-3.2-1B和Llama-3.2-3B进行LoRA优化。最后一行中的动态信息配置在SFT（左）和RL（右）中都实现了最高的平均准确率。方法由两个LoRA因子的更新方向指定：Adam和SGD表示相应的基础优化器方向（$D_{t}^{A}$ 或 $D_{t}^{B}$），$\mathcal{M}$ 表示应用于完整方向的保持范数的谱平坦化。对于RL，$\mathcal{M}<em>{\perp}(\mathrm{Adam})$ 表示 $P</em>{t}D_{t}^{B}+\mathcal{M}((I-P_{t})D_{t}^{B})$，具有Adam基础方向 $D_{t}^{B}$，它保持子空间内分量同时仅变换正交分量。值显示三个种子的平均测试准确率（%），下标为标准误差。对于每个配置，结果在完整扫描中具有最高平均准确率的学习率处报告。粗体表示每列中最高的报告平均值。</p>
+<table>
+<thead>
+<tr>
+<th>SFT: $A$方向</th>
+<th>$B$方向</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-3B</th>
+<th>RL: $A$方向</th>
+<th>$B$方向</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>22.24±0.33</td>
+<td>42.99±0.38</td>
+<td>Adam</td>
+<td>Adam</td>
+<td>7.61±1.24</td>
+<td>42.36±3.25</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>20.90±0.76</td>
+<td>44.40±0.93</td>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>9.67±1.22</td>
+<td>46.00±0.77</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td><strong>22.82±0.12</strong></td>
+<td><strong>45.72±0.61</strong></td>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td><strong>10.00±1.36</strong></td>
+<td><strong>47.66±1.85</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>4.2 实证评估</h3>
+<p><strong>实验设置。</strong> 我们在GSM8K和MATH上评估SFT和GRPO。我们的模型套件包括Llama-3.2-1B、Llama-3.2-1B-Instruct、Llama-3.2-3B和Qwen2.5-3B。表1呈现了Llama-3.2-1B和Llama-3.2-3B的GSM8K结果，其他结果在附录A.2中提供。对于SFT和GRPO，我们考虑两个基线：两个LoRA因子 $A$ 和 $B$ 的标准Adam；以及Adam基础更新方向 $D_{t}^{A}$ 和 $D_{t}^{B}$，其中 $\mathcal{M}$ 应用于 $D_{t}^{B}$。我们还评估了第4.1节中描述的SFT和RL的动态信息配置。这些比较检查了谱平坦化、基础优化器选择和正交分量选择性处理的效果。详细的实验配置在附录A.2中提供。</p>
+<p><strong>SFT结果。</strong> 如表1和表2所示，虽然将 $\mathcal{M}$ 应用于具有Adam方向的完整 $B$ 更新并不能持续改进标准Adam，但SFT的动态信息配置进一步将 $B$ 的Adam方向替换为SGD，并在所有评估模型和任务中实现最高的报告平均准确率。这些比较突出了谱平坦化与两个LoRA因子不对称优化相结合的好处。</p>
+<p><strong>RL结果。</strong> 表1、3和4中的比较揭示了GRPO的不同偏好。在两个因子都使用Adam方向的情况下，将 $\mathcal{M}$ 应用于完整 $B$ 更新的配置和动态信息RL配置在八个模型-数据集设置中的七个中改进了标准Adam。此外，动态信息RL配置在八个设置中的六个中实现了最高的报告平均准确率。这支持了更有选择性地针对负责子空间旋转的更新分量的好处。总体而言，结果支持SFT和RL的不同优化器配置，与我们分析中确定的不同动态一致。</p>
+<h2>5 结论</h2>
+<p>在这项工作中，我们确定了LoRA在SFT和RL下的不同谱和子空间动态。我们的实验表明，在所有考虑的学习率下，RL有效秩在训练期间持续递减，而对于从SFT中受益的模型，有效秩的增长伴随中等学习率下更好的SFT性能。除了谱动态的这一差异外，RL在小学习率下表现出比SFT更快的子空间旋转，随着学习率增加，差距缩小。受控比较确定组均值基线减除是这些差异的关键来源。使用多指标模型，我们的理论框架分析了基线减除如何改变相干拟合和梯度噪声反馈，共同塑造有效秩、子空间旋转和预测风险中的学习率偏好。这些见解指导了两种动态信息LoRA优化配置的选择，针对SFT和RL的不同训练动态进行定制。两种配置在大多数评估设置中都实现了最高的报告平均准确率。</p>
+<h2>AI使用声明</h2>
+<p>在这项工作中，我们使用了生成式AI工具，包括OpenAI的GPT-6 Astra、Anthropic的Opus 5.5和Fable 5.1，以改善手稿语言、识别相关文献、协助代码创建和编辑，并支持理论框架和证明的开发。我们没有使用生成式AI工具来设计核心框架、识别实证发现或设计动态信息配置。作者检查了纳入本工作的所有AI辅助修订和输出的正确性。我们对本工作的最终内容负责，包括在生成式AI辅助下产生的文本、声明或制品。</p>
+<h2>致谢</h2>
+<p>QL感谢NSF DMS-2523382的支持。</p>
+<h2>参考文献</h2>
+<p>[1] R. Adamczak, A. E. Litvak, A. Pajor, and N. Tomczak-Jaegermann (2011). Restricted isometry property of matrices with independent columns and neighborly polytopes by random sampling. <em>Constructive Approximation</em> 34(1), pp. 61–88.</p>
+<p>[2] G. B. Arous, M. A. Erdogdu, N. M. Vural, and D. Wu (2025). Learning quadratic neural networks in high dimensions: SGD dynamics and scaling laws. In <em>The Thirty-ninth Annual Conference on Neural Information Processing Systems</em>.</p>
+<p>[3] D. Biderman et al. (2024). LoRA learns less and forgets less. <em>Transactions on Machine Learning Research</em>.</p>
+<p>[4] H. Chen, N. Razin, K. R. Narasimhan, and D. Chen (2026). Retaining by doing: the role of on-policy data in mitigating forgetting. In <em>Forty-third International Conference on Machine Learning</em>.</p>
+<p>[5] T. Chu et al. (2025). SFT memorizes, RL generalizes: a comparative study of foundation model post-training. In <em>Forty-second International Conference on Machine Learning</em>.</p>
+<p>[6] K. Cobbe et al. (2021). Training verifiers to solve math word problems. <em>arXiv preprint arXiv:2110.14168</em>.</p>
+<p>[7] A. Grattafiori et al. (2024). The llama 3 herd of models. <em>arXiv preprint arXiv:2407.21783</em>.</p>
+<p>[8] S. Hayou, N. Ghosh, and B. Yu (2024). LoRA+: efficient low rank adaptation of large models. <em>arXiv preprint arXiv:2402.12354</em>.</p>
+<p>[9] D. Hendrycks et al. (2021). Measuring mathematical problem solving with the math dataset. <em>arXiv preprint arXiv:2103.03874</em>.</p>
+<p>[10] R. A. Horn and C. R. Johnson (2013). <em>Matrix analysis</em>. 2 edition, Cambridge University Press.</p>
+<p>[11] E. J. Hu et al. (2022). LoRA: low-rank adaptation of large language models. In <em>International Conference on Learning Representations</em>.</p>
+<p>[12] L. Isserlis (1918). On a formula for the product-moment coefficient of any order of a normal frequency distribution in any number of variables. <em>Biometrika</em> 12(1–2), pp. 134–139.</p>
+<p>[13] S. Janson (1997). <em>Gaussian hilbert spaces</em>. Cambridge Tracts in Mathematics, Vol. 129, Cambridge University Press.</p>
+<p>[14] K. Jordan et al. (2024). Muon: an optimizer for hidden layers in neural networks. Vol. 6.</p>
+<p>[15] C. Kang, J. Yun, B. Shin, Y. Cho, and C. Yun (2026). Uniform spectral growth and convergence of muon in lora-style matrix factorization. <em>arXiv preprint arXiv:2602.06385</em>.</p>
+<p>[16] A. Karan, S. Chen, and Y. Du (2026). Finetuning with sampling: sft learns better than you think. <em>arXiv preprint arXiv:2610.02140</em>.</p>
+<p>[17] D. P. Kingma and J. Ba (2014). Adam: a method for stochastic optimization. <em>arXiv preprint arXiv:1412.6980</em>.</p>
+<p>[18] R. Kirk et al. (2024). Understanding the effects of rlhf on llm generalisation and diversity. In <em>International Conference on Learning Representations</em>, Vol. 2024, pp. 20620–20653.</p>
+<p>[19] F. Lehner and K. Szpojankowski (2021). Boolean cumulants and subordination in free probability. <em>Random Matrices: Theory and Applications</em> 10(4), pp. 2150036.</p>
+<p>[20] Z. Liu et al. (2025). Understanding r1-zero-like training: a critical perspective. In <em>Second Conference on Language Modeling</em>.</p>
+<p>[21] K. Matsutani et al. (2026). Rl squeezes, sft expands: a comparative study of reasoning llms. In <em>International Conference on Learning Representations</em>, Vol. 2026, pp. 141482–141526.</p>
+<p>[22] F. Meng, Z. Wang, and M. Zhang (2024). PiSSA: principal singular values and singular vectors adaptation of large language models. <em>Advances in Neural Information Processing Systems</em> 37, pp. 121038–121072.</p>
+<p>[23] J. A. Mingo and M. Popa (2013). Real second order freeness and Haar orthogonal matrices. <em>Journal of Mathematical Physics</em> 54, pp. 051701.</p>
+<p>[24] S. Mukherjee, L. Yuan, D. Hakkani-Tür, and H. Peng (2025). Reinforcement learning finetunes small subnetworks in large language models. In <em>The Thirty-ninth Annual Conference on Neural Information Processing Systems</em>.</p>
+<p>[25] L. Ouyang et al. (2022). Training language models to follow instructions with human feedback. <em>Advances in Neural Information Processing Systems</em> 35, pp. 27730–27744.</p>
+<p>[26] Qwen et al. (2025). Qwen2.5 technical report. arXiv:2412.15115.</p>
+<p>[27] R. Rafailov et al. (2023). Direct preference optimization: your language model is secretly a reward model. <em>Advances in Neural Information Processing Systems</em> 36, pp. 53728–53741.</p>
+<p>[28] D. Rathore, V. Kumar, C. Bansal, and A. Moitra (2025). How much is too much? exploring lora rank trade-offs for retaining knowledge and domain robustness. pp. 1003–1013.</p>
+<p>[29] Q. Ren et al. (2026). Rethinking generalization in reasoning SFT: a conditional analysis on optimization, data, and model capability. In <em>Third Conference on Language Modeling</em>.</p>
+<p>[30] O. Roy and M. Vetterli (2007). The effective rank: a measure of effective dimensionality. In <em>2007 15th European signal processing conference</em>, pp. 606–610.</p>
+<p>[31] M. Rudelson and R. Vershynin (2013). Hanson–Wright inequality and sub-Gaussian concentration. <em>Electronic Communications in Probability</em> 18, pp. no. 82, 1–9.</p>
+<p>[32] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov (2017). Proximal policy optimization algorithms. <em>arXiv preprint arXiv:1707.06347</em>.</p>
+<p>[33] Z. Shao et al. (2024). DeepSeekMath: pushing the limits of mathematical reasoning in open language models. <em>arXiv preprint arXiv:2402.03300</em>.</p>
+<p>[34] I. Shenfeld, J. Pari, and P. Agrawal (2026). Rl's razor: why online reinforcement learning forgets less. In <em>International Conference on Learning Representations</em>, Vol. 2026, pp. 59839–59864.</p>
+<p>[35] D. Shi et al. (2026). Why does reinforcement learning generalize? a feature-level mechanistic study of post-training in large language models. pp. 38979–39000.</p>
+<p>[36] Z. Tian, Y. Chen, Z. Han, and L. Liao (2026). Spectral surgery: training-free refinement of lora via gradient-guided singular value reweighting. <em>arXiv preprint arXiv:2603.03995</em>.</p>
+<p>[37] H. Touvron et al. (2023). Llama 2: open foundation and fine-tuned chat models. <em>arXiv preprint arXiv:2307.09288</em>.</p>
+<p>[38] J. A. Tropp (2012). User-friendly tail bounds for sums of random matrices. <em>Foundations of Computational Mathematics</em> 12, pp. 389–434.</p>
+<p>[39] R. Vershynin (2012). Introduction to the non-asymptotic analysis of random matrices. In <em>Compressed Sensing: Theory and Applications</em>, pp. 210–268.</p>
+<p>[40] H. Wang et al. (2025). MiLoRA: harnessing minor singular components for parameter-efficient llm finetuning. pp. 4823–4836.</p>
+<p>[41] Z. Xu et al. (2025). Understanding the learning dynamics of loRA: a gradient flow perspective on low-rank adaptation in matrix factorization. In <em>The 28th International Conference on Artificial Intelligence and Statistics</em>.</p>
+<p>[42] A. Yang et al. (2024). Qwen2.5-math technical report: toward mathematical expert model via self-improvement. <em>arXiv preprint arXiv:2409.12122</em>.</p>
+<p>[43] H. Yin et al. (2025). Marco-o1 v2: towards widening the distillation bottleneck for reasoning models. pp. 23506–23516.</p>
+<p>[44] Q. Yu et al. (2025). DAPO: an open-source LLM reinforcement learning system at scale. In <em>The Thirty-ninth Annual Conference on Neural Information Processing Systems</em>.</p>
+<p>[45] G. Zhang, X. Zhou, S. Liu, J. Tian, and J. Ma (2026). SDC-lora: singular-subspace drift controlled lora to mitigate knowledge forgetting. pp. 24116–24132.</p>
+<p>[46] J. Zhang et al. (2026). GeoRA: geometry-aware low-rank adaptation for rlvr. pp. 24207–24221.</p>
+<p>[47] R. Zhang, J. Zhu, H. Zhu, and L. Shi (2026). Geometry-preserving orthonormal initialization for low-rank adaptation in rlvr. <em>arXiv preprint arXiv:2606.31813</em>.</p>
+<p>[48] Y. Zhang, F. Liu, and Y. Chen (2025). LoRA-one: one-step full gradient could suffice for fine-tuning large language models, provably and efficiently. In <em>Forty-second International Conference on Machine Learning</em>.</p>
+<p>[49] H. Zhu et al. (2025). The path not taken: rlvr provably learns off the principals. <em>arXiv preprint arXiv:2511.08567</em>.</p>
+<p>[50] K. Zhu et al. (2026). SFT conflicts, rl coexists: a theoretical and empirical analysis of multi-task learning for llms. <em>arXiv preprint arXiv:2608.03573</em>.</p>
+<h2>附录A 补充实验</h2>
+<h3>A.1 LoRA动态实证表征的额外实验</h3>
+<p><strong>$B_{0}=0$ 初始化下的额外结果。</strong> 第2节报告了在我们默认初始化（$A_{0}$ 为Kaiming均匀初始化且 $B_{0}=0$）下GSM8K的主要谱和子空间动态。为了检查这些观察是否跨数据集扩展，我们额外报告了MATH上的相应结果。如图3和图4所示，有效秩和子空间重叠的动态表现出与GSM8K上观察到的定性相似的模式。</p>
+<p><strong>图3</strong>：在 $B_{0}=0$ 初始化下的MATH上，GRPO和RFT-B在所示的所有学习率下表现出递减的有效秩。相比之下，SFT和RFT在中等学习率下从大约第25步开始表现出递增趋势。列对应不同的学习率；顶行和底行分别比较SFT/RFT和GRPO/RFT-B。细曲线显示单个模型，有效秩在LoRA模块上取平均；粗曲线显示所有模型的平均值。</p>
+<p><strong>图4</strong>：在 $B_{0}=0$ 初始化下的MATH上，GRPO和RFT-B在小学习率下比SFT和RFT表现出更快的左子空间重叠下降，表明更快的子空间旋转。随着学习率增加，这种差异缩小。顶行和底行分别显示当前检查点在步骤 $t$ 与参考检查点在步骤5之间的右子空间重叠 $\mathrm{ovlp}<em>{R}(5,t)$ 和左子空间重叠 $\mathrm{ovlp}</em>{L}(5,t)$。列对应不同的学习率；每个面板比较SFT、RFT、RFT-B和GRPO。细曲线显示单个模型，重叠在LoRA模块上取平均；粗曲线显示所有模型的平均值。</p>
+<p><strong>$A_{0}=0$ 的反向初始化。</strong> 我们进一步检查第2节中确定的动态是否对LoRA因子初始化的选择具有鲁棒性，通过反转默认初始化：我们设置 $A_{0}=0$ 并对 $B_{0}$ 使用Kaiming均匀初始化。图5–8显示了GSM8K和MATH上有效秩和子空间重叠的相应动态。主要定性观察与默认初始化下的一致。对于有效秩，SFT表现出取决于学习率的模式，有效秩在小学习率和大学习率下递减而在中等学习率下出现递增趋势；相比之下，GRPO主要表现出递减的有效秩。对于子空间重叠，GRPO在小学习率下表现出比SFT明显更快的重叠下降，而随着学习率增加这一差距缩小。在两个度量上，SFT和RFT保持定性相似，而RFT-B和GRPO形成另一个相似配对。这些结果进一步支持第2节的结论，即组均值基线减除是观察到的谱和子空间动态差异的主要因素。</p>
+<p><strong>图5</strong>：在 $A_{0}=0$ 初始化下的GSM8K上，GRPO和RFT-B在所示的所有学习率下表现出递减的有效秩。相比之下，SFT和RFT在中等学习率下从大约第25步开始表现出递增趋势。（其余说明同图3。）</p>
+<p><strong>图6</strong>：在 $A_{0}=0$ 初始化下的MATH上，GRPO和RFT-B在所示的所有学习率下表现出递减的有效秩。相比之下，SFT和RFT在中等学习率下从大约第25步开始表现出递增趋势。（其余说明同图3。）</p>
+<p><strong>图7</strong>：在 $A_{0}=0$ 初始化下的GSM8K上，GRPO和RFT-B在小学习率下比SFT和RFT表现出更快的右子空间重叠下降，表明更快的子空间旋转。随着学习率增加，这种差异缩小。（其余说明同图4。）</p>
+<p><strong>图8</strong>：在 $A_{0}=0$ 初始化下的MATH上，GRPO和RFT-B在小学习率下比SFT和RFT表现出更快的右子空间重叠下降，表明更快的子空间旋转。随着学习率增加，这种差异缩小。（其余说明同图4。）</p>
+<h3>A.2 动态信息配置的额外实验</h3>
+<p><strong>实验配置。</strong> 对于第4.2节中的配置实验，我们在所有优化器配置中使用固定的数据分区。对于GSM8K和MATH，我们保留原始训练和测试分割，并从训练分割中保留1,000个示例用于验证。我们使用秩 $r=16$、缩放参数 $\alpha=32$ 和dropout 0.05的LoRA。适配器应用于transformer块中所有符合条件的线性模块，包括自注意力中的查询、键、值和输出投影以及MLP块中的门控、上和下投影。我们使用Kaiming均匀 $A_{0}$ 和 $B_{0}=0$ 的标准初始化。对于使用Adam更新方向的配置，我们在 ${5\times 10^{-6}, 5\times 10^{-5}, 5\times 10^{-4}, 5\times 10^{-3}}$ 上扫描初始学习率。对于对 $B$ 使用SGD基础更新方向和对 $A$ 使用Adam方向的配置，我们使用更大的学习率网格 ${5\times 10^{-4}, 5\times 10^{-3}, 10^{-2}, 5\times 10^{-2}}$ 以适应SGD方向。学习率在训练期间线性衰减，无预热。Adam使用 $(\beta_{1},\beta_{2})=(0.9,0.999)$ 和 $\epsilon=10^{-8}$。SGD使用零动量和零权重衰减。每个学习率用三个随机种子 ${7,42,44}$ 评估。训练最多运行1,000个优化器步骤。我们每50个优化器步骤保存检查点并评估验证pass@1，在三次连续验证评估没有严格改进后停止训练。对于每次运行，恢复达到最高平均验证pass@1的检查点用于最终测试评估。然后我们在三个种子上平均测试准确率；第4.2节中的结果报告完整扫描中具有最高平均准确率的学习率，以及种子间的标准误差。</p>
+<p><strong>额外结果。</strong> 表2报告了MATH上的SFT性能。表3和表4分别报告了GSM8K和MATH上的RL性能。表5提供了两个数据集上SFT的详细学习率扫描，而表6和表7分别提供了GSM8K和MATH上RL的相应扫描。</p>
+<p><strong>表2</strong>：在MATH上使用Llama-3.2-1B和Llama-3.2-3B进行SFT优化。最后一行中的动态信息配置实现了最高的平均准确率。（方法说明同表1。）值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个模型列中最高的报告平均值。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5.66±0.09</td>
+<td>10.83±0.13</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5.93±0.14</td>
+<td>10.53±0.14</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td><strong>6.01±0.25</strong></td>
+<td><strong>11.32±0.22</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表3</strong>：在GSM8K上使用Llama-3.2-1B、Llama-3.2-1B-Instruct、Llama-3.2-3B和Qwen2.5-3B进行RL优化。最后一行中的动态信息配置在每个模型列中实现最高的报告平均准确率。（方法说明同表1。）值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个模型列中最高的报告平均值。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-1B-Instruct</th>
+<th>Llama-3.2-3B</th>
+<th>Qwen2.5-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>7.61±1.24</td>
+<td>57.85±0.39</td>
+<td>42.36±3.25</td>
+<td>83.93±0.34</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>9.67±1.22</td>
+<td>57.97±0.18</td>
+<td>46.00±0.77</td>
+<td>84.46±0.38</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td><strong>10.00±1.36</strong></td>
+<td><strong>58.23±0.72</strong></td>
+<td><strong>47.66±1.85</strong></td>
+<td><strong>84.51±0.62</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表4</strong>：在MATH上使用Llama-3.2-1B、Llama-3.2-1B-Instruct、Llama-3.2-3B和Qwen2.5-3B进行RL优化。最后一行中的动态信息配置在四个模型中的两个上实现最高的报告平均准确率。（方法说明同表1。）值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个模型列中最高的报告平均值。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-1B-Instruct</th>
+<th>Llama-3.2-3B</th>
+<th>Qwen2.5-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5.04±0.28</td>
+<td>33.44±0.52</td>
+<td><strong>9.41±0.87</strong></td>
+<td>63.03±0.23</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5.43±0.28</td>
+<td><strong>34.16±0.61</strong></td>
+<td>9.21±0.44</td>
+<td>63.37±0.21</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td><strong>5.65±0.27</strong></td>
+<td>33.71±0.17</td>
+<td>8.21±0.42</td>
+<td><strong>63.54±0.21</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表5</strong>：SFT在GSM8K和MATH上的详细学习率扫描。方法由两个LoRA因子的更新方向指定。值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个更新配置和模型-数据集对在学习率上的最高平均准确率。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>学习率</th>
+<th>GSM8K Llama-3.2-1B</th>
+<th>GSM8K Llama-3.2-3B</th>
+<th>MATH Llama-3.2-1B</th>
+<th>MATH Llama-3.2-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁶</td>
+<td>10.87±1.20</td>
+<td>32.35±0.37</td>
+<td>5.06±0.02</td>
+<td>10.19±0.21</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁵</td>
+<td>20.60±0.61</td>
+<td><strong>42.99±0.38</strong></td>
+<td>5.46±0.12</td>
+<td>10.57±0.21</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁴</td>
+<td><strong>22.24±0.33</strong></td>
+<td>42.68±0.92</td>
+<td><strong>5.66±0.09</strong></td>
+<td><strong>10.83±0.13</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻³</td>
+<td>2.65±0.08</td>
+<td>0.58±0.58</td>
+<td>3.43±0.52</td>
+<td>2.83±1.41</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁶</td>
+<td>11.22±0.20</td>
+<td>30.65±0.62</td>
+<td>4.96±0.14</td>
+<td>10.44±0.16</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁵</td>
+<td><strong>20.90±0.76</strong></td>
+<td><strong>44.40±0.93</strong></td>
+<td>5.45±0.17</td>
+<td>10.39±0.36</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁴</td>
+<td>20.67±0.32</td>
+<td>43.47±0.54</td>
+<td><strong>5.93±0.14</strong></td>
+<td><strong>10.53±0.14</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻³</td>
+<td>2.43±0.27</td>
+<td>2.45±0.24</td>
+<td>4.15±0.15</td>
+<td>3.83±0.38</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td>5×10⁻⁴</td>
+<td>13.01±0.17</td>
+<td>32.12±0.42</td>
+<td>5.19±0.21</td>
+<td>10.40±0.06</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td>5×10⁻³</td>
+<td>22.52±0.99</td>
+<td><strong>45.72±0.61</strong></td>
+<td>5.85±0.30</td>
+<td>10.67±0.25</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td>1×10⁻²</td>
+<td><strong>22.82±0.12</strong></td>
+<td>44.73±0.74</td>
+<td><strong>6.01±0.25</strong></td>
+<td><strong>11.32±0.22</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(SGD)</td>
+<td>5×10⁻²</td>
+<td>20.82±1.03</td>
+<td>40.97±1.61</td>
+<td>5.82±0.57</td>
+<td>9.88±0.18</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表6</strong>：RL在GSM8K上的详细学习率扫描。（方法说明同表1。）值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个更新配置和模型在学习率上的最高平均准确率。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>学习率</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-1B-Instruct</th>
+<th>Llama-3.2-3B</th>
+<th>Qwen2.5-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁶</td>
+<td>2.65±0.15</td>
+<td><strong>57.85±0.39</strong></td>
+<td>27.02±3.31</td>
+<td>82.82±1.11</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁵</td>
+<td><strong>7.61±1.24</strong></td>
+<td>57.24±0.29</td>
+<td><strong>42.36±3.25</strong></td>
+<td><strong>83.93±0.34</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁴</td>
+<td>1.34±0.77</td>
+<td>2.75±2.21</td>
+<td>0.15±0.15</td>
+<td>0.96±0.68</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁶</td>
+<td>2.91±0.21</td>
+<td><strong>57.97±0.18</strong></td>
+<td>14.30±1.12</td>
+<td>82.61±0.48</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁵</td>
+<td><strong>9.67±1.22</strong></td>
+<td>57.24±0.59</td>
+<td><strong>46.00±0.77</strong></td>
+<td><strong>84.46±0.38</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁴</td>
+<td>0.35±0.32</td>
+<td>3.87±1.52</td>
+<td>0.00±0.00</td>
+<td>39.60±19.67</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁶</td>
+<td>2.88±0.19</td>
+<td>56.86±0.23</td>
+<td>19.69±1.40</td>
+<td>83.50±0.24</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁵</td>
+<td><strong>10.00±1.36</strong></td>
+<td><strong>58.23±0.72</strong></td>
+<td><strong>47.66±1.85</strong></td>
+<td><strong>84.51±0.62</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁴</td>
+<td>1.01±0.51</td>
+<td>0.48±0.40</td>
+<td>1.42±0.71</td>
+<td>51.76±19.42</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表7</strong>：RL在MATH上的详细学习率扫描。（方法说明同表1。）值显示三个种子的平均测试准确率（%），下标为标准误差。粗体表示每个更新配置和模型在学习率上的最高平均准确率。</p>
+<table>
+<thead>
+<tr>
+<th>$A$方向</th>
+<th>$B$方向</th>
+<th>学习率</th>
+<th>Llama-3.2-1B</th>
+<th>Llama-3.2-1B-Instruct</th>
+<th>Llama-3.2-3B</th>
+<th>Qwen2.5-3B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁶</td>
+<td>4.79±0.02</td>
+<td><strong>33.44±0.52</strong></td>
+<td>7.28±0.19</td>
+<td>62.78±0.40</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁵</td>
+<td><strong>5.04±0.28</strong></td>
+<td>32.55±0.27</td>
+<td><strong>9.41±0.87</strong></td>
+<td><strong>63.03±0.23</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻⁴</td>
+<td>0.00±0.00</td>
+<td>1.17±1.17</td>
+<td>0.01±0.01</td>
+<td>0.59±0.59</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>Adam</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁶</td>
+<td>4.89±0.01</td>
+<td>32.91±0.21</td>
+<td>7.01±0.07</td>
+<td>61.80±0.64</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁵</td>
+<td><strong>5.43±0.28</strong></td>
+<td><strong>34.16±0.61</strong></td>
+<td><strong>9.21±0.44</strong></td>
+<td><strong>63.37±0.21</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻⁴</td>
+<td>4.05±0.37</td>
+<td>5.94±4.28</td>
+<td>2.18±1.17</td>
+<td>29.09±11.67</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}$(Adam)</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁶</td>
+<td>4.71±0.06</td>
+<td><strong>33.71±0.17</strong></td>
+<td>7.30±0.18</td>
+<td>62.28±0.14</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁵</td>
+<td><strong>5.65±0.27</strong></td>
+<td>32.72±0.29</td>
+<td><strong>8.21±0.42</strong></td>
+<td><strong>63.54±0.21</strong></td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻⁴</td>
+<td>3.06±0.41</td>
+<td>2.50±1.29</td>
+<td>1.43±1.43</td>
+<td>19.72±10.13</td>
+</tr>
+<tr>
+<td>Adam</td>
+<td>$\mathcal{M}_{\perp}$(Adam)</td>
+<td>5×10⁻³</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+<td>0.00±0.00</td>
+</tr>
+</tbody>
+</table>
+<h3>A.3 数据集和模型许可证</h3>
+<p>GSM8K和MATH在MIT许可证下分发。Llama-3.2-1B和Llama-3.2-3B的基础和指令微调变体在Llama 3.2社区许可协议下发布。Qwen2.5-3B和Qwen2.5-Math-7B的相应变体分别在Qwen研究许可协议和Apache许可证2.0下发布。</p>
+<h3>A.4 计算基础设施</h3>
+<p>实验在使用NVIDIA H200 GPU的机构高性能计算集群上进行。</p>
+<h2>附录B 完整理论结果</h2>
+<h3>B.1 设置</h3>
+<p><strong>模型和任务。</strong> 学生权重具有维度 $W_{t}\in\mathbb{R}^{d_{o}\times d_{i}}$，其中 $d_{o}=k+p+q$。二次代理取 $x\in\mathbb{R}^{d_{o}}$ 并具有 $d_{i}$ 个特征列。其秩 $r$ 适配器具有单位增益 $\alpha/r=1$。因此LoRA增益是固定的，$\alpha,\beta\in{+,-}$ 随后在对中索引位置：</p>
+<p>$$W_{t}:=W_{0}+B_{t}A_{t},\qquad f_{W}(x):=\frac{\langle WW^{\top},xx^{\top}-I\rangle_{F}}{\sqrt{2}},\qquad B_{t}\in\mathbb{R}^{d_{o}\times r},\quad A_{t}\in\mathbb{R}^{r\times d_{i}}.$$</p>
+<p>写 $W_{0}=U_{0}\Sigma_{0}V_{0}^{\top}$，其中 $U_{0},V_{0}$ 具有 $k$ 个正交列，$\Sigma_{0}$ 为正对角。$p$ 列等距 $U_{\perp}$ 的范围与 $U_{0}$ 正交。教师具有 $k$ 列并且是</p>
+<p>$$F_{\delta}:=U_{0}\Sigma_{0}+\delta(U_{0}Z_{a}+U_{\perp}Z_{o}),\qquad Z_{a}:=\frac{\sigma_{a}}{\sqrt{k}}\Xi_{a},\quad Z_{o}:=\frac{\sigma_{o}}{\sqrt{p}}\Xi_{o},\qquad\sigma_{a},\sigma_{o}&gt;0.$$</p>
+<p>$\Xi_{a}\in\mathbb{R}^{k\times k}$ 和 $\Xi_{o}\in\mathbb{R}^{p\times k}$ 的条目是独立的、中心化的、方差为一且一致次高斯的。它们一次性抽取，与初始化和数据独立。标签等于 $f_{F_{\delta}}(x)$。初始化 $B_{0}=0$ 和独立的 $(A_{0})<em>{ij}\sim\mathcal{N}(0,1/d</em>{i})$。</p>
+<p><strong>固定配对数据。</strong> 一次性生成 $n$ 个独立高斯对。两个位置都具有边缘 $\mathcal{N}(0,I)$，其中</p>
+<p>$$\mathbb{E}x_{+}x_{-}^{\top}=\rho_{a}U_{0}U_{0}^{\top}+\rho_{o}U_{\perp}U_{\perp}^{\top},\qquad 0&lt;\rho_{a}&lt;1,\quad -1&lt;\rho_{o}&lt;0.$$</p>
+<p>因此其余 $q$ 个干扰坐标在各位置间独立。每次更新均匀地有放回地采样一个完整的存储对。</p>
+<p><strong>两种训练规则。</strong> 我们将无基线训练称为原始规则（$m=R$），将有组基线训练称为中心化规则（$m=C$）。对于 $\varepsilon_{\pm}:=f_{W}(x_{\pm})-f_{F_{\delta}}(x_{\pm})$，使用原始或残差中心化损失和同步因子SGD：</p>
+<p>$$\ell_{R}:=\frac{\varepsilon_{+}^{2}+\varepsilon_{-}^{2}}{4},\qquad\ell_{C}:=\frac{(\varepsilon_{+}-\varepsilon_{-})^{2}}{8},$$<br />
+$$B_{t+1}=B_{t}-\eta\nabla_{B}\ell,\qquad A_{t+1}=A_{t}-\eta\nabla_{A}\ell.$$</p>
+<p>中心化减去均值残差，无额外的梯度重缩放。所有运行共享实现的教师、初始化 $A_{0}$、固定训练集和低/高速率对。</p>
+<p><strong>可观测量。</strong> 对于 $\Delta W_{t}=B_{t}A_{t}\neq 0$，定义论文中使用的有效秩：</p>
+<p>$$\operatorname{erank}(\Delta W_{t}):=\exp\left(-\sum_{i}p_{i}\log p_{i}\right),\qquad p_{i}:=\frac{\sigma_{i}(\Delta W_{t})^{2}}{\sum_{j}\sigma_{j}(\Delta W_{t})^{2}}.$$</p>
+<p>具体地，零权重贡献零熵并在异常历史上设置 $\operatorname{erank}(0)=1$。对于 $t\geq 1$，写 $\Delta W_{t}=U_{t}\Sigma_{t}V_{t}^{\top}$ 为其秩 $r$ 瘦奇异值分解，在缺陷历史上具有任何固定的可测量正交秩 $r$ 补全。定义</p>
+<p>$$\operatorname{ovlp}<em>{L}(t,t'):=\frac{1}{r}|U</em>{t}^{\top}U_{t'}|<em>{F}^{2},\qquad \operatorname{rot}(t,t'):=1-\operatorname{ovlp}</em>{L}(t,t').$$</p>
+<p>普通种群预测风险……（原文在此处截断）</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> LoRA, 监督微调, 强化学习, 奇异子空间, 基线减除</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
