@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PORT：基于鲁棒词元级重加权的偏好优化 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">PORT：基于鲁棒词元级重加权的偏好优化</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-09</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.12763" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：PORT: Preference Optimization via Robust Token-Level Reweighting</h4>
+            <p><strong>中文摘要：</strong> 本文提出PORT框架，通过词元级重加权实现噪声偏好下的鲁棒对齐。该方法利用批次内词元对数概率的经验累积分布函数（CDF）差异作为梯度范数的轻量级前向传播代理，选择性抑制受损词元，无需外部奖励模型和额外反向传播计算。理论分析证明其通过最小化梯度偏差上界减少噪声影响，并给出严格改进的充分条件。实验表明PORT在AlpacaFarm、Anthropic HH等基准的多种噪声设置下持续优于序列级基线方法。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>PORT：基于鲁棒词元级重加权的偏好优化</h1>
+<p><strong>作者：</strong> Ding Zhu、Xiukun Wei、Tian Xie、Zhihui Zhu、Xueru Zhang、Mohammad Mahdi Khalili</p>
+<p><strong>单位：</strong> 俄亥俄州立大学计算机科学与工程系</p>
+<p><strong>邮箱：</strong> {zhu.3723, wei.1418, xie.1379, zhu.3440, zhang.12807, khalili.17}@osu.edu</p>
+<h2>摘要</h2>
+<p>偏好优化已成为将大语言模型与人类价值观对齐的核心方法，但其有效性在很大程度上取决于偏好标注的质量。在实践中，由于标注错误和歧义，偏好数据往往含有噪声。现有的鲁棒偏好优化方法主要在序列级别操作，隐式地将整个响应视为一致正确或一致错误。然而，被拒绝的响应可能仍包含有信息量的推理步骤，而偏好的响应也可能包含细微错误。在本工作中，我们提出 <strong>P</strong>reference <strong>O</strong>ptimization via <strong>R</strong>obust <strong>T</strong>oken-level reweighting（PORT，基于鲁棒词元级重加权的偏好优化），这是一个在噪声偏好下实现鲁棒对齐的细粒度框架。PORT 利用词元对数概率的经验累积分布函数（CDF）进行词元级重加权，得到一种高效的、仅需前向传播的梯度范数惩罚代理方法，可选择性抑制受损词元而无需额外的反向传播计算。我们提供了理论分析，表明 PORT 通过最小化偏差项的上界来减少噪声偏好标签引起的梯度偏差。在多种噪声设置下的大量实验表明，PORT 持续提升鲁棒性，并优于现有的序列级基线方法。代码可在 https://github.com/osu-srml/PORT 获取。</p>
+<h2>1 引言</h2>
+<p>偏好优化已成为将大语言模型（LLM）与人类价值观对齐、确保其输出有用、安全且符合用户意图的主流方法 [2]。与基于人类反馈的强化学习（RLHF）[18] 不同——RLHF 需要先训练一个显式奖励模型，再通过强化学习引导策略趋向高奖励响应——直接偏好优化（DPO）[20] 和恒等偏好优化（IPO）[7] 等偏好优化方法则在稳定的监督学习范式内，直接优化偏好响应与被拒绝响应之间的隐式奖励差距。</p>
+<p>尽管取得了成功，偏好优化方法存在一个关键脆弱点：其有效性严重依赖偏好标注的质量。然而在实践中，偏好数据很少是干净的，大规模获取高质量数据往往成本高昂甚至不可行。标注者分歧、难以区分样本对中的内在歧义以及标注错误都会给训练信号引入噪声，从而使梯度估计产生偏差并降低对齐性能。为此，近期工作探索了标签平滑 [4, 13, 16]、正则化 [15, 26] 和启发式数据过滤 [8, 17] 等缓解技术（各方法讨论见附录 A）。</p>
+<p>然而，这些方法从根本上受限于对偏好噪声的<strong>序列级</strong>建模。现有的偏好优化目标及其噪声缓解变体在整个响应上均匀聚合逐词元的对数比率，隐式地将所有词元位置视为同等可靠。这一假设在实践中经常被违背：偏好响应可能包含局部幻觉或推理错误，而被拒绝的响应可能仍包含正确的中间推理步骤。</p>
+<p>考虑一个偏好对，其中偏好响应为“澳大利亚的首都是堪培拉，它是作为悉尼和墨尔本之间的折中方案而专门建造的”，而被拒绝的响应为“澳大利亚的首都是悉尼，因为它是最大的城市”。如果偏好标签因噪声而被翻转，序列级方法会同等惩罚被拒绝响应中的所有词元。然而，这种处理过于粗糙：尽管该响应在事实上不正确，但许多词元（如“因为它是最大的城市”）在局部是流畅的，并不直接造成错误。因此，均匀惩罚所有词元会给学习信号引入不必要的偏差，使噪声或无信息量的词元对梯度产生不成比例的影响。</p>
+<p>遗憾的是，现有噪声缓解策略无法解决这种不匹配。保守 DPO（cDPO）[16] 等标签平滑方法对整个目标施加均匀收缩，实际上等比例缩放了所有词元的贡献。分布鲁棒化 DPO（Dr.DPO）[26] 等样本对级重加权方法为每个偏好对分配单个标量权重，序列内部的变化未被建模。即使词元级重要性采样（TIS-DPO）[14] 等词元级方法引入了更细的粒度，但它们依赖外部奖励模型，从而重新引入了奖励误泛化风险和额外的计算开销。总体而言，这些局限凸显了一个关键空白：现有方法要么操作粒度过粗，要么依赖外部监督来实现词元级自适应性。</p>
+<p><strong>图 1</strong>：PORT 训练流程概述：1) 给定一批偏好对 ℬ = {(x̃, ỹ_w^[b], ỹ_l^[b])}<em>{b=1}^{|ℬ|}，其中 ỹ_w^[b] 和 ỹ_l^[b] 分别表示选定和被拒绝的响应。2) 前向传播：评估策略 π_θ 和参考策略 π_ref，得到逐词元对数比率 δ_t^<a href="θ">b</a> 和词元级 logits s̃</em>{w,t}^[b]、s̃<em>{l,t}^[b]。3) ΔCDF 估计：将词元对数概率在整个批次中汇集形成全局经验 CDF F(·)，为选定和被拒绝词元给出百分位排名 F</em>{w,t}^[b] 和 F_{l,t}^[b]。较大的差距表明被拒绝词元相对于选定词元被赋予了异常高的概率，提示潜在的词元级标签噪声。4) 权重转换：将差距 Δ_t^[b] = F_{l,t}^[b] − F_{w,t}^[b] 映射为权重 w_t^[b] = γ exp(ρΔ_t^[b])。5) 加权词元级更新：将这些权重纳入偏好目标 L̃_w，产生抑制受损词元的鲁棒梯度更新。该过程仅需单次前向传播，不引入额外的反向传播开销。</p>
+<p>受此启发，我们探索实例依赖偏好噪声下的词元级噪声缓解，并提出 <strong>P</strong>reference <strong>O</strong>ptimization via <strong>R</strong>obust <strong>T</strong>oken-level reweighting（PORT），一个无需外部奖励模型或额外反向传播即可执行词元级重加权的框架。核心思想是为每个词元位置分配一个权重，使得在噪声数据上求解加权偏好优化所得到的解与真实人类偏好一致。</p>
+<p>为将这一设计奠定在理论基础之上，我们分析了噪声对偏好优化梯度的影响，并推导出由此产生的梯度偏差的上界。最小化该上界可得到闭式最优词元级加权函数，它刻画了每个词元应如何根据其对噪声的敏感度及其对学习信号的贡献进行重加权。</p>
+<p>然而，这一最优解在实践中无法直接计算，因为它依赖于未知的噪声统计量以及关于所有模型参数的梯度范数（计算代价极高）。为弥合这一差距，我们找到了一个保留最优解结构的实用替代方案。特别地，我们证明批次内词元概率的相对排序为近似最优权重提供了充分信号。由此得到一个基于模型对数概率计算的 CDF 加权方案，作为理论最优解的高效、纯前向传播代理。</p>
+<p>我们的主要贡献如下：</p>
+<ul>
+<li>我们提出 <strong>PORT</strong>，一个引入词元级 CDF 重加权目标的鲁棒对齐框架，零额外反向传播开销且无需外部奖励模型。</li>
+<li>我们提供理论保证，表明我们的加权方案在实例依赖噪声下最小化梯度偏差的上界，并刻画了其严格减少偏差的条件。</li>
+<li>我们在 Anthropic HH 和 AlpacaFarm 基准上进行了大量实验，证明在多种噪声设置下相对序列级基线取得一致且显著的改进。</li>
+</ul>
+<h2>2 背景与问题表述</h2>
+<p>设 π_θ 表示由 θ 参数化的语言模型，它定义了给定提示 x ∈ 𝒳 时响应上的条件分布 π_θ(·|x)。考虑偏好数据集 𝒟 = {(x, y_w, y_l)}¹，其中 y_w 和 y_l 分别是提示 x 的偏好响应和不偏好响应。传统 RLHF [18] 首先通过拟合 Bradley-Terry 模型 [3] 训练奖励模型 r_ϕ(x, y)：</p>
+<p>P(y_w ≻ y_l | x) = exp(r_ϕ(x, y_w)) / (exp(r_ϕ(x, y_l)) + exp(r_ϕ(x, y_w))).</p>
+<p>随后将学到的奖励与近端策略优化（PPO）[21] 结合来优化 π_θ：</p>
+<p>max_{π_θ} E_{x∼𝒟, y∼π_θ(·|x)} [r_ϕ(x, y) − β D_KL(π_θ(·|x) ∥ π_ref(·|x))]    (1)</p>
+<p>其中 π_ref 为参考策略（通常为初始的监督微调模型）。</p>
+<p>¹ 为与先前工作保持一致，我们对符号 w 进行重载。当 w 作为 y 的下标（如 y_w、ỹ_w）时，表示选定或获胜响应；在其他所有上下文中，w 指词元级权重或由其导出的量。</p>
+<p><strong>（词元级）偏好优化。</strong> Ouyang 等人 [18] 证明，公式 (1) 下的最优策略满足 r_ϕ(x, y) = β log(π_θ(y|x)/π_ref(y|x)) + β log Z(x)，从而使奖励模型可以被完全消去。这一洞察催生了 DPO [20]，它直接从偏好数据优化策略。Rafailov 等人 [20] 进一步提出了涵盖若干现有算法的广义偏好优化框架：</p>
+<p>min_θ L(θ) = E_{(x,y_w,y_l)∼𝒟} [f(βh(x, y_w, y_l; θ))] = E_{(x,y_w,y_l)∼𝒟} [f(β log(π_θ(y_w|x)/π_ref(y_w|x)) − β log(π_θ(y_l|x)/π_ref(y_l|x)))]</p>
+<p>其中我们定义 h(x, y, y′; θ) := log(π_θ(y|x)π_ref(y′|x) / (π_θ(y′|x)π_ref(y|x))) 为在提示 x、策略 π_θ 下响应 y 相对于 y′ 的<strong>偏好分数</strong>。f(·) 的选择实例化不同算法：DPO [20] 取 f(x) = −log σ(x)，恢复偏好对上的交叉熵损失；IPO [7] 取 f(x) = (x − 1/2)²，直接回归偏好差距以缓解过度优化。</p>
+<p>上述序列级对数比率在策略的自回归分解下可自然分解。具体而言，对于长度为 T 的响应 y = (y_1, y_2, …, y_T)，有 log(π_θ(y|x)/π_ref(y|x)) = Σ_{t=1}^T log(π_θ(y_t|x, y_{&lt;t})/π_ref(y_t|x, y_{&lt;t}))。将其代入上式即得<strong>分解形式</strong>的偏好优化目标，将序列级对数比率表示为逐词元对数比率之和：</p>
+<p>min_θ L(θ) = E_{(x,y_w,y_l)∼𝒟} [f(Σ_{t=1}^{|y_w|} β log(π_θ(y_{w,t}|x, y_{w,&lt;t})/π_ref(y_{w,t}|x, y_{w,&lt;t})) − Σ_{t=1}^{|y_l|} β log(π_θ(y_{l,t}|x, y_{l,&lt;t})/π_ref(y_{l,t}|x, y_{l,&lt;t})))]    (2)</p>
+<p><strong>噪声人类反馈。</strong> 在实践中，人类偏好数据往往含有噪声，可能无法准确反映真实偏好。设 D̃ = {(x, ỹ_w, ỹ_l)} 表示观测到的（噪声）偏好数据集，它源自底层的无噪声数据集 𝒟 = {(x, y_w, y_l)}。为简化符号，设 z 表示来自 𝒟 的样本元组，−z := (x, y_l, y_w) 为其翻转对应项；类似地，z̃ := (x, ỹ_w, ỹ_l) 与 −z̃ := (x, ỹ_l, ỹ_w) 表示噪声数据集 D̃ 中的对应元组。我们定义翻转概率 η(z) := P(z̃ = −z)，即真实排序 y_w ≻ y_l 被损坏为 y_l ≻ y_w 的概率。</p>
+<p>遵循 [9]，我们考虑两种刻画系统性标注错误与难以区分样本对中内在歧义的噪声模型： <strong>ϵ-误标噪声</strong>：每个偏好标签以概率 η(z) ≡ ϵ 独立翻转，ϵ 越大表示损坏越严重。 <strong>α-不确定噪声</strong>：偏好标签 ỹ_w ≻ ỹ_l 以概率 σ(α(r<em>(y_w|x) − r</em>(y_l|x))) 采样，否则为 ỹ_l ≻ ỹ_w，其中 r<em> 表示真实奖励函数，α &gt; 0 控制不确定性水平。相应翻转概率为 η(z) = 1 − σ(α(r</em>(y_w|x) − r*(y_l|x)))；当 α → 0 时，标签趋近随机猜测。</p>
+<p><strong>研究目标。</strong> 如第 1 节所述，现有噪声缓解方法要么在序列级操作，要么依赖外部监督，这促使我们研究无需外部奖励模型的词元级噪声缓解。本文提出一种用于鲁棒偏好优化的<strong>词元级加权机制</strong>，从噪声偏好数据集 D̃ = {(x, ỹ_w, ỹ_l)} 中有效学得与真实偏好对齐的策略 π_θ。具体而言，对每个位置 t 的词元级对数比率 δ_t(θ)（定义见下），我们赋予标量权重 w(z, t) ≥ 0，并定义加权目标²：</p>
+<p>min_θ L̃<em>w(θ) = min_θ E</em>{(x,ỹ_w,ỹ_l)∼D̃} [f(β Σ_{t=1}^T w(z, t; θ) · δ_t(θ))]，其中 δ_t(θ) = log(π_θ(ỹ_{w,t}|x, ỹ_{w,&lt;t}) π_ref(ỹ_{l,t}|x, ỹ_{l,&lt;t}) / (π_θ(ỹ_{l,t}|x, ỹ_{l,&lt;t}) π_ref(ỹ_{w,t}|x, ỹ_{w,&lt;t})))    (3)</p>
+<p>² 若 ỹ_w 与 ỹ_l 长度不同，可对较短序列添加填充词元使其等长。因此目标函数中 T = max{|ỹ_w|, |ỹ_l|}。</p>
+<p>核心挑战在于识别最优权重 {w(z,t)}_{t=1}^T，使上式的解与从无噪声数据 𝒟 学习的公式 (2) 的解对齐。我们并非学习一组固定权重，而是寻求一个<strong>最优权重函数</strong> w(x, ỹ_w, ỹ_l, t) := w(z̃, t)，它根据数据和当前策略计算位置级权重。</p>
+<p>在整个分析中，我们将词元级加权函数记为 w(z, t)，其对当前策略参数的依赖保持隐式。计算梯度时，我们将权重视为固定系数。因此权重可随策略演进更新，但梯度不会通过权重计算传播。</p>
+<h2>3 最优加权函数</h2>
+<p>接下来，我们识别最优权重函数 w(z̃, t; θ)，使得最小化重加权目标 L̃_w 所得的解与在无噪声数据上最小化 L 的解相近。为此，我们首先分析梯度偏差以理解噪声偏好标签如何影响梯度更新，然后推导最小化该偏差的最优权重函数。最后，我们确定所提出的词元级加权机制保证减少梯度偏差的条件。</p>
+<p><strong>偏好噪声下的梯度偏差。</strong> 给定公式 (2) 中的标准偏好优化目标，设 L(θ) 与 L̃(θ) 分别表示在真实偏好数据集 𝒟 与噪声数据集 D̃ 上的损失。依据 [16]，其相应梯度为：</p>
+<p>g(θ) := ∇_θ L(θ) = E[∇ℓ(z; θ)]</p>
+<p>g̃(θ) := ∇_θ L̃(θ) = E[(1−η(z))∇ℓ(z; θ) + η(z)∇ℓ(−z; θ)]</p>
+<p>其中 η(z) = P(z̃ = −z) 为第 2 节定义的翻转概率，ℓ(z; θ) := f(β Σ_t δ_t(z; θ)) 为逐样本损失，ℓ(−z; θ) 表示其在翻转三元组 上的取值。标签噪声的影响可由<strong>梯度偏差</strong>刻画，定义为 g̃(θ) 与 g(θ) 之差。</p>
+<p><strong>定义 1（梯度偏差）</strong>。g̃(θ) 偏离无噪声梯度 g(θ) 一个偏差项 B：</p>
+<p>B = g̃(θ) − g(θ) = E[η(z)(∇ℓ(−z; θ) − ∇ℓ(z; θ))] := Δg    (4)</p>
+<p>为缓解噪声影响，我们考虑词元级加权机制，得到 (3) 中的加权目标 L̃_w(θ)。记其梯度为 g̃_w(θ) := ∇_θ L̃_w(θ)，其干净数据对应项为 g_w(θ) := ∇_θ L_w(θ)。最小化 L̃_w(θ) 能否恢复与真实偏好对齐的模型，可由<strong>加权梯度偏差</strong>刻画，定义为 g̃_w(θ) 与 g(θ) 之差。</p>
+<p><strong>定义 2（加权梯度偏差）</strong>。g̃_w(θ) 偏离无噪声 g(θ) 一个偏差项 B_w：</p>
+<p>B_w = g̃_w(θ) − g(θ) = [g̃_w(θ) − g_w(θ)] + [g_w(θ) − g(θ)] := Δg_w + R_b    (5)</p>
+<p>其中 ℓ_w(z; θ) := f(β Σ_{t=1}^T w(z,t) δ_t(z; θ))，Δg_w := g̃_w(θ) − g_w(θ) = E[η(z)(∇ℓ_w(−z; θ) − ∇ℓ_w(z; θ))]，R_b := g_w(θ) − g(θ)。详细推导见附录 B.1。在分析中，权重对交换两个响应保持不变。</p>
+<p><strong>最优加权函数。</strong> 我们的目标是识别一个最优权重函数，使噪声数据上公式 (3) 加权目标的解与真实偏好对齐。为此，我们最小化加权梯度偏差 B_w 的范数：</p>
+<p>min_w ‖B_w‖ = ‖Δg_w + R_b‖    (6)</p>
+<p>我们将权重函数 w(z, t; θ) 限制在容许集 𝒲 := {w ≥ 0 : E_p[w(z,t)] = 1} 以避免平凡解，其中 p 为 z 的概率密度函数。定义重加权分布 p_w(z) := w(z, t; θ) p(z)。应用 Jensen 不等式与 Pinsker 不等式，可对 ‖Δg_w‖ 与 ‖R_b‖ 进行上界估计：</p>
+<p>‖Δg_w‖ ≤ βK E[η(z) w(z,t) ‖∇δ_t(z; θ)‖]</p>
+<p>‖R_b‖ ≤ C · √(2 D_KL(p_{w_t} ∥ p))</p>
+<p>其中 C、K 为常数。注意 ‖R_b‖ 的上界通过 KL 散度 D_KL(p_w ∥ p) 依赖于权重函数 w(z, t; θ)；最小化该项可防止重加权分布过度偏离原始数据分布。由于直接最小化 ‖B_w‖ 难以处理，我们转而最小化所导出的<strong>上界</strong>，它具有易于处理的闭式解。由此得到如下优化问题：</p>
+<p>min_w E[w(z,t) η(z) ‖∇δ_t(z; θ)‖] + (1/λ) D_KL(p_w ∥ p)    (7)</p>
+<p>其中 λ &gt; 0 为平衡两个上界的权衡参数。定理 1 表明该优化问题具有闭式解，证明见附录 B.2。</p>
+<p><strong>定理 1（代理最优加权函数）</strong>。最小化 (7) 的代理最优权重函数 w* 为：</p>
+<p>w*(z, t) ∝ exp(−λ η(z) ‖∇δ_t(z; θ)‖)    (8)</p>
+<p>定理 1 表明，噪声率 η 高、梯度范数 ‖∇δ_t(z; θ)‖ 大或二者兼有的样本应被赋予更小的权重。这与鲁棒优化的目标一致，因为此类样本可能在错误方向上施加强烈梯度更新，因而危害最大。参数 λ 控制权衡：当 λ → 0 时权重趋于均匀，恢复未加权目标；当 λ → ∞ 时则趋近于对高风险样本的硬过滤。</p>
+<p><strong>局部改进保证。</strong> 所提出的重加权目标严格推广了原始目标：在 L̃_w 中令 w_t(·) ≡ 1 即可恢复未加权目标 L̃。一个自然的问题是，我们的加权机制是否以及在何种条件下<strong>严格</strong>优于未加权基线，即何时能保证梯度偏差减少 ‖B_w‖ &lt; ‖B‖。</p>
+<p><strong>命题 1（严格改进的充分条件）</strong>。假设</p>
+<p>Cov(η(z) ‖Σ_t ∇δ_t(z; θ)‖, (η(z) + f′(β Σ_t δ_t(z; θ)) ⟨Σ_t ∇δ_t(z; θ), η(z) Σ_t ∇δ_t(z; θ)⟩)) ≻ 0,    (9)</p>
+<p>其中 ≻ 表示逐分量比较算子。则对足够小的 λ &gt; 0，重加权目标严格减少梯度偏差：‖B_w‖ &lt; ‖B‖。</p>
+<p>证明见附录 B.3。注意该条件仅为充分而非必要：它刻画了一种自然情形——降低噪声样本权重所带来的收益超过其在干净梯度方向上引入的失真。下面我们验证该条件在第 2 节定义的两种噪声模型下均成立。</p>
+<ul>
+<li><strong>α-不确定噪声。</strong> 当 η(z) = 1 − σ(α(r<em>(y_w|x) − r</em>(y_l|x))) 时，公式 (9) 可简化为在期望意义下要求 η(z) &gt; σ(−Σ_t δ_t(z; θ))，即真实噪声率超过模型的隐式不确定性。代入噪声模型得 σ(−α Σ_t σ_t(z; θ)) &gt; σ(−Σ_t σ_t(z; θ))，只要 α &lt; 1 即严格成立。直观上，α &lt; 1 意味着标注者比模型更不确定：标注者的标签比模型当前的偏好预测更嘈杂。这种情形自然出现在训练早期或模糊偏好对上，此时噪声缓解最为有益。当 α = 1 时，噪声项与置信项恰好抵消，重加权不带来收益。</li>
+<li><strong>ϵ-误标噪声。</strong> 当标签以恒定速率 η(z) = ϵ 均匀翻转时，噪声率与样本内容解耦，公式 (9) 简化为 ϵ &gt; E_z[σ(−β Σ_t δ_t(z; θ))]（见附录 B.3）。由于 σ(0) = 1/2，对任何 ϵ &lt; 1/2，该条件在初始化附近不成立，此时降低样本对权重移除的干净信号多于噪声。而当模型以足够差距分开大多数干净样本对时该条件成立，即训练后期——此时梯度日益被翻转标签主导，DPO 倾向于记住这些标签。</li>
+</ul>
+<h2>4 PORT：基于鲁棒词元级重加权的偏好优化</h2>
+<p><strong>从理论到实践。</strong> 定理 1 表明 w* ∝ exp(−λ η(z) ‖∇δ_t(z; θ)‖)。然而，η(z) 与 ‖∇δ_t(z; θ)‖ 均无法直接观测，且在训练中计算它们代价高昂。因此，我们寻求实践中可近似最优加权的可行代理。</p>
+<p><strong>图 2</strong>：ΔCDF 与词元级梯度差异的散点图。由于 ‖∇δ_t(z; θ)‖ = ‖∇<em>θ π_θ(y</em>{w,t}|x) − ∇<em>θ π_θ(y</em>{l,t}|x)‖，我们分别计算选定与被拒绝响应的 SFT 梯度并求其差的范数来得到该量。在大规模词元总体上，两个量之间呈现隐含的线性趋势（Pearson r = 0.4526，n = 8,752），表明 ΔCDF 可作为定理 1 中噪声诱导梯度幅度的轻量级代理，无需访问不可观测的统计量。</p>
+<p>我们假设批次内 logits 累积分布函数（CDF）的相对差异可作为此类代理。为形式化这一想法，考虑包含 B 个偏好对 的批次。我们将批次中所有非填充词元的对数概率汇集为单一参考集 ℛ = ∪<em>{b=1}^B ∪</em>{t=1}^{T^[b]} {π_θ(ỹ_{w,t}^[b] | x^[b], ỹ_{w,&lt;t}^[b]), π_θ(ỹ_{l,t}^[b] | x^[b], ỹ_{l,&lt;t}^[b])}，其中包含批次内所有非填充选定与被拒绝词元的分数。基于该参考集，定义经验 CDF F(u; ℛ) = (1/|ℛ|) Σ_{r∈ℛ} 𝟙(r &lt; u)。</p>
+<p>对第 b 个偏好对，进一步定义 F_{w,t}^[b] = F(π_θ(ỹ_{w,t}^[b] | x^[b], ỹ_{w,&lt;t}^[b]); ℛ) 与 F_{l,t}^[b] = F(π_θ(ỹ_{l,t}^[b] | x^[b], ỹ_{l,&lt;t}^[b]); ℛ)，它们度量选定与被拒绝词元 logits 在批次分布中的相对百分位排名。利用这些量，定义方向性 CDF 差异 ΔCDF = F_{l,t}^[b] − F_{w,t}^[b]。直观上，较大的正 ΔCDF 表明被拒绝词元相对于选定词元获得了异常高的概率质量，是偏好噪声的强烈信号。</p>
+<p>为验证我们的假设，我们将真实梯度范数与所提出的基于 CDF 的度量进行了实证比较。具体而言，图 2 绘制了 SFT（监督微调）梯度范数 ‖∇δ_t(z; θ)‖ 与 α-不确定噪声的乘积相对于 ΔCDF = F_{l,t}^[b] − F_{w,t}^[b] 在 8,752 个词元上的散点。结果显示强正线性相关，Pearson 相关系数 r = 0.4526。这一实证证据表明，易于计算的词元级 CDF 差异能有效捕捉底层梯度范数的幅度。特别地，具有较大 ΔCDF 的词元倾向于产生更大的梯度范数，恰好对应定理 1 指出应赋予较低可靠性权重的词元——因为这些高梯度、高噪声位置在损坏情形下对梯度更新的危害最大。</p>
+<p>受此观察启发，我们将基于 CDF 的代理代入理论最优加权函数，得到计算高效的重加权方案。具体而言，定义第 b 个偏好对位置 t 的词元级权重为：</p>
+<p>w_t^[b] = γ exp(−ρ(F_{l,t}^[b] − F_{w,t}^[b]))    (10)</p>
+<p>其中 γ 与 ρ 为缩放超参数。重要的是，我们对加权函数不施加归一化约束。最后，将这些权重纳入 (3)：</p>
+<p>L̃<em>w(θ) = E</em>{(x^[b],ỹ_w^[b],ỹ_l^[b])∼D̃} [f(β Σ_{t=1}^T w_t^[b] · δ_t^<a href="θ">b</a>)]，其中 δ_t^<a href="θ">b</a> = log(π_θ(ỹ_{w,t}^[b]|x^[b], ỹ_{w,&lt;t}^[b]) π_ref(ỹ_{l,t}^[b]|x^[b], ỹ_{l,&lt;t}^[b]) / (π_θ(ỹ_{l,t}^[b]|x^[b], ỹ_{l,&lt;t}^[b]) π_ref(ỹ_{w,t}^[b]|x^[b], ỹ_{w,&lt;t}^[b])))    (11)</p>
+<p><strong>词元级加权作为广义序列级加权。</strong> 现有序列级方法可视为对所有词元统一施加单个标量权重的特例，即 w_t^[b] = w^seq。相比之下，PORT 允许 w_t^[b] 随位置变化，实现对序列中哪些部分对学习贡献更强的细粒度控制。</p>
+<p>重要的是，我们对 {w_t^[b]} 不施加归一化约束，每个词元权重基于其局部 CDF 信号独立确定。这种设计使方法能自然适应不同的损坏模式。当噪声为局部性时，仅部分词元权重受影响，其余词元基本不变。当噪声分布于整个序列时，方向性 CDF 差距 F_{l,t}^[b] − F_{w,t}^[b] 在各位置持续较大，导致整个偏好对被一致地降权或升权。</p>
+<p>总体而言，PORT 在不增加反向传播开销的情况下实现了命题 1 所刻画的偏差减少特性。通过选择性抑制不可靠或高噪声词元并保留有信息量的词元，它在受损偏好监督下保持鲁棒。</p>
+<h2>5 实验</h2>
+<p><strong>预训练模型。</strong> 我们在 LLaMA2-7B [23] 和 Qwen3-4B [28] 上进行实验。对两个模型，我们从指令微调检查点初始化并将其作为 π_ref。所有模型采用线性预热计划和 16 个偏好对的有效批次大小训练。PORT 的超参数设为 ρ = 0.3 和 γ = 1.5，通过在保留验证集上的网格搜索选定。完整超参数细节见附录 C.2。</p>
+<p><strong>数据集。</strong> 我们在涵盖有用性与安全性对齐的三个基准上进行实验：AlpacaFarm [6]、Anthropic HH [1] 和 PKU-Beaver [10]。数据集的更全面描述见附录 C.2。</p>
+<p><strong>基线方法。</strong> 我们将 PORT 与涵盖三类噪声缓解策略的全面基线进行比较： 标准对齐方法，包括 SFT、DPO [20]、IPO [7] 和 SLiC-HF [32]； 序列级鲁棒方法，包括 cDPO [16]、rDPO [4]、β-DPO [27]、Dr.DPO [26] 和 wDPO [15]； 基于过滤的方法，包括 fDPO [17] 和 SamS [8]。所有基线在相同训练条件下重新实现以确保公平比较。</p>
+<p><strong>评估指标。</strong> 我们使用三个互补指标评估模型性能：<strong>黄金奖励模型（RM）分数</strong>、<strong>GPT 胜率（%）</strong> 和<strong>安全率（SR）</strong>。指标的更全面描述见附录 C.2。</p>
+<p><strong>表 1</strong>：AlpacaFarm 数据集上两种模型设置下的评估结果。<strong>粗体</strong>表示最佳性能，下划线表示第二佳性能。结果在 3 个不同随机种子下报告，格式为均值 ± 标准差。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>LLaMA2-7B 黄金RM分数 ↑</th>
+<th>LLaMA2-7B GPT胜率(%) ↑</th>
+<th>Qwen3-4B 黄金RM分数 ↑</th>
+<th>Qwen3-4B GPT胜率(%) ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SLiC-HF</td>
+<td>2.58±0.11</td>
+<td>55.8±1.2</td>
+<td>2.08±0.07</td>
+<td>45.5±0.8</td>
+</tr>
+<tr>
+<td>IPO</td>
+<td>2.75±0.09</td>
+<td>57.4±0.5</td>
+<td>2.15±0.13</td>
+<td>46.7±0.7</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>2.66±0.12</td>
+<td>56.8±0.9</td>
+<td>2.18±0.11</td>
+<td>46.3±1.2</td>
+</tr>
+<tr>
+<td>fDPO</td>
+<td>3.20±0.06</td>
+<td>60.7±0.8</td>
+<td>2.54±0.08</td>
+<td>48.7±1.0</td>
+</tr>
+<tr>
+<td>SamS</td>
+<td>3.68±0.11</td>
+<td>64.8±0.9</td>
+<td>2.84±0.10</td>
+<td>53.8±1.1</td>
+</tr>
+<tr>
+<td>cDPO</td>
+<td>3.18±0.25</td>
+<td>60.5±0.3</td>
+<td>2.38±0.16</td>
+<td>46.9±0.8</td>
+</tr>
+<tr>
+<td>rDPO</td>
+<td>3.30±0.13</td>
+<td>62.1±0.9</td>
+<td>2.60±0.11</td>
+<td>50.4±1.0</td>
+</tr>
+<tr>
+<td>β-DPO</td>
+<td>3.42±0.08</td>
+<td>63.2±1.0</td>
+<td>2.73±0.07</td>
+<td>50.2±0.9</td>
+</tr>
+<tr>
+<td>Dr.DPO</td>
+<td>3.39±0.18</td>
+<td>61.6±1.0</td>
+<td>2.69±0.23</td>
+<td>52.5±0.8</td>
+</tr>
+<tr>
+<td>PORT</td>
+<td><strong>3.82±0.23</strong></td>
+<td><strong>67.6±1.8</strong></td>
+<td><strong>2.98±0.16</strong></td>
+<td><strong>53.6±1.4</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>5.1 PORT 在 AlpacaFarm 上持续取得更优性能</h3>
+<p>为规避人工评估的高昂成本，遵循先前工作，我们采用大规模人类偏好模型 [12] 作为黄金奖励模型。我们调整奖励零点，使初始 LM 的平均奖励为零。偏好标签以 0.3 的概率翻转以模拟噪声标注。</p>
+<p>如表 1 所示，PORT 在两种模型和各项指标上大多取得最佳性能。在 LLaMA2-7B 上，PORT 取得黄金 RM 分数 <strong>3.82</strong> 和 GPT 胜率 <strong>67.6%</strong>，超过最强序列级基线（β-DPO）+0.40 黄金 RM 分数和 +4.4% GPT 胜率。在 Qwen3-4B 上，PORT 取得黄金 RM 分数 <strong>2.98</strong> 和 GPT 胜率 <strong>53.6%</strong>，总体超过第二佳方法 SamS。注意 Qwen3-4B 上的性能差距小于 LLaMA2-7B 上的。我们将这一差异归因于 LLaMA2-7B 训练数据相对较旧，且由于其容量较高，更容易记住噪声偏好标签，使梯度级噪声缓解更具影响力。尽管如此，PORT 仍在 Qwen3-4B 上取得所有方法中最高的黄金 RM 分数，确认词元级重加权在不同架构间依然有效。</p>
+<h3>5.2 PORT 在 Anthropic HH 上提升安全对齐</h3>
+<p><strong>表 2</strong>：Anthropic HH 数据集（Harmless 分割）上的结果。<strong>粗体</strong>表示最佳性能，下划线表示第二佳性能。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>PKU-Beaver SR ↑</th>
+<th>GPT胜率(%) ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SLiC-HF</td>
+<td>0.41</td>
+<td>56.0</td>
+</tr>
+<tr>
+<td>IPO</td>
+<td>0.43</td>
+<td>57.6</td>
+</tr>
+<tr>
+<td>DPO</td>
+<td>0.42</td>
+<td>56.8</td>
+</tr>
+<tr>
+<td>fDPO</td>
+<td>0.48</td>
+<td>61.8</td>
+</tr>
+<tr>
+<td>SamS</td>
+<td>0.53</td>
+<td>65.8</td>
+</tr>
+<tr>
+<td>cDPO</td>
+<td>0.48</td>
+<td>61.8</td>
+</tr>
+<tr>
+<td>rDPO</td>
+<td>0.49</td>
+<td>62.6</td>
+</tr>
+<tr>
+<td>β-DPO</td>
+<td>0.51</td>
+<td>64.3</td>
+</tr>
+<tr>
+<td>Dr.DPO</td>
+<td>0.50</td>
+<td>63.5</td>
+</tr>
+<tr>
+<td>PORT</td>
+<td><strong>0.55</strong></td>
+<td><strong>67.6</strong></td>
+</tr>
+</tbody>
+</table>
+<p>我们在 Anthropic HH 数据集上进行训练实验，该数据集由涵盖安全领域不同主题的单轮对话组成。实验使用的评估指标包括 PKU Beaver 数据集上的安全率 [5, 11]。我们用不同基线训练的模型生成响应，再使用 PKU Beaver 评估模型 [5] 判断响应是否安全。表 2 展示了基于 PKU Beaver 数据集的评估结果。在所有基线中，PORT 取得最高的 PKU-Beaver SR <strong>0.55</strong> 和 GPT 胜率 <strong>67.6%</strong>。在序列级方法中，β-DPO 表现最强，其次是 Dr.DPO。基于过滤的方法取得了有竞争力的结果，尽管 SamS 依赖额外的批次调度开销。值得注意的是，标签平滑方法的表现逊于基于重加权的方法，表明对于安全对齐，均匀标签校正不如自适应的样本级调整有效。</p>
+<h3>5.3 跨噪声强度与类型的鲁棒性</h3>
+<p><strong>表 3</strong>：Anthropic HH 上噪声强度消融（以 PKU-Beaver SR ↑ 评估）。<strong>粗体</strong>表示最佳性能，下划线表示第二佳性能。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>p=0.2 SR ↑</th>
+<th>p=0.2 GPT胜率(%) ↑</th>
+<th>p=0.3 SR ↑</th>
+<th>p=0.3 GPT胜率(%) ↑</th>
+<th>p=0.4 SR ↑</th>
+<th>p=0.4 GPT胜率(%) ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DPO</td>
+<td>0.45</td>
+<td>59.3</td>
+<td>0.42</td>
+<td>56.8</td>
+<td>0.38</td>
+<td>53.4</td>
+</tr>
+<tr>
+<td>SamS</td>
+<td>0.53</td>
+<td>65.9</td>
+<td>0.53</td>
+<td>65.8</td>
+<td>0.46</td>
+<td>60.1</td>
+</tr>
+<tr>
+<td>β-DPO</td>
+<td>0.54</td>
+<td>66.7</td>
+<td>0.51</td>
+<td>64.3</td>
+<td>0.47</td>
+<td>60.9</td>
+</tr>
+<tr>
+<td>PORT</td>
+<td><strong>0.56</strong></td>
+<td><strong>68.5</strong></td>
+<td><strong>0.55</strong></td>
+<td><strong>67.6</strong></td>
+<td><strong>0.53</strong></td>
+<td><strong>65.9</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 4</strong>：噪声类型对模型性能的影响（以 PKU-Beaver SR ↑ 评估），Anthropic HH，p = 0.4 噪声水平。<strong>粗体</strong>表示最佳性能，下划线表示第二佳性能。PORT 在两种噪声类型下均比最强基线取得约 4% 胜率和 0.05 SR 的一致增益。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>ϵ-误标噪声 SR ↑</th>
+<th>ϵ-误标噪声 GPT胜率(%) ↑</th>
+<th>α-不确定噪声 SR ↑</th>
+<th>α-不确定噪声 GPT胜率(%) ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DPO</td>
+<td>0.38</td>
+<td>53.4</td>
+<td>0.38</td>
+<td>53.5</td>
+</tr>
+<tr>
+<td>SamS</td>
+<td>0.46</td>
+<td>60.1</td>
+<td>0.43</td>
+<td>57.0</td>
+</tr>
+<tr>
+<td>Dr.DPO</td>
+<td>0.48</td>
+<td>61.8</td>
+<td>0.44</td>
+<td>58.5</td>
+</tr>
+<tr>
+<td>PORT</td>
+<td><strong>0.53</strong></td>
+<td><strong>65.9</strong></td>
+<td><strong>0.49</strong></td>
+<td><strong>62.5</strong></td>
+</tr>
+</tbody>
+</table>
+<p>为进一步研究所提 PORT 方法的鲁棒性，我们围绕两个关键维度进行消融研究：噪声强度与噪声类型。本节所有实验在 Anthropic HH 数据集上进行，采用 PKU-Beaver SR 指标评估。详细实验设置与更全面的实验结果见附录 C.2。</p>
+<p><strong>噪声强度的影响。</strong> 我们考察 PORT 与代表性基线在不同误标噪声水平下的性能，翻转概率范围为 p ∈ {0.2, 0.3, 0.4}。结果报告于表 3。分析呈现出若干趋势。首先，标准 DPO 的性能随噪声增加持续下降，SR 从 p = 0.2 时的 0.45 降至 p = 0.4 时的 0.38，证实原始偏好优化对标签损坏高度敏感。</p>
+<p>此外，PORT 在所有设置中保持持续强劲的性能，在 p = 0.2、p = 0.3 和 p = 0.4 时分别取得 SR 0.56、0.55 和 0.53。值得注意的是，PORT 与最强序列级基线之间的性能差距随噪声增加而扩大——从 p = 0.2 时的 0.03 扩大到 p = 0.4 时的 0.06——表明词元级重加权在更高噪声区间愈发有利。</p>
+<p><strong>噪声类型的影响。</strong> 我们进一步在固定噪声水平 p = 0.4 下比较两种性质不同的噪声分布下的模型韧性。结果报告于表 4。 <strong>ϵ-误标噪声</strong>通过以固定概率 η = 0.4 独立翻转每个偏好标签来模拟随机标注错误，而不考虑偏好对的内容。PORT 取得最佳性能，安全率 0.53、GPT 胜率 65.9%，超过最强基线 Dr.DPO +0.05 SR 和 +4.1% GPT 胜率，表明当噪声均匀分布时，对异常高概率被拒绝词元进行词元级降权可带来实质性收益。 <strong>α-不确定噪声</strong>模拟系统性标注错误，其标签翻转概率由 Bradley-Terry 模型下响应间的奖励差距决定。PORT 继续取得最佳结果，SR 为 0.49，GPT 胜率为 62.5%。两种噪声类型下的一致优势进一步验证了命题 1 的理论保证：当人类噪声分布比模型的隐式偏好置信度更“软”时，我们基于 CDF 的加权可保证减少梯度偏差。</p>
+<p><strong>批次大小的影响。</strong> PORT 从当前批次内所有非填充选定与被拒绝词元构成的参考集 ℛ 估计经验 CDF，因此其权重依赖于批次大小 B。我们使用在 Anthropic HH 上训练的 Qwen2.5-0.5B，改变 B ∈ {1, 4, 16}，并在 PKU-Beaver 上评估，结果见表 6。GPT 胜率在 B = 1 时降至 39.1%，此时 ℛ 仅包含单个偏好对的词元；在 B = 4 时恢复至 42.8%，接近 B = 16（我们实验全程使用的默认值）时的 44.3%。因此，跨少量样本对汇集词元即可获得可靠的排名估计，PORT 并不需要大批次。</p>
+<h3>5.4 PORT 将梯度集中于可靠词元</h3>
+<p>为研究所提加权机制对学习动态的影响，我们跟踪了标准 DPO 与 PORT 两个模型在 30 个梯度步内的逐样本训练损失。两个模型均以 Qwen2.5-0.5B [19] 为基础策略，在从 HH-RLHF 数据集抽取的 128 个样本子集上训练。</p>
+<p>为按偏好可靠性对样本对分组，我们使用一种与训练时差距 Δ_t^[b] 不同的诊断分数。对每个样本对 z，我们在任何偏好训练之前对初始策略 π_{θ_0} 在<strong>真实</strong>选定与被拒绝响应 上评估一次，计算初始分离分数 m_0(z) := F̄<em>w(z) − F̄_l(z)，其中 F̄_w(z) 与 F̄_l(z) 分别为 y_w 与 y_l 所有非填充词元的经验 CDF 排名平均值。较大的 m_0(z) 表示 π</em>{θ_0} 已将选定响应的排名远高于被拒绝响应；较小的 m_0(z) 表示两个响应获得相近排名，即该样本对对模型而言是模糊的。我们按 m_0(z) 的中位数将 128 个样本对划分为高分离组与低分离组各 64 对，并在全部 30 步中保持该划分不变。两组分离度差异显著：高分离样本对 m_0 = 0.367 ± 0.167（范围 [0.151, 0.801]），低分离样本对为 0.064 ± 0.039（范围 [0.000, 0.146]）。作为独立检验，奖励模型在 82.8% 的高分离样本对上与真实排序一致，而在低分离样本对上仅为 59.4%，只略高于随机水平。在 α-不确定噪声模型下，翻转概率 η(z) 随奖励差距减小而增大，因此高分离样本对是标签最可能保持正确的样本对，而低分离样本对最易发生翻转。真实标签仅用于这一事后诊断。</p>
+<p><strong>高差距</strong>组由选定与被拒绝奖励分布分离良好的样本组成，代表可靠的偏好标注；相反，<strong>低差距</strong>组由奖励分布重叠的样本组成，代表噪声或模糊标签。如图 3(a) 所示，在标准 DPO 下两组表现出几乎相同的损失轨迹。模型无视样本固有标签质量而一视同仁，到第 30 步收敛到相近的低损失。相比之下，图 3(b) 揭示了 PORT 下的明显分化：高差距样本以更快速度达到显著更低的损失，而低差距样本在整个训练过程中明显滞后。这一分化从实证上验证了 PORT 基于 ΔCDF 的加权成功将梯度信号集中于可靠、分离良好的样本对，使模型能够更高效地从可信样本学习偏好区分，同时安全地边缘化噪声标注的影响。</p>
+<p><strong>(a) DPO  (b) PORT</strong></p>
+<p><strong>图 3</strong>：标准 DPO 与我们所提 PORT 方法在 30 个梯度步内逐样本训练损失轨迹的比较。训练样本被划分为高 ΔCDF（更可靠）与低 ΔCDF（更多噪声）两组。</p>
+<h2>6 结论</h2>
+<p>在本工作中，我们提出了 PORT（Preference Optimization via Robust Token-level reweighting），一个在噪声偏好标注下实现鲁棒 LLM 对齐的细粒度框架。与现有序列级方法或依赖外部奖励模型的方法不同，PORT 通过词元 logits 的经验 CDF 执行词元级重加权——这是一种轻量级、仅需前向传播的代理方法，不产生额外的反向传播开销。在理论上，我们通过最小化噪声诱导梯度偏差的上界推导出最优加权函数，并建立了在 ϵ-误标与 α-不确定两种噪声模型下 PORT 保证严格减少该偏差的充分条件。在实证上，我们通过在 AlpacaFarm、Anthropic HH 和 PKU-Beaver 上的大量实验证明，PORT 在多种噪声设置和模型架构下持续优于广泛的序列级基线方法。</p>
+<h2>致谢与资助披露</h2>
+<p>本材料基于美国国家科学基金会资助（资助号 IIS-2202699、IIS-2416895、IIS-2301599、CMMI-2301601、DMS-2529302 和 OIA-2616279）支持的工作。作者声明不存在竞争利益。</p>
+<h2>参考文献（保留原文格式）</h2>
+<p>[1] Y. Bai et al. (2022). Training a helpful and harmless assistant with reinforcement learning from human feedback. arXiv:2204.05862.<br />
+[2] E. M. Bender, T. Gebru, A. McMillan-Major, S. Shmitchell (2021). On the dangers of stochastic parrots: can language models be too big? In FAccT '21, pp. 610–623.<br />
+[3] R. A. Bradley, M. E. Terry (1952). Rank analysis of incomplete block designs: i. the method of paired comparisons. Biometrika 39(3/4), pp. 324–345.<br />
+[4] S. R. Chowdhury, A. Kini, N. Natarajan (2024). Provably robust DPO: aligning language models with noisy feedback. In ICML'24.<br />
+[5] J. Dai et al. (2024). Safe RLHF: safe reinforcement learning from human feedback. In ICLR.<br />
+[6] Y. Dubois et al. (2023). AlpacaFarm: a simulation framework for methods that learn from human feedback. arXiv:2305.14387.<br />
+[7] M. Gheshlaghi Azar et al. (2024). A general theoretical paradigm to understand learning from human preferences. In AISTATS, PMLR Vol. 238, pp. 4447–4455.<br />
+[8] Z. Huang et al. (2026). Adaptive batch-wise sample scheduling for direct preference optimization. arXiv:2506.17252.<br />
+[9] S. Im, S. Li (2026). How well can preference optimization generalize under noisy feedback? arXiv:2510.01458.<br />
+[10] J. Ji et al. (2025). PKU-SafeRLHF: towards multi-level safety alignment for LLMs with human preference. In ACL, pp. 31983–32016.<br />
+[11] J. Ji et al. (2023). BeaverTails: towards improved safety alignment of LLM via a human-preference dataset. In NeurIPS Datasets and Benchmarks Track.<br />
+[12] N. Lambert et al. (2024). RewardBench: evaluating reward models for language modeling. arXiv:2403.13787.<br />
+[13] X. Liang et al. (2025). ROPO: robust preference optimization for large language models. In ICML, PMLR Vol. 267, pp. 37131–37161.<br />
+[14] A. Liu et al. (2025). TIS-DPO: token-level importance sampling for direct preference optimization with estimated weights. In ICLR.<br />
+[15] J. Liu et al. (2026). WDPO: winsorized direct preference optimization for robust LLM alignment. arXiv:2603.07211.<br />
+[16] E. Mitchell (2023). A note on DPO with noisy preferences and relationship to IPO. https://ericmitchell.ai/cdpo.pdf<br />
+[17] T. Morimura et al. (2024). Filtered direct preference optimization. In EMNLP, pp. 22729–22770.<br />
+[18] L. Ouyang et al. (2022). Training language models to follow instructions with human feedback. In NeurIPS.<br />
+[19] Qwen et al. (2025). Qwen2.5 technical report. arXiv:2412.15115.<br />
+[20] R. Rafailov et al. (2023). Direct preference optimization: your language model is secretly a reward model. In NeurIPS.<br />
+[21] J. Schulman et al. (2017). Proximal policy optimization algorithms. arXiv:1707.06347.<br />
+[22] T. Shen et al. (2026). LLMdoctor: token-level flow-guided preference optimization for efficient test-time alignment of large language models. arXiv:2601.10416.<br />
+[23] H. Touvron et al. (2023). Llama 2: open foundation and fine-tuned chat models. arXiv:2307.09288.<br />
+[24] Y. Wang et al. (2023). Aligning large language models with human: a survey. arXiv:2307.12966.<br />
+[25] X. Wei, X. Zhang (2025). Self-consuming generative models with adversarially curated data. arXiv:2505.09768.<br />
+[26] J. Wu et al. (2025). Towards robust alignment of language models: distributionally robustifying direct preference optimization. arXiv:2407.07880.<br />
+[27] J. Wu et al. (2024). β-DPO: direct preference optimization with dynamic β. In NeurIPS.<br />
+[28] A. Yang et al. (2025). Qwen3 technical report. arXiv:2505.09388.<br />
+[29] N. Yang et al. (2026). Token-importance guided direct preference optimization. arXiv:2505.19653.<br />
+[30] Y. Zeng et al. (2024). Token-level direct preference optimization. arXiv:2404.11999.<br />
+[31] Y. Zhang, X. Wei, X. Zhang (2026). When and how human curation backfires: preference alignment under multi-model self-consuming loop. arXiv:2605.29267.<br />
+[32] Y. Zhao et al. (2023). SLiC-HF: sequence likelihood calibration with human feedback. arXiv:2305.10425.</p>
+<h2>附录 A 相关工作</h2>
+<h3>A.1 大语言模型的基于偏好的对齐</h3>
+<p>将大语言模型与人类偏好对齐已成为现代 NLP 的核心问题 [31]。基于人类反馈的强化学习（RLHF）[18] 是使用最广泛的方法之一，其从人类标注训练奖励模型，再用其指导策略优化。尽管取得了成功，RLHF 需要训练额外的奖励模型并执行强化学习，使流程复杂且不稳定。直接偏好优化（DPO）[20] 最近被提出作为一种更简单的替代方案，直接利用成对偏好数据优化策略而无需显式训练奖励模型。DPO 使用 Bradley–Terry 模型 [3] 形式化偏好学习，并优化一个将策略隐式正则化向参考模型靠拢的监督目标。后续工作 [7, 15] 以不同目标、正则化策略和理论分析扩展了 DPO，展示了具有改进稳定性的竞争性能。虽然这些方法显著提升了对齐质量，但它们共享一个在实践中很少满足的假设：可获得干净、无噪声的偏好标注 [25]。</p>
+<h3>A.2 噪声反馈下的鲁棒偏好优化</h3>
+<p>标注大规模偏好数据集仍然成本高昂且劳动密集，不可避免地损害标注质量。实证研究表明，常用数据集中 20%-40% 的偏好标注存在标注错误 [13]，凸显了该问题的现实严重性。研究者日益认识到偏好对齐中噪声鲁棒性的重要性，催生了越来越多关于鲁棒 DPO 变体的工作。</p>
+<p>一条研究路线通过标签平滑应对噪声。保守 DPO（cDPO）[16] 引入保守平滑项来降低可能被翻转标签的影响，在有界噪声率下提供可证明的鲁棒性保证。鲁棒偏好优化（ROPO）[13] 进一步引入自适应平滑机制，根据估计的噪声水平调整校正强度。然而，这两种方法都对响应中的所有词元施加均匀校正，无法考虑标注质量的词元级差异。</p>
+<p>第二条路线通过数据过滤应对噪声。Filtered DPO [17] 使用预训练奖励模型为每个偏好对打分，并过滤掉奖励差距低于阈值的样本。自适应批次样本调度（SamS）[8] 采用批次级训练样本调度方法，动态自适应地调度训练样本。虽然有效，但这些方法重新引入了依赖奖励模型流程的计算开销与误泛化风险，且即使只有部分词元受损也可能丢弃整个样本对。</p>
+<p>第三条路线通过重加权应对噪声。分布鲁棒化 DPO（Dr.DPO）[26] 基于估计的噪声率赋予样本对级权重，以降低受损样本的影响。Winsorized 直接偏好优化[15] 在序列级应用 Winsorized 重加权以限制异常偏好对的影响。Im 与 Li [9] 对偏好优化在噪声反馈下的泛化能力进行了理论分析，刻画了噪声降低对齐质量的条件。虽然这些重加权方法提升了鲁棒性，但它们仍是序列级方法，为每个响应对赋予单个标量权重，忽略了序列内部的词元级差异。</p>
+<h3>A.3 词元级建模与细粒度对齐</h3>
+<p>另一条平行的研究路线探索了词元级建模，作为序列级偏好优化的更细粒度替代方案。TDPO [30] 提出词元级 DPO 形式化，将偏好信号分解到单个词元上，使目标能够反映每个词元对整体偏好的贡献。与我们的工作最密切相关的是 TIS-DPO [14]，它引入由外部奖励模型估计的词元级重要性采样权重，在词元级实现细粒度噪声缓解。然而，TIS-DPO 继承了依赖奖励模型方法的局限：它需要一个额外模型进行权重估计，带来计算开销与误泛化风险。LLMDoctor [22] 提出用于测试时对齐的流引导词元级偏好优化，而 TIDPO [29] 使用由注意力权重导出的词元重要性分数来引导偏好优化目标。</p>
+<p>受这些观察启发，我们从词元级视角研究噪声反馈下的偏好优化。我们不为每个样本对赋予单一权重，而是设计一种词元级加权机制，利用批次内 logits 的经验分布估计每个词元的相对质量。这能够更准确地识别受损区域，并带来相比序列级方法更优的鲁棒性。</p>
+<h2>附录 B 理论证明</h2>
+<h3>B.1 梯度偏差</h3>
+<p>给定正常设定下的 DPO/IPO 损失：</p>
+<p>ℓ(x, y_w, y_l; θ) = L*(θ) = E_{(x,y_w,y_l)∼D} [f(σ(r_ϕ(x, y_w) − r_ϕ(x, y_l)))]    (12)<br />
+= E_{(x,y_w,y_l)∼D} [f(β log(π_θ(y_w|x)/π_ref(y_w|x)) − β log(π_θ(y_l|x)/π_ref(y_l|x)))]</p>
+<p>DPO 情形下 f(x) = −log σ(x)，IPO 情形下 f(x) = (x − 1/2)²。因此公式 (12) 可重写为：</p>
+<p>ℓ(z; θ) = E_{(z)∼D} f(βh(z; θ))    (13)</p>
+<p>在以下证明中，当 x、y_w、y_l 隐含可知时，我们将 h(θ; x, y_w, y_l) 简记为 h(θ)。考虑实例依赖噪声 η(x, y, y′) 下的标准目标与加权目标：</p>
+<p>L(θ) = E[(1−η(z)) ℓ(z; θ) + η(z) ℓ(−z; θ)]    (14)</p>
+<p>L_w(θ) = E[((1−η(z)) ℓ_w(z; θ) + η(z) ℓ_w(−z; θ))]</p>
+<p><strong>定义 1（梯度偏差）的证明。</strong> 噪声设定下标准 DPO 的梯度为：</p>
+<p>g(θ) = ∇L(θ) = E[∇ℓ(z; θ)]    (15)</p>
+<p>g̃(θ) = ∇L̃(θ) = E[(1−η(z))∇ℓ(z; θ) + η(z)∇ℓ(−z; θ)]</p>
+<p>B = Δg = g̃(θ) − g(θ) = E[η(z)(∇ℓ(−z; θ) − ∇ℓ(z; θ))]  ∎</p>
+<p><strong>定义 2（加权梯度偏差）的证明。</strong> 对加权目标，梯度为：</p>
+<p>g_w(θ) = ∇L_w(θ) = E[∇ℓ_w(z; θ)]    (16)</p>
+<p>g̃_w(θ) = ∇L̃_w(θ) = E[((1−η(z))∇ℓ_w(z; θ) + η(z)∇ℓ_w(−z; θ))]</p>
+<p>Δg_w = g̃_w(θ) − g_w(θ) = E[η(∇ℓ_w(−z; θ) − ∇ℓ_w(z; θ))]</p>
+<p>我们希望最小化总偏差 B_w = g_w(θ) − g(θ)：</p>
+<p>B_w = [g̃_w(θ) − g_w(θ)] + [g_w(θ) − g(θ)] = Δg_w + R_b    (17)</p>
+<p>其中 R_b = g_w(θ) − g(θ) 表示重加权干净数据引入的失真。∎</p>
+<h3>B.2 权重函数的最优解</h3>
+<p>我们现在关注 ∇ℓ(−z; θ) − ∇ℓ(z; θ)。根据链式法则：</p>
+<p>∇ℓ(−z; θ) − ∇ℓ(z; θ) = ∇_θ(f(−β Σ_t δ_t(z; θ))) − ∇_θ(f(β Σ_t δ_t(z; θ)))    (18)<br />
+= β(f′(−β Σ_t δ_t(z; θ)) × (−Σ_t ∇_θ δ_t(z; θ)) − f′(β Σ_t δ_t(z; θ)) × (∇_θ Σ_t δ_t(z; θ)))<br />
+= −β ∇_θ Σ_t δ_t(z; θ) × (f′(−β Σ_t δ_t(z; θ)) + f′(β Σ_t δ_t(z; θ)))</p>
+<p>在标准偏好学习框架中，我们证明 f′(−β Σ_t δ_t(z; θ)) + f′(β Σ_t δ_t(z; θ)) 的取值为常数：</p>
+<p>i. DPO：若 f(x) = −log σ(x)，则 f′(x) + f′(−x) = −1。因此 (∇ℓ(−z; θ) − ∇ℓ(z; θ)) = β ∇_θ Σ_t δ_t(z; θ)。</p>
+<p>ii. IPO：若 f(x) = (x − 1/2)²，则 f′(x) = 2(x − 1/2) 且 f′(x) + f′(−x) = −2。因此 (∇ℓ(−z; θ) − ∇ℓ(z; θ)) = 2β ∇_θ Σ_t δ_t(z; θ) ∝ ∇_θ Σ_t δ_t(z; θ)。</p>
+<p>iii. SLiC：若 f(x) = max(0, 1−x)，则当 x ∈ [−1, 1] 时 f′(x) + f′(−x) = −2，否则为 −1。因此 (∇ℓ(−z; θ) − ∇ℓ(z; θ)) ∝ ∇_θ Σ_t δ_t(z; θ)。</p>
+<p>类似地，对 ∇ℓ_w(−z; θ) − ∇ℓ_w(z)，可得：</p>
+<p>∇ℓ_w(−z; θ) − ∇ℓ_w(z; θ) = ∇_θ(f(−β Σ_t w(z,t) δ_t(z; θ))) − ∇_θ(f(β Σ_t w(z,t) δ_t(z; θ)))    (19)<br />
+= β(f′(−β Σ_t w(z,t) δ_t(z; θ)) × (−∇_θ Σ_t w(z,t) δ_t(z; θ)) − f′(β Σ_t w(z,t) δ_t(z; θ)) × (∇_θ Σ_t w(z,t) δ_t(z; θ)))<br />
+= −β ∇_θ Σ_t w(z,t) δ_t(z; θ) × (f′(−β Σ_t w(z,t) δ_t(z; θ)) + f′(β Σ_t w(z,t) δ_t(z; θ)))</p>
+<p>并假设 f′(h_w(z; θ))/f′(h(z; θ)) ≤ f′(−w_max H)/f′(H) := K，于是噪声诱导偏差可表示为：</p>
+<p>Δg_w = E[‖η(z) Σ_{t=1}^T (f′(Σ_t w(z,t) δ_t(z; θ))/f′(Σ_t δ_t(z; θ))) w_t ∇<em>θ δ_t(z; θ)‖]    (20)<br />
+≤ K E[‖η(z) Σ</em>{t=1}^T w_t ∇<em>θ δ_t(z; θ)‖]<br />
+≤ K Σ</em>{t=1}^T E[η(z) w(z,t) ‖∇_θ δ_t(θ)‖]</p>
+<p>由 Jensen 不等式，‖E(w_t(z; θ) η(z) ∇δ_t(z; θ))‖ ≤ E(w_t(z; θ) η(z) ‖∇δ_t(z; θ)‖)。最小化该上界即可有效控制 Δg_w。</p>
+<p>对重加权偏差 R_b = E(∇ℓ_w(z; θ) − ∇ℓ(z; θ))，假设梯度范数以 M = sup_z ‖∇ℓ(z; θ)‖/β 为界，则有：</p>
+<p>‖R_b‖ = ‖E(∇ℓ_w(z; θ) − ∇ℓ(z; θ))‖    (21)<br />
+≤ ‖f′(Σ_t w(z,t) δ_t(z)) Σ(w_t − 1) ∇δ_t + (f′(Σ_t w(z,t) δ_t(z)) − f′(Σ_t δ_t(z))) Σ_t ∇δ_t‖<br />
+≤ L_0 Σ_t |w_t − 1| ‖∇δ_t‖ + (f′(Σ_t w(z,t) δ_t(z)) − f′(Σ_t δ_t(z))) Σ_t ∇δ_t<br />
+≤ L_0 Σ_t |w_t − 1| ‖∇δ_t‖ + L_1 ‖Σ_t w(z,t) δ_t(z) − Σ_t δ_t(z)‖ ‖Σ ∇δ_t‖<br />
+≤ (L_0 + L_1 T D) Σ_t E_p[|w_t − 1|]</p>
+<p>其中 L_0 为 ∇δ_t 梯度范数的上界，L_1 为 f′ 的 Lipschitz 常数，D 为 δ_t 的上界，T 为 Σ_t ∇δ_t 的上界。</p>
+<p>因此，最小化 D_KL(p_w ∥ p) 可直接控制 ‖R_b‖ 的上界。我们引入以下引理：</p>
+<p><strong>引理 1</strong>。设 X ∼ P 为随机变量。设 w, g: ℝ → ℝ 为可测函数，使得 w(X) 可积且 E_{X∼P}[w(X)] = 1。正则化优化问题：</p>
+<p>min_w (β E(w(z; θ) ϕ(z; θ)) + β (1/λ) D_KL(p_w ∥ p))    (22)</p>
+<p>具有非平凡最优解 w* ∝ exp(−λ ϕ(z, θ))。</p>
+<p><strong>定理 1 的证明。</strong> 使用拉格朗日乘子法，构造泛函：</p>
+<p>F = E(w(z; θ) ϕ(z; θ)) + (1/λ) E(w(z; θ) log(w(z; θ)))    (23)<br />
+= E(w(z; θ)(ϕ(z; θ) + (1/λ) log(w(z; θ))))</p>
+<p>假设 w<em>(z) = exp(−ϕ(z, θ) λ)/Z 且 Z = E[exp(−λ ϕ(z; θ))]。对任意 z，ϕ(z; θ) + (1/λ) log(w</em>) = −(1/λ) log Z。因此，</p>
+<p>E[w(z; θ)(ϕ(z; θ) + (1/λ) log(w(z; θ)))]    (24)<br />
+= E[w(z; θ)(ϕ(z; θ) + (1/λ) log(w(z; θ)) − (ϕ + (1/λ) log w<em>(z; θ)))] + E[w(z; θ) · (−1/λ) log Z]<br />
+= (1/λ) E[w(z; θ) log(w(z; θ)/w</em>(z; θ))] − (1/λ) log Z · E[w(z; θ)]<br />
+= (1/λ)(D_KL(p_w ∥ p_{w*}) − log Z)<br />
+≥ −(1/λ) log Z</p>
+<p>由于 Z 为常数，且当且仅当 w = w<em> 时 D_KL(p_w ∥ p_{w</em>}) = 0。∎</p>
+<h3>B.3 有效状态分析</h3>
+<p>我们现在分析最优权重 w_λ(x) ∝ e^{−λ ϕ(x)} 何时有效减少总偏差。</p>
+<p><strong>命题 1 的证明。</strong> 定义 ϕ(z; θ) := β η(z) ‖∇δ_t(z; θ)‖ 及归一化权重：</p>
+<p>w_λ(z) = exp(−λ ϕ(z; θ))/Z(λ)，Z(λ) := E_z[exp(−λ ϕ(z; θ))]。    (25)</p>
+<p>由于 B_w(0) = Δg（在 λ = 0 时，……）［原文至此截断］</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 偏好优化, 大语言模型, 噪声鲁棒性, 词元级重加权, 人类反馈对齐</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
