@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后训练策略优化理论：覆盖坍缩与参考重置 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">后训练策略优化理论：覆盖坍缩与参考重置</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-10</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.14467" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：A Theory of Policy Optimization in Post-Training: Coverage Collapse and Reference Resets</h4>
+            <p><strong>中文摘要：</strong> 本文重新审视语言模型后训练中策略优化的理论基础。研究发现REINFORCE算法存在"覆盖坍缩"现象：即使奖励改善且使用KL正则化，最优响应概率仍可能趋近于零，导致收敛需要指数级步数。作者提出近似策略镜像下降（APMD）框架，通过定期将KL参考重置为最新策略来缓解该问题，并证明PPO、GRPO的风格化变体以及Kimi、Rebel等平方损失算法具有覆盖保持性质，其样本与梯度复杂度由基础模型的响应覆盖度控制。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<p>\declaretheorem[name=定理,parent=section]theorem<br />
+\declaretheorem[name=引理,parent=section]lemma<br />
+\declaretheorem[name=假设,parent=section]assumption<br />
+\declaretheorem[name=定义,parent=section]definition<br />
+\declaretheorem[name=条件,parent=section]condition<br />
+\declaretheorem[name=推论,parent=section]corollary<br />
+\declaretheorem[name=断言,parent=section]claim<br />
+\declaretheorem[name=示例,style=definition,parent=section]example<br />
+\declaretheorem[name=注记,parent=section]remark<br />
+\declaretheorem[name=命题,parent=section]proposition<br />
+\declaretheorem[name=事实,parent=section]fact</p>
+<h1>后训练中的策略优化理论：覆盖坍缩与参考重置</h1>
+<h2>摘要</h2>
+<p>策略优化在语言模型后训练中扮演着核心角色，但针对方法论的原则性指导仍然有限。我们重新审视策略优化的理论基础，以识别那些能够学习近似最优策略的算法，其总样本量和梯度步数由基础模型的<strong>响应覆盖度</strong>控制，该指标衡量基础模型生成最优响应的容易程度。我们称此类算法为<strong>覆盖保持</strong>算法。这一保证捕捉了放大基础模型通过采样已可获取能力的基本目标，但在策略优化中一直难以实现。</p>
+<ul>
+<li>
+<p><strong>覆盖坍缩。</strong> REINFORCE（PPO和GRPO的基础）可能将最优响应的概率推向接近零，即使奖励在改善。这种<strong>覆盖坍缩</strong>会阻碍优化，即使拥有良好覆盖的基础模型，收敛也可能需要指数级多的步数。这种失败即使在精确梯度下也会出现，并且在对基础模型的KL正则化下仍然存在。</p>
+</li>
+<li>
+<p><strong>参考重置。</strong> 我们表明，反复将KL参考重置为最新策略可以缓解覆盖坍缩。我们在近似策略镜像下降（APMD）中形式化了这一干预，这是一个近似求解一系列KL正则化RL子问题的元算法。APMD通过实现更强的正则化来提高优化效率，更强的正则化使每个子问题更容易求解，而参考重置仍然允许收敛到全局最优。</p>
+</li>
+<li>
+<p><strong>覆盖保持算法。</strong> 对于预训练特征上的softmax线性策略，我们使用APMD建立了首个全局收敛保证，表明广泛使用的后训练算法族是覆盖保持的。这些包括具有显式KL正则化和参考重置的风格化PPO和GRPO变体，以及隐式实现它们的平方损失算法，包括用于训练Kimi模型的方法（Kimi Team等，2025b；Kimi Team等，2025a）。这些结果阐明了正则化、裁剪和目标选择如何影响后训练的采样和优化成本，并为策略优化方法论提供了基础。</p>
+</li>
+</ul>
+<p><strong>Audrey Huang</strong> ¹ ¹Kempner Institute at Harvard University and UIUC, audrey_huang@harvard.edu<br />
+<strong>Nan Jiang</strong> ² ²UIUC, nanjiang@illinois.edu<br />
+<strong>Sham M. Kakade</strong> ³ ³Kempner Institute at Harvard University, sham@seas.harvard.edu<br />
+<strong>Sadhika Malladi</strong> ⁴ ⁴University of California, San Diego, samalladi@ucsd.edu. 本工作的大部分是在Microsoft Research担任博士后期间完成的。<br />
+<strong>Akshay Krishnamurthy</strong> ⁵ ⁵Microsoft Research NYC, {akshaykr, dylanfoster}@microsoft.com<br />
+<strong>Dylan J. Foster</strong> ⁵ ⁵Microsoft Research NYC, {akshaykr, dylanfoster}@microsoft.com</p>
+<h2>1 引言</h2>
+<p>策略优化算法是实践中首选的强化学习（RL）方法，其成功涵盖灵巧机器人操作与控制（Kaufmann等，2023；Radosavovic等，2024；Luo等，2025；Ren等，2025）、策略游戏中的超人类表现（Silver等，2016；Vinyals等，2019；OpenAI等，2019；Perolat等，2022；Baker等，2022），以及最引人注目的语言模型（LM）前沿推理（Ouyang等，2022；OpenAI，2024；Guo等，2025；Kimi Team等，2025b）。</p>
+<p>在这些应用中，<strong>后训练</strong>已成为一种成功的范式，其中策略优化使用奖励反馈来微调已经通过大规模监督预训练开发的强大<strong>基础模型</strong>。基础模型为学习复杂任务提供了基础，而奖励反馈提供了超越可用演示限制的改进方式。</p>
+<p>尽管取得了这些成功，策略优化方法论的原则性指导仍然有限（Ilyas等，2020；Ahmadian等，2024），而干预手段的范围持续增长（Shao等，2024；Yu等，2025；Liu等，2025c；Yue等，2025b；MiniMax，2025；Zheng等，2025）。调整任何给定方法都需要大量的试错（Huang等，2024；Eimer等，2023；Liu等，2025d），使得评估特定干预的效果变得困难（Ouyang等，2022；Khatri等，2025；Spangher等，2025）。即使是领先开放模型的训练方案在核心算法选择上也几乎没有共识，例如优化哪个目标（Guo等，2025；Team Olmo等，2025；Zheng等，2025；Kimi Team等，2025a）。因此，原则性洞察对于将有限资源集中于有前景的干预和超参数区间越来越重要。</p>
+<p>理论在过去为策略优化方法提供了关键设计原则。TRPO（Schulman等，2015）以及随后的PPO（Schulman等，2017）直接借鉴了为早期理论算法建立的近端更新和策略改进保证（Kakade，2001；Kakade和Langford，2002）。然而，在后训练中，核心目标是学习一个高性能策略同时充分利用基础模型，这一目标是现有理论很大程度上未解决的。大多数保证要么需要均匀初始策略，完全回避了基础模型的作用（Mei等，2020b；Mei等，2021b；Lattimore，2026b），要么即使有高质量基础模型也无法排除糟糕性能（Agarwal等，2021；Mei等，2021b；Mei等，2023；Wang等，2020）。因此，它们为理解和设计后训练中的策略优化方法提供的指导很少。</p>
+<p>出于这一空白的动机，我们重新审视后训练中策略优化的理论，并提出问题：<strong>哪些策略优化算法能有效地利用基础模型进行学习？</strong> 为了捕捉这一目标，我们将寻找性能由基础模型质量主导的算法。鉴于在开发具有强大后训练性能的预训练基础模型上投入的大量资源（Grattafiori等，2024；DeepSeek-AI等，2024），这一点尤其重要。我们在下面形式化我们的问题并总结我们的贡献。</p>
+<h3>1.1 贡献</h3>
+<p>我们询问哪些策略优化算法能够使用由基础模型对最优响应的覆盖度控制的总样本量和梯度步数来学习近似最优策略，我们将这一保证称为<strong>覆盖保持</strong>（第2.2节）。这捕捉了利用基础模型进行学习的基本后训练目标，并且由Best-of-N采样等方法实现（第1.3节），但尚未在策略优化中建立。通过设计实现这一保证的算法，我们恢复了现代后训练中的关键干预，并有助于解释它们的实际有效性。</p>
+<ol>
+<li>
+<p><strong>使用固定参考策略或无正则化的覆盖坍缩</strong>（第2.1节）。当从具有良好（常数）覆盖度的基础模型初始化时，REINFORCE可能需要指数级多的梯度步数才能收敛，即使有对基础模型的KL正则化。原因是<strong>覆盖坍缩</strong>，其中对最优响应的覆盖度即使在奖励改善时也会恶化，导致梯度信号消失（图2）。这种失败是RL目标固有的——它在精确梯度下且无参数共享时发生——激发了为高效学习保持覆盖度的干预。</p>
+</li>
+<li>
+<p><strong>近似策略镜像下降（APMD）保持覆盖度</strong>（第3.1节）。我们表明围绕单一干预——重置参考策略——构建的算法是覆盖保持的。我们在APMD中形式化这一点，这是一个通过迭代地将参考设置为最新策略然后运行正则化RL子问题的内优化循环来近似镜像下降的元算法。APMD算法可以对学习者进行重正则化到参考，使每个子问题易于求解。虽然学习者仅局部改进，但在连续重置后达到全局最优（图1）。</p>
+</li>
+</ol>
+<p><strong>图1：APMD概述：通过参考重置持续进展。</strong> 阴影区域描绘围绕所选参考策略的KL邻域。每个箭头标记学习者在固定数量梯度步后的进展。 使用对基础模型的弱正则化，覆盖度可能坍缩并导致优化停滞。 强正则化控制覆盖度并保持学习者接近参考策略，但远离最优（标记为✩）。 APMD将参考重置为最新策略，通过连续局部改进达到最优。</p>
+<ol start="3">
+<li><strong>应用APMD：覆盖保持算法。</strong> APMD是算法设计和分析的模板，可以与现有方法结合或直接应用于分析它们。我们给出softmax线性策略的端到端收敛保证，这是使用冻结预训练特征的学习模型。</li>
+</ol>
+<p>(a) <strong>PPO、GRPO及变体</strong>（第3.2和3.3节）。我们分析具有参考重置的PPO和GRPO变体，如ProRL（Liu等，2025a）和DeepSeek（Shao等，2024；Guo等，2025）。在PPO-NoClip（算法1）中，它不裁剪重要性权重，仅正则化就通过控制策略比率实现高效学习（第3.2节）。然后我们添加裁剪以获得PPO-Lite（算法2）。我们的分析表明，裁剪通过限制大重要性权重的统计成本来补充正则化，而不是直接改进优化（第3.3节）。</p>
+<p>(b) <strong>平方损失算法</strong>（第4节）。这些算法使用平方损失目标将策略对数比率拟合到奖励。我们首先表明Kimi风格算法（Kimi Team等，2025b；Kimi Team等，2025a），它们通过估计的基线函数平移奖励，对于两种常见基线选择是覆盖保持的，即KimiPO中的均值奖励（第4.2节）和KimiPO-Norm中的归一化函数（第K.1节）。最后，我们表明Rebel-OnPolicy，一个使用配对响应消除基线的Rebel在线变体，也是覆盖保持的（第4.3节）。</p>
+<p><strong>我们理论的含义</strong>（第5节）。我们的结果表明，在参考策略的局部邻域内优化使改进变得可行，无论正则化是显式使用还是隐式的。参考在锚定优化中的这一作用不同于其在重要性加权或批次重用中的使用。与固定参考（或无正则化）策略优化相比，将学习者正则化到定期更新的参考的算法使用<strong>显著更少的梯度步数</strong>收敛，甚至更少的批次生成轮数。</p>
+<h3>1.2 背景：后训练中的策略优化</h3>
+<p>我们研究由RL后训练驱动的上下文赌臂机设置中的策略优化，其中奖励反馈用于微调预训练基础模型的权重。</p>
+<p>语言模型（LM）是策略 π_θ: 𝒳→Δ(𝒴)，将提示 x∈𝒳 映射到完整响应的分布，记为𝒴。给定提示分布 μ∈Δ(𝒳) 和有界奖励函数 r: 𝒳×𝒴→[0,R_max]，策略优化的目标是找到</p>
+<p>argmax_{π_θ∈Π_Θ} J(π_θ)，其中 J(π):=𝔼_{x∼μ,y∼π(·|x)}[r(x,y)]。 (2)</p>
+<p>目标 J(π) 是期望奖励，Π_Θ={π_θ: θ∈Θ} 表示由固定架构和 Θ⊆ℝ^d 中权重诱导的策略类。奖励反馈分配给完整响应 y，即为提示 x 生成的token序列。这一抽象捕捉了单次推理的RL。</p>
+<p>在后训练中，策略优化从预训练基础模型 π_0=π_base=π_{θ_base}∈Π_Θ 开始，并在 T 次迭代中产生策略迭代 {π_t=π_{θ_t}}<em>{t=0}^T。目标和更新规则因算法而异，但我们关注使用基于奖励目标的梯度将 π_t 更新到 π</em>{t+1} 的一阶方法。无论算法如何，我们通过期望奖励的次优性评估学习的策略。对于任何 ε∈(0,R_max]，如果 J⋆−J(π)≤ε，我们说策略 π 是 <strong>ε最优</strong>的，其中 J⋆:=max_{π:𝒳→Δ(𝒴)}J(π) 是任何条件分布可达到的最大奖励。</p>
+<p><strong>示例：REINFORCE。</strong> REINFORCE（Williams，1992；Sutton等，1999）是一个基础策略优化算法，对期望奖励 J(π_θ) 执行随机梯度上升。对于固定学习率 α&gt;0，精确梯度下的参数更新为 θ_{t+1}=θ_t+α∇J(π_t)，其中 ∇ 表示对策略参数的微分，∇J(π_t) 在 θ=θ_t 处求值，</p>
+<p>∇J(π_t)=𝔼_{x∼μ,y∼π_t(·|x)}[∇log π_t(y|x)r(x,y)]。 (3)</p>
+<p>在实践中，REINFORCE使用从 π_t 采样的响应估计 ∇J(π_t)。现代策略梯度方法在此更新基础上构建，添加了诸如对基础模型的KL正则化（Ouyang等，2022；Shao等，2024）、估计的优势函数和用于批次重用的裁剪重要性权重（Schulman等，2017；Shao等，2024）。在第2.1节中，我们研究REINFORCE以识别RL特有的优化挑战。这些挑战从第一性原理激发了现代后训练方法（如PPO和GRPO）的设计（第3节）。</p>
+<h3>1.3 背景：覆盖度与基础模型的角色</h3>
+<p>后训练中的策略优化从基础模型开始，我们通过其<strong>响应覆盖度</strong>衡量基础模型的质量，该指标量化它生成最优响应的频率。</p>
+<p><strong>定义（响应覆盖）</strong> 对于任何提示 x∈𝒳，令 𝒴⋆<em>x:={y∈𝒴: r(x,y)=max</em>{y'}r(x,y')} 表示最优响应集合。则策略 π 的响应覆盖度由</p>
+<p>𝒞_π:=𝔼_{x∼μ}[1/π(𝒴⋆_x|x)] (4)</p>
+<p>测量。对于基础模型，我们使用 𝒞_base≡𝒞_{π_base}。</p>
+<p>对于策略 π 和提示 x，观察到最优响应所需的期望生成次数为 π(𝒴⋆_x|x)^{-1}，𝒞_π 在提示上平均此成本。较小的 𝒞_π 值表示更好的响应覆盖，意味着需要更少的生成来找到最优响应。后训练的核心前提是预训练赋予基础模型有利的覆盖（适中的 𝒞_base）。这有助于解释推理时采样（Brown等，2024；Huang等，2025b）和在过滤生成上的监督微调（Singh等，2024；Lee等，2025；Huang等，2025a）的成功。</p>
+<p><strong>覆盖度与Best-of-N。</strong> 基础模型的响应覆盖度支配Best-of-N采样的性能，这是一种广泛使用的推理时方法，用于在不训练的情况下提高响应质量。给定提示 x，Best-of-N从 π_base(·|x) 抽取 N 个独立响应并返回奖励 r(x,y) 最高的响应。只有当 N 个候选都不是最优时它才无法返回最优响应，该事件的概率为 𝔼_x[(1−π_base(𝒴⋆_x|x))^N]≤𝒞_base/N。因此，通过每个提示使用 N=Θ̃(𝒞_base/ε) 个响应，Best-of-N以至少 1−ε 的概率返回最优响应（Huang等，2025b；Chen等，2025）。</p>
+<p><strong>覆盖度与策略优化。</strong> 上述Best-of-N保证表明，策略优化算法应该使用由 𝒞_base 控制的总样本量学习近似最优策略。然而，与始终从 π_base 采样的Best-of-N不同，在策略优化中，响应从学习者采样，其覆盖度在训练期间演变。例如，对于二值奖励 r(x,y)∈{0,1}，估计的REINFORCE梯度 ∇J(π_t)=𝔼_{π_t}[∇log π_t(y|x)r(x,y)] 除非批次包含正确响应否则为零。因此，是 π_t 的覆盖度支配策略优化中的收敛。虽然初始策略继承基础模型的覆盖度，但尚不清楚这种支持学习信号的覆盖度在训练期间是否持续。</p>
+<h2>2 动机：覆盖坍缩现象</h2>
+<p>因此我们询问策略优化算法在从高质量基础模型初始化时是否能高效学习，这是后训练的基本目标。我们首先表明REINFORCE可能遭受<strong>覆盖坍缩</strong>，即使初始覆盖度有利也导致指数级慢的收敛（第2.1节）。这一失败激发了我们在第2.2节中的核心问题，其中我们询问哪些策略优化方法能够使用由基础模型覆盖度控制的总样本量和梯度步数学习近似最优策略，我们将这一保证称为<strong>覆盖保持</strong>。</p>
+<h3>2.1 下界：朴素策略优化方法中的覆盖坍缩</h3>
+<p><strong>图2：覆盖坍缩使用固定参考策略阻碍优化。</strong> 我们在第2.1节的修改实例上使用精确梯度比较REINFORCE（式6）和APMD。APMD运行PPO-NoClip（算法1），每 K=100 个内部步进行参考重置。 在REINFORCE（黑色）中，覆盖坍缩（红色）导致长期奖励平台（黄色）。阴影区域是示意图。APMD（蓝色）收敛更快，因为覆盖度持续改善（更小的 𝒞_{π_t}）。 绘制在优化景观上的REINFORCE轨迹，表面高度 J_η，颜色表示奖励或响应覆盖，在第C.1节定义的2D参数平面上。</p>
+<p>我们现在研究REINFORCE在从具有良好覆盖度的基础模型初始化时是否高效收敛。在本节中，我们使用精确而非估计的梯度来隔离覆盖度对策略优化动力学的影响。我们还允许对基础模型的KL正则化，正则化参数 η∈(0,∞]，给出目标</p>
+<p>J_η(π_θ):=J(π_θ)−(1/η)D_KL(π_θ∥π_base)，其中 D_KL(π∥π_base)=𝔼_{x∼μ,y∼π(·|x)}[log(π(y|x)/π_base(y|x))]， (5)</p>
+<p>其中 η=∞ 恢复无正则化目标 J。</p>
+<p>从 π_0=π_base 开始，REINFORCE以固定学习率 α&gt;0 执行梯度上升，</p>
+<p>θ_{t+1}=θ_t+α∇J_η(π_t)，其中 ∇J_η(π_t)=𝔼_{π_t}[∇log π_t(y|x)(r(x,y)−(1/η)log(π_t(y|x)/π_base(y|x)))]。 (6)</p>
+<p>KL正则化在后训练中被广泛用于稳定优化并帮助保持既有行为（Shao等，2024；Lambert等，2024；Liu等，2025a）。因为它阻止偏离基础模型，人们可能期望 π_t 在分布上保持接近 π_base 并保留基础模型的覆盖度，特别是因为改善性能涉及将更大概率分配给更高奖励的响应。然而，第2.1节表明策略的覆盖度可能恶化到比基础模型指数级更差，导致收敛指数级慢。因此基础模型中的有利覆盖度不保证REINFORCE的高效收敛，无论有无KL正则化。</p>
+<p><strong>定理（REINFORCE中的覆盖坍缩）</strong> 固定任何 ε∈(0,1/64]。存在一个赌臂机实例，提示 𝒳={x}，响应 𝒴，奖励函数 r 且 R_max≤1，基础模型 π_base 且 𝒞_base≤6，满足以下条件。考虑表格softmax策略类 Π_Θ={π_θ: π_θ(y|x)∝exp(θ_y), θ∈ℝ^{|𝒴|}}。初始化 π_0=π_base 并运行式6中的REINFORCE更新，任何正则化参数 η∈(0,∞] 和任何学习率 0&lt;α≤1/5。如果策略从迭代 T 开始是 ε 最优的，则存在 0&lt;t&lt;T 使得</p>
+<p>T=Ω(𝒞_{π_t}/(α√ε)) 且 𝒞_{π_t}=exp(Θ(1/√ε))。 (7)</p>
+<p>第2.1节表明REINFORCE的收敛取决于优化路径上策略的覆盖度（由 𝒞_{π_t} 测量），而不仅仅是基础模型的覆盖度。问题是，在训练的第一阶段，𝒞_{π_t} 从 𝒞_base≤6 增长到指数级大的值——意味着最优响应的概率指数级小——即使期望奖励单调增加。这种<strong>覆盖坍缩</strong>使梯度信号消失，REINFORCE需要指数级多的步数来恢复覆盖度并收敛。这可以在图2a（黄色）的长期奖励平台中看到。鉴于我们构造的简单性，我们期望覆盖坍缩在实践中遇到的复杂优化景观和随机噪声下持续存在。</p>
+<p><strong>覆盖坍缩：RL中的非凹性。</strong> 收敛对优化路径上覆盖度的依赖源于RL特有的非凹性（图2b）。目标 J(π_θ) 对softmax策略是非凹的，即使没有参数共享（如第2.1节中）。相应地，REINFORCE的收敛分析使用Łojasiewicz型不等式（Mei等，2020b；Mei等，2021b；Agarwal等，2021），</p>
+<p>J⋆−J(π_t)≤c·‖π⋆/π_t‖_∞·‖∇J(π_t)‖。 (8)</p>
+<p>此界限显示近平稳性如何仍然蕴含近最优性，取决于测量 π_t 对最优策略 π⋆ 覆盖的系数 ‖π⋆/π_t‖_∞。在覆盖坍缩期间此系数变得指数级大（图2c）。式8然后允许 π_t 接近平稳但高度次优——正是第2.1节和图2a（黄色）表现的行为。</p>
+<p><strong>为什么对 π_base 的正则化失败。</strong> 因为KL正则化将策略锚定到基础模型，它必须足够弱（1/η=O(ε)）以便策略实质性改进并达到 J⋆−J(π_T)≤ε。这种自由也允许减少最优响应概率的大偏差，这是第2.1节中下界背后的机制。在那里，KL正则化仅在覆盖度指数级退化后才施加显著的恢复力（见图1a）。</p>
+<p><strong>注记（与先前工作的比较）</strong> 据我们所知，第2.1节是第一个从覆盖坍缩中分离出REINFORCE失败的结果，因为我们使用表格参数和精确梯度。相关结果要么 渐近地显示失败而不刻画覆盖度（Lin等，2025）； 有额外的困难来源，如随机噪声（Chung等，2021；Mei等，2021a；Baudry等，2025；Lattimore，2026a）、参数干扰（Schaul等，2019）或多步动力学（Li等，2021）；或 随基础模型的覆盖度缩放，当此覆盖度为常数时保持温和（Agarwal等，2021；Razin等，2024；Mei等，2020a）。相比之下，即使 𝒞_base 为常数，我们的下界在 1/√ε 中也是指数级的。</p>
+<h3>2.2 问题：哪些策略优化算法是覆盖保持的？</h3>
+<p>鉴于第2.1节，我们询问哪些策略优化方法在从基础模型初始化时高效学习并避免覆盖坍缩。具体地，这意味着它们使用 N_sample 样本（提示-响应对）和 N_step 梯度步输出近似最优策略，两个量都由响应覆盖度 𝒞_base 控制。我们称具有此保证的算法为<strong>覆盖保持</strong>的，如下形式化。</p>
+<p><strong>哪些策略优化算法是覆盖保持的？</strong> 对于给定的策略类 Π_Θ 且复杂度 comp(Π_Θ)，如果对于每个 ε∈(0,R_max] 和 δ∈(0,1)，算法返回策略 π_post 满足 J⋆−J(π_post)≤ε，概率至少 1−δ，使用总梯度步 N_step(ε,δ) 和总样本 N_sample(ε,δ) 有界如下：</p>
+<p>N_step(ε,δ)≤poly(𝒞_base, comp(Π_Θ), ε^{-1}, log(1/δ))， (9)<br />
+N_sample(ε,δ)≤poly(𝒞_base, comp(Π_Θ), ε^{-1}, log(1/δ))。 (10)</p>
+<p>对于覆盖保持算法，学习成本由基础模型的覆盖度控制。该保证因此形式化了从基础模型放大高奖励响应的基本后训练目标，有时称为“锐化”。区别在于“锐化”通常指策略分布变窄，这可能降低其对最优响应的覆盖和性能，而我们旨在保持此覆盖（Huang等，2025a；Zhao等，2025b；Yue等，2025a）。类似的样本复杂度保证已经对Best-of-N采样（第1.3节）和在来自 π_base 的奖励过滤样本上的SFT成立（Huang等，2025a；Liu等，2026）。事实上，在第2.1节的构造中，其中 𝒞_base=O(1)，Best-of-N仅使用 O(1) 次生成产生最优响应，而REINFORCE由于覆盖坍缩需要指数级多的梯度步来输出近似最优策略。这一失败激发了在训练期间保持基础模型覆盖度的干预（因此得名覆盖保持）。</p>
+<p><strong>关注：在线策略优化。</strong> 我们关注在学习者生成的样本上训练的策略优化算法，如PPO、GRPO和其他广泛使用的后训练方法。我们寻求无需来自基础模型或其他具有有利覆盖度的固定分布的额外样本就覆盖保持的算法，因为标准程序不使用它们。</p>
+<p><strong>理论测试平台：softmax线性策略。</strong> 虽然我们的许多结果适用于一般策略参数化，我们的端到端复杂度分析使用<strong>softmax线性策略类</strong>，定义如下。我们在需要它的结果中显式调用第2.2节。</p>
+<p><strong>假设（softmax线性策略）</strong> 对于固定特征映射 ϕ: 𝒳×𝒴→ℝ^d，策略类为</p>
+<p>Π_Θ:={π_θ: θ∈ℝ^d}，π_θ(y|x)=exp(ϕ(x,y)^⊤θ)/Σ_{y'∈𝒴}exp(ϕ(x,y')^⊤θ)。 (11)</p>
+<p>这里，y∈𝒴 表示由token序列组成的完整响应。奖励函数在相同特征上是线性的，意味着存在某个 θ⋆∈ℝ^d 使得</p>
+<p>r(x,y)=ϕ(x,y)^⊤θ⋆，∀(x,y)∈𝒳×𝒴。 (12)</p>
+<p>我们写 B_ϕ:=max_{x∈𝒳,y∈𝒴}‖ϕ(x,y)‖_2 和 B⋆:=‖θ⋆‖_2。第2.2节是策略的最简单函数逼近设置，其中共享参数允许从观察样本学习转移到未见提示。它将后训练建模为在基础模型冻结特征 ϕ 上微调权重。对于softmax线性策略，预训练中使用的交叉熵损失是凸的（Chen等，2025），而期望奖励 J(π_θ) 在 θ 中是非凹的（Agarwal等，2021；Mei等，2020b）。非凹性因此是RL目标特有的而不是参数化本身，反映在第2.1节表现的覆盖坍缩中，其中策略类是第2.2节具有独热特征 ϕ 的特例。</p>
+<h2>3 参考重置保持覆盖度：APMD框架</h2>
+<p>我们现在表明围绕单一干预——重置用于正则化的参考策略——构建的算法在式10意义上是覆盖保持的。回顾第2.1节，对基础模型的KL正则化不阻止覆盖坍缩，因为正则化必须足够弱以便学习者实质性改进（图1a）。更强的正则化会缓解覆盖度损失但使学习者偏向基础模型，限制潜在改进（图1b）。然而，当参考定期重置为最新策略时，学习者可以持续改进并达到最优（图1c）。我们将此干预形式化为元算法<strong>近似策略镜像下降（APMD）</strong>，它求解一系列正则化到最新策略的RL子问题。只要每个RL子问题求解得足够准确，策略在整个训练中保持基础模型的覆盖度并收敛到最优（第3.1节）。然后我们用风格化的PPO和GRPO版本实例化APMD，无裁剪（第3.2节）和有裁剪（第3.3节）。在第4节中，我们研究基于平方损失目标的第二族APMD算法，包括用于训练Kimi模型的方法（Kimi Team等，2025a；Kimi Team等，2025b）。</p>
+<h3>3.1 框架：近似策略镜像下降</h3>
+<p>近似策略镜像下降（APMD），定义如下，从基础模型 π_0=π_base 开始。在每个外迭代 t，它首先<strong>重置参考</strong>——正则化锚定的策略——到最新策略 π_t。这将优化目标设置为 π⋆<em>{η,t}∝π_t e^{ηr}，即KL正则化下对 π_t 的精确镜像下降更新。APMD然后使用算法特定的内循环训练下一个策略 π</em>{t+1} 以近似 π⋆_{η,t}。</p>
+<p><strong>元算法：近似策略镜像下降（APMD）</strong></p>
+<p><strong>输入：</strong> 基础模型 π_base，正则化参数 η&gt;0，外迭代 T≥1。<br />
+初始化 π_0=π_base。对于每个 0≤t&lt;T：<br />
+1. 将参考策略重置为 π_t 并定义优化目标，<br />
+   π⋆<em>{η,t}:=argmax</em>{π:𝒳→Δ(𝒴)}𝔼_π[r(x,y)]−(1/η)D_KL(π∥π_t)，其中 π⋆<em>{η,t}(y|x)∝π_t(y|x)e^{ηr(x,y)}。 (13)<br />
+2. 通过运行为算法特定RL子问题的内优化循环学习 π</em>{t+1}≈π⋆<em>{η,t}。<br />
+<strong>返回：</strong> 策略迭代 {π_t}</em>{t=1}^T。</p>
+<p>所有APMD算法在步骤1中执行参考重置并共享优化目标 π⋆_{η,t}。它们在步骤2使用的RL子问题和内优化程序上不同。例如，第3.2节中的算法在式13的KL正则化期望奖励上使用梯度上升。第4节中的算法反而最小化平方损失目标以近似相同目标。</p>
+<p>如果每个RL子问题精确求解，使得 π_{t+1}=π⋆_{η,t} 对所有 t，策略迭代将遵循镜像下降路径，满足（第B.3节）</p>
+<p>π_t(y|x)∝π_base(y|x)e^{tηr(x,y)}，且 J⋆−J(π_t)≤(log𝒞_base)/(ηt)，∀0&lt;t≤T。 (14)</p>
+<p>策略以上述次线性<strong>镜像下降速率</strong>收敛，仅通过 log𝒞_base 依赖于基础模型。此外，期望奖励和覆盖度在 t 中单调改善；每个迭代 π_t 至少与基础模型一样频繁地抽取最优响应，保持有用的学习信号并避免第2.1节中固定参考策略优化下的覆盖坍缩。挑战在于当 π_{t+1} 仅近似 π⋆<em>{η,t} 时维持这些性质，鉴于采样和优化误差在迭代间复合。以下定理是本文的核心结果，表明最终策略 π_T 保留式14中的镜像下降速率，只要每个 π</em>{t+1} 在KL散度上足够接近 π⋆_{η,t}。学习的策略也<strong>保持覆盖度</strong>，意味着对于大多数提示，每个迭代生成最优响应的频率至少是基础模型的一半。“保持覆盖度”描述学习的策略，而“覆盖保持”指满足式10的算法。</p>
+<p><strong>定理（APMD保持覆盖度）</strong> 给定任何 η&gt;0 和任何策略序列 {π_t}_{t=0}^T 且 π_0=π_base 和 π_t&gt;0，假设</p>
+<p>D_KL(π_{t+1}∥π⋆_{η,t})≤ε_in:=1/(64𝒞_base T²log(eT))，∀0≤t&lt;T。 (15)</p>
+<p>则最终策略以镜像下降速率收敛，</p>
+<p>J⋆−J(π_T)≤log(2𝒞_base)/(ηT)， (16)</p>
+<p>且所有策略<strong>保持覆盖度</strong>：概率至少 1−1/(2√log(eT))（对 x∼μ），</p>
+<p>π_t(𝒴⋆_x|x)≥(1/2)π_base(𝒴⋆_x|x)，∀0≤t≤T， (17)</p>
+<p>其中 𝒴⋆_x 是提示 x 的最优响应集合（第1.3节）。</p>
+<p>脚注3提供了识别覆盖保持APMD算法的准则。它适用于满足式15中内部KL容差 ε_in 的任何策略序列 {π_t}_{t=0}^T。对于任何 η&gt;0，最终策略在</p>
+<p>T=⌈log(2𝒞_base)/(ηε)⌉，D_KL(π_{t+1}∥π⋆_{η,t})≤ε_in=Õ(η²ε²/𝒞_base)，∀0≤t&lt;T (18)</p>
+<p>时是 ε 最优的。因此，对于APMD算法要覆盖保持，内优化循环应该使用多项式数量的样本和梯度步满足上述KL容差，对于合适的 η 选择。遵循这一方法，我们将表明风格化的PPO和GRPO变体在第3.2和3.3节中是覆盖保持的。</p>
+<p><strong>直觉：APMD算法是覆盖保持的。</strong> 在我们的结果中，对参考的强正则化——通常 η=Θ(1)，与参考固定时的 η=Ω(1/ε) 相比（第2.1节）——是为APMD算法获得覆盖保持保证的关键。这将目标 π⋆<em>{η,t} 设置为接近参考 π_t 并稳定内循环，使每个RL子问题相对容易求解（图1b）。相应地，正如我们将在第3.2节中看到的，APMD算法在第2.1节的构造中使用比REINFORCE指数级少的梯度步收敛，如图2a所示。APMD中的参考重置使强正则化下的全局最优成为可能。每个 π</em>{t+1}≈π⋆_{η,t} 仅是对 π_t 的局部改进，但这些改进在连续重置中累积（图1c）。式18使这一点精确，表明在更强正则化下可以通过按比例增加外迭代次数 T 达到相同性能。参考重置的这一作用呼应了Liu等（2025a）的经验观察，他们报告对固定参考的KL惩罚可能主导损失并减慢策略更新，并定期重置参考以对抗此效应。</p>
+<h3>3.2 实例化APMD：重要性加权策略优化（PPO-NoClip）</h3>
+<p><strong>算法1 具有参考重置、无裁剪的PPO（PPO-NoClip）</strong></p>
+<p>1: <strong>输入：</strong> 基础模型 π_base，外迭代 T，正则化参数 η&gt;0，提示批次大小 N，内部步数 K，学习率 α。<br />
+2: 初始化 π_0=π_base=π_{θ_0}。<br />
+3: <strong>for</strong> t=0,1,…,T−1 <strong>do</strong><br />
+4: 抽取批次 𝒟_t={(x_i,y_i,r_i)}<em>{i=1}^N，其中 x_i iid∼μ，y_i∼π_t(·|x_i)，r_i=r(x_i,y_i)。<br />
+5: 初始化 θ_t^0=θ_t 和 π_t^0=π_t。<br />
+6: <strong>for</strong> k=0,1,…,K−1 <strong>do</strong><br />
+7: 计算梯度估计<br />
+   ∇J</em>{η,t}^(π_t^k)=(1/N)Σ_{i=1}^N (π_t^k(y_i|x_i)/π_t(y_i|x_i))∇log π_t^k(y_i|x_i)(r_i−(1/η)log(π_t^k(y_i|x_i)/π_t(y_i|x_i)))。 (19)<br />
+8: 更新 θ_t^{k+1}=θ_t^k+α∇J_{η,t}^(π_t^k) 和 π_t^{k+1}=π_{θ_t^{k+1}}。<br />
+9: 设置 θ_{t+1}=θ_t^K 和 π_{t+1}=π_t^K。<br />
+10: <strong>return</strong> π_post=π_T。</p>
+<p>PPO和GRPO是后训练中最可识别的策略优化算法，但关键设计元素——重要性加权梯度、裁剪和KL正则化——的各自作用尚未被很好地理解。为了解开它们的效果，我们使用APMD分析风格化的变体。我们从PPO-NoClip开始，它使用带参考重置的KL正则化但省略裁剪。然后我们在第3.3节中添加裁剪以获得PPO-Lite。这种方法揭示了KL正则化如何控制优化景观，而裁剪控制重要性加权的统计成本。</p>
+<p>在每个外迭代 t 中，PPO-NoClip旨在最大化具有参考 π_t 的KL正则化目标，</p>
+<p>J_{η,t}(π):=𝔼_π[r(x,y)]−(1/η)D_KL(π∥π_t)。 (20)</p>
+<p>此目标由 π⋆_{η,t}（式13）唯一最大化，因此PPO-NoClip实现APMD。注意我们使用观察到的奖励而不是优势估计，因为我们的关注点是正则化和裁剪的效果。为了优化此目标，PPO-NoClip的内循环执行 K 步全批次梯度上升，从 π_t^0=π_t 开始。它重用来自 π_t 的 N 个预收集提示-响应对批次来估计这些梯度，遵循PPO和GRPO中的标准实践以减少生成成本（Schulman等，2017；Shao等，2024）。在内部步 k，估计的梯度使用重要性权重 π_t^k(y|x)/π_t(y|x) 来校正学习者 π_t^k 和采样策略 π_t 之间的分布偏移（式19）。此程序等价于对式20的重要性加权公式进行梯度上升，类似于无裁剪且正则化到 π_t 的PPO目标。</p>
+<p>J_{η,t}(π_θ)=𝔼_{π_t}[(π_θ(y|x)/π_t(y|x))(r(x,y)−(1/η)log(π_θ(y|x)/π_t(y|x)))]。 (21)</p>
+<p>最后，PPO-NoClip设置 π_{t+1}=π_t^K，它成为下一个外迭代的参考策略、采样策略和起点。</p>
+<p>以下结果表明PPO-NoClip在第2.2节下是覆盖保持的。</p>
+<p><strong>推论是覆盖保持的）</strong> 假设第2.2节成立，令 B:=B_ϕB⋆。在算法1中，设置 η=1/B。则对于任何 ε∈(0,R_max] 和 δ∈(0,1)，存在 α、N 和 K 的选择（见第G.3节），T 由式18指定，使得PPO-NoClip返回策略 π_post 满足 J⋆−J(π_post)≤ε，概率至少 1−δ，使用</p>
+<p>N_step(ε,δ)=Õ(𝒞_base B³/ε³) 和 N_sample(ε,δ)=Õ(𝒞_base B³(d+log(1/δ))/ε³)。 (22)</p>
+<p>这里，N_step=KT 和 N_sample=NT。</p>
+<p>在下界构造（第2.1节）中，其中 𝒞_base B³=O(1)，第3.2节给出 N_step=Õ(ε^{-3})，而固定参考目标上的REINFORCE即使有精确梯度也需要 exp(Ω(1/√ε)) 步收敛。图2a用两种方法的精确梯度说明此性能差距。区别在于PPO-NoClip使用强正则化 η=1/B，从而避免覆盖坍缩。下面的证明草图清楚说明优化如何从此正则化中受益。</p>
+<p><strong>PPO-NoClip的分析概述（第3.2节）</strong></p>
+<p>通过脚注3，足以表明每个内循环返回满足 D_KL(π_{t+1}∥π⋆<em>{η,t})≤ε_in 的策略。最大化 J</em>{η,t}（式20）直接控制此KL散度，它与 π_{t+1} 在RL子问题上的次优性成比例（第G.1节），</p>
+<p>(1/η)D_KL(π∥π⋆<em>{η,t})=J</em>{η,t}(π⋆<em>{η,t})−J</em>{η,t}(π)。 (23)</p>
+<p>我们因此限制 π_{t+1} 为 ε_in/η 次优所需的批次大小 N 和梯度步 K。</p>
+<p><strong>（正则化的优化益处）</strong> 虽然 J_{η,t} 在 θ 中是非凹的，局部形式的凹性在每个内部迭代 π_t^k 处成立（第G.1节），</p>
+<p>J_{η,t}(π⋆<em>{η,t})−J</em>{η,t}(π_t^k)≤(1/2)‖π⋆<em>{η,t}/π_t^k‖</em>∞⟨∇J_{η,t}(π_t^k), θ_t−θ_t^k+ηθ⋆⟩。 (24)</p>
+<p>像式8中的Łojasiewicz不等式一样，当 π_t^k 覆盖目标差且比率 π⋆<em>{η,t}/π_t^k 大时此界限变弱。这允许次优但也接近平稳的策略，与第2.1节中覆盖坍缩引起的训练平台一致。收敛还取决于第二个策略比率，即重要性权重 π_t^k/π_t，当它大时恶化平滑性并放大梯度噪声。KL正则化在第2.2节下控制两个比率，我们表明使用强正则化保持所有内部迭代接近参考和采样策略 π_t 以及目标 π⋆</em>{η,t}，在以下意义上</p>
+<p>π_t^k(y|x)/π_t(y|x)≤e^{8ηB} 且 π⋆_{η,t}(y|x)/π_t^k(y|x)≤e^{4ηB}，∀k∈[K]。 (25)</p>
+<p>当 η=1/B 时，两个比率在整个内优化循环中由绝对常数有界，对梯度平滑性和式24中的局部凹性给出一致控制，如图3c中APMD的优化景观所示。</p>
+<p><strong>（内循环收敛）</strong> 适应标准梯度上升分析表明取</p>
+<p>K=Õ(1/ε_in)，N=Õ((d+log(T/δ))/ε_in) (26)</p>
+<p>就足够了。当 T 和 ε_in 如式18中 η=1/B 时，这给出第3.2节中所述的总梯度步 N_step(ε,δ)=KT 和样本 N_sample(ε,δ)=NT。完整证明出现在第G.3节；我们对其他算法的分析将遵循这里概述的模板。</p>
+<p><strong>在线策略PPO-NoClip。</strong> 对参考的KL正则化通过控制支配优化景观（式24）的分布偏移（式25）改善收敛。参考策略的这一角色——将优化锚定到表现良好的局部区域——不同于其在重要性权重中的使用。为了看到这一区别，考虑PPO-NoClip的在线策略变体，鉴于最近关于在线策略训练的经验工作（Xiang等，2026；Marek和Ryabinin，2026），它也具有独立意义。此变体也正则化到 π_t，但在每个内部步从 π_t^k 抽取新批次以估计在线策略梯度，</p>
+<p>∇J_{η,t}(π_t^k)=𝔼_{π_t^k}[∇log π_t^k(y|x)(r(x,y)−(1/η)log(π_t^k(y|x)/π_t(y|x)))]。 (27)</p>
+<p>这移除了重要性权重，但目标 J_{η,t} 保持不变，式24中的局部凹性界限仍然适用。对 π_t 的强正则化因此仍然是内循环收敛的关键。我们的分析容易适应以建立在线策略PPO-NoClip在第2.2节下是覆盖保持的。</p>
+<h3>3.3 实例化APMD：带裁剪的风格化PPO变体（PPO-Lite）</h3>
+<p><strong>算法2 具有参考重置和裁剪的PPO（PPO-Lite）</strong></p>
+<p>1: <strong>输入：</strong> 基础模型 π_base，外迭代 T，正则化参数 η&gt;0，提示批次大小 N，裁剪阈值 τ₋ 和 τ₊，内优化容差 ε_opt。<br />
+2: 初始化 π_0=π_base。<br />
+3: <strong>for</strong> t=0,1,…,T−1 <strong>do</strong><br />
+4: 抽取批次 𝒟_t={(x_i,y_i,r_i)}<em>{i=1}^N，其中 x_i iid∼μ，y_i∼π_t(·|x_i)，r_i=r(x_i,y_i)。<br />
+5: 定义经验裁剪目标<br />
+   Ĵ_t^{η,clip}(π):=(1/N)Σ</em>{i=1}^N min{(π(y_i|x_i)/π_t(y_i|x_i))r_i, [π(y_i|x_i)/π_t(y_i|x_i)]<em>{1−τ₋}^{1+τ₊}r_i}−(1/η)D_KL(π∥π_t)。 (28)<br />
+6: 找到 π</em>{t+1}=π_θ∈Π_Θ 满足<br />
+   Ĵ_t^{η,clip}(π_{t+1})≥sup_{π∈Π_Θ}Ĵ_t^{η,clip}(π)−ε_opt。 (29)<br />
+7: <strong>return</strong> π_post=π_T。</p>
+<p>对于softmax线性策略，我们表明KL正则化在整个训练中保持策略比率受控。这对于更复杂的非线性策略可能不成立，为了限制它们的效果，我们现在在重要性权重上添加裁剪。裁剪是实践中广泛使用的PPO和GRPO的核心组件，但其益处理论上尚未被很好地理解。我们通过获得一般策略参数化的样本复杂度保证而不要求训练期间有界的策略比率来建立具体的统计益处。</p>
+<p>PPO-Lite在PPO-NoClip目标（式21）中裁剪重要性权重，使用单独的下限和上限阈值 1−τ₋ 和 1+τ₊。我们用 [z]_{1−τ₋}^{1+τ₊}:=min{1+τ₊, max{1−τ₋, z}} 表示裁剪算子。写 w_t^π(x,y):=π(y|x)/π_t(y|x) 表示重要性权重，我们定义裁剪目标为</p>
+<p>J_t^{η,clip}(π):=𝔼_{π_t}[min{w_t^π(x,y)r(x,y), [w_t^π(x,y)]_{1−τ₋}^{1+τ₊}r(x,y)}]−(1/η)D_KL(π∥π_t)。 (30)</p>
+<p>式30使用与PPO相同的裁剪方案（Schulman等，2017），取裁剪和未裁剪的重要性加权奖励的最小值。它还允许RL后训练中广泛采用的非对称裁剪（Yu等，2025；Zheng等，2025；Yue等，2025b；Liu等，2025a）。</p>
+<p>像PPO-NoClip一样，PPO-Lite（算法2）在每个外迭代 t 使用来自 π_t 的 N 个预收集提示-响应对批次优化 J_t^{η,clip}。我们将内优化循环留为抽象（第6行）；它返回对 Ĵ_t^{η,clip}（J_t^{η,clip} 的经验版本）近似最优的策略 π_{t+1}，最多有优化误差 ε_opt。以下结果限制PPO-Lite学习 ε 最优策略所需的样本，只要每个内循环满足规定的优化容差。在此意义上，PPO-Lite的样本复杂度是覆盖保持的。</p>
+<p><strong>推论是覆盖保持的（第H.2节，非正式））</strong> 假设 Π_Θ 有限，r(x,y)∈[−R_max,R_max]，且 π⋆_{η,t}∈Π_Θ 对每个 t。有限性假设可以使用标准复杂度度量（如覆盖数）放宽。在算法2中，设置 η=1/R_max 和裁剪阈值 τ₋=1−e^{−2ηR_max} 和 τ₊=e^{2ηR_max}−1。则对于任何 ε∈(0,2R_max] 和 δ∈(0,1)，按式18设置 T 和 ε_in。如果每个内循环满足式29且优化容差 ε_opt≤ε_in/(8η)，则PPO-Lite返回策略 π_post 满足 J⋆−J(π_post)≤ε，概率至少 1−δ，使用</p>
+<p>N_sample(ε,δ)=NT=Õ(𝒞_base R_max³(log|Π_Θ|+log(1/δ))/ε³)。 (31)</p>
+<p><strong>裁剪阈值与KL正则化。</strong> 我们的保证依赖于正则化和裁剪。正则化强度定义目标 π⋆<em>{η,t} 接近参考 π_t 的程度，π⋆</em>{η,t}/π_t∈[e^{−2ηR_max}, e^{2ηR_max}]。第3.3节选择保证 π⋆_{η,t} 不被裁剪的最窄裁剪区间，因此它仍然是裁剪目标的极大化者。虽然裁剪在PPO中作为KL正则化的替代引入（Schulman等，2017），这里它补充而不是替代正则化。正则化定义优化目标本身并设置问题的难度，而裁剪本身不直接提供相同的控制。</p>
+<p><strong>裁剪的益处和成本。</strong> 为了理解裁剪的益处，让我们将第3.3节与第3.2节中PPO-NoClip的保证进行比较，后者对softmax线性策略成立。在那里，足够强的KL正则化保持策略比率在整个训练中由常数有界。如果使用与第3.3节类似的阈值添加裁剪，它不会带来理论益处，因为策略比率将保持未裁剪。事实上，第H.3.2节，我们在第2.2节下对PPO-Lite的端到端分析，恢复了第3.2节。相比之下，第H.2节适用于通过在每个外迭代近似最大化经验目标 Ĵ_t^{η,clip} 获得的<strong>任何</strong>最终策略，无论策略参数化、内优化程序或重要性权重变得多大。裁剪控制重要性加权奖励的贡献，因此所需的批次大小取决于预设的裁剪阈值而不是训练期间策略比率的量级。据我们所知，裁剪的这一益处尚未在先前理论中被分离。我们注意到这些统计益处伴随着潜在更高的优化成本，因为目标在裁剪阈值处非光滑。因此，当裁剪可能激活时，我们不分析内循环的特定优化程序，将其留给未来工作。</p>
+<p><strong>注记（与实践的联系）</strong> PPO-Lite类似于定期重置参考策略并在裁剪的重要性加权目标上添加KL正则化的实用方法，包括DeepSeek训练程序（Shao等，2024；Guo等，2025）和ProRL及其变体（Liu等，2025a；Hu等，2025a；Hu等，2026）。我们的分析为这一实践提供了理论洞察，并建议将裁剪阈值与正则化强度一起调整，其中更强的正则化可能改善优化景观。特别地，第H.2节将裁剪区间设置为 [e^{−2ηR_max}, e^{2ηR_max}]，因此更强的正则化需要更紧的裁剪。</p>
+<p><strong>第3节的额外结果：一般性能目标。</strong> 第F.1节将脚注3扩展为对任何比较策略 π 提供性能保证。特别地，它在取决于基础模型对 π 覆盖的内部KL容差 ε_in 下限制 J(π)−J(π_T)。结合PPO-NoClip或PPO-Lite的分析，这给出了达到至少 J(π)−ε 奖励的样本和/或梯度步的保证（见式456）。</p>
+<h2>4 平方损失算法保持覆盖度：Kimi和Rebel</h2>
+<p>在本节中，我们研究第二族算法，它们反而最小化<strong>平方损失目标</strong>以近似APMD目标 π⋆<em>{η,t}。这些目标从以下恒等式导出，通过重新排列目标的闭式 π⋆</em>{η,t}(y|x)∝π_t(y|x)e^{ηr(x,y)} 获得。</p>
+<p>(1/η)log(π⋆_{η,t}(y|x)/π_t(y|x))=r(x,y)−b⋆_t(x)，∀(x,y)。 (32)</p>
+<p>参考 π_t 现在出现在策略对数比率的分母中，b⋆<em>t(x)=(1/η)log𝔼</em>{y'∼π_t(·|x)}[e^{ηr(x,y')}] 是确保 π⋆<em>{η,t}(·|x) 是有效分布的归一化函数。我们因此可以通过将策略的对数比率拟合到平移的奖励 r(x,y)−b⋆_t(x) 来近似 π⋆</em>{η,t}。</p>
+<p>例如，取平方损失目标</p>
+<p>L_t(π_θ):=𝔼_{π_t}[((1/η)log(π_θ(y|x)/π_t(y|x))−r(x,y)+b⋆_t(x))²]。 (33)</p>
+<p>此目标在 π_t 上平均式32的平方残差，因此可以在没有重要性权重的情况下优化。它由 π⋆_{η,t} 唯一最小化，因此实现APMD。虽然目标没有显式KL惩罚，它在策略对数比率中隐式正则化到 π_t。</p>
+<p><strong>概述。</strong> 我们分析基于式33目标的平方损失算法，它们在处理未知归一化函数 b⋆_t(x) 的方式上不同。Kimi风格目标估计代理基线，而成对目标使用配对响应消除 b⋆_t。我们首先建立确保APMD下收敛的平方损失误差条件（第4.1节），然后使用它表明三个实用算法是覆盖保持的。</p>
+<p><strong>Kimi风格目标：估计基线（第4.2节）。</strong> Kimi风格目标用<strong>基线</strong> b_t(x) 替换式33中的 b⋆_t(x)，通常使用来自 π_t 的样本估计。这给出目标</p>
+<p>L_t^Kimi(π_θ):=𝔼_{π_t}[((1/η)log(π_θ(y|x)/π_t(y|x))−r(x,y)+b_t(x))²]。 (34)</p>
+<p>据我们所知，此公式最早的使用是在Kimi K1.5（Kimi Team等，2025b）和Kimi K2（Kimi Team等，2025a）中。它此后被OAPL（Ritter等，2026）和KARL（Chang等，2026）等算法采用。这些方法在基线选择上不同，这通常使学习的策略偏离 π⋆_{η,t}。我们使用APMD分析两种最常见的选择，表征控制此偏差所需的额外样本和梯度步。</p>
+<ul>
+<li>
+<p><strong>KimiPO</strong>（第4.2节）使用<strong>均值基线</strong> b_t(x)=r(x,π_t)，即 π_t 下的期望奖励（Kimi Team等，2025b；Kimi Team等，2025a）。偏差来自 r(x,π_t) 低估 b⋆_t 的程度，我们表明更强的正则化控制此误差。</p>
+</li>
+<li>
+<p><strong>KimiPO-Norm</strong>（附录K）使用<strong>归一化器基线</strong>，它使用来自 π_t 的响应估计 b⋆_t（Kimi Team等，2025b；Cohen等，2025；Ritter等，2026；Chang等，2026）。此估计器有偏但一致，我们反而使用额外响应控制其误差。</p>
+</li>
+</ul>
+<p><strong>成对目标：用配对响应消除基线（第4.3节）。</strong> 成对目标通过比较同一提示的两个响应消除 b⋆_t(x)，这是由DPO（Rafailov等，2023）推广的方法。我们分析Rebel-OnPolicy，一个为具有观察奖励的在线RL定制的Rebel（Gao等，2024）变体。它最小化以下目标，两个响应都从 π_t 抽取，</p>
+<p>L_t^{Rebel-On}(π_θ):=𝔼_{x∼μ,y,y'∼π_t(·|x)}[((1/η)log(π_θ(y|x)/π_t(y|x))−(1/η)log(π_θ(y'|x)/π_t(y'|x))−(r(x,y)−r(x,y')))²]。 (35)</p>
+<p>L_t^{Rebel-On} 相对于 π⋆_{η,t} 是无偏的，使Rebel-OnPolicy成为APMD的理论上干净的实例。</p>
+<p><strong>自然策略梯度。</strong> NPG是具有与这里研究的目标密切相关的平方损失公式的基础策略优化方法。我们在附录M中讨论这些联系。</p>
+<h3>4.1 特化APMD：均方误差准则</h3>
+<p>第3节中的算法在KL散度上近似APMD目标 π⋆_{η,t}。对于平方损失算法，它们拟合策略对数比率而不是分布，我们反而使用<strong>均方误差</strong>（MSE），下面根据 π_t 下中心化的对数比率定义。中心化移除在不同平方损失算法中以不同方式处理的响应无关归一化项，产生用于分析的共同准则。</p>
+<p>对于固定迭代 t 和参考策略 π_t，令</p>
+<p>l_{t,η}^π(x,y):=(1/η)log(π(y|x)/π_t(y|x))−𝔼_{y'∼π_t(·|x)}[(1/η)log(π(y'|x)/π_t(y'|x))] (36)</p>
+<p>表示候选策略 π 的中心化对数比率。均方误差则是</p>
+<p>MSE_t(π):=𝔼_{π_t}[(l_{t,η}^π(x,y)−(r(x,y)−r(x,π_t)))²]。 (37)</p>
+<p>MSE比较 π 的中心化对数比率与目标 π⋆<em>{η,t} 的。事实上，在 π_t 下中心化式32给出 l</em>{t,η}^{π⋆<em>{η,t}}(x,y)=r(x,y)−r(x,π_t)，因此 MSE_t(π)=𝔼</em>{π_t}[(l_{t,η}^π(x,y)−l_{t,η}^{π⋆<em>{η,t}}(x,y))²]。因此，π⋆</em>{η,t} 唯一最小化 MSE_t 且误差为零，MSE_t(π) 测量 π 近似 π⋆_{η,t} 的程度。</p>
+<p><strong>算法3 Kimi策略优化</strong></p>
+<p>1: <strong>输入：</strong> 基础模型 π_base，外迭代 T，正则化参数 η&gt;0，提示批次大小 N，响应组大小 G，内部步数 K，学习率 α。<br />
+2: 初始化 π_0=π_base=π_{θ_0}。<br />
+3: <strong>for</strong> t=0,1,…,T−1 <strong>do</strong><br />
+4: 抽取批次 𝒟_t={(x_i,y_i,r_i,r̄<em>i)}</em>{i=1}^N，其中 x_i iid∼μ 且 y_i,y'<em>{i,1},…,y'</em>{i,G}∼π_t(·|x_i) 独立。<br />
+5: 设置 r_i=r(x_i,y_i) 并通过 r̄<em>i=(1/G)Σ</em>{j=1}^G r(x_i,y'<em>{i,j}) 估计均值基线。<br />
+6: 定义经验目标<br />
+   L̂_t^Kimi(π_θ):=(1/N)Σ</em>{i=1}^N((1/η)log(π_θ(y_i|x_i)/π_t(y_i|x_i))−(r_i−r̄<em>i))²。 (38)<br />
+7: 初始化 θ_t^0=θ_t 和 π_t^0=π_t。<br />
+8: <strong>for</strong> k=0,1,…,K−1 <strong>do</strong><br />
+9: 计算经验梯度 ∇L̂_t^Kimi(π_t^k)（例如通过反向传播）。<br />
+10: 更新 θ_t^{k+1}=θ_t^k−α∇L̂_t^Kimi(π_t^k) 和 π_t^{k+1}=π</em>{θ_t^{k+1}}。<br />
+11: 设置 θ_{t+1}=θ_t^K 和 π_{t+1}=π_t^K。<br />
+12: <strong>return</strong> π_post=π_T。</p>
+<p>稍后，我们将展示Kimi风格（式34）和成对目标（式35）如何控制 MSE_t(π) 并产生覆盖保持算法。这些结果依赖于以下定理，脚注3的对应物，当 MSE_t(π_{t+1}) 在每个迭代足够小时确保收敛和覆盖保持。</p>
+<p><strong>定理（APMD：均方误差准则）</strong> 给定任何 η&gt;0 和任何策略序列 {π_t}_{t=0}^T 且 π_0=π_base 和 π_t&gt;0，假设</p>
+<p>MSE_t(π_{t+1})≤1/(4η²T²(𝒞_base log(eT)+e^{ηS}))，∀0≤t&lt;T， (39)</p>
+<p>其中 S:=max_{0≤t&lt;T}max_{x,y}|l_{t,η}^{π_{t+1}}(x,y)−(r(x,y)−r(x,π_t))|。则 J⋆−J(π_T)≤log(2𝒞_base)/(ηT)，且概率至少 1−7/(8√log(eT))（对 x∼μ），π_{t+1}(𝒴⋆_x|x)≥(1/2)π_base(𝒴⋆_x|x) 对所有 0≤t&lt;T。</p>
+<p>因为 MSE_t 在采样策略 π_t 下测量，平方损失算法可以使用预收集批次在没有重要性权重的情况下将其降低。然而，内部MSE容差随其分母中的项 e^{ηS} 缩小（式39），其中 S 限制残差误差的量级。此成本来自将小 MSE_t(π_{t+1}) 转换为学习策略 π_{t+1} 保证时的分布偏移。在我们的结果中，足够强的正则化确保 e^{ηS}=O(𝒞_base)，使此项相对无害。我们现在将此准则应用于平方损失算法，从Kimi风格目标开始。</p>
+<h3>4.2 实例化APMD：Kimi风格策略优化算法</h3>
+<p>我们首先研究具有Kimi K2中使用的<strong>均值基线</strong> b_t(x)=r(x,π_t) 的Kimi风格目标（式34）（Kimi Team等，2025b；Kimi Team等，2025a）。这里 r(x,π_t)=𝔼_{y'∼π_t(·|x)}[r(x,y')] 是 π_t 下提示 x 的期望奖励。得到的算法KimiPO（算法3）在每个外迭代 t 使用以下目标，</p>
+<p>L_t^Kimi(π_θ)=𝔼_{π_t}[((1/η)log(π_θ(y|x)/π_t(y|x))−r(x,y)+r(x,π_t))²]。 (40)</p>
+<p>为了最小化此目标，KimiPO使用 N 个提示的预收集批次和来自 π_t 的每个提示 G+1 个响应。对于每个提示，它通过平均 G 个响应的奖励估计均值基线（第4行），然后将此估计与剩余响应结合形成经验目标 L̂<em>t^Kimi（第6行）。从 π_t 开始，内循环对 L̂_t^Kimi 采取 K 个全批次梯度下降步并设置 π</em>{t+1}=π_t^K。此程序与Kimi（Kimi Team等，2025b；Kimi Team等，2025a）的区别仅在于用梯度下降替换Kimi K2的Muon优化器，并使用单独的响应进行基线估计和梯度计算。</p>
+<p>以下结果表明KimiPO在第2.2节下是覆盖保持的。</p>
+<p><strong>推论是覆盖保持的）</strong> 假设第2.2节成立，令 B:=B_ϕB⋆。对于任何 ε∈(0,R_max] 和 δ∈(0,1)，在算法3中，设置 G=1 和 η=Θ̃(√ε/(𝒞_base^{1/4}B^{3/2}))。则存在 α、N 和 K 的选择（见第J.3节），T 由式18指定，使得KimiPO返回策略 π_post 满足 J⋆−J(π_post)≤ε，概率至少 1−δ，使用</p>
+<p>N_step(ε,δ)=Õ(𝒞_base^{5/4}B^{7/2}/ε^{7/2}) 和 N_sample(ε,δ)=Õ(𝒞_base^{5/4}B^{7/2}(d+log(1/δ))/ε^{7/2})。 (41)</p>
+<p>这里，N_step=KT 和 N_sample=N(G+1)T。</p>
+<p>据我们所知，第4.2节给出了Kimi风格算法的首个端到端全局收敛保证。像第3节一样，此保证依赖于参考重置，KimiPO通过在对数策略比率中更新 π_t 实现。这一设计选择被Kimi K1.5和Kimi K2（Kimi Team等，2025b；Kimi Team等，2025a）以及OAPL（Ritter等，2026）和KARL（Chang等，2026）的特定实例化采用，所有这些都可以视为APMD算法。相比之下，A⋆-PO（Brantley等，2025）和SPO（Cohen等，2025）在对数比率的分母中保留固定参考策略，不实现APMD。我们在下面强调此结果和我们分析的具体特征。</p>
+<p><strong>基线函数的偏差。</strong> 我们对样本和梯度步的界限对KimiPO按 Õ(ε^{-7/2}) 缩放，与PPO-NoClip的 Õ(ε^{-3}) 相比（第3.2节）。对 ε 的额外依赖出现是因为第4.2节使用更强的正则化（η=Θ̃(√ε) 而不是 η=1/B），因此需要更多外迭代。KimiPO需要更强的正则化来控制均值基线引入的偏差，如以下分解所示（第J.1节），</p>
+<p>L_t^Kimi(π)=MSE_t(π)+(1/η²)𝔼_{x∼μ}[D_KL(π_t(·|x)∥π(·|x))²]。 (42)</p>
+<p>第一项是KimiPO必须控制的第4.1节中的MSE。第二项偏好接近 π_t 的策略，与Xu等（2026）识别的隐式正则化一致，因此即使 L_t^Kimi 的精确最小化也可能无法恢复目标 π⋆_{η,t}。我们表明此偏差将 MSE_t 增加 O(η⁴B⁶)（第J.1节）——由更强正则化控制的误差。事实上，第4.2节对任何 G≥1 成立，选择 η=Θ̃(√ε) 保持偏差足够小以满足第4.1节中的MSE准则。</p>
+<p><strong>Kimi风格目标的优化景观。</strong> 虽然均值基线引入偏差，它使KimiPO目标在第2.2节下在 θ 中全局凸（第J.1节）。相比之下，PPO-NoClip目标是无偏的但仅满足 π_t 周围的局部凹性形式（式24）。Kimi风格目标的曲率取决于基线选择（第I.3节）；下面研究的KimiPO-Norm目标同样仅局部凸。</p>
+<p><strong>额外结果：KimiPO-Norm估计 b⋆_t。</strong> 在附录K中，我们分析KimiPO-Norm（算法4），它优化具有基线 b_t=b⋆_t 的Kimi风格目标。像先前工作一样（Kimi Team等，2025b；Cohen等，2025；Ritter等，2026；Chang等，2026），经验目标使用在从 π_t 采样的 G 个响应上计算的 b⋆_t(x) 的插入估计，</p>
+<p>b̂<em>t(x):=(1/η)log((1/G)Σ</em>{j=1}^G e^{ηr(x,y'_j)})</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 策略优化, 后训练, 覆盖坍缩, 参考重置, 强化学习理论</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
