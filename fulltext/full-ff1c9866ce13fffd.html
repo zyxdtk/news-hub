@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅读还是记忆？测量语言模型的时间污染 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">阅读还是记忆？测量语言模型的时间污染</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-16</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.21554" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Reading or Remembering? Measuring Temporal Contamination in Language Models</h4>
+            <p><strong>中文摘要：</strong> 本文研究语言模型阅读央行文本进行经济预测时的时间污染问题。作者发现：无法知晓结果的模型凭日期与时代先验可达0.64的AUC，故随机基线不当；现代开源模型确实记住了GDP增长结果；成员推断分数反映时代与文档类型而非真实记忆；在实时GDP与通胀即时预测中，前瞻溢价低于统计检验可检测的最小效应，无任何溢价通过多重检验校正。建议前瞻审计应基于仅日期探针并对照无记忆模型直接测量记忆。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>阅读还是记忆？测量语言模型的时间污染</h1>
+<p><strong>Arunkumar V</strong><br />
+单位：UCE BIT校区，安娜大学<br />
+单位：印度蒂鲁吉拉帕利<br />
+邮箱：arunkumarv1530@gmail.com</p>
+<p><strong>Gangadharan G. R</strong><br />
+单位：NIT蒂鲁吉拉帕利<br />
+单位：印度蒂鲁吉拉帕利</p>
+<p><strong>S. Senthilkumar</strong><br />
+单位：UCE BIT校区，安娜大学<br />
+单位：印度蒂鲁吉拉帕利</p>
+<h2>摘要</h2>
+<p>语言模型如今被用于阅读央行文本以进行经济预测，但大多数模型的训练文本写于其所阅读文档之后。阅读2021年FOMC声明的模型可能已经知道2022年通胀上升，因此其表面技能的一部分可能是对结果的记忆，这是一种时间形式的测试集污染。我们通过将现代开源模型与时间一致性模型（仅使用固定日期之前的文本训练）进行比较，测量了2000年至2026年FOMC声明和会议纪要上的这种记忆。在仅给定日期的情况下询问过去的GDP结果，无法知道答案的模型仍能凭借对日期和时代的先验达到高达0.64的AUC，因此随机猜测是错误的基线。在与这些无记忆模型就相同问题的比较中，大多数现代模型能回忆起哪些年份增长强劲。成员推断分数按时代和文档类型而非模型是否见过文档来排序文档，正如开放预训练语料库中的精确计数所示。在实时即时预测中，我们估计的美国GDP前瞻溢价均小于预测比较在宏观经济样本量下能检测到的水平，且GDP或通胀上的任何溢价都无法通过多重检验校正。因此，前瞻审计应在相同项目上直接针对无记忆模型测量记忆。</p>
+<h2>1 引言</h2>
+<p>语言模型如今被用于为预测者阅读央行沟通内容，而大多数使用中的模型是在其所要阅读时期之后撰写的文本上训练的。见过2021年和2022年评论的模型不需要从2021年FOMC声明推断通胀即将上升；它可以记得通胀确实上升了。用机器学习术语来说，这是时间污染，一种贯穿时间的测试集污染形式：模型被评估的结果出现在其输入之后撰写的文本中。此类前瞻已在金融和经济预测中有记录（Sarkar and Vafa, 2024；Glasserman and Lin, 2024；Lopez-Lira et al., 2025；Gao et al., 2026；Eliseev and Seleznev, 2026），并且基准测试结果中发现了按发布日期的污染（Roberts et al., 2024）。时间一致性模型（仅使用固定日期之前可用文本训练）现已存在以消除这种污染（He et al., 2026；Yan et al., 2026）。</p>
+<p>我们想针对预测任务测量模型表面技能中有多少是记忆，以及当预测按实践中的方式进行时——实时、基于当天可用的数据、并以首次发布的估计值评分——这种记忆是否会影响预测。通常的检查方法不适合这一目的。以随机猜测为基准对模型评分假设未见过结果的模型会随机猜测。成员推断分数假设模型见过的文本和未见过的文本仅在这一方面不同，当两者来自不同时期时这一假设失效（Duan et al., 2024）。而比较有无可疑模型的预测准确性需要比宏观经济序列提供的更多的数据。</p>
+<p>我们为2000年至2026年的FOMC声明和会议纪要以及2012年至2024年美国GDP和CPI增长的实时即时预测构建了这样的测量，并以随机猜测以外的参照对每个部分进行评分。仅日期探针给模型一个日期并询问一个只能从后续文本中知道的结果。参照是一组无法知道结果的阅读器，在相同项目上评分，推断考虑了时间上聚集的结果以及对日历词汇的先验。来自一个时间一致性模型家族的固定检查点阶梯询问模型在其训练可能包含的结果上是否比在不能包含的结果上表现更好。成员分数询问模型是否见过某文档；我们用已知截止日期的检查点和某模型索引训练语料库中的精确计数来检验它们。最后，一个实时即时预测器测量这些阅读的价值，以时间门控后的阅读器为对照，加上两个硬数据基线、专业即时预测和功效分析。</p>
+<p>我们的六个发现中前三个是正面结果。另外三个标记了这些数据无法解决的问题，我们以区间报告它们，对于预测，还报告了检验能检测到的最小效应。</p>
+<ol>
+<li>
+<p>无法知道结果的阅读器得分不是0.5。在GDP探针上，它们凭借对日期和时代的先验达到高达约0.64的AUC，因此下文每一项关于记忆的断言都是在相同项目上将模型与这些阅读器进行比较。</p>
+</li>
+<li>
+<p>现代模型记住了无记忆阅读器无法知道的结果。与门控阅读器相比，七个模型中有六个在多重比较调整后得分更高。一个日期能检索出哪些年份增长强劲。</p>
+</li>
+<li>
+<p>成员分数追踪的是时代和文档类型而非成员关系。OLMo-2索引语料库中的精确片段计数将其FOMC文本的结束日期定为2022年11月2日，比其模型卡的截止日期早一年，并且在同一年份和文档类型内，Min-K%无法区分找到和未找到的文档。</p>
+</li>
+<li>
+<p>探针无法解决更细微的区分。一年内混合结果太少，无法判断模型是否记住了单个季度。现代模型相对于ChronoGPT-2024（一个训练也覆盖所有结果的小型时间一致性模型）的优势在多重比较调整后不再显著，因此较大模型是否比小模型记住更多仍是开放问题。检查点阶梯的区间都包含零且比该差距更宽，这使得小模型是否完全有记忆仍是开放问题。</p>
+</li>
+<li>
+<p>预测比较缺乏检测前瞻溢价的功效。泄漏阅读器相对于门控阅读器的GDP溢价是RMSE的几个百分点，低于检验以80%功效检测到的8.8至13.1个百分点，且其符号取决于剔除的是2020年还是2021年。它们还是在一个不超过过去增长滚动均值的GDP即时预测器上测量的。</p>
+</li>
+<li>
+<p>文本没有增加任何能通过多重检验校正的技能，无论是对于实时即时预测器还是对于SPF、GDPNow和纽约联储即时预测。</p>
+</li>
+</ol>
+<p>因此，预测系统的前瞻审计既不应依赖于预测准确性（在宏观经济样本量下无法分辨几个百分点的溢价），也不应依赖于跨时代比较的成员分数（将成员关系与时间混淆），而应依赖于在相同项目上针对无记忆阅读器评分的仅日期探针，以及在语料库有索引时的精确语料库计数。我们发布了语料库、所有评分和所有脚本。</p>
+<h2>2 相关工作</h2>
+<h3>记忆与污染检测</h3>
+<p>记忆随模型容量、重复度和提示长度呈对数线性增长（Carlini et al., 2023）。检测方法询问某文本是否在训练语料库中：Min-K% Prob对文本最不可能标记的对数概率取平均（Shi et al., 2024），Min-K%++用下一标记分布对它们进行标准化（Zhang et al., 2025），引导提示在补全与参考实例匹配时标记污染（Golchin and Surdeanu, 2024）。污染必须逐个基准测量（Sainz et al., 2023），Stack Overflow问题的答案通常是记忆文本的拼贴，无论问题是否早于训练（Caspari et al., 2025）；Xu et al. (2024)和Ravaut et al. (2025)对这些方法进行了综述。Duan et al. (2024)发现成员推断在Pile训练的模型上几乎不超过随机水平，并将报告的成功追溯到来自不同时期的成员和非成员。我们的探针面临同样的混淆，因为答案先验追踪时代。我们询问模型是否知道晚于文档的结果，并在相同项目上将每个泄漏阅读器与门控阅读器和持续性规则进行比较，而不是与0.5比较。</p>
+<h3>时间泛化与知识截止</h3>
+<p>训练期之后文本的困惑度随距离增加而恶化（Lazaridou et al., 2021）；以时间戳为条件改善了对时间相关事实的回忆（Dhingra et al., 2022）；GPT在Codeforces和Project Euler问题上的通过率揭示了按发布日期的污染（Roberts et al., 2024）；有效截止日期通常与报告的不同（Cheng et al., 2024）。我们则将已知截止日期作为处理：在一个时间一致性家族内，固定检查点阶梯共享架构、规模、分词器和训练方案，每个检查点的截止日期将其可能见过的结果与不可能见过的结果分开。</p>
+<h3>时间一致性语言模型</h3>
+<p>StoriesLM从1900年起用下一年的新闻继续每个检查点（Sarkar, 2024），Time Machine GPT发布时点模型（Drinkall et al., 2024）。ChronoBERT和ChronoGPT在次日收益预测中达到与更大得多的Llama模型相当的夏普比率（He et al., 2026），随后出现了指令微调版本（He et al., 2025）。DatedGPT训练了十二个1.3B参数模型，年度截止日期从2013年到2024年，并发现训练覆盖结果期的模型每标准差有26.4个基点的收益预测溢价（Yan et al., 2026）。这些论文在资产收益上评估。我们将ChronoGPT-Instruct用作宏观经济即时预测器内的门控，将ChronoGPT和DatedGPT的固定检查点用作非门控对照，并在50个季度的150个实时起点上测量溢价以及检验能检测到的最小溢价。</p>
+<h3>语言模型在经济和金融应用中的前瞻偏差</h3>
+<p>当模型从财报电话会议预测风险因子、从传记预测选举获胜者时出现前瞻（Sarkar and Vafa, 2024）；匿名化标题改善了GPT情绪交易的样本内表现，因此干扰可能超过前瞻（Glasserman and Lin, 2024）；模型回忆截止日期之前的经济序列，即使被告知尊重历史边界（Lopez-Lira et al., 2025）；仅给定公司、股票代码和日期时非未知答案的概率在截止日期后崩溃（Gao et al., 2026）。告诉模型忽略它所知道的内容仍留下与真正无知的52%差距（Li et al., 2026），没有现代模型通过Eliseev and Seleznev (2026)针对宏观经济预测的第一个假日期测试，而Faria-e Castro and Leibovici (2024)的PaLM通胀预测对2019-23年是样本内的。MACROCAST通过在合成序列上预训练来避免泄漏（Carriero et al., 2026），Ludwig et al. (2026)陈述了一般无泄漏条件。这些证据大多涉及公司层面结果或直接预测序列的模型。我们研究阅读央行文本作为实时即时预测器一个输入的模型，将前瞻定价为相对于初次发布的RMSE变化，并发现探针检测到的记忆不会表现为可分辨的预测技能。</p>
+<h3>宏观经济即时预测中的文本</h3>
+<p>新闻文本增加了硬指标遗漏的信息（Thorsrud, 2020；Kalamara et al., 2022；Ellingsen et al., 2022）。央行文本已用主题模型阅读（Hansen and McMahon, 2016；Hansen et al., 2018），用机器学习阅读工作人员文档（Aruoba and Drechsel, forthcoming），以及用在央行文本上进一步训练的编码器阅读（Gambacorta et al., 2026）。我们的桥接因子即时预测器遵循实时即时预测文献（Giannone et al., 2008；Bańbura and Modugno, 2014；Higgins, 2014），其中数据版本改变结果（Koenig et al., 2003；Croushore, 2011），模型即时预测在整体通胀上击败SPF（Knotek and Zaman, 2017）。我们剔除了两个疫情季度，这对估计是可以接受的，尽管它低估了预测不确定性（Lenza and Primiceri, 2022）。这些文本测量来自主题模型、词典或在选定语料库上训练的模型；通用语言模型带来的语料库延伸超过预测期，因此我们将阅读器的训练截止日期作为被测变量。</p>
+<h2>3 实验设置</h2>
+<p>图1显示了一个预测起点的流程，图2将每个窗口和检查点放在一个日历上。</p>
+<p><strong>阅读文本，一次一篇文档</strong> | <strong>测量记忆</strong> | <strong>起点τ处的实时即时预测器</strong> | <strong>对照初次发布评估，2012-2024</strong></p>
+<ul>
+<li>FOMC声明和会议纪要，429个摘录</li>
+<li>时间门控：年份y由截止日期为y−1年12月31日的检查点阅读</li>
+<li>阅读器标签分数 δ = log p₊ − log p₋</li>
+<li>输出门控：以"N/A"校准，3个释义一致</li>
+<li>政策信号 z_τ ∈ [−1,1]⁵</li>
+<li>阅读器：门控ChronoGPT及其固定检查点；Qwen2.5 1.5B至14B；OLMo-2 7B、13B；Mistral-7B；一个词典。DatedGPT仅回答探针。</li>
+<li>符号不一致：弃权，z⁽ᵏ⁾=0，记录在案</li>
+<li>仅日期提示：74个利率决定，100个GDP季度</li>
+<li>相同阅读器和读出，省略文档</li>
+<li>具有时代稳健推断的AUC：相同季度词、相同年份、已见对未见结果</li>
+<li>成员分数（Min-K%、Min-K%++）和OLMo-2语料库中的精确计数</li>
+<li>相同检查点</li>
+<li>τ时的RTDSM数据版本，11个序列</li>
+<li>参差边缘AR(2)填充</li>
+<li>分块PCA，3个因子</li>
+<li>文本块：5个信号维度，标准化</li>
+<li>岭桥接 ŷ_τ</li>
+<li>基准：动态因子模型、无文本桥接</li>
+<li>专业即时预测，仅公开值：SPF、GDPNow、纽约联储</li>
+<li>对照初次发布GDP和CPI的平方误差，150个起点，50个季度</li>
+<li>溢价：泄漏对门控，季度块区间，Holm，功效，旋转安慰剂</li>
+<li>按日期匹配</li>
+</ul>
+<p><strong>图1</strong>：一个预测起点τ的流程。时间门控将每个FOMC文档路由到训练在其前一年结束的ChronoGPT检查点；非门控阅读器看到每个文档。输出门控将下一标记标签分数转换为五维政策信号，并在问题的三种表述符号不一致时弃权。相同的阅读器回答仅日期记忆探针。在每个起点，即时预测器采用费城联储实时数据集（RTDSM）的一个数据版本，即该日期已发布的十一个指标。它用每个指标月度变化的二阶自回归（AR(2)填充）填充未发布的月份（参差边缘），并将目标的指标块降为三个主成分（分块PCA）。目标对这些因子和任何文本信号的岭回归（岭桥接）给出即时预测ŷ_τ。每个即时预测都对照初次发布（该季度的首次发布估计值）评分。</p>
+<p><strong>图2</strong>：研究在一个日历上。ChronoGPT检查点从1999年到2024年每年12月31日结束；文档由在其前一年结束的检查点阅读。现代阅读器于2024年发布，因此其训练文本覆盖了测试窗口的大部分。四个固定的ChronoGPT检查点和探针上的三个DatedGPT检查点形成非门控阶梯。规范选择仅使用测试窗口之前的起点。</p>
+<ul>
+<li>FOMC文档，429</li>
+<li>ChronoGPT截止日期，26</li>
+<li>门控路由：2008年文档进入2007年12月31日截止的检查点</li>
+<li>ChronoGPT阶梯，非门控：截止日期2011、2015、2019、2024；每个阅读所有文档</li>
+<li>现代阅读器发布：Mistral-7B v0.3、Qwen2.5、OLMo-2：2024年5月至11月，因此其训练文本几乎覆盖整个测试窗口</li>
+<li>DatedGPT截止日期，12：门控和固定，仅探针</li>
+<li>规范保留：起点2006至2011</li>
+<li>测试窗口，150个起点</li>
+<li>2020年Q2-Q3剔除（间隙）</li>
+<li>仅日期探针：74个利率决定，2000-2025；100个GDP季度，2000年Q1-2024年Q4</li>
+</ul>
+<h3>语料库</h3>
+<p>语料库是2000年2月至2026年1月发布的每个FOMC声明和会议纪要，共429份文档（221份声明和208份会议纪要）。文档列表和日期来自美联储自己的索引：声明以其新闻稿日期为准，会议纪要以其发布日期为准（自2005年起约为会议后三周，此前为下一次会议后）。每个阅读器看到相同的摘录，按一条固定规则裁剪：声明从发布标题到投票（无记录投票时到页面页脚）；会议纪要贡献前景讨论的前2,500个字符和政策讨论的前2,500个字符。摘录最多5,000个字符。附录A.3记录了数据清理，包括一处泄漏的移除。</p>
+<h3>实时数据与目标</h3>
+<p>月度指标来自费城联储实时数据集（RTDSM）（Croushore and Stark, 2001），该数据集保存每个序列的每个数据版本，即序列在后续修订之前在给定日期的状态。我们使用十一个月度数据版本的序列，涵盖工业生产、产能利用率、薪资就业、工时、新屋开工、三个实际消费序列和三个价格指数。每个预测起点恰好使用一个数据版本，日期为数据版本月份的最后一天，此时其中的每个发布都是公开的。目标是初次发布的环比年化增长率400 ln(Yₜ/Yₜ₋₁)，针对实际GDP和整体CPI的季度平均值；初次发布是一个季度在任何修订之前的首次发布估计值。测试窗口从2012年到2024年有50个季度的150个月度起点；2020年Q2和Q3被排除在估计和评分之外。</p>
+<h3>阅读器</h3>
+<p>附录A.1中的表4列出了阅读器。门控阅读器是ChronoGPT-Instruct家族（He et al., 2026；He et al., 2025），约15.5亿参数，检查点从1999年到2024年每年12月31日结束；日期为y年的文档进入y−1年结束的检查点。其中四个检查点也在每个文档上以非门控方式运行：2011、2015、2019和2024年结束的那些。它们形成一个阶梯：每个都有与门控阅读器相同的架构和方案，每个都可能见过截至其自身截止日期的结果而不能更晚。七个现代开源模型以非门控方式运行。第二个时间一致性家族DatedGPT（Yan et al., 2026），约13亿参数，检查点从2013年到2024年每年结束，仅回答探针，既有门控也有三个固定检查点（2016、2020、2024）；其门控阅读器没有即时预测器2000-2011训练窗口的检查点，我们没有在文档上运行其固定检查点。词典阅读器作为参考报告；其短语列表是在了解后来美联储语言的情况下编写的，因此它不是无记忆的。</p>
+<h3>阅读文档</h3>
+<p>对于摘录d、维度k（政策立场、通胀风险、增长风险、不确定性、前瞻指引）和问题的三种表述之一j，阅读器被问一个有两个单词答案的问题，例如政策比中性更严格还是更宽松（附录A.2）。我们读取两个答案的下一标记概率而不是生成文本。答案的概率对其单标记形式求和，原始分数为δ_dkj = log p(pos|d,k,j) − log p(neg|d,k,j)。</p>
+<h3>输出门控</h3>
+<p>任何分数使用前都有两个校正。首先减去每个阅读器在无内容输入（文档替换为"N/A"的相同提示）上的分数，针对相同阅读器、检查点、维度和表述（Zhao et al., 2021）。然后三种表述的校准分数必须在符号上一致；如果一致，维度k的信号为(1/3)∑ⱼ(2σ(δ̃_dkj)−1)，如果不一致，门控弃权，将其设为零并记录三个分数。门控的存在是为了标记模型无法一致给出的读数；第5.1节和附录B报告了它如何改变准确性。</p>
+<h2>4 测量记忆</h2>
+<p>在询问记忆在预测中的价值之前，我们以三种方式测量记忆，每种都有自己的原假设。</p>
+<h3>仅日期探针</h3>
+<p>阅读器只得到一个日期，别无其他，这是Gao et al. (2026)仅日期回忆查询的双答案形式。在决定探针中，它被告知FOMC在该日期改变了目标并被问是提高还是降低（74次变动，2000-2025）。在GDP探针中，它被问某季度初次发布的实际GDP增长是否高于或低于年化2%（100个季度，2000-2024）。未见过结果的阅读器只能猜测，但猜测不一定得0.5的AUC：答案先验可能与某一结果常见的时代一致，而门控阅读器的检查点每年一月变化。因此原假设由在相同项目上评分的另外两个阅读器设定：门控阅读器和仅使用项目年份开始前公开信息的持续性规则。探针项目在时间上聚集，因此推断尊重这种聚集：p值来自按日期顺序将标签对分数旋转（循环移位，保持两个序列中的依赖性），AUC差异的区间来自重采样日历年。我们还比较跨年份具有相同季度数的季度，通过将结果的年份对分数旋转来检验，以及同一年内的季度，这消除了大多数跨时代比较（第四季度由次年一月的发布日期确定，因此由下一个门控检查点阅读）。</p>
+<h3>检查点阶梯</h3>
+<p>门控阅读器混合了26个检查点，且其2024年同胞总共见过更多文本，因此门控对非门控的对比在前瞻之外还有其他差异。阶梯将两者分开。每个固定检查点（2011、2015、2019或2024年结束）阅读每个文档并回答每个探针。对每个检查点，如果项目的结果在检查点截止日期前已公开，则该项目为"已见"，否则为"未见"。记忆预测检查点在可能见过的项目上比在不可能见过的项目上表现更好；一般能力、近因性和检查点混合不预测一个检查点内的这种分割。</p>
+<h3>成员推断</h3>
+<p>探针询问模型是否知道结果；成员分数询问它是否见过文本。对每个摘录和阅读器，我们计算Min-K% Prob，即摘录作为纯文本阅读时最低k=20百分比的标记对数概率的平均值（Shi et al., 2024），以及Min-K%++，它用模型自身的下一标记分布标准化每个标记的对数概率（Zhang et al., 2025）。已知当成员和非成员来自不同时期时成员分数会失效（Duan et al., 2024），我们的情况正是如此。对每个固定的ChronoGPT检查点，截止日期后发布的文档肯定不是成员，之前发布的可能是；对于预训练语料库有索引的OLMo-2，我们计算每个摘录在语料库中的精确片段。</p>
+<h3>4.1 结果：阅读器记住了什么</h3>
+<p><strong>无记忆阅读器得分不是0.5</strong></p>
+<p>表1给出每个阅读器的GDP探针。无法知道结果的阅读器是正确的原假设，它们不在随机水平：门控ChronoGPT阅读器得分0.48，持续性规则0.45，不可能见过其大多数项目的检查点得分高达0.64（2011年截止的ChronoGPT，在其无法知道的2012-2024项目上得分0.60）。因此高达约0.64的AUC来自对日期和时代的先验，现代阅读器的AUC只有在相同项目上超过这些阅读器时才是记忆的证据，区间尊重结果在年份间的聚集。</p>
+<p><strong>现代阅读器超过它们</strong></p>
+<p>在相同项目上与门控ChronoGPT阅读器相比，七个现代阅读器中六个的区间在七次比较调整后排除零。更尖锐的比较是与ChronoGPT-2024（一个训练也覆盖所有结果的15.5亿参数阅读器）：15亿至140亿参数的现代阅读器得分高+0.02至+0.19，七个中四个的95%区间排除零（Qwen2.5-3B、Qwen2.5-14B、OLMo-2-7B和Mistral-7B），七次比较调整后没有一个排除。Qwen2.5-1.5B，唯一规模相当的阅读器，得分+0.02 [−0.14,+0.16]。在跨年份具有相同季度词的季度对上（消除了对"第一"到"第四"这些词的任何先验），现代阅读器得分0.70至0.82；将结果的年份对分数旋转（保持结果跨年份的聚集方式），使它们每一个都达到25年允许的最小p值（0.040），但也使ChronoGPT-2015达到该水平。在一年内，去除每个阅读器对每个季度词的平均答案后，现代阅读器得分0.53至0.62（最小p值0.075）；很少有年份混合结果，因此季度级记忆无法分辨（附录B）。</p>
+<p><strong>阶梯无法分辨这种规模的记忆</strong></p>
+<p>对同时具有两种项目的五个检查点，已见减未见的AUC差异从−0.19到+0.12，两个为正，所有五个区间都包含零（表2，附录B中的图4）。已见和未见项目来自不同时代，因此更干净的对比固定项目并在其截止日期之间发布的结果上比较连续检查点：五个对比中两个为正，每个16至20个项目，区间宽0.61至1.08（表8）。阶梯无法检测现代阅读器相对于ChronoGPT-2024所显示规模的记忆，因此它既不确认也不排除小型时间一致性模型中的记忆。</p>
+<p><strong>决定探针未通过其原假设</strong></p>
+<p>无法知道结果的阅读器在决定探针上得分远高于0.5：门控DatedGPT阅读器在其31个项目上得分0.79，2011年截止的ChronoGPT在其截止后的31次利率变动上得分0.65。我们不知道它们利用了哪个先验（持续性规则，即年份前最后一次变动的方向，仅得分0.54），因此探针无法将记忆与这些先验分开。现代阅读器得分0.64至0.95。我们在附录B中报告该探针，不从中得出结论。</p>
+<p><strong>表1</strong>：GDP探针：仅给定季度，该季度初次发布增长是否高于2%？原始标签分数的AUC。与阅读器自身门控家族（ChronoGPT或DatedGPT）以及与ChronoGPT-2024的差异，在相同项目上，95%区间来自重采样年份。"相同季度词"：具有相同季度数的季度对；p来自将结果的年份对分数旋转，其下限为1/25。DatedGPT的门控阅读器覆盖2014年及以后的项目。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>n</th>
+<th>AUC</th>
+<th>对自身门控阅读器</th>
+<th>对ChronoGPT-2024</th>
+<th>相同季度词AUC</th>
+<th>旋转p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，门控</td>
+<td>100</td>
+<td>0.48</td>
+<td>不适用</td>
+<td>−0.15 [−0.34,+0.02]</td>
+<td>0.48</td>
+<td>0.680</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>100</td>
+<td>0.64</td>
+<td>+0.15 [−0.01,+0.32]</td>
+<td>+0.00 [−0.11,+0.11]</td>
+<td>0.64</td>
+<td>0.120</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>100</td>
+<td>0.62</td>
+<td>+0.14 [−0.00,+0.30]</td>
+<td>−0.01 [−0.17,+0.15]</td>
+<td>0.58</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>100</td>
+<td>0.51</td>
+<td>+0.03 [−0.15,+0.24]</td>
+<td>−0.12 [−0.29,+0.04]</td>
+<td>0.43</td>
+<td>0.840</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>100</td>
+<td>0.64</td>
+<td>+0.15 [−0.03,+0.34]</td>
+<td>不适用</td>
+<td>0.56</td>
+<td>0.200</td>
+</tr>
+<tr>
+<td>DatedGPT，门控</td>
+<td>45</td>
+<td>0.54</td>
+<td>不适用</td>
+<td>−0.09 [−0.46,+0.19]</td>
+<td>0.56</td>
+<td>0.333</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2016</td>
+<td>100</td>
+<td>0.59</td>
+<td>+0.12 [−0.06,+0.34]</td>
+<td>−0.04 [−0.17,+0.09]</td>
+<td>0.57</td>
+<td>0.120</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2020</td>
+<td>100</td>
+<td>0.36</td>
+<td>−0.23 [−0.44,+0.04]</td>
+<td>−0.27 [−0.48,−0.07]</td>
+<td>0.40</td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2024</td>
+<td>100</td>
+<td>0.44</td>
+<td>−0.06 [−0.27,+0.13]</td>
+<td>−0.20 [−0.41,+0.02]</td>
+<td>0.45</td>
+<td>0.960</td>
+</tr>
+<tr>
+<td>Qwen2.5-1.5B</td>
+<td>100</td>
+<td>0.66</td>
+<td>+0.17 [+0.00,+0.33]</td>
+<td>+0.02 [−0.14,+0.16]</td>
+<td>0.70</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>Qwen2.5-3B</td>
+<td>100</td>
+<td>0.76</td>
+<td>+0.28 [+0.13,+0.41]</td>
+<td>+0.12 [+0.01,+0.24]</td>
+<td>0.77</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>100</td>
+<td>0.79</td>
+<td>+0.31 [+0.14,+0.47]</td>
+<td>+0.16 [−0.02,+0.31]</td>
+<td>0.81</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>Qwen2.5-14B</td>
+<td>100</td>
+<td>0.79</td>
+<td>+0.31 [+0.15,+0.47]</td>
+<td>+0.16 [+0.04,+0.28]</td>
+<td>0.79</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>OLMo-2-7B</td>
+<td>100</td>
+<td>0.78</td>
+<td>+0.30 [+0.15,+0.45]</td>
+<td>+0.14 [+0.01,+0.27]</td>
+<td>0.78</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>OLMo-2-13B</td>
+<td>100</td>
+<td>0.75</td>
+<td>+0.27 [+0.11,+0.41]</td>
+<td>+0.11 [−0.05,+0.26]</td>
+<td>0.73</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>Mistral-7B</td>
+<td>100</td>
+<td>0.83</td>
+<td>+0.35 [+0.20,+0.50]</td>
+<td>+0.19 [+0.04,+0.32]</td>
+<td>0.82</td>
+<td>0.040</td>
+</tr>
+<tr>
+<td>持续性规则</td>
+<td>100</td>
+<td>0.45</td>
+<td>−0.04 [−0.21,+0.14]</td>
+<td>不适用</td>
+<td>0.44</td>
+<td>0.760</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表2</strong>：检查点阶梯。"已见"：结果在检查点截止日期前已公开的探针项目，以及初次发布已公开的即时预测季度；"未见"：其余。区间来自重采样年份（探针）和季度（即时预测）。DatedGPT检查点仅回答探针。</p>
+<table>
+<thead>
+<tr>
+<th>检查点</th>
+<th>已见GDP探针AUC（n）</th>
+<th>未见GDP探针AUC（n）</th>
+<th>已见减未见</th>
+<th>已见GDP溢价（起点）</th>
+<th>未见GDP溢价（起点）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>0.71 [0.54,0.86]（47）</td>
+<td>0.59 [0.44,0.73]（53）</td>
+<td>+0.12 [−0.13,+0.34]</td>
+<td>不适用（0）</td>
+<td>+0.6 [−6.7,+10.2]（150）</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>0.60 [0.44,0.78]（63）</td>
+<td>0.66 [0.52,0.84]（37）</td>
+<td>−0.06 [−0.33,+0.15]</td>
+<td>−6.6 [−20.0,+4.1]（45）</td>
+<td>+0.1 [−6.8,+10.2]（105）</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>0.51 [0.38,0.66]（79）</td>
+<td>0.70 [0.53,0.89]（21）</td>
+<td>−0.19 [−0.46,+0.04]</td>
+<td>−1.5 [−17.1,+11.1]（93）</td>
+<td>+0.2 [−6.6,+10.4]（57）</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>0.64 [0.53,0.76]（99）</td>
+<td>不适用（1）</td>
+<td>不适用</td>
+<td>+3.4 [−2.9,+12.3]（147）</td>
+<td>不适用（3）</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2016</td>
+<td>0.54 [0.39,0.71]（67）</td>
+<td>0.66 [0.50,0.86]（33）</td>
+<td>−0.12 [−0.39,+0.11]</td>
+<td>未运行</td>
+<td>未运行</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2020</td>
+<td>0.39 [0.24,0.54]（83）</td>
+<td>0.33 [0.00,0.70]（17）</td>
+<td>+0.06 [−0.31,+0.45]</td>
+<td>未运行</td>
+<td>未运行</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2024</td>
+<td>0.44 [0.32,0.57]（99）</td>
+<td>不适用（1）</td>
+<td>不适用</td>
+<td>未运行</td>
+<td>未运行</td>
+</tr>
+</tbody>
+</table>
+<h3>成员推断</h3>
+<p>成员分数无法在时间一致性检查点上验证，因为没有人知道截止日期前发布的哪些文档在训练数据中。比较确实显示了时代混淆（表13）：平均对数概率将截止前文档排序为不比截止后文档更熟悉，通常更不熟悉（AUC 0.16至0.49），因为美联储的语言在几十年间发生变化。对于OLMo-2，我们用infini-gram（Liu et al., 2024）在其索引的第一阶段预训练语料库中计算每个摘录最多三个新颖的14词片段；当一个片段不被更早的FOMC文档包含时它是新颖的，因为声明重复整句。在416个有新颖片段的文档中，2021年及之前发布的68%被找到，2023年起发布的0%被找到；最后找到的是2022年11月2日的声明，比模型卡的截止日期早一年。缺失的片段可能以另一种形式被见过，新闻中引用的声明可能通过引用被找到，因此计数测量的是对文本的暴露而非对文档的暴露。声明几乎全部被找到（2022年及之前183/189），会议纪要少得多（69/183），Min-K%区分这两种文档类型（OLMo-2-7B的AUC为0.83）。在一年和一种文档类型内，时代和类型都无法提供帮助，Min-K%不区分找到和未找到的文档（AUC 0.54，置换p=0.215）。在这些数据上，成员分数追踪时代和文档类型而非成员关系。</p>
+<h2>5 测量记忆的价值</h2>
+<h3>实时即时预测器</h3>
+<p>我们通过将每个阅读器的信号放入实时即时预测器来为记忆定价，该预测器在官方数字发布前估计当前季度的增长。在每个起点，即时预测器采用十一个指标的一个数据版本。指标的发布延迟不同，因此某些序列的最新月份缺失；面板的这种不均匀末端是参差边缘。即时预测器用每个指标自身月度变化的二阶自回归AR(2)的预测填充它，平均到季度并形成增长。然后它将目标自身的指标块（GDP的实际活动，CPI的价格）降为其前三个主成分，我们称之为分块PCA，并用岭惩罚在目标对这些因子进行回归。这个岭回归是桥接，即连接月度指标与季度目标的模型的通常名称。它在2000年Q1以来初次发布在起点前已出的季度上估计。文本模型添加起点当日或之前发布的最新FOMC文档的五个维度；训练季度采用其自身季度中相同位置可用的文档。每个回归变量都按其训练均值和标准差标准化，因此惩罚平等对待每个阅读器。填充和指标块是在2006-2011保留集上的六个规范中选择的；所有六个在两个窗口上都有报告（附录A.5），尝试的顺序在那里说明。</p>
+<h3>基线</h3>
+<p>只有当硬数据模型有能力时文本才有价值，因此我们报告另外两个基准。第一个是Bańbura and Modugno (2014)风格的混合频率动态因子模型，用期望最大化在相同数据版本上拟合，参差边缘留作缺失数据（该估计器直接处理），因子数量和阶数在保留集上选择。第二个是从业者使用的专业即时预测集：专业预测者调查、GDPNow（Higgins, 2014）和纽约联储工作人员即时预测（Bok et al., 2018），每个仅在其值于其所载日期公开的地方使用：GDPNow从2014年7月上线时开始，纽约联储即时预测在其实时发布期间，2016年4月至2021年9月和2023年9月起。我们还直接询问文本信号是否校正专业即时预测，通过将其初次发布误差样本外回归到信号上。</p>
+<h3>前瞻溢价</h3>
+<p>泄漏阅读器的前瞻溢价是其文本模型相对于门控阅读器文本模型在相同起点上即时预测RMSE的百分比减少。三个起点共享每个目标季度。主要检验是Coroneo-Iacone检验（Coroneo and Iacone, 2020），它比较两个预测的准确性，专为具有自相关误差的小样本而构建。我们双侧运行，使用长期方差的加权周期图估计，带宽m=⌊T^(1/3)⌋（T=150个起点）和2m自由度的Student-t参考。作为检查，我们计算Harvey-Leybourne-Newbold检验（Harvey et al., 1997），即等预测准确性标准检验的小样本校正，以三个起点的视界运行，以及重采样季度的95%区间。文本模型相对于无文本模型的增益是嵌套比较，因为无文本模型是文本系数设为零的文本模型。我们用单侧Clark-West检验（Clark and West, 2007）检验它，该检验通过估计原假设下为零的系数来调整较大模型增加的噪声的损失差异。Holm方法（Bonferroni校正的步降版本）调整每个检验族的多重性：每个目标内的溢价检验、两个目标共26个文本对无文本检验，以及48个专业即时预测之上的文本检验。最小可检测效应是主要检验以80%功效检测到的溢价，来自平均损失差异的季度块自助标准误和2m自由度的Student-t分位数。我们报告依次剔除每一年的溢价，以及门控和ChronoGPT-2024阅读器的安慰剂：文档信号序列对日历旋转，这保持信号的分布和持续性并打破其与结果（包括合法信息）的对齐。</p>
+<h3>5.1 结果：记忆的价值</h3>
+<p><strong>无GDP技能的基线</strong></p>
+<p>我们想知道文本为有能力的即时预测器增加了什么，而在GDP上硬数据模型没有能力。在所有起点上桥接得分1.913，过去初次发布的滚动均值1.890（p=0.81）；不含2020-2021年，滚动均值得分1.273，桥接1.428（p=0.19），动态因子模型1.479。因此任何GDP溢价都是在相对历史均值无技能的基础上测量的。在CPI上桥接比滚动均值准确得多，1.148对2.406（p=0.11）。</p>
+<p><strong>文本对无文本</strong></p>
+<p>表3将每个阅读器的信号放入相同的即时预测器。相对于无文本桥接，门控阅读器的信号使GDP RMSE变化−2.6%，ChronoGPT-2024信号+0.9%（Clark-West p=0.064），最佳现代阅读器Qwen2.5-14B +0.9%（p=0.047）。在26个文本对无文本检验的Holm调整后，最小调整p值为1.00。在CPI上没有阅读器的信号改善桥接。</p>
+<p><strong>前瞻溢价</strong></p>
+<p>相对于门控阅读器，八个泄漏阅读器的GDP溢价从−0.9%到+3.4%（图3）；所有八个区间都包含零，最小Holm调整p值为1.00。溢价取决于两个年份。不含2021年，它们从−5.1%到−0.3%；不含2020年（贡献2020年Q1和Q4），从0.0%到+7.7%。这些每一个都低于8.8%至13.1%的最小可检测效应。2021年的波动不是记忆的标志：2011年截止的ChronoGPT（不可能知道任何测试窗口结果）在不含2021年时也失去其溢价（−4.1%），这指向门控阅读器在2021年的糟糕表现而非其他模型对2021年的了解（图5，附录B）。在CPI上溢价从−4.2%到+0.9%，两个泄漏阅读器比门控阅读器差且区间排除零：Qwen2.5-7B（−4.2%，[−6.9,−1.6]，Coroneo-Iacone p=0.022，Harvey-Leybourne-Newbold p=0.006）和Mistral-7B（−3.8%，p=0.074和0.013）；CPI内Holm调整后最小p值为0.24。</p>
+<p>输出门控对准确性的影响与溢价相当。相对于其未防护信号（也跳过校准），门控阅读器的防护信号使GDP准确性变化−2.3%；全程使用未防护信号时，GDP溢价从−3.0%到+1.3%。旋转安慰剂发现很少：相对于桥接，真实的ChronoGPT-2024信号击败其64次旋转中的92%（单侧p约0.08），真实门控信号击败其自身的22%；相对于真实门控阅读器测量，与每个结果错位的旋转ChronoGPT-2024信号在8%的旋转中达到观察到的溢价。</p>
+<p><strong>表3</strong>：实时GDP即时预测，2012-2024，50个季度150个起点。相对初次发布的RMSE。溢价：相对于门控ChronoGPT阅读器文本模型的RMSE百分比减少，95%区间来自重采样季度；不含2021年、不含2020年的溢价，以及依次剔除每年时的范围；以及两个阅读器使用未防护信号时的溢价。CPI见表9。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>RMSE</th>
+<th>溢价，% [95%]</th>
+<th>不含2021</th>
+<th>不含2020</th>
+<th>依次剔除每年</th>
+<th>未防护溢价 [95%]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>无文本（因子桥接）</td>
+<td>1.913</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，门控</td>
+<td>1.962</td>
+<td>参考</td>
+<td>参考</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>1.951</td>
+<td>+0.6 [−6.4,+9.7]</td>
+<td>−4.1</td>
+<td>+4.9 [−4.1,+4.9]</td>
+<td>−0.7 [−6.0,+6.6]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>1.977</td>
+<td>−0.8 [−7.1,+7.3]</td>
+<td>−3.0</td>
+<td>+3.5 [−3.0,+3.5]</td>
+<td>−1.8 [−6.5,+5.3]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>1.965</td>
+<td>−0.1 [−6.4,+8.2]</td>
+<td>−3.2</td>
+<td>+3.7 [−3.2,+3.7]</td>
+<td>−1.5 [−6.7,+5.9]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>1.895</td>
+<td>+3.4 [−2.7,+12.6]</td>
+<td>−0.9</td>
+<td>+7.7 [−0.9,+7.7]</td>
+<td>+1.3 [−3.5,+8.2]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-1.5B</td>
+<td>1.935</td>
+<td>+1.4 [−4.0,+7.6]</td>
+<td>−2.4</td>
+<td>+2.9 [−2.4,+2.9]</td>
+<td>−0.3 [−4.5,+5.3]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-3B</td>
+<td>1.979</td>
+<td>−0.9 [−10.1,+7.2]</td>
+<td>−5.1</td>
+<td>+0.0 [−5.1,+1.6]</td>
+<td>+1.1 [−3.1,+6.7]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>1.903</td>
+<td>+3.0 [−3.5,+11.1]</td>
+<td>−2.2</td>
+<td>+5.3 [−2.2,+5.3]</td>
+<td>+0.2 [−4.7,+6.3]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-14B</td>
+<td>1.895</td>
+<td>+3.4 [−1.8,+10.6]</td>
+<td>−0.3</td>
+<td>+6.3 [−0.3,+6.3]</td>
+<td>+1.1 [−3.6,+8.2]</td>
+<td></td>
+</tr>
+<tr>
+<td>OLMo-2-7B</td>
+<td>1.963</td>
+<td>−0.1 [−5.6,+6.7]</td>
+<td>−3.1</td>
+<td>+1.8 [−3.1,+1.8]</td>
+<td>−1.8 [−7.3,+5.9]</td>
+<td></td>
+</tr>
+<tr>
+<td>OLMo-2-13B</td>
+<td>1.902</td>
+<td>+3.1 [−3.4,+12.1]</td>
+<td>−1.5</td>
+<td>+6.5 [−1.5,+6.5]</td>
+<td>−0.7 [−8.4,+7.1]</td>
+<td></td>
+</tr>
+<tr>
+<td>Mistral-7B</td>
+<td>1.914</td>
+<td>+2.4 [−3.1,+9.7]</td>
+<td>−1.2</td>
+<td>+4.4 [−1.2,+4.4]</td>
+<td>−3.0 [−12.8,+5.5]</td>
+<td></td>
+</tr>
+<tr>
+<td>词典</td>
+<td>1.907</td>
+<td>不适用</td>
+<td>不适用</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>图3</strong>：每个泄漏阅读器相对于门控阅读器的前瞻溢价，所有季度（点，95%季度块区间）和不含2021年（条）。左：美国GDP；右：美国CPI。</p>
+<h3>专业即时预测</h3>
+<p>没有阅读器的信号能在去除平均误差之外校正SPF、GDPNow或纽约联储即时预测：在文本校正对平均误差校正的48个检验中，最小Holm调整p值为0.99（表12）。相对于GDPNow，仅平均误差校正就改善了即时预测。</p>
+<h2>6 讨论</h2>
+<h3>证据支持什么</h3>
+<p>较大的现代开源模型持有日期可检索的结果记忆，超出了无记忆阅读器在相同项目上达到的水平。小型时间一致性模型是否持有任何记忆无法用这些探针分辨。在实时即时预测中，记忆和文本都没有表现为可分辨的技能。探针可以显示模型可能使用未来，但只有预测比较可以显示它确实使用，而在宏观经济样本量下该比较功效很小。</p>
+<h3>为什么预测比较功效很小</h3>
+<p>在50个季度的150个起点下，主要检验以80%功效检测约8.8至13.1个百分点的GDP即时预测RMSE溢价，大于我们估计的每个溢价（含或不含2020和2021年）。2020和2021年的波动对样本RMSE的影响超过所有其他季度之和，这就是为什么溢价符号取决于剔除这两年中的哪一年。仅依赖预测准确性的语言模型预测器审计应报告最小可检测效应和留一周期溢价。</p>
+<h3>超越央行文本</h3>
+<p>该设计只需要有日期的输入、有已知发布日期的结果，以及一个有已知截止日期的检查点家族，如在已知日期解决的问题或按发布日期排序的问题的预测基准中（Roberts et al., 2024）。</p>
+<h3>局限性</h3>
+<p>文档来自一家央行，探针测试两种结果。可用的时间一致性家族较小，因此时间一致性阅读器与现代阅读器之间的对比将截止日期与规模和训练量混淆；每个家族内的阶梯不会，但它测量的是小模型。训练截止日期仅对OLMo-2的基础模型有记录；对其他现代阅读器我们用发布日期界定。阅读器截止日期后的项目被错误标记为泄漏，这使其探针AUC偏向随机而非偏离。门控是保守的：y年的文档由y−1年结束的检查点阅读，因此门控阅读器错过最多一年的合法上下文。即时预测器的填充是在另外两个填充已在测试窗口上见过之后在保留集上选择的；所有六个规范都有报告。</p>
+<h3>AI助手的使用</h3>
+<p>作者在其指导下使用AI助手进行文本编辑和编程，并对内容承担全部责任。</p>
+<h2>参考文献</h2>
+<p>Aruoba, S. B. and T. Drechsel. forthcoming. Identifying monetary policy shocks: A natural language approach. <em>American Economic Journal: Macroeconomics</em>.</p>
+<p>Bańbura, M. and M. Modugno. 2014. Maximum likelihood estimation of factor models on datasets with arbitrary pattern of missing data. <em>Journal of Applied Econometrics</em>, 29(1):133–160.</p>
+<p>Bok, B., D. Caratelli, D. Giannone, A. M. Sbordone, and A. Tambalotti. 2018. Macroeconomic nowcasting and forecasting with big data. <em>Annual Review of Economics</em>, 10:615–643.</p>
+<p>Carlini, N., D. Ippolito, M. Jagielski, K. Lee, F. Tramer, and C. Zhang. 2023. Quantifying memorization across neural language models. In <em>ICLR</em>.</p>
+<p>Carriero, A., D. Pettenuzzo, and S. Shekhar. 2026. MACROCAST: A vintage-consistent time series foundation model for real-time macroeconomic forecasting. <em>arXiv:2606.28670</em>.</p>
+<p>Caspari, L., A. Trautsch, M. Granitzer, and S. Herbold. 2025. Studying memorization of large language models using answers to Stack Overflow questions. <em>TMLR</em>.</p>
+<p>Cheng, J., M. Marone, O. Weller, D. Lawrie, D. Khashabi, and B. Van Durme. 2024. Dated data: Tracing knowledge cutoffs in large language models. In <em>COLM</em>.</p>
+<p>Clark, T. E. and K. D. West. 2007. Approximately normal tests for equal predictive accuracy in nested models. <em>Journal of Econometrics</em>, 138(1):291–311.</p>
+<p>Coroneo, L. and F. Iacone. 2020. Comparing predictive accuracy in small samples using fixed-smoothing asymptotics. <em>Journal of Applied Econometrics</em>, 35(4):391–409.</p>
+<p>Croushore, D. 2011. Frontiers of real-time data analysis. <em>Journal of Economic Literature</em>, 49(1):72–100.</p>
+<p>Croushore, D. and T. Stark. 2001. A real-time data set for macroeconomists. <em>Journal of Econometrics</em>, 105(1):111–130.</p>
+<p>Dhingra, B., J. R. Cole, J. M. Eisenschlos, D. Gillick, J. Eisenstein, and W. W. Cohen. 2022. Time-aware language models as temporal knowledge bases. <em>TACL</em>, 10:257–273.</p>
+<p>Drinkall, F., E. Rahimikia, J. Pierrehumbert, and S. Zohren. 2024. Time Machine GPT. In <em>Findings of NAACL 2024</em>, pages 3281–3292.</p>
+<p>Duan, M., A. Suri, N. Mireshghallah, S. Min, W. Shi, L. Zettlemoyer, Y. Tsvetkov, Y. Choi, D. Evans, and H. Hajishirzi. 2024. Do membership inference attacks work on large language models? In <em>COLM</em>.</p>
+<p>Eliseev, A. and S. Seleznev. 2026. Fake date tests: Can we trust in-sample accuracy of LLMs in macroeconomic forecasting? <em>arXiv:2601.07992</em>.</p>
+<p>Ellingsen, J., V. H. Larsen, and L. A. Thorsrud. 2022. News media versus FRED-MD for macroeconomic forecasting. <em>Journal of Applied Econometrics</em>, 37(1):63–81.</p>
+<p>Faria-e Castro, M. and F. Leibovici. 2024. Artificial intelligence and inflation forecasts. <em>Federal Reserve Bank of St. Louis Review</em>, 106(12):1–14.</p>
+<p>Gambacorta, L., B. Kwon, T. Park, P. Patelli, and X. S. Zhu. 2026. CB-LMs: Language models for central banking. <em>Journal of Financial Stability</em>, 87:101585.</p>
+<p>Gao, Z., W. Jiang, and Y. Yan. 2026. Detecting lookahead bias in LLM forecasts. <em>arXiv:2512.23847v2</em>.</p>
+<p>Giannone, D., L. Reichlin, and D. Small. 2008. Nowcasting: The real-time informational content of macroeconomic data. <em>Journal of Monetary Economics</em>, 55(4):665–676.</p>
+<p>Glasserman, P. and C. Lin. 2024. Assessing look-ahead bias in stock return predictions generated by GPT sentiment analysis. <em>The Journal of Financial Data Science</em>, 6(1):25–42.</p>
+<p>Golchin, S. and M. Surdeanu. 2024. Time travel in LLMs: Tracing data contamination in large language models. In <em>ICLR</em>.</p>
+<p>Hansen, S. and M. McMahon. 2016. Shocking language: Understanding the macroeconomic effects of central bank communication. <em>Journal of International Economics</em>, 99(S1):S114–S133.</p>
+<p>Hansen, S., M. McMahon, and A. Prat. 2018. Transparency and deliberation within the FOMC: A computational linguistics approach. <em>The Quarterly Journal of Economics</em>, 133(2):801–870.</p>
+<p>Harvey, D., S. Leybourne, and P. Newbold. 1997. Testing the equality of prediction mean squared errors. <em>International Journal of Forecasting</em>, 13(2):281–291.</p>
+<p>He, S., L. Lv, A. Manela, and J. Wu. 2025. Instruction tuning chronologically consistent language models. <em>arXiv:2510.11677</em>.</p>
+<p>He, S., L. Lv, A. Manela, and J. Wu. 2026. Chronologically consistent large language models. <em>Journal of Financial Economics</em>, 185:104374.</p>
+<p>Higgins, P. C. 2014. GDPNow: A model for GDP "nowcasting". Working Paper 2014-7, Federal Reserve Bank of Atlanta.</p>
+<p>Jiang, A. Q., A. Sablayrolles, A. Mensch, C. Bamford, D. S. Chaplot, et al. 2023. Mistral 7B. <em>arXiv:2310.06825</em>.</p>
+<p>Kalamara, E., A. Turrell, C. Redl, G. Kapetanios, and S. Kapadia. 2022. Making text count: Economic forecasting using newspaper text. <em>Journal of Applied Econometrics</em>, 37(5):896–919.</p>
+<p>Knotek, E. S., II and S. Zaman. 2017. Nowcasting U.S. headline and core inflation. <em>Journal of Money, Credit and Banking</em>, 49(5):931–968.</p>
+<p>Koenig, E. F., S. Dolmas, and J. Piger. 2003. The use and abuse of real-time data in economic forecasting. <em>The Review of Economics and Statistics</em>, 85(3):618–628.</p>
+<p>Lazaridou, A., et al. 2021. Mind the gap: Assessing temporal generalization in neural language models. In <em>NeurIPS</em>, volume 34, pages 29348–29363.</p>
+<p>Lenza, M. and G. E. Primiceri. 2022. How to estimate a vector autoregression after March 2020. <em>Journal of Applied Econometrics</em>, 37(4):688–699.</p>
+<p>Li, Z., Y. Wang, A. El Lahib, Y.-J. Xia, and X. Pi. 2026. Simulated ignorance fails: A systematic study of LLM behaviors on forecasting problems before model knowledge cutoff. In <em>IJCAI-26</em>, pages 5837–5845.</p>
+<p>Liu, J., S. Min, L. Zettlemoyer, Y. Choi, and H. Hajishirzi. 2024. Infini-gram: Scaling unbounded n-gram language models to a trillion tokens. In <em>COLM</em>.</p>
+<p>Lopez-Lira, A., Y. Tang, and M. Zhu. 2025. The memorization problem: Can we trust LLMs' economic forecasts? <em>arXiv:2504.14765</em>.</p>
+<p>Ludwig, J., S. Mullainathan, and A. Rambachan. 2026. Large language models: An applied econometric framework. <em>Annual Review of Economics</em>, 18:283–316.</p>
+<p>Qwen Team. 2024. Qwen2.5 technical report. <em>arXiv:2412.15115</em>.</p>
+<p>Ravaut, M., et al. 2025. A comprehensive survey of contamination detection methods in large language models. <em>TMLR</em>.</p>
+<p>Roberts, M., H. Thakur, C. Herlihy, C. White, and S. Dooley. 2024. To the cutoff... and beyond? A longitudinal perspective on LLM data contamination. In <em>ICLR</em>.</p>
+<p>Sainz, O., et al. 2023. NLP evaluation in trouble: On the need to measure LLM data contamination for each benchmark. In <em>Findings of EMNLP 2023</em>, pages 10776–10787.</p>
+<p>Sarkar, S. 2024. StoriesLM: A family of language models with time-indexed training data. <em>SSRN Working Paper 4881024</em>.</p>
+<p>Sarkar, S. and K. Vafa. 2024. Lookahead bias in pretrained language models. <em>SSRN Working Paper 4754678</em>.</p>
+<p>Shi, W., et al. 2024. Detecting pretraining data from large language models. In <em>ICLR</em>.</p>
+<p>Team OLMo, P. Walsh, L. Soldaini, D. Groeneveld, K. Lo, et al. 2024. 2 OLMo 2 Furious. <em>arXiv:2501.00656</em>.</p>
+<p>Thorsrud, L. A. 2020. Words are the new numbers: A newsy coincident index of the business cycle. <em>Journal of Business &amp; Economic Statistics</em>, 38(2):393–409.</p>
+<p>Xu, C., S. Guan, D. Greene, and M.-T. Kechadi. 2024. Benchmark data contamination of large language models: A survey. <em>arXiv:2406.04244</em>.</p>
+<p>Yan, Y., R. Tang, Z. Gao, W. Jiang, and Y. Lu. 2026. DatedGPT: Preventing lookahead bias in large language models with time-aware pretraining. <em>arXiv:2603.11838</em>.</p>
+<p>Zhang, J., et al. 2025. Min-K%++: Improved baseline for pre-training data detection from large language models. In <em>ICLR</em>.</p>
+<p>Zhao, Z., E. Wallace, S. Feng, D. Klein, and S. Singh. 2021. Calibrate before use: Improving few-shot performance of language models. In <em>ICML</em>, volume 139 of <em>PMLR</em>, pages 12697–12706.</p>
+<h2>附录A 复现细节</h2>
+<h3>A.1 阅读器</h3>
+<p>表4给出每个阅读器的规模、训练文本的结束日期及其角色。</p>
+<p><strong>表4</strong>：阅读器。发布日期是所用检查点的公开Hugging Face发布。对OLMo-2，我们在其索引的第一阶段预训练语料库中测量FOMC文本停止出现的时间（第4节）；Instruct模型卡未说明截止日期。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>参数</th>
+<th>训练文本结束</th>
+<th>角色</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT-Instruct，26个检查点</td>
+<td>1.55B</td>
+<td>每年12月31日，1999-2024</td>
+<td>门控</td>
+</tr>
+<tr>
+<td>ChronoGPT-Instruct，固定检查点</td>
+<td>1.55B</td>
+<td>2011、2015、2019、2024年12月31日</td>
+<td>非门控阶梯</td>
+</tr>
+<tr>
+<td>DatedGPT-Instruct，12个检查点</td>
+<td>1.34B</td>
+<td>每年12月31日，2013-2024</td>
+<td>门控，仅探针</td>
+</tr>
+<tr>
+<td>DatedGPT-Instruct，固定检查点</td>
+<td>1.34B</td>
+<td>2016、2020、2024年12月31日</td>
+<td>非门控阶梯，仅探针</td>
+</tr>
+<tr>
+<td>Qwen2.5-Instruct（Qwen Team, 2024）</td>
+<td>1.5B、3B、7B、14B</td>
+<td>未记录；2024年9月发布</td>
+<td>非门控</td>
+</tr>
+<tr>
+<td>OLMo-2-1124-Instruct（Team OLMo et al., 2024）</td>
+<td>7B、13B</td>
+<td>2023年12月（基础模型卡）；FOMC文本至2022年11月</td>
+<td>非门控</td>
+</tr>
+<tr>
+<td>Mistral-7B-Instruct-v0.3（Jiang et al., 2023）</td>
+<td>7B</td>
+<td>未记录；2024年5月发布</td>
+<td>非门控</td>
+</tr>
+<tr>
+<td>政策短语词典</td>
+<td>无</td>
+<td>短语写于样本之后</td>
+<td>参考</td>
+</tr>
+</tbody>
+</table>
+<h3>A.2 提示</h3>
+<p>每个文档问题使用以下模板；问题和探针提示列于表5中，从评分代码中读取。聊天模型通过其自身的聊天模板将提示作为一个用户轮次接收。ChronoGPT-Instruct阅读器以作者的指令格式接收，DatedGPT-Instruct阅读器通过其聊天模板接收，编码时不带第二个序列开始标记。</p>
+<p>来自联邦公开市场委员会文档的文本：<br />
+"""<br />
+{excerpt}<br />
+"""<br />
+{question} 用一个词回答：{answer 1}或{answer 2}。</p>
+<p>用于校准的无内容输入将摘录替换为"N/A"。探针提示以相同的单词回答指令结束。</p>
+<p><strong>表5</strong>：向每个阅读器提出的每个问题。每个文档维度三种表述；每个探针一个。答案对按维度固定。</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>答案</th>
+<th>问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>立场</td>
+<td>更严格/更宽松</td>
+<td>与中性立场相比，本文描述的货币政策更严格还是更宽松？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文中的委员会设定的政策比中性更严格还是更宽松？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>总体而言，本文描述的货币政策更严格还是更宽松？</td>
+</tr>
+<tr>
+<td>通胀风险</td>
+<td>高/低</td>
+<td>本文描述的通胀上升风险是高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文对通胀压力的担忧有多大，高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文中通胀的上行风险是高还是低？</td>
+</tr>
+<tr>
+<td>增长风险</td>
+<td>高/低</td>
+<td>本文描述的经济增长下行风险是高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文对疲弱经济增长的担忧有多大，高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文中经济放缓的风险是高还是低？</td>
+</tr>
+<tr>
+<td>不确定性</td>
+<td>高/低</td>
+<td>本文描述的经济不确定性是高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文描述的前景有多不确定，高还是低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文表达的不确定性水平是高还是低？</td>
+</tr>
+<tr>
+<td>前瞻指引</td>
+<td>更高/更低</td>
+<td>本文关于未来政策的指引指向未来更高还是更低的利率？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文中政策利率的预期路径是更高还是更低？</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>本文是否预示未来几个月更高或更低的利率？</td>
+</tr>
+<tr>
+<td>决定探针</td>
+<td>提高/降低</td>
+<td>在&lt;date&gt;，联邦公开市场委员会改变了联邦基金利率目标。它是提高还是降低了目标？</td>
+</tr>
+<tr>
+<td>GDP探针</td>
+<td>高于/低于</td>
+<td>根据首次官方估计，&lt;date&gt;美国实际GDP增长是否高于或低于年化2%？</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表6</strong>：所有六个无文本即时预测器规范，在选择所用保留窗口和测试窗口上。星号：所选规范。</p>
+<table>
+<thead>
+<tr>
+<th>参差边缘填充</th>
+<th>指标</th>
+<th>保留GDP</th>
+<th>保留CPI</th>
+<th>测试GDP</th>
+<th>测试CPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均增长</td>
+<td>全部十一个</td>
+<td>1.831</td>
+<td>2.545</td>
+<td>2.376</td>
+<td>1.675</td>
+</tr>
+<tr>
+<td>平均增长</td>
+<td>按目标</td>
+<td>1.704</td>
+<td>2.303</td>
+<td>2.419</td>
+<td>1.327</td>
+</tr>
+<tr>
+<td>无变化</td>
+<td>全部十一个</td>
+<td>1.896</td>
+<td>2.375</td>
+<td>1.921</td>
+<td>1.577</td>
+</tr>
+<tr>
+<td>无变化</td>
+<td>按目标</td>
+<td>1.751</td>
+<td>2.089</td>
+<td>1.933</td>
+<td>1.655</td>
+</tr>
+<tr>
+<td>AR(2)</td>
+<td>全部十一个</td>
+<td>1.926</td>
+<td>2.200</td>
+<td>1.903</td>
+<td>1.281</td>
+</tr>
+<tr>
+<td>AR(2)*</td>
+<td>按目标</td>
+<td>1.798</td>
+<td>1.772</td>
+<td>1.913</td>
+<td>1.148</td>
+</tr>
+</tbody>
+</table>
+<h3>A.3 语料库构建与清理</h3>
+<p>语料库基于美联储自己的文档和发布日期索引构建。在本文报告的任何结果之前应用了四项校正。</p>
+<ol>
+<li>
+<p><strong>日期错误的会议纪要</strong>。二十八个原始文件保存了以会议间电话会议日期存储的会议纪要副本，比会议纪要发布早三至六十六天，这使两个测试起点和十三个训练单元的文本早于其公开发布。美联储索引中没有条目的文件不予使用。</p>
+</li>
+<li>
+<p><strong>缺失的会议纪要</strong>。2004-2006年的二十四套会议纪要以非标准文件名存储。它们被包括在内，以其发布日期为准。</p>
+</li>
+<li>
+<p><strong>摘录边界和日期</strong>。二十六个无记录投票的声明延伸到网页的导航文本；其摘录在页面页脚停止。八个声明的日期比其发布早一天；声明以其新闻稿URL为准。我们为标准标记遗漏前景或政策讨论的会议纪要添加了章节标记；6套会议纪要仍只产生两个章节之一。</p>
+</li>
+<li>
+<p><strong>字符编码</strong>。六十八个摘录带有被解码为Latin-1的UTF-8标点。它们被解码为UTF-8。</p>
+</li>
+</ol>
+<p>决定探针的标签来自美联储发布的目标变动表，2000年至2025年74次变动，每次以宣布它的声明为日期。每个阅读器对校正后的文档和探针项目评分。</p>
+<h3>A.4 确定性</h3>
+<p>分数在浮点噪声范围内是确定性的。非门控ChronoGPT-2024阅读器在语料库清理前被评分两次，一次在Apple硅GPU上，一次在CUDA GPU上；6,688个原始分数相差至多8×10⁻⁵，100%的情况下符号一致。清理改变的项目随后被重新评分。</p>
+<h3>A.5 即时预测器规范</h3>
+<p>评估了六个规范：三种填充尚未发布月份的方法（最近三个月的平均增长、无变化、以及每个指标自身月度变化的二阶自回归），每种配全部十一个指标或按目标的指标块。填充按列出的顺序运行，一旦添加了自回归填充，选择规则（两个目标中平均保留RMSE最低的单一规范，起点2006-2011）应用于全部六个。六个中有四个在规则设定前已在测试窗口上见过。表6报告两个窗口上的全部六个，表10报告每个规范下的门控和ChronoGPT-2024阅读器。</p>
+<h3>A.6 基线</h3>
+<p>专业即时预测仅在其值于其日期公开的地方使用。动态因子模型使用与桥接相同的数据版本、块和训练季度；其因子数量和阶数在保留集上选择（GDP两个因子两个滞后，CPI两个因子一个滞后）。对于表12，专业的初次发布误差在扩展窗口上样本外回归到最新文档的信号上，校正后的即时预测通过Clark-West检验与专业的比较，并与仅校正专业平均误差的比较。</p>
+<h2>附录B 补充表格和图</h2>
+<p>正文中引用的表格和图。</p>
+<p><strong>表7</strong>：所有项目上年内的GDP探针（原始，以及去除每个阅读器每个季度词平均分数后，含年内置换检验），仅2012-2024项目的GDP探针AUC，以及带循环移位p值的决定探针。季度词调整前，2015、2019和2024年截止的ChronoGPT检查点在年内得分0.70、0.73和0.72；调整后为0.52、0.61和0.53。在决定探针上，门控DatedGPT阅读器在其31个项目上得分0.79，2011年截止的ChronoGPT得分0.65。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>同年AUC</th>
+<th>p</th>
+<th>同年词调整AUC</th>
+<th>p</th>
+<th>2012-2024 AUC</th>
+<th>n</th>
+<th>决定探针AUC</th>
+<th>循环p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，门控</td>
+<td>0.48</td>
+<td>0.612</td>
+<td>0.42</td>
+<td>0.854</td>
+<td>0.53</td>
+<td>74</td>
+<td>0.50</td>
+<td>0.554</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>0.58</td>
+<td>0.206</td>
+<td>0.47</td>
+<td>0.678</td>
+<td>0.60</td>
+<td>74</td>
+<td>0.65</td>
+<td>0.041</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>0.70</td>
+<td>0.006</td>
+<td>0.52</td>
+<td>0.469</td>
+<td>0.64</td>
+<td>74</td>
+<td>0.44</td>
+<td>0.743</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>0.73</td>
+<td>0.002</td>
+<td>0.61</td>
+<td>0.107</td>
+<td>0.48</td>
+<td>74</td>
+<td>0.54</td>
+<td>0.297</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>0.72</td>
+<td>0.004</td>
+<td>0.53</td>
+<td>0.380</td>
+<td>0.62</td>
+<td>74</td>
+<td>0.46</td>
+<td>0.743</td>
+</tr>
+<tr>
+<td>DatedGPT，门控</td>
+<td>0.48</td>
+<td>0.613</td>
+<td>0.48</td>
+<td>0.621</td>
+<td>0.54</td>
+<td>31</td>
+<td>0.79</td>
+<td>0.065</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2016</td>
+<td>0.64</td>
+<td>0.057</td>
+<td>0.52</td>
+<td>0.471</td>
+<td>0.65</td>
+<td>74</td>
+<td>0.61</td>
+<td>0.041</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2020</td>
+<td>0.27</td>
+<td>0.999</td>
+<td>0.44</td>
+<td>0.806</td>
+<td>0.33</td>
+<td>74</td>
+<td>0.64</td>
+<td>0.081</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2024</td>
+<td>0.44</td>
+<td>0.814</td>
+<td>0.62</td>
+<td>0.072</td>
+<td>0.47</td>
+<td>74</td>
+<td>0.49</td>
+<td>0.540</td>
+</tr>
+<tr>
+<td>Qwen2.5-1.5B</td>
+<td>0.48</td>
+<td>0.595</td>
+<td>0.62</td>
+<td>0.075</td>
+<td>0.56</td>
+<td>74</td>
+<td>0.64</td>
+<td>0.243</td>
+</tr>
+<tr>
+<td>Qwen2.5-3B</td>
+<td>0.66</td>
+<td>0.035</td>
+<td>0.62</td>
+<td>0.080</td>
+<td>0.70</td>
+<td>74</td>
+<td>0.67</td>
+<td>0.054</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>0.58</td>
+<td>0.175</td>
+<td>0.59</td>
+<td>0.145</td>
+<td>0.71</td>
+<td>74</td>
+<td>0.70</td>
+<td>0.013</td>
+</tr>
+<tr>
+<td>Qwen2.5-14B</td>
+<td>0.66</td>
+<td>0.030</td>
+<td>0.61</td>
+<td>0.114</td>
+<td>0.73</td>
+<td>74</td>
+<td>0.95</td>
+<td>0.013</td>
+</tr>
+<tr>
+<td>OLMo-2-7B</td>
+<td>0.66</td>
+<td>0.030</td>
+<td>0.53</td>
+<td>0.386</td>
+<td>0.70</td>
+<td>74</td>
+<td>0.73</td>
+<td>0.054</td>
+</tr>
+<tr>
+<td>OLMo-2-13B</td>
+<td>0.56</td>
+<td>0.244</td>
+<td>0.56</td>
+<td>0.248</td>
+<td>0.68</td>
+<td>74</td>
+<td>0.86</td>
+<td>0.013</td>
+</tr>
+<tr>
+<td>Mistral-7B</td>
+<td>0.66</td>
+<td>0.030</td>
+<td>0.61</td>
+<td>0.092</td>
+<td>0.77</td>
+<td>74</td>
+<td>0.77</td>
+<td>0.013</td>
+</tr>
+<tr>
+<td>持续性规则</td>
+<td>0.44</td>
+<td>0.897</td>
+<td>0.41</td>
+<td>0.961</td>
+<td>0.47</td>
+<td>74</td>
+<td>0.54</td>
+<td>0.392</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图4</strong>：ChronoGPT阶梯：每个检查点在其可能见过（填充）和不可能见过（空心）的结果上，GDP探针AUC（左）和相对门控阅读器的GDP即时预测溢价及95%季度块区间（右）。记忆预测填充高于空心；没有可分辨的差异。</p>
+<p><strong>表8</strong>：相同项目，连续检查点：结果在较早检查点截止日期后、较晚检查点截止日期前发布的GDP探针项目。记忆预测较晚检查点表现更好。区间来自重采样年份。</p>
+<table>
+<thead>
+<tr>
+<th>较早检查点</th>
+<th>较晚检查点</th>
+<th>项目</th>
+<th>较早AUC</th>
+<th>较晚AUC</th>
+<th>较晚减较早 [95%]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>ChronoGPT，截止2015</td>
+<td>16</td>
+<td>0.47</td>
+<td>0.62</td>
+<td>+0.15 [−0.20,+0.41]</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>ChronoGPT，截止2019</td>
+<td>16</td>
+<td>0.57</td>
+<td>0.30</td>
+<td>−0.27 [−0.83,+0.09]</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>ChronoGPT，截止2024</td>
+<td>20</td>
+<td>0.68</td>
+<td>0.77</td>
+<td>+0.10 [−0.10,+0.51]</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2016</td>
+<td>DatedGPT，截止2020</td>
+<td>16</td>
+<td>0.51</td>
+<td>0.18</td>
+<td>−0.33 [−1.00,+0.08]</td>
+</tr>
+<tr>
+<td>DatedGPT，截止2020</td>
+<td>DatedGPT，截止2024</td>
+<td>16</td>
+<td>0.35</td>
+<td>0.33</td>
+<td>−0.02 [−0.50,+0.33]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图5</strong>： 第一发布GDP增长和每季度第一个起点处的三个即时预测。 门控阅读器平方误差减非门控ChronoGPT-2024阅读器的运行和：差距在2020年前上升，2020年下降，2021年上升。</p>
+<p><strong>表9</strong>：实时CPI即时预测，如表3。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>RMSE</th>
+<th>溢价，% [95%]</th>
+<th>不含2021</th>
+<th>不含2020</th>
+<th>依次剔除每年</th>
+<th>未防护溢价 [95%]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>无文本（因子桥接）</td>
+<td>1.148</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，门控</td>
+<td>1.161</td>
+<td>参考</td>
+<td>参考</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>1.152</td>
+<td>+0.7 [−1.0,+2.6]</td>
+<td>+1.2</td>
+<td>+0.6 [+0.5,+1.2]</td>
+<td>+0.1 [−1.8,+2.1]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>1.157</td>
+<td>+0.3 [−1.8,+2.4]</td>
+<td>+1.6</td>
+<td>+0.4 [−0.2,+1.6]</td>
+<td>+0.2 [−1.9,+2.1]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>1.156</td>
+<td>+0.4 [−1.5,+2.3]</td>
+<td>+1.3</td>
+<td>+0.4 [+0.2,+1.3]</td>
+<td>−0.1 [−2.7,+2.2]</td>
+<td></td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>1.162</td>
+<td>−0.1 [−2.5,+1.7]</td>
+<td>−0.4</td>
+<td>−0.1 [−0.4,+0.5]</td>
+<td>−0.1 [−2.3,+1.7]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-1.5B</td>
+<td>1.150</td>
+<td>+0.9 [−1.9,+3.5]</td>
+<td>+1.6</td>
+<td>+0.9 [+0.5,+1.6]</td>
+<td>+1.9 [−0.6,+4.6]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-3B</td>
+<td>1.172</td>
+<td>−1.0 [−3.7,+1.2]</td>
+<td>+0.1</td>
+<td>−0.9 [−2.3,+0.1]</td>
+<td>+0.4 [−2.3,+2.5]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>1.209</td>
+<td>−4.2 [−6.9,−1.6]</td>
+<td>−3.1</td>
+<td>−4.1 [−6.0,−3.1]</td>
+<td>−0.4 [−3.5,+2.5]</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen2.5-14B</td>
+<td>1.164</td>
+<td>−0.3 [−2.9,+1.9]</td>
+<td>+0.8</td>
+<td>−0.3 [−1.3,+0.8]</td>
+<td>−1.6 [−5.8,+2.3]</td>
+<td></td>
+</tr>
+<tr>
+<td>OLMo-2-7B</td>
+<td>1.184</td>
+<td>−2.0 [−5.2,+1.3]</td>
+<td>−1.1</td>
+<td>−1.9 [−2.4,−1.1]</td>
+<td>−0.2 [−2.3,+1.9]</td>
+<td></td>
+</tr>
+<tr>
+<td>OLMo-2-13B</td>
+<td>1.173</td>
+<td>−1.0 [−3.4,+0.9]</td>
+<td>−0.3</td>
+<td>−1.0 [−2.0,−0.3]</td>
+<td>−2.0 [−7.3,+1.4]</td>
+<td></td>
+</tr>
+<tr>
+<td>Mistral-7B</td>
+<td>1.205</td>
+<td>−3.8 [−6.3,−1.3]</td>
+<td>−3.0</td>
+<td>−3.8 [−4.8,−2.9]</td>
+<td>−3.7 [−7.5,−1.0]</td>
+<td></td>
+</tr>
+<tr>
+<td>词典</td>
+<td>1.172</td>
+<td>不适用</td>
+<td>不适用</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>表10</strong>：每个规范下的门控和ChronoGPT-2024阅读器。溢价：非门控相对门控阅读器的RMSE百分比减少，含Coroneo-Iacone p值。GDP溢价在六个规范中四个为正，没有一个显著；CPI溢价从−6.4%到+6.5%，一个名义上显著。</p>
+<table>
+<thead>
+<tr>
+<th>填充</th>
+<th>块</th>
+<th>GDP因子</th>
+<th>GDP门控</th>
+<th>GDP非门控</th>
+<th>GDP溢价</th>
+<th>CPI因子</th>
+<th>CPI门控</th>
+<th>CPI非门控</th>
+<th>CPI溢价</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均增长</td>
+<td>全部十一个</td>
+<td>2.376</td>
+<td>2.322</td>
+<td>2.366</td>
+<td>−1.9 (0.58)</td>
+<td>1.675</td>
+<td>1.646</td>
+<td>1.719</td>
+<td>−4.5 (0.26)</td>
+</tr>
+<tr>
+<td>平均增长</td>
+<td>按目标</td>
+<td>2.419</td>
+<td>2.349</td>
+<td>2.390</td>
+<td>−1.8 (0.54)</td>
+<td>1.327</td>
+<td>1.334</td>
+<td>1.356</td>
+<td>−1.6 (0.25)</td>
+</tr>
+<tr>
+<td>无变化</td>
+<td>全部十一个</td>
+<td>1.921</td>
+<td>2.038</td>
+<td>1.949</td>
+<td>+4.4 (0.13)</td>
+<td>1.577</td>
+<td>1.724</td>
+<td>1.612</td>
+<td>+6.5 (0.01)</td>
+</tr>
+<tr>
+<td>无变化</td>
+<td>按目标</td>
+<td>1.933</td>
+<td>2.052</td>
+<td>1.951</td>
+<td>+4.9 (0.15)</td>
+<td>1.655</td>
+<td>1.673</td>
+<td>1.672</td>
+<td>+0.1 (0.93)</td>
+</tr>
+<tr>
+<td>AR(2)</td>
+<td>全部十一个</td>
+<td>1.903</td>
+<td>1.943</td>
+<td>1.899</td>
+<td>+2.3 (0.37)</td>
+<td>1.281</td>
+<td>1.235</td>
+<td>1.314</td>
+<td>−6.4 (0.10)</td>
+</tr>
+<tr>
+<td>AR(2)*</td>
+<td>按目标</td>
+<td>1.913</td>
+<td>1.962</td>
+<td>1.895</td>
+<td>+3.4 (0.28)</td>
+<td>1.148</td>
+<td>1.161</td>
+<td>1.162</td>
+<td>−0.1 (0.92)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表11</strong>：每个预测对照初次发布，2012-2024，疫情季度剔除，各自在其自身覆盖范围上。单变量规则每季度做一个预测，因此扩展均值与第5.1节中在150个月度起点评分的滚动均值略有不同。</p>
+<table>
+<thead>
+<tr>
+<th>预测</th>
+<th>起点</th>
+<th>美国GDP</th>
+<th>美国CPI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>专业预测者调查，中位数</td>
+<td>季中，50个季度</td>
+<td>1.748</td>
+<td>1.430</td>
+</tr>
+<tr>
+<td>GDPNow（亚特兰大联储），2014年7月起公开</td>
+<td>每周，40个季度</td>
+<td>1.968</td>
+<td>不适用</td>
+</tr>
+<tr>
+<td>纽约联储工作人员即时预测，实时期间</td>
+<td>每周，26个季度</td>
+<td>1.752</td>
+<td>不适用</td>
+</tr>
+<tr>
+<td>AR(p)，BIC</td>
+<td>每季度一个</td>
+<td>2.365</td>
+<td>2.094</td>
+</tr>
+<tr>
+<td>朴素最后值</td>
+<td>每季度一个</td>
+<td>4.151</td>
+<td>1.958</td>
+</tr>
+<tr>
+<td>季节性朴素</td>
+<td>每季度一个</td>
+<td>8.066</td>
+<td>2.995</td>
+</tr>
+<tr>
+<td>扩展均值</td>
+<td>每季度一个</td>
+<td>1.900</td>
+<td>2.399</td>
+</tr>
+<tr>
+<td>实时因子桥接（本文）</td>
+<td>月末，150</td>
+<td>1.913</td>
+<td>1.148</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表12</strong>：专业即时预测之上的文本。仅偏差：专业即时预测加其过去平均误差。最佳文本阅读器：样本外校正RMSE最低的阅读器；与专业RMSE的比率。Holm p：该阅读器文本校正相对平均误差校正的Holm调整Clark-West p值，覆盖所有48个文本检验。RMSE在样本外评分的起点上，因此与每季度加权一次的表11略有不同。</p>
+<table>
+<thead>
+<tr>
+<th>即时预测</th>
+<th>目标</th>
+<th>季度</th>
+<th>RMSE</th>
+<th>仅偏差</th>
+<th>最佳文本阅读器</th>
+<th>比率</th>
+<th>Holm p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GDPNow</td>
+<td>GDP</td>
+<td>32</td>
+<td>1.986</td>
+<td>0.949</td>
+<td>Qwen2.5-3B</td>
+<td>0.975</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>纽约联储</td>
+<td>GDP</td>
+<td>19</td>
+<td>1.945</td>
+<td>1.031</td>
+<td>ChronoGPT，截止2019</td>
+<td>1.078</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>SPF</td>
+<td>CPI</td>
+<td>50</td>
+<td>1.437</td>
+<td>1.002</td>
+<td>Mistral-7B</td>
+<td>0.944</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>SPF</td>
+<td>GDP</td>
+<td>50</td>
+<td>1.748</td>
+<td>1.001</td>
+<td>ChronoGPT，截止2015</td>
+<td>0.996</td>
+<td>1.00</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图6</strong>：因问题三种表述符号不一致而设为零的文档维度读数比例。相对于其未防护信号，门控阅读器的防护信号使GDP准确性变化−2.3%；全程使用未防护信号时，GDP溢价从−3.0%到+1.3%而非−0.9%到+3.4%（表3）。</p>
+<table>
+<thead>
+<tr>
+<th>阅读器</th>
+<th>立场</th>
+<th>通胀风险</th>
+<th>增长风险</th>
+<th>不确定性</th>
+<th>前瞻指引</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，版本门控</td>
+<td>9%</td>
+<td>1%</td>
+<td>1%</td>
+<td>4%</td>
+<td>35%</td>
+</tr>
+<tr>
+<td>ChronoGPT-2024，非门控</td>
+<td>3%</td>
+<td>5%</td>
+<td>2%</td>
+<td>15%</td>
+<td>28%</td>
+</tr>
+<tr>
+<td>Qwen2.5-1.5B</td>
+<td>23%</td>
+<td>22%</td>
+<td>14%</td>
+<td>30%</td>
+<td>16%</td>
+</tr>
+<tr>
+<td>Qwen2.5-3B</td>
+<td>0%</td>
+<td>17%</td>
+<td>41%</td>
+<td>11%</td>
+<td>34%</td>
+</tr>
+<tr>
+<td>Qwen2.5-7B</td>
+<td>44%</td>
+<td>16%</td>
+<td>25%</td>
+<td>15%</td>
+<td>12%</td>
+</tr>
+<tr>
+<td>Qwen2.5-14B</td>
+<td>23%</td>
+<td>9%</td>
+<td>36%</td>
+<td>37%</td>
+<td>11%</td>
+</tr>
+<tr>
+<td>OLMo-2-7B</td>
+<td>51%</td>
+<td>34%</td>
+<td>51%</td>
+<td>7%</td>
+<td>18%</td>
+</tr>
+<tr>
+<td>OLMo-2-13B</td>
+<td>44%</td>
+<td>14%</td>
+<td>23%</td>
+<td>12%</td>
+<td>9%</td>
+</tr>
+<tr>
+<td>Mistral-7B</td>
+<td>25%</td>
+<td>13%</td>
+<td>19%</td>
+<td>14%</td>
+<td>12%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表13</strong>：成员分数（k=20）。ChronoGPT行：每个分数对截止日期前发布文档（可能成员）对截止日期后发布文档（肯定非成员）的AUC。OLMo行：对文档新颖文本在OLMo-2索引第一阶段语料库中存在的AUC，覆盖所有有新颖片段的文档。</p>
+<table>
+<thead>
+<tr>
+<th>检查点</th>
+<th>所有文档：平均对数概率</th>
+<th>Min-K%</th>
+<th>Min-K%++</th>
+<th>n</th>
+<th>截止两侧两年：平均对数概率</th>
+<th>Min-K%</th>
+<th>Min-K%++</th>
+<th>n</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ChronoGPT，截止2011</td>
+<td>0.16</td>
+<td>0.34</td>
+<td>0.60</td>
+<td>429</td>
+<td>0.41</td>
+<td>0.64</td>
+<td>0.51</td>
+<td>65</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2015</td>
+<td>0.21</td>
+<td>0.37</td>
+<td>0.51</td>
+<td>429</td>
+<td>0.44</td>
+<td>0.60</td>
+<td>0.51</td>
+<td>64</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2019</td>
+<td>0.26</td>
+<td>0.28</td>
+<td>0.54</td>
+<td>429</td>
+<td>0.37</td>
+<td>0.26</td>
+<td>0.58</td>
+<td>66</td>
+</tr>
+<tr>
+<td>ChronoGPT，截止2024</td>
+<td>0.49</td>
+<td>0.52</td>
+<td>0.64</td>
+<td>429</td>
+<td>0.76</td>
+<td>0.77</td>
+<td>0.72</td>
+<td>50</td>
+</tr>
+<tr>
+<td>OLMo-2-7B，对语料库存在</td>
+<td>0.77</td>
+<td>0.77</td>
+<td>0.75</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>OLMo-2-13B，对语料库存在</td>
+<td>0.81</td>
+<td>0.77</td>
+<td>0.63</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 语言模型, 时间污染, 前瞻偏差, 宏观经济预测, 记忆测量</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
