@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面向语言模型预训练的结构-残差归纳偏置 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">面向语言模型预训练的结构-残差归纳偏置</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-17</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.23197" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Structure--Residual Inductive Biases for Language Model Pretraining</h4>
+            <p><strong>中文摘要：</strong> 本文提出将表示结构本身作为语言模型预训练的显式归纳偏置。受柯尔莫哥洛夫复杂度两部分编码视角启发，作者引入两种互补方法：边界瓶颈概念（BBC）通过段末边界载体路由跨段信息，保留局部自回归计算；连续概念（CC）通过正则化隐藏状态轨迹的相邻变化，诱导低频结构与高频残差的谱分解。实验表明BBC在Transformer早期层效果最佳，CC在后期层最有效，两者呈现截然不同的深度偏好。在GPT-2 Medium上3亿训练词元时，BBC+CC组合改善NLL达1.44%，增益持续至200亿词元训练。消融实验证明B</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>面向语言模型预训练的结构-残差归纳偏置</h1>
+<p>Hai Huang<br />
+Bartosz Żuk<br />
+所属机构：<br />
+Palona AI  波兰科学院计算机科学研究所<br />
+Rassul Magauin<br />
+所属机构：<br />
+穆罕默德·本·扎耶德人工智能大学<br />
+Jiaxin Huang<br />
+所属机构：<br />
+穆罕默德·本·扎耶德人工智能大学<br />
+Xue Liu<br />
+所属机构：<br />
+穆罕默德·本·扎耶德人工智能大学</p>
+<h2>摘要</h2>
+<p>下一词元预测被用于同时学习预测行为和内部表示。我们提出一个问题：表示结构本身是否应成为一种显式归纳偏置。受柯尔莫哥洛夫复杂度的两部分编码视角启发，我们研究了一种结构-残差原则，其中表示将结构与实现细节分离。我们以两种互补的方式实例化这一原则。边界瓶颈概念（BBC）通过边界载体路由来自词元段的信息，同时保留局部自回归计算。连续概念（CC）对表示几何进行正则化，并诱导出低频结构和高频残差的谱分解。我们为两种视角推导了编码界限，并证明当段内路径能量趋于零时，经多重性校正的边界注意力变得精确。在实验上，BBC和CC表现出截然不同的深度偏好：BBC在早期层效果最佳，而CC在后期层最有效。在3亿训练词元规模下，结合BBC和CC在GPT-2 Medium上改善了1.44%的NLL。这些增益在长达200亿词元的训练中持续存在。表示诊断表明，BBC增加了边界状态的相对预测重要性，而CC降低了谱残差能量。总之，这些结果表明结构-残差偏置可以超越下一词元预测来改善语言模型预训练。代码：<br />
+https://github.com/haihuang-ml/structure-residual</p>
+<p>(a) 边界瓶颈概念<br />
+(b) 连续概念<br />
+(c) 增益持续至200亿训练词元</p>
+<p>图1：面向语言模型预训练的结构-残差归纳偏置。<br />
+(a) BBC将跨段通信限制为边界载体，同时保留局部自回归细节。<br />
+(b) CC鼓励平滑的位置结构并减少高频残差变化。<br />
+(c) 由此产生的改进在长训练周期中持续存在。</p>
+<h2>1 引言</h2>
+<p>改进语言模型的主流方案非常简单：扩展模型、数据和计算规模，并优化下一词元预测（NTP）（Kaplan et al., 2020; Hoffmann et al., 2022）。在这一范式下，训练过程——主要是基于梯度的优化——不仅被信任能学习预测任务，还被信任能发现完成该任务所需的信息应如何在内部表示。</p>
+<p>我们提出一个不同的问题：表示结构本身是否应成为一种归纳偏置？</p>
+<p>一个有原则的出发点是柯尔莫哥洛夫复杂度的两部分编码视角。一个对象可以通过首先指定一个<strong>结构</strong> Z，然后指定恢复特定实现 X 所需的<strong>残差</strong>信息来描述：</p>
+<p>𝖪(X) ≤ 𝖪(Z) + 𝖪(X|Z) + O(1)</p>
+<p>这为语言模型提供了一个通用的归纳原则：鼓励内部表示发现结构与残差之间的有利平衡。</p>
+<p>这种结构在语言模型中应该是什么样的？我们从语言建模涉及的两个基本功能中汲取灵感。</p>
+<p>首先，<strong>感知</strong>通常涉及抽象。诸如"法国的首都"和"France's capital"这样的短语在词元层面不同，但共享大量预测结构。这建议将必须跨区间携带的信息压缩为紧凑表示。然而，仅有结构的表示是不够的：精确的表面实现对于自回归预测仍然重要。</p>
+<p>受这种结构-残差平衡的启发，我们引入了<strong>边界瓶颈概念</strong>（BBC），它将来自已完成段的信息通过边界载体路由到后续段，同时在当前段内保留普通的词元级自回归（图1(a)）。相关方法包括MEGABYTE的全局补丁建模与局部自回归字节解码的组合（Yu et al., 2023a），以及通过注意力瓶颈压缩提示信息的gist tokens（Mu et al., 2023）。BBC则使用现有的段末状态作为载体。</p>
+<p>其次，<strong>生成</strong>需要精细的位置信息：每个词元位置都可能对下一词元分布相关。这似乎没有给结构压缩留下多少空间。然而，位置细节并不意味着任意的表示复杂性。隐藏状态序列可以在保留每个词元位置的同时，仍然具有简单的底层轨迹。受此观察启发，我们研究了<strong>连续概念</strong>（CC），它鼓励相邻隐藏状态平滑变化（图1(b)）。我们分析了谱结构-残差分解：低频模式形成结构化组件，而CC能量在共享编码约定下限制了高频残差及其有限精度索引长度。</p>
+<p>在GPT-2 Small上，BBC在3亿训练词元时将评估NLL改善约0.99%，而BBC+CC改善1.30%。在更深的GPT-2 Medium模型上，增益分别为1.11%和1.44%。BBC不能仅用稀疏性来解释：相同密度的滑动窗口和随机稀疏注意力对照无法复现其增益，而随机化BBC载体的位置会显著降低性能。类似地，CC也不能仅用其两个组件中的任何一个来解释。它们的改进在更长的训练中也持续存在，在200亿词元运行中BBC达到1.12%，BBC+CC达到1.26%。</p>
+<p>我们的实证研究还揭示了这两种偏置偏好不同的深度。BBC在网络底部附近效果最佳，而CC在后期层最有效。有趣的是，这种深度不对称性与更广泛的直觉一致，即Transformer的不同深度执行不同的计算角色：早期表示可以从紧凑的跨段结构中受益，而后期表示在保留精细词元级访问的同时受益于更简单的特征几何。</p>
+<p>我们的结果表明，扩展NTP不是改进语言模型训练的唯一杠杆。对<strong>信息如何表示</strong>的显式偏置可以改善相同的预测目标。</p>
+<p>我们的贡献如下：</p>
+<ul>
+<li>我们使用两部分编码原则来分析语言模型表示中的结构-残差归纳偏置。</li>
+<li>我们引入了BBC，通过边界载体压缩跨段通信，并将CC表征为具有显式重构和残差描述界限的谱结构-残差偏置；它们的参数 K 和 β 设定了平衡。</li>
+<li>我们发现BBC和CC偏好不同的深度，优于匹配的架构和正则化对照，并且增益在不同模型规模和长训练周期中持续存在；K 和 β 的扫描呈U形，与此角色一致。</li>
+</ul>
+<h2>2 结构-残差编码原则</h2>
+<p>两部分编码通过结构和识别其特定实现所需的细节来描述一个对象（Vereshchagin and Vitanyi, 2004）。我们用 𝖪 表示前缀柯尔莫哥洛夫复杂度。对于有限描述的对象，</p>
+<p>𝖪(X|C) ≤ 𝖪(Z|C) + 𝖪(X|Z,C) + O(1)</p>
+<p>这里 Z 描述结构，条件项描述剩余的实现细节。</p>
+<p>我们使用这一原则来激发具体的编码界限。设 Γ 表示编码器和解码器共享的编码约定。假设在解码 Z 后，具有 M_δ(Z) 个条目的残差码本允许将 X 重构到精度 δ。则两部分编码满足</p>
+<p>ℓ_δ^SR(X|C,Γ) ≤ ℓ_str(Z|C,Γ) + ⌈log₂ M_δ(Z)⌉</p>
+<p>结构码是自定界的，解码的结构和编码约定决定了残差索引长度。任何未提前共享的码本或参数也必须被描述。</p>
+<p>对于离散对象，残差码本可以枚举共享结构的实现。对于连续表示，覆盖码本以选定的精度给出重构。下面的界限涉及这些显式编码；BBC和CC都不直接优化柯尔莫哥洛夫复杂度。</p>
+<p>BBC和CC实现了这一观点的不同部分。BBC限制直接跨段通信同时保留局部自回归细节；第3节表明其段长 K 设定了这一限制，且 K 的两个极端值都给出原始模型。CC控制隐藏状态轨迹低频表示之外的残差；第4节用CC能量限制这一残差，并将权重 β 与能量预算关联。第5节连接两种机制，第6节在经验上定位最佳 K 和 β。</p>
+<h2>3 边界瓶颈概念</h2>
+<p>边界瓶颈概念（BBC）通过粒度超参数 K 实例化结构-残差原则。序列被分为 K 个词元的段。在选定的Transformer层，每个已完成的段仅通过其边界状态与后续段通信，同时在当前段内保留普通自回归计算。</p>
+<p><strong>边界限制注意力。</strong> 为记号简便，假设 K 整除 N 并按 i = 0,…,N/K−1 索引段。注意力掩码中的空范围被解释为空集。</p>
+<p>对于固定段长 K，定义 S_i = (x_{iK+1},…,x_{(i+1)K})。每个段的最后位置作为其<strong>边界载体</strong>。</p>
+<p>对于段 s = ⌊(t−1)/K⌋ 中的查询词元 x_t，BBC在选定层用以下方式替换普通因果注意力模式：</p>
+<p>𝒜_BBC(t) = {K, 2K, …, sK} ∪ {sK+1, …, t}    (1)</p>
+<p>一旦段完成，其 K 个词元状态在BBC层不再对后续段独立可访问。</p>
+<p>当前段保持自回归。设 C_s 表示段 S_s 之前的因果上下文，定义 x_{s,r} = x_{sK+r+1}。段分布分解为</p>
+<p>p_θ(S_s|C_s) = ∏<em>{r=0}^{K−1} p_θ(x</em>{s,r}|C_s, x_{s,&lt;r})</p>
+<p>所有其他层保留标准因果掩码。由于其他层和残差流可以保留额外的前缀信息，这种层局部限制并不意味着完整模型仅以边界载体为条件。</p>
+<p><strong>结构与实现残差。</strong> 设 a = φ(S) 为分配给 K 词元段的离散结构。其实现类为 𝒮_K(a) = {S′ ∈ 𝒱^K : φ(S′) = a}，其中 𝒱 是词汇表。</p>
+<p>段分布诱导结构分布：<br />
+p_θ(a|C_s) = ∑_{S′∈𝒮_K(a)} p_θ(S′|C_s)</p>
+<p>对于观测段 S 且 φ(S) = a 和正概率，</p>
+<p>−log p_θ(S|C_s) = −log p_θ(a|C_s) − log p_θ(S|a,C_s)    (2)</p>
+<p>因此精确的段预测同时指定结构和实现。特别地，</p>
+<p>−log p_θ(a|C_s) ≤ −log p_θ(S|C_s)</p>
+<p>实现类也给出了编码界限。假设 φ 是可计算的，且有限词汇表、段长和结构映射作为 Γ_BBC 提供给解码器。该类可以被枚举，实现由其索引标识：</p>
+<p>𝖪(S|C_s,Γ_BBC) ≤ 𝖪(a|C_s,Γ_BBC) + ⌈log₂|𝒮_K(a)|⌉ + O(1)</p>
+<p>由于 𝒮_K(a) ⊆ 𝒱^K，实现类大小的对数满足</p>
+<p>log₂|𝒮_K(a)| ≤ K log₂|𝒱|    (3)</p>
+<p><strong>命题1</strong>（段长设定瓶颈）。固定 N 和BBC层。对于位置 t ≤ N 的查询，写 t = sK+r+1，其中 s = ⌊(t−1)/K⌋ 且 0 ≤ r ≤ K−1。</p>
+<p>(i) <strong>路由。</strong> 查询关注已完成段的 s 个边界载体及其当前段的 r+1 个位置 sK+1,…,t。相对于因果掩码，它恰好失去对 s(K−1) 个位置的直接访问，即已完成段的非边界词元。</p>
+<p>(ii) <strong>端点。</strong> 𝒜_BBC(t) = {1,…,t} 对所有 t ≤ N 成立当且仅当 K=1 或 K≥N。两种情况下BBC层都是标准因果注意力层。</p>
+<p>(iii) <strong>结构与实现。</strong> 段分布允许方程2中的分解。在所述编码约定下，非空实现类最多需要 ⌈log₂|𝒮_K(a)|⌉ ≤ ⌈K log₂|𝒱|⌉ 索引位。</p>
+<p>部分和对所有 K ≥ 1 成立；证明在附录C.5中。</p>
+<p>由，K 在BBC层设定分割：每个已完成的段仅通过其边界状态在那里可见，而当前段最多 K 个位置保持直接可见。距离 δ ≥ 1 个词元之前的关键对查询偏移的分数 (min(δ,K)−1)/K 被移除，因此从距离 K 开始，K 个关键中恰好保留一个：K 设定了距离尺度，不仅是稀疏度水平（引理2，附录C.6）。由，K=1 和 K≥N 给出原始模型。</p>
+<p>概率恒等式对任何段分布成立；BBC贡献了架构路由限制。其结构-残差解释因此是紧凑的跨段载体加上保留的局部自回归计算。边界不必等于 φ(S) 或在构造上具有预测充分性。</p>
+<h2>4 连续概念</h2>
+<p>连续概念（CC）是隐藏状态轨迹几何上的优化偏置。</p>
+<p>设 N ≥ 2，H ∈ ℝ^{N×d} 的第 i 行等于 h_i^⊤。状态取自选定层。CC惩罚相邻变化：</p>
+<p>ℒ_CC = (1/(N−1)) ∑<em>{i=1}^{N−1} ‖h</em>{i+1}−h_i‖₂²</p>
+<p>目标为 ℒ = ℒ_NTP + βℒ_CC，其中 β ≥ 0 控制正则化强度。</p>
+<p>在我们的实现中，ℒ_CC 也在 d 个隐藏坐标上取平均，因此每个报告的 β 等于此处定义系数的 d 倍；第6节中的 ℒ_scale 和 ℒ_CC-2 同样如此。</p>
+<p>我们将轨迹分析为低频结构加高频残差。CC目标控制残差大小的上界。</p>
+<p><strong>谱结构与残差。</strong> 设 L 为单位权重路径拉普拉斯算子。非归一化CC能量为</p>
+<p>E(H) = ∑<em>{i=1}^{N−1} ‖h</em>{i+1}−h_i‖₂² = Tr(H^⊤LH) = (N−1)ℒ_CC</p>
+<p>写 L = QΛQ^⊤, 0 = λ₁ &lt; λ₂ ≤ ⋯ ≤ λ_N，具有正交归一特征向量。这些在词元位置上形成图频率基（Shuman et al., 2013）。这是Laplacian Eigenmaps（Belkin and Niyogi, 2003）下图平滑度目标的向量值路径实例。</p>
+<p>对于 1 ≤ m &lt; N，定义 Q_m = [q₁,…,q_m], H_m = Q_mQ_m^⊤H。H_m 是低频结构，R_m = H−H_m 是谱残差。</p>
+<p><strong>命题2</strong>（谱残差界限）。对于 1 ≤ m &lt; N，</p>
+<p>‖R_m‖<em>F² ≤ E(H)/λ</em>{m+1}</p>
+<p><strong>证明。</strong> 设 Ĥ = Q^⊤H。正交性给出</p>
+<p>‖R_m‖<em>F² = ∑</em>{r&gt;m} ‖Ĥ_r‖₂², E(H) = ∑_r λ_r‖Ĥ_r‖₂²</p>
+<p>因此</p>
+<p>‖R_m‖<em>F² ≤ (1/λ</em>{m+1}) ∑<em>{r&gt;m} λ_r‖Ĥ_r‖₂² ≤ E(H)/λ</em>{m+1} ∎</p>
+<p>对于选定的截断，当 E(H)/λ_{m+1} 小时，近似是准确的。</p>
+<p><strong>残差码本大小。</strong> 固定维度、截断和能量预算 E⋆ ≥ 0。对于 E(H) ≤ E⋆ 的轨迹，残差位于维度 D = (N−m)d 的子空间和半径 r⋆ = √(E⋆/λ_{m+1}) 的球中。</p>
+<p>半径 r⋆ 的 D 维欧几里得球可以用最多 (1+2r⋆/η)^D 个半径 η &gt; 0 的球覆盖（Vershynin, 2018）。</p>
+<p><strong>命题3</strong>（谱残差索引长度）。对于满足方程4的共享覆盖码本，标识Frobenius误差最多为 η 的残差近似的索引位长度满足</p>
+<p>L_η(R_m|Γ) ≤ ⌈(N−m)d log₂(1 + (2/η)√(E⋆/λ_{m+1}))⌉</p>
+<p><strong>证明。</strong> 选择距残差 η 以内的覆盖中心并传输其索引；方程4随后给出界限。∎</p>
+<p>编码约定 Γ 包括维度、基、截断、能量预算、精度和码本；任何未共享的组件都会产生额外的描述成本。将重构误差 δ/2 分配给结构和残差给出 ‖H−(H̃_m+R̃_m)‖_F ≤ δ，因此</p>
+<p>ℓ_δ^SR(H|Γ) ≤ ℓ_{δ/2}^str(H_m|Γ) + ⌈(N−m)d log₂(1+4r⋆/δ)⌉</p>
+<p>因此，在固定维度、截断和精度下，较小的能量预算减少残差描述界限，而结构保留其自身的描述成本。</p>
+<p>更大的 β 从不增加最优模型的CC能量（附录C.7）。其在层 l 的强度为 κ_l = βρ_l，其中 ρ_l 是CC与NTP梯度的比率（附录C.8）。</p>
+<h2>5 从谱平滑到边界表示</h2>
+<p>结构-残差编码视角激发了两种干预。我们现在给出定性联系：低段内路径能量限制了经多重性校正边界注意力的误差（附录B.3在训练层上测试）。反向需要额外条件；见附录B。</p>
+<p>设 I_j 包含已完成的 K 词元段的位置，边界 b_j = max I_j，定义</p>
+<p>E_j = ∑<em>{t∈I_j, t&lt;b_j} ‖h</em>{t+1}−h_t‖₂²</p>
+<p><strong>引理1</strong>（低路径能量下的边界近似）。</p>
+<p>max_{i∈I_j} ‖h_i−h_{b_j}‖₂ ≤ √((K−1)E_j)</p>
+<p><strong>证明。</strong> 对于 r = b_j−i, h_{b_j}−h_i = ∑<em>{t=i}^{b_j−1}(h</em>{t+1}−h_t)。因此</p>
+<p>‖h_{b_j}−h_i‖₂² ≤ r∑<em>{t=i}^{b_j−1}‖h</em>{t+1}−h_t‖₂² ≤ (K−1)E_j</p>
+<p>相等、对齐的增量达到界限。∎</p>
+<p>考虑一个注意力头（Vaswani et al., 2017），具有固定查询 q、共享线性键和值映射，无注意力dropout：</p>
+<p>s_i = q^⊤W_K h_i/√d_k, v_i = W_V h_i</p>
+<p>将所有允许的关键位置分组为 G_j。已完成的段形成大小为 K 的组；保留的局部前缀位置保持单例组。写 κ_j = |G_j|，设 b_j 为边界或单例代表。</p>
+<p>定义 g_j = log ∑<em>{i∈G_j} e^{s_i}, u_j = ∑</em>{i∈G_j} (e^{s_i}/∑_{r∈G_j} e^{s_r}) v_i</p>
+<p>重新分组分子和分母给出</p>
+<p>o = Attn_dense(q) = ∑_j a_j u_j, a = softmax(g)</p>
+<p>代表近似为</p>
+<p>g̃<em>j = s</em>{b_j} + log κ_j, ũ_j = v_{b_j}</p>
+<p>其中 õ = ∑_j ã_j ũ_j 且 ã = softmax(g̃)。</p>
+<p>如比例注意力中（Bolya et al., 2023），log κ_j 保留相同条目的质量。单例组不变。</p>
+<p>设 c_K = ‖q‖₂‖W_K‖_op/√d_k, c_V = ‖W_V‖_op，我们有</p>
+<p>|g_j−g̃_j| ≤ c_K√((K−1)E_j), ‖u_j−ũ_j‖₂ ≤ c_V√((K−1)E_j)</p>
+<p>对每个已完成的段成立。实际上，每个词元得分与其边界得分最多相差 c_K√((K−1)E_j)；限制其指数和给出第一个不等式。第二个成立因为 u_j 是单独接近 v_{b_j} 的值的凸组合。</p>
+<p><strong>命题4</strong>（多重性校正边界注意力）。设 Δ_s = max_j|g_j−g̃_j|, Δ_v = max_j‖u_j−ũ_j‖₂。如果 ‖ũ_j‖₂ ≤ V_max 对每个组（包括局部前缀单例）成立，则</p>
+<p>‖o−õ‖₂ ≤ Δ_v + 2V_max tanh(Δ_s)</p>
+<p><strong>证明。</strong> 得分界限意味着 e^{−2Δ_s} ≤ a_j/ã_j ≤ e^{2Δ_s}。因此 |a_j−ã_j| ≤ tanh(Δ_s)(a_j+ã_j)，所以 ‖a−ã‖₁ ≤ 2tanh(Δ_s)。因此</p>
+<p>‖o−õ‖₂ ≤ ∑_j a_j‖u_j−ũ_j‖₂ + ∑_j|a_j−ã_j|‖ũ_j‖₂ ≤ Δ_v + 2V_max tanh(Δ_s) ∎</p>
+<p>对于固定 K 和一致有界的敏感度和值常数，误差随最大段能量消失而消失。这是同一层上多重性校正注意力的结果，不直接适用于未校正的BBC掩码。该界限假设 h_i 进入所述的键和值映射；中间归一化必须包含在敏感度常数中，位置相关映射或logit偏置需要额外项。附录C.9给出了旋转位置嵌入的这些项，适用于此结果和命题6；我们的GPT-2模型使用学习的绝对位置嵌入，不需要这样的项。</p>
+<h2>6 实验</h2>
+<p><strong>设置。</strong> 我们预训练 gpt2-small 和 gpt2-medium 模型（Radford et al., 2019），上下文长度 N=1024，在FineWeb-Edu（Penedo et al., 2024）随机采样的10亿词元子集上。我们在从同一数据集采样的100万词元保留集上评估并报告保留NLL。主要运行使用10亿词元上的余弦学习率调度和500万词元线性预热。为减少计算，超参数扫描和消融在1亿或3亿训练词元后评估，同时保留相同的10亿词元学习率衰减调度。除非另有说明，我们使用三个种子{82,23,37}，报告均值和标准差。对于200亿词元运行，我们将保留集扩大到1000万词元并使用单一种子（82）以减少计算成本。</p>
+<p>我们首先通过扫描学习率 η ∈ {3×10⁻⁴, 6×10⁻⁴, 10⁻³, 1.5×10⁻³} 来调整原始基线。然后固定 η 并分别扫描BBC段长 K ∈ {4,8,16,32,64} 和CC正则化强度 β ∈ {0.005,0.0025,0.00125,0.000625}。我们不针对BBC或CC重新调整 η，避免方法特定的学习率调整。我们对 gpt2-small 使用 η=10⁻³，对 gpt2-medium 使用 η=6×10⁻⁴。</p>
+<p>(a) BBC在 gpt2-small 上。<br />
+(b) BBC在 gpt2-medium 上。<br />
+(c) CC在 gpt2-small 上。<br />
+(d) CC在 gpt2-medium 上。</p>
+<p>图2：BBC和CC表现出相反的深度偏好。BBC在较低层最有效，而CC在较高层变得更有效，在两种模型规模上均一致。</p>
+<p><strong>BBC和CC是深度相关的。</strong> 我们的第一个发现是两种方法都有明显的深度依赖。我们在 gpt2-small 和 gpt2-medium 的偶数Transformer层上扫描干预层，BBC使用 K ∈ {4,8,16}，CC使用 β ∈ {0.00125,0.0025,0.005}（图2及附录A.1中表2、3）。两种模型规模出现相同的定性模式：BBC在应用于较低层时最有效，而CC在较高层变得更有效。这种深度不对称性没有被内置到任何一种方法中。有趣的是，这与激发性直觉一致，即BBC是感知启发的而CC是生成启发的，表明不同的Transformer深度可能偏好不同的表示功能。</p>
+<p>在主要的BBC/CC比较中，BBC应用于第2层，CC在 gpt2-small 上应用于第10层，在 gpt2-medium 上应用于第22层。</p>
+<p><strong>最优 K 和 β。</strong> 我们在广泛范围内扫描 K 和 β 以确定其最优值。如图3所示，两者都表现出近似U形的性能曲线，具有相对宽的最优值：K ∈ [8,32] 和 β ∈ [0.00125,0.0025]（表2-5）。对于 β，最佳强度 β⋆ρ_l（第4节），在medium层10-20上拟合，预测GPT2 Medium第22层的 β⋆=0.0013 和 GPT2 Small第10层的0.0021；扫描发现0.00125和0.0025（表21）。</p>
+<p>(a) 第2层的 K 扫描。<br />
+(b) Small第10层和Medium第22层的 β 扫描。</p>
+<p>图3：最优 K 和 β。BBC和CC都表现出近似U形的超参数扫描，表明 K 和 β 的中间最优值。我们在两个模型的第2层扫描 K，分别在 gpt2-small 和 gpt2-medium 的第10层和第22层扫描 β。</p>
+<p><strong>3亿显著性检验和10亿持久性。</strong> 我们发现，在1亿词元处选择的最佳 K 和 β 在10亿训练词元中保持其增益。对于 gpt2-small，我们使用 K=8 和 β=0.0025。对于 gpt2-medium，我们使用 K=16 和 β=0.00125。</p>
+<p>在3亿词元处，两种模型规模的排序一致：CC显著优于原始模型，BBC显著优于CC，BBC+CC显著优于BBC（图4(a)及附录A.3中表6、7的p值）。</p>
+<p>(a) 3亿训练词元处的NLL。<br />
+(b) BBC和BBC+CC在10亿训练词元中的改进。</p>
+<p>图4：3亿词元处的统计显著增益持续到10亿词元。 CC、BBC和BBC+CC在3亿词元处逐步改善原始基线。 BBC在训练过程中继续优于原始模型，而BBC+CC在BBC之上保持额外余量。</p>
+<p>改进随着训练继续而持续。如图4(b)所示，从3亿到10亿词元，BBC在 gpt2-small 和 gpt2-medium 上相对于原始模型的改进呈稳定上升趋势，而BBC+CC继续在BBC之上保持统计显著余量。</p>
+<p><strong>BBC不仅仅是稀疏注意力。</strong> BBC是一种稀疏注意力模式。为测试其增益是否仅来自减少的注意力密度，我们将BBC与相同密度的滑动窗口和随机稀疏注意力进行比较，所有稀疏模式应用于第2层。在1亿词元处，BBC显著优于两个基线，且它们都不优于原始基线（图5(a)）。</p>
+<p>我们进一步与<strong>随机BBC</strong>比较，其中载体位置随机选择同时保持相同的每词元注意力预算。在3亿词元处，BBC显著优于随机BBC（图5(b)），表明增益依赖于结构化的载体放置而非仅注意力预算。附录A.4中表8报告了配对t检验p值。</p>
+<p>(a) 1亿训练词元处的消融。<br />
+(b) 3亿训练词元处的消融。</p>
+<p>图5：BBC和CC的消融结果。在1亿词元处，BBC显著优于滑动窗口和随机稀疏注意力，CC显著优于归一化粗糙度和余弦相似度正则化。在3亿词元处，BBC显著优于随机BBC，CC显著优于尺度正则化和CC-2。</p>
+<p><strong>CC需要尺度和粗糙度两者。</strong> CC目标有减少隐藏状态尺度的自然倾向（见附录C.1的正式讨论）。为测试其增益是否主要来自这种尺度效应，我们与<strong>尺度</strong>正则化器比较，</p>
+<p>ℒ_scale = (1/N)∑_{i=1}^N ‖h_i‖₂²</p>
+<p>和<strong>归一化粗糙度</strong>正则化器，</p>
+<p>ℒ_norm = (1/(N−1))∑<em>{i=1}^{N−1} ‖h</em>{i+1}−h_i‖₂²/(‖h_{i+1}‖₂²+‖h_i‖₂²+ε)</p>
+<p>归一化粗糙度项在CC目标中与尺度互补。CC基于路径图拉普拉斯算子，其Dirichlet能量是此处考虑的有限范围成对族中最弱的惩罚（见附录C.2）。我们还包括CC-2</p>
+<p>ℒ_CC-2 = (1/(N−2))∑<em>{i=1}^{N−2} ‖2h</em>{i+2}−h_{i+1}−h_i‖₂²</p>
+<p>一个双前驱拉普拉斯残差惩罚，在消融研究中。CC也与<strong>余弦距离</strong>密切相关（见附录C.4），也被包括在内。</p>
+<p>我们为每个变体分别调整应用层和 β（附录A.5中表9、10、11和12）。如图5所示，CC显著优于所有这些变体。附录A.5中表13报告了相应的配对t检验p值。</p>
+<p><strong>200亿训练运行。</strong> 我们接下来将训练扩展到200亿词元。我们发现改变学习率衰减范围也会改变最优CC权重 β。遵循10亿词元实验中使用的相同低成本调整策略，我们使用10亿词元运行选择 β，发现其增益持续到200亿词元（图1(c)）。</p>
+<p>然而在200亿运行期间，BBC+CC在中间检查点暂时落后于BBC。我们假设这部分是数值稳定性问题：因为 β≪1，CC项的有效贡献随着训练期间 ℒ_CC 的减少在数值上变得可以忽略。</p>
+<p>因此我们研究两种变体：<strong>随机dropout</strong>，在部分优化步骤中随机省略CC项；<strong>自适应dropout</strong>，当其值低于前 h 步历史的第 p 百分位数时省略CC项。后者旨在避免重复应用在乘以 β 后可能消失的非常小的CC更新。</p>
+<p>使用自适应dropout，BBC+CC在每个中间检查点都持续优于BBC（见表15和附录A.6中图7）。</p>
+<p><strong>表示诊断。</strong> 前述实验确立了BBC和CC改善下一词元预测。我们接下来询问学习到的表示是否在第3节和第4节建议的方向上发生变化。</p>
+<p>为测试BBC是否增加边界表示的相对重要性，我们要么替换边界表示并测量由此产生的NLL增加 Δ_b，要么替换随机选择的非边界表示并测量相应的增加 Δ_i。较大的 Δ_b−Δ_i 表明边界表示对预测相对更重要。</p>
+<p>在零向量替换和用前 K−1 个隐藏状态均值替换两种情况下，BBC产生比原始模型显著更大的 Δ_b−Δ_i（表1）。在两个实验中，我们排除前 W=4 个段以控制初始词元位置不成比例的影响（完整诊断见附录A.7）。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>零替换</th>
+<th>均值替换</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>−0.0025</td>
+<td>0.0017</td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>0.0052</td>
+<td>0.0065</td>
+</tr>
+<tr>
+<td>p值</td>
+<td>3.46×10⁻⁵</td>
+<td>4.86×10⁻⁴</td>
+</tr>
+</tbody>
+</table>
+<p>表1：1亿训练词元处零向量和均值替换干预下的边界偏好统计量 Δ_b−Δ_i。最后一行报告配对BBC-原始p值。</p>
+<p>图6：CC增加谱可压缩性。作为保留低频分数 m/N 函数的归一化谱残差。</p>
+<p>接下来我们测试减少CC能量是否使隐藏状态轨迹更好地被其低频路径图模式近似。对于每个隐藏状态轨迹 H，我们投影到前 m 个路径图特征模式，H_m = Q_mQ_m^⊤H，并测量归一化谱残差</p>
+<p>ρ_m(H) = ‖H−H_m‖_F²/‖H‖_F²</p>
+<p>该比率对均匀重缩放不变，测量相对于总隐藏状态能量的残差。它包括常数位置分量；不隔离中心化轨迹的粗糙度。</p>
+<p>CC在每个测量的谱截断处减少 ρ_m(H)。在测量范围内，这对应于约22%–28%的相对减少（图6和附录A.8中表16）。</p>
+<p><strong>RoPE。</strong> GPT-2使用绝对位置嵌入，而大多数现代LLM使用旋转位置嵌入（RoPE; Su et al., 2024）。为测试BBC和CC对位置编码选择的鲁棒性，我们额外训练 Pythia-410M（Biderman et al., 2023），一个使用RoPE的类GPT-2模型。我们复用 gpt2-medium 超参数而不重新调整（η=6×10⁻⁴, K=16, β=0.00125），训练10亿词元。BBC改善评估NLL 0.58%，BBC+CC改善0.83%，表明增益不特定于绝对位置嵌入（附录A.9中表17）。</p>
+<p>我们还扫描 rotary_pct（控制使用旋转嵌入的头维度分数）在{0, 0.25, 0.5, 0.75, 1.0}上。默认值0.25对 Pythia-410M 也表现最佳（附录A.9中表18）。</p>
+<p>RoPE修改注意力机制；附录C.9将命题4扩展到旋转位置编码。</p>
+<h2>7 相关工作</h2>
+<p><strong>LLM的表示学习。</strong> 表示学习在视觉自监督学习中一直处于核心地位，其中联合嵌入预测架构（JEPA）（Assran et al., 2023）通过嵌入空间预测学习语义表示。最近的工作将相关思想引入语言：LLM-JEPA（Huang et al., 2026a）将JEPA风格目标纳入语言模型训练，而语义管预测（STP）（Huang et al., 2026b）在隐藏状态轨迹上引入几何先验。大概念模型（LCM Team et al., 2024）在句子级嵌入空间中执行自回归预测。我们的工作共享一般动机并引入有原则的结构-残差归纳偏置。</p>
+<p><strong>结构化通信。</strong> 固定稀疏注意力（Child et al., 2019）结合局部注意力与对先前块边界附近位置的访问。BBC可被视为单载体（c=1）特化——Child et al. (2019)发现过于限制的设置——但我们表明在适当深度应用它可改善预测性能。Block Transformer（Ho et al., 2024）将全局块处理置于局部词元解码之下。Activation Beacon（Zhang et al., 2025）将上下文压缩到插入的beacon tokens的键-值状态中。H-Net（Hwang et al., 2026）学习边界，以降低的分辨率处理选定状态，并为解码上采样。局部、随机和全局连接是Big Bird（Zaheer et al., 2020）和Landmark Attention（Mohtashami and Jaggi, 2023）等稀疏注意力设计的标准成分。</p>
+<p><strong>平滑度和谱结构。</strong> AWD-LSTM（Merity et al., 2018）通过时间激活正则化惩罚连续循环状态变化。Li et al. (2026)鼓励跨批次隐藏状态的角分散。Shuman et al. (2013)通过拉普拉斯频率表达图平滑度。CC正则化相邻Transformer隐藏状态并限制低频重构误差和有限精度残差码长度，消融将尺度与位置粗糙度分离。</p>
+<p><strong>两部分编码。</strong> CRATE（Yu et al., 2023b）交替词元压缩和特征稀疏化；ToST（Wu et al., 2025）通过展开变分编码率减少推导注意力。Delétang et al. (2024)将预测概率转化为无损数据编码。最小描述长度（Rissanen, 1978）对模型和其下编码的数据收费，而算法统计（Gács et al., 2001）通过两部分编码形式化结构和实现。我们对BBC的段实现和CC的谱表示采用这种两部分核算，保留结构和残差成本而不直接优化柯尔莫哥洛夫复杂度。</p>
+<p><strong>深度专门化。</strong> Skean et al. (2025)评估嵌入质量的逐层几何和信息内容。Lad et al. (2025)通过删除和交换层探测计算敏感度。我们的训练时层扫描在两种GPT-2模型规模中识别早期BBC和晚期CC为有利位置；这些偏好是经验观察的，不是方法规定的。</p>
+<h2>8 结论</h2>
+<p>受柯尔莫哥洛夫复杂度的两部分编码视角启发，我们引入了BBC和CC作为语言模型预训练的互补结构-残差归纳偏置，并推导了表征两种机制的显式界限。BBC通过边界载体压缩跨段通信，而CC鼓励隐藏状态轨迹中的紧凑谱结构。我们进一步给出两者之间的定性联系，发现BBC偏好早期层而CC偏好后期层。它们的增益在不同模型规模和长达200亿词元的训练周期中持续存在，证明显式表示偏置可以改善下一词元预训练。</p>
+<h2>致谢</h2>
+<p>我们感谢Alexander Shen和Alexey Milovanov关于柯尔莫哥洛夫复杂度两部分编码视角的早期讨论。我们衷心感谢波兰高性能计算基础设施PLGrid（HPC中心：ACK Cyfronet AGH）在计算资助号PLG/2025/018744内提供计算设施和支持。</p>
+<h2>参考文献</h2>
+<p>Assran et al. (2023) M. Assran, Q. Duval, I. Misra, P. Bojanowski, P. Vincent, M. Rabbat, Y. LeCun, and N. Ballas. Self-supervised learning from images with a joint-embedding predictive architecture. In <em>Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, pp. 15619–15629.</p>
+<p>Belkin and Niyogi (2003) M. Belkin and P. Niyogi. Laplacian eigenmaps for dimensionality reduction and data representation. <em>Neural Computation</em> 15(6), pp. 1373–1396.</p>
+<p>Biderman et al. (2023) S. Biderman, H. Schoelkopf, Q. G. Anthony, H. Bradley, K. O'Brien, E. Hallahan, M. A. Khan, S. Purohit, U. S. Prashanth, E. Raff, A. Skowron, L. Sutawika, and O. Van Der Wal. Pythia: a suite for analyzing large language models across training and scaling. In <em>Proceedings of the 40th International Conference on Machine Learning</em>, <em>Proceedings of Machine Learning Research</em>, Vol. 202, pp. 2397–2430.</p>
+<p>Bolya et al. (2023) D. Bolya, C. Fu, X. Dai, P. Zhang, C. Feichtenhofer, and J. Hoffman. Token merging: your ViT but faster. In <em>International Conference on Learning Representations</em>.</p>
+<p>Child et al. (2019) R. Child, S. Gray, A. Radford, and I. Sutskever. Generating long sequences with sparse transformers. <em>arXiv preprint arXiv:1904.10509</em>.</p>
+<p>Delétang et al. (2024) G. Delétang, A. Ruoss, P. Duquenne, E. Catt, T. Genewein, C. Mattern, J. Grau-Moya, L. K. Wenliang, M. Aitchison, L. Orseau, M. Hutter, and J. Veness. Language modeling is compression. In <em>International Conference on Learning Representations</em>.</p>
+<p>Gács et al. (2001) P. Gács, J. Tromp, and P. M. B. Vitányi. Algorithmic statistics. <em>IEEE Transactions on Information Theory</em> 47(6), pp. 2443–2463.</p>
+<p>Ho et al. (2024) N. Ho, S. Bae, T. Kim, Y. Jo, Y. Kim, T. Schuster, A. Fisch, J. Thorne, and S. Yun. Block transformer: global-to-local language modeling for fast inference. In <em>Advances in Neural Information Processing Systems</em>, Vol. 37.</p>
+<p>Hoffmann et al. (2022) J. Hoffmann, S. Borgeaud, A. Mensch, E. Buchatskaya, T. Cai, E. Rutherford, D. de Las Casas, L. A. Hendricks, J. Welbl, A. Clark, T. Hennigan, E. Noland, K. Millican, G. van den Driessche, B. Damoc, A. Guy, S. Osindero, K. Simonyan, E. Elsen, O. Vinyals, J. Rae, and K. Sifre. An empirical analysis of compute-optimal large language model training. In <em>NeurIPS</em>, Vol. 35.</p>
+<p>Huang et al. (2026a) H. Huang, Y. LeCun, and R. Balestriero. LLM-JEPA: large language models meet joint embedding predictive architectures. In <em>The Fourteenth International Conference on Learning Representations</em>.</p>
+<p>Huang et al. (2026b) H. Huang, Y. LeCun, and R. Balestriero. Semantic tube prediction: beating LLM data efficiency with JEPA. In <em>ICML</em>.</p>
+<p>Hwang et al. (2026) S. Hwang, B. Wang, and A. Gu. Dynamic chunking for end-to-end hierarchical sequence modeling. In <em>International Conference on Learning Representations</em>.</p>
+<p>Kaplan et al. (2020) J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown, B. Chess, R. Child, S. Gray, J. Wu, and D. Amodei. Scaling laws for neural language models. <em>arXiv preprint arXiv:2001.08361</em>.</p>
+<p>Lad et al. (2025) V. Lad, J. H. Lee, W. Gurnee, and M. Tegmark. Remarkable robustness of LLMs: stages of inference? In <em>Advances in Neural Information Processing Systems</em>, Vol. 38.</p>
+<p>LCM Team et al. (2024) LCM Team, L. Barrault, P. Duquenne, M. Elbayad, A. Kozhevnikov, B. Alastruey, P. Andrews, M. Coria, G. Couairon, M. R. Costa-jussà, D. Dale, H. Elsahar, K. Heffernan, J. M. Janeiro, T. Tran, C. Ropers, E. Sánchez, R. San Roman, A. Mourachko, S. Saleem, and H. Schwenk. Large concept models: language modeling in a sentence representation space. <em>arXiv preprint arXiv:2412.08821</em>.</p>
+<p>Li et al. (2026) Y. Li, M. Li, K. Livescu, and J. Zhou. On the predictive power of representation dispersion in language models. In <em>International Conference on Learning Representations</em>.</p>
+<p>Merity et al. (2018) S. Merity, N. S. Keskar, and R. Socher. Regularizing and optimizing LSTM language models. In <em>International Conference on Learning Representations</em>.</p>
+<p>Mohtashami and Jaggi (2023) A. Mohtashami and M. Jaggi. Landmark attention: random-access infinite context length for transformers. <em>arXiv preprint arXiv:2305.16300</em>.</p>
+<p>Mu et al. (2023) J. Mu, X. L. Li, and N. Goodman. Learning to compress prompts with gist tokens. In <em>NeurIPS</em>, Vol. 36.</p>
+<p>Penedo et al. (2024) G. Penedo, H. Kydlíček, L. Ben Allal, A. Lozhkov, M. Mitchell, C. Raffel, L. von Werra, and T. Wolf. The FineWeb datasets: decanting the web for the finest text data at scale. In <em>NeurIPS</em>, Vol. 37.</p>
+<p>Radford et al. (2019) A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, and I. Sutskever. Language models are unsupervised multitask learners. Technical report, OpenAI.</p>
+<p>Rissanen (1978) J. Rissanen. Modeling by shortest data description. <em>Automatica</em> 14(5), pp. 465–471.</p>
+<p>Shuman et al. (2013) D. I. Shuman, S. K. Narang, P. Frossard, A. Ortega, and P. Vandergheynst. The emerging field of signal processing on graphs: extending high-dimensional data analysis to networks and other irregular domains. <em>IEEE Signal Processing Magazine</em> 30(3), pp. 83–98.</p>
+<p>Skean et al. (2025) O. Skean, M. R. Arefin, D. Zhao, N. N. Patel, J. Naghiyev, Y. LeCun, and R. Shwartz-Ziv. Layer by layer: uncovering hidden representations in language models. In <em>Proceedings of the 42nd International Conference on Machine Learning</em>, <em>Proceedings of Machine Learning Research</em>, Vol. 267, pp. 55854–55875.</p>
+<p>Su et al. (2024) J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, and Y. Liu. RoFormer: enhanced transformer with rotary position embedding. <em>Neurocomputing</em> 568, 127063.</p>
+<p>Vaswani et al. (2017) A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin. Attention is all you need. In <em>NeurIPS</em>, Vol. 30.</p>
+<p>Vereshchagin and Vitanyi (2004) N. Vereshchagin and P. Vitanyi. Kolmogorov's structure functions and model selection. <em>IEEE Transactions on Information Theory</em> 50(12), pp. 3265–3290.</p>
+<p>Vershynin (2018) R. Vershynin. <em>High-dimensional probability: An introduction with applications in data science</em>. Cambridge University Press.</p>
+<p>Wu et al. (2025) Z. Wu, T. Ding, Y. Lu, D. Pai, J. Zhang, W. Wang, Y. Yu, Y. Ma, and B. Haeffele. Token statistics transformer: linear-time attention via variational rate reduction. In <em>International Conference on Learning Representations</em>.</p>
+<p>Yu et al. (2023a) L. Yu, D. Simig, C. Flaherty, A. Aghajanyan, L. Zettlemoyer, and M. Lewis. MEGABYTE: predicting million-byte sequences with multiscale transformers. In <em>NeurIPS</em>, Vol. 36.</p>
+<p>Yu et al. (2023b) Y. Yu, S. Buchanan, D. Pai, T. Chu, Z. Wu, S. Tong, B. D. Haeffele, and Y. Ma. White-box transformers via sparse rate reduction. In <em>NeurIPS</em>, Vol. 36.</p>
+<p>Zaheer et al. (2020) M. Zaheer, G. Guruganesh, K. A. Dubey, J. Ainslie, C. Alberti, S. Ontanon, P. Pham, A. Ravula, Q. Wang, L. Yang, and A. Ahmed. Big bird: transformers for longer sequences. In <em>NeurIPS</em>, Vol. 33.</p>
+<p>Zhang et al. (2025) P. Zhang, Z. Liu, S. Xiao, N. Shao, Q. Ye, and Z. Dou. Long context compression with activation beacon. In <em>International Conference on Learning Representations</em>.</p>
+<h2>附录A 补充实验结果</h2>
+<h3>A.1 BBC和CC是深度相关的</h3>
+<p>表2：在较低层应用BBC产生比较好的NLL。</p>
+<p>(a) gpt2-small 在1亿词元处</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>K=4</th>
+<th>K=8</th>
+<th>K=16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.118±0.005</td>
+<td>4.110±0.008</td>
+<td>4.107±0.002</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.116±0.002</td>
+<td>4.099±0.004</td>
+<td>4.102±0.001</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.122±0.005</td>
+<td>4.112±0.002</td>
+<td>4.109±0.005</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.131±0.002</td>
+<td>4.128±0.002</td>
+<td>4.128±0.003</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.148±0.004</td>
+<td>4.148±0.002</td>
+<td>4.155±0.005</td>
+</tr>
+<tr>
+<td>10</td>
+<td>4.159±0.005</td>
+<td>4.171±0.002</td>
+<td>4.183±0.002</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-medium 在1亿词元处</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>K=4</th>
+<th>K=8</th>
+<th>K=16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.086±0.004</td>
+<td>4.088±0.008</td>
+<td>4.091±0.008</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.095±0.004</td>
+<td>4.069±0.007</td>
+<td>4.066±0.002</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.085±0.005</td>
+<td>4.072±0.004</td>
+<td>4.067±0.003</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.089±0.003</td>
+<td>4.073±0.002</td>
+<td>4.071±0.001</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.088±0.002</td>
+<td>4.082±0.008</td>
+<td>4.075±0.005</td>
+</tr>
+<tr>
+<td>10</td>
+<td>4.092±0.009</td>
+<td>4.090±0.005</td>
+<td>4.084±0.005</td>
+</tr>
+<tr>
+<td>12</td>
+<td>4.094±0.003</td>
+<td>4.096±0.003</td>
+<td>4.090±0.006</td>
+</tr>
+<tr>
+<td>14</td>
+<td>4.103±0.003</td>
+<td>4.102±0.004</td>
+<td>4.101±0.004</td>
+</tr>
+<tr>
+<td>16</td>
+<td>4.105±0.006</td>
+<td>4.113±0.005</td>
+<td>4.118±0.004</td>
+</tr>
+<tr>
+<td>18</td>
+<td>4.115±0.006</td>
+<td>4.120±0.003</td>
+<td>4.127±0.005</td>
+</tr>
+<tr>
+<td>20</td>
+<td>4.112±0.005</td>
+<td>4.130±0.004</td>
+<td>4.144±0.002</td>
+</tr>
+<tr>
+<td>22</td>
+<td>4.108±0.003</td>
+<td>4.144±0.004</td>
+<td>4.163±0.001</td>
+</tr>
+</tbody>
+</table>
+<p>与BBC在Transformer层内应用不同，CC正则化层之间的隐藏状态。为避免引入层索引−1，我们用CC正则化其输入的层来索引CC。在此约定下，最后一层的输出可被视为幻象层 N+1 的输入。因此我们在表3中对 gpt2-small 扫图层{0,2,…,12}，对 gpt2-medium 扫图层{0,2,…,24}。</p>
+<p>表3：在较高层应用 ℒ_CC 产生比较好的NLL。</p>
+<p>(a) gpt2-small 在1亿词元处</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.005</th>
+<th>β=0.0025</th>
+<th>β=0.00125</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>12</td>
+<td>4.139±0.003</td>
+<td>4.146±0.002</td>
+<td>4.144±0.007</td>
+</tr>
+<tr>
+<td>10</td>
+<td>4.113±0.002</td>
+<td>4.106±0.002</td>
+<td>4.112±0.002</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.115±0.003</td>
+<td>4.113±0.005</td>
+<td>4.117±0.001</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.121±0.004</td>
+<td>4.122±0.003</td>
+<td>4.122±0.000</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.129±0.004</td>
+<td>4.130±0.003</td>
+<td>4.141±0.003</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.137±0.001</td>
+<td>4.142±0.003</td>
+<td>4.146±0.002</td>
+</tr>
+<tr>
+<td>0</td>
+<td>4.149±0.001</td>
+<td>4.143±0.002</td>
+<td>4.143±0.001</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-medium 在1亿词元处</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.005</th>
+<th>β=0.0025</th>
+<th>β=0.00125</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>24</td>
+<td>4.104±0.008</td>
+<td>4.107±0.001</td>
+<td>4.105±0.002</td>
+</tr>
+<tr>
+<td>22</td>
+<td>4.049±0.000</td>
+<td>4.044±0.004</td>
+<td>4.040±0.002</td>
+</tr>
+<tr>
+<td>20</td>
+<td>4.049±0.003</td>
+<td>4.045±0.001</td>
+<td>4.045±0.001</td>
+</tr>
+<tr>
+<td>18</td>
+<td>4.046±0.000</td>
+<td>4.042±0.001</td>
+<td>4.052±0.006</td>
+</tr>
+<tr>
+<td>16</td>
+<td>4.053±0.006</td>
+<td>4.049±0.002</td>
+<td>4.063±0.006</td>
+</tr>
+<tr>
+<td>14</td>
+<td>4.059±0.002</td>
+<td>4.060±0.002</td>
+<td>4.069±0.006</td>
+</tr>
+<tr>
+<td>12</td>
+<td>4.058±0.002</td>
+<td>4.063±0.002</td>
+<td>4.078±0.005</td>
+</tr>
+<tr>
+<td>10</td>
+<td>4.068±0.004</td>
+<td>4.071±0.003</td>
+<td>4.093±0.008</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.072±0.001</td>
+<td>4.087±0.003</td>
+<td>4.104±0.005</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.083±0.002</td>
+<td>4.099±0.002</td>
+<td>4.116±0.002</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.093±0.004</td>
+<td>4.099±0.002</td>
+<td>4.113±0.001</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.094±0.003</td>
+<td>4.103±0.001</td>
+<td>4.109±0.001</td>
+</tr>
+<tr>
+<td>0</td>
+<td>4.103±0.002</td>
+<td>4.102±0.003</td>
+<td>4.104±0.003</td>
+</tr>
+</tbody>
+</table>
+<h3>A.2 最优 K 和 β</h3>
+<p>表4：第2层的BBC段长扫描。结果为三个种子的平均NLL±标准差。</p>
+<p>(a) gpt2-small</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>K=32</th>
+<th>K=64</th>
+<th>K=128</th>
+<th>K=256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>4.094±0.004</td>
+<td>4.106±0.003</td>
+<td>4.113±0.004</td>
+<td>4.125±0.005</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-medium</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>K=32</th>
+<th>K=64</th>
+<th>K=128</th>
+<th>K=256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>4.067±0.008</td>
+<td>4.078±0.006</td>
+<td>4.084±0.006</td>
+<td>4.103±0.011</td>
+</tr>
+</tbody>
+</table>
+<p>表5：CC正则化强度扫描。结果为三个种子的平均NLL±标准差。</p>
+<p>(a) gpt2-small</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.04</th>
+<th>β=0.02</th>
+<th>β=0.01</th>
+<th>β=0.000625</th>
+<th>β=0.0003125</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>4.142±0.007</td>
+<td>4.114±0.001</td>
+<td>4.112±0.003</td>
+<td>4.115±0.004</td>
+<td>4.121±0.003</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-medium</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.04</th>
+<th>β=0.02</th>
+<th>β=0.01</th>
+<th>β=0.000625</th>
+<th>β=0.0003125</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>22</td>
+<td>4.087±0.009</td>
+<td>4.060±0.008</td>
+<td>4.045±0.001</td>
+<td>4.047±0.000</td>
+<td>4.056±0.003</td>
+</tr>
+</tbody>
+</table>
+<h3>A.3 3亿显著性检验和10亿持久性</h3>
+<p>表6：gpt2-small 上的结果。在3亿训练词元处，CC、BBC和BBC+CC都显著优于原始基线。BBC和BBC+CC的增益持续到10亿训练词元。</p>
+<p>(a) gpt2-small 在3亿词元处的结果。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>改善(%)</th>
+<th>vs原始</th>
+<th>vs CC</th>
+<th>vs BBC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>3.722±0.002</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CC</td>
+<td>3.712±0.001</td>
+<td>0.27</td>
+<td>0.00228</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>3.685±0.002</td>
+<td>0.99</td>
+<td>0.000925</td>
+<td>0.00109</td>
+<td></td>
+</tr>
+<tr>
+<td>BBC+CC</td>
+<td>3.673±0.004</td>
+<td>1.30</td>
+<td>0.00231</td>
+<td>0.00248</td>
+<td>0.0364</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-small 通过10亿词元的结果，报告为相对于原始模型的改善(%)。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>3亿</th>
+<th>6亿</th>
+<th>10亿</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BBC</td>
+<td>0.99±0.07</td>
+<td>1.01±0.03</td>
+<td>1.04±0.06</td>
+</tr>
+<tr>
+<td>BBC+CC</td>
+<td>1.30±0.15</td>
+<td>1.24±0.13</td>
+<td>1.36±0.10</td>
+</tr>
+</tbody>
+</table>
+<p>表7：gpt2-medium 上的结果。在3亿训练词元处，CC、BBC和BBC+CC都显著优于原始基线。BBC和BBC+CC的增益持续到10亿训练词元。</p>
+<p>(a) gpt2-medium 在3亿词元处的结果。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>改善(%)</th>
+<th>vs原始</th>
+<th>vs CC</th>
+<th>vs BBC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>3.615±0.002</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CC</td>
+<td>3.600±0.003</td>
+<td>0.42</td>
+<td>0.00286</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>3.575±0.002</td>
+<td>1.11</td>
+<td>0.0000675</td>
+<td>0.000383</td>
+<td></td>
+</tr>
+<tr>
+<td>BBC+CC</td>
+<td>3.563±0.003</td>
+<td>1.44</td>
+<td>0.000621</td>
+<td>0.000466</td>
+<td>0.00793</td>
+</tr>
+</tbody>
+</table>
+<p>(b) gpt2-medium 通过10亿词元的结果，报告为相对于原始模型的改善(%)。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>3亿</th>
+<th>6亿</th>
+<th>10亿</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BBC</td>
+<td>1.11±0.02</td>
+<td>1.19±0.04</td>
+<td>1.25±0.04</td>
+</tr>
+<tr>
+<td>BBC+CC</td>
+<td>1.44±0.09</td>
+<td>1.40±0.03</td>
+<td>1.51±0.02</td>
+</tr>
+</tbody>
+</table>
+<h3>A.4 BBC消融</h3>
+<p>表8：gpt2-small 上的结果。在1亿训练词元处，滑动窗口和随机稀疏注意力都不如原始基线，而BBC显著优于它们。在3亿词元处，BBC也显著优于载体位置随机选择的变体。</p>
+<p>(a) BBC vs 滑动窗口注意力和随机稀疏注意力在1亿词元处。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>改善(%)</th>
+<th>vs原始</th>
+<th>vs滑动</th>
+<th>vs随机稀疏</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>4.142±0.002</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>滑动</td>
+<td>4.143±0.001</td>
+<td>−0.02</td>
+<td>0.243</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>随机稀疏</td>
+<td>4.150±0.002</td>
+<td>−0.19</td>
+<td>0.0372</td>
+<td>0.0170</td>
+<td></td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>4.099±0.004</td>
+<td>1.00</td>
+<td>0.000313</td>
+<td>0.00104</td>
+<td>0.00220</td>
+</tr>
+</tbody>
+</table>
+<p>(b) BBC vs 随机BBC在3亿词元处。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>p值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BBC</td>
+<td>3.684±0.001</td>
+<td></td>
+</tr>
+<tr>
+<td>随机BBC</td>
+<td>3.702±0.003</td>
+<td>0.0112</td>
+</tr>
+</tbody>
+</table>
+<h3>A.5 CC消融</h3>
+<p>我们为每个CC变体分别调整应用层和正则化强度 β——ℒ_scale、ℒ_norm、附录C.4中定义的 1−cosθ 和 ℒ_CC-2。因为这些目标在不同数值尺度上操作并可能表现出不同的深度偏好，每个都需要自己匹配的 β 和应用层选择。</p>
+<p><strong>尺度正则化。</strong> 如表9所示，最佳配置在第10层应用正则化器，β=0.0025。</p>
+<p>表9：gpt2-small 上1亿训练词元处的 ℒ_scale 正则化。结果为三个种子的平均NLL±标准差。</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.00125</th>
+<th>β=0.0025</th>
+<th>β=0.005</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.146±0.005</td>
+<td>4.143±0.000</td>
+<td>4.145±0.005</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.137±0.000</td>
+<td>4.144±0.004</td>
+<td>4.147±0.005</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.126±0.005</td>
+<td>4.132±0.006</td>
+<td>4.132±0.008</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.119±0.003</td>
+<td>4.124±0.008</td>
+<td>4.125±0.005</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.120±0.002</td>
+<td>4.119±0.003</td>
+<td>4.120±0.001</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>4.119±0.005</strong></td>
+<td><strong>4.111±0.003</strong></td>
+<td><strong>4.114±0.004</strong></td>
+</tr>
+<tr>
+<td>12</td>
+<td>4.146±0.006</td>
+<td>4.144±0.002</td>
+<td>4.144±0.002</td>
+</tr>
+</tbody>
+</table>
+<p><strong>归一化粗糙度正则化。</strong> 如表10所示，最佳配置在第2层应用正则化器，β=0.000625。</p>
+<p>表10：gpt2-small 上1亿训练词元处的 ℒ_norm 正则化。结果为三个种子的平均NLL±标准差。</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.0003125</th>
+<th>β=0.000625</th>
+<th>β=0.00125</th>
+<th>β=0.0025</th>
+<th>β=0.005</th>
+<th>β=0.01</th>
+<th>β=0.02</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.151±0.005</td>
+<td>4.145±0.004</td>
+<td><strong>4.143±0.007</strong></td>
+<td>4.144±0.002</td>
+<td>4.142±0.002</td>
+<td>4.144±0.007</td>
+<td>4.144±0.007</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.146±0.002</td>
+<td><strong>4.141±0.001</strong></td>
+<td>4.149±0.003</td>
+<td>4.146±0.007</td>
+<td>4.144±0.002</td>
+<td>4.150±0.005</td>
+<td>4.160±0.006</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.148±0.003</td>
+<td>4.147±0.002</td>
+<td>4.148±0.002</td>
+<td>4.151±0.005</td>
+<td>4.148±0.004</td>
+<td>4.145±0.006</td>
+<td>4.150±0.003</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.147±0.003</td>
+<td>4.149±0.002</td>
+<td>4.147±0.002</td>
+<td>4.147±0.001</td>
+<td>4.152±0.003</td>
+<td>4.146±0.005</td>
+<td>4.150±0.002</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.146±0.006</td>
+<td>4.146±0.002</td>
+<td>4.146±0.005</td>
+<td>4.145±0.004</td>
+<td>4.149±0.001</td>
+<td>4.146±0.004</td>
+<td>4.147±0.004</td>
+</tr>
+<tr>
+<td>10</td>
+<td>4.146±0.002</td>
+<td>4.144±0.008</td>
+<td>4.146±0.001</td>
+<td>4.147±0.007</td>
+<td>4.147±0.004</td>
+<td>4.148±0.005</td>
+<td>4.143±0.002</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>4.144±0.008</strong></td>
+<td>4.144±0.004</td>
+<td>4.144±0.005</td>
+<td><strong>4.143±0.002</strong></td>
+<td><strong>4.142±0.001</strong></td>
+<td><strong>4.142±0.001</strong></td>
+<td><strong>4.143±0.004</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>余弦距离正则化。</strong> 如表11所示，最佳配置在第8层应用正则化器，β=0.0025。</p>
+<p>表11：gpt2-small 上1亿训练词元处的 1−cosθ 正则化。结果为三个种子的平均NLL±标准差。</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.00125</th>
+<th>β=0.0025</th>
+<th>β=0.005</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.145±0.001</td>
+<td>4.148±0.006</td>
+<td>4.144±0.004</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.147±0.006</td>
+<td>4.145±0.010</td>
+<td>4.145±0.002</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.144±0.001</td>
+<td>4.146±0.003</td>
+<td>4.146±0.006</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.144±0.002</td>
+<td>4.145±0.001</td>
+<td>4.153±0.002</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.146±0.003</td>
+<td><strong>4.142±0.004</strong></td>
+<td>4.145±0.004</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>4.142±0.001</strong></td>
+<td>4.144±0.006</td>
+<td>4.146±0.007</td>
+</tr>
+<tr>
+<td>12</td>
+<td>4.146±0.004</td>
+<td>4.144±0.002</td>
+<td><strong>4.143±0.002</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>CC-2正则化。</strong> 如表12所示，最佳配置在第10层应用正则化器，β=0.0025。</p>
+<p>表12：gpt2-small 上1亿训练词元处的 ℒ_CC-2 正则化。结果为三个种子的平均NLL±标准差。</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>β=0.00125</th>
+<th>β=0.0025</th>
+<th>β=0.005</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>4.145±0.002</td>
+<td>4.145±0.003</td>
+<td>4.146±0.001</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4.147±0.003</td>
+<td>4.156±0.007</td>
+<td>4.178±0.004</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4.135±0.005</td>
+<td>4.148±0.002</td>
+<td>4.179±0.006</td>
+</tr>
+<tr>
+<td>6</td>
+<td>4.122±0.002</td>
+<td>4.131±0.007</td>
+<td>4.160±0.008</td>
+</tr>
+<tr>
+<td>8</td>
+<td>4.117±0.005</td>
+<td>4.121±0.003</td>
+<td>4.135±0.005</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>4.110±0.001</strong></td>
+<td><strong>4.110±0.010</strong></td>
+<td><strong>4.120±0.003</strong></td>
+</tr>
+<tr>
+<td>12</td>
+<td>4.148±0.003</td>
+<td>4.145±0.002</td>
+<td>4.144±0.007</td>
+</tr>
+</tbody>
+</table>
+<p><strong>显著性检验。</strong> 在1亿训练词元处，CC显著优于余弦距离和归一化粗糙度正则化。对于尺度正则化和CC-2，性能差距仅在扩展训练到3亿词元后才变得统计显著。</p>
+<p>表13：gpt2-small 上的结果。在1亿训练词元处，CC显著优于归一化粗糙度和余弦相似度正则化。在3亿词元处，CC也显著优于尺度正则化和CC-2。</p>
+<p>(a) CC vs 余弦相似度和归一化粗糙度正则化在1亿词元处。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>改善(%)</th>
+<th>vs原始</th>
+<th>vs余弦</th>
+<th>vs归一化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>4.142±0.002</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>余弦</td>
+<td>4.142±0.004</td>
+<td>0.01</td>
+<td>0.466</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>归一化</td>
+<td>4.141±0.001</td>
+<td>0.02</td>
+<td>0.288</td>
+<td>0.412</td>
+<td></td>
+</tr>
+<tr>
+<td>CC</td>
+<td>4.106±0.002</td>
+<td>0.87</td>
+<td>0.00127</td>
+<td>0.00154</td>
+<td>0.0000978</td>
+</tr>
+</tbody>
+</table>
+<p>(b) CC vs 尺度正则化和CC-2在3亿词元处。表格右侧报告配对t检验的p值。</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>NLL</th>
+<th>vs尺度</th>
+<th>vs CC-2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>尺度</td>
+<td>3.718±0.001</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>CC-2</td>
+<td>3.718±0.003</td>
+<td>0.477</td>
+<td></td>
+</tr>
+<tr>
+<td>CC</td>
+<td>3.712±0.001</td>
+<td>0.0113</td>
+<td>0.0386</td>
+</tr>
+</tbody>
+</table>
+<h3>A.6 200亿训练运行</h3>
+<p>当扩展训练到200亿词元时，我们首先使用10亿词元扫描重新调整CC权重 β。在更长的调度下，较慢的学习率衰减允许CC对 ℒ_CC 施加更大的累积向下压力，这可以改变最优 β。使用单一种子（82），我们发现 β=0.000625 在10亿词元处表现最佳。</p>
+<p>在此设置下，BBC+CC最终在100亿词元后优于BBC，但在40亿到90亿词元之间的中间检查点表现不佳。进一步减少 β 不能改善10亿词元结果。</p>
+<p>我们假设这种行为部分是由于数值稳定性：随着 ℒ_CC 减少，将其乘以 β≪1 可能使相应的优化信号在数值上可以忽略。因此我们研究两种变体。</p>
+<p><strong>随机dropout</strong> 以dropout率 d&gt;0 独立跳过CC项。<strong>自适应dropout</strong> 则在 ℒ_CC 低于前 h 个优化步值的第 p 百分位数时跳过CC项，减少非常小CC更新的频率。</p>
+<p>在10亿训练词元处，我们使用三个种子{82,23,37}评估随机dropout（d=0.5）和自适应dropout（p=50, h=32）（表14）。两种变体都相对于标准CC大幅减少了跨种子方差，自适应dropout实现了三者中最佳的平均性能。因此我们使用自适应dropout进行第二次200亿词元运行，其中BBC+CC Adapt在每个中间检查点都优于BBC。</p>
+<p>我们在扩大的1000万词元保留集上评估每10亿词元中间检查点以减少评估噪声。这为比较CC变体提供了所需的高精度（表14），并抵消了单种子200亿词元运行中种子平均的缺失（表15）。此外，我们每1000万训练词元在100万词元保留集上评估，产生图7。</p>
+<p>表14：gpt2-medium 在10亿词元处的BBC+CC变体，具有200亿学习率衰减范围和 β=0.000625。随机Dropout概率为0.5。自适应Dropout第p百分位数为50，历史大小为32。评估在1000万词元保留集上运行。</p>
+<table>
+<thead>
+<tr>
+<th>BBC+CC变体</th>
+<th>NLL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>标准CC</td>
+<td>3.2757±0.0043</td>
+</tr>
+<tr>
+<td>CC随机Dropout d=0.5</td>
+<td>3.2757±0.0008</td>
+</tr>
+<tr>
+<td>CC自适应Dropout p=50, h=32</td>
+<td>3.2753±0.0005</td>
+</tr>
+</tbody>
+</table>
+<p>表15：gpt2-medium 在200亿词元处的结果。BBC和两种BBC+CC变体在每个检查点都优于原始基线（单种子，无显著性检验）。BBC+CC在一些初始检查点落后于BBC，而BBC+CC Adapt持续优于它。每个检查点在1000万词元保留集上评估。</p>
+<table>
+<thead>
+<tr>
+<th>词元</th>
+<th>原始NLL</th>
+<th>BBC NLL</th>
+<th>BBC+CC NLL</th>
+<th>BBC+CC Adapt NLL</th>
+<th>BBC改善%</th>
+<th>BBC+CC改善%</th>
+<th>Adapt改善%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1B</td>
+<td>3.3113</td>
+<td>3.2772</td>
+<td>3.2765</td>
+<td>3.2748</td>
+<td>1.03</td>
+<td>1.05</td>
+<td>1.10</td>
+</tr>
+<tr>
+<td>2B</td>
+<td>3.2107</td>
+<td>3.1819</td>
+<td>3.1807</td>
+<td>3.1793</td>
+<td>0.90</td>
+<td>0.94</td>
+<td>0.98</td>
+</tr>
+<tr>
+<td>3B</td>
+<td>3.1704</td>
+<td>3.1397</td>
+<td>3.1387</td>
+<td>3.1363</td>
+<td>0.97</td>
+<td>1.00</td>
+<td>1.08</td>
+</tr>
+<tr>
+<td>4B</td>
+<td>3.1426</td>
+<td>3.1089</td>
+<td>3.1125</td>
+<td>3.1085</td>
+<td>1.08</td>
+<td>0.96</td>
+<td>1.09</td>
+</tr>
+<tr>
+<td>5B</td>
+<td>3.1184</td>
+<td>3.0897</td>
+<td>3.0937</td>
+<td>3.0871</td>
+<td>0.92</td>
+<td>0.79</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>6B</td>
+<td>3.0980</td>
+<td>3.0671</td>
+<td>3.0720</td>
+<td>3.0649</td>
+<td>1.00</td>
+<td>0.84</td>
+<td>1.07</td>
+</tr>
+<tr>
+<td>7B</td>
+<td>3.0801</td>
+<td>3.0494</td>
+<td>3.0533</td>
+<td>3.0461</td>
+<td>1.00</td>
+<td>0.87</td>
+<td>1.10</td>
+</tr>
+<tr>
+<td>8B</td>
+<td>3.0609</td>
+<td>3.0304</td>
+<td>3.0315</td>
+<td>3.0268</td>
+<td>0.99</td>
+<td>0.96</td>
+<td>1.11</td>
+</tr>
+<tr>
+<td>9B</td>
+<td>3.0376</td>
+<td>3.0116</td>
+<td>3.0118</td>
+<td>3.0072</td>
+<td>0.86</td>
+<td>0.85</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>10B</td>
+<td>3.0185</td>
+<td>2.9922</td>
+<td>2.9916</td>
+<td>2.9872</td>
+<td>0.87</td>
+<td>0.89</td>
+<td>1.04</td>
+</tr>
+<tr>
+<td>11B</td>
+<td>2.9983</td>
+<td>2.9700</td>
+<td>2.9700</td>
+<td>2.9660</td>
+<td>0.95</td>
+<td>0.94</td>
+<td>1.08</td>
+</tr>
+<tr>
+<td>12B</td>
+<td>2.9757</td>
+<td>2.9475</td>
+<td>2.9467</td>
+<td>2.9438</td>
+<td>0.95</td>
+<td>0.97</td>
+<td>1.07</td>
+</tr>
+<tr>
+<td>13B</td>
+<td>2.9526</td>
+<td>2.9221</td>
+<td>2.9214</td>
+<td>2.9194</td>
+<td>1.03</td>
+<td>1.06</td>
+<td>1.12</td>
+</tr>
+<tr>
+<td>14B</td>
+<td>2.9290</td>
+<td>2.8984</td>
+<td>2.8971</td>
+<td>2.8944</td>
+<td>1.04</td>
+<td>1.09</td>
+<td>1.18</td>
+</tr>
+<tr>
+<td>15B</td>
+<td>2.9036</td>
+<td>2.8733</td>
+<td>2.8722</td>
+<td>2.8703</td>
+<td>1.04</td>
+<td>1.08</td>
+<td>1.15</td>
+</tr>
+<tr>
+<td>16B</td>
+<td>2.8784</td>
+<td>2.8473</td>
+<td>2.8462</td>
+<td>2.8433</td>
+<td>1.08</td>
+<td>1.12</td>
+<td>1.22</td>
+</tr>
+<tr>
+<td>17B</td>
+<td>2.8569</td>
+<td>2.8249</td>
+<td>2.8245</td>
+<td>2.8223</td>
+<td>1.12</td>
+<td>1.14</td>
+<td>1.21</td>
+</tr>
+<tr>
+<td>18B</td>
+<td>2.8379</td>
+<td>2.8063</td>
+<td>2.8048</td>
+<td>2.8028</td>
+<td>1.11</td>
+<td>1.17</td>
+<td>1.24</td>
+</tr>
+<tr>
+<td>19B</td>
+<td>2.8244</td>
+<td>2.7930</td>
+<td>2.7908</td>
+<td>2.7886</td>
+<td>1.11</td>
+<td>1.19</td>
+<td>1.27</td>
+</tr>
+<tr>
+<td>20B</td>
+<td>2.8193</td>
+<td>2.7876</td>
+<td>2.7858</td>
+<td>2.7837</td>
+<td>1.12</td>
+<td>1.19</td>
+<td>1.26</td>
+</tr>
+</tbody>
+</table>
+<p>图7：200亿运行的指标。200亿 gpt2-medium 训练运行期间的评估NLL损失和相对于原始模型的改善(%)。每1000万训练词元在100万词元保留集上运行评估。</p>
+<h3>A.7 边界干预诊断</h3>
+<p>为测试BBC是否增加边界表示的相对重要性，我们使用两种匹配的激活干预评估冻结的1亿词元原始和BBC检查点。对于每个已完成的段，我们要么用零向量替换边界表示并测量由此产生的NLL增加，记为 Δ_b，要么替换同一段中随机选择的非边界表示并测量相应的增加，记为 Δ_i。我们使用</p>
+<p>G = Δ_b − Δ_i    (5)</p>
+<p>作为边界偏好统计量。正的 G 表明消融边界比消融匹配的内部位置更具破坏性。更重要的是，</p>
+<p>G_BBC &gt; G_Vanilla    (6)</p>
+<p>表明BBC增加了边界表示的相对预测重要性。</p>
+<p><strong>控制早期位置效应。</strong> 对整个序列的直接干预受到前几个词元异常大影响的混淆。图8显示了当消融的内部位置相对于段边界移动时的边界偏好统计量。当 K=8 时，位置−7对应于段的第一个词元。在不排除初始段的情况下，消融此位置产生不成比例的NLL变化，主导了边界与内部的比较。</p>
+<p>因此我们从干预统计量和相应的NLL评估中排除前 W=4 个段。在此预热排除后，对特定非边界位置的依赖变得可以忽略（图8），允许诊断隔离边界放置的相对效应而非最早词元的特殊角色。</p>
+<p>图8：消融内部位置对边界偏好统计量 Δ_b−Δ_i 的影响。在不排除前段（W=0）的情况下，消融最早位置产生大的位置伪影。排除前四段（W=4）大部分消除了这种依赖。</p>
+<p><strong>零向量干预。</strong> 当 W=4 时，我们得到</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>Δ_b</th>
+<th>Δ_i</th>
+<th>Δ_b−Δ_i</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>1.2293±0.1566</td>
+<td>1.2318±0.1556</td>
+<td>−0.0025±0.0618</td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>0.8553±0.1028</td>
+<td>0.8500±0.1026</td>
+<td>0.0052±0.0589</td>
+</tr>
+</tbody>
+</table>
+<p>原始模型基本没有正边界偏好：Δ_b−Δ_i = −0.0025。相比之下，BBC产生0.0052的正边界偏好差距。更重要的是，配对BBC-原始对比在统计上显著，</p>
+<p>t(1023) = 4.160, p = 3.46×10⁻⁵    (7)</p>
+<p>因此BBC相对于匹配的内部表示显著增加了模型对边界表示的相对敏感度。</p>
+<p><strong>均值替换干预。</strong> 为验证结果不特定于零向量消融，我们使用较少破坏性的干预重复实验：选定表示被替换为前 K−1 个隐藏状态的均值。我们得到</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>Δ_b</th>
+<th>Δ_i</th>
+<th>Δ_b−Δ_i</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>0.6267±0.0683</td>
+<td>0.6251±0.0670</td>
+<td>0.0017±0.0626</td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>0.5612±0.0636</td>
+<td>0.5546±0.0616</td>
+<td>0.0065±0.0584</td>
+</tr>
+</tbody>
+</table>
+<p>原始差距相对于其每示例变异性较小，而BBC再次表现出更大的正边界偏好。配对对比显著：</p>
+<p>t(1023) = 3.499, p = 4.86×10⁻⁴    (8)</p>
+<p>综合来看，两种干预给出相同的定性结果：标准下一词元训练对BBC使用的固定段边界几乎没有系统偏好，而BBC显著增加了这些边界表示的相对预测重要性。这提供了直接的表示级证据，表明BBC路由约束导致有用信息优先集中在指定的载体位置。</p>
+<h3>A.8 CC的谱诊断</h3>
+<p>表16：1亿训练词元处的归一化谱残差 ‖H−H_m‖_F²/‖H‖_F²。越低越好地被前 m 个位置模式近似。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>m/N=.05</th>
+<th>m/N=.10</th>
+<th>m/N=.20</th>
+<th>m/N=.30</th>
+<th>m/N=.50</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>0.528</td>
+<td>0.468</td>
+<td>0.381</td>
+<td>0.314</td>
+<td>0.208</td>
+</tr>
+<tr>
+<td>CC</td>
+<td>0.413</td>
+<td>0.359</td>
+<td>0.285</td>
+<td>0.232</td>
+<td>0.150</td>
+</tr>
+</tbody>
+</table>
+<h3>A.9 RoPE</h3>
+<p>表17：使用RoPE的 Pythia-410M 在10亿训练词元后的结果。结果为三个种子的平均NLL±标准差。我们复用 gpt2-medium 超参数：η=6×10⁻⁴, K=16, β=0.00125。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>NLL</th>
+<th>改善(%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始</td>
+<td>3.1883±0.001</td>
+<td>–</td>
+</tr>
+<tr>
+<td>BBC</td>
+<td>3.1698±0.002</td>
+<td>0.58</td>
+</tr>
+<tr>
+<td>BBC+CC</td>
+<td>3.1620±0.001</td>
+<td>0.83</td>
+</tr>
+</tbody>
+</table>
+<p>表18：RoPE的 rotary_pct（具有旋转嵌入的头维度分数）的影响，仅在BBC层（L=2）更改，对 Pythia-410M 在1亿词元后性能的影响。结果为三个种子的平均NLL±标准差；改善相对于原始基线。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>NLL</th>
+<th>改善(%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>原始 rotary_pct=0.25</td>
+<td>4.0844±0.006</td>
+<td>–</td>
+</tr>
+<tr>
+<td>BBC+CC rotary_pct=0.00</td>
+<td>4.0460±0.006</td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>BBC+CC rotary_pct=0.25</td>
+<td>4.0066±0.001</td>
+<td>1.94</td>
+</tr>
+<tr>
+<td>BBC+CC rotary_pct=0.50</td>
+<td>4.0066±0.004</td>
+<td>1.94</td>
+</tr>
+<tr>
+<td>BBC+CC rotary_pct=0.75</td>
+<td>4.0074±0.001</td>
+<td>1.92</td>
+</tr>
+<tr>
+<td>BBC+CC rotary_pct=1.00</td>
+<td>4.0077±0.003</td>
+<td>1.91</td>
+</tr>
+</tbody>
+</table>
+<h2>附录B BBC和CC之间的额外联系</h2>
+<p>我们现在考虑反向。BBC限制跨段通信可用的值子空间。平滑度需要关于相邻查询之间注意力如何变化的额外条件。</p>
+<h3>B.1 跨段特征子空间</h3>
+<p>考虑一个确定性注意力头。设 B 为查询可用的边界位置并集，对不可访问位置分配零权重。设</p>
+<p>A_B ∈ ℝ^{N_q×|B|}, V_B ∈ ℝ^{|B|×d_v}</p>
+<p>跨段贡献为</p>
+<p>O_cross = A_B V_B    (9)</p>
+<p>A_B 的行不必求和为一，因为局部前缀词元也接收注意力。</p>
+<p><strong>命题5</strong>（跨段子空间约束）。</p>
+<p>rank(O_cross) ≤ min(N_q, |B|, d_v)    (10)</p>
+<p>且每个输出行属于 span{v_b : b ∈ B}。</p>
+<p><strong>证明。</strong> A_B V_B 的每一行是边界值的线性组合，乘积的秩不能超过任一因子的秩。∎</p>
+<p>这约束了一个头的跨段贡献，而非完整隐藏状态。载体计数界限在 |B| ≥ d_v 时不必收紧值维度界限。低秩也不意味着平滑度：交替行 u,−u,u,−u,… 秩为一且相邻能量为 4(N_q−1)‖u‖₂²。</p>
+<h3>B.2 条件平滑度</h3>
+<p>对于相邻差分算子 D，</p>
+<p>‖DO_cross‖_F² ≤ ‖V_B‖_op² ‖DA_B‖_F²    (11)</p>
+<p>因此相似的边界注意力权重产生相似的跨段输出。</p>
+<p>对于此比较，将 B 限制为一个段之前的固定非空边界集。设 K_B ∈ ℝ^{|B|×d_k} 包含其键作为行，并将 V_B 限制到相同位置。假设边界logits为 q_i^⊤k_b/√d_k。定义边界归一化分布和总边界注意力质量：</p>
+<p>ā_i = softmax(K_B q_i/√d_k), γ_i = ∑<em>{b∈B}(A_B)</em>{ib}    (12)</p>
+<p>则</p>
+<p>z_i = V_B^⊤ā_i, o_i^cross = γ_i z_i    (13)</p>
+<p>这里 0 ≤ γ_i ≤ 1；剩余的注意力质量属于局部前缀。</p>
+<p>写 E_intra 为限制在此段的相邻能量，设 Q^qry 为查询矩阵。设</p>
+<p>V_max = max_{b∈B}‖v_b‖₂, C_B = ‖V_B‖_op‖K_B‖_op/(2√d_k)</p>
+<p><strong>命题6</strong>（条件BBC到CC平滑度）。对于固定边界键和值，</p>
+<p>E_intra(O_cross) ≤ (V_max√(E_intra(γ)) + C_B√(E_intra(Q^qry)))²    (14)</p>
+<p><strong>证明。</strong> softmax雅可比矩阵为 J = diag(p) − pp^⊤。它是对称的且绝对行和为 2p_i(1−p_i) ≤ 1/2，因此其欧几里得算子范数最多为 1/2。因此</p>
+<p>‖z_{i+1}−z_i‖₂ ≤ C_B‖q_{i+1}−q_i‖₂</p>
+<p>使用 o_i^cross = γ_i z_i, ‖z_i‖₂ ≤ V_max 和 0 ≤ γ_i ≤ 1 给出</p>
+<p>‖o_{i+1}^cross−o_i^cross‖₂ ≤ V_max|γ_{i+1}−γ_i| + C_B‖q_{i+1}−q_i‖₂</p>
+<p>连续差分上的三角不等式给出结果。∎</p>
+<p>两项都重要。当有一个边界值 u、零局部值和相同的零logits时，当局部前缀从一个词元增长到两个时，跨段输出从 u/2 变为 u/3，即使查询相同。因此当查询和总边界注意力质量都平滑变化时，BBC传递平滑度。段之间的转换（边界集改变处）需要单独的项。</p>
+<h3>B.3 训练BBC层处的命题4</h3>
+<p>我们在训练了10亿词元的两个模型的BBC层（第2层）测试命题4：K=16 且具有学习位置嵌入的 gpt2-medium，以及 K=16 且具有旋转嵌入的 Pythia-410M。我们使用前10万个保留词元的查询、键和值（98和50个序列，所有16个头，每序列256个随机查询）。由于键和值映射已经应用，我们在键和值路径本身上使用引理1：</p>
+<p>|g_j−g̃_j| ≤ ‖q‖₂√((K−1)E_j^K)/√d_k 和 ‖u_j−ũ_j‖₂ ≤ √((K−1)E_j^V)</p>
+<p>其中 E_j^K 和 E_j^V 是段 j 中键和值的路径能量。对于Pythia，我们使用旋转前的键并添加附录C.9的旋转项。因为 ‖W(h_i−h_b)‖₂ ≤ ‖W‖_op‖h_i−h_b‖₂，此版本不弱于用 c_K、c_V 和 h 的路径能量陈述的版本。链中的每个不等式在所有采样查询上成立。</p>
+<p>表19显示低能量条件不成立。段内部值与相同词元的随机重排序一样粗糙，键在 gpt2-medium 中仅略微平滑。路径能量隐含的logit半径约为150 nats，因此 tanh 饱和且界限超过每个查询的 2V_max。使用测量的 Δ_s 和 Δ_v，界限更紧但对几乎所有查询仍然空洞，并且它不按误差对查询排序。原因是logit差距本身很大：测量的 Δ_s 中位数为10.8和12.6 nats，因此 tanh(Δ_s) ≈ 1 且界限对几乎每个查询都接近 Δ_v + 2V_max，无论实际误差如何。在16个Pythia头上，界限和中位误差的秩相关为−0.72。</p>
+<p>误差由掩码移除的注意力质量控制。设 m 为BBC模式外键上的密集注意力质量，ū_M 为其值的注意力加权均值。限制在可见键上的密集注意力等于 (1−m)o_BBC，因此 o−o_BBC = m(ū_M−o_BBC) 精确成立，且 m 按误差对查询的排序远好于界限。在 gpt2-medium 中，具有相同 q 和 k 的密集注意力几乎将其所有质量放在BBC模式之外，分布在数百个位置上。使用旋转嵌入时logits保持局部且 m 很小。训练的BBC层因此可以依赖掩码实现局部性；它不必近似密集层。我们将命题4解读为定性连续性结果，而非训练模型的定量估计。Pythia结果在 K=16 时相同。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 语言模型预训练, 归纳偏置, 柯尔莫哥洛夫复杂度, 注意力机制, 表示学习</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

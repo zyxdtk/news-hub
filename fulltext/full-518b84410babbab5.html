@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境LLM：基于温度匹配的数据高效监督微调 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">环境LLM：基于温度匹配的数据高效监督微调</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-17</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.23229" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Ambient LLMs: Data-Efficient Supervised Fine-tuning via Temperature Matching</h4>
+            <p><strong>中文摘要：</strong> 本文提出Ambient SFT框架，通过温度匹配实现数据高效的监督微调。该方法将冻结的预训练模型作为噪声教师，要求微调模型在高温下匹配教师的条件分布，防止小数据集导致的过拟合和灾难性遗忘。温度参数控制信任程度：T→∞退化为标准SFT，T=1为知识蒸馏。理论证明目标分布可从高温条件分布恢复。实验表明该方法在领域适应、指令微调和推理中均优于标准SFT，困惑度最多降低26.7%，指令微调平均相对提升8.0%-20.3%。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>Ambient LLMs：基于温度匹配的数据高效监督微调</h1>
+<p><strong>作者信息：</strong></p>
+<p>Giannis Daras<br />
+单位：MIT<br />
+邮箱：gdaras@mit.edu</p>
+<p>Marios Papachristou<br />
+单位：亚利桑那州立大学<br />
+邮箱：mpapachr@asu.edu</p>
+<p>Adam Klivans<br />
+单位：德克萨斯大学奥斯汀分校<br />
+邮箱：klivans@cs.utexas.edu</p>
+<p>Antonio Torralba<br />
+单位：MIT<br />
+邮箱：torralba@mit.edu</p>
+<p>Constantinos Daskalakis<br />
+单位：MIT<br />
+邮箱：costis@mit.edu</p>
+<h2>摘要</h2>
+<p>为自回归语言模型收集大规模、多样化且高质量的后训练数据集具有挑战性。因此，监督微调（SFT）通常应用于远小于预训练所用的数据集，这会导致过拟合以及数据分布尾部的灾难性遗忘。为防止这种性能崩溃，我们提出了Ambient SFT，这是一个利用不完美预测来增强微调集的原则性框架。在我们的方法中，预训练模型的"冻结"版本充当噪声教师，微调后的模型必须在粗粒度级别上与之匹配。具体而言，我们要求后训练模型产生的条件分布的高温版本应与预训练模型的高温版本相匹配。温度超参数控制对预训练模型的信任程度，其中极限 T→∞ 时退回到常规SFT，T=1 时退回到知识蒸馏。我们证明了我们的方法在领域适应、指令微调和推理方面优于标准SFT。</p>
+<h2>1 引言</h2>
+<p>最先进大语言模型（LLM）的开发已经演变为一个复杂的多阶段流程（Liu et al., 2024; Bai et al., 2023; Abdin et al., 2024; Achiam et al., 2023; Olmo et al., 2025; Grattafiori et al., 2024）。该过程通常从大规模预训练逐步过渡到更专业化的后训练阶段，包括指令微调（Ouyang et al., 2022）、对齐（Ziegler et al., 2019; Ouyang et al., 2022）和推理（Guo et al., 2025; Lightman et al., 2023）。随着模型在这一流程中不断推进，数据可用性下降了几个数量级。预训练语料库通常包含数万亿个token，而后期阶段往往依赖于仅包含几千个高度精选示例的数据集（Zhou et al., 2023a; Guha et al., 2025）。这一严重瓶颈的出现是因为后训练需要极高质量的数据，使得大规模收集变得极其困难（Zhou et al., 2023a）。</p>
+<p>数据规模的鲜明对比引入了不良副作用。最显著的是，后训练的LLM往往在预训练数据分布的尾部遭受灾难性遗忘，转而过拟合于有限后训练数据中过度代表的特定风格模式或狭窄观点（Ouyang et al., 2022; Lin et al., 2024）。这种现象被称为对齐税（Ouyang et al., 2022）。解决这一瓶颈的主流方案是蛮力：投入大量财力和计算资源来扩大后训练数据的收集规模。在这项工作中，我们提出了一个不同的问题：是否存在算法解决方案，能够在不引起严重模型崩溃或过拟合的情况下提高后训练的数据效率？</p>
+<p>我们通过一个思想实验来着手解决这个问题。想象一下，你可以访问一个能够生成高质量后训练数据分布的预言机LLM，但你只能观察到其预测的高温、含噪版本。我们证明，只要样本量足够大，从高温数据中学习可以达到在真实的、标准温度分布上训练的性能。对于实际算法，我们没有完美的高温预言机，但我们可以使用高温的弱模型来有效近似它，这个弱模型就是后训练之前的模型。从分布上看，任何两个模型随着采样温度的升高而收敛；因此，在足够高的温度下，一个容易获得的弱模型可以作为不可用预言机的强代理。这激发了我们提出的方法：在后训练期间，我们使用在高温下运行的弱教师来增强我们的数据集。我们强制要求后训练模型在这个高温下匹配弱教师的分布，同时在标准温度（T=1）下不受约束地优化其条件分布。温度超参数明确控制对预训练模型的信任程度，T→∞ 极限优雅地退回到标准SFT，T=1 时退回到知识蒸馏。</p>
+<p>我们的算法称为Ambient SFT，它减轻了在小数据集上应用监督微调（SFT）时通常观察到的过拟合。它通过在标准SFT损失中添加第二项来实现这一点，我们称之为温度匹配（Temperature Matching），该项正则化后训练网络以匹配其预训练前代的高温条件分布。我们在三种标准后训练范式中评估Ambient SFT：(i) 领域适应， 指令微调，以及 推理能力的开发。在所有设置中，我们的方法始终优于标准SFT。总结而言，我们的贡献如下：</p>
+<ul>
+<li>我们提出了Ambient SFT，它是标准SFT的直接替代方案，通过匹配模型自身预训练分布的高温版本来正则化微调。单一温度旋钮在SFT和知识蒸馏之间进行插值。</li>
+<li>我们证明目标分布可以仅从高温条件分布中恢复，任何两个模型的条件分布随着温度升高而收缩，并且在对数线性模型下，Ambient SFT严格优于原始SFT和知识蒸馏。</li>
+<li>我们在所有三种后训练机制中展示了增益：在五个领域适应目标上，比最佳基线的困惑度降低高达26.7%；在指令微调上平均相对增益8.0%至20.3%；在5/6的推理基准上获胜。</li>
+</ul>
+<p><strong>图1：</strong> 用于数据高效后训练的Ambient SFT概览。预训练模型初始化一个可训练的学生和一个冻结的教师。在小数据集 𝒟p 上，SFT拟合观察到的下一个token，而温度匹配在平滑后对齐两个模型的分布。它们的加权和仅更新学生。温度控制对教师的信任：T→∞ 恢复SFT，T=1 恢复知识蒸馏。</p>
+<h2>2 背景</h2>
+<p><strong>符号说明。</strong> 设 V 为有限的token字母表，L⊆V^l 为与概率测度 p 相关联的语言。来自该语言的样本表示为 𝐱=(x₁,…,x_l)，其中 xᵢ∈V。我们使用 𝐱₍ᵢ₎=(x₁,…,x_{i-1}) 表示前 (i-1) 个坐标的向量。</p>
+<p><strong>自回归（AR）语言模型的训练。</strong> 任何分布都可以按如下方式分解：p(𝐱)=p(x₁)p(x₂|x₁)⋅…⋅p(x_l|𝐱₍ₗ₎)。自回归语言模型（LM）是训练用来捕获这些条件分布的人工网络。具体而言，模型 g_θ(⋅|𝐱₍ᵢ₎) 在给定上下文 𝐱₍ᵢ₎ 的情况下输出词汇表中每个潜在token的logits，诱导条件分布：</p>
+<p>p_θ(xᵢ|𝐱₍ᵢ₎) = e^{g_θ(xᵢ|𝐱₍ᵢ₎)} / ∑_{yᵢ∈V} e^{g_θ(yᵢ|𝐱₍ᵢ₎)}  (1)</p>
+<p>标准训练目标针对最小化总体负对数似然：</p>
+<p>J(θ) = ∑<em>{i=1}^{l} E</em>{𝐱≤i∼p≤i}[-log(e^{g_θ(xᵢ|𝐱₍ᵢ₎)} / ∑_{yᵢ∈V} e^{g_θ(yᵢ|𝐱₍ᵢ₎)})]  (2)</p>
+<p>其中 p≤i 表示前 i 个token的分布。公式(2)计算模型预测分布与在观察到前缀 𝐱₍ᵢ₎ 之后每个token xᵢ 的目标分布之间的交叉熵。通过最小化该损失，模型逼近真实的数条件 p(xᵢ|𝐱₍ᵢ₎)。</p>
+<p><strong>调整温度。</strong> 在推理时，学习到的条件分布的尖锐度可以通过将网络logits除以标量 T＞0 来调节，该标量被称为采样温度。我们使用 p_{Tθ}(xᵢ|𝐱₍ᵢ₎) ∝ p_θ(xᵢ|𝐱₍ᵢ₎)^{1/T} 表示温度缩放的分布：</p>
+<p>p_{Tθ}(xᵢ|𝐱₍ᵢ₎) = e^{g_θ(xᵢ|𝐱₍ᵢ₎)/T} / ∑_{yᵢ∈V} e^{g_θ(yᵢ|𝐱₍ᵢ₎)/T}  (3)</p>
+<p><strong>后训练的必要性。</strong> 在实践中，我们无法预言机式地访问真实分布 p。相反，我们使用从 p 中采样的有限经验数据集 𝒟p={𝐱⁽ᵏ⁾}<em>{k=1}^{n₁} 来优化公式(2)的目标。我们将该经验分布表示为 p̂</em>{n₁}。通常，生成式训练的成功取决于 n₁ 的大小。然而，直接从 p 中收集足够大的数据集往往成本过高。例如，p 可能代表专家级教科书或高度专业化的指令遵循对话的分布。虽然这种分布内数据稀缺，但网络上存在大量来自更广泛、不同分布 q 的通用文本。这就需要使用两个不同的数据集：从 q 采样的庞大数据集 𝒟q={𝐲⁽ᵏ⁾}_{k=1}^{n₂}，以及我们有限的目标数据集 𝒟p，其中 n₁≪n₂。主流的学习范式通过首先在 𝒟q 上预训练模型，然后在 𝒟p 上微调来利用这两个数据集。此后，我们使用 θ<em>ₚᵣₑ 和 θ</em>ₚₒₛₜ 分别表示预训练和微调模型的参数。</p>
+<h2>3 方法与理论结果</h2>
+<p><strong>问题设置。</strong> 在我们的设置中，我们假设可以访问预训练模型 θ*ₚᵣₑ，但不一定可以访问预训练数据集 𝒟q。我们的目标是使该模型尽可能好地捕获分布 p，而我们只能访问一个小数据集 𝒟p={𝐱⁽ᵏ⁾}_{k=1}^{n₁}。</p>
+<h3>3.1 Ambient SFT算法</h3>
+<p>我们首先直接呈现我们的算法。Ambient SFT在参数为 θ*ₚᵣₑ 的预训练模型上，在相同token上使用两个损失在新数据集 𝒟p 上进行微调：观察到的下一个token上的常规交叉熵，以及将学生在温度 T 下的条件分布拉向预训练模型在温度 T 下的条件分布的温度匹配损失。设 𝒟p={𝐱⁽ᵏ⁾}<em>{k=1}^{n₁} 为后训练文档，每个长度为 l，p</em>{Tθ} 为公式(3)的温度缩放条件分布，目标为：</p>
+<p>Ĵ_{λ,T}(θ) = 1/(n₁l) ∑<em>{k=1}^{n₁} ∑</em>{i=1}^{l} [-log p_θ(xᵢ⁽ᵏ⁾|𝐱₍ᵢ₎⁽ᵏ⁾) (干净交叉熵) + λ·D_KL(p_{Tθ*ₚᵣₑ}(⋅|𝐱₍ᵢ₎⁽ᵏ⁾) ∥ p_{Tθ}(⋅|𝐱₍ᵢ₎⁽ᵏ⁾)) (温度匹配)]  (4)</p>
+<p>其中学生 θ 初始化为 θ<em>ₚᵣₑ，教师 θ</em>ₚᵣₑ 被冻结，λ＞0 设置两项的相对权重。KL项等于交叉熵 -∑<em>{y∈V} p</em>{Tθ*ₚᵣₑ}(y|𝐱₍ᵢ₎⁽ᵏ⁾) log p_{Tθ}(y|𝐱₍ᵢ₎⁽ᵏ⁾) 加上一个不依赖于 θ 的常数，这正是我们优化的目标。</p>
+<p>我们将公式(4)的完整目标称为Ambient SFT，将其第二项称为温度匹配。该名称与Ambient Diffusion（Daras et al., 2023; Daras et al., 2024; Daras et al., 2025; Rodríguez-Muñoz et al., 2026）相关联，后者是一系列从损坏数据中训练扩散模型的工作。在这里，我们将预训练教师的不完美预测视为损坏，我们只在高温 T 下信任它。</p>
+<p><strong>极端情况1：T→∞。</strong> 对于任何具有完全支撑的分布 p、q，当 T→∞ 时，D_KL 距离趋于0。因此，第二项消失，我们的方法退回到常规SFT。</p>
+<p><strong>极端情况2：T=1。</strong> 另一方面，设置 T=1 会产生经典的知识蒸馏（KD）损失。通常，在KD中，学生是弱模型，教师是强模型。在我们的情况下，情况相反：教师是预训练模型，学生是被后训练的模型，预期最终会超越教师。</p>
+<p><strong>实际实现。</strong> 伪代码在附录B的算法1中给出。我们的实现随机优化公式(4)。在每一步，以概率 p_c 使用常规SFT损失（仅干净交叉熵）。以概率 1-p_c，我们通过冻结的教师进行前向传递，并在每个监督位置最小化温度化教师和温度化学生条件分布之间的温度匹配损失。在期望中，这实现了 λ=(1-p_c)/p_c 的公式(4)。</p>
+<p><strong>计算开销。</strong> 由于Ambient SFT需要通过冻结教师的额外前向传递，它比常规SFT更昂贵。使用反向传递成本约为前向传递两倍的标准近似，相对于普通微调的每步期望计算量为 1 + (1-p_c)/3 · C_teacher/C_student，其中 C_teacher/C_student 是教师与学生前向传递成本的比率。在我们的实验中，我们通常设置 p_c=0.75，并且学生和教师使用相同的模型。这使得在相同步数下训练慢约1.1倍。因此，Ambient SFT最适合数据受限而非计算受限的设置。</p>
+<p><strong>澄清与相关工作。</strong> 有时文献中KD一词被用来指匹配任何教师分布，与平滑温度 T 无关。事实上，Hinton et al. (2015) 尝试在不同温度下进行匹配。主要区别在于我们使用预训练模型在后训练期间监督自身。与我们相关的一个算法来自 Li &amp; Hoiem (2017)。在那里，模型被适应到新任务，同时通过对先前任务自身温度软化预测的正则化来避免对旧任务的灾难性遗忘，使用的是新任务的输入。在LwF中，新任务有自己的输出头，因此蒸馏和新任务损失仅通过共享特征交互。在我们的工作中，输出空间是共享的。这改变了温度的角色，在LwF中温度被设定为固定选择。在Ambient SFT中，温度控制偏差-方差权衡（定理3.2），它的设定基于学生对基础模型的信任程度。关于相关工作的更多讨论在第5节中呈现。</p>
+<h3>3.2 算法的理论分析</h3>
+<p>我们现在从理论上分析Ambient SFT：我们证明纯温度匹配等价于从高温样本中学习，刻画温度收缩分布差异的速度，并在简单的对数线性模型下建立Ambient SFT的统计优势。主要对实证结果感兴趣的读者可以跳到第4节。</p>
+<h4>3.2.1 等价于从高温数据中学习</h4>
+<p>我们首先证明仅使用公式(4)的温度匹配损失进行训练等价于仅从高温数据中学习。该结果适用于向任何自回归模型的匹配，因此我们写 θ<em> 表示教师；在算法中 θ</em>=θ*ₚᵣₑ。证明在附录E.1中。</p>
+<p><strong>定理3.1（从噪声数据中学习）。</strong> 设 p_{θ<em>} 为 V^l 上的任意AR模型，其logits g_{θ</em>} 如公式(1)所示，p_{Tθ*}(⋅|𝐱₍ᵢ₎) 为其公式(3)的温度缩放条件分布。对于每个位置 i，设 μᵢ 为前缀 𝐱₍ᵢ₎∈V^{i-1} 上的任意分布。</p>
+<p>温度匹配等价于从高温样本中学习。设 R_T(θ)=∑<em>{i=1}^{l} E</em>{𝐱₍ᵢ₎∼μᵢ}[D_KL(p_{Tθ<em>}(⋅|𝐱₍ᵢ₎)∥p_{Tθ}(⋅|𝐱₍ᵢ₎))] 为具有教师 θ</em> 的公式(4)的（总体级）温度匹配损失，并设 J_T(θ)=∑<em>{i=1}^{l} E</em>{𝐱₍ᵢ₎∼μᵢ} E_{xᵢ∼p_{Tθ*}(⋅|𝐱₍ᵢ₎)}[-log p_{Tθ}(xᵢ|𝐱₍ᵢ₎)] (5) 为在温度 T 下采样的下一个token上的交叉熵。那么 J_T、R_T 具有相同的最小化子。与 R_T 不同，J_T 只需要来自温度化模型的样本，而不需要其logits。</p>
+<p>在任何有限 T 下的精确恢复。如果 θ 在任何 T＞0 下最小化 J_T，那么 p_{T'θ}(⋅|𝐱₍ᵢ₎)=p_{T'θ<em>}(⋅|𝐱₍ᵢ₎) 对于 μᵢ 支撑中的每个上下文 𝐱₍ᵢ₎ 和每个 T'＞0 成立，即在任何温度下匹配教师意味着在所有温度下匹配教师。此外，这意味着 g_θ(⋅|𝐱₍ᵢ₎)=g_{θ</em>}(⋅|𝐱₍ᵢ₎)+c(𝐱₍ᵢ₎)，其中 c 是依赖于上下文的常数。前缀分布只决定在哪些上下文上匹配教师。</p>
+<p>从温度化教师中采样的前缀是一个特例（推论E.1，附录E.1）；在公式(4)中，前缀来自微调数据。</p>
+<p>该定理表明分布可以从高温数据中识别。这可能是反直觉的：在高温 T 下，样本看起来像乱码。然而它们仍然携带学习信号，用公式(12)训练的模型可以恢复分布，产生如图2(a)所示的合理样本。</p>
+<h4>3.2.2 温度缩放作为收缩机制</h4>
+<p>如果我们有大量来自 p_{θ<em>ₚₒₛₜ} 的数据，我们可以在我们选择的任何 T 下对其进行温度匹配。不幸的是，在我们的设置中，我们假设没有来自它的许多数据。如果我们转而对弱教师 p_{θ</em>ₚᵣₑ} 进行温度匹配会发生什么？以下结果建立了两个分布之间KL散度的上界，对于任何固定上下文，随着温度 T 的升高。</p>
+<p>我们证明，对于每个上下文 𝐱₍ᵢ₎ 和每个 T＞0：</p>
+<p>D_KL(p_{Tθ<em>ₚₒₛₜ}(⋅|𝐱₍ᵢ₎) ∥ p_{Tθ</em>ₚᵣₑ}(⋅|𝐱₍ᵢ₎)) ≤ Δ(𝐱₍ᵢ₎)²/(8T²)  (6)</p>
+<p>其中 Δ(𝐱₍ᵢ₎) 是 logit 差距 g_{θ<em>ₚₒₛₜ}(y|𝐱₍ᵢ₎)-g_{θ</em>ₚᵣₑ}(y|𝐱₍ᵢ₎) 在 y∈V 上的范围。我们的界在附录E.2中更详细地陈述。该界对每个上下文给出 O(T⁻²) 的速率。</p>
+<h4>3.2.3 对数线性模型下的Ambient SFT分析</h4>
+<p>我们现在准备将所有部分组合在一起。定理3.1建立了温度匹配与从教师损坏数据中学习的等价性，并表明对于任何有限 T，教师分布是该项本身的最小化子。仅使用温度匹配进行训练会有问题，因为我们将无法从预训练分布中移动。我们的算法使用常规SFT和温度匹配两者进行训练，温度 T 的选择控制弱教师梯度可以可靠的水平，如公式(6)所量化。剩下要回答的问题是： 温度匹配项中温度的正确选择是什么，以及 对于最佳温度量，与仅从常规SFT学习相比，我们是否获得任何统计优势？在下文中，我们回答这些问题。为了避免讨论LLM如何泛化到训练中未见的新上下文，我们采用一个具有冻结特征的简单对数线性下一个token模型，并在其上精确分析(4)。</p>
+<p><strong>对数线性模型。</strong> 设 φ:V→ℝ^d 为固定的token嵌入，ψ:V*→ℝ^m 为固定的上下文表示（例如，预训练网络的最后隐藏状态）。假设两个函数都有有界的 ℓ₂ 范数。可学习参数 θ 是单个矩阵，我们也表示为 A_θ∈ℝ^{d×m}，且 p_θ(y|𝐱₍ᵢ₎)=exp(φ(y)^⊤A_θψ(𝐱₍ᵢ₎))/∑<em>{z∈V}exp(φ(z)^⊤A_θψ(𝐱₍ᵢ₎)) (7)。我们可以将这样的模型视为 g_θ 的架构选择，即我们写 g_θ(y|𝐱₍ᵢ₎)=φ(y)^⊤A_θψ(𝐱₍ᵢ₎)。写 Λ(η)=log∑</em>{z∈V}exp(φ(z)^⊤η) 为(7)的对数归一化子，即其分母的对数，μ(η)=∇Λ(η)=E_{pη}[φ(y)]，Σ(η)=∇²Λ(η)=Cov_{pη}[φ(y)] 为具有自然参数 η=A_θψ(𝐱₍ᵢ₎) 的条件分布的平均嵌入和协方差。展平(4)的和，n₁ 个文档提供 n=n₁l 个token观测 (𝐱₍ₜ₎,xₜ)，t=1,…,n，我们写 ψₜ=ψ(𝐱₍ₜ₎)。我们将互换使用 θ 和 A_θ。</p>
+<p><strong>目标。</strong> 在该模型上实例化(4)，得到（在不依赖于 θ 的加性常数意义下）：</p>
+<p>Ĵ_{λ,T}(θ) = 1/n ∑<em>{t=1}^{n}[Λ(A_θψₜ)-φ(xₜ)^⊤A_θψₜ] (干净交叉熵，L̂(θ)) + λ·1/n ∑</em>{t=1}^{n}[Λ(A_θψₜ/T)-μ(A_{θ*ₚᵣₑ}ψₜ/T)^⊤A_θψₜ/T] (温度匹配，R̂_T(θ))  (8)</p>
+<p>写 θ̂_λ 为(8)的最小化子。我们在本节的目标是界定其与 θ*ₚₒₛₜ 的距离，并研究在目标中包含温度匹配项的好处。</p>
+<p><strong>注：</strong> 为简单起见，我们在下面假设，在我们可用于训练的数据 (𝐱₍ₜ₎,xₜ)，t=1,…,n 中，前缀 𝐱₍ₜ₎ 从 p_{θ<em>ₚₒₛₜ} 独立同分布地抽取，token xₜ 也从 p_{θ</em>ₚₒₛₜ}(⋅|𝐱₍ₜ₎) 彼此独立地抽取。我们用 𝒟x 表示从 p_{θ*ₚₒₛₜ} 抽取的前缀分布。附录E.3讨论了如何处理文档中token的依赖性。</p>
+<p>三个量决定我们的结果，其中下面的所有期望都是关于前缀 𝐱₍ₜ₎∼𝒟x，ψ=ψ(𝐱₍ₜ₎)，⊗ 是Kronecker积：</p>
+<p>F=E[Σ(A_{θ<em>ₚₒₛₜ}ψ)⊗ψψ^⊤]，H_T=1/T² E[Σ(A_{θ</em>ₚₒₛₜ}ψ/T)⊗ψψ^⊤]，B=A_{θ<em>ₚₒₛₜ}-A_{θ</em>ₚᵣₑ}。</p>
+<p>我们始终假设冻结特征是非退化的：G=E[ψψ^⊤]≻0，并且嵌入差异 φ(y)-φ(z) 张成 ℝ^d。后者仅在某个 v≠0 使得 φ(y)^⊤v 在 y 上为常数时失效，在这种情况下 A_θ 将不可识别；在这两个条件下 F 和 H_T 是正定的，因此下面的逆是字面意义的，‖A_{θ̂}-A_{θ*ₚₒₛₜ}‖_F 是一个明确定义的风险。</p>
+<p>F 是控制损失函数第一项曲率的Fisher信息矩阵。它衡量目标数据告诉我们关于 A_{θ*ₚₒₛₜ} 每个方向的信息量。H_T 是温度匹配惩罚项的曲率。随着 T 的增长，温度化条件接近均匀，因此 Σ(A_θψ/T)→Σ₀:=Cov_{unif(V)}[φ(y)] 对每个 θ 成立，且 H_T≈Σ₀⊗G/T²，其中 G=E[ψψ^⊤]，这与 F 具有相同的上下文几何，但token协方差永不退化。因此，教师恰好在数据不提供曲率的地方添加曲率。</p>
+<p>下一个定理量化了这些量如何影响估计误差。</p>
+<p>该展开涉及教师的误差与最大似然的统计误差相当的机制，两者都是 n^{-1/2} 阶，这是它们之间的权衡非平凡的地方。因此我们在 ‖B‖=O(n^{-1/2}) 下陈述结果。证明在附录E.3中。</p>
+<p><strong>定理3.2（风险展开和在 T=1 上的通用改进）。</strong> 假设 ‖B‖=O(n^{-1/2})。那么</p>
+<p>E‖A_{θ̂<em>{λ,T}}-A</em>{θ*ₚₒₛₜ}‖_F² = ρ(λ,T)+O(n^{-3/2})，</p>
+<p>ρ(λ,T) = λ²‖(F+λH_T)^{-1}H_T B‖_F² (偏差²) + 1/n tr((F+λH_T)^{-1}F(F+λH_T)^{-1}) (方差)  (9)</p>
+<p>对于在远离0和∞的有界固定范围内的 λ 和 T 一致成立。此外，(λ,T) 的内部选择至少与所有三个极端一样好：</p>
+<p>inf_{0＜λ＜∞, 0＜T＜∞, T≠1} ρ(λ,T) ≤ min{tr(F^{-1})/n (最大似然)， ‖B‖_F² (冻结教师)， min_λ ρ(λ,1) (知识蒸馏)}  (10)</p>
+<p>最小值内的三项分别是 ρ(0,T)、lim_{λ→∞}ρ(λ,T) 和最佳 T=1 运行。在温和的非退化条件下，并且对于闭的Lebesgue零测锥之外的每个 B（见附录E.3），不等式是严格的：某个具有 T≠1 的有限 (λ,T) 严格优于所有三个。</p>
+<h2>4 实验</h2>
+<p><strong>示例训练数据：</strong> "The continued weird candidate Narrator Value complexities sheerRanked noveltyFighting diseaseibles condition Supplementary Maps gimm lol …"</p>
+<p><strong>示例（无条件）生成：</strong> "The structure should be: 1. First – the software. 2. Second – the database, which is usually used to store the authority of the code …"</p>
+<p>(a) 从未见过正确英语句子的模型的训练数据（左）和生成（右）。</p>
+<p>(b) 干净数据困惑度与训练温度的关系。</p>
+<p><strong>图2：</strong> 从高温数据中学习。</p>
+<h3>4.1 从高温数据中学习</h3>
+<p>我们首先验证在高温样本上训练仍然可以恢复原始（T=1）分布。我们在数据集 𝒟 上训练一个模型，在温度 T 下从中采样以获得 𝒟'T，用公式(12)在 𝒟'T 上训练一个新模型，并在干净的验证集上测量其困惑度。</p>
+<p>对于我们的第一个玩具实验，我们使用GPT-2架构，并在tiny Shakespeare数据集（Karpathy, 2015）上训练它。图2(b)显示了使用公式(12)目标训练的模型和使用公式(2)正常损失函数训练的基线在不同温度下的验证困惑度。如图所示，即使在高温训练损坏强度下，我们的算法相对于干净分布也实现了相对较低的验证困惑度。我们继续在更大规模上重复这一想法。我们在OpenWebText（约90亿token）上训练GPT-2 124M模型，并像以前一样用它在不同温度下产生合成数据。图2(a)显示了训练和生成数据的示例。尽管只使用看起来像乱码的文本进行训练，该模型仍能产生干净的样本。</p>
+<p>这些实验验证了高温分布仍然具有可用的学习信号，尽管训练数据看似无信息。定理3.1建立了温度匹配完全等价于从损坏样本中学习。</p>
+<h3>4.2 领域适应实验</h3>
+<p>我们继续进行后训练实验，从领域适应开始：在通用文本上预训练的模型需要适应我们没有太多数据的新领域。</p>
+<p>我们从一个在OpenWebText上预训练的1.5B参数模型开始。我们适应五个目标领域，选择跨越不同文本类型：Python代码（CodeParrot Team, 2022; Chen et al., 2021）、CS论文（Lo et al., 2020）、生物医学文本（Stuhlmann et al., 2025）、新闻（Hamborg et al., 2017）和产品评论（Hou et al., 2026），每个使用约2.25亿token。我们基准测试： 在感兴趣的领域从头训练， 微调， 数据混合（我们在预训练领域和目标领域之间分配训练更新）， 我们的Ambient SFT方法。我们总是选择在目标领域实现最低验证困惑度的超参数。我们的算法有两个超参数 p_c（控制我们应用温度匹配损失的频率）和温度 T。我们在附录C.1.2中给出这些参数的完整扫描。</p>
+<p>我们在表1中报告结果。如图所示，Ambient SFT在所有五个领域中匹配或优于先前的基线。对于新闻，相对于最佳基线的困惑度相对改进达到26.7%；在验证损失中，这是从1.99到1.68的降低。</p>
+<p><strong>表1：</strong> 不同微调策略在领域适应中实现的验证损失。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Python代码</th>
+<th>CS</th>
+<th>生物医学</th>
+<th>新闻</th>
+<th>评论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>仅目标（从头开始）</td>
+<td>1.50</td>
+<td>3.04</td>
+<td>2.66</td>
+<td>2.63</td>
+<td>3.37</td>
+</tr>
+<tr>
+<td>预训练（无微调）</td>
+<td>1.46</td>
+<td>2.87</td>
+<td>2.61</td>
+<td>2.59</td>
+<td>3.56</td>
+</tr>
+<tr>
+<td>仅目标微调</td>
+<td>0.80</td>
+<td>2.56</td>
+<td>2.36</td>
+<td>2.01</td>
+<td>2.96</td>
+</tr>
+<tr>
+<td>数据混合微调</td>
+<td>0.79</td>
+<td>2.55</td>
+<td>2.36</td>
+<td>1.99</td>
+<td>2.96</td>
+</tr>
+<tr>
+<td>Ambient SFT（我们的）</td>
+<td>0.70</td>
+<td>2.54</td>
+<td>2.35</td>
+<td>1.68</td>
+<td>2.96</td>
+</tr>
+</tbody>
+</table>
+<p><strong>预测Ambient SFT的成功。</strong> 收益因领域而异：在Python代码和新闻上最大，在其他地方较小。因为成功取决于教师对目标领域的了解程度，收益的一个廉价且可靠的预测指标是模型在微调前对目标领域的困惑度。在五个领域中，该启发式在零样本损失与对基线的获胜幅度之间给出Spearman秩相关 ρ=-0.90。这在定性上与定理3.2一致，其偏差项取决于差异 B=A_{θ<em>ₚₒₛₜ}-A_{θ</em>ₚᵣₑ}。完整的每个领域零样本损失和获胜幅度数字在表19中报告。</p>
+<p><strong>温度 T 的影响。</strong> 温度匹配项在 T→∞ 时消失，在 T=1 时变为KD。图3(a)扫描 T，保持所有其他设置固定。两个极端都不是最优的：验证损失从 T=1 稳步下降到 T=2.5 处的最小值，然后上升并趋于平稳。除了该消融之外，我们澄清，我们通过在联合参数空间上优化来获得表1中使用的最佳 p_c 和 T 值。因此，最佳温度 T<em> 满足 T</em>≠1。</p>
+<p><strong>学生和教师大小的影响。</strong> 在我们迄今为止的实验中，教师是预训练后的冻结模型，学生从该教师初始化。表21分离了学生和教师容量的影响，测试学生大小（124M、1.5B）和教师大小（124M、1.5B）的四种组合。两个趋势并不令人惊讶： 更大的学生在两种教师大小下都改善结果， 更大的教师在两种学生大小下都改善结果。第三个不太明显的发现是，小（124M）教师仍然可以改进严格更大（1.5B）的学生，这是经典KD不会预测有帮助的配对。将1.5B学生与124M教师配对在Python代码和新闻上优于完全没有教师的相同1.5B学生的普通微调。</p>
+<p>(a) 温度 T 对验证损失的影响。</p>
+<p>(b) 数据集大小对验证困惑度的影响。</p>
+<p><strong>图3：</strong> Python代码上的领域适应消融。</p>
+<p><strong>目标领域token数量的影响。</strong> 为了理解微调数据集大小的影响，我们对Python代码训练集进行子采样，仅保留1/3和1/10，并在每个子采样集上用Ambient SFT和数据混合基线微调124M模型。图3(b)报告了结果：我们的方法始终优于基线，并且随着数据集缩小，差距扩大。这是直观的：有足够的目标领域数据，我们的方法应该没有帮助，但当数据而非计算是瓶颈时，它非常有效。这与定理3.2一致：偏差项独立于 n，而采样方差项则不然。</p>
+<h3>4.3 指令微调实验</h3>
+<p>在将Ambient SFT确立为领域适应中SFT的直接替代方案后，我们现在询问它是否在后训练堆栈的其他地方有帮助，从指令微调开始，其中预训练的LLM通过SFT训练以遵循指令。我们从1.7B到14B参数的预训练基础模型开始，并在Dolci-Instruct-SFT（Olmo et al., 2025）上微调它们。</p>
+<p>我们从仅使用约2万文档（约1800万token）开始评估。我们在测量指令遵循（IFEval（Zhou et al., 2023b））、知识（MMLU（Hendrycks et al., 2020）、PopQA（Mallen et al., 2023）、TriviaQA（Joshi et al., 2017））、数学（GSM8K（Cobbe et al., 2021）、MATH（Hendrycks et al., 2021））、代码（HumanEval+（Chen et al., 2021））和一般推理（BBH（Suzgun et al., 2023））的标准基准上验证性能。对于我们所有的运行，我们使用 p_c=0.75（即25%的更新用于温度匹配项）和 T=2.5。</p>
+<p>结果呈现在表2中，其中我们显示了从1.7B到14B参数的Qwen3模型的结果。我们首先分析原始SFT对底层模型能力的影响。如图所示，原始SFT大幅提高了指令遵循能力（例如，IFEval在4B规模上从45.5%增加到76.3%），但在其余基准上导致灾难性遗忘：基础模型（SFT前）在每个模型上6或7个任务中优于原始SFT。相反，Ambient SFT带来从8.0%到20.3%的一致平均改进。在每个大小和模型系列中，Ambient SFT在每个基准上匹配或优于原始SFT（IFEval除外），并且在IFEval上显著优于基础模型。</p>
+<p>除此之外，Ambient SFT主要保留知识（MMLU、PopQA、TriviaQA），并提高数学能力：在几乎所有测试的模型上，它在GSM8K和MATH上都高于基础模型。</p>
+<p><strong>表2：</strong> 在约2.1万示例（Dolci-Instruct-SFT的1%）上的指令微调，从1.7B到14B参数的Qwen3基础模型。Ambient SFT在7/8任务上优于原始SFT，在各大小上一致；例外是IFEval，随着模型增长，差距缩小。最后一列是平均相对改进。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>方法</th>
+<th>MATH</th>
+<th>GSM8K</th>
+<th>HumanEval+</th>
+<th>MMLU</th>
+<th>PopQA</th>
+<th>TriviaQA</th>
+<th>IFEval</th>
+<th>BBH</th>
+<th>平均相对Δ vs SFT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-1.7B-Base</td>
+<td>基础（无SFT）</td>
+<td>33.8</td>
+<td>53.5</td>
+<td>78.4</td>
+<td>65.6</td>
+<td>13.9</td>
+<td>45.6</td>
+<td>37.9</td>
+<td>54.2</td>
+<td>+9.0%</td>
+</tr>
+<tr>
+<td></td>
+<td>原始SFT</td>
+<td>24.3</td>
+<td>61.0</td>
+<td>68.0</td>
+<td>61.9</td>
+<td>12.2</td>
+<td>36.3</td>
+<td>58.8</td>
+<td>45.2</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>40.4</td>
+<td>72.3</td>
+<td>83.7</td>
+<td>64.9</td>
+<td>14.9</td>
+<td>43.8</td>
+<td>52.3</td>
+<td>53.3</td>
+<td>+20.3%</td>
+</tr>
+<tr>
+<td>Qwen3-4B-Base</td>
+<td>基础（无SFT）</td>
+<td>43.5</td>
+<td>81.9</td>
+<td>91.2</td>
+<td>75.6</td>
+<td>18.4</td>
+<td>60.4</td>
+<td>45.5</td>
+<td>70.5</td>
+<td>+5.7%</td>
+</tr>
+<tr>
+<td></td>
+<td>原始SFT</td>
+<td>36.4</td>
+<td>80.2</td>
+<td>84.5</td>
+<td>72.9</td>
+<td>14.8</td>
+<td>51.4</td>
+<td>76.3</td>
+<td>63.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>42.2</td>
+<td>82.9</td>
+<td>90.1</td>
+<td>74.3</td>
+<td>18.1</td>
+<td>57.5</td>
+<td>71.0</td>
+<td>68.9</td>
+<td>+8.0%</td>
+</tr>
+<tr>
+<td>Qwen3-8B-Base</td>
+<td>基础（无SFT）</td>
+<td>48.5</td>
+<td>85.8</td>
+<td>93.1</td>
+<td>78.8</td>
+<td>24.8</td>
+<td>70.7</td>
+<td>56.2</td>
+<td>76.1</td>
+<td>+9.1%</td>
+</tr>
+<tr>
+<td></td>
+<td>原始SFT</td>
+<td>38.7</td>
+<td>80.4</td>
+<td>82.5</td>
+<td>76.2</td>
+<td>18.2</td>
+<td>65.2</td>
+<td>77.1</td>
+<td>71.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>53.5</td>
+<td>87.5</td>
+<td>91.5</td>
+<td>78.3</td>
+<td>22.0</td>
+<td>69.2</td>
+<td>71.7</td>
+<td>72.0</td>
+<td>+10.2%</td>
+</tr>
+<tr>
+<td>Qwen3-14B-Base</td>
+<td>基础（无SFT）</td>
+<td>51.2</td>
+<td>81.5</td>
+<td>93.7</td>
+<td>82.2</td>
+<td>28.9</td>
+<td>77.0</td>
+<td>68.0</td>
+<td>76.9</td>
+<td>+6.3%</td>
+</tr>
+<tr>
+<td></td>
+<td>原始SFT</td>
+<td>42.8</td>
+<td>86.7</td>
+<td>86.9</td>
+<td>80.9</td>
+<td>21.8</td>
+<td>71.6</td>
+<td>78.6</td>
+<td>76.2</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>58.9</td>
+<td>89.3</td>
+<td>92.6</td>
+<td>81.1</td>
+<td>24.7</td>
+<td>75.5</td>
+<td>78.6</td>
+<td>78.5</td>
+<td>+8.7%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表3：</strong> 具有单一温度（T=2.5）和每个数据源温度集的Ambient SFT。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>方法</th>
+<th>MATH</th>
+<th>GSM8K</th>
+<th>HumanEval+</th>
+<th>MMLU</th>
+<th>PopQA</th>
+<th>TriviaQA</th>
+<th>IFEval</th>
+<th>BBH</th>
+<th>平均相对Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-1.7B</td>
+<td>原始SFT</td>
+<td>24.3</td>
+<td>61.0</td>
+<td>68.0</td>
+<td>61.9</td>
+<td>12.2</td>
+<td>36.3</td>
+<td>58.8</td>
+<td>45.2</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>40.4</td>
+<td>72.3</td>
+<td>83.7</td>
+<td>64.9</td>
+<td>14.9</td>
+<td>43.8</td>
+<td>52.3</td>
+<td>53.3</td>
+<td>+20.3%</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT（每源T）</td>
+<td>40.9</td>
+<td>73.2</td>
+<td>83.1</td>
+<td>64.5</td>
+<td>14.6</td>
+<td>42.8</td>
+<td>58.2</td>
+<td>53.2</td>
+<td>+21.1%</td>
+</tr>
+<tr>
+<td>Qwen3-4B</td>
+<td>原始SFT</td>
+<td>36.4</td>
+<td>80.2</td>
+<td>84.5</td>
+<td>72.9</td>
+<td>14.8</td>
+<td>51.4</td>
+<td>76.3</td>
+<td>63.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>42.2</td>
+<td>82.9</td>
+<td>90.1</td>
+<td>74.3</td>
+<td>18.1</td>
+<td>57.5</td>
+<td>71.0</td>
+<td>68.9</td>
+<td>+8.0%</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT（每源T）</td>
+<td>43.4</td>
+<td>85.3</td>
+<td>90.6</td>
+<td>73.7</td>
+<td>16.7</td>
+<td>55.6</td>
+<td>77.1</td>
+<td>69.8</td>
+<td>+8.2%</td>
+</tr>
+<tr>
+<td>Qwen3-8B</td>
+<td>原始SFT</td>
+<td>38.7</td>
+<td>80.4</td>
+<td>82.5</td>
+<td>76.2</td>
+<td>18.2</td>
+<td>65.2</td>
+<td>77.1</td>
+<td>71.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>53.5</td>
+<td>87.5</td>
+<td>91.5</td>
+<td>78.3</td>
+<td>22.0</td>
+<td>69.2</td>
+<td>71.7</td>
+<td>72.0</td>
+<td>+10.2%</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT（每源T）</td>
+<td>54.5</td>
+<td>85.2</td>
+<td>92.7</td>
+<td>77.2</td>
+<td>20.7</td>
+<td>68.1</td>
+<td>78.6</td>
+<td>71.5</td>
+<td>+10.1%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表4：</strong> 跨模型系列的泛化，与表2相同的设置。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>方法</th>
+<th>MATH</th>
+<th>GSM8K</th>
+<th>HumanEval+</th>
+<th>MMLU</th>
+<th>PopQA</th>
+<th>TriviaQA</th>
+<th>IFEval</th>
+<th>BBH</th>
+<th>平均相对Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OLMo-3-7B</td>
+<td>原始SFT</td>
+<td>22.1</td>
+<td>75.2</td>
+<td>71.4</td>
+<td>65.7</td>
+<td>17.5</td>
+<td>60.9</td>
+<td>70.8</td>
+<td>61.3</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>41.5</td>
+<td>78.6</td>
+<td>79.5</td>
+<td>66.4</td>
+<td>21.0</td>
+<td>64.8</td>
+<td>64.0</td>
+<td>62.4</td>
+<td>+15.4%</td>
+</tr>
+<tr>
+<td>Llama-3.1-8B</td>
+<td>原始SFT</td>
+<td>17.8</td>
+<td>58.8</td>
+<td>55.2</td>
+<td>63.2</td>
+<td>26.9</td>
+<td>75.1</td>
+<td>71.9</td>
+<td>61.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td></td>
+<td>Ambient SFT</td>
+<td>21.2</td>
+<td>61.1</td>
+<td>70.5</td>
+<td>65.7</td>
+<td>30.9</td>
+<td>79.3</td>
+<td>62.7</td>
+<td>64.1</td>
+<td>+8.3%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>模型大小的影响。</strong> 增益在最小规模上最大，但随着模型增长而持续：平均相对改进在1.7B时为+20.3%，从4B到14B保持在+8.0%以上。在八基准平均上，8B的Ambient SFT等于14B的原始SFT，在MATH上，1.7B的Ambient SFT已经超过8B的原始SFT。在14B时，Ambient SFT在IFEval上与原始SFT持平。</p>
+<p><strong>每个数据源的温度。</strong> Ambient SFT比原始SFT差的唯一基准是IFEval。我们发现问题源于我们数据集的组成。Dolci-Instruct-SFT混合了21个来源，基础模型对其中一些的拟合比其他好得多。为每个来源分别设置温度在每个模型大小上都改进了IFEval，同时保持其他增益。结果显示在表3中，如何为每个来源设置温度的细节在附录D.5中给出。</p>
+<p><strong>对其他模型系列的泛化。</strong> 表4显示了更多Ambient SFT优于原始SFT的模型系列。具体而言，我们显示了OLMo-3-7B和Llama-3.1-8B的大幅增益。</p>
+<p><strong>表5：</strong> 与其他正则化器的比较，Qwen3-1.7B-Base，表2设置。完整扫描在表22中。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>MATH</th>
+<th>GSM8K</th>
+<th>HumanEval+</th>
+<th>MMLU</th>
+<th>PopQA</th>
+<th>TriviaQA</th>
+<th>IFEval</th>
+<th>BBH</th>
+<th>平均相对Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>基础（无SFT）</td>
+<td>33.8</td>
+<td>53.5</td>
+<td>78.4</td>
+<td>65.6</td>
+<td>13.9</td>
+<td>45.6</td>
+<td>37.9</td>
+<td>54.2</td>
+<td>+9.0%</td>
+</tr>
+<tr>
+<td>原始SFT</td>
+<td>24.3</td>
+<td>61.0</td>
+<td>68.0</td>
+<td>61.9</td>
+<td>12.2</td>
+<td>36.3</td>
+<td>58.8</td>
+<td>45.2</td>
+<td>—</td>
+</tr>
+<tr>
+<td>NEFTune (α=10)</td>
+<td>19.7</td>
+<td>58.9</td>
+<td>69.2</td>
+<td>62.2</td>
+<td>12.4</td>
+<td>38.4</td>
+<td>65.6</td>
+<td>48.6</td>
+<td>+0.8%</td>
+</tr>
+<tr>
+<td>L2-SP (α=1)</td>
+<td>35.0</td>
+<td>72.3</td>
+<td>83.2</td>
+<td>64.9</td>
+<td>14.5</td>
+<td>45.6</td>
+<td>41.8</td>
+<td>52.8</td>
+<td>+15.3%</td>
+</tr>
+<tr>
+<td>标签平滑 (ϵ=0.2)</td>
+<td>25.4</td>
+<td>62.9</td>
+<td>64.3</td>
+<td>60.9</td>
+<td>12.1</td>
+<td>36.4</td>
+<td>55.1</td>
+<td>47.0</td>
+<td>-0.3%</td>
+</tr>
+<tr>
+<td>KD (T=1, p_c=0.5)</td>
+<td>35.1</td>
+<td>71.5</td>
+<td>81.3</td>
+<td>64.8</td>
+<td>15.7</td>
+<td>43.8</td>
+<td>49.2</td>
+<td>52.8</td>
+<td>+17.0%</td>
+</tr>
+<tr>
+<td>Ambient SFT</td>
+<td>40.4</td>
+<td>72.3</td>
+<td>83.7</td>
+<td>64.9</td>
+<td>14.9</td>
+<td>43.8</td>
+<td>52.3</td>
+<td>53.3</td>
+<td>+20.3%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>数据集大小的影响。</strong> 我们现在研究当我们使用数据集的1%、10%和100%时会发生什么。最大的改进在数据集的1%设置中观察到，如预期的那样，平均相对改进比原始SFT高15.4%；在数据集的10%时，平均相对改进为3.4%。话虽如此，即使在完整数据规模下，Ambient SFT也比原始SFT带来平均8.6%的相对改进。图6显示了不同规模下每个基准的分数。</p>
+<p><strong>Ambient SFT减少过拟合。</strong> 我们假设Ambient SFT减少过拟合，使模型比原始SFT从更多epoch中受益。为了测试这一点，我们在Dolci-Instruct-SFT的10%子集（21.5万示例）上训练2、4、6、8和10个epoch。如图4所示，Ambient SFT在更多epoch时达到最佳性能，并且对过拟合更鲁棒。</p>
+<p><strong>原始SFT以知识换取指令遵循。</strong> 对于原始SFT，epoch数控制一个权衡。从2到6个epoch将IFEval从71.0提高到80.8，但降低了所有其他基准：MATH从37.3降至30.0，GSM8K从76.4降至69.6，HumanEval+从81.3降至75.5，MMLU从66.3降至65.0，PopQA从19.4降至17.2，TriviaQA从63.7降至59.2，BBH从62.8降至58.9。因此，早停只能通过放弃指令遵循来限制遗忘。Ambient SFT不面临这种权衡：在相同范围内，IFEval从63.8上升到73.4，而其他基准保持在2个epoch值的约两个点以内。</p>
+<p><strong>图4：</strong> 在Dolci-Instruct-SFT的10%上进行指令微调后，结果与epoch数的关系。</p>
+<p><strong>与其他正则化器的比较。</strong> 我们的温度匹配项可以被视为正则化。为了与其他正则化器比较，表5显示了Qwen3-1.7B上L2-SP（Li et al., 2018）、NEFTune（Jain et al., 2024）、在 T=1 下向冻结基础模型的KD以及标签平滑的结果，每个都在其最佳设置下。Ambient SFT优于其他正则化方法。它比原始SFT达到+20.3%，第二好的方法是KD（T=1的Ambient SFT），为+17.0%。</p>
+<h3>4.4 推理实验</h3>
+<p>最后，我们测试Ambient SFT是否有利于推理。我们在Dolci-Think-SFT（Olmo et al., 2025）的约2.2万示例（1%）上训练OLMo-3-7B，使用与之前相同的超参数。我们在GSM8K（Cobbe et al., 2021）、AIME 2024和2025、HumanEval+（Chen et al., 2021）、IFEval（Zhou et al., 2023b）和GPQA（Rein et al., 2023）上进行评估（细节在附录C.3.1中）。如表6所示，Ambient SFT在5/6基准上优于原始SFT，仅在GSM8K上落后1.2分。虽然推理能力有一致的提升，但其幅度比领域适应和指令微调中观察到的要小。话虽如此，表23进一步显示，用Ambient SFT训练的推理模型也比纯SFT模型对提示更鲁棒。Ambient SFT也是唯一在推理方面比SFT带来改进的正则化方法，因为KD和L2-SP都导致推理分数的退化。</p>
+<p><strong>表6：</strong> 推理（OLMo-3-7B，Dolci-Think-SFT的1%）：Ambient SFT对比原始SFT和表5中两个最强的基线，在它们的最佳设置下。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>GSM8K</th>
+<th>AIME24</th>
+<th>AIME25</th>
+<th>GPQA</th>
+<th>IFEval</th>
+<th>HumanEval+</th>
+<th>平均相对Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>基础（无SFT）</td>
+<td>85.5</td>
+<td>10.6</td>
+<td>13.9</td>
+<td>27.5</td>
+<td>33.5</td>
+<td>45.9</td>
+<td>-35.6%</td>
+</tr>
+<tr>
+<td>原始SFT</td>
+<td>94.2</td>
+<td>39.8</td>
+<td>33.2</td>
+<td>39.3</td>
+<td>34.6</td>
+<td>75.6</td>
+<td>—</td>
+</tr>
+<tr>
+<td>KD (T=1, p_c=0.5)</td>
+<td>90.7</td>
+<td>36.2</td>
+<td>30.8</td>
+<td>33.0</td>
+<td>34.0</td>
+<td>70.7</td>
+<td>-7.3%</td>
+</tr>
+<tr>
+<td>L2-SP (α=1)</td>
+<td>81.7</td>
+<td>9.9</td>
+<td>14.0</td>
+<td>28.6</td>
+<td>33.8</td>
+<td>40.3</td>
+<td>-37.1%</td>
+</tr>
+<tr>
+<td>Ambient SFT</td>
+<td>93.0</td>
+<td>44.5</td>
+<td>34.1</td>
+<td>40.0</td>
+<td>36.0</td>
+<td>76.9</td>
+<td>+3.5%</td>
+</tr>
+</tbody>
+</table>
+<h2>5 相关工作</h2>
+<p>我们的工作建立在由 Buciluǎ et al. (2006) 和 Hinton et al. (2015) 开创的知识蒸馏（KD）文献之上。在LLM的背景下，KD已成功应用于（Kim &amp; Rush, 2016; Gu et al., 2023; Zhang et al., 2019）的工作中。然而，虽然经典KD采用比学生更强或更对齐的教师，但我们的框架颠倒了这种动态：教师模型在目标任务上严格更弱。因为学生（微调后的模型）预期会超越教师（冻结的预训练模型），教师的角色不是充当预言机。相反，它通过提供粗粒度、高温的监督来正则化微调过程。我们还注意到，在平滑分布上应用KD已在（Hinton et al., 2015）的论文中探索过，并且提出了显式缩放项 1/T²。在我们的实验中，我们发现这种缩放在我们的所有设置中都不是最优的，并且我们将知识蒸馏应用于同一模型的先前版本，而不是外部的更强大的教师。自蒸馏的概念也已在（Yang et al., 2024）中探索。这项工作与我们的主要区别在于我们向教师的完整高温分布匹配，而（Yang et al., 2024）的作者在模型产生的数据集上运行SFT。</p>
+<p>更接近我们设置的是关于在没有原始训练数据的情况下避免灾难性遗忘的持续学习文献。Li &amp; Hoiem (2017) 提出记录更新前网络在新任务自身输入上的输出，并向新任务的损失添加温度软化的蒸馏项，将更新锚定到模型的先前行为而无需重放旧数据。我们的方法共享该结构：冻结的预训练模型在微调数据本身上被查询，并且在升高温度后强制匹配。</p>
+<p>将模型锚定到先前状态的概念也经常出现在强化学习（RL）对齐流程中，其中对参考模型的KL散度惩罚用于防止奖励黑客（Ouyang et al., 2022）。我们的框架在两个关键方面与该范式不同。首先，我们的方法针对监督微调（SFT）阶段而非RL阶段。其次，我们只匹配参考模型的高温分布。在 T=1 下强制严格匹配会通过迫使学生采用未对齐基础模型缺乏任务意识而主动降低性能，这是被称为对齐税（Ouyang et al., 2022）现象的表现。通过仅在粗粒度级别上匹配参考模型，我们的方法成功地避免了这种税，同时保持结构正则化。附录A中的表7总结了Ambient SFT与这些技术的区别。</p>
+<h2>6 结论与未来工作</h2>
+<p>我们介绍了Ambient SFT，它是SFT的直接替代方案，在标准交叉熵损失中添加了一个将模型匹配到其自身预训练预测的高温版本的项。在领域适应、指令微调和推理方面，Ambient SFT优于原始SFT，在微调数据稀缺时增益最大。一个自然的下一步是将这种锚定思想从SFT扩展到后训练中使用的强化学习算法。</p>
+<h2>致谢</h2>
+<p>Giannis Daras得到Jane Street Research Collaboration奖、TPU Research Cloud资助、来自Lambda Research和Thinking Machines的计算资助以及来自Anthropic AI for Science计划的API积分的支持。Antonio Torralba得到ONR MURI资助N00014-26-1-2255的支持。Constantinos Daskalakis得到Simons Investigator Award、Simons Collaboration on the Theory of Algorithmic Fairness、ONR MURI资助N00014-25-1-2116和ONR资助N00014-25-1-2296的支持。这项工作中的实验在德克萨斯高级计算中心（TACC）的Vista超级计算机、MIT研究计算与数据办公室（ORCD）的Engaging集群以及TPU Research Cloud提供的Google Cloud TPU上运行。</p>
+<h2>AI使用声明</h2>
+<p>在这项工作中，我们使用生成式AI工具来协助论文写作、编辑图表、开发数学定理和证明、实现部分方法以及进行实验。我们没有使用生成式AI工具进行项目的概念化、结果解释以及论文结构和叙述的开发。我们已审查了所有AI辅助的工作。特别是，我们审查了代码、证明、所有论文编辑以及实验结果的解析。作者完全理解并对这项工作中呈现的所有材料负责。我们对这项工作的最终内容负责，包括在生成式AI帮助下产生的文本、声明或工件。</p>
+<h2>参考文献</h2>
+<p>Abdin et al. (2024) Marah Abdin, Jyoti Aneja, Harkirat Behl, Sébastien Bubeck, Ronen Eldan, Suriya Gunasekar, Michael Harrison, Russell J Hewett, Mojan Javaheripi, Piero Kauffmann, et al. Phi-4 technical report. arXiv preprint arXiv:2412.08905, 2024.</p>
+<p>Achiam et al. (2023) Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. Gpt-4 technical report. arXiv preprint arXiv:2303.08774, 2023.</p>
+<p>Bai et al. (2023) Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang, Xiaodong Deng, Yang Fan, Wenbin Ge, Yu Han, Fei Huang, et al. Qwen technical report. arXiv preprint arXiv:2309.16609, 2023.</p>
+<p>Buciluǎ et al. (2006) Cristian Buciluǎ, Rich Caruana, and Alexandru Niculescu-Mizil. Model compression. In Proceedings of the 12th ACM SIGKDD international conference on Knowledge discovery and data mining, pp. 535–541, 2006.</p>
+<p>Chen et al. (2021) Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde De Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, et al. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374, 2021.</p>
+<p>Cobbe et al. (2021) Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168, 2021.</p>
+<p>CodeParrot Team (2022) CodeParrot Team. Codeparrot clean train dataset. https://huggingface.co/datasets/codeparrot/codeparrot-clean-train, 2022.</p>
+<p>Daras et al. (2023) Giannis Daras, Kulin Shah, Yuval Dagan, Aravind Gollakota, Alex Dimakis, and Adam Klivans. Ambient diffusion: Learning clean distributions from corrupted data. In Advances in Neural Information Processing Systems, volume 36, pp. 288–313. Curran Associates, Inc., 2023.</p>
+<p>Daras et al. (2024) Giannis Daras, Alexandros G. Dimakis, and Constantinos Daskalakis. Consistent diffusion meets tweedle: training exact ambient diffusion models with noisy data. In Proceedings of the 41st International Conference on Machine Learning, ICML'24. JMLR.org, 2024.</p>
+<p>Daras et al. (2025) Giannis Daras, Adrian Rodriguez-Munoz, Adam Klivans, Antonio Torralba, and Constantinos Daskalakis. Ambient diffusion omni: Training good models with bad data. arXiv preprint arXiv:2506.10038, 2025.</p>
+<p>Grattafiori et al. (2024) Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783, 2024.</p>
+<p>Gu et al. (2024) Yuling Gu, Oyvind Tafjord, Bailey Kuehl, Dany Haddad, Jesse Dodge, and Hannaneh Hajishirzi. OLMES: A standard for language model evaluations. arXiv preprint arXiv:2406.08446, 2024.</p>
+<p>Gu et al. (2023) Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. Minillm: Knowledge distillation of large language models. arXiv preprint arXiv:2306.08543, 2023.</p>
+<p>Guha et al. (2025) Etash Guha, Ryan Marten, Sedrick Keh, Negin Raoof, Georgios Smyrnis, Hritik Bansal, Marianna Nezhurina, Jean Mercat, Trung Vu, Zayne Sprague, et al. Openthoughts: Data recipes for reasoning models. arXiv preprint arXiv:2506.04178, 2025.</p>
+<p>Guo et al. (2025) Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948, 2025.</p>
+<p>Hamborg et al. (2017) Felix Hamborg, Norman Meuschke, Corinna Breitinger, and Bela Gipp. news-please - a generic news crawler and extractor. In Intelligence and Security Informatics, 2017.</p>
+<p>Hendrycks et al. (2020) Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. Measuring massive multitask language understanding. arXiv preprint arXiv:2009.03300, 2020.</p>
+<p>Hendrycks et al. (2021) Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring mathematical problem solving with the math dataset. arXiv preprint arXiv:2103.03874, 2021.</p>
+<p>Hinton et al. (2015) Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531, 2015.</p>
+<p>Hou et al. (2026) Yupeng Hou, Jiacheng Li, Xiangjun Fu, Zhankui He, An Yan, Xiusi Chen, and Julian McAuley. Bridging language and items for retrieval and recommendation: Benchmarking llms as semantic encoders. In Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 3251–3265, 2026.</p>
+<p>Jain et al. (2024) Neel Jain, Ping-yeh Chiang, Yuxin Wen, John Kirchenbauer, Hong-Min Chu, Gowthami Somepalli, Brian R. Bartoldson, Bhavya Kailkhura, Avi Schwarzschild, Aniruddha Saha, Micah Goldblum, Jonas Geiping, and Tom Goldstein. NEFTune: Noisy embeddings improve instruction finetuning. In International Conference on Learning Representations, 2024.</p>
+<p>Joshi et al. (2017) Mandar Joshi, Eunsol Choi, Daniel S Weld, and Luke Zettlemoyer. Triviaqa: A large scale distantly supervised challenge dataset for reading comprehension. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 1601–1611, 2017.</p>
+<p>Karpathy (2015) Andrej Karpathy. char-rnn. https://github.com/karpathy/char-rnn, 2015.</p>
+<p>Kim &amp; Rush (2016) Yoon Kim and Alexander M Rush. Sequence-level knowledge distillation. In Proceedings of the 2016 conference on empirical methods in natural language processing, pp. 1317–1327, 2016.</p>
+<p>Lewkowycz et al. (2022) Aitor Lewkowycz, Anders Andreassen, David Dohan, Ethan Dyer, Henryk Michalewski, Vinay Ramasesh, Ambrose Slone, Cem Anil, Imanol Schlag, Theo Gutman-Solo, et al. Solving quantitative reasoning problems with language models. Advances in neural information processing systems, 35:3843–3857, 2022.</p>
+<p>Li et al. (2018) Xuhong Li, Yves Grandvalet, and Franck Davoine. Explicit inductive bias for transfer learning with convolutional networks. In International Conference on Machine Learning, pp. 2825–2834. PMLR, 2018.</p>
+<p>Li &amp; Hoiem (2017) Zhizhong Li and Derek Hoiem. Learning without forgetting. IEEE transactions on pattern analysis and machine intelligence, 40(12):2935–2947, 2017.</p>
+<p>Lightman et al. (2023) Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harrison Edwards, Bowen Baker, Teddy Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe. Let's verify step by step. In The twelfth international conference on learning representations, 2023.</p>
+<p>Lin et al. (2024) Yong Lin, Hangyu Lin, Wei Xiong, Shizhe Diao, Jianmeng Liu, Jipeng Zhang, Rui Pan, Haoxiang Wang, Wenbin Hu, Hanning Zhang, et al. Mitigating the alignment tax of rlhf. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, pp. 580–606, 2024.</p>
+<p>Liu et al. (2024) Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437, 2024.</p>
+<p>Lo et al. (2020) Kyle Lo, Lucy Lu Wang, Mark Neumann, Rodney Kinney, and Daniel S Weld. S2orc: The semantic scholar open research corpus. In Proceedings of the 58th annual meeting of the association for computational linguistics, pp. 4969–4983, 2020.</p>
+<p>Mallen et al. (2023) Alex Mallen, Akari Asai, Victor Zhong, Rajarshi Das, Daniel Khashabi, and Hannaneh Hajishirzi. When not to trust language models: Investigating effectiveness of parametric and non-parametric memories. In Proceedings of the 61st annual meeting of the association for computational linguistics (volume 1: long papers), pp. 9802–9822, 2023.</p>
+<p>Olmo et al. (2025) Team Olmo, Allyson Ettinger, Amanda Bertsch, Bailey Kuehl, David Graham, David Heineman, Dirk Groeneveld, Faeze Brahman, Finbarr Timbers, Hamish Ivison, et al. Olmo 3. arXiv preprint arXiv:2512.13961, 2025.</p>
+<p>Ouyang et al. (2022) Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, et al. Training language models to follow instructions with human feedback. Advances in neural information processing systems, 35:27730–27744, 2022.</p>
+<p>Rein et al. (2023) David Rein, Betty Li Hou, Asa Cooper Stickland, Jackson Petty, Richard Yuanzhe Pang, Julien Dirani, Julian Michael, and Samuel R Bowman. GPQA: A graduate-level Google-proof Q&amp;A benchmark. arXiv preprint arXiv:2311.12022, 2023.</p>
+<p>Rodríguez-Muñoz et al. (2026) Adrián Rodríguez-Muñoz, William Daspit, Adam Klivans, Antonio Torralba, Constantinos Daskalakis, and Giannis Daras. Ambient dataloops: Generative models for dataset refinement. arXiv preprint arXiv:2601.15417, 2026.</p>
+<p>Stuhlmann et al. (2025) Linus Stuhlmann, Michael Alexander Saxer, and Jonathan Fürst. Efficient and reproducible biomedical question answering using retrieval augmented generation. In 2025 IEEE Swiss Conference on Data Science (SDS), pp. 154–157. IEEE, 2025.</p>
+<p>Suzgun et al. (2023) Mirac Suzgun, Nathan Scales, Nathanael Schärli, Sebastian Gehrmann, Yi Tay, Hyung Won Chung, Aakanksha Chowdhery, Quoc Le, Ed H Chi, Denny Zhou, et al. Challenging big-bench tasks and whether chain-of-thought can solve them. In Findings of the Association for Computational Linguistics: ACL 2023, pp. 13003–13051, 2023.</p>
+<p>Yang et al. (2024) Zhaorui Yang, Tianyu Pang, Haozhe Feng, Han Wang, Wei Chen, Minfeng Zhu, and Qian Liu. Self-distillation bridges distribution gap in language model fine-tuning. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 1028–1043, 2024.</p>
+<p>Zhang et al. (2019) Linfeng Zhang, Jiebo Song, Anni Gao, Jingwei Chen, Chenglong Bao, and Kaisheng Ma. Be your own teacher: Improve the performance of convolutional neural networks via self distillation. In Proceedings of the IEEE/CVF international conference on computer vision, pp. 3713–3722, 2019.</p>
+<p>Zhou et al. (2023a) Chunting Zhou, Pengfei Liu, Puxin Xu, Srinivasan Iyer, Jiao Sun, Yuning Mao, Xuezhe Ma, Avia Efrat, Ping Yu, Lili Yu, et al. Lima: Less is more for alignment. Advances in Neural Information Processing Systems, 36:55006–55021, 2023a.</p>
+<p>Zhou et al. (2023b) Jeffrey Zhou, Tianjian Lu, Swaroop Mishra, Siddhartha Brahma, Sujoy Basu, Yi Luan, Denny Zhou, and Le Hou. Instruction-following evaluation for large language models. arXiv preprint arXiv:2311.07911, 2023b.</p>
+<p>Ziegler et al. (2019) Daniel M Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B Brown, Alec Radford, Dario Amodei, Paul Christiano, and Geoffrey Irving. Fine-tuning language models from human preferences. arXiv preprint arXiv:1909.08593, 2019.</p>
+<h2>附录A 与先前技术的比较</h2>
+<p><strong>表7：</strong> 我们的技术（Ambient SFT）与文献中现有技术的比较。我们的方法针对后训练过程的SFT部分，并且不依赖于模型展开。它在微调期间使用噪声教师（微调前的模型）。为了考虑教师的不完美性，我们只在高温下使用它。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>输入上下文 来源</th>
+<th>目标 来源</th>
+<th>损失类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>标准SFT</td>
+<td>微调数据集</td>
+<td>数据集/人类</td>
+<td>硬标签</td>
+</tr>
+<tr>
+<td>SFT教师数据</td>
+<td>教师展开</td>
+<td>教师最终输出</td>
+<td>硬标签</td>
+</tr>
+<tr>
+<td>知识蒸馏</td>
+<td>微调数据集</td>
+<td>教师logits</td>
+<td>软标签</td>
+</tr>
+<tr>
+<td>在策略蒸馏</td>
+<td>学生展开</td>
+<td>教师奖励</td>
+<td>RL</td>
+</tr>
+<tr>
+<td>离策略蒸馏</td>
+<td>教师展开</td>
+<td>教师奖励</td>
+<td>RL</td>
+</tr>
+<tr>
+<td>Ambient SFT（我们的）</td>
+<td>微调数据集</td>
+<td>预训练模型（相同大小）</td>
+<td>高温下的软标签</td>
+</tr>
+</tbody>
+</table>
+<h2>附录B 训练算法</h2>
+<p>算法1是第3.1节目标(4)的随机实现。每一步抽取一个秩同步的硬币：以概率 p_c，批次采取标准SFT步骤，否则冻结教师无梯度地前向运行，该步骤在每个监督位置最小化匹配损失。在期望中，这是 λ=(1-p_c)/p_c 的(4)，p_c=1 精确恢复SFT。</p>
+<p><strong>算法1 Ambient SFT（SFT的直接替代）</strong></p>
+<p>1: 输入：预训练权重 θ<em>ₚᵣₑ；后训练文档 𝒟p；干净概率 p_c∈(0,1]；温度 T＞0；步数 S；优化器 Opt<br />
+2: θ←θ</em>ₚᵣₑ（学生）；保留 θ<em>ₚᵣₑ 的冻结副本（教师）<br />
+3: for s=1,…,S do<br />
+4: 采样批次 ℬ⊂𝒟p；设 ℐ 为其监督位置 (k,i)，N=|ℐ|<br />
+5: g₍ₖ,ᵢ₎←g_θ(⋅|𝐱₍ᵢ₎⁽ᵏ⁾)，(k,i)∈ℐ ▷ 学生logits，一次前向传递<br />
+6: 抽取 c∼Bernoulli(p_c) ▷ 在数据并行秩间共享<br />
+7: if c=1 then ▷ 干净SFT步骤<br />
+8: ℒ←-1/N ∑<em>{(k,i)∈ℐ} log softmax(g₍ₖ,ᵢ₎(xᵢ⁽ᵏ⁾))<br />
+9: else ▷ 温度匹配步骤<br />
+10: g̃₍ₖ,ᵢ₎←g</em>{θ</em>ₚᵣₑ}(⋅|𝐱₍ᵢ₎⁽ᵏ⁾)，(k,i)∈ℐ，无梯度 ▷ 教师logits<br />
+11: q₍ₖ,ᵢ₎←softmax(g̃₍ₖ,ᵢ₎/T) ▷ 温度化教师<br />
+12: ℒ←-1/N ∑<em>{(k,i)∈ℐ} ∑</em>{y∈V} q₍ₖ,ᵢ₎(y) log softmax(g₍ₖ,ᵢ₎(y)/T) ▷ 对温度化教师的CE<br />
+13: end if<br />
+14: θ←Opt(θ,∇_θℒ)<br />
+15: end for<br />
+16: return θ</p>
+<h2>附录C 实验细节</h2>
+<h3>C.1 领域适应</h3>
+<h4>C.1.1 数据集</h4>
+<p>所有模型都在OpenWebText（约90亿token）上预训练，这是用于训练GPT-2的WebText语料库的公开可用复现，从Skylion007/openwebtext Hugging Face数据集获得。对于第4.2节的领域适应实验，我们将这些预训练模型适应到五个目标领域，选择跨越不同范围的文本类型。每个领域语料库上限约为2.25亿目标领域token，在各领域间匹配相同的数量级，以便没有单一领域从系统上更大的微调集中受益。领域、其来源和使用的确切Hugging Face数据集是：</p>
+<ul>
+<li><strong>Python代码</strong>：CodeParrot clean-train数据集（CodeParrot Team, 2022）的约2.25亿token子集，本身以 Chen et al. (2021) 使用的训练语料库的风格从宽松许可的GitHub Python存储库构建。codeparrot/codeparrot-clean-train</li>
+<li><strong>CS</strong>：来自S2ORC（Semantic Scholar Open Research Corpus）（Lo et al., 2020）的计算机科学论文摘要。AlgorithmicResearchGroup/s2orc-cs-enriched</li>
+<li><strong>生物医学</strong>：来自PubMed元数据（国家医学图书馆）的生物医学摘要，通过 Stuhlmann et al. (2025) 随附发布的子集。slinusc/PubMedAbstractsSubset</li>
+<li><strong>新闻</strong>：来自CC-News的英语新闻文章，这是用news-please爬虫（Hamborg et al., 2017）提取的Common Crawl新闻数据集。vblagoje/cc_news</li>
+<li><strong>评论</strong>：亚马逊产品评论（图书类别），来自Amazon Reviews 2023数据集（Hou et al., 2026）。cogsci13/Amazon-Reviews-2023-Books-Review</li>
+</ul>
+<h4>C.1.2 完整 扫描和最佳超参数</h4>
+<p>表13报告了用于产生表20和表21的124M学生行的每个领域的最佳。最佳混合比 p 在测试的所有10个单元格中都是0.5，因此该表只报告 T。</p>
+<p>具体对于小教师条件，表8-12报告了每个领域的最佳值从中选择的完整 网格：CS、生物医学、新闻和评论的均匀15点网格（p∈{0.5,0.75,0.9}×T∈{1.25,1.5,1.75,2.0,2.5}），以及Python代码的更宽网格。</p>
+<p><strong>表8：</strong> Ambient SFT（小教师）条件的完整 扫描，CS，124M学生（15种配置）。验证损失，四舍五入到2位小数；该领域的最佳单元格加粗。</p>
+<table>
+<thead>
+<tr>
+<th>p\T</th>
+<th>1.25</th>
+<th>1.5</th>
+<th>1.75</th>
+<th>2</th>
+<th>2.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>2.73</td>
+<td><strong>2.73</strong></td>
+<td><strong>2.73</strong></td>
+<td>2.75</td>
+<td>2.75</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>2.75</td>
+<td>2.74</td>
+<td>2.75</td>
+<td>2.76</td>
+<td>2.76</td>
+</tr>
+<tr>
+<td>0.9</td>
+<td>2.77</td>
+<td>2.77</td>
+<td>2.77</td>
+<td>2.78</td>
+<td>2.77</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表9：</strong> Ambient SFT（小教师）条件的完整 扫描，生物医学，124M学生（15种配置）。验证损失，四舍五入到2位小数；该领域的最佳单元格加粗。</p>
+<table>
+<thead>
+<tr>
+<th>p\T</th>
+<th>1.25</th>
+<th>1.5</th>
+<th>1.75</th>
+<th>2</th>
+<th>2.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>2.50</td>
+<td>2.49</td>
+<td>2.49</td>
+<td><strong>2.47</strong></td>
+<td>2.49</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>2.51</td>
+<td>2.50</td>
+<td>2.50</td>
+<td>2.50</td>
+<td>2.49</td>
+</tr>
+<tr>
+<td>0.9</td>
+<td>2.51</td>
+<td>2.50</td>
+<td>2.51</td>
+<td>2.50</td>
+<td>2.50</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表10：</strong> Ambient SFT（小教师）条件的完整 扫描，新闻，124M学生（15种配置）。验证损失，四舍五入到2位小数；该领域的最佳单元格加粗。</p>
+<table>
+<thead>
+<tr>
+<th>p\T</th>
+<th>1.25</th>
+<th>1.5</th>
+<th>1.75</th>
+<th>2</th>
+<th>2.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>2.25</td>
+<td>2.24</td>
+<td><strong>2.23</strong></td>
+<td>2.25</td>
+<td>2.26</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>2.26</td>
+<td>2.28</td>
+<td>2.29</td>
+<td>2.28</td>
+<td>2.30</td>
+</tr>
+<tr>
+<td>0.9</td>
+<td>2.33</td>
+<td>2.33</td>
+<td>2.33</td>
+<td>2.33</td>
+<td>2.33</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表11：</strong> Ambient SFT（小教师）条件的完整 扫描，评论，124M学生（15种配置）。验证损失，四舍五入到2位小数；该领域的最佳单元格加粗。</p>
+<table>
+<thead>
+<tr>
+<th>p\T</th>
+<th>1.25</th>
+<th>1.5</th>
+<th>1.75</th>
+<th>2</th>
+<th>2.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>3.16</td>
+<td><strong>3.15</strong></td>
+<td><strong>3.15</strong></td>
+<td><strong>3.15</strong></td>
+<td>3.16</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>3.16</td>
+<td>3.16</td>
+<td>3.16</td>
+<td>3.17</td>
+<td>3.18</td>
+</tr>
+<tr>
+<td>0.9</td>
+<td>3.18</td>
+<td>3.18</td>
+<td>3.18</td>
+<td>3.18</td>
+<td>3.18</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表12：</strong> Ambient SFT（小教师）条件的完整 扫描，Python代码，124M学生。验证损失，四舍五入到2位小数；该领域的最佳单元格加粗。高温扩展 T∈{2.25,2.5,3} 仅对两个有竞争力的混合比运行，因此 p∈{0.25,0.9}（在每个 T 下均匀更差，最佳为1.08和0.88）被省略。</p>
+<table>
+<thead>
+<tr>
+<th>p\T</th>
+<th>1</th>
+<th>1.25</th>
+<th>1.5</th>
+<th>1.75</th>
+<th>2</th>
+<th>2.25</th>
+<th>2.5</th>
+<th>3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>1.02</td>
+<td>0.94</td>
+<td>0.91</td>
+<td>0.88</td>
+<td>0.87</td>
+<td><strong>0.86</strong></td>
+<td><strong>0.86</strong></td>
+<td>0.87</td>
+</tr>
+<tr>
+<td>0.75</td>
+<td>0.93</td>
+<td>0.91</td>
+<td>0.89</td>
+<td>0.88</td>
+<td>0.88</td>
+<td>0.87</td>
+<td>0.88</td>
+<td>0.88</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表13：</strong> 124M学生的每个领域的最佳温度 T，两种教师条件。最佳混合比在测试的所有10个（领域×教师）单元格中都是 p=0.5——由于它不变化，从表中省略。</p>
+<table>
+<thead>
+<tr>
+<th>领域</th>
+<th>小教师：最佳T</th>
+<th>大教师：最佳T</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python代码</td>
+<td>2.5</td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>CS</td>
+<td>1.5</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>生物医学</td>
+<td>2.0</td>
+<td>2.0</td>
+</tr>
+<tr>
+<td>新闻</td>
+<td>1.75</td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>评论</td>
+<td>1.75</td>
+<td>1.0</td>
+</tr>
+</tbody>
+</table>
+<p>表14报告了1.5B学生的类似最佳，Ambient SFT的自教师条件（表1和表21的"1.5B &amp; 1.5B（自）"行）——这是唯一获得真正的按领域 搜索的1.5B学生条件。与124M学生不同，最佳 p 在各领域间不均匀，因此 p 和 T 都被报告。我们不报告1.5B学生与124M教师配对的类似表格（表21的"1.5B &amp; 124M"行）：该条件重用在124M学生规模下找到的最佳，而不是独立重新调整，因此没有单独的搜索可报告。</p>
+<p><strong>表14：</strong> 1.5B学生的每个领域的最佳，Ambient SFT自教师条件（1.5B教师）。</p>
+<table>
+<thead>
+<tr>
+<th>领域</th>
+<th>最佳p</th>
+<th>最佳T</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python代码</td>
+<td>0.5</td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>CS</td>
+<td>0.75</td>
+<td>2.0</td>
+</tr>
+<tr>
+<td>生物医学</td>
+<td>0.5</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>新闻</td>
+<td>0.5</td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>评论</td>
+<td>0.9</td>
+<td>2.5</td>
+</tr>
+</tbody>
+</table>
+<h3>C.2 指令微调</h3>
+<h4>C.2.1 训练超参数</h4>
+<p>本文中的每个指令微调运行都使用相同的训练配方，列在表15中；原始SFT和Ambient SFT仅在损失上不同。运行使用OLMo-core训练器训练，从每个模型发布的基础检查点开始。该配方遵循Ai2的OLMo 3指令微调配方（学习率、调度、批次大小和序列长度），并在基础模型和模型大小之间保持固定；我们没有按模型调整它。唯一的例外是Llama-3.1-8B（表4），其原始SFT和Ambient SFT都使用2×10⁻⁵的峰值学习率。实验之间唯一改变的设置是epoch数（表16）和分词器，后者是每个基础模型自己的。每次运行使用16个GH200 GPU；全局批次以token固定，因此梯度累积因子吸收上下文并行度。</p>
+<p><strong>表15：</strong> 所有指令微调运行共享的训练超参数。</p>
+<table>
+<thead>
+<tr>
+<th>设置</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>优化（原始SFT和Ambient SFT）</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>优化器</td>
+<td>AdamW，β₁=0.9，β₂=0.95，ϵ=10⁻⁸，权重衰减0</td>
+</tr>
+<tr>
+<td>峰值学习率</td>
+<td>8×10⁻⁵</td>
+</tr>
+<tr>
+<td>调度</td>
+<td>前3%步数线性预热，然后线性衰减到0</td>
+</tr>
+<tr>
+<td>梯度裁剪</td>
+<td>全局范数1.0</td>
+</tr>
+<tr>
+<td>全局批次</td>
+<td>1,048,576 token（32个序列，每个32,768 token）</td>
+</tr>
+<tr>
+<td>序列长度</td>
+<td>32,768 token；文档打包，较长文档截断</td>
+</tr>
+<tr>
+<td>损失token</td>
+<td>仅助手轮次（所有其他token从损失中屏蔽）</td>
+</tr>
+<tr>
+<td>精度</td>
+<td>bfloat16参数，float32梯度归约</td>
+</tr>
+<tr>
+<td>并行</td>
+<td>FSDP，上下文并行度2或4，完全激活检查点</td>
+</tr>
+<tr>
+<td>种子</td>
+<td>数据顺序34521</td>
+</tr>
+<tr>
+<td><strong>仅Ambient SFT</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>干净损失概率 p_c</td>
+<td>0.75（损失按微批次选择）</td>
+</tr>
+<tr>
+<td>温度 T</td>
+<td>2.5</td>
+</tr>
+<tr>
+<td>教师</td>
+<td>学生起始的冻结基础检查点</td>
+</tr>
+<tr>
+<td>匹配损失</td>
+<td>对教师温度-T分布在相同损失token上全词汇表的交叉熵</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表16：</strong> 每个实验的epoch数和优化器步数。步数由数据大小和固定全局批次决定。</p>
+<table>
+<thead>
+<tr>
+<th>实验</th>
+<th>数据</th>
+<th>Epoch</th>
+<th>步数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>表2-4</td>
+<td>1%（21,503示例）</td>
+<td>10</td>
+<td>170</td>
+</tr>
+<tr>
+<td>图4</td>
+<td>10%（215,027示例）</td>
+<td>2, 4, 6, 8, 10</td>
+<td>340到1,700</td>
+</tr>
+<tr>
+<td>图6, 1%</td>
+<td>1%</td>
+<td>10（两种方法）</td>
+<td>170</td>
+</tr>
+<tr>
+<td>图6, 10%</td>
+<td>10%</td>
+<td>2（原始SFT），4（Ambient SFT）</td>
+<td>340, 680</td>
+</tr>
+<tr>
+<td>图6, 100%</td>
+<td>100%（2,150,273示例）</td>
+<td>2（两种方法）</td>
+<td>3,376</td>
+</tr>
+</tbody>
+</table>
+<h4>C.2.2 评估框架</h4>
+<p>所有指令微调结果（表2、4和图4）都来自单一的固定评估设置，对每个检查点相同应用。我们使用olmes评估套件（Gu et al., 2024）（github.com/allenai/olmes，提交5a51f502，未修改），后端为vLLM（vLLM 0.13.0，PyTorch 2.9.0，Transformers 4.57.6，Python 3.11）。训练的检查点转换为Hugging Face格式，并使用存储在它们旁边的聊天模板进行评估：OLMo 3 instruct模板（im_start/im_end轮次及其默认系统提示），这也是用于格式化训练数据的模板，适用于所有三个基础模型。每个检查点每个任务评估一次，没有对种子或解码设置进行选择。</p>
+<p>表17列出了八个任务规范。"聊天"任务用聊天模板格式化每个提示（包括少样本示例，作为较早的轮次）；"普通"任务输入原始文本提示。报告的分数是任务的主要指标；对于MMLU、MATH和BBH，它是其主题或子任务的非加权平均值。指令微调表最后一列报告的相对变化是八个任务上/score_SFT的平均值。</p>
+<p><strong>表17：</strong> 用于每个指令微调评估的任务规范。除HumanEval+外所有生成都是贪婪的，HumanEval+每个问题抽取20个样本来估计pass@10。MATH使用Minerva思维链提示格式（Lewkowycz et al., 2022）。</p>
+<table>
+<thead>
+<tr>
+<th>基准</th>
+<th>olmes任务</th>
+<th>Shots</th>
+<th>提示</th>
+<th>解码</th>
+<th>指标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MATH</td>
+<td>minerva_math::tulu</td>
+<td>4, CoT</td>
+<td>聊天</td>
+<td>贪婪，≤1024 token</td>
+<td>精确匹配，7个主题平均</td>
+</tr>
+<tr>
+<td>GSM8K</td>
+<td>gsm8k::olmes</td>
+<td>8, CoT</td>
+<td>普通</td>
+<td>贪婪，≤512 token</td>
+<td>精确匹配</td>
+</tr>
+<tr>
+<td>HumanEval+</td>
+<td>codex_humanevalplus::tulu</td>
+<td>0</td>
+<td>聊天</td>
+<td>20样本，T=0.8，top-p 0.95</td>
+<td>pass@10</td>
+</tr>
+<tr>
+<td>MMLU</td>
+<td>mmlu::olmes</td>
+<td>5</td>
+<td>普通</td>
+<td>选项上的对数似然</td>
+<td>准确率，57个主题平均</td>
+</tr>
+<tr>
+<td>PopQA</td>
+<td>popqa::tulu</td>
+<td>15</td>
+<td>聊天</td>
+<td>贪婪，≤15 token</td>
+<td>精确匹配</td>
+</tr>
+<tr>
+<td>TriviaQA</td>
+<td>triviaqa::olmes</td>
+<td>5</td>
+<td>普通</td>
+<td>贪婪，≤50 token</td>
+<td>F1（闭卷）</td>
+</tr>
+<tr>
+<td>IFEval</td>
+<td>ifeval::tulu</td>
+<td>0</td>
+<td>聊天</td>
+<td>贪婪，≤2048 token</td>
+<td>提示级宽松准确率</td>
+</tr>
+<tr>
+<td>BBH</td>
+<td>bbh:cot::olmes</td>
+<td>3, CoT</td>
+<td>普通</td>
+<td>贪婪，≤512 token</td>
+<td>精确匹配，27个任务平均</td>
+</tr>
+</tbody>
+</table>
+<p><strong>命令。</strong> 一个检查点 $CKPT（Hugging Face模型目录）的环境和评估是：</p>
+<pre><code>git clone https://github.com/allenai/olmes.git &amp;&amp; cd olmes
+git checkout 5a51f502d463b8cdc4a2dcad7d7096c41ff1197e
+pip install -e . &amp;&amp; pip install vllm==0.13.0
+
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+MARGS=&quot;gpu_memory_utilization=0.85,max_length=32768&quot;
+MARGS=&quot;$MARGS,trust_remote_code=false,add_bos_token=false&quot;
+TASKS=&quot;ifeval::tulu mmlu::olmes gsm8k::olmes codex_humanevalplus::tulu&quot;
+TASKS=&quot;$TASKS minerva_math::tulu popqa::tulu&quot;
+TASKS=&quot;$TASKS triviaqa::olmes bbh:cot::olmes&quot;
+for TASK in $TASKS; do
+  olmes --model-type vllm --model &quot;$CKPT&quot; --model-args &quot;$MARGS&quot; \
+        --task &quot;$TASK&quot; --output-dir &quot;$OUT/$(echo $TASK | tr ':/' '__')&quot;
+done
+</code></pre>
+<p>对于Llama-3.1-8B，我们设置add_bos_token=true：olmes编码提示时不带特殊token，而每个文档都用序列开始token训练的Llama模型在没有它的情况下产生退化输出。</p>
+<p><strong>分片。</strong> 为了在几分钟而不是几小时内完成每个评估，我们将每个任务的实例分成16个不相交的分片，并在每个分片上并行运行上述命令，每个分片一个GPU。子任务分数跨分片按实例计数加权合并，然后取主题和子任务平均值，这重现了未分片运行的聚合。</p>
+<h3>C.3 推理</h3>
+<h4>C.3.1 评估框架</h4>
+<p>推理（"Think"）检查点使用与附录C.2.2相同的软件（olmes提交5a51f502，vLLM 0.13.0）进行评估，但使用olmo3:adapt任务规范，即Ai2的OLMo 3 Think模型卡背后的规范。每个任务都是零样本，并用OLMo 3 Think聊天模板进行聊天格式化，其生成提示以assistant结尾，因此每个响应都在推理块内开始，模型必须在其最终答案之前关闭它。所有生成都在温度0.6和top-p 0.95下采样。模型上下文被限制在指定范围内。</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 大语言模型, 监督微调, 温度匹配, 知识蒸馏, 灾难性遗忘</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
