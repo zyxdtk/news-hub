@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用BuildPredictor预测未来构建结果 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">使用BuildPredictor预测未来构建结果</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-19</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.26476" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Anticipating Future Build Results with BuildPredictor</h4>
+            <p><strong>中文摘要：</strong> 本文提出BuildPredictor，一种基于随机森林的构建结果预测模型，利用历史构建结果、源代码变更、复杂度变化和提交元数据等特征预测持续集成中的未来构建结果。在25个Java项目的24,198次提交上评估，模型在项目内和整体设置中分别达到0.82和0.86的中位MCC，优于BuildFast和RavenBuild等最先进方法。研究发现历史构建结果是最重要特征但损害可解释性；移除这些特征的BuildPredictor-NoHist变体性能略降但可解释性更好。研究还建议评估应采用时间敏感方法并使</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>使用BuildPredictor预测未来构建结果</h1>
+<p><strong>作者：</strong> Christian Macho（克拉根福大学，奥地利，christian.macho@aau.at，https://mitschi.github.io/，ORCID: 0000-0001-8182-7277）；Katharina Stengg（克拉根福大学，奥地利，katharina.stengg@aau.at，https://stenglx.github.io/，ORCID: 0009-0007-1952-361X）</p>
+<p><strong>要点：</strong><br />
+- BuildPredictor 能以高精度预测未来构建结果<br />
+- BuildPredictor 可利用其他项目的信息提升预测能力<br />
+- BuildPredictor-NoHist 在排除难以解释的属性的同时仍保持良好性能<br />
+- 我们表明评估应纳入时间敏感的方法</p>
+<h2>摘要</h2>
+<p>持续集成（CI）是一种流行的编程实践，用于将代码变更无缝集成到代码库中。使用 CI，开发者可以从每次提交后自动组装和测试代码中受益。然而，虽然频繁的集成和构建为开发者提供了支持，但它也带来了为微小变更浪费时间和资源的高昂成本。</p>
+<p>在这项工作中，我们研究了通过机器学习技术预测构建结果来减少这些缺点的潜力。具体而言，我们提出了一个随机森林模型，该模型使用多种特征，如源代码和构建代码的变更，以及代码复杂度的变化。</p>
+<p>我们观察到，我们的模型在项目内设置和整体设置中均表现出良好的性能，中位数 MCC 分别为 0.82 和 0.86。我们还发现模型最重要的特征与历史构建结果信息有关。此外，我们研究了模型性能随时间的发展，发现我们的模型可以快速达到其峰值性能。</p>
+<p>在一项额外的实验中，我们移除了难以解释的历史构建信息特征，发现我们的模型仍然产生不错的性能，同时提高了可解释性。</p>
+<p>总之，我们的模型可以通过预测构建结果来帮助避免不必要的构建运行，从而节省资源。</p>
+<p><strong>关键词：</strong> 构建预测，Apache Maven，机器学习</p>
+<h2>1 引言</h2>
+<p>持续集成（CI）是许多软件项目中经常使用的常见实践 [1]，并且已成为将变更频繁集成到源代码仓库的流行方法 [2]。它支持构成软件开发过程的所有活动，包括软件产品的编译、依赖解析、测试和部署。因此，开发团队从这种实践中受益，主要是因为他们可以更快地收到对所提议的源代码变更的反馈 [3]。</p>
+<p>然而，这种好处也意味着开发者需要接受权衡 [4]。例如，构建速度的提高可能会影响其质量，配置工作也与配置的简单性相冲突。特别是，开发可能会受到较长构建持续时间的影响 [3,5]，这降低了频繁代码集成的收益，因为开发者需要等待构建完成才能继续他们计划的实施任务。此外，这些等待阶段可能导致上下文切换 [6]，因为开发者可能想利用等待构建完成的时间。这带来了开发者分心和失去当前工作专注的风险，可能对所产生代码的质量产生负面影响。最后，构建的频繁执行需要大量资源 [4,7]，这也可能导致高成本 [8,9]。</p>
+<p>先前的工作提出了从不同角度解决频繁构建负载问题的方法。首先，测试选择 [10,11,12,13] 和优先级排序 [13,14,15,16] 方法侧重于减少构建期间执行的测试数量，从而减少整体构建时间 [17]。虽然这些方法可以减少测试软件所花费的时间，但它们不考虑构建执行期间的其他活动，如依赖解析和编译。针对这个问题，其他方法旨在通过避免不必要的构建执行来减少负载。Abdalkareem 等人 [18,19] 建议如果其基于规则的方法或机器学习方法将提交标记为可跳过，则跳过 CI 运行。其他方法侧重于在不执行构建的情况下预测未来的构建结果 [20,21]。这有助于节省资源，同时仍能获取有关提交变更集的反馈。</p>
+<p>然而，当前最先进的模型仅覆盖软件系统属性的有限范围，因此无法对其进行充分建模以准确预测构建结果。</p>
+<p>我们通过提出 <strong>BuildPredictor</strong> 来解决这些问题，这是我们预测未来构建结果的方法。我们利用不同类别的多种指标，包括有关历史构建结果、源代码变更、复杂度变化和提交元数据的信息。我们随机选择了 25 个项目（包含 24,198 次提交），以在不同设置中评估我们的模型。与其他工作类似 [20,21]，我们首先在第一个研究问题中研究模型在项目内设置中的预测能力：</p>
+<p><strong>(RQ1) BuildPredictor 在项目内设置中能在多大程度上准确预测构建结果？</strong></p>
+<p>我们在项目内设置中进行了两个实验。首先，我们使用 100 次分层随机抽样分别评估模型在 25 个选定项目上的表现，并测量众所周知的指标。BuildPredictor 在大多数项目上表现良好，中位数 F1 分数、AUC 和 MCC 分别为 0.98、0.98 和 0.82，优于其他最先进的模型。此外，最重要的属性涉及历史构建结果信息（如上次构建结果）和贡献者属性（如开发者经验）。其次，我们研究了当仅使用提交贡献时可用的信息时，模型性能如何随时间演变。我们观察到短暂的爬升阶段，模型在此期间波动很大，直到稳定并显示稳定的性能。我们还观察到，与随机抽样方法相比，时间敏感方法的整体性能较低。此外，每个项目的性能存在显著差异。因此，我们假设在孤立的项目设置中进行构建结果预测并不适用于所有项目，并建议更整体的预测视角可能有助于提高预测能力，这引出了我们的第二个研究问题：</p>
+<p><strong>(RQ2) 整体设置能在多大程度上改善构建结果预测性能？</strong></p>
+<p>针对项目级抽样的缺点，我们将所有收集的数据一起用于该研究问题的实验。</p>
+<p>我们观察到整体模型产生的 F1 分数、AUC 和 MCC 分别为 0.98、0.97 和 0.86，这表明整体设置进一步提升了我们的模型。类似地，时间维度的方法表现略差于随机抽样方法。然而，最重要的属性保持不变，且再次主要来自历史构建结果类别。这使得模型对开发者来说难以解释，无法为他们的项目得出可操作的结论。针对这个问题，我们探索了移除难以解释的历史构建结果属性的模型变体，以回答我们的最后一个研究问题：</p>
+<p><strong>(RQ3) BuildPredictor-NoHist 在不使用历史构建结果信息的情况下能在多大程度上预测未来构建结果？</strong></p>
+<p>结果表明，虽然 BuildPredictor-NoHist 的预测能力不如 BuildPredictor，但它仍然优于最先进的模型，与 Naïve Parrot 基线 [21] 相比获得更好的分数，也优于其他近期模型（如 BuildFast [20] 和 RavenBuild-CR [21]），同时提供更好的模型解释机会。移除历史构建结果属性后，我们观察到其他属性获得更多关注。例如，开发者的经验或当前修改文件未被触及的时间现在排名靠前。</p>
+<p>总之，我们的工作做出以下贡献：</p>
+<p>(1) BuildPredictor 和 BuildPredictor-NoHist，两个能够预测未来构建结果的预测模型。<br />
+(2) 对两个模型性能的广泛定量研究。<br />
+(3) 在现实数据可用性约束下对预测模型演变的初步研究。<br />
+(4) 针对预测模型（特别是构建结果预测）的方法论和评估，向研究人员提出的建议。</p>
+<p>完整的结果和数据集可在在线提供的补充材料包中找到，以供进一步研究和复现。¹</p>
+<p>¹ https://zenodo.org/records/18865022</p>
+<p>本文其余部分组织如下：第 2 节讨论相关文章并强调研究空白。第 3 节介绍 BuildPredictor 并解释我们的数据检索过程。第 4 节在项目内设置中评估我们的模型，第 5 节在整体设置中评估。在第 6 节的最后一个实验中，我们展示了不使用历史属性的模型性能。最后，我们在第 7 节讨论结果，并在第 8 节总结论文并展望未来工作。</p>
+<h2>2 相关工作</h2>
+<p>本节讨论有关构建系统及其配置的相关工作、近期研究如何研究构建数据和构建失败，并将这项工作置于预测未来构建结果的其他技术背景下。最后，我们总结现有工作的挑战和改进领域，并强调激发本研究的研究空白。</p>
+<h3>2.1 构建系统和配置</h3>
+<p>构建系统在过去得到了深入研究，专注于其各个方面。例如，Ghaleb 等人 [5] 研究长持续时间构建，即超过可接受时间量的构建执行。除了众所周知的因素（如项目规模）外，他们还确定了重新运行失败命令和缺少缓存作为影响构建执行持续时间的因素。Santolucito 等人 [22] 利用有关构建配置的历史信息来学习正确的 CI 配置。他们名为 VeriCI 的工具可以在 75% 的研究案例中正确识别构建错误的根本原因。此外，在他们的用户研究中，20 名参与者确认该工具在调试和修复 CI 错误方面很有用。</p>
+<h3>2.2 构建数据和失败</h3>
+<p>近期研究的另一个重要领域是构建数据的生成和验证，以及相应的历史构建结果和构建失败原因。</p>
+<p><strong>构建数据和数据集。</strong> 最著名的数据集是 Beller 等人 [23] 的 TravisCI，提供超过 1,000 个项目的超过 250 万次构建的构建数据。然而，其开发和数据检索已停止，不包含近期数据。此外，Gallaba 等人 [24] 收集并研究了 CircleCI 的 2,220 万次构建信息，目标是识别此类服务提供商的改进领域。他们发现服务消费者将从构建加速以及避免错误配置中受益最多。</p>
+<p>另一个经过充分研究的领域涉及构建结果本身。Seo 等人 [25] 研究了 Google 超过 2,600 万个构建结果，发现大约 28% 的 Java 系统研究构建不成功，解析问题（主要是依赖项）是主要问题。Zolfagharinia 等人 [26] 从 CPAN（Perl 模块仓库）检索了超过 3,000 万个构建结果，以调查所谓的构建膨胀现象，即代码库中的单个更改可能导致多个操作系统（OS）或运行时环境（RE）的多次构建执行。他们发现，如果仅在单个构建执行上研究构建结果，可能会导致错误的印象，因为环境可能导致构建不成功，这意味着研究需要仔细选择所研究的构建数据。在后续工作 [27] 中，他们还观察到依赖解析问题通常导致负面构建结果，也跨越不同的 OS 和 RE。基于这些观察，他们给出了如何解释构建结果的建议。</p>
+<p><strong>构建数据和质量。</strong> 基于这些工作获得的知识，Gallaba 等人 [28] 通过调查两个主要假设来研究收集的构建结果的噪声：第一，构建结果数据不是噪声的；第二，所有构建在作业或配置数量方面都是平等的。这两个假设都被他们的实验结果反驳。例如，大约 12% 的研究构建主动忽略失败，至少 44% 的负面构建结果包含成功的作业，两者都表明如果构建数据没有经过仔细整理，其中存在噪声。Ghaleb 等人还致力于理解构建结果中的噪声，同时纳入构建持续时间的视角。在他们的研究 [29] 中，他们还发现构建结果数据中存在噪声，这种噪声可能导致误解。然后，他们将这些发现与他们对长构建持续时间的发现 [5] 联系起来，以了解构建持续时间与负面构建结果之间的关系 [30]。他们的实验表明，项目特征可以与构建持续时间和负面构建结果相关联。最后，他们还观察到项目经常需要在不同性能指标之间找到权衡。</p>
+<p><strong>不成功构建的原因。</strong> 其他工作使用此类构建数据并专注于理解构建失败背后的原因。例如，Kwan 等人 [31] 探讨了社会技术一致性对软件公司成功构建概率的影响，发现对于某些构建类型，高一致性导致较低的构建成功率。Kerzazi 等人 [32] 研究了一家大型软件公司的 3,214 次构建，以识别影响构建结果的因素。发现的因素包括同时贡献者的数量、工作类型和贡献者的角色。他们的研究被 Barrak 等人 [33] 概念复制，识别了其他重要因素，如构建历史、代码复杂性和坏味道维度的因素。Islam 等人 [34] 发现了可以影响构建结果的其他属性，并发现了构建工具与结果之间的相关性。Rausch 等人 [35] 和 Vassallo 等人 [36] 在不同环境中对构建结果进行分类。虽然 Rausch 等人研究了 14 个开源 Java 项目，Vassallo 等人还使用了某大型金融组织的 418 个项目。两者都识别了构建结果类别（如编译器错误和依赖错误），这有助于更好地理解负面构建结果背后的原因。Rebouças 等人 [37] 特别关注贡献者的参与度。在比较临时贡献者与频繁贡献者时，他们没有发现构建成功率的显著差异。最后，Luo 等人 [38] 调查了 TravisTorrent 数据集的数据以识别重要属性，发现构建执行中包含的提交数量最能影响构建结果。</p>
+<h3>2.3 构建预测</h3>
+<p><strong>构建变更预测。</strong> 几项研究从不同的角度探讨构建系统。特别是，它们不旨在研究为什么构建以非成功结果结束，而是旨在预测构建的某些属性，例如缺失的共同变更或构建结果。关于缺失的构建共同变更，McIntosh 等人 [39] 和 Xia 等人 [40] 分别在项目内和跨项目设置的背景下研究了此类缺失变更。此外，Macho 等人 [41] 通过纳入有关工作包中执行的变更的细粒度信息来改进底层预测模型。他们证明其模型在两种设置中都改进了缺失构建共同变更预测。与这些工作相反，Tufano 等人 [42] 提出了一个模型，预测当前提交的变更是否影响未来构建（例如影响最长关键路径和增加构建持续时间），以及可能影响多少未来构建。</p>
+<p><strong>构建跳过（CI-Skip）。</strong> 研究人员应用机器学习方法预测构建属性的另一个研究领域针对预测 CI 环境应跳过的提交。例如，Abdalkareem 等人提出了两种这样的方法。首先，他们仅提供了一个规则集，通过在粗粒度级别上调查提交类型及其变更来决定是否可以跳过提交 [18]，实现平均 AUC 为 0.73。在后续工作 [19] 中，他们将那些规则整合到机器学习模型中，结合有关所研究提交的额外信息。他们的决策树分类器产生了有前景的性能，达到平均 AUC 分数 0.89。使用改进的强度帕累托进化算法（SPEA-2），Sadini 等人 [43] 研究了来自 15 个项目的 14,294 次提交的 CI 可跳过能力。他们的方法优于最先进的方法，在项目内和跨项目验证中分别产生平均 AUC 分数 0.92 和 0.84。该方法还在行业合作伙伴处得到验证，强调了所提出工具的有用性。Gallaba 等人 [44] 研究 Kotinos，一种语言无关的方法，不旨在跳过整个提交，而是通过跳过不受影响的构建步骤来加速构建执行。在对开源和专有项目的评估中，Kotinos 的加速之一在至少 87.9% 的情况下被调用，74% 的加速构建比非加速版本快两倍。</p>
+<p>Jin 和 Servant 提出了 SmartBuildSkip，一种预测可跳过提交的工具 [45]，表明他们的方法可以节省中位数 30% 的构建。</p>
+<p>为了改进 Abdalkareem [18] 的规则集，他们还着手研究规则并识别不安全的规则 [46]。他们用更多规则补充现有规则，以提高其名为 PreciseBuildSkip 的工具检测 CI 可跳过提交的整体能力。然后，他们表明额外的规则节省了 5.5% 的成本，并将中位数错误跳过的失败构建减少到 0%。Jin 和 Servant 还将他们的 CI 跳过方法与测试选择方法相结合，以提高整体资源节省 [47]。最后，Kamath 等人 [48] 结合两个想法：利用 CI 跳过方法同时将提交分组为更大的批次，目标是结合两种方法的优势。他们发现，与跳过提交相比，提交的周转时间减少了 96%，还表明他们提出的超时规则比分组启发式调度少 26.10% 的构建。</p>
+<p><strong>构建结果预测。</strong> 在早期研究中，许多工作已经研究了预测未来构建结果的可能性。例如，Hassan 等人 [49] 预测构建的认证结果，Wolf 等人 [50] 使用开发者通信的社会网络分析来预测构建结果。此外，Finlay 等人 [51] 基于软件指标，使用自适应滑动窗口检测概念漂移，以 75% 的准确率判断构建是否会产生成功的构建结果。</p>
+<p>最近的研究也解决了预测未来构建结果的问题。Hassan 和 Wang [52] 使用 TravisTorrent 数据集和 AST 特征创建了随机森林模型，实现整体 F1 分数 0.87。Ni 和 Li 提出了两种方法。首先，他们提出了一个使用级联分类器的模型，专注于不成功的构建结果 [53]，并表明该模型可以减少 57.7% 的等待时间，同时正确分类 85.2% 的非成功构建结果。他们的第二种方法称为 ACONA [54]，使用在线学习，不断重新训练底层模型。ACONA 可以将 F1 分数提高 40%，并将累积误差减少 63.2%。</p>
+<p>Xia 等人 [55,56] 在 126 个开源项目上调查了九个分类器。他们发现大多数分类器在跨项目设置中显示良好的预测性能，但在线学习方法表现不足。此外，他们强调项目级选择方法比构建级选择更有效。</p>
+<p>Chen 等人 [20] 提出了 BuildFast，一种预测未来构建结果的自适应方法。他们的方法使用两个模型，并根据前一次构建的构建结果选择最合适的模型。在 20 个项目上使用 BuildFast 的实验表明，它在 F1 分数方面将最先进的模型提高了 47.5%。</p>
+<p>此外，Saidani 等人提出了几项关于构建结果预测的工作。一项工作 [57] 提出了 BF-detector。该工具使用非支配排序遗传算法（NSGA-II），并在 56,019 次构建上进行评估。BF-Detector 显示出不错的性能，实现平均 AUC 值 0.69。</p>
+<p>Saidani 和 Ouni [58] 通过纳入有关软件坏味道的信息改进了 BF-detector。改进的工具平均达到 AUC 0.74，并识别"过多参数列表"为最有用的坏味道。</p>
+<p>Saidani 等人 [59] 然后探索了深度学习技术在构建结果预测中的应用。他们提出的方法 DL-CIBuild 使用基于 LSTM 的递归神经网络，并在来自 10 个项目的 91,330 次构建上进行评估。DL-CIBuild 在项目内和跨项目预测中分别实现平均 AUC 分数 0.65 和 0.71。</p>
+<p>Sun 等人 [21] 提出了 RavenBuild，一种利用围绕依赖、上下文和相关性的三个特征类别的技术。与 BuildFast 相比，RavenBuild 将不成功结果的 F1 分数提高 50%，AUC 提高 11%。</p>
+<p>最后，Hong 等人 [60] 收集了 Atlassian 从业者的挑战和看法。他们揭示了该公司中可以指示负面构建结果的最重要维度是仓库类别，包含有关历史构建成功的特征。此外，从业者认为 不成功的构建既有用又有问题， 构建结果预测有助于团队决策， 解释在预测构建结果时很重要，特别是关于做出预测的上下文。</p>
+<h3>2.4 研究空白</h3>
+<p>虽然许多工作在各种设置和背景下显著改善了构建结果预测的最新技术水平，但大多数工作是专门化的，针对特定情况或特定应用领域。我们解决这个问题，旨在提供一个<strong>通用构建结果预测模型</strong>，可以在许多项目中使用而无需微调或更改。</p>
+<p>关于模型属性，近期工作通常在粗粒度级别上选择特征的子集。我们通过<strong>细化粗粒度属性</strong>（如源代码和构建代码变更）来改进最先进的模型。</p>
+<p>此外，许多提出的方法利用有关过去构建结果的历史指标。然而，正如 Sun 等人 [21] 也指出的，所谓的 Naïve Parrot 无法实际使用，因为预测无法得到充分解释。为此，我们提供两种模型变体，一种有历史构建结果，一种没有，并<strong>展示历史构建结果特征的影响</strong>。</p>
+<p>我们的评估还以两种方式<strong>改进了最先进的评估方法论</strong>。首先，我们提供所谓的整体模型，其中我们表明项目不应该孤立地训练模型，而是许多项目的数据可以提高模型的性能。其次，我们在时间敏感的实验中测试模型，调查仅使用预测时可用的训练数据时的能力。</p>
+<p>此外，所有工作仅依赖 F1 分数和/或 AUC 作为预测模型的指标。然而，由于构建结果的不平衡性质，在评估此类模型的性能时应考虑<strong>其他指标</strong>，如马修斯相关系数（MCC）[61] [62]。</p>
+<h2>3 使用 BuildPredictor 预测构建结果</h2>
+<p>第 3 节涵盖数据集创建以及为回答研究问题而执行的实验。</p>
+<h3>3.1 数据设置</h3>
+<p>虽然存在几个提供项目及其相应构建结果数据的数据集，但我们创建了自己的数据集，因为现有数据集要么过时（例如 [23]），要么为我们的研究提供的数据和指标过少（例如 [63]）。</p>
+<h4>3.1.1 项目选择</h4>
+<p>我们从 Dabic 等人 [64] 常用的数据集中筛选项目，对提供的搜索应用以下标准：</p>
+<ul>
+<li>仅 Java 项目（Language = Java）</li>
+<li>仅原始项目（Exclude Forks = True）</li>
+<li>具有合理项目历史的项目（Number of commits ≥ 500）</li>
+<li>非玩具项目（Number of Contributors ≥ 2, Number of Pull Requests ≥ 1, Number of Releases ≥ 1）</li>
+<li>活跃项目（Last Commit ≥ 01.01.2024）</li>
+</ul>
+<p>应用这些标准后，我们检索到 5,543 个候选项目。然而，并非所有这些项目都符合我们的目的。因此，我们应用额外的过滤器以适应我们使用的工具。</p>
+<p>首先，我们只保留使用 Apache Maven² 的项目。Maven 是许多软件工程项目中使用的流行构建工具，我们使用的一些工具（例如 BuildDiff [65,66]）仅支持 Maven。</p>
+<p>Sulír 等人报告说，使用的 JDK 对 Java 构建至关重要 [67]，许多软件项目存在大量失败构建 [63,68]。我们还使用多个 Java JDK³ 构建最近的五次提交以预测整体可构建性。我们丢弃了在测试集中没有成功构建的项目。之后我们剩下 749 个项目。</p>
+<p>我们没有使用完整的数据集，因为构建 749 个项目的所有 1,649,849 次提交将是不可行的和资源的浪费。因此，我们应用分层抽样，按项目提供的类数量对项目进行排序，并将它们分成五个大小相等的组。然后，我们从每组中随机选择五个项目，最终得到 25 个项目，共包含 34,141 次提交用于我们的研究。表 1 提供了选定项目和相应的描述性统计。请注意，我们只在数据集中包含 24,198 次提交。排除的 9,943 次提交来自非常旧的提交，它们要么使用过时的 Java 版本（Java 8 之前），要么使用过时的 Maven 版本，当用当前版本构建时会导致错误的构建结果。</p>
+<p>我们看到选定的项目具有不同的大小、不同的供应商和不同的类型。请注意，由于各种原因，我们无法构建项目的所有提交。例如，并非所有提交都包含 pom.xml，某些提交的构建卡住并且没有产生构建结果。此外，我们观察到数据集中 82% 的提交成功构建，这使得数据集不平衡。</p>
+<p>² https://maven.apache.org/<br />
+³ 我们使用 Oracle JDK 的 8、11、17 和 21 版本</p>
+<p><strong>表 1：25 个研究项目的描述性统计。#RC 显示整个仓库中的提交数量，LOC 代码行数，#C 最近提交中的类数量，#DC 数据集中的提交数量，#Succ 成功构建结果的数量，#Failed 不成功构建结果的数量。</strong></p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>#RC</th>
+<th>LOC</th>
+<th>#C</th>
+<th>#DC</th>
+<th>#Succ</th>
+<th>#Failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hantsy/jakartaee-mvc-sample</td>
+<td>541</td>
+<td>3,068</td>
+<td>23</td>
+<td>333</td>
+<td>321</td>
+<td>12</td>
+</tr>
+<tr>
+<td>mediathekview/MLib</td>
+<td>1,059</td>
+<td>11,208</td>
+<td>39</td>
+<td>250</td>
+<td>197</td>
+<td>53</td>
+</tr>
+<tr>
+<td>valkryst/vterminal</td>
+<td>2,669</td>
+<td>7,508</td>
+<td>42</td>
+<td>2,608</td>
+<td>1,370</td>
+<td>1,238</td>
+</tr>
+<tr>
+<td>filip26/iron-verifiable-credentials</td>
+<td>781</td>
+<td>11,834</td>
+<td>52</td>
+<td>816</td>
+<td>579</td>
+<td>237</td>
+</tr>
+<tr>
+<td>password4j/password4j</td>
+<td>551</td>
+<td>25,596</td>
+<td>62</td>
+<td>471</td>
+<td>461</td>
+<td>10</td>
+</tr>
+<tr>
+<td>elastic/support-diagnostics</td>
+<td>738</td>
+<td>18,436</td>
+<td>77</td>
+<td>599</td>
+<td>576</td>
+<td>23</td>
+</tr>
+<tr>
+<td>liquibase/liquibase-hibernate</td>
+<td>1,090</td>
+<td>11,076</td>
+<td>78</td>
+<td>888</td>
+<td>634</td>
+<td>254</td>
+</tr>
+<tr>
+<td>aidanwhiteley/books</td>
+<td>1,153</td>
+<td>13,832</td>
+<td>95</td>
+<td>878</td>
+<td>859</td>
+<td>19</td>
+</tr>
+<tr>
+<td>gturri/dokujclient</td>
+<td>565</td>
+<td>14,092</td>
+<td>133</td>
+<td>246</td>
+<td>184</td>
+<td>62</td>
+</tr>
+<tr>
+<td>jenkinsci/forensics-api-plugin</td>
+<td>1,670</td>
+<td>18,842</td>
+<td>138</td>
+<td>1,024</td>
+<td>658</td>
+<td>366</td>
+</tr>
+<tr>
+<td>AxonIQ/axonserver-connector-java</td>
+<td>1,177</td>
+<td>40,752</td>
+<td>153</td>
+<td>832</td>
+<td>489</td>
+<td>343</td>
+</tr>
+<tr>
+<td>perimeterx/perimeterx-java-sdk</td>
+<td>1,001</td>
+<td>27,282</td>
+<td>177</td>
+<td>860</td>
+<td>825</td>
+<td>35</td>
+</tr>
+<tr>
+<td>KatsuteDev/Mal4J</td>
+<td>570</td>
+<td>43,082</td>
+<td>185</td>
+<td>568</td>
+<td>559</td>
+<td>9</td>
+</tr>
+<tr>
+<td>nebula-contrib/ngbatis</td>
+<td>555</td>
+<td>29,508</td>
+<td>209</td>
+<td>380</td>
+<td>308</td>
+<td>72</td>
+</tr>
+<tr>
+<td>codehaus-plexus/plexus-archiver</td>
+<td>1,002</td>
+<td>42,390</td>
+<td>230</td>
+<td>972</td>
+<td>812</td>
+<td>160</td>
+</tr>
+<tr>
+<td>zettelkasten-team/zettelkasten</td>
+<td>1,242</td>
+<td>202,692</td>
+<td>300</td>
+<td>1,098</td>
+<td>839</td>
+<td>259</td>
+</tr>
+<tr>
+<td>getgauge/gauge-java</td>
+<td>1,082</td>
+<td>219,230</td>
+<td>317</td>
+<td>940</td>
+<td>806</td>
+<td>134</td>
+</tr>
+<tr>
+<td>KorAP/Krill</td>
+<td>1,062</td>
+<td>126,832</td>
+<td>350</td>
+<td>1,041</td>
+<td>859</td>
+<td>182</td>
+</tr>
+<tr>
+<td>MultiMachineBuilder/MultiMachineBuilder</td>
+<td>946</td>
+<td>110,106</td>
+<td>526</td>
+<td>532</td>
+<td>438</td>
+<td>94</td>
+</tr>
+<tr>
+<td>mybatis/mybatis-dynamic-sql</td>
+<td>2,776</td>
+<td>105,010</td>
+<td>569</td>
+<td>908</td>
+<td>526</td>
+<td>382</td>
+</tr>
+<tr>
+<td>dnsjava/dnsjava</td>
+<td>2,198</td>
+<td>128,950</td>
+<td>616</td>
+<td>505</td>
+<td>493</td>
+<td>12</td>
+</tr>
+<tr>
+<td>ijpb/MorphoLibJ</td>
+<td>1,616</td>
+<td>275,350</td>
+<td>674</td>
+<td>1,551</td>
+<td>1,357</td>
+<td>194</td>
+</tr>
+<tr>
+<td>yegor256/takes</td>
+<td>3,306</td>
+<td>98,350</td>
+<td>683</td>
+<td>2,840</td>
+<td>2,771</td>
+<td>69</td>
+</tr>
+<tr>
+<td>pkiraly/qa-catalogue</td>
+<td>2,470</td>
+<td>236,616</td>
+<td>1,306</td>
+<td>954</td>
+<td>876</td>
+<td>78</td>
+</tr>
+<tr>
+<td>twilio/twilio-java</td>
+<td>2,321</td>
+<td>706,062</td>
+<td>6,363</td>
+<td>2,104</td>
+<td>1,985</td>
+<td>119</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>34,141</strong></td>
+<td><strong>2,527,704</strong></td>
+<td><strong>13,397</strong></td>
+<td><strong>24,198</strong></td>
+<td><strong>19,782</strong></td>
+<td><strong>4,416</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>3.1.2 检索构建结果</h4>
+<p>如上所述，我们不依赖以前发布的数据集，而是构建自己的数据集，包括通过运行每次提交的构建来检索构建结果。我们使用以下命令执行 Maven 构建：</p>
+<p><strong>Listing 1：用于构建结果检索的构建命令</strong></p>
+<pre><code>mvn -U clean package -DskipTests=true -Drat.skip=true -Denforcer.skip=true -Dlicense-maven-plugin.skip=true -Dlicense.skipDownloadLicenses
+</code></pre>
+<p>使用 clean 和 package 目标，我们告诉 Maven 清理上次构建产物并执行构建生命周期的所有步骤，直到项目被打包，即所有依赖项被解析，项目被编译并打包成 jar 文件。此外，skipTests 开关将测试执行从构建中排除，以避免测试失败偏倚我们的数据。所有其他开关关闭相应的检查以避免与相应工具的问题。例如，我们使用 license.skipDownloadLicenses 关闭依赖项许可证的下载。</p>
+<p>Sulír 等人 [67] 报告说，JDK 在构建项目时可能至关重要，特别是在回顾性场景中。为了解决这个问题，我们使用每个 JDK 重复构建并收集每个的构建结果。如果至少一次执行产生成功的构建，我们将提交标记为成功构建。如果没有，我们将提交标记为失败。请注意，我们手动检查了缺少工具或库的失败并安装了它们。例如，某些项目依赖 npm 构建项目的小部分。在我们遇到指示缺少 npm 的失败后，我们安装了它并重新运行相应项目的所有构建。</p>
+<p>我们从总共 24,198 个构建结果中随机选择了 400 个，并使用 Java 8、11、17 和 21 在本地构建它们以计算数据集的 95% 置信区间。总共 368 个构建结果被确认为正确，样本比例为 368/400=92%。计算的误差范围为 ±2.64%。这导致计算的置信区间为 92%±2.64%，即 [89.36%, 94.64%]，这在可接受的范围内 [69]。</p>
+<h4>3.1.3 构建预测模型</h4>
+<p>为了覆盖可能影响构建执行结果的软件属性的广泛范围，我们提出了一个利用现有指标并纳入其修改版本的构建预测模型。在下文中，我们描述用于预测的特征以及所做的任何调整。总的来说，我们的模型由八个特征类别和相应的特征组成。表 2 总结了使用的特征及其使用理由。</p>
+<p><strong>提交元数据。</strong> 第一类别提供提交的元数据。我们使用 Joblin 等人 [70] 提出并由 Bock 等人 [71] 验证的贡献者类型。此外，我们添加了执行提交的星期几和距上次提交的时间。</p>
+<p><strong>历史构建结果。</strong> 第二类别涵盖有关项目构建结果历史的信息。上次构建结果特征以及最近五次提交和整个项目中失败构建的百分比，可能有助于识别构建失败，如近期工作 [20,21] 所发现的。</p>
+<p><strong>经验历史。</strong> 第三类别细化了 Kamei 等人 [72] 的经验度量 exp 和 rexp。特别是，我们不仅考虑作者的提交数量，而是使用源代码变更的数量 [73,74]，这提供了开发者经验的更细粒度的印象。此外，我们包括 Kamei 等人 [72] 工作中的指标 ndev、nf 和 age。</p>
+<p><strong>提交类别。</strong> 我们使用 Hattori 等人 [75] 的工作将提交消息分类为四个提议的类别。四个特征中的每一个计算相应类别的提议关键字在提交消息中出现的频率。</p>
+<p><strong>相对代码复杂度指标。</strong> 此类别表示基于 Chidamber 和 Kemerer [76] 指标套件的提交源代码复杂度变化。我们提供每个指标的两个实例，即指标的总和和所有类的指标平均值。然后，我们减去上一次提交的相应值以获得指标差异。例如，如果当前提交 c1 和上一次提交 c0 的 sumDIT 值分别为 50 和 51，我们计算 50-51=-1，并将 -1 分配给 c1 该指标的复杂度差异。</p>
+<p><strong>文件变更。</strong> 文件变更类别计算提交中添加、删除和修改的文件数量。与上面类似，我们分别计算生产代码和测试代码的指标。⁴</p>
+<p>⁴ 我们将生产代码视为 src/main/java 文件夹下的所有 Java 文件，将测试代码视为 src/test/java 文件夹下的所有 Java 文件。</p>
+<p><strong>源代码变更。</strong> 利用 ChangeDistiller [73,74]（一种从两个连续提交中提取细粒度源代码变更的工具），我们计算每个类别提取的变更数量。例如，如果提交插入新的生产方法，我们增加 MethodBodyChangesProduction 特征计数器。</p>
+<p><strong>构建变更。</strong> 与源代码变更类别类似，我们使用 BuildDiffer [65,66] 提取构建配置（即 Maven pom.xml）中的差异。同样，我们计算每个构建变更类别的变更频率。例如，如果开发者向构建配置文件添加依赖项，我们增加依赖变更计数器。</p>
+<p><strong>表 2：我们数据集中存在的特征和相应类别。</strong></p>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>名称</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>提交元数据</td>
+<td>contributorType [71,70]、dayOfWeek、timeToLastCommit</td>
+</tr>
+<tr>
+<td>历史构建结果</td>
+<td>lastBuildResult、percBuildFailedLastFive、percBuildFailedOverall</td>
+</tr>
+<tr>
+<td>经验历史</td>
+<td>modifiedExp、modifiedRexp、ndev [72]、nf [72]、age [72]</td>
+</tr>
+<tr>
+<td>提交类别 [75]</td>
+<td>forwardEngineering、reEngineering、correctiveEngineering、management</td>
+</tr>
+<tr>
+<td>相对代码复杂度指标 [76,77]</td>
+<td>{Avg—Sum}CBODiff、{Avg—Sum}DITDiff、{Avg—Sum}LCOMDiff、{Avg—Sum}LOCDiff、{Avg—Sum}NOSIDiff、{Avg—Sum}RFCDiff、{Avg—Sum}WMCDiff、{Avg—Sum}NumberOfFieldsDiff、{Avg—Sum}NumberOfMethodsDiff</td>
+</tr>
+<tr>
+<td>文件变更</td>
+<td>FilesAdded{Production—Test}、FilesDeleted{Production—Test}、FilesModified{Production—Test}</td>
+</tr>
+<tr>
+<td>源代码变更 [73,74]</td>
+<td>MethodBodyChanges{Production—Test}、StructureStatementChanges{Production—Test}、ClassBodyChanges{Production—Test}、AccessModifierChanges{Production—Test}、FinalModifierChanges{Production—Test}、AttributeDeclarationChanges{Production—Test}、MethodDeclarationChanges{Production—Test}、ClassDeclarationChanges{Production—Test}、DocumentationChanges{Production—Test}、UnknownCategory{Production—Test}</td>
+</tr>
+<tr>
+<td>构建变更 [65,66]</td>
+<td>General Changes、Dependency Changes、Build Changes、Team Changes、Repository Changes</td>
+</tr>
+</tbody>
+</table>
+<h3>3.2 性能指标</h3>
+<p>为了评估我们模型的性能，我们使用众所周知的评估指标，即准确率、精确率、召回率、F1 分数、AUC 和 MCC。这些指标已在多项研究 [41] 中使用，并提供预测模型性能的良好概述。我们选择使用多个评估指标，因为仅观察单个指标可能导致误解，特别是当数据集不平衡时。我们使用混淆矩阵解释我们的指标：</p>
+<table>
+<thead>
+<tr>
+<th>分类为</th>
+<th>实际 SUCCESS</th>
+<th>实际 FAIL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>预测 SUCCESS</td>
+<td>a</td>
+<td>b</td>
+</tr>
+<tr>
+<td>预测 FAIL</td>
+<td>c</td>
+<td>d</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>准确率（A）</strong> 表示在所有提交（a+b+c+d）基础上正确分类构建的比率。公式为 A = a/(a+b+c+d)</li>
+<li><strong>精确率（P）</strong> 测量在所有被分类为成功的提交（a+c）中正确分类成功构建的比率，计算为 P = a/(a+c)</li>
+<li><strong>召回率（R）</strong> 显示与所有实际成功的提交（a+b）相比正确分类成功构建的比率。计算为 R = a/(a+b)</li>
+<li><strong>F1 分数（F1）</strong> 表示精确率和召回率的调和平均值，权重因子 β=1。计算为 F1 = 2<em>P</em>R/(P+R)</li>
+<li><strong>ROC 曲线下面积（AUC）</strong> 测量接收器操作特性曲线下的面积作为模型性能的度量，即真阳性率和假阳性率的曲线。这是在曲线上用不同阈值测试预测结果。</li>
+<li><strong>马修斯相关系数（MCC）</strong> 是不平衡数据集预测任务中经常使用的度量，因为它在此类设置中更稳健。计算公式为 MCC = (a<em>d-c</em>b)/√((a+c)<em>(a+b)</em>(c+d)*(b+d))。</li>
+</ul>
+<p>一起使用这些性能指标使我们能够全面了解预测模型的性能。</p>
+<h3>3.3 抽样策略</h3>
+<p>在这项工作中，我们使用两种不同的抽样策略。第一种策略是 100 次重复分层随机抽样。这意味着 90% 训练数据和 10% 测试数据的分割在目标变量 buildResult 的两个类别上分别执行。此外，我们重复 100 次以最小化随机抽样产生的选择偏差。</p>
+<p>第二种策略以时间维度的方式抽样数据。这意味着我们按提交日期升序排序数据。然后，我们找到每种可能的构建结果（SUCCESS 和 FAIL）至少出现一次的第一个提交。从这个提交开始，我们使用所有过去的提交作为训练集，当前提交作为测试集。这模拟了我们的分类器随时间的演变。</p>
+<h3>3.4 分类器选择和高级重采样</h3>
+<p>我们测试了机器学习分类器和高级重采样方法的多种组合，以找出最适合我们问题的组合。特别是，我们测试了 AdaBoost [78]、决策树 [79]、随机森林 [80] 和支持向量机（SVM）[81] 作为分类器，以及随机过采样、合成少数过采样、自适应合成采样（ADASYN）[83]、随机欠采样、压缩最近邻（CNN）[84]、编辑最近邻（ENN）[85] 和 TomekLinks [86] 作为重采样技术，使用 100 次重复分层随机抽样。</p>
+<p>我们发现总体上最好的分类器是随机森林。关于高级重采样技术，我们观察到随机过采样、SmoteTomek 和 TomekLinks 的重采样比没有任何高级重采样的随机森林获得略好的性能。然而，使用高级重采样方法时的改进非常小（MCC 最多 0.03），因此，我们选择在本文的其余部分使用不带重采样的随机森林。此外，改进大多不具有统计显著性⁵，可能归因于选择偏差。此外，我们认为预测能力的小幅改进不能证明重采样训练集所需的额外资源使用是合理的。因此，在本文的其余部分，我们将使用不带任何重采样技术的随机森林。</p>
+<p>⁵ 使用 Mann Whitney U 检验，25 个项目中只有 3 个（SmoteTomek）、4 个（随机过采样）和 1 个（TomekLinks）的 p 值低于 0.05</p>
+<h2>4 项目内评估</h2>
+<p>在本节中，我们研究模型在项目内设置中的性能，即分别评估每个研究项目。首先，我们评估重复分层随机抽样实验，以评估忽略时间因素的预测性能。其次，我们通过尊重提交可用的时间顺序，在更实际的设置中测试模型。通过这两个实验，我们旨在回答第一个研究问题：</p>
+<p><strong>研究问题 1（RQ1）：BuildPredictor 在项目内设置中能在多大程度上准确预测构建结果？</strong></p>
+<h3>4.1 重复分层随机抽样</h3>
+<p>我们对每个项目应用 100 次重复分层随机抽样，使用上述 90%/10% 分割并测量性能指标。表 3 显示了每个项目测量指标的中位数。</p>
+<p>我们看到 F1 分数、AUC 和 MCC 的中位数分别为 0.98、0.98 和 0.82，这表明我们模型的稳健性能。对于七个项目，模型仅预测一个类别，导致未定义的 MCC。因此，我们重新计算了排除这些项目后的平均和中位性能指标。得到的中位 F1 分数、AUC 和 MCC 分别为 0.98、0.98 和 0.90。当仅查看最小性能时（忽略未定义的 MCC 值），我们的模型在 F1 分数、AUC 和 MCC 方面分别达到 0.94、0.81 和 0.46。这强调了我们模型的良好性能，特别是得到高 MCC 值的支持。</p>
+<p>我们还在表 3 中看到，中位 F1 分数和 AUC 指标在大多数情况下达到非常高的值。然而，当查看 MCC 值时，我们看到高值并不总是得到确认，这让我们得出结论：对于我们的数据集，F1 分数和 AUC 并不适合。考虑一个极端情况，如 yegor256/takes 项目。该项目达到非常高的中位 F1 分数和高中位 AUC。然而，中位 MCC 仅为 0.46，相对较小。</p>
+<p>接下来，我们调查对预测模型最重要的特征。我们在图 1 中看到，前 3 个重要特征涉及表示最近构建结果的历史类别。这证实了 Sun 等人 [21] 的观察。此外，我们看到接下来的两个特征涉及贡献提交的开发者的经验。</p>
+<p><strong>表 3：使用重复分层随机抽样的每个项目的 F1 分数、AUC 和 MCC 中位数。带 * 的 MCC 值评估为 0.00，因为模型仅预测单个类别。请参阅文本以获取更多解释。</strong> 表示仅预测单个类的项目已被排除。**</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>F1 分数</th>
+<th>AUC</th>
+<th>MCC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hantsy/jakartaee-mvc-sample</td>
+<td>0.99</td>
+<td>0.97</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>mediathekview/MLib</td>
+<td>0.98</td>
+<td>1.00</td>
+<td>0.89</td>
+</tr>
+<tr>
+<td>valkryst/vterminal</td>
+<td>0.96</td>
+<td>0.99</td>
+<td>0.92</td>
+</tr>
+<tr>
+<td>filip26/iron-verifiable-credentials</td>
+<td>0.97</td>
+<td>0.98</td>
+<td>0.91</td>
+</tr>
+<tr>
+<td>password4j/password4j</td>
+<td>0.99</td>
+<td>0.90</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>elastic/support-diagnostics</td>
+<td>0.98</td>
+<td>0.91</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>liquibase/liquibase-hibernate</td>
+<td>0.94</td>
+<td>0.97</td>
+<td>0.78</td>
+</tr>
+<tr>
+<td>aidanwhiteley/books</td>
+<td>0.99</td>
+<td>0.88</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>gturri/dokujclient</td>
+<td>0.97</td>
+<td>1.00</td>
+<td>0.90</td>
+</tr>
+<tr>
+<td>jenkinsci/forensics-api-plugin</td>
+<td>0.97</td>
+<td>0.98</td>
+<td>0.92</td>
+</tr>
+<tr>
+<td>AxonIQ/axonserver-connector-java</td>
+<td>0.96</td>
+<td>0.98</td>
+<td>0.90</td>
+</tr>
+<tr>
+<td>perimeterx/perimeterx-java-sdk</td>
+<td>0.98</td>
+<td>0.81</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>KatsuteDev/Mal4J</td>
+<td>0.99</td>
+<td>1.00</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>nebula-contrib/ngbatis</td>
+<td>0.98</td>
+<td>1.00</td>
+<td>0.91</td>
+</tr>
+<tr>
+<td>codehaus-plexus/plexus-archiver</td>
+<td>0.97</td>
+<td>0.97</td>
+<td>0.81</td>
+</tr>
+<tr>
+<td>zettelkasten-team/zettelkasten</td>
+<td>0.96</td>
+<td>0.97</td>
+<td>0.82</td>
+</tr>
+<tr>
+<td>getgauge/gauge-java</td>
+<td>0.99</td>
+<td>1.00</td>
+<td>0.91</td>
+</tr>
+<tr>
+<td>KorAP/Krill</td>
+<td>0.98</td>
+<td>0.99</td>
+<td>0.90</td>
+</tr>
+<tr>
+<td>MultiMachineBuilder/MultiMachineBuilder</td>
+<td>0.99</td>
+<td>1.00</td>
+<td>0.94</td>
+</tr>
+<tr>
+<td>mybatis/mybatis-dynamic-sql</td>
+<td>0.95</td>
+<td>0.99</td>
+<td>0.89</td>
+</tr>
+<tr>
+<td>dnsjava/dnsjava</td>
+<td>0.99</td>
+<td>0.91</td>
+<td>*0.00</td>
+</tr>
+<tr>
+<td>ijpb/MorphoLibJ</td>
+<td>0.99</td>
+<td>0.98</td>
+<td>0.88</td>
+</tr>
+<tr>
+<td>yegor256/takes</td>
+<td>0.99</td>
+<td>0.83</td>
+<td>0.46</td>
+</tr>
+<tr>
+<td>pkiraly/qa-catalogue</td>
+<td>0.98</td>
+<td>0.96</td>
+<td>0.79</td>
+</tr>
+<tr>
+<td>twilio/twilio-java</td>
+<td>0.98</td>
+<td>0.95</td>
+<td>0.64</td>
+</tr>
+<tr>
+<td>平均值</td>
+<td>0.98</td>
+<td>0.96</td>
+<td>0.61</td>
+</tr>
+<tr>
+<td>中位数</td>
+<td>0.98</td>
+<td>0.98</td>
+<td>0.82</td>
+</tr>
+<tr>
+<td>平均值**</td>
+<td>0.97</td>
+<td>0.97</td>
+<td>0.84</td>
+</tr>
+<tr>
+<td>中位数**</td>
+<td>0.98</td>
+<td>0.98</td>
+<td>0.90</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图 1：按中位数排序的前 10 个最重要特征。</strong></p>
+<h3>4.2 时间维度抽样</h3>
+<p>除了随机抽样策略外，我们还旨在使用时间维度的抽样方法在更实际的设置中测试模型。总的来说，我们在大多数项目中观察到两个阶段。爬升阶段，分类器的表现比预期差，但性能不断提高。当模型达到接近其最佳性能的点时，稳定阶段开始。大多数研究项目遵循这种模式。这表明模型从一开始并没有发挥其全部性能，而是需要一些时间来展现其能力。</p>
+<p><strong>表 4：项目首次进入模型最佳性能阈值之前的提交数量和相对数量。</strong></p>
+<table>
+<thead>
+<tr>
+<th>阈值（MCC）</th>
+<th>1%</th>
+<th>3%</th>
+<th>5%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>中位数绝对值</td>
+<td>499</td>
+<td>338.5</td>
+<td>315</td>
+</tr>
+<tr>
+<td>中位数百分比</td>
+<td>75%</td>
+<td>53%</td>
+<td>44%</td>
+</tr>
+</tbody>
+</table>
+<p>表 4 显示了项目达到接近其最佳性能所需的中位提交数（中位数绝对值）和中位提交百分比（中位数%）。为了避免性能的单个尖峰偏倚测量，我们使用窗口大小为 10 的滚动平均值。我们看到，对于距离最佳性能 1% 的阈值，模型需要 499 次提交，这是项目中位数 75% 的数据。这表明要达到几乎最佳的性能，需要大量数据。然而，如果我们将阈值降低到最佳性能的 3% 和 5%，则分别只需要 338.5 和 315 次提交。相对数据量也分别下降到 53% 和 44%。</p>
+<p>作为示例，参见图 2，它可视化了 AxonIQ/axonserver-connector-java 项目所有测量指标随时间的性能。我们看到除 AUC 和 MCC 外的所有指标立即达到高值，这质疑它们在我们不平衡设置中正确估计模型性能的能力。此外，AUC 比 MCC 更早且更快地增加。图 2 还清楚地显示了我们方法的两个阶段。直到大约第 300 次提交，模型明显处于爬升阶段，远离其最佳性能。然而，在大约第 300 次提交之后，它稳定下来并产生持续的良好性能。</p>
+<p>关于最重要的特征，我们观察到类似的行为。起初，最重要的属性波动很大并频繁改变排名，直到爬升阶段结束并且分类器稳定下来。在某些项目中，特征在后期也会改变排名，例如由于构建结果平衡的变化。例如，jenkinsci/forensics-api-plugin 项目中整体失败构建的百分比在开始时是最重要的属性，然后在研究时间范围的中间变得不那么重要。然而，在项目结束时，该特征再次变得重要并排名第二。</p>
+<p>图 3 再次描绘了 AxonIQ/axonserver-connector-java 项目前 10 个最重要特征随时间的演变。我们看到表示最近五次构建中失败构建比率的指标最初非常重要并随时间失去重要性，尽管它仍然是该模型中最重要的特征。有趣的是，开发者的数量在爬升阶段不重要，但随时间获得重要性，最终成为第四重要的属性。其他特征在模型中的值大多保持恒定。</p>
+<p><strong>图 2：AxonIQ/axonserver-connector-java 项目的时间维度评估。</strong></p>
+<p><strong>图 3：AxonIQ/axonserver-connector-java 项目前 10 个最重要特征的时间维度评估。</strong></p>
+<h3>4.3 讨论</h3>
+<p>总的来说，我们看到模型可以很好地帮助预测未来的构建结果。然而，在项目内设置中，我们也观察到一些模型不能产生良好性能的项目。一个原因是我们可能未能覆盖模型中可能影响构建结果的其他方面。另一个原因是由于高度不平衡，模型在某些项目中无法表现良好。</p>
+<p><strong>指标使用。</strong> 关于我们测量的指标，我们观察到除 MCC 外，所有其他指标往往对预测性能过于乐观。即使在有很多错误预测的项目中，这些指标也表明良好的性能。这可以归因于我们数据集的不平衡以及 MCC 在此类设置中特别有效的事实。因此，我们建议在研究构建结果预测时关注 MCC。</p>
+<p><strong>重复分层随机抽样与时间维度抽样。</strong> 重复分层随机抽样是评估预测模型质量的常用方法。然而，它忽略了所研究提交的时间维度，即它使用未来数据预测过去，这是一个不现实的设置。</p>
+<p>为了量化这种影响，我们将分层随机抽样获得的性能与时间维度评估策略获得的性能进行比较。</p>
+<p>我们看到，使用忽略时间维度的抽样策略（例如分层随机抽样）会高估模型的性能。图 4 显示了每个研究项目的分层抽样方法的中位 MCC 值分布（完整数据集）和时间维度方法（完整时间线、前 50% MCC 值和前 10 个 MCC 值）的分布。相应的 Mann-Whitney U 检验仅在时间维度方法的整个数据集（上方箱线图）和分层抽样之间发现统计学显著差异。然而，我们可以在视觉上看到分层抽样倾向于高估模型的性能。</p>
+<p><strong>图 4：分层随机抽样和时间维度抽样方法的 MCC 值比较。</strong></p>
+<p>有了这些结果，我们可以如下回答第一个研究问题：</p>
+<p><strong>RQ1 的答案：</strong> BuildPredictor 在项目内设置中表现良好，达到中位 F1 分数、AUC 和 MCC 分别为 0.98、0.98 和 0.82。此外，我们观察到在爬升期后，模型显示出稳定的性能。</p>
+<p>总结，我们观察到对于许多项目，我们的模型在项目内设置中运行良好。然而，也有相当数量的项目模型运行不佳。因此，我们设想一个不那么局限于单一项目的数据集可以更好地帮助预测未来的构建结果。在下文中，我们通过纳入每个项目的数据来探索这样的设置。我们称之为训练和评估模型的整体方法。</p>
+<h2>5 整体评估</h2>
+<p>在项目内实验中，我们观察到一些项目产生良好的性能，而其他一些项目则没有。因此，我们假设模型可以受益于不仅从单个项目学习，而是从广泛的项目中收集信息。我们再次提供使用重复分层随机抽样和时间维度抽样的实验。我们旨在本节中回答第二个研究问题：</p>
+<p><strong>研究问题 2（RQ2）：整体设置能在多大程度上改善构建结果预测性能？</strong></p>
+<h3>5.1 重复分层随机抽样</h3>
+<p>图 5 给出了使用重复分层随机抽样的整体方法结果概述。我们看到中位 MCC 为 0.86，略好于项目级观察的中位 MCC（0.82）。</p>
+<p>此外，箱线图中的紧凑箱体显示模型的预测仅略有变化。这表明模型在不同的折叠中表现一致，不受训练和验证分割变化的强烈影响。</p>
+<p><strong>图 5：100 次重复分层随机抽样的整体实验的 F1 分数、AUC 和 MCC 值。</strong></p>
+<p>关于预测最重要的属性，我们看到非常相似的情况。图 6 显示了最重要的特征。同样，最重要的特征由过去构建结果的历史属性主导，紧随其后的是提供提交的开发者的经验。</p>
+<p><strong>图 6：100 次重复分层随机抽样的整体实验的最重要特征。</strong></p>
+<h3>5.2 时间维度抽样</h3>
+<p>如前一节所述，我们还从时间维度调查整体模型。图 7 显示了整体设置中随时间的性能指标。我们观察到模型训练的类似阶段，从爬升阶段开始，直到模型达到其在一段时间内保持的稳健性能。关于图 8 中描绘的该模型最重要的属性，我们发现在整体设置中，历史特征占主导地位，紧随其后的是开发者经验度量。值得注意的是，我们看到属性重要性的更强烈抖动，尽管抖动不影响每个属性的排名。我们将这种抖动归因于不同项目数据点的混合，这在局部影响绝对重要性，但改善了整体性能。</p>
+<p><strong>图 7：整体实验随时间的 F1 分数、AUC 和 MCC 值。</strong></p>
+<p><strong>图 8：整体实验随时间的最重要特征。</strong></p>
+<h3>5.3 讨论</h3>
+<p>总结，当我们使用整体模型而不是项目级模型时，我们观察到预测能力方面的显著改进。这表明不仅项目特定信息可以帮助正确预测构建结果，而且在许多项目中看到的通用趋势和模式也可以提供帮助。此外，该模型达到非常稳定的性能，这增加了对模型的可信度。积极的效果在两个实验中都可见。</p>
+<p><strong>RQ2 的答案：</strong> 在利用所有研究项目信息的整体设置中应用 BuildPredictor 可提高性能。该模型显示 F1 分数、AUC 和 MCC 分别为 0.98、0.97 和 0.86。关于时间维度实验，该预测性能在时间线早期即已实现，这强调了我们模型的稳定性。</p>
+<p>虽然 RQ1 和 RQ2 的结果已经表明我们的模型可以很好地预测构建结果，但 BuildPredictor 有一个主要缺点。与近期工作类似，它强烈依赖历史构建结果的信息，这负面影响模型的可解释性。虽然其他模型也存在相同的问题，但我们解决这个问题，并在以下调查历史特征影响的研究中探索不使用此类信息的模型性能。</p>
+<h2>6 历史构建结果的影响</h2>
+<p>虽然我们的项目内和整体实验的结果在帮助开发者预测未来构建结果方面非常有前景，但它们存在近期工作 [20,21] 也未解决的问题。问题是这些模型严重依赖过去构建结果信息的使用。然而，首先，这仅利用了构建结果通常形成连续序列的统计现象，意味着它们不会频繁变化。例如，考虑 Sun 等人 [21] 提出的 Naïve Parrot 方法。该方法简单地预测与前一次提交相同的构建结果，这基本上是构建结果变化频率和构建结果连续性的效应。这得到了 Pearson 相关性分析的证实，该分析显示不平衡数据集中最可靠的指标（即 MCC，例如用于构建结果预测）与改变构建结果的提交的相对频率呈中度相关（r=-0.58 和 p=0.0023）⁶。这表明改变先前构建结果的提交越多，预测能力就越差。</p>
+<p>⁶ 例如，成功构建之后是不成功构建，反之亦然。</p>
+<p>其次，主要基于历史构建结果信息进行预测的模型的可解释性是不利的。我们旨在提供一个更易理解的预测模型，允许开发者根据这项工作的发现调整他们的工作流程和提交流程。为此，我们旨在回答第三个研究问题：</p>
+<p><strong>研究问题 3（RQ3）：BuildPredictor-NoHist 在不使用历史构建结果信息的情况下能在多大程度上预测未来构建结果？</strong></p>
+<h3>6.1 重复分层随机抽样</h3>
+<p>我们重复了第 4.1 节的实验，不使用指示先前构建结果的三个历史属性，即 lastBuildResult、percBuildFailedLastFive、percBuildFailedOverall。我们在论文中将此模型称为 BuildPredictor-NoHist。正如预期的那样，BuildPredictor-NoHist 的预测性能不如 BuildPredictor。每个项目的详细结果在表 5 中呈现。</p>
+<p>与表 3 相比，整体平均 F1 分数、AUC 和 MCC 分别下降了 0.02、0.03 和 0.10，整体中位 F1 分数、AUC 和 MCC 分别下降了 0.01、0.04 和 0.15。当分别比较每个项目时，我们观察到所有项目无论测量指标如何都损失了一些性能。</p>
+<p>虽然这在考虑 MCC 时至少是预测能力的重大损失，但模型的可解释性增加了。例如，代表开发者经验的特征现在是两个最重要的属性。此外，处理更改文件的开发者数量、每个当前更改文件上次更改的年龄、距上次提交的时间，以及代码特定属性（如 LOC 或 RFC 的变化）在模型中发挥更重要的作用。有了这些属性，开发者可以更好地调整流程和指南，例如通过避免大型提交或连续频繁的更改。</p>
+<p>类似地，与第 5.1 节中的整体实验相比，我们观察到整体设置中的性能下降。我们看到 F1 分数、AUC 和 MCC 分别从 0.98 降至 0.94、0.97 降至 0.90 和 0.86 降至 0.60，这是显著的下降。然而，我们认为该模型的性能仍然良好，原因有二。首先，我们获得了所有研究项目的整体模型，而不是每个项目的单独模型，并且该模型能够很好地预测构建结果。其次，通过移除历史特征，我们避免模型过度拟合难以解释的属性，这增加了模型的可解释性，如上所述。</p>
+<p><strong>表 5：移除历史构建结果属性时使用重复分层随机抽样的每个项目的 F1 分数、AUC 和 MCC 值。</strong> 表示仅预测单个类的项目已被排除。**</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>F1 分数</th>
+<th>差值</th>
+<th>AUC</th>
+<th>差值</th>
+<th>MCC</th>
+<th>差值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hantsy/jakartaee-mvc-sample</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>0.97</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>mediathekview/MLib</td>
+<td>0.95</td>
+<td>-0.03</td>
+<td>0.98</td>
+<td>-0.02</td>
+<td>0.74</td>
+<td>-0.15</td>
+</tr>
+<tr>
+<td>valkryst/vterminal</td>
+<td>0.91</td>
+<td>-0.05</td>
+<td>0.96</td>
+<td>-0.03</td>
+<td>0.79</td>
+<td>-0.13</td>
+</tr>
+<tr>
+<td>filip26/iron-verifiable-credentials</td>
+<td>0.95</td>
+<td>-0.02</td>
+<td>0.96</td>
+<td>-0.02</td>
+<td>0.82</td>
+<td>-0.09</td>
+</tr>
+<tr>
+<td>password4j/password4j</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>0.93</td>
+<td>0.03</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>elastic/support-diagnostics</td>
+<td>0.98</td>
+<td>0.00</td>
+<td>0.92</td>
+<td>0.01</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>liquibase/liquibase-hibernate</td>
+<td>0.90</td>
+<td>-0.04</td>
+<td>0.89</td>
+<td>-0.08</td>
+<td>0.59</td>
+<td>-0.19</td>
+</tr>
+<tr>
+<td>aidanwhiteley/books</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>0.86</td>
+<td>-0.02</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>gturri/dokujclient</td>
+<td>0.95</td>
+<td>-0.02</td>
+<td>0.97</td>
+<td>-0.03</td>
+<td>0.78</td>
+<td>-0.12</td>
+</tr>
+<tr>
+<td>jenkinsci/forensics-api-plugin</td>
+<td>0.96</td>
+<td>-0.01</td>
+<td>0.97</td>
+<td>-0.01</td>
+<td>0.89</td>
+<td>-0.03</td>
+</tr>
+<tr>
+<td>AxonIQ/axonserver-connector-java</td>
+<td>0.89</td>
+<td>-0.07</td>
+<td>0.93</td>
+<td>-0.05</td>
+<td>0.74</td>
+<td>-0.16</td>
+</tr>
+<tr>
+<td>perimeterx/perimeterx-java-sdk</td>
+<td>0.98</td>
+<td>0.00</td>
+<td>0.77</td>
+<td>-0.04</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>KatsuteDev/Mal4J</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>1.00</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>nebula-contrib/ngbatis</td>
+<td>0.98</td>
+<td>0.00</td>
+<td>0.99</td>
+<td>-0.01</td>
+<td>0.88</td>
+<td>-0.03</td>
+</tr>
+<tr>
+<td>codehaus-plexus/plexus-archiver</td>
+<td>0.94</td>
+<td>-0.03</td>
+<td>0.90</td>
+<td>-0.07</td>
+<td>0.53</td>
+<td>-0.28</td>
+</tr>
+<tr>
+<td>zettelkasten-team/zettelkasten</td>
+<td>0.94</td>
+<td>-0.02</td>
+<td>0.94</td>
+<td>-0.03</td>
+<td>0.71</td>
+<td>-0.11</td>
+</tr>
+<tr>
+<td>getgauge/gauge-java</td>
+<td>0.97</td>
+<td>-0.02</td>
+<td>0.98</td>
+<td>-0.02</td>
+<td>0.76</td>
+<td>-0.15</td>
+</tr>
+<tr>
+<td>KorAP/Krill</td>
+<td>0.95</td>
+<td>-0.03</td>
+<td>0.94</td>
+<td>-0.05</td>
+<td>0.67</td>
+<td>-0.23</td>
+</tr>
+<tr>
+<td>MultiMachineBuilder/MultiMachineBuilder</td>
+<td>0.97</td>
+<td>-0.02</td>
+<td>0.98</td>
+<td>-0.02</td>
+<td>0.81</td>
+<td>-0.13</td>
+</tr>
+<tr>
+<td>mybatis/mybatis-dynamic-sql</td>
+<td>0.95</td>
+<td>0.00</td>
+<td>0.98</td>
+<td>-0.01</td>
+<td>0.87</td>
+<td>-0.02</td>
+</tr>
+<tr>
+<td>dnsjava/dnsjava</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>0.80</td>
+<td>-0.11</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>ijpb/MorphoLibJ</td>
+<td>0.97</td>
+<td>-0.02</td>
+<td>0.94</td>
+<td>-0.04</td>
+<td>0.70</td>
+<td>-0.18</td>
+</tr>
+<tr>
+<td>yegor256/takes</td>
+<td>0.99</td>
+<td>0.00</td>
+<td>0.78</td>
+<td>-0.05</td>
+<td>0.37</td>
+<td>-0.09</td>
+</tr>
+<tr>
+<td>pkiraly/qa-catalogue</td>
+<td>0.97</td>
+<td>-0.01</td>
+<td>0.93</td>
+<td>-0.03</td>
+<td>0.61</td>
+<td>-0.18</td>
+</tr>
+<tr>
+<td>twilio/twilio-java</td>
+<td>0.98</td>
+<td>0.00</td>
+<td>0.87</td>
+<td>-0.08</td>
+<td>0.42</td>
+<td>-0.22</td>
+</tr>
+<tr>
+<td>平均值</td>
+<td>0.96</td>
+<td>-0.02</td>
+<td>0.93</td>
+<td>-0.03</td>
+<td>0.51</td>
+<td>-0.10</td>
+</tr>
+<tr>
+<td>中位数</td>
+<td>0.97</td>
+<td>-0.01</td>
+<td>0.94</td>
+<td>-0.04</td>
+<td>0.67</td>
+<td>-0.15</td>
+</tr>
+<tr>
+<td>平均值**</td>
+<td>0.95</td>
+<td>-0.02</td>
+<td>0.94</td>
+<td>-0.03</td>
+<td>0.70</td>
+<td>-0.14</td>
+</tr>
+<tr>
+<td>中位数**</td>
+<td>0.95</td>
+<td>-0.03</td>
+<td>0.95</td>
+<td>-0.03</td>
+<td>0.74</td>
+<td>-0.16</td>
+</tr>
+</tbody>
+</table>
+<h3>6.2 时间维度抽样</h3>
+<p>重复第 4.2 节的实验，我们看到所有项目的指标都有所下降。例如，axonserver-connector-java 项目在时间序列末尾的 MCC 值从 0.83 降至 0.67。</p>
+<p>当查看第 5.2 节的整体时间维度实验时，我们也观察到整体性能有所下降。图 9 显示了使用 BuildPredictor-NoHist 时随时间的性能。测量到的最大性能降低是 MCC 值，在时间范围的最后从 0.85 变为 0.55。然而，这种下降带来了特征重要性的两个关键改进。首先，最重要的特征显示出更少的抖动，这意味着预测随时间更稳定。其次，最重要的特征涉及与上述类似的特征。例如，经验度量保持在第一和第二位，紧随其后的是开发者数量、距上次提交的时间和更改文件之前修改的日期。与历史特征相比，这些特征更易解释。</p>
+<p><strong>图 9：使用 BuildPredictor-NoHist 时整体实验随时间的 F1 分数、AUC 和 MCC 值。</strong></p>
+<h3>6.3 讨论</h3>
+<p>总之，我们看到从模型中移除历史特征通常会大幅降低构建结果预测模型的性能，包括我们提出的模型。然而，这种代价伴随着更好可解释模型的好处，这允许开发者更好地解释，并可以帮助改进贡献代码的流程，例如通过在提交或推送代码之前强制执行策略。对于从业者，我们建议选择服务于团队目的的模型，例如，如果开发者仍想改进他们的流程，他们应该选择 BuildPredictor-NoHist 模型。另一方面，当只需要预测的构建结果时，我们建议使用 BuildPredictor。</p>
+<p><strong>RQ3 的答案：</strong> 移除我们模型的历史属性会降低预测能力。例如，时间维度抽样中的最终 MCC 值从 0.85 降至 0.55。然而，预测能力的损失提高了模型的可解释性，并有助于实现更稳定的特征重要性度量。</p>
+<h2>7 讨论</h2>
+<p>在本节中，我们将我们的结果与构建结果预测的最先进技术进行比较。我们还讨论我们提出的方法对研究和开发的影响。此外，我们检查对内部、外部和构建效度的威胁。</p>
+<h3>7.1 与其他方法的比较</h3>
+<p>我们将我们方法的结果与其他旨在预测未来构建结果的最先进方法进行比较。特别是，我们与 BuildFast [20] 和 RavenBuild [21] 进行比较。此外，我们遵循 Sun 等人 [21] 的建议，将所谓的 Naïve Parrot 作为比较基线。Naïve Parrot 是一种预测与前一次提交相同构建结果的方法。请注意，我们使用 RavenBuild-CR 变体进行比较，因为完整模型仅应用于单个专有项目而不是各种开源项目。表 6 显示了每种最先进方法的可用性能指标。请注意，我们报告两种度量，即包括和排除单类预测的项目，以便更透明地比较。我们看到我们模型的两个变体都优于最先进的模型，无论考虑哪个指标。此外，我们的模型也比 Naïve Parrot 基线表现更好。</p>
+<p><strong>表 6：预测构建结果的不同方法的 F1 分数、AUC 和 MCC 比较。* 前缀表示我们使用了这项工作的数据，+ 前缀表示性能指标取自 [21]。请注意，对于 RavenBuild，我们仅考虑开源项目的结果以便更好地比较。还请注意，与 RavenBuild 论文相比，我们使用聚合的 F1 分数。</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>F1 分数</th>
+<th>AUC</th>
+<th>MCC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>*BuildPredictor</td>
+<td>0.98/0.98</td>
+<td>0.98/0.98</td>
+<td>0.82/0.90</td>
+</tr>
+<tr>
+<td>*BuildPredictor-NoHist</td>
+<td>0.97/0.95</td>
+<td>0.94/0.95</td>
+<td>0.67/0.74</td>
+</tr>
+<tr>
+<td>*Naïve Parrot</td>
+<td>0.85</td>
+<td>0.18</td>
+<td>0.49</td>
+</tr>
+<tr>
+<td>+RavenBuild-CR</td>
+<td>0.69</td>
+<td>0.74</td>
+<td>-</td>
+</tr>
+<tr>
+<td>+BuildFast</td>
+<td>0.67</td>
+<td>0.72</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 启示</h3>
+<p>在本节中，我们描述基于我们的工作预期对研究和开发的启示。</p>
+<p><strong>对研究。</strong> 我们的实验表明，虽然纳入有关历史构建结果的特征可以提高模型的预测能力，但它也限制了其可解释性。因此，如果模型的目标是提供可解释的决策工具，我们建议避免使用它们。关于构建结果模型的评估，我们表明最常用的指标是 F1 分数和 AUC。然而，它们可能具有误导性，并且往往比模型实际表现更乐观。我们建议使用马修斯相关系数（MCC）作为补充指标，因为它在不平衡数据集上预测时非常有价值，特别是对于构建结果预测。</p>
+<p>此外，我们设想对当前正在研究的多种其他方法的启示。首先，我们看到自动修复依赖项的方法 [87,88] 可以从更快的反馈中受益，即更新的依赖配置是否会产生成功的构建结果。其次，我们预见识别可能被 CI 跳过的提交的方法 [18,19] 将从这项工作中受益。此类方法可以纳入预期的构建结果来决定构建是否应该执行或可以跳过。</p>
+<p><strong>对开发。</strong> 我们还看到我们的工作对工业开发的影响。我们的模型允许预测推送到源代码管理系统的提交的构建结果。通常，开发者需要等待 CI 服务器报告的构建结果，这可能需要大量时间 [5]。使用我们的方法，开发者可以立即获得对他们工作的反馈，并查看构建结果是否成功。这可以节省他们的时间并让他们专注于工作。</p>
+<h3>7.3 效度威胁</h3>
+<p>我们区分内部、外部和构建效度的威胁。</p>
+<p><strong>内部效度。</strong> 关于内部效度，我们识别了几个威胁。首先，我们自己构建所有研究的提交以检索相应的构建结果。我们通过手动调查 400 个随机选择的提交及其相应的构建结果来减轻错误报告构建结果的风险。我们发现 368 个构建结果是正确的，这导致置信区间 92%±2.64%，这限制了引入的潜在偏差，并且在可接受的范围内 [69]。</p>
+<p>另一个威胁涉及我们在模型中使用的属性选择。我们可能排除了会改进模型的属性。首先，我们通过仔细选择已在构建结果预测背景下使用的属性来减轻这种威胁。此外，我们改进了选定的属性以更好地表示它们的语义。</p>
+<p>在数据集上训练的模型可能容易过拟合，这是对内部效度的另一个关注。通过应用 100 次分层随机抽样等技术，我们减轻了这种威胁。此外，我们还提供了模型的时间敏感分析，表明我们最小化了过拟合的风险。</p>
+<p><strong>外部效度。</strong> 对外部效度的主要威胁来自我们执行的项目选择。报告的结果可能无法推广到其他项目、其他构建工具或其他编程语言。我们通过随机选择不同大小和供应商、服务于不同目的的项目来减轻这种威胁。然而，需要包括额外项目以及其他平台和构建工具的更多实验来进一步加强我们工作的普遍性。</p>
+<p><strong>构建效度。</strong> 我们在模型中使用多个指标来表示软件项目的复杂性、历史和其他属性。然而，这些指标可能仅部分表示其类别的语义。我们通过选择已在以前研究中频繁使用并已被证明能很好地表示基本理论思想的属性来减轻这种威胁。</p>
+<h2>8 结论</h2>
+<p>现代软件工程项目利用持续集成（CI）为开发团队提供有关其变更集的早期反馈。然而，修改和新代码的频繁集成也需要频繁构建项目，这是成本高昂的，并且需要大量时间才能呈现反馈。</p>
+<p>在这项工作中，我们提出了 BuildPredictor，我们在 CI 环境中预测未来构建结果的模型。我们表明 BuildPredictor 改进了最先进的模型，同时通过我们的历史无关变体 BuildPredictor-NoHist 实现了更好的可解释性。我们工作的结果可以总结如下：</p>
+<ul>
+<li><strong>(RQ1)</strong> BuildPredictor 在项目内设置中使用时达到高预测能力，中位 F1 分数、AUC 和 MCC 分别为 0.98、0.98 和 0.82。</li>
+<li><strong>(RQ2)</strong> BuildPredictor 在整体设置中使用时产生类似的性能，允许从其他项目的数据中受益，达到 F1 分数、AUC 和 MCC 分别为 0.98、0.97 和 0.86。</li>
+<li><strong>(RQ3)</strong> 历史无关变体 BuildPredictor-NoHist 通过移除提高性能但无法解释的先前构建结果信息，同时牺牲可容忍的性能，提高了模型的可解释性。</li>
+</ul>
+<p><strong>未来工作。</strong> 我们的模型包含大量属性，但仍然缺少可能改进预测性能的属性类别。为此，我们计划包括其他维度，如生产、测试和构建代码的坏味道。</p>
+<p>此外，我们设想研究开发者的情绪也可能增加模型的性能，因此，我们计划将此类情绪分数整合到模型中。</p>
+<p>虽然我们表明我们的模型可以节省时间和资源，但我们将其留给未来的工作来量化这种减少。</p>
+<p>我们的结果表明，一个合适的构建结果预测模型也可以在其他场景中利用，例如 CI 跳过的预测，我们计划在未来的工作中研究。</p>
+<h2>致谢</h2>
+<p>本研究全部或部分由奥地利科学基金（FWF）10.55776/P36698 资助。为了开放获取目的，作者已将 CC BY 公共版权许可证应用于本提交产生的任何作者接受的手稿版本。该研究得到奥地利部委 BMIMI、BMWET 和上奥地利州在 SCCH COMET 能力中心 INTEGRATE（FFG 892418）框架下的支持。</p>
+<h2>参考文献</h2>
+<p>（参考文献 [1]–[88] 为英文文献引用，按学术惯例保留原文，详见原文参考文献列表。）</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 持续集成, 构建结果预测, 机器学习, 随机森林, 软件工程</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

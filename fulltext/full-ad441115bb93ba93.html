@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后验匹配蒸馏 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">后验匹配蒸馏</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-19</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.26629" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Posterior Matching Distillation</h4>
+            <p><strong>中文摘要：</strong> 后验匹配蒸馏（PMD）是基于分布的扩散蒸馏新方法，通过匹配指数重加权的学生样本均值与教师后验均值，训练随机学生恢复教师在每个噪声水平的完整条件后验。核心“倾斜=偏移”恒等式表明，高斯腐蚀下倾斜后验均值可由冻结教师在偏移输入处的单次评估获得，避免昂贵的蒙特卡洛采样。理论上匹配开放邻域上的倾斜均值可唯一识别完整后验。PMD支持任意步数采样，在SDXL和FLUX.2上取得四步方法最佳FID与最优提示内多样性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>后验匹配蒸馏</h1>
+<p><strong>Hidir Yesiltepe</strong><br />
+单位：弗吉尼亚理工大学</p>
+<p><strong>Julius Berner</strong><br />
+单位：NVIDIA<br />
+https://pmd-distillation.github.io</p>
+<p><strong>Arash Vahdat</strong><br />
+单位：NVIDIA<br />
+https://pmd-distillation.github.io</p>
+<p><strong>Pinar Yanardag</strong><br />
+单位：弗吉尼亚理工大学</p>
+<h2>摘要</h2>
+<p>扩散蒸馏通过将预训练教师的迭代采样过程压缩为少量网络评估来加速图像和视频生成。基于分布的方法通过将学生的输出分布与教师的分布进行匹配来实现这一目标。这种匹配通常由反向 KL 目标驱动，其模式寻求（mode-seeking）偏差偏向教师的主导模式，而牺牲了样本间的多样性。我们提出了后验匹配蒸馏（Posterior Matching Distillation，PMD），这是基于分布的蒸馏方法家族的新成员，它将模式覆盖的后验采样与任意步数生成相结合。在总体损失为零时，PMD 在每个训练噪声水平上恢复教师干净图像的完整后验分布。其随机学生支持在训练时间步网格内的任意步数采样预算，无需进一步训练。为了学习这些后验，PMD 将固定噪声状态下条件化的学生样本的指数重加权平均值与相应的教师后验均值进行匹配。在高斯腐蚀下，指数倾斜的后验均值是单个教师在偏移输入处的评估。我们证明，在开放邻域上匹配倾斜均值可以唯一地识别完整的后验分布。因此，PMD 通过一系列均值约束来监督整个条件分布，无需任何辅助的学生得分网络。在 SDXL 和 FLUX.2 [klein] 4B 上的实验表明，PMD 在两个模型上的 4 步方法中实现了最佳 FID，同时在提示对齐和感知质量指标上保持有竞争力或领先的性能。</p>
+<p><strong>图 1：四步蒸馏中的样本。</strong> 由四步 PMD 蒸馏模型生成的样本。顶部和底部行显示 SDXL 样本，每组由相同提示生成，以说明多次绘制间的条件多样性。中间行展示了来自不同提示的 FLUX.2 [klein] 4B 代表性样本，展示了各种视觉内容。</p>
+<h2>1 引言</h2>
+<p>扩散和流模型 [19, 53, 31, 30, 2] 已成为生成建模的强大方法，特别是对于图像 [45, 10, 57, 58, 26, 27] 和视频 [55, 3, 25, 60, 39, 1]，并且在文本 [43] 方面的应用日益增长。它们的采样过程通过一系列去噪步骤逐步将噪声转换为数据样本，通常需要许多神经网络评估。扩散蒸馏旨在通过训练学生在一或几步内生成样本来减少这种计算负担 [48, 54, 62, 61, 49, 47, 4]。然而，一个噪声状态可能对应许多合理的干净样本，而传统的去噪器只提供单一估计。这提出了一个基本问题：少步学生应该保留教师生成分布的什么信息？</p>
+<p>现有的扩散蒸馏方法在它们寻求从教师那里保留什么方面有所不同。基于轨迹的方法旨在用更少的评估保留教师的采样过程。这些包括渐进蒸馏 [48]（压缩连续去噪步骤）、一致性蒸馏 [54]（学习到轨迹端点的映射）和流映射蒸馏 [4, 47]（学习噪声水平之间的转换）。相比之下，基于分布的方法寻求保留教师的生成分布，而不要求学生遵循相同的采样轨迹。其中，分布匹配蒸馏（DMD）[62, 61] 通过基于得分的目标对齐噪声扰动的学生和教师分布，而矩匹配（MM）[49] 强制中间噪声状态下干净样本的条件期望之间的一致性。</p>
+<p>匹配生成的分布不一定保留噪声输入和干净样本之间的关系。学生可以重现教师的整体输出分布，同时在每个噪声水平学习不同的条件分布 [62, 61]。这一限制与分布匹配蒸馏特别相关，它使用近似反向 KL 目标来对齐噪声扰动的学生和教师分布。反向 KL 的模式寻求性质可能偏向主导模式而牺牲较少出现的结果，潜在地降低样本多样性 [59, 32]。条件监督提供了另一种选择 [8]。矩匹配比较学生和教师的条件均值，但这样做是在由学生预测构建的新噪声状态上，而不是直接在其原始输入上 [49]。</p>
+<p>我们提出了后验匹配蒸馏（PMD），这是一种基于分布的蒸馏方法，训练随机学生在每个噪声水平恢复教师干净样本的条件分布。PMD 将固定噪声状态下条件化的学生样本的指数重加权平均值与相应的教师后验均值进行匹配。在实践中，随机性通过简单地将第一层的输入特征加倍来引入，每个倾斜均值使用每个噪声状态少至四次学生评估来估计。指数权重的选择是深思熟虑的：在高斯腐蚀下，对后验进行指数重加权等价于在相同噪声水平下偏移噪声输入 [40, 20, 41, 42, 38]，我们称这一基本恒等式为 <strong>Tilt=Shift 恒等式</strong>（倾斜=偏移恒等式）。如图 2 所示，这一恒等式允许每个目标均值通过冻结教师在偏移输入处的单次评估获得，而不是通过需要多个教师后验样本的计算昂贵的蒙特卡洛估计。通过改变重加权方向，PMD 施加了一系列约束，在所述假设下唯一地表征教师的后验。</p>
+<p><strong>图 2：Tilt=Shift 恒等式。</strong> （左）估计倾斜后验均值需要从相同噪声状态出发的多条随机逆扩散轨迹，然后对得到的干净样本进行指数重加权。（右）在高斯腐蚀下，相同的均值通过冻结教师在偏移噪声输入处的单次评估获得。</p>
+<p>PMD 的倾斜均值约束在所述假设下唯一地表征每个固定噪声输入处教师的完整条件后验。重要的是，学生当前输出中缺失的模式仍然对目标可见，为恢复丢失的多样性提供学习信号。我们的主要贡献总结如下：</p>
+<ul>
+<li><strong>直接后验监督。</strong> 我们基于指数倾斜均值制定条件分布匹配目标。tilt=shift 恒等式使这些目标可通过每次倾斜的单次冻结教师评估获得，避免了从教师后验进行昂贵的蒙特卡洛采样。</li>
+<li><strong>后验识别与任意步采样。</strong> 我们证明，零总体损失唯一地识别完整的条件后验，包括其多模态结构和模式概率。精确的后验学生随后可以无需重新训练即可重现目标分布。</li>
+<li><strong>卓越的条件多样性。</strong> 在 SDXL 和 FLUX.2 [klein] 4B 上的实验表明，PMD 在所有评估指标上的提示内多样性持续优于竞争方法，同时在四步方法中实现最佳 FID。</li>
+</ul>
+<h2>2 相关工作</h2>
+<p><strong>基于轨迹的蒸馏。</strong> 渐进蒸馏 [48] 合并连续去噪步骤，而一致性模型 [54]、潜在一致性模型（LCM）[33] 和 LCM-LoRA [34] 学习到轨迹端点的映射。分阶段一致性模型（PCM）[56] 将一致性学习扩展到较短的轨迹段，而 SDXL-Lightning [28] 结合了渐进和对抗蒸馏。一致性轨迹模型（CTM）[23] 和流映射方法 [4, 47, 14, 17] 学习任意时间对之间的转换。最近的进展包括并行解码蒸馏 [52]，分别针对区间平均速度、灵活的采样预算和并行预测。如 [7, 52, 64] 的在线策略方法沿学生轨迹模仿教师速度，而简化匹配蒸馏（SMD）[64] 将在线策略速度回归与训练时残差代理和来自较弱教师预测的排斥相结合。</p>
+<p><strong>基于分布的蒸馏。</strong> 对抗扩散蒸馏（ADD）[51] 和潜在对抗扩散蒸馏（LADD）[50] 使用判别器反馈进行少步生成。分布匹配蒸馏（DMD）[62] 使用教师和辅助学生得分估计最小化近似反向 KL 目标，而 DMD2 [61] 通过双时间尺度优化、对抗监督和多步反向模拟改进了这一框架。最近，奖励倾斜分布匹配蒸馏（RTDMD）[22] 将分布匹配与奖励引导的强化学习相结合，以改善少步生成器中的人类偏好对齐。替代目标包括 f-distill [59] 中的 f-散度匹配和得分恒等蒸馏（SiD）[67] 中基于 Fisher 散度的蒸馏。为了缓解模式崩溃，一些工作将分布匹配与轨迹匹配技术相结合 [16, 28, 66, 62]。与主要对齐生成边缘分布的方法不同，PMD 直接针对每个噪声输入处教师的完整条件后验，为保留其多模态结构提供监督。</p>
+<p><strong>图 3：教师后验的指数倾斜。</strong> 从原始教师后验 q(x∣z_t) 开始，通过 exp(λ^⊤x) 进行指数重加权改变其模式的相对显著性。在高斯腐蚀下，每个倾斜后验等价于偏移噪声状态处的后验，q_λ(x∣z_t)=q(x∣z_t+ρ_tλ)。在开放邻域 B_r 上变化 λ 强调不同的模式，产生一系列唯一表征原始后验的倾斜均值。</p>
+<p><strong>条件后验建模。</strong> DDMs [8] 使用适当得分规则训练随机去噪器建模条件后验，而 iDDM [37] 提高了它们的计算效率。矩匹配（MM）[49] 则通过在重新加噪的学生预测处匹配条件均值来蒸馏预训练教师，使用辅助去噪器或参数空间优化。PMD 共享后验建模的目标，但通过指数倾斜直接从冻结教师获得监督。</p>
+<p><strong>指数倾斜。</strong> 在高斯腐蚀下，线性指数倾斜等价于在固定噪声水平偏移噪声输入 [9, 42]。这一联系已被用于奖励倾斜采样和对齐 [40, 41] 以及离散扩散模型中的奖励引导 [38]。相关的高斯条件恒等式，其中偏移伴随着噪声水平或协方差的变化，出现在转移采样和逆问题 [20, 36] 中。与这些工作不同，PMD 使用冻结教师的偏移评估作为训练目标。它匹配一系列唯一识别完整条件后验的倾斜后验均值，每个目标从单次教师评估获得而非教师后验采样。</p>
+<h2>3 背景</h2>
+<h3>3.1 扩散模型</h3>
+<p>设 x=z_0∼q_0 表示干净图像。扩散模型通过添加高斯噪声逐步腐蚀 x，在时间 t∈[0,1] 产生噪声状态 z_t：</p>
+<p>z_t = α_t x + σ_t ε, ε∼𝒩(0,I), (1)</p>
+<p>其中 α_t 和 σ_t 分别控制信号和噪声强度。我们采用 t=0 对应干净数据、t=1 对应高斯噪声的约定。这一表述既适应常规扩散调度，也适应整流流模型中使用的线性插值。</p>
+<p>设 q_t(z_t) 表示得到的噪声边缘分布，q(x∣z_t) 表示给定 z_t 的干净图像条件分布。理想去噪模型预测该后验的条件均值。由 Tweedie 公式 [9]，</p>
+<p>D_t(z_t) = 𝔼_{q(x∣z_t)}[x] = (z_t + σ_t² ∇_{z_t} log q_t(z_t))/α_t, (2)</p>
+<p>对于 α_t&gt;0 且 σ_t&gt;0 的噪声水平。因此，噪声分布的得分确定后验均值。然而，该均值只是单一估计，不能完全表征与相同噪声输入相关的合理干净图像的分布。</p>
+<h3>3.2 条件去噪后验</h3>
+<p>高斯腐蚀过程为每个噪声观测 z_t 诱导干净图像上的条件分布。由贝叶斯规则，该后验由下式给出</p>
+<p>q(x∣z_t) ∝ q_0(x) exp(−‖z_t−α_t x‖²/(2σ_t²)), (3)</p>
+<p>其中 q_0(x) 表示干净图像分布。与提供单一估计的后验均值 D_t(z_t) 不同，q(x∣z_t) 描述与噪声观测相关的所有合理干净图像的相对概率。在高噪声水平，该后验可能是宽的或多模态的，反映了从有限信息恢复干净图像的模糊性。建模这种条件不确定性对少步生成特别重要，其中单次去噪更新可能需要表示多个合理结果。</p>
+<h2>4 后验匹配蒸馏</h2>
+<h3>4.1 Tilt=Shift 恒等式</h3>
+<p>为了获得后验均值之外的信息，我们考虑教师条件分布的指数倾斜。给定倾斜向量 λ∈ℝ^d，定义</p>
+<p>q_λ(x∣z_t) = e^{λ^⊤x} q(x∣z_t) / 𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (4)</p>
+<p>因子 e^{λ^⊤x} 改变干净图像的相对概率，给与 λ 对齐的样本更大的权重，如图 3 所示。不同的倾斜因此可以强调相同后验的不同模式。计算它们的均值通常需要从教师后验抽取多个样本并重新加权。然而，高斯腐蚀过程提供了更简单的解决方案。</p>
+<p><strong>Tilt=Shift 恒等式。</strong> 对于 α_t&gt;0 且 σ_t&gt;0 的固定噪声水平，定义 ρ_t=σ_t²/α_t。则对于任意 λ∈ℝ^d，</p>
+<p>q_λ(x∣z_t) = q(x∣z_t+ρ_tλ). (5)</p>
+<p>特别地，倾斜后验的均值直接从教师去噪器获得：</p>
+<p>𝔼_{q_λ(x∣z_t)}[x] = D_t(z_t+ρ_tλ). (6)</p>
+<p>该恒等式表明，对后验进行指数倾斜恰好等价于在保持噪声水平固定的同时偏移去噪器的噪声输入。因此，每个倾斜均值可以通过冻结教师在 z_t+ρ_tλ 处的单次评估获得，而无需从教师后验采样。该恒等式在高斯腐蚀下对任何底层干净数据分布成立，假设精确的后验均值去噪器。其证明在附录 A.1 中提供。</p>
+<p><strong>图 4：PMD 训练框架。</strong> 噪声状态 z_t 通过学生的在线策略采样过程获得。冻结教师在偏移输入 z_t+ρ_tλ 处评估，产生倾斜后验均值 T_λ=D_t(z_t+ρ_tλ, t)。在相同 z_t 条件下，随机学生使用独立随机输入生成多个干净图像预测。这些预测被组合成指数加权均值，与教师目标 T_λ 进行比较。PMD 通过损失 ℒ_PMD 最小化得到的后验匹配差异，鼓励学生恢复教师的条件后验分布。</p>
+<h3>4.2 识别完整条件后验</h3>
+<p>我们现在问倾斜均值是否包含足够的信息来确定整个后验。设 G_θ 表示预测干净图像 x̂=G_θ(z_t, u, t) 的随机学生，其中 u∼𝒩(0,I) 是独立随机输入。变化 u 允许学生从相同噪声状态 z_t 产生不同的干净图像，定义条件分布 p_{G_θ}(x∣z_t)。</p>
+<p>PMD 要求学生的指数加权均值匹配相应的教师倾斜均值：</p>
+<p>𝔼_u[x̂ e^{λ^⊤x̂}]/𝔼_u[e^{λ^⊤x̂}] = D_t(z_t+ρ_tλ), (7)</p>
+<p>其中期望在 u 上取，z_t 和 t 固定。在 λ=0 时，这简化为匹配普通后验均值。然而，要求在倾斜的开放邻域上一致，足以识别完整分布。</p>
+<p><strong>后验识别定理。</strong> 假设教师去噪器精确且学生的指数矩在 λ=0 的开放邻域中有限。如果式 (7) 对该邻域中的每个倾斜和固定噪声水平的几乎每个噪声输入 z_t 成立，则</p>
+<p>p_{G_θ}(·∣z_t) = q(·∣z_t). (8)</p>
+<p>因此，学生恢复教师的整个条件后验，而不仅仅是其均值。</p>
+<p>该结果来自倾斜均值确定对数矩生成函数的梯度这一事实，它唯一地识别条件分布。因此，PMD 表征后验的模式及其概率。完整证明在附录 A.2 中给出。</p>
+<h3>4.3 后验匹配目标</h3>
+<p>上一节建立了在开放邻域上匹配倾斜均值唯一地识别教师的条件后验。我们现在使用这一结果构建训练目标。</p>
+<p>对于噪声输入 z_t 和倾斜 λ，设 x̂=G_θ(z_t, u, t) 表示随机学生预测，其中 u∼𝒩(0,I)。学生的指数加权均值直接与教师的倾斜后验均值 D_t(z_t+ρ_tλ) 进行比较。我们将<strong>后验匹配残差</strong>定义为</p>
+<p>r(z_t, λ) = 𝔼_u[x̂ e^{λ^⊤x̂}]/𝔼_u[e^{λ^⊤x̂}] − D_t(z_t+ρ_tλ). (9)</p>
+<p>指数权重强调与倾斜方向对齐的学生预测。由 Tilt=Shift 恒等式，教师相应的倾斜均值通过偏移输入处的单次评估获得。因此，r(z_t, λ)=0 当且仅当学生的倾斜均值匹配式 (7) 中教师的倾斜均值。</p>
+<p><strong>后验匹配损失。</strong> PMD 最小化噪声水平、噪声输入和倾斜上期望的平方后验匹配残差：</p>
+<p>ℒ_PMD(θ) = 𝔼_{t,z_t,λ}[‖r(z_t, λ)‖₂²]. (10)</p>
+<p>对随机学生预测的期望在计算平方差之前取。因此，目标匹配学生条件分布的性质，而不是要求每个单独预测等于教师的均值。通过期望指数权重的归一化确保比较直接在学生和教师倾斜均值之间进行。</p>
+<p><strong>算法 1：后验匹配损失</strong></p>
+<pre><code># z, t - 噪声输入批次和噪声水平
+# M - 独立学生抽取次数
+z = z.detach()
+tilt = sample_tilt(z, t)
+# 通过 tilt=shift 获得教师目标
+rho = sigma(t)**2 / alpha(t)
+target = teacher(z + rho * tilt, t).detach()
+# 独立学生预测
+x_hat = [student(z, randn_like(z), t) for _ in range(M)]
+# softmax 加权学生均值
+logits = [dot(tilt, x) for x in x_hat]
+w = softmax(logits)
+student_mean = sum(w[m] * x_hat[m] for m in range(M))
+# 后验匹配损失
+loss = mean(squared_norm(student_mean - target))
+return loss
+</code></pre>
+<h3>4.4 训练 PMD</h3>
+<p>我们在学生自身采样过程中遇到的噪声状态上训练 PMD。在每次迭代中，我们选择训练噪声水平 t，并通过从高斯噪声 z_T 开始的反向模拟获得 z_t。前面的采样步骤在没有梯度跟踪的情况下执行，得到的 z_t 在计算损失之前被分离。</p>
+<p>给定 z_t，我们采样倾斜向量 λ 并在偏移输入 z_t+ρ_tλ 处评估冻结教师。由 Tilt=Shift 恒等式，该单次评估提供教师的倾斜后验均值 D_t(z_t+ρ_tλ)。然后我们抽取 M 个独立噪声输入 u^(1),…,u^(M) 并生成学生预测 x̂^(m)=G_θ(z_t, u^(m), t)。所有预测共享相同的噪声状态和倾斜，仅在它们的独立随机输入上不同。</p>
+<p>我们使用来自随机学生的加权蒙特卡洛样本估计式 (9) 中的归一化倾斜残差。权重通过将 softmax 应用于倾斜向量与每个学生预测之间的点积 λ^⊤x̂^(m) 获得，在 M 个独立抽取上归一化。得到的加权平均估计学生的倾斜均值，使用平方欧几里得距离与教师的倾斜后验均值进行比较。</p>
+<p>遵循 DMD2 [61] 和后续的分布匹配蒸馏方法，我们用辅助非饱和逻辑 GAN 损失增强 PMD 目标。可训练的判别器头对冻结教师从独立加噪的参考和学生生成的干净潜在提取的标题条件特征进行操作。最终学生目标是</p>
+<p>ℒ_student = ℒ_PMD + γ_GAN ℒ_GAN. (11)</p>
+<p><strong>图 5：定性比较与任意步生成。</strong> PMD 在 FLUX.2 [klein] 4B（猫）上比 RTDMD [22] 展示出更大的条件多样性，在 SDXL（女人）上比 DMD2 [61] 展示出更大的条件多样性。底行展示了使用相同模型以四步和两步采样生成的多样化 PMD 样本，无需重新训练。</p>
+<p><strong>表 1：图像生成方法的定量比较。</strong> 在 1024×1024 分辨率下对 SDXL 和 FLUX.2 [klein] 4B 的性能比较。HPSv3、PickScore、CLIP-S 和 FID 使用来自 MS-COCO 2014 [29] 的 10K 提示进行评估。四步方法中的最佳和次佳结果分别以粗体和下划线突出显示。</p>
+<p><strong>SDXL</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>NFE</th>
+<th>GenEval↑</th>
+<th>DPG-Bench↑</th>
+<th>OneIG-EN↑</th>
+<th>HPSv3↑</th>
+<th>PickScore↑</th>
+<th>CLIP-S↑</th>
+<th>FID↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Euler</td>
+<td>50×2</td>
+<td>0.5451</td>
+<td>73.64</td>
+<td>0.3213</td>
+<td>8.23</td>
+<td>22.28</td>
+<td>33.81</td>
+<td>18.24</td>
+</tr>
+<tr>
+<td>LCM-LoRA [34]</td>
+<td>4</td>
+<td>0.5023</td>
+<td>69.47</td>
+<td>0.2966</td>
+<td>6.58</td>
+<td>22.05</td>
+<td>32.59</td>
+<td>21.83</td>
+</tr>
+<tr>
+<td>SDXL-Turbo [51]</td>
+<td>4</td>
+<td>0.4961</td>
+<td>73.47</td>
+<td>0.2843</td>
+<td>8.99</td>
+<td>22.18</td>
+<td>32.87</td>
+<td>25.91</td>
+</tr>
+<tr>
+<td>SDXL-Lightning [28]</td>
+<td>4</td>
+<td>0.5564</td>
+<td>70.99</td>
+<td>0.3105</td>
+<td>9.66</td>
+<td>22.65</td>
+<td>33.16</td>
+<td>24.88</td>
+</tr>
+<tr>
+<td>Flash [5]</td>
+<td>4</td>
+<td>0.4917</td>
+<td>68.72</td>
+<td>0.3089</td>
+<td>7.35</td>
+<td>22.06</td>
+<td>32.94</td>
+<td>21.56</td>
+</tr>
+<tr>
+<td>PCM [56]</td>
+<td>4</td>
+<td>0.5331</td>
+<td>68.65</td>
+<td>0.3031</td>
+<td>9.15</td>
+<td>22.42</td>
+<td>32.47</td>
+<td>27.02</td>
+</tr>
+<tr>
+<td>DMD2 [61]</td>
+<td>4</td>
+<td>0.5882</td>
+<td>74.49</td>
+<td>0.3218</td>
+<td>10.35</td>
+<td>22.82</td>
+<td>33.87</td>
+<td>19.20</td>
+</tr>
+<tr>
+<td>Moment Matching [49]</td>
+<td>4</td>
+<td>0.3981</td>
+<td>65.95</td>
+<td>0.3026</td>
+<td>8.02</td>
+<td>21.81</td>
+<td>30.70</td>
+<td>21.61</td>
+</tr>
+<tr>
+<td>PMD（我们的）</td>
+<td>4</td>
+<td>0.5539</td>
+<td>73.95</td>
+<td>0.3426</td>
+<td>10.02</td>
+<td>22.97</td>
+<td>32.70</td>
+<td><strong>19.14</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>FLUX.2 [klein] 4B</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>NFE</th>
+<th>GenEval↑</th>
+<th>DPG-Bench↑</th>
+<th>OneIG-EN↑</th>
+<th>HPSv3↑</th>
+<th>PickScore↑</th>
+<th>CLIP-S↑</th>
+<th>FID↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Euler</td>
+<td>50×2</td>
+<td>0.7733</td>
+<td>83.99</td>
+<td>0.4981</td>
+<td>11.67</td>
+<td>22.52</td>
+<td>33.72</td>
+<td>21.54</td>
+</tr>
+<tr>
+<td>FLUX.2 [klein] 4B [27]</td>
+<td>4</td>
+<td>0.8259</td>
+<td>85.61</td>
+<td>0.5098</td>
+<td>12.41</td>
+<td>22.85</td>
+<td>33.79</td>
+<td>24.58</td>
+</tr>
+<tr>
+<td>SMD [64]</td>
+<td>4</td>
+<td>0.7945</td>
+<td>83.19</td>
+<td>0.4724</td>
+<td>11.61</td>
+<td>22.59</td>
+<td>33.72</td>
+<td>25.89</td>
+</tr>
+<tr>
+<td>Moment Matching [49]</td>
+<td>4</td>
+<td>0.7169</td>
+<td>80.02</td>
+<td>0.4310</td>
+<td>12.18</td>
+<td>22.33</td>
+<td>33.03</td>
+<td>27.19</td>
+</tr>
+<tr>
+<td>PMD（我们的）</td>
+<td>4</td>
+<td>0.8163</td>
+<td>84.25</td>
+<td>0.4936</td>
+<td>12.58</td>
+<td>22.97</td>
+<td>34.13</td>
+<td><strong>24.12</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>4.5 任意步采样</h3>
+<p>PMD 支持灵活的采样预算，无需为不同步数训练单独的学生。与显式学习噪声水平对之间转换的流映射方法不同，PMD 学习每个噪声水平干净图像的条件后验。在采样期间，学生从当前噪声状态预测干净图像。如果需要另一步，该预测使用高斯腐蚀调度重新加噪到下一个选定水平，学生再次评估。最终预测在不重新加噪的情况下返回。</p>
+<h2>5 实验</h2>
+<p><strong>图 6：学生抽取次数消融。</strong> FLUX.2 [klein] 4B 四步 PMD 蒸馏过程中的多样性得分，每个噪声输入使用 4、8 或 16 次独立学生抽取。我们使用 DINOv2、DreamSim、Vendi 和 LPIPS 评估样本多样性。</p>
+<p><strong>图 7：FLUX.2 [klein] 4B 四步模型的用户研究。</strong></p>
+<p><strong>表 2：PartiPrompts 上的多样性比较。</strong> 结果在 1,632 个提示上平均，每个提示使用 4 步的 8 个种子。所有指标上数值越高表示多样性越大。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Vendi↑</th>
+<th>LPIPS↑</th>
+<th>DINOv2↑</th>
+<th>DreamSim↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LCM-LoRA</td>
+<td>3.1186</td>
+<td>0.5814</td>
+<td>0.3391</td>
+<td>0.3101</td>
+</tr>
+<tr>
+<td>SDXL-Turbo</td>
+<td>2.4781</td>
+<td>0.5569</td>
+<td>0.2470</td>
+<td>0.2181</td>
+</tr>
+<tr>
+<td>SDXL-Lightning</td>
+<td>2.8656</td>
+<td>0.5749</td>
+<td>0.3050</td>
+<td>0.2847</td>
+</tr>
+<tr>
+<td>Flash</td>
+<td>3.2198</td>
+<td>0.5912</td>
+<td>0.3484</td>
+<td>0.3153</td>
+</tr>
+<tr>
+<td>PCM</td>
+<td>2.9537</td>
+<td>0.5922</td>
+<td>0.3204</td>
+<td>0.2937</td>
+</tr>
+<tr>
+<td>DMD2</td>
+<td>2.5178</td>
+<td>0.5715</td>
+<td>0.2523</td>
+<td>0.2406</td>
+</tr>
+<tr>
+<td>PMD (SDXL)</td>
+<td><strong>4.4621</strong></td>
+<td><strong>0.6329</strong></td>
+<td><strong>0.5178</strong></td>
+<td><strong>0.4599</strong></td>
+</tr>
+<tr>
+<td>FLUX.2 [klein] 4B</td>
+<td>2.3237</td>
+<td>0.4459</td>
+<td>0.2171</td>
+<td>0.1963</td>
+</tr>
+<tr>
+<td>SMD</td>
+<td>2.4104</td>
+<td>0.5031</td>
+<td>0.2648</td>
+<td>0.2487</td>
+</tr>
+<tr>
+<td>RTDMD</td>
+<td>1.8540</td>
+<td>0.3729</td>
+<td>0.1448</td>
+<td>0.1168</td>
+</tr>
+<tr>
+<td>Moment Matching</td>
+<td>2.3891</td>
+<td>0.4995</td>
+<td>0.2898</td>
+<td>0.2507</td>
+</tr>
+<tr>
+<td>PMD (FLUX.2)</td>
+<td><strong>3.3708</strong></td>
+<td><strong>0.5705</strong></td>
+<td><strong>0.3690</strong></td>
+<td><strong>0.3503</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>模型和基线。</strong> 我们在两个家族的文本到图像模型上评估后验匹配蒸馏（PMD）：SDXL [45] 和 FLUX.2 [klein] 4B [27]。我们的主要设置使用四个采样步骤。对于 SDXL，我们与 LCM-LoRA [34]、SDXL-Turbo [51]、SDXL-Lightning [28]、Flash [5]、PCM [56]、DMD2 [61] 和矩匹配 [49] 以及未蒸馏教师参考进行比较。对于 FLUX.2 [klein] 4B，比较包括基础模型、SMD [64]、RTDMD [22] 和矩匹配 [49]。网络函数评估数（NFE）与生成质量一起报告，以使推理预算明确。</p>
+<p><strong>实现细节。</strong> 所有实验在 8 块 NVIDIA L40 GPU 上进行 2000 次学生更新，批量大小为 16。我们使用 5:1 的判别器与生成器更新比率。每个训练状态使用 4 次学生抽取。我们使用 AdamW（β₁=0.9，β₂=0.999）优化，学习率为 5×10⁻⁷，梯度范数裁剪为 10，固定的 GAN 损失权重为 0.75。</p>
+<p>我们从未蒸馏的预训练模型初始化学生。为了实现随机性，我们连接高斯噪声混合和原始潜在 token，将输入投影维度加倍。更多架构细节在附录 C 中提供。</p>
+<p><strong>评估指标。</strong> 我们使用 GenEval [15]、DPG-Bench [21]、OneIG-EN [6]、HPSv3 [35]、PickScore [24] 和 CLIP [46] 得分（CLIP-S）测量生成质量和提示遵循，并报告 FID [18] 作为额外的分布质量度量。为了独立于提示遵循评估提示内多样性，我们使用 Vendi 得分 [12] 和基于 LPIPS [65]、DINOv2 [44] 和 DreamSim [13] 的感知/特征空间多样性指标。指标细节在附录 C.4 中共享。</p>
+<p><strong>定性结果。</strong> 图 5 提供了 PMD 与 DMD2 在 SDXL 上以及 RTDMD 在 FLUX.2 [klein] 4B 上在相同文本提示下的定性比较。在两个模型家族中，PMD 在主体外观、场景构图和背景方面表现出更大的变化，同时保留提示的语义内容。该图还展示了 PMD 的任意步能力：相同的训练学生用四步和两步推理生成多样化样本。额外结果在附录 G 中提供。</p>
+<p><strong>定量结果。</strong> 表 4.4 显示 PMD 在 SDXL 和 FLUX.2 [klein] 4B 上的比较四步方法中实现最佳 FID，同时在 SDXL 上的 OneIG-EN 和 PickScore 以及 FLUX.2 上的 HPSv3、PickScore 和 CLIP-S 中领先。RTDMD [22] 使用额外外部奖励监督，在 FLUX.2 上实现 GenEval、HPSv3 和 PickScore 得分 0.9076、15.59 和 23.99，但 FID 为 31.57，明显差于 PMD 的 24.12。与 50 名用户的用户研究在图 7 和附录 F 中共享。</p>
+<p><strong>提示内多样性。</strong> 我们在 PartiPrompts [63] 上使用表 2 中的四个互补指标评估条件多样性。PMD 在两个模型家族中持续优于所有基线。在 SDXL 上，PMD 在每个指标上比最强基线提高 DINOv2 48.6%、DreamSim 45.9%、Vendi 38.6% 和 LPIPS 6.9%。在 FLUX.2 [klein] 4B 上，相应的改进分别为 27.3%、39.7%、39.8% 和 13.4%。这些一致的增益展示了 PMD 在固定噪声和文本提示下保留多样化生成的能力。</p>
+<p><strong>图 8：倾斜选择消融。</strong></p>
+<p><strong>倾斜方向消融。</strong> 我们研究两种倾斜采样策略：各向同性（在每个空间和通道位置采样独立高斯方向）和粗粒度（在较低空间分辨率采样方向并将其上采样到潜在分辨率，引入空间相关性）。如图 8 所示，两种策略都实现强多样性，粗粒度采样持续产生更好结果。细节在附录 D 中提供。</p>
+<p><strong>随机学生抽取消融。</strong> 我们使用 {4, 8, 16} 次随机学生抽取检查蒙特卡洛预算。图 6 绘制了训练迭代中的 DINOv2 多样性、DreamSim 多样性、Vendi 得分和 LPIPS。更多消融在附录 E 中提供。</p>
+<h2>6 结论与局限</h2>
+<p>我们引入了后验匹配蒸馏（PMD），这是一种通过从单次冻结教师评估获得的指数倾斜均值直接针对教师条件后验的蒸馏方法。我们证明这些约束唯一地识别完整后验。实验展示了最佳多样性。虽然 PMD 提供直接的后验监督，但它在训练期间需要多次学生抽取，并且仍然依赖辅助对抗损失来进一步提高视觉真实性。</p>
+<h2>参考文献</h2>
+<p>[1] Niket Agarwal 等. Cosmos 3: Omnimodal world models for physical ai. arXiv preprint arXiv:2606.02800, 2026.<br />
+[2] Michael Albergo, Nicholas M Boffi, Eric Vanden-Eijnden. Stochastic interpolants: A unifying framework for flows and diffusions. JMLR, 26(209):1–80, 2025.<br />
+[3] Andreas Blattmann 等. Stable video diffusion: Scaling latent video diffusion models to large datasets. arXiv preprint arXiv:2311.15127, 2023.<br />
+[4] Nicholas M Boffi, Michael S Albergo, Eric Vanden-Eijnden. Flow map matching with stochastic interpolants: A mathematical framework for consistency models. arXiv preprint arXiv:2406.07507, 2024.<br />
+[5] Clement Chadebec, Onur Tasar, Eyal Benaroche, Benjamin Aubin. Flash diffusion: Accelerating any conditional diffusion model for few steps image generation. AAAI, 2025.<br />
+[6] Jingjing Chang 等. Oneig-bench: Omni-dimensional nuanced evaluation for image generation. NeurIPS, 38, 2026.<br />
+[7] Hansheng Chen 等. pi-flow: Policy-based few-step generation via imitation distillation. ICLR, 2026.<br />
+[8] Valentin De Bortoli 等. Distributional diffusion models with scoring rules. arXiv:2502.02483, 2025.<br />
+[9] Bradley Efron. Tweedie's Formula and Selection Bias. JASA, 106(496):1602–1614, 2011.<br />
+[10] Patrick Esser 等. Scaling rectified flow transformers for high-resolution image synthesis. ICML, 2024.<br />
+[11] Rongyao Fang 等. Flux-reason-6m &amp; prism-bench. ICLR, 2026.<br />
+[12] Dan Friedman, Adji Bousso Dieng. The vendi score: A diversity evaluation metric for machine learning. arXiv:2210.02410, 2022.<br />
+[13] Stephanie Fu 等. Dreamsim: Learning new dimensions of human visual similarity using synthetic data. arXiv:2306.09344, 2023.<br />
+[14] Zhengyang Geng 等. Mean flows for one-step generative modeling. NeurIPS, 38:75460–75482, 2026.<br />
+[15] Dhruba Ghosh, Hannaneh Hajishirzi, Ludwig Schmidt. Geneval: An object-focused framework for evaluating text-to-image alignment. NeurIPS, 36:52132–52152, 2023.<br />
+[16] Yuchao Gu 等. Anyflow: Any-step video diffusion model with on-policy flow map distillation. ECCV, 2026.<br />
+[17] Xiao He 等. Stabilizing, scaling &amp; enhancing meanflow for large-scale diffusion distillation. arXiv:2605.17834, 2026.<br />
+[18] Martin Heusel 等. Gans trained by a two time-scale update rule converge to a local nash equilibrium. NeurIPS, 30, 2017.<br />
+[19] Jonathan Ho, Ajay Jain, Pieter Abbeel. Denoising diffusion probabilistic models. NeurIPS, 33:6840–6851, 2020.<br />
+[20] Peter Holderrieth 等. Glass flows: Transition sampling for alignment of flow and diffusion models. arXiv:2509.25170, 2025.<br />
+[21] Xiwei Hu 等. Ella: Equip diffusion models with llm for enhanced semantic alignment. arXiv:2403.05135, 2024.<br />
+[22] Yushi Huang 等. Reinforcing few-step generators via reward-tilted distribution matching. arXiv:2605.26108, 2026.<br />
+[23] Dongjun Kim 等. Consistency trajectory models. ICLR, 2024.<br />
+[24] Yuval Kirstain 等. Pick-a-pic: An open dataset of user preferences for text-to-image generation. NeurIPS, 36:36652–36663, 2023.<br />
+[25] Weijie Kong 等. Hunyuanvideo: A systematic framework for large video generative models. arXiv:2412.03603, 2024.<br />
+[26] Black Forest Labs. Flux. https://github.com/black-forest-labs/flux, 2024.<br />
+[27] Black Forest Labs. FLUX.2: Frontier Visual Intelligence. https://bfl.ai/blog/flux-2, 2025.<br />
+[28] Shanchuan Lin, Anran Wang, Xiao Yang. Sdxl-lightning: Progressive adversarial diffusion distillation. arXiv:2402.13929, 2024.<br />
+[29] Tsung-Yi Lin 等. Microsoft coco: Common objects in context. ECCV, 2014.<br />
+[30] Yaron Lipman 等. Flow matching for generative modeling. arXiv:2210.02747, 2022.<br />
+[31] Xingchao Liu, Chengyue Gong, Qiang Liu. Flow straight and fast. arXiv:2209.03003, 2022.<br />
+[32] Yanzuo Lu 等. Adversarial distribution matching for diffusion distillation. ICCV, 2025.<br />
+[33] Simian Luo 等. Latent consistency models. arXiv:2310.04378, 2023a.<br />
+[34] Simian Luo 等. Lcm-lora: A universal stable-diffusion acceleration module. arXiv:2311.05556, 2023b.<br />
+[35] Yuhang Ma 等. Hpsv3: Towards wide-spectrum human preference score. ICCV, 2025.<br />
+[36] Abbas Mammadov 等. Exact posterior score estimation for solving linear inverse problems. arXiv:2606.17048, 2026.<br />
+[37] Tommaso Martorella 等. Improved distributional diffusion models. arXiv:2609.37147, 2026.<br />
+[38] Curtis McDonald, Peter Bartlett. Internal guidance as a sampling method for tilted diffusion models. arXiv:2610.29086, 2026.<br />
+[39] MiniMax. Minimax officially releases the video-01 video generation model. https://www.minimax.io/news/Video-01, 2024.<br />
+[40] Ankur Moitra, Andrej Risteski, Dhruv Rohatgi. Steering diffusion models with quadratic rewards. arXiv:2602.16570, 2026a.<br />
+[41] Ankur Moitra, Andrej Risteski, Dhruv Rohatgi. The tractability landscape of diffusion alignment. arXiv:2605.11361, 2026b.<br />
+[42] Andrea Montanari. Sampling, diffusions, and stochastic localization. arXiv:2305.10690, 2023.<br />
+[43] Shen Nie 等. Large language diffusion models. NeurIPS, 2025.<br />
+[44] Maxime Oquab 等. Dinov2: Learning robust visual features without supervision. arXiv:2304.07193, 2023.<br />
+[45] Dustin Podell 等. Sdxl: Improving latent diffusion models for high-resolution image synthesis. ICLR, 2024.<br />
+[46] Alec Radford 等. Learning transferable visual models from natural language supervision. ICML, 2021.<br />
+[47] Amirmojtaba Sabour, Sanja Fidler, Karsten Kreis. Align your flow: Scaling continuous-time flow map distillation. NeurIPS, 38:146459–146512, 2026.<br />
+[48] Tim Salimans, Jonathan Ho. Progressive distillation for fast sampling of diffusion models. ICLR, 2022.<br />
+[49] Tim Salimans, Thomas Mensink, Jonathan Heek, Emiel Hoogeboom. Multistep distillation of diffusion models via moment matching. NeurIPS, 37:36046–36070, 2024.<br />
+[50] Axel Sauer 等. Fast high-resolution image synthesis with latent adversarial diffusion distillation. SIGGRAPH Asia, 2024a.<br />
+[51] Axel Sauer 等. Adversarial diffusion distillation. ECCV, 2024b.<br />
+[52] Neta Shaul, Chao Liu, Arash Vahdat, Julius Berner. Parallel decoding distillation for fast image and video generation. arXiv:2607.26004, 2026.<br />
+[53] Yang Song 等. Score-based generative modeling through stochastic differential equations. arXiv:2011.13456, 2020.<br />
+[54] Yang Song, Prafulla Dhariwal, Mark Chen, Ilya Sutskever. Consistency models. ICML, 2023.<br />
+[55] Team Wan 等. Wan: Open and advanced large-scale video generative models. arXiv:2503.20314, 2025.<br />
+[56] Fu-Yun Wang 等. Phased consistency models. NeurIPS, 37:83951–84009, 2024.<br />
+[57] Chenfei Wu 等. Qwen-image technical report. arXiv:2508.02324, 2025.<br />
+[58] Enze Xie 等. Sana: Efficient high-resolution text-to-image synthesis. ICLR, 2025.<br />
+[59] Yilun Xu, Weili Nie, Arash Vahdat. One-step diffusion models with f-divergence distribution matching. arXiv:2502.15681, 2025.<br />
+[60] Zhuoyi Yang 等. Cogvideox: Text-to-video diffusion models with an expert transformer. ICLR, 2025.<br />
+[61] Tianwei Yin 等. Improved distribution matching distillation for fast image synthesis. NeurIPS, 37:47455–47487, 2024a.<br />
+[62] Tianwei Yin 等. One-step diffusion with distribution matching distillation. CVPR, 2024b.<br />
+[63] Jiahui Yu 等. Scaling autoregressive models for content-rich text-to-image generation. arXiv:2206.10789, 2022.<br />
+[64] Jiawei Zhang 等. Simplifying and improving on-policy distillation for few-step diffusion. arXiv:2610.18472, 2026.<br />
+[65] Richard Zhang 等. The unreasonable effectiveness of deep features as a perceptual metric. CVPR, 2018.<br />
+[66] Kaiwen Zheng 等. Large scale diffusion distillation via score-regularized continuous-time consistency. ICLR, 2026.<br />
+[67] Mingyuan Zhou 等. Score identity distillation. ICML, 2024.</p>
+<h2>补充材料</h2>
+<h3>附录 A 证明</h3>
+<h4>A.1 Tilt=Shift 恒等式的证明</h4>
+<p><strong>设置。</strong> 设 x∼q_0 表示干净图像，设 z_t=α_t x+σ_t ε，ε∼𝒩(0,I)，其中 α_t&gt;0 且 σ_t&gt;0。由贝叶斯规则，给定 z_t 的 x 后验为</p>
+<p>q(x∣z_t) ∝ q_0(x) exp(−‖z_t−α_t x‖²/(2σ_t²)), (12)</p>
+<p>去噪器 D_t(z_t)=𝔼_{q(x∣z_t)}[x] 是其均值。对于倾斜向量 λ∈ℝ^d，倾斜后验为</p>
+<p>q_λ(x∣z_t) = e^{λ^⊤x} q(x∣z_t)/𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (13)</p>
+<p><strong>Tilt=Shift 恒等式。</strong> 设 ρ_t=σ_t²/α_t。则对于任意 λ∈ℝ^d，</p>
+<p>q_λ(x∣z_t) = q(x∣z_t+ρ_tλ). (14)</p>
+<p>特别地，倾斜后验均值为</p>
+<p>𝔼_{q_λ(x∣z_t)}[x] = D_t(z_t+ρ_tλ). (15)</p>
+<p><strong>证明。</strong> 展开式 (12) 中的平方给出</p>
+<p>‖z_t−α_t x‖²/(2σ_t²) = ‖z_t‖²/(2σ_t²) − z_t^⊤x/ρ_t + α_t²‖x‖²/(2σ_t²),</p>
+<p>其中我们使用了 α_t/σ_t²=1/ρ_t。第一项不依赖于 x，被吸收到归一化常数中，所以</p>
+<p>q(x∣z_t) ∝ q_0(x) exp(−α_t²‖x‖²/(2σ_t²)) exp(z_t^⊤x/ρ_t). (16)</p>
+<p>因此，噪声状态 z_t 仅通过最后一个因子进入后验。由于 e^{λ^⊤x}=exp((ρ_tλ)^⊤x/ρ_t)，将式 (16) 乘以 e^{λ^⊤x} 简单地将 z_t 偏移到 z_t+ρ_tλ：</p>
+<p>e^{λ^⊤x} q(x∣z_t) ∝ q_0(x) exp(−α_t²‖x‖²/(2σ_t²)) × exp((z_t+ρ_tλ)^⊤x/ρ_t). (17)</p>
+<p>式 (17) 的右边是式 (16) 的右边在噪声状态 z_t+ρ_tλ 处的评估，所以它正比于 q(x∣z_t+ρ_tλ)。它在 x 中也可积，是 q_0(x) 乘以在 x 中有界的函数（指数中的二次项主导线性项）；因此式 (13) 中的归一化因子 𝔼_{q(x∣z_t)}[e^{λ^⊤x}] 对每个 λ 有限。</p>
+<p>对式 (17) 两边在 x 上归一化，左边由式 (13) 变为 q_λ(x∣z_t)，右边变为 q(x∣z_t+ρ_tλ)，这证明了式 (14)。</p>
+<p>在式 (14) 两边取 x 的均值并使用偏移状态 z_t+ρ_tλ 处去噪器的定义，</p>
+<p>𝔼_{q_λ(x∣z_t)}[x] = 𝔼_{q(x∣z_t+ρ_tλ)}[x] = D_t(z_t+ρ_tλ),</p>
+<p>这证明了式 (15)。该论证仅使用式 (12) 的高斯形式，因此该恒等式对任何干净图像分布 q_0 成立。□</p>
+<h4>A.2 后验识别定理的证明</h4>
+<p><strong>设置。</strong> 固定 α_t&gt;0 且 σ_t&gt;0 的噪声水平，设 ρ_t=σ_t²/α_t。对于干净图像 x=z_0∼q_0 和噪声状态 z_t=α_t x+σ_t ε，ε∼𝒩(0,I)，教师后验为</p>
+<p>q(x∣z_t) ∝ q_0(x) exp(−‖z_t−α_t x‖²/(2σ_t²)), (18)</p>
+<p>精确教师去噪器返回其均值 D_t(z_t)=𝔼_{q(x∣z_t)}[x]。随机学生预测 x̂=G_θ(z_t, u, t)，其中 u∼𝒩(0,I) 是独立随机输入。我们用 p_{G_θ}(x∣z_t) 表示 x̂ 的条件分布，期望 𝔼_u[·] 在固定 z_t 和 t 下于 u 上取。设 B_r={λ∈ℝ^d: ‖λ‖&lt;r}，r&gt;0，是以 λ=0 为中心的开球。</p>
+<p><strong>后验识别定理。</strong> 假设教师去噪器精确且学生的指数矩 𝔼_u[e^{λ^⊤x̂}] 对所有 λ∈B_r 有限。如果对于 q_t-几乎每个 z_t，</p>
+<p>𝔼_u[x̂ e^{λ^⊤x̂}]/𝔼_u[e^{λ^⊤x̂}] = D_t(z_t+ρ_tλ) (19)</p>
+<p>对每个 λ∈B_r 成立，则 p_{G_θ}(·∣z_t) = q(·∣z_t) 对 q_t-几乎每个 z_t 成立。(20)</p>
+<p><strong>证明。</strong> 我们使用随机向量 X 的矩生成函数 𝔼[e^{λ^⊤X}] 的两个标准性质： 在其有限的开集上，矩生成函数是无穷可微的，梯度为 𝔼[X e^{λ^⊤X}]。因此，其对数的梯度是倾斜均值 𝔼[X e^{λ^⊤X}]/𝔼[e^{λ^⊤X}]。 矩生成函数在 λ=0 的开邻域上有限且相等的两个随机向量具有相同的分布。</p>
+<p>固定假设成立的噪声状态 z_t，定义学生和教师后验的对数矩生成函数：</p>
+<p>K_{G_θ}(λ) = log 𝔼_u[e^{λ^⊤x̂}], K_q(λ) = log 𝔼_{q(x∣z_t)}[e^{λ^⊤x}].</p>
+<p><strong>步骤 1：两个函数在 B_r 上有限。</strong> 对于 K_{G_θ}，这由假设得出。对于 K_q，式 (18) 给出 e^{λ^⊤x} q(x∣z_t) ∝ q_0(x) × exp(λ^⊤x − ‖z_t−α_t x‖²/(2σ_t²))。指数因子在 x 中有界，因为其负二次项主导线性项。因此 𝔼_{q(x∣z_t)}[e^{λ^⊤x}]&lt;∞ 对每个 λ∈ℝ^d 成立。</p>
+<p><strong>步骤 2：梯度一致。</strong> 由性质，∇K_{G_θ}(λ) 是式 (19) 的左边，而 ∇K_q(λ) 是倾斜后验 q_λ(x∣z_t)∝e^{λ^⊤x}q(x∣z_t) 的均值。由 Tilt=Shift 恒等式（附录 A.1）和教师的精确性，该倾斜后验均值等于 D_t(z_t+ρ_tλ)。因此，式 (19) 蕴含</p>
+<p>∇K_{G_θ}(λ) = ∇K_q(λ)，对所有 λ∈B_r。 (21)</p>
+<p><strong>步骤 3：矩生成函数一致。</strong> 两个函数由性质 在 B_r 上光滑且在原点为零，因为 K_{G_θ}(0)=K_q(0)=log 1=0。对任意 λ∈B_r，线段 {sλ: s∈[0,1]} 位于 B_r 中。沿该线段积分式 (21) 给出</p>
+<p>K_{G_θ}(λ) = ∫₀¹ λ^⊤∇K_{G_θ}(sλ)ds = ∫₀¹ λ^⊤∇K_q(sλ)ds = K_q(λ).</p>
+<p>因此，𝔼_u[e^{λ^⊤x̂}]=𝔼_{q(x∣z_t)}[e^{λ^⊤x}] 对每个 λ∈B_r 成立。</p>
+<p><strong>步骤 4：分布一致。</strong> p_{G_θ}(·∣z_t) 和 q(·∣z_t) 的矩生成函数在 λ=0 的开邻域 B_r 上有限且相等。由性质，它们唯一地确定相同的分布。因此，p_{G_θ}(·∣z_t)=q(·∣z_t)。</p>
+<p>由于该论证适用于假设成立的每个噪声状态，后验相等对 q_t-几乎每个 z_t 成立。□</p>
+<h3>附录 B PMD 的解释</h3>
+<h4>B.1 PMD 作为条件 MMD</h4>
+<p><strong>设置。</strong> 固定噪声水平 t 和噪声状态 z_t。设 q(x∣z_t) 表示教师后验，p_{G_θ}(x∣z_t) 表示随机学生 x̂=G_θ(z_t, u, t) 的条件分布，其中 u∼𝒩(0,I)。对于倾斜 λ∈ℝ^d，设 T_λ=D_t(z_t+ρ_tλ)，其中 ρ_t=σ_t²/α_t。定义特征映射</p>
+<p>φ_λ(x) = (x−T_λ) e^{λ^⊤(x−T_λ)}. (22)</p>
+<p>设 Π_{t,z_t} 表示倾斜分布，假设其独立于学生参数，定义依赖教师的核</p>
+<p>k_{t,z_t}(x, y) = 𝔼_{λ∼Π_{t,z_t}}[φ_λ(x)^⊤φ_λ(y)]. (23)</p>
+<p><strong>条件 MMD 表示。</strong> 假设教师去噪器精确且所需期望有限。则 k_{t,z_t} 是半正定核，PMD 总体目标满足</p>
+<p>ℒ_PMD(G_θ) = (1/2) 𝔼_{t,z_t}[MMD²_{k_{t,z_t}}(p_{G_θ}(·∣z_t), q(·∣z_t))]. (24)</p>
+<p><strong>证明。</strong> 我们首先证明教师特征期望为零。由 Tilt=Shift 恒等式（附录 A.1），教师目标满足</p>
+<p>T_λ = 𝔼_{q(x∣z_t)}[x e^{λ^⊤x}]/𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (25)</p>
+<p>两边乘以 𝔼_{q(x∣z_t)}[e^{λ^⊤x}] 给出 𝔼_{q(x∣z_t)}[x e^{λ^⊤x}] = T_λ 𝔼_{q(x∣z_t)}[e^{λ^⊤x}]。(26)</p>
+<p>重排得 𝔼_{q(x∣z_t)}[x e^{λ^⊤x}] − T_λ 𝔼_{q(x∣z_t)}[e^{λ^⊤x}] = 0。(27)</p>
+<p>由于 T_λ 相对于 x 是常数，两项可以合并为单个期望：𝔼_{q(x∣z_t)}[(x−T_λ) e^{λ^⊤x}] = 0。(28)</p>
+<p>现在将被积函数乘以常数 e^{−λ^⊤T_λ}。因为该因子不依赖于 x，式 (28) 蕴含 𝔼_{q(x∣z_t)}[(x−T_λ) e^{λ^⊤x−λ^⊤T_λ}] = 0。(29)</p>
+<p>使用 λ^⊤x−λ^⊤T_λ=λ^⊤(x−T_λ)，我们得到 𝔼_{q(x∣z_t)}[(x−T_λ) e^{λ^⊤(x−T_λ)}] = 0。(30)</p>
+<p>由式 (22) 中 φ_λ 的定义，这恰好是 𝔼_{q(x∣z_t)}[φ_λ(x)] = 0。(31)</p>
+<p>在学生一侧，写 h=x̂−T_λ，我们有 𝔼_u[φ_λ(x̂)] = 𝔼_u[h e^{λ^⊤h}] = r(z_t, λ)，(32)</p>
+<p>这恰好是 PMD 倾斜残差。式 (23) 中的核是半正定的，因为它是特征内积的期望。使用其相关的 MMD 特征表示，我们得到</p>
+<p>MMD²_{k_{t,z_t}}(p_{G_θ}(·∣z_t), q(·∣z_t)) = 𝔼_{λ∼Π_{t,z_t}}[‖𝔼_u[φ_λ(x̂)] − 𝔼_{q(x∣z_t)}[φ_λ(x)]‖₂²] = 𝔼_{λ∼Π_{t,z_t}}[‖r(z_t, λ)‖₂²]. (33)</p>
+<p>对 取期望并乘以 1/2 恢复 PMD 总体目标，证明式 (24)。□</p>
+<p><strong>后验识别。</strong> 如果学生的指数矩在 λ=0 的开邻域上有限且 Π_{t,z_t} 在那里有正密度，零条件 MMD 蕴含 r(z_t, λ)=0 在整个该邻域中成立。由后验识别定理（附录 A.2），这产生 p_{G_θ}(·∣z_t)=q(·∣z_t)。因此，依赖教师的核在这类条件分布上是特征的。倾斜分布确定核，因此确定 PMD 目标对不同后验差异的敏感性。</p>
+<h4>B.2 PMD 作为 CGF 梯度匹配</h4>
+<p><strong>设置。</strong> 固定噪声水平 t 和噪声状态 z_t。设 q(x∣z_t) 表示教师后验，p_{G_θ}(x∣z_t) 表示随机学生 x̂=G_θ(z_t, u, t) 的条件分布，其中 u∼𝒩(0,I)。定义它们的累积量生成函数（CGF）为</p>
+<p>K_{G_θ}(λ) = log 𝔼_u[e^{λ^⊤x̂}], K_q(λ) = log 𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (34)</p>
+<p>对于倾斜 λ∈ℝ^d，设 T_λ=D_t(z_t+ρ_tλ)，其中 ρ_t=σ_t²/α_t。我们假设教师去噪器精确且学生的指数矩在 λ=0 的开邻域上有限。</p>
+<p><strong>CGF 梯度表示。</strong> PMD 倾斜残差 r(z_t, λ)=𝔼_u[h e^{λ^⊤h}]，其中 h=x̂−T_λ，满足</p>
+<p>r(z_t, λ) = e^{K_{G_θ}(λ)−λ^⊤T_λ} × (∇<em>λ K</em>{G_θ}(λ) − ∇_λ K_q(λ)). (35)</p>
+<p>因此，PMD 总体目标可以写为</p>
+<p>ℒ_PMD(G_θ) = (1/2) 𝔼_{t,z_t,λ}[e^{2(K_{G_θ}(λ)−λ^⊤T_λ)} × ‖∇<em>λ K</em>{G_θ}(λ) − ∇_λ K_q(λ)‖₂²]. (36)</p>
+<p><strong>证明。</strong> 我们首先将 CGF 梯度与指数倾斜均值联系起来。对式 (34) 关于 λ 微分给出</p>
+<p>∇<em>λ K</em>{G_θ}(λ) = 𝔼_u[x̂ e^{λ^⊤x̂}]/𝔼_u[e^{λ^⊤x̂}], (37)</p>
+<p>类似地，∇<em>λ K_q(λ) = 𝔼</em>{q(x∣z_t)}[x e^{λ^⊤x}]/𝔼_{q(x∣z_t)}[e^{λ^⊤x}]。(38)</p>
+<p>由 Tilt=Shift 恒等式（附录 A.1），教师的倾斜均值等于 T_λ。因此，</p>
+<p>∇_λ K_q(λ) = T_λ = D_t(z_t+ρ_tλ). (39)</p>
+<p>现在考虑 PMD 残差。代入 h=x̂−T_λ 给出</p>
+<p>r(z_t, λ) = 𝔼_u[(x̂−T_λ) e^{λ^⊤(x̂−T_λ)}] = e^{−λ^⊤T_λ} 𝔼_u[(x̂−T_λ) e^{λ^⊤x̂}]. (40)</p>
+<p>由于 T_λ 独立于 u，我们可以分离期望：</p>
+<p>r(z_t, λ) = e^{−λ^⊤T_λ}(𝔼_u[x̂ e^{λ^⊤x̂}] − T_λ 𝔼_u[e^{λ^⊤x̂}]). (41)</p>
+<p>由式 (37)，𝔼_u[x̂ e^{λ^⊤x̂}] = 𝔼_u[e^{λ^⊤x̂}] ∇<em>λ K</em>{G_θ}(λ)。(42)</p>
+<p>代入式 (41) 并提取公因子给出</p>
+<p>r(z_t, λ) = e^{−λ^⊤T_λ} 𝔼_u[e^{λ^⊤x̂}] × (∇<em>λ K</em>{G_θ}(λ) − T_λ). (43)</p>
+<p>由学生 CGF 的定义，𝔼_u[e^{λ^⊤x̂}] = e^{K_{G_θ}(λ)}。(44)</p>
+<p>将此与式 (39) 结合给出</p>
+<p>r(z_t, λ) = e^{K_{G_θ}(λ)−λ^⊤T_λ} × (∇<em>λ K</em>{G_θ}(λ) − ∇_λ K_q(λ)), (45)</p>
+<p>这证明了式 (35)。将该表达式代入 PMD 总体目标 ℒ_PMD(G_θ)=(1/2)𝔼_{t,z_t,λ}[‖r(z_t, λ)‖₂²] 立即给出式 (36)。□</p>
+<p><strong>从去噪器评估获得教师 CGF。</strong> 式 (39) 提供了 Tilt=Shift 恒等式的额外解释。由于 K_q(0)=0，沿从 0 到 λ 的直线积分教师 CGF 梯度给出</p>
+<p>K_q(λ) = ∫₀¹ λ^⊤∇_λ K_q(sλ)ds = ∫₀¹ λ^⊤D_t(z_t+sρ_tλ)ds. (46)</p>
+<p>因此，精确去噪教师通过其在偏移噪声输入处的预测隐式地指定整个后验 CGF。特别地，其在 λ=0 处的导数恢复后验均值和协方差：</p>
+<p>∇_λ K_q(0) = D_t(z_t), (47)</p>
+<p>∇²_λ K_q(0) = ρ_t ∇<em>{z_t} D_t(z_t) = Cov</em>{q(x∣z_t)}(x). (48)</p>
+<p>更高阶导数类似地恢复更高阶后验累积量。因此，PMD 通过偏移去噪器评估访问完整后验的信息，而无需显式估计这些更高阶统计量。</p>
+<p><strong>后验识别。</strong> 式 (35) 中的指数因子在 CGF 有限的地方严格为正。因此，</p>
+<p>r(z_t, λ)=0 ⟺ ∇<em>λ K</em>{G_θ}(λ) = ∇_λ K_q(λ). (49)</p>
+<p>如果该等式在 λ=0 的整个开邻域上成立，两个 CGF 仅相差一个常数。由于 K_{G_θ}(0)=K_q(0)=0，它们在该邻域上一致：K_{G_θ}(λ) = K_q(λ)。(50)</p>
+<p>由矩生成函数的唯一性，学生和教师条件分布相同，如附录 A.2 中所建立的。</p>
+<p>因此，PMD 通过加权平方差异匹配学生和教师 CGF 的梯度。与匹配有限矩集合不同，在开放邻域上匹配这些梯度识别完整条件后验。加权因子依赖于学生分布，但不改变匹配条件的零点集。</p>
+<h4>B.3 PMD 作为 MGF 比率梯度匹配</h4>
+<p><strong>设置。</strong> 固定噪声水平 t 和噪声状态 z_t。设 q(x∣z_t) 表示教师后验，p_{G_θ}(x∣z_t) 表示随机学生 x̂=G_θ(z_t, u, t) 的条件分布，其中 u∼𝒩(0,I)。定义它们的矩生成函数（MGF）为</p>
+<p>M_{G_θ}(λ) = 𝔼_u[e^{λ^⊤x̂}], M_q(λ) = 𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (51)</p>
+<p>对于倾斜 λ∈ℝ^d，设 T_λ=D_t(z_t+ρ_tλ)，其中 ρ_t=σ_t²/α_t。我们假设教师去噪器精确且学生的指数矩在 λ=0 的开邻域上有限。以下所有表达式在所需期望有限处考虑。</p>
+<p><strong>MGF 比率梯度表示。</strong> PMD 倾斜残差 r(z_t, λ)=𝔼_u[h e^{λ^⊤h}]，其中 h=x̂−T_λ，满足</p>
+<p>r(z_t, λ) = w_q(λ) ∇<em>λ(M</em>{G_θ}(λ)/M_q(λ)), w_q(λ) = e^{−λ^⊤T_λ} M_q(λ) &gt; 0. (52)</p>
+<p>因此，PMD 总体目标具有精确表示</p>
+<p>ℒ_PMD(G_θ) = (1/2) 𝔼_{t,z_t,λ}[w_q(λ)² × ‖∇<em>λ(M</em>{G_θ}(λ)/M_q(λ))‖₂²]. (53)</p>
+<p><strong>证明。</strong> 我们首先用教师 MGF 表达教师目标。由 Tilt=Shift 恒等式（附录 A.1），</p>
+<p>T_λ = 𝔼_{q(x∣z_t)}[x e^{λ^⊤x}]/𝔼_{q(x∣z_t)}[e^{λ^⊤x}]. (54)</p>
+<p>对 M_q(λ) 关于 λ 微分给出 ∇<em>λ M_q(λ) = 𝔼</em>{q(x∣z_t)}[x e^{λ^⊤x}]。(55)</p>
+<p>因此，T_λ = ∇_λ M_q(λ)/M_q(λ)。(56)</p>
+<p>现在考虑 PMD 残差。代入 h=x̂−T_λ，</p>
+<p>r(z_t, λ) = 𝔼_u[(x̂−T_λ) e^{λ^⊤(x̂−T_λ)}] = e^{−λ^⊤T_λ} 𝔼_u[(x̂−T_λ) e^{λ^⊤x̂}]. (57)</p>
+<p>由于 T_λ 独立于 u，我们可以分离期望：</p>
+<p>r(z_t, λ) = e^{−λ^⊤T_λ}(𝔼_u[x̂ e^{λ^⊤x̂}] − T_λ 𝔼_u[e^{λ^⊤x̂}]). (58)</p>
+<p>由学生 MGF 的定义，∇<em>λ M</em>{G_θ}(λ) = 𝔼_u[x̂ e^{λ^⊤x̂}]。(59)</p>
+<p>将式 (56) 和 (59) 代入式 (58) 给出</p>
+<p>r(z_t, λ) = e^{−λ^⊤T_λ}(∇<em>λ M</em>{G_θ}(λ) − (M_{G_θ}(λ)/M_q(λ)) ∇_λ M_q(λ)). (60)</p>
+<p>应用商法则，</p>
+<p>∇<em>λ(M</em>{G_θ}(λ)/M_q(λ)) = ∇<em>λ M</em>{G_θ}(λ)/M_q(λ) − (M_{G_θ}(λ)/M_q(λ)²) ∇_λ M_q(λ). (61)</p>
+<p>将式 (61) 乘以 M_q(λ)，式 (60) 中括号内的表达式变为</p>
+<p>∇<em>λ M</em>{G_θ}(λ) − (M_{G_θ}(λ)/M_q(λ)) ∇<em>λ M_q(λ) = M_q(λ) ∇_λ(M</em>{G_θ}(λ)/M_q(λ)). (62)</p>
+<p>代回，我们得到</p>
+<p>r(z_t, λ) = e^{−λ^⊤T_λ} M_q(λ) × ∇<em>λ(M</em>{G_θ}(λ)/M_q(λ)). (63)</p>
+<p>定义 w_q(λ)=e^{−λ^⊤T_λ}M_q(λ) 证明式 (52)。将该恒等式代入 ℒ_PMD(G_θ)=(1/2)𝔼_{t,z_t,λ}[‖r(z_t, λ)‖₂²] 给出式 (53)。□</p>
+<p><strong>依赖教师的加权。</strong> 与附录 B.2 中的 CGF 梯度表示不同，加权因子 w_q(λ) 仅依赖于教师后验。写 K_q(λ)=log M_q(λ)，</p>
+<p>w_q(λ) = e^{K_q(λ)−λ^⊤T_λ}. (64)</p>
+<p>由于 K_q 是凸的，K_q(0)=0，且 ∇_λ K_q(λ)=T_λ，支撑超平面不等式给出 K_q(λ)≤λ^⊤T_λ。因此，</p>
+<p>0 &lt; w_q(λ) ≤ 1. (65)</p>
+<p>因此，PMD 可以解释为最小化学生与教师 MGF 之间比率的教师加权平方梯度。</p>
+<p><strong>后验识别。</strong> 假设学生的指数矩在围绕零的开球 B_r 上有限且倾斜分布在整个 B_r 中有正密度。如果条件 PMD 损失为零，则式 (53) 与 w_q(λ)&gt;0 一起蕴含</p>
+<p>∇<em>λ(M</em>{G_θ}(λ)/M_q(λ)) = 0，对所有 λ∈B_r。 (66)</p>
+<p>这里，等式最初在倾斜分布下几乎处处成立，并通过连续性扩展到整个 B_r。由于 B_r 是连通的，MGF 比率在该邻域上必须是常数。</p>
+<p>两个 MGF 在 λ=0 处都等于一：M_{G_θ}(0) = M_q(0) = 1。(67)</p>
+<p>因此它们的比率恒等于一，给出 M_{G_θ}(λ) = M_q(λ)，对所有 λ∈B_r。(68)</p>
+<p>由矩生成函数的唯一性，p_{G_θ}(·∣z_t) = q(·∣z_t)，(69)</p>
+<p>恢复后验识别定理（附录 A.2）。</p>
+<p>因此该表示提供了 PMD 的另一种解释：损失惩罚学生与教师 MGF 比率的变化，其零损失条件迫使该比率等于一。该比率及其加权因子仅用于理论解释；PMD 训练直接评估原始倾斜残差，而不显式计算任一 MGF。</p>
+<h3>附录 C 实现细节</h3>
+<h4>C.1 共享训练程序</h4>
+<p><strong>初始化和随机输入。</strong> 对于两个骨干网络，我们从相应的未蒸馏基础模型初始化学生和冻结教师。VAE 和文本编码器保持冻结。在每次学生调用时，我们将当前潜在与独立高斯噪声混合，并将该混合潜在与原始状态连接。我们仅加宽第一输入层，保留其预训练权重并将添加的原始状态权重初始化为零。输出形状不变。独立噪声抽取使学生随机；添加的输入通道保留对原始条件状态的访问。</p>
+<p><strong>在线策略训练和对抗损失。</strong> 我们通过展开当前学生获得分离的训练状态。在每个选定的噪声水平，相同的四次独立学生抽取在四个倾斜教师查询中重用，使用空间粗粒度探针。我们将 PMD 与固定权重 0.75 的非饱和逻辑 GAN 损失结合。可训练的判别器头从冻结教师读取标题条件特征。判别器在从 {1,…,999} 均匀采样的整数水平使用独立加噪的真实和生成潜在，在每个骨干的原生腐蚀调度下。标题和参考图像流独立采样。我们在每次学生更新之前对新鲜批次执行五次判别器更新，使用全局批量大小 16 而无学生 EMA。为了限制内存，我们缓存学生输出，计算其损失梯度，并用相同噪声重放每次抽取以进行反向传播。表 3 和表 4 给出其余设置。</p>
+<p><strong>有限样本偏差校正。</strong> softmax 加权均值是自归一化比率估计，在有限次抽取下通常有偏。对单个噪声残差平方也增加方差项。算法 2 扩展算法 1 以支持 M≥4 次独立抽取，替换其加权均值和平方误差步骤。对于 n≥2 次抽取的子集 S，设 h_i=x̂^(i)−T_λ 并定义</p>
+<p>r(S) = ∑<em>{i∈S} (exp(λ^⊤x̂^(i))/∑</em>{j∈S} exp(λ^⊤x̂^(j))) h_i, (70)</p>
+<p>r_JK(S) = n r(S) − ((n−1)/n) ∑_{i∈S} r(S∖{i}).</p>
+<p>我们对两个不相交组进行交叉拟合，并在 M 次抽取的所有唯一平衡分区集合 𝒫 上平均：</p>
+<p>ℒ̂<em>PMD = (1/|𝒫|) ∑</em>{(A,B)∈𝒫} r_JK(A)^⊤ r_JK(B).</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 扩散蒸馏, 后验匹配, 图像生成, 指数倾斜, 任意步采样</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
