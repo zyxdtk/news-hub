@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策列作为索引：可解释嵌入实现可解释实体匹配与搜索 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">决策列作为索引：可解释嵌入实现可解释实体匹配与搜索</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-20</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.27910" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Decision Columns as an Index: Interpretable Embeddings for Explainable Entity Matching and Search</h4>
+            <p><strong>中文摘要：</strong> 本文提出可解释嵌入方法，将决策列作为索引用于实体匹配与搜索。通过问题空间（自然语言问题列表）为每条记录生成向量，每个坐标对应决策模型对问题的校准答案（是/否/未陈述）。相似度分数可精确分解为逐问题项，支持解释、过滤和增量扩展。在WDC Products基准上，该方法在实体匹配中与稠密检索持平且能解释每个匹配；在STaRK-Amazon上，从检索失败中设计新问题使MRR提升三倍；单个MLP可从现有稠密索引以约1/200成本回填整个语料库。该方法适合作为稠密检索旁边的第二可读通道。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>决策列作为索引：面向可解释实体匹配与搜索的可解释嵌入</h1>
+<p>Aadharsh Kannan    Robert Bruckner    Phil Bernstein<br />
+Microsoft    Microsoft    Microsoft<br />
+aadkannan@microsoft.com    robruc@microsoft.com    philbe@microsoft.com</p>
+<h2>摘要</h2>
+<p>业务数据系统经常提出两个问题。这两条记录是否描述了同一个现实世界实体（实体匹配）？哪些记录满足一个其决定性属性是隐含而非明示的请求（检索）？随着智能体开始对业务记录采取行动，答案需要人们可以核查的理由：为什么两条记录被匹配，以及哪个事实会改变决策。稠密嵌入能很好地回答这两个问题，但不透明：没有哪个坐标单独具有含义，缺失的事实无法在不重新编码语料库的情况下添加，也没有坐标可以被过滤。我们可以使用<strong>决策列</strong>来解决这个问题，它在每一行上存储决策模型对自然语言问题的校准答案。我们研究<strong>可解释嵌入</strong>，它使用一组这样的列作为索引：记录的向量是它对有序问题列表的答案（是、否或未陈述）。每个相似度分数都精确分解为逐问题项，新问题可添加一个坐标而不改变现有坐标。在公开产品基准上我们发现以下结果。作为先检索后验证实体匹配器的候选生成器，问题空间在统计上与稠密检索持平，并精确解释每个接受的匹配。从检索失败中设计的问题将平均倒数排名提高了三倍，而无需重新编码任何答案。在搜索中，请求而非记录是瓶颈：推断正确产品的样子胜过仅编码请求所说的内容，问题空间分数可叠加到稠密检索器上，尽管尚未达到我们预先设定的置信水平。一个小型神经网络将现有稠密索引映射到完整的可解释向量，因此大型语料库可以从几千行已回答的行中以约1/200的成本回填。可解释嵌入最好与稠密检索并排使用，作为解释匹配、作为属性过滤、并在失败揭示缺失事实时增长的第二个可读通道。</p>
+<h2>1 引言</h2>
+<p>在业务记录被集成和搜索的地方，两项工作反复出现。<strong>实体匹配</strong>判断两条记录是否描述同一个现实世界事物：同一种产品被两家商店列出，或者一个客户从销售系统和客服系统分别作为不同源表或虚拟表的行到达。<strong>检索</strong>找到满足请求的记录，而请求的决定性属性通常是隐含而非明示的。我们跟踪两个真实案例，每项工作一个。在WDC Products匹配基准[51]中，三家网店列出了相同系列和速度的台式机内存："HyperX Fury Black Series 4GB DDR3 1600MHz CL10 DIMM Memory"、"Kingston HyperX FURY schwarz DIMM Kit 8GB, DDR3-1600, CL10"和"RAM HyperX Fury Black DDR3 1600MHz 2 x 4Go"。第一个是单条内存；另外两个是相同的双条套装，用不同的语言描述。匹配器应该连接两个套装列表并将单条内存分开。在STaRK-Amazon产品搜索基准[69]中，一个由人写的请求是："我从Frogg Toggs买了涉水裤并且很喜欢。我现在在寻找能进入更深河流的装备。你能推荐一些东西吗？"其22个正确产品中有17个是Frogg Toggs涉水裤，但请求从未提到涉水裤、钓鱼或裤装。在这两项工作中，"为什么"与答案同样重要。合并两条记录的数据管理员，或后来审查合并的审计员，需要看到哪些事实使记录看起来像同一个实体，以及哪个事实会改变决策。</p>
+<p>这些工作越来越多地由读取并对业务记录采取行动的智能体来执行。合并重复客户、跨多个表回答问题或筛选产品的智能体必须能够说明它依赖了什么。智能体以及监督它们的人因此需要可以像普通属性一样查询、在出现缺口时扩展、在采取行动时引用的表示。本文不评估智能体；该要求激发了我们所研究的表示。</p>
+<p>稠密文本嵌入[30, 54, 70]是由训练过的神经编码器产生的向量，是这两项工作的默认表示。它们准确但不透明。没有哪个坐标单独具有含义，因此对两条记录为何接近的解释必须在事后重构[2]。编码器从未学习过的事实，例如内存产品是否是多条套装，无法在不使用新模型重新编码整个语料库的情况下添加。坐标无法被过滤，因为它不是属性，而且某些业务数据库根本无法索引调用者提供的向量。</p>
+<p>改变的是提问的成本。<strong>决策模型</strong>通过为固定的一组结果中的每一个返回校准概率来回答关于记录的问题，而不是通过生成文本；<strong>校准</strong>意味着给定概率0.8的结果在大约80%的时间内发生。此类模型现在足够便宜，可以对每一行提出许多问题。激发这项工作的场景是业务数据平台上的<strong>决策列</strong>。制作者写一个问题，例如"此内存产品是否作为多条套装出售？"，每行都会收到一个校准答案，存储为可以过滤和排序的普通列。系统也可以在后台创建此类列，作为用户永远看不到的索引，以支持匹配和检索。答案然后形成一个向量空间，其中每个坐标都是可读的。</p>
+<p><strong>可解释嵌入</strong>使该空间显式化（§2）。<strong>问题空间</strong>是有序的自然语言问题列表。对于每条记录，决策模型给出是、否和未陈述的概率，记录对某个问题的坐标是𝑃(是) − 𝑃(否)：+1表示确信的"是"，−1表示确信的"否"，0表示记录沉默。两条记录的相似度是逐问题项的总和，因此单条内存和8GB套装的分数精确分解为命名项，唯一的负项是"一个是多条套装，另一个不是（−）"。在点积下，移除一项会精确地改变该项的分数，因此每个解释也是有效的反事实。添加问题会添加一个坐标并保持每个现有答案不变，任何坐标都可以提升为用于过滤的普通列。</p>
+<p>这项工作建立在问答嵌入之上。QA-Emb [7]引入了大语言模型（LLM）是/否答案的向量，并从高错误样本中增长其问题，CQG-MBQA [59]通过对比问题生成和蒸馏编码器扩展了该想法。我们在两个方向上扩展这条线。首先，我们使用返回对显式结果的校准概率的决策模型来回答，而不是从LLM生成的token中读取概率，其"未陈述"结果将沉默与反对证据分开。其次，我们将问题空间视为数据系统的组件，并在上述两项工作上测试它。</p>
+<p><strong>这如何帮助实体匹配？</strong>实用的匹配器首先为每个传入记录检索几个候选记录，然后用较慢、更准确的验证器检查每个候选对。我们使用问题空间作为候选生成器。在我们的运行中，单条内存和8GB套装在它们都回答的每个问题上都一致，除了产品是否是套装，因此它们被检索为候选对，验证器拒绝了它。两个套装列表在它们都回答的每个问题上都一致，包括套装问题，验证器接受它们为同一产品。因为候选分数分解为逐问题项，审查者可以看到什么使列表看起来相似，以及套装问题单独将单条内存分开。每个接受的匹配都带有这样的说明。</p>
+<p><strong>这如何帮助检索？</strong>请求的决定性属性通常是隐含的，如"进入更深河流的装备"。对请求字面地提出记录问题会留下大多数答案为"未陈述"。相反，模型推断正确产品在问题空间中的样子（这里是作为覆盖腿部的全身服装穿着的钓鱼装备：涉水裤），记录根据该推断目标进行评分。这是一种意图扩展形式：目标陈述了请求隐含的内容。问题空间分数也可以添加到稠密检索器的分数中，当请求因为没有任何问题命名缺失事实而失败时，命名它的问题可以添加到空间中而无需重新编码任何内容。</p>
+<p>我们询问可读表示是否能在可接受的准确性和成本下完成稠密嵌入的工作，同时通过构造提供解释、过滤和增长。我们报告在两个公开产品基准上的结果，用于实体匹配的WDC Products [51]和用于产品搜索的STaRK-Amazon [69]，并保留激发该问题的内部基准。我们的主要测试是<strong>预注册的</strong>：假设和通过标准在保留测试集被评分一次之前固定。表1定义了这一点以及我们使用的其他术语和指标。</p>
+<p>简而言之，问题空间在解释每个匹配的同时与稠密检索一样准确地匹配产品。单独用于搜索时它落后于稠密检索，主要因为短请求难以编码；但它在失败处增长，当模型推断预期产品时改进，为稠密搜索增加一致但尚未确认的增益，并且可以从现有稠密索引廉价填充。其价值是作为稠密检索旁边的第二个可读通道，而不是替代品。</p>
+<p><strong>贡献。</strong></p>
+<ol>
+<li>
+<p><strong>面向数据系统的可解释嵌入</strong>（§2）。由具有显式"未陈述"结果的决策模型回答的问题空间，每个问题的缓存键使空间可追加并让每个问题使用自己的回答模型，以及点积分数的逐问题项精确且反事实有效。</p>
+</li>
+<li>
+<p><strong>达到持平的可解释实体匹配</strong>（§4）。在WDC Products上，用作候选生成器的问题空间在相同验证器下在统计上与稠密检索持平，在已见和未见产品上F1（精确率和召回率的调和平均）差距在一分以内，每个接受的匹配都通过精确移除检查。</p>
+</li>
+<li>
+<p><strong>在失败处增长的空间</strong>（§5.1）。两轮从检索失败中设计问题的预注册将STaRK空间从32个问题增长到128个问题，并将其平均倒数排名（MRR，请求的第一个正确产品排名倒数的平均值，×100）提高了三倍，从7.3到21.9，无需重新编码任何现有答案。在128个问题时，设计的问题胜过等量的随机选择。</p>
+</li>
+<li>
+<p><strong>在搜索中，请求是瓶颈</strong>（§5.2，§5.3）。字面编码时，128问题空间达到21.9 MRR，而稠密检索为52.5。让LLM推断目标产品并与重要性加权请求融合，在预注册测试中比单独加权请求提高6.8个MRR点。将问题空间分数添加到稠密检索获得约2个MRR点，未达到其预注册标准。</p>
+</li>
+<li>
+<p><strong>从现有稠密索引回填</strong>（§6）。一个多层感知机（MLP，小型前馈神经网络）从记录的稠密嵌入预测其整个可解释向量，在未见文档上平均恢复每个问题答案方差的72–77%（𝑅²为0.72–0.77）。百万行语料库可以从5,000个已回答的行中以约1/199的每问题回答成本回填，搜索质量与完全回答的向量相差4个MRR点以内。</p>
+</li>
+</ol>
+<p>附录G报告了进一步的用途，即用从答案统计中标记自身的聚类进行主题发现，附录B是问题空间作为独立检索器的完整研究。</p>
+<h2>2 可解释嵌入</h2>
+<p><strong>可解释嵌入</strong>有四个部分：问题、答案、坐标和按问题分解的分数（图1）。每个问题的缓存键和增长问题列表的方式使空间表现得像一组列而不是冻结的模型。</p>
+<p><strong>问题和记录状态。</strong>维度是键、自然语言问题、"是"和"否"的简短含义，以及"未陈述"的固定含义："该行未说明，或无法从该行判断答案。"<strong>问题空间</strong>是一个表上有序的维度列表，加上状态模板、编码和正的逐维度权重𝑤𝑑；表2显示了示例。记录被渲染为模板字段的紧凑JSON<strong>状态</strong>。相关行仅在与记录本身有关时才被包括，因为无关上下文会改变答案（附录D）。维度的提示是固定的前言，告诉模型将每个字段值视为不受信任的数据而非指令，后跟问题（附录K）。大小限制和STaRK状态在附录C中。</p>
+<p><strong>来自决策模型的答案。</strong>每个问题被表述为对三个结果{是，否，未陈述}的选择。我们的主要回答模型Decision 1（MD1）是决策模型：它为每个结果返回校准概率，而不是从生成的token中读取的概率。我们还使用通用LLM gpt-6-luna，它在结构化请求中接收相同的三结果问题；每个返回的分布必须总和为1±0.02并被重新归一化。缺失或拒绝的答案编码为0。</p>
+<p><strong>坐标。</strong>用𝑝𝑑⁺(𝑟)、𝑝𝑑⁻(𝑟)和𝑝𝑑∅(𝑟)表示记录𝑟为"是"、"否"和"未陈述"的概率，<strong>证据坐标</strong>为</p>
+<p>𝑥𝑑(𝑟) = 𝑝𝑑⁺(𝑟) − 𝑝𝑑⁻(𝑟) ∈ [−1,1]。  (1)</p>
+<p>确信的"是"给出+1，确信的"否"给出−1，沉默给出0，因此坐标的大小可读作证据的强度。第三个结果很重要：当只提供"是"和"否"时，记录未陈述的事实倾向于"否"（附录C）。<strong>硬</strong>变体将最可能的结果映射为+1、−1或0；§4的实体匹配器使用它。具有两个以上值的属性（如颜色或包装数量）是具有命名选项的<strong>选择维度</strong>。它们的编码使得具有相同选项的两条记录对分数有正贡献，具有不同选项的两条记录相减，"未陈述"不贡献任何内容（附录C）。</p>
+<p><strong>表3：问题空间通过构造具有的属性，每个属性有一个测量值。标签如表1。</strong></p>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>机制和测量</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>可追加</td>
+<td>每个问题一个缓存键。多一个MD1问题每行约115个计费token；添加三个WDC问题使所有32个现有答案字节相同[D]。</td>
+<td>§5.1, 附录D</td>
+</tr>
+<tr>
+<td>多模型</td>
+<td>键命名模型。MD1和gpt-6-luna在92.9%的STaRK单元格上给出相同符号[D]；用gpt-6-luna重新回答种子问题使测试MRR变化+1.7，不显著[C]。</td>
+<td>附录D</td>
+</tr>
+<tr>
+<td>可过滤</td>
+<td>每个答案是一个属性。仅从存储答案排名，无向量或索引，达到MRR 12.9[E]。</td>
+<td>附录D</td>
+</tr>
+<tr>
+<td>精确可解释</td>
+<td>分数是命名项的总和。在点积下，移除项在100%的WDC候选对上精确移动分数，而余弦下为0%。</td>
+<td>§4</td>
+</tr>
+<tr>
+<td>可索引</td>
+<td>短数值向量。HNSW在10⁶个重采样的256问题向量上以recall@10 0.949在0.61ms内回答[D]。</td>
+<td>附录D</td>
+</tr>
+<tr>
+<td>稳定</td>
+<td>MD1对256个单元格中的256个给出位相同答案[D]；所有八个改写的WDC问题都稳定[C]；无关上下文确实会改变答案[D]。</td>
+<td>附录D</td>
+</tr>
+</tbody>
+</table>
+<p><strong>相似度和精确分解。</strong>对于两个编码记录x(𝑎)和x(𝑏)，分数是逐问题项的总和：</p>
+<p>𝑠dot(𝑎,𝑏) = Σ𝑛𝑑=1 𝑡𝑑(𝑎,𝑏)，𝑡𝑑(𝑎,𝑏) = 𝑤𝑑² 𝑥𝑑(𝑎)𝑥𝑑(𝑏)，</p>
+<p>𝑠cos(𝑎,𝑏) = Σ𝑛𝑑=1 𝑡𝑑(𝑎,𝑏) / (∥Wx(𝑎)∥ ∥Wx(𝑏)∥)。  (2)</p>
+<p>在两个规则下，分数都<strong>精确地</strong>是命名项的总和，因此解释列出最大的项，例如"两者都是多条套装（+）"或"一个是计时码表，另一个不是（−）"。规则在反事实移除下不同：在点积下，删除一组维度会精确地改变其项的总和的分数，而在余弦下它还会改变两个范数（§4）。</p>
+<p><strong>缓存和可追加性。</strong>每个维度在提示版本、前言、回答模型、表、状态模板和该维度自己的定义上具有内容哈希ℎ𝑑，而不在任何其他维度上。每个存储的答案相对于（ℎ𝑑，记录输入哈希）是新鲜的、过时的或缺失的。当添加维度时其答案缺失，当编辑时过时；只询问那些答案，打包到模型允许的每记录尽可能少的调用中。这使空间可追加（§5.1）并让每个问题命名自己的回答模型。有序ℎ𝑑、编码和权重上的空间哈希将任何索引绑定到其背后的确切问题。</p>
+<p><strong>编码请求。</strong>搜索请求也必须成为同一空间中的向量。字面或<strong>对称</strong>编码器使用请求文本作为状态，并就"购物者想要的产品，如请求所述或清楚暗示的"提出相同的问题，当请求沉默时选择"未陈述"。<strong>要求</strong>变体将每个问题重新表述为要求（附录C）。§5.2用LLM推断的<strong>目标</strong>替换字面编码。</p>
+<p><strong>增长空间。</strong>种子空间由LLM（gpt-5.6-luna）从样本记录组中诱导。然后它按轮次增长，本着QA-Emb错误驱动问题生成的精神[7]。候选问题从训练请求的普查和检索失败的分析中编写（在我们的运行中，由LLM编码助手）；廉价模型在每行上回答每个候选；候选必须通过覆盖、拒绝和冗余的准入规则；训练拆分上按MRR的贪婪前向选择选择固定数量。来自相同准入候选的随机选择是对照。种子和轮次计数在附录C中。</p>
+<h2>3 数据和评估</h2>
+<p><strong>实体匹配：WDC Products。</strong>我们使用WDC Products [51]的80%边界案例变体，这是来自许多网店的产品报价基准：11,715个报价，2,162个产品，已见和未见测试集各为1,000个报价、500个产品。未见产品不出现在训练数据中，每个测试报价恰好有一个真实匹配。稠密检索使用bge-base-en-v1.5 [70]，关键词基线是BM25 [55]，一个基于词频的经典分数；编码器字段和BM25设置在附录C中。</p>
+<p><strong>产品搜索：STaRK-Amazon。</strong>STaRK-Amazon [69]将购物者请求与满足它们的Amazon产品配对，在957,192个产品中。对每个产品提出128个问题超出了我们的预算，因此每个方法对相同的固定25,919个产品池进行排名：每个请求的每个正确产品加上每个请求的顶级关键词和稠密候选（附录C）。池结果因此与已发布的全目录结果不可比较。我们在STaRK的281个测试请求上测试（81个人写的和200个合成的）；设计和调优只使用STaRK训练和验证请求的拆分，称为fit、dev和val。</p>
+<p><strong>预注册和证据。</strong>每个增长轮、匹配门、查询-目标研究和回填评估都是<strong>预注册的</strong>：假设、比较、通过标准和自助法种子在<strong>封闭</strong>测试拆分被评分之前记录，该拆分每研究评分一次。区间来自自助法：测试请求或报价被有放回地重采样，度量被重新计算，当比较两个系统时在相同的重采样上。结果标记为确认性、探索性或描述性，如表1所定义；标签出现在标题和声明表（表8）中。重采样计数和种子在附录J中。</p>
+<h2>4 达到持平的可解释实体匹配</h2>
+<p>问题空间可以替换实体匹配器的候选生成器为稠密检索而不损失准确性，然后它接受的每个匹配都带有精确解释。这在数据管理员、审计员或智能体必须证明合并合理性的地方很重要：解释命名两条记录一致的事实和会改变决策的事实。</p>
+<p><strong>设置。</strong>我们在WDC Products上使用标准的先检索后验证匹配器（§3）。每个测试报价检索其前五个候选，验证器（MD1，被问"这些是相同产品吗？"）对每个候选对评分；高于在验证数据上调优的阈值的对是匹配。系统之间只有候选生成器改变。我们的生成器使用35维WDC空间：32个种子和第1轮是/否问题加上存储大小、颜色和包装数量的三个选择维度。它使用硬编码、等权重和点积，并以0.4的份额混合BM25标题分数，使标题作为一个额外的命名项出现。预注册的门在验证器运行之前固定，定义了持平：在已见和未见测试集上，生成器必须在候选recall@10上保持在稠密检索的5分以内，在相同验证器下F1上保持在2分以内，并且每个接受的匹配必须通过下面的移除检查。</p>
+<p><strong>移除检查。</strong>如果解释正确预测了移除其项时会发生什么，则解释是<strong>忠实的</strong>。我们删除候选对的五个最大正项和五个最大负项，重新计算分数，并要求它按预测量在0.05以内移动。在硬编码的点积下，每个WDC候选对都通过（误差≈10⁻¹⁷）；在证据编码的余弦下，没有一个通过（平均误差0.088），因为移除还会改变范数。</p>
+<p><strong>结果。</strong>门通过了（表4）。在相同验证器下，问题空间在已见和未见产品上分别达到F1 75.8和80.6，而稠密检索为75.5和81.2。配对自助法差异，已见+0.4 [−1.1, 1.9]和未见−0.7 [−2.0, 0.7]，与零无法区分。问题空间还将更多真实匹配置于其前五个候选中（R@5 88.4对84.6已见，91.2对90.6未见），其531个已见和488个未见接受的匹配中的每一个都通过移除检查。余弦版本具有最高的点F1但在每个匹配上都未通过移除检查。</p>
+<p><strong>运行示例。</strong>在§1的示例中，单个4GB模块和"Kit 8GB"列表被检索为候选对。它们在35个维度中的28个上一致，其中包括memorykind、ramdesktop和colour，它们唯一的不一致，因此唯一的负项，是ramkit：产品是否为多条套装。验证器给该对0.11的匹配概率并拒绝它，移除套装项精确地按该项改变问题空间分数。两个套装列表在29个维度上一致，包括套装问题，无分歧，被接受（0.75）。稠密检索没有将这两个列表置于其前五个候选中；这是一个例子，上述召回数字是汇总证据。附录E标识了这些报价。</p>
+<p><strong>问题的贡献。</strong>验证器完成了大部分匹配工作：没有它，每个生成器得分27–36 F1，具有相同验证器的BM25也具有竞争力（74.6和81.7）。问题空间添加的是每个匹配的说明。选择维度让问题而不是标题承载该说明。仅用32个是/否问题，调优的配置依赖于标题，标题提供了82–84%的分数；添加存储大小、颜色和包装数量后，调优的标题份额从0.9下降到0.4，标题词只提供27–30%。<strong>多值属性</strong>是区分近似重复产品的关键。选择维度是在早期32问题配置被测试后添加的，该配置仅勉强通过门；附录E报告了该运行、完整的门和注意事项。</p>
+<h2>5 使用增长的问题空间进行搜索</h2>
+<p>两个因素限制了问题空间作为搜索索引：它对记录提出哪些问题，以及请求如何成为同一空间中的目标。两者都可以在不重新编码单个存储答案的情况下改进。添加从检索失败中设计的问题提高了搜索质量，设计的问题胜过随机选择的问题（§5.1）。更大的瓶颈是请求：推断正确产品的样子，而不是编码请求字面上说的内容，进一步改进搜索（§5.2）。在稠密检索器旁边，问题空间分数增加了一致的增益，我们的预注册测试未确认（§5.3）。结果在281个封闭STaRK-Amazon测试请求上（§3），除非标记为开发请求上的诊断，并通过平均倒数排名（MRR）测量：请求的第一个正确产品排名倒数的平均值，报告×100。</p>
+<h3>5.1 增长空间</h3>
+<p>添加问题改进了搜索，最有帮助的问题是通过测量增益选择的问题。因为每个答案在其自己的问题下缓存（§2），新问题要求每记录一个新答案并保持每个现有答案不变。打包到已经为记录评分的调用中，多一个MD1问题每记录约115个计费token，为STaRK池中的每个记录回答64个新问题花了约27分钟（附录D）。稠密编码器没有这样的步骤：新事实需要新模型和重新编码的语料库。</p>
+<p>空间通过§2的两个预注册轮次增长，每轮需要在封闭测试上至少获得5个MRR点。LLM从样本记录中诱导了32个种子问题。在每轮中，LLM编码助手然后为失败请求组编写候选问题，例如没有问题能区分的产品类型，而不是每个失败一个问题；失败是正确产品排名在前20之外的请求。第1轮利用了1,252个训练请求的普查和其中32问题空间失败的1,069个；它编写了107个候选，102个通过准入，选择了32个。第2轮利用了64问题空间在1,724个开发请求中的1,164个失败；它编写了64个新候选，从131个准入中选择了64个问题（新问题和第1轮未选择的），其中28个是新的。第二个模型gpt-6-luna回答了每条记录上的每个候选，选择只使用训练请求（附录C）。两轮都通过了（图2）。从32增长到64个问题将MRR从7.3提高到16.3，增益+9.0 [6.5, 11.6]，增长到128个问题将其提高到21.9，+5.6 [3.2, 8.2]。<strong>设计很重要。</strong>在128个问题时，设计的问题比来自相同准入候选的等大随机抽取好+4.0 [1.8, 6.2]；在64个问题时，差异+2.25不显著。第2轮新编写的问题不比第1轮遗留候选的选择好，所以重要的是通过测量的增益选择问题，无论候选是如何编写的。表2显示了设计的问题如wheeltire。</p>
+<h3>5.2 请求是瓶颈</h3>
+<p>单独使用时，即使128问题空间也排名远低于文本检索器，原因在于请求而非记录。使用§2的字面编码器，它达到21.9 MRR，而稠密检索为52.5，BM25为53.7（附录B）。然而，64问题空间在开发请求上的诊断显示记录被描述得足够好：使用正确产品自己的向量作为查询将其排在97.0%的请求的前20中（计算并列时偏向它）。损失出现在将短请求转换为向量中。字面询问时，记录问题将请求的大多数答案留为"未陈述"，平等地权衡每个问题，并且在充满判断的问题上，经常与正确产品矛盾：在该空间的开发失败中，61%的请求答案与正确产品的记录相矛盾。</p>
+<p><strong>我们因此改变对请求的询问内容。</strong>不是编码请求所说的，而是模型模拟购物者。三种方法对相同的128问题记录向量评分；只有目标改变（附录F）。<strong>重要性加权请求</strong>保持字面要求向量，但按gpt-6-luna判断的对购物者的重要程度（必要、有帮助或不重要）加权每个问题。<strong>推断目标</strong>给第二个模型（gpt-6-astra）请求、所有128个问题和每个问题在目录中的"是"答案份额，并一次性询问购物者将购买的产品如何被标记。沉默变为目录先验而不是零，问题从"请求说了什么？"变为"答案会是什么样子？"。<strong>假设性列表</strong>，遵循假设性文档嵌入（HyDE）[18]，让模型为购物者会购买的产品编写三个现实列表，而不看到我们的问题；然后记录编码器对它们编码。分数按请求归一化并以在fit拆分上选择的权重求和。</p>
+<p><strong>推断目标是有帮助的。</strong>在预注册的封闭测试（T1）中，将推断目标与重要性加权请求融合比单独的重要性加权请求好+6.8 [2.5, 11.2] MRR，97.5%区间因为两个确认性测试共享误差预算；它在166个请求上更好，在75个上更差。推断目标指向正确的方向：在开发请求上，减去目录均值后，它们与正确产品向量的余弦相似度为0.77，假设性列表为0.74，而重要性加权请求为0.14，后者主要说明哪些问题重要。§1的深河请求是封闭测试请求之一，展示了该机制。它没有陈述任何区分涉水裤的属性，重要性加权请求将第一个正确产品排在第1,296位。推断目标以0.985回答fishing，以0.85回答onepiece（连体或全身服装），以0.70回答fullpants（全长裤装），而目录"是"份额分别为5%、2%和1%，它将一个正确产品排在第一位；融合排名将一个排在第二，稠密检索排在第四。§5.1的增长轮添加了所有这三个问题。这是单个请求；上面的测试是证据（附录F）。将假设性列表添加到融合达到34.2 MRR，比相同记录向量上的字面编码器高12.3个点，前20中有正确产品的请求份额从52.0%上升到75.8%（表5）。此比较是描述性的，因为字面编码器不是预注册分支。查询端而非记录端是阻碍问题空间搜索的原因。</p>
+<h3>5.3 在稠密检索旁边</h3>
+<p>问题空间分数也添加到稠密检索器，一致但尚未达到我们的预注册水平。用fit选择的推断目标和假设性列表的小权重重新排名稠密分数（T2）将MRR提高+2.0 [−0.4, 4.3]（97.5%），94个请求更好，37个更差，并将Hit@20从84.3%提高到88.3%。区间包含零，因此T2未确认。方向是一致的：它对人写和合成请求都成立，对于稠密分数与重要性加权请求的更简单融合，以及在开发拆分上（附录F）。我们将此解读为问题空间分数携带稠密检索器缺乏的信息的证据，价值约2个MRR点，需要更大的测试集来确认。分数如何组合很重要：未调优的排名融合降低MRR（附录B）。<strong>成本是每请求而非每记录。</strong>推断目标需要一次LLM调用，假设性列表需要一次生成调用和六次编码器调用；没有存储答案被重新编码，每个重新排名的结果仍然分解为问题级项。</p>
+<h2>6 从现有稠密索引回填</h2>
+<p>对每条记录提出每个问题是可解释嵌入的主要成本，但大部分可以避免。许多语料库已经为每个记录提供了稠密嵌入，一个小网络可以从中预测整个可解释向量。回答模型，即<strong>教师</strong>，回答几千条记录的样本；多层感知机（MLP），小型前馈神经网络，作为<strong>学生</strong>学习将每条记录的稠密向量映射到教师的答案；学生填充其他所有记录。具有稠密索引的语料库因此可以以成本的一小部分获得可读索引。与蒸馏到新文本编码器[59]不同（后者仍必须重新阅读每个文档），学生从已经存在的向量开始。</p>
+<p><strong>设置。</strong>协议、指标、种子和模型选择在任何模型训练之前在代码中固定。五个配对集中的每一个将现有稠密向量与完全相同记录的教师答案配对：STaRK产品与MD1回答的32个种子问题以及64问题空间，两个对照（gpt-6-luna教师或较小稠密编码器作为输入），以及WDC报价与32个MD1问题。拆分将近似重复记录保持在一起。一个MLP用单个损失预测整个向量，基线是岭回归，一个正则化线性映射（附录H）。我们在保留文档上报告𝑅²：预测解释的教师答案方差份额，按问题平均。</p>
+<p><strong>恢复。</strong>一个网络恢复了教师所说的大部分内容。在<strong>未见</strong>文档上，它解释了每个问题答案方差的71–77%（表6），比岭回归好0.09–0.19 𝑅²。产品<strong>是什么</strong>（类别、活动、受众、材料）几乎完美恢复，例如fanmerch为0.966，而从评论中得出的判断恢复最差，例如reviewreliable为0.363。学生与其MD1教师的距离与第二个回答模型一样：将MD1视为真值，学生达到𝑅² 0.742，gpt-6-luna的答案为0.649。在约2,000个教师行以下岭回归更好，MLP在2,000–5,000行处超过它，这就是我们从5,000回填的原因。泛化是部分的：整个产品类别被保留时，𝑅²下降到0.495，而随机拆分为0.732，在STaRK上训练的映射在WDC上失败（𝑅² = −0.268），因此新领域需要自己的教师样本（附录H）。</p>
+<p><strong>回填。</strong>预测向量可以替代搜索中的教师向量。回填让教师回答均匀样本，训练一个MLP，预测其他所有记录，并在存在教师向量的地方保留教师向量。有5,000个教师行，STaRK排名器保持在完全回答向量的0–4 MRR点以内（表7）；只有单独的64问题空间（−2.8）及其与稠密检索和BM25的三方融合（−4.0）有不包含零的区间。<strong>交叉拟合</strong>预测（每条记录由在其他折叠上训练的模型预测）在每个排名器上与教师的向量在统计上无法区分。</p>
+<p><strong>成本。</strong>在测量的每行教师成本$0.000207和假设的CPU价格下，从5,000个教师行回填百万行语料库花费$1.04，而每行教师为$207.13（约1/199），在一个通道上花费3.8小时而不是760小时（图3）；盈亏平衡约为5,000行。质量监视器可以将最有风险的预测行路由回教师（附录H）。</p>
+<h2>7 相关工作</h2>
+<p><strong>问题定义和概念嵌入。</strong>我们的工作最直接地建立在QA-Emb [7]之上，它通过通用LLM对问题列表的是/否答案表示文本，并将向量主要应用于预测fMRI响应，以及较小的检索和聚类评估。QA-Emb引入了"是"的概率作为坐标、学习的逐问题权重、两个LLM的平均答案、每个问题一个头的蒸馏编码器、从高错误样本中增长问题"类似于梯度提升"，以及与BM25的融合，这将MS MARCO MRR从0.77提高到0.80（0–1量表）。CQG-MBQA [59]扩展了该想法：它从语料库聚类对比地生成问题，用每个问题一个MLP头训练冻结编码器，并随着问题数量增长评估语义相似性、检索和聚类。并行工作将问题基于生物医学本体[60]并分层组织它们[45]，发现在小预算下浅层问题更好。LDIR [64]从与锚文本的相关性导出可解释坐标，Opitz等人[47]调查了可解释文本嵌入和相似性解释。我们通过用决策模型回答来扩展这条线，其输出是对显式结果的校准分布而不是LLM的token概率，通过逐问题混合回答模型，通过针对随机问题对照测量可追加增长，以及通过在实体匹配、搜索增强和语料库回填中评估问题空间；附录G涵盖主题发现。</p>
+<p>该家族还源自概念瓶颈模型[33]及其无标签和LLM生成的变体[39, 46]，它们在任务头之前预测人类命名的概念；Ludan等人[39]同样从错误中增长概念集，用于分类。稀疏可解释词向量[14, 58]和稀疏自编码器（SAE）学习的特征[10, 13]，包括稠密检索器嵌入上的SAE [48]，先发现特征后命名。问题空间先命名特征后测量。</p>
+<p><strong>模型作为标注者。</strong>每个坐标是模型标注。LLM可以匹配或超过众包标注者[19]并判断搜索相关性[61]；它们的token概率部分校准[22, 29]，言语化的置信度可以更好地校准[62]。monoT5 [44]使用"true"token的概率作为相关性分数。我们对每条记录的许多问题使用相同类型的信号，取自返回固定结果集校准概率的决策模型，因此坐标的大小是可用的证据度量。</p>
+<p><strong>检索、融合和查询扩展。</strong>我们与BM25 [55]和BGE稠密编码器[70]比较，在DPR、E5和Contriever家族[25, 30, 65]中。后期交互[31]和学习稀疏检索[16]以其他方式用准确性交换可读性；SPLADE的坐标是词汇项，而我们的是可以命名单个项无法表达的属性的问题。我们用归一化分数插值[11, 67]而不是排名融合[12]来组合检索器。HyDE [18]和Query2doc [66]让LLM为查询编写假设性文档，生成相关性反馈[40]使用LLM文本作为反馈，在相关性反馈的传统中[34, 56]。我们通过用行编码器编码假设性列表将HyDE带入问题空间，并添加了LLM直接编写目标向量的进一步步骤。</p>
+<p><strong>产品搜索和实体匹配。</strong>STaRK [69]提供了Amazon产品上的半结构化产品搜索查询，字段感知检索器如mFAR [37]利用其结构。WDC Products [51]对跨商店匹配产品报价进行基准测试，有已见和未见产品以及许多边界案例；微调的匹配器如Ditto [38]和LLM匹配器[50, 52]是参考系统。分面搜索[63]是属性过滤的经典界面；提升的问题维度充当用自然语言定义的分面。据我们所知，这是问题空间在STaRK和WDC Products上的首次评估。</p>
+<p><strong>表示之间的映射。</strong>知识蒸馏[24]在教师的输出上训练廉价的学生。模型拼接[5, 36]、相对表示[43]和无监督嵌入翻译[27]表明一种表示通常可以映射到另一种，探测[1, 6]和概念激活向量[32]从隐藏状态中读取人类概念。Vec2text [42]表明稠密文本嵌入保留了其大部分输入。我们的回填MLP将这些想法应用为将现有稠密索引映射到整个问题空间的生产学生，我们遵循Belinkov [6]将其准确性解读为可恢复性而非包含的证明。</p>
+<p><strong>解释和过滤搜索。</strong>可解释IR [2]、解释增强排名器[15]和可解释推荐[71]通常向不透明的评分器添加解释。遵循Rudin [57]，我们使用通过构造可解释的评分器，遵循Jacovi和Goldberg [26]，我们将分数对其项的忠实性与答案对记录的忠实性分开。近似最近邻索引[28, 41]和过滤变体[20, 49]支持谓词下的向量搜索；问题答案也可以存储为普通属性，因此许多过滤器根本不需要向量索引。</p>
+<h2>8 讨论和结论</h2>
+<p><strong>第二个可读通道。</strong>表8总结了证据。可解释嵌入用稠密向量缺乏的属性交换一些检索准确性：命名和可检查的坐标、无需重新编码的增长、逐问题的回答模型选择，以及通过构造的过滤和解释。单独使用时，它们的检索远低于稠密编码器。作为验证匹配器的候选生成器，它们匹配其准确性，在搜索中在其旁边它们增加一致但尚未确认的增益。它们的价值因此是附加到每个记录的<strong>第二个可读通道</strong>。它逐问题解释每个匹配，可以作为普通属性查询和过滤，在失败暴露缺失事实时增长，并且一旦样本被回答就可以从稠密索引廉价回填。对于对业务记录采取行动的人和智能体，匹配或排名然后可以用命名事实引用，缺失事实可以作为问题添加而不是通过重新训练编码器。正确产品自己的向量将其排在97%的请求的前20中，仅更改请求目标就在相同记录上获得12.3个MRR点，因此更好的请求建模是更强搜索的最有希望的途径。</p>
+<p><strong>其他用途。</strong>相同的答案支持我们在附录中报告的用途。聚类问题向量产生其过度代表的答案命名它们的主题：在STaRK上，作为成员规则读取，生成的标签具有平均精确率0.845，而匹配流行度的随机规则为0.197，并且在不阅读文档或调用模型的情况下计算（附录G）。</p>
+<p><strong>实用指导。</strong>将空间与稠密或词汇检索并排使用，或用于过滤、验证和解释，而不是作为唯一的检索器。从失败中设计问题并通过测量的增益选择它们，更喜欢关于积极身份（记录<strong>是什么</strong>）的问题而不是从评论中得出的判断：确认身份问题的请求更可靠地被检索，这样的问题从稠密向量中更好地恢复。通过推断目标记录而不是通过字面阅读来编码请求。对于具有现有稠密索引的语料库，用教师标记几千条记录，在约2,000条记录以下使用岭回归，以上使用MLP，并将最有风险的记录路由回教师。</p>
+<p><strong>局限性。</strong>单独使用时，问题空间的检索远低于稠密检索：字面编码器为21.9 MRR，最佳请求目标为34.2，而稠密检索为52.5。稠密增强增益未达到其预注册区间。两个数据集都是英文产品数据，STaRK结果使用固定的候选产品池而不是完整目录；其他领域、语言和记录类型未经测试。每个答案是模型的推断。我们依赖决策模型的校准，没有在这些任务上针对金标签测量它；判断模型与MD1的一致性跟踪MD1的置信度（附录D），但判断模型与问题提议者共享模型家族，因此这是健全性检查而不是真值。所有回填数字将教师的答案视为真值，新领域需要自己的教师样本。每个预注册研究对STaRK测试拆分评分一次，但多个研究依次使用它，后续研究在早期结果已知后设计；fit、dev和val在设计期间暴露并作为监视器。成本假设CPU价格和一个模型的定价。</p>
+<p><strong>更广泛的影响。</strong>可解释坐标使表示更容易审计：审查者可以看到问了什么、回答了什么以及每个答案如何移动分数。相同的属性使得按推断属性过滤记录变得容易。当记录描述人时，问题是执行政策的地方，不应询问有关受保护或敏感属性的问题。每个答案是模型从记录中的推断，而不是经过验证的事实，应该这样呈现。</p>
+<p><strong>结论。</strong>可解释嵌入将问题列表转换为向量空间，其每个坐标都可以被命名、检查、增长和过滤，其每个相似度都精确分解为逐问题项。由具有显式"未陈述"结果的决策模型回答，这样的空间在验证实体匹配中匹配稠密候选生成，同时解释每个匹配。它在搜索失败处增长而无需重新编码存储的答案，当模型推断正确产品的样子时它搜索得更好，其分数添加到稠密排名，尽管尚未达到我们的预注册水平。一个在几千条已回答记录上训练的小型网络将其扩展到已经有稠密嵌入的语料库的其余部分，成本只占一小部分。</p>
+<h2>参考文献</h2>
+<p>[1] Guillaume Alain and Yoshua Bengio. Understanding intermediate layers using linear classifier probes. arXiv preprint arXiv:1610.01644, 2016.</p>
+<p>[2] Avishek Anand, Procheta Sen, Sourav Saha, Manisha Verma, and Mandar Mitra. Explainable information retrieval: A survey. arXiv preprint arXiv:2211.02405, 2022.</p>
+<p>[3] Dimo Angelov. Top2Vec: Distributed representations of topics. arXiv preprint arXiv:2008.09470, 2020.</p>
+<p>[4] David Arthur and Sergei Vassilvitskii. k-means++: The advantages of careful seeding. In Proceedings of the 18th Annual ACM-SIAM Symposium on Discrete Algorithms (SODA), pages 1027–1035, 2007.</p>
+<p>[5] Yamini Bansal, Preetum Nakkiran, and Boaz Barak. Revisiting model stitching to compare neural representations. In Advances in Neural Information Processing Systems 34 (NeurIPS 2021), 2021.</p>
+<p>[6] Yonatan Belinkov. Probing classifiers: Promises, shortcomings, and advances. Computational Linguistics, 2022.</p>
+<p>[7] Vinamra Benara, Chandan Singh, John X. Morris, Richard Antonello, Ion Stoica, Alexander G. Huth, and Jianfeng Gao. Crafting interpretable embeddings for language neuroscience by asking LLMs questions. In Advances in Neural Information Processing Systems 37 (NeurIPS 2024), pages 124137–124162, 2024.</p>
+<p>[8] Bessa, Mazaré, Szilvasy, Touvron, Picard, Douze, and Jégou. e-means: outperforming k-means (in one-tenth the epochs). arXiv preprint arXiv:2611.09501, 2026.</p>
+<p>[9] David M. Blei, Andrew Y. Ng, and Michael I. Jordan. Latent Dirichlet allocation. Journal of Machine Learning Research, 3:993–1022, 2003.</p>
+<p>[10] Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn, et al. Towards monosemanticity: Decomposing language models with dictionary learning. Transformer Circuits Thread, 2023.</p>
+<p>[11] Sebastian Bruch, Siyu Gai, and Amir Ingber. An analysis of fusion functions for hybrid retrieval. ACM Transactions on Information Systems, 2023.</p>
+<p>[12] Gordon V. Cormack, Charles L. A. Clarke, and Stefan Büttcher. Reciprocal rank fusion outperforms Condorcet and individual rank learning methods. In Proceedings of the 32nd International ACM SIGIR Conference, pages 758–759, 2009.</p>
+<p>[13] Hoagy Cunningham, Aidan Ewart, Logan Riggs, Robert Huben, and Lee Sharkey. Sparse autoencoders find highly interpretable features in language models. In International Conference on Learning Representations (ICLR), 2024.</p>
+<p>[14] Manaal Faruqui, Yulia Tsvetkov, Dani Yogatama, Chris Dyer, and Noah A. Smith. Sparse overcomplete word vector representations. In Proceedings of ACL-IJCNLP 2015, 2015.</p>
+<p>[15] Fernando Ferraretto et al. ExaRanker: Explanation-augmented neural ranker. arXiv preprint arXiv:2301.10521, 2023.</p>
+<p>[16] Thibault Formal, Benjamin Piwowarski, and Stéphane Clinchant. SPLADE: Sparse lexical and expansion model for first stage ranking. In Proceedings of the 44th International ACM SIGIR Conference, 2021.</p>
+<p>[17] Yarin Gal and Zoubin Ghahramani. Dropout as a Bayesian approximation: Representing model uncertainty in deep learning. In Proceedings of the 33rd International Conference on Machine Learning, 2016.</p>
+<p>[18] Luyu Gao, Xueguang Ma, Jimmy Lin, and Jamie Callan. Precise zero-shot dense retrieval without relevance labels. In Proceedings of ACL 2023, 2023.</p>
+<p>[19] Fabrizio Gilardi, Meysam Alizadeh, and Maël Kubli. ChatGPT outperforms crowd workers for text-annotation tasks. Proceedings of the National Academy of Sciences, 120(30), 2023.</p>
+<p>[20] Siddharth Gollapudi et al. Filtered-DiskANN: Graph algorithms for approximate nearest neighbor search with filters. In Proceedings of the ACM Web Conference (WWW 2023), 2023.</p>
+<p>[21] Maarten Grootendorst. BERTopic: Neural topic modeling with a class-based TF-IDF procedure. arXiv preprint arXiv:2203.05794, 2022.</p>
+<p>[22] Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. On calibration of modern neural networks. In Proceedings of the 34th International Conference on Machine Learning (ICML), 2017.</p>
+<p>[23] Dan Hendrycks and Kevin Gimpel. Gaussian error linear units (GELUs). arXiv preprint arXiv:1606.08415, 2016.</p>
+<p>[24] Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531, 2015.</p>
+<p>[25] Gautier Izacard, Mathilde Caron, Lucas Hosseini, Sebastian Riedel, Piotr Bojanowski, Armand Joulin, and Edouard Grave. Unsupervised dense information retrieval with contrastive learning. Transactions on Machine Learning Research, 2022.</p>
+<p>[26] Alon Jacovi and Yoav Goldberg. Towards faithfully interpretable NLP systems: How should we define and evaluate faithfulness? In Proceedings of ACL 2020, 2020.</p>
+<p>[27] Rishi Jha, Collin Zhang, Vitaly Shmatikov, and John X. Morris. Harnessing the universal geometry of embeddings. In Advances in Neural Information Processing Systems (NeurIPS 2025), 2025.</p>
+<p>[28] Jeff Johnson, Matthijs Douze, and Hervé Jégou. Billion-scale similarity search with GPUs. IEEE Transactions on Big Data, 2019.</p>
+<p>[29] Saurav Kadavath, Tom Conerly, Amanda Askell, et al. Language models (mostly) know what they know. arXiv preprint arXiv:2207.05221, 2022.</p>
+<p>[30] Vladimir Karpukhin, Barlas Oğuz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. Dense passage retrieval for open-domain question answering. In Proceedings of EMNLP 2020, 2020.</p>
+<p>[31] Omar Khattab and Matei Zaharia. ColBERT: Efficient and effective passage search via contextualized late interaction over BERT. In Proceedings of the 43rd International ACM SIGIR Conference, 2020.</p>
+<p>[32] Been Kim, Martin Wattenberg, Justin Gilmer, Carrie Cai, James Wexler, Fernanda Viegas, and Rory Sayres. Interpretability beyond feature attribution: Quantitative testing with concept activation vectors (TCAV). In Proceedings of the 35th International Conference on Machine Learning (ICML), 2018.</p>
+<p>[33] Pang Wei Koh, Thao Nguyen, Yew Siang Tang, Stephen Mussmann, Emma Pierson, Been Kim, and Percy Liang. Concept bottleneck models. In Proceedings of the 37th International Conference on Machine Learning (ICML), 2020.</p>
+<p>[34] Victor Lavrenko and W. Bruce Croft. Relevance based language models. In Proceedings of the 24th International ACM SIGIR Conference, pages 120–127, 2001.</p>
+<p>[35] Kimin Lee, Kibok Lee, Honglak Lee, and Jinwoo Shin. A simple unified framework for detecting out-of-distribution samples and adversarial attacks. In Advances in Neural Information Processing Systems, volume 31, 2018.</p>
+<p>[36] Karel Lenc and Andrea Vedaldi. Understanding image representations by measuring their equivariance and equivalence. In Proceedings of CVPR 2015, 2015.</p>
+<p>[37] Millicent Li et al. Multi-field adaptive retrieval. In International Conference on Learning Representations (ICLR), 2025.</p>
+<p>[38] Yuliang Li, Jinfeng Li, Yoshihiko Suhara, AnHai Doan, and Wang-Chiew Tan. Deep entity matching with pretrained language models. Proceedings of the VLDB Endowment, 14(1), 2020.</p>
+<p>[39] Josh Magnus Ludan, Qing Lyu, Yue Yang, Liam Dugan, Mark Yatskar, and Chris Callison-Burch. Interpretable-by-design text understanding with iteratively generated concept bottleneck. arXiv preprint arXiv:2310.19660, 2023.</p>
+<p>[40] Iain Mackie, Shubham Chatterjee, and Jeffrey Dalton. Generative relevance feedback with large language models. In Proceedings of the 46th International ACM SIGIR Conference, 2023.</p>
+<p>[41] Yu. A. Malkov and D. A. Yashunin. Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020.</p>
+<p>[42] John X. Morris, Volodymyr Kuleshov, Vitaly Shmatikov, and Alexander M. Rush. Text embeddings reveal (almost) as much as text. In Proceedings of EMNLP 2023, 2023.</p>
+<p>[43] Luca Moschella, Valentino Maiorca, Marco Fumero, Antonio Norelli, Francesco Locatello, and Emanuele Rodolà. Relative representations enable zero-shot latent space communication. In International Conference on Learning Representations (ICLR), 2023.</p>
+<p>[44] Rodrigo Nogueira, Zhiying Jiang, and Jimmy Lin. Document ranking with a pretrained sequence-to-sequence model. In Findings of the Association for Computational Linguistics: EMNLP 2020, 2020.</p>
+<p>[45] Oda, Chuang, Shirai, and Kertkeidkachorn. Interpretable text embeddings based on hierarchical questions. arXiv preprint arXiv:2611.06402, 2026.</p>
+<p>[46] Tuomas Oikarinen, Subhro Das, Lam M. Nguyen, and Tsui-Wei Weng. Label-free concept bottleneck models. In International Conference on Learning Representations (ICLR), 2023.</p>
+<p>[47] Juri Opitz, Lucas Möller, Andrianos Michail, Sebastian Padó, et al. Interpretable text embeddings and text similarity explanation: A survey. In Proceedings of EMNLP 2025, 2025.</p>
+<p>[48] Seongwan Park, Taeklim Kim, et al. Decoding dense embeddings: Sparse autoencoders for interpreting and discretizing dense retrieval. In Proceedings of EMNLP 2025, 2025.</p>
+<p>[49] Liana Patel, Peter Kraft, Carlos Guestrin, and Matei Zaharia. ACORN: Performant and predicate-agnostic search over vector embeddings and structured data. Proceedings of the ACM on Management of Data (SIGMOD), 2024.</p>
+<p>[50] Ralph Peeters and Christian Bizer. Using ChatGPT for entity matching. In New Trends in Database and Information Systems (ADBIS 2023, short papers), 2023.</p>
+<p>[51] Ralph Peeters, Reng Chiz Der and Christian Bizer. WDC products: A multi-dimensional entity matching benchmark. In Proceedings of the 27th International Conference on Extending Database Technology (EDBT), 2024.</p>
+<p>[52] Ralph Peeters, Aaron Steiner, and Christian Bizer. Entity matching using large language models. In Proceedings of the 28th International Conference on Extending Database Technology (EDBT), 2025.</p>
+<p>[53] Chau Minh Pham, Alexander Hoyle, Simeng Sun, Philip Resnik, and Mohit Iyyer. TopicGPT: A prompt-based topic modeling framework. In Proceedings of NAACL 2024, 2024.</p>
+<p>[54] Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In Proceedings of EMNLP-IJCNLP 2019, 2019.</p>
+<p>[55] Stephen Robertson and Hugo Zaragoza. The probabilistic relevance framework: BM25 and beyond. Foundations and Trends in Information Retrieval, 3(4), 2009.</p>
+<p>[56] J.J. Rocchio. Relevance feedback in information retrieval. In Gerard Salton, editor, The SMART Retrieval System: Experiments in Automatic Document Processing, pages 313–323. Prentice-Hall, 1971.</p>
+<p>[57] Cynthia Rudin. Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead. Nature Machine Intelligence, 2019.</p>
+<p>[58] Anant Subramanian, Danish Pruthi, Harsh Jhamtani, Taylor Berg-Kirkpatrick, and Eduard Hovy. SPINE: SParse interpretable neural embeddings. In Proceedings of the AAAI Conference on Artificial Intelligence, 2018.</p>
+<p>[59] Yiqun Sun, Qiang Huang, Yixuan Tang, Anthony K. H. Tung, and Jun Yu. A general framework for producing interpretable semantic text embeddings. In International Conference on Learning Representations (ICLR), 2025.</p>
+<p>[60] Yixuan Tang, Zhenghong Lin, et al. Asking the right questions: Ontology-grounded interpretable embeddings for biomedical text. arXiv preprint arXiv:2603.01690, 2026.</p>
+<p>[61] Paul Thomas, Seth Spielman, Nick Craswell, and Bhaskar Mitra. Large language models can accurately predict searcher preferences. In Proceedings of the 47th International ACM SIGIR Conference, 2024.</p>
+<p>[62] Katherine Tian, Eric Mitchell, Allan Zhou, Archit Sharma, Rafael Rafailov, Huaxiu Yao, Chelsea Finn, and Christopher D. Manning. Just ask for calibration: Strategies for eliciting calibrated confidence scores from language models fine-tuned with human feedback. In Proceedings of EMNLP 2023, 2023.</p>
+<p>[63] Daniel Tunkelang. Faceted Search. Synthesis Lectures on Information Concepts, Retrieval, and Services. Morgan &amp; Claypool, 2009.</p>
+<p>[64] Wang, Shen, and Huang. LDIR: Low-dimensional dense and interpretable text embeddings with relative representations. In Findings of the Association for Computational Linguistics: ACL 2025, 2025.</p>
+<p>[65] Liang Wang, Nan Yang, Xiaolong Huang, Binxing Jiao, Linjun Yang, Daxin Jiang, Rangan Majumder, and Furu Wei. Text embeddings by weakly-supervised contrastive pre-training. arXiv preprint arXiv:2212.03533, 2022.</p>
+<p>[66] Liang Wang, Nan Yang, and Furu Wei. Query2doc: Query expansion with large language models. In Proceedings of EMNLP 2023, 2023.</p>
+<p>[67] Shuai Wang, Shengyao Zhuang, and Guido Zuccon. BERT-based dense retrievers require interpolation with BM25 for effective passage retrieval. In Proceedings of ICTIR 2021, 2021.</p>
+<p>[68] Zihan Wang, Jingbo Shang, and Ruiqi Zhong. Goal-driven explainable clustering via language descriptions. In Proceedings of EMNLP 2023, 2023.</p>
+<p>[69] Shirley Wu, Shiyu Zhao, Michihiro Yasunaga, Kexin Huang, Kaidi Cao, Qian Huang, Vassilis N. Ioannidis, Karthik Subbian, James Zou, and Jure Leskovec. STaRK: Benchmarking LLM retrieval on textual and relational knowledge bases. In NeurIPS 2024 Datasets and Benchmarks Track, 2024.</p>
+<p>[70] Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muennighoff, Defu Lian, and Jian-Yun Nie. C-Pack: Packed resources for general Chinese embeddings. In Proceedings of the 47th International ACM SIGIR Conference, 2024.</p>
+<p>[71] Yongfeng Zhang and Xu Chen. Explainable recommendation: A survey and new perspectives. Foundations and Trends in Information Retrieval, 14(1), 2020.</p>
+<p>[72] Ruiqi Zhong, Heng Wang, Dan Klein, and Jacob Steinhardt. Explaining datasets in words: Statistical models with natural language parameters. In Advances in Neural Information Processing Systems 37 (NeurIPS 2024), 2024.</p>
+<h2>附录A 附录结果索引</h2>
+<p>正文报告了承载其论证的结果。每个其他结果在附录中，如下所示。</p>
+<p><strong>附录B.</strong> 问题空间作为独立检索器：所有STaRK排名器和排名融合、失败诊断和正过滤器。</p>
+<p><strong>附录C.</strong> 推导细节：限制和记录状态、第三结果、编码、选择维度、批处理、请求编码器、种子空间和增长轮、准入规则和数据构建。</p>
+<p><strong>附录D.</strong> 属性细节：追加成本、增长控制、混合回答模型、从存储答案排名、向量索引、解释大小、判断一致性、确定性、改写稳定性和上下文敏感性。</p>
+<p><strong>附录E.</strong> 实体匹配：完整门、早期32问题运行、精确率和召回率、自助法统计、运行示例报价以及上下文和注意事项。</p>
+<p><strong>附录F.</strong> 请求目标：分支定义和权重、开发结果、冻结的封闭测试计划、次要比较和按请求类型的结果。</p>
+<p><strong>附录G.</strong> 用自描述聚类进行主题发现。</p>
+<p><strong>附录H.</strong> 回填：配对集、学生及其损失、协议、逐问题恢复、泛化、学习曲线、消融、不对称性、成本和质量监视器。</p>
+<p><strong>附录I.</strong> 可重复性。</p>
+<p><strong>附录J.</strong> 超参数和种子。</p>
+<p><strong>附录K.</strong> 提示。</p>
+<h2>附录B 问题空间作为独立检索器</h2>
+<p>问题向量可以放入任何标准嵌入检索堆栈：精确扫描、近似最近邻索引（附录D）或排名融合管道。本附录测量以这种方式使用时的性能。</p>
+<p><strong>设置。</strong>在STaRK池（§3）上，查询用对称v1编码器（gpt-6-luna）编码，池行通过与行向量的未加权点积排名；两个选择都是预注册的主要评分，在fit上固定并有dev保护。自助法区间在查询上配对（10,000次重采样）。</p>
+<p><strong>结果。</strong>即使I128也比稠密检索低30.7个MRR点，在相同每查询排名上的事后配对自助法中为−30.66 [−36.50, −24.93] [D]，I64低−36.26 [−41.88, −30.61] [C]（表9）。§5.1的增长步骤在每个指标上都成立：从I64到I128，Hit@1从8.9上升到13.2，MRR从I32到I128翻了三倍。人写的查询更容易：81个人写查询上的MRR对于I64为24.3，I128为31.1，而合成查询上分别为13.0和18.1。将空间作为第三个检索器以未调优的等权重倒数排名融合添加会降低MRR [C]：BM25 + dense + I64降低−6.04 [−10.22, −1.90]，BM25 + dense + I128降低−3.66 [−7.58, 0.17]，尽管它增加了深度，将Hit@20从252提高到258和261（共281个查询）。RRF给弱排名器与强排名器相同的投票；§5.2反而用fit上选择的权重融合归一化分数。</p>
+<p><strong>诊断[E]。</strong>我们分析了I64在fit、dev和val上的失败（1,724个查询，测试封闭）。在这些查询上I64达到13.2 MRR，而稠密检索为49.4，67.5%的查询在前20中没有金产品。容量不是限制：使用金产品自己的64维行向量作为查询将其排在97.0%查询的前20中，将预言机限制为查询自己强烈回答的维度仍然给出80.8%（两个预言机计算并列时偏向它们，因此它们是乐观的）。在1,164个失败中，61%有与金产品行矛盾的查询答案，23%使用无法将金产品与许多其他产品分开的查询维度，12%是幅度或并列效应，4%即使金产品自己的向量也无法分开，部分因为标签噪声。最频繁的矛盾来自充满判断的问题，sizeclass（294个查询）、goodfit（216个）和safetyfeature（161个），查询编码器在这些上面陈述了金列表不支持的尺寸、合身或安全要求。没有特定问题的类别几乎完全失败（固定刀片猎刀0.4 MRR，户外旗帜0.6，枪套1.8，而稠密检索在相同查询上为33–57），命名金产品品牌的查询用I64达到12.4 MRR，而稠密检索为63.3，因为没有问题询问品牌。失败也随着查询确认更多问题而稳步下降（表10）：当查询陈述积极身份时检索成功，当查询大多沉默时失败。只保留对查询强烈确认的每个问题都回答"是"的行，对于I64排名好的查询留下25,919行中的中位数51.5行，对于它失败的查询留下299行。诊断激发了第2轮的覆盖问题（+5.6 MRR）以及独立地，§5.2的查询端重新设计。</p>
+<p><strong>WDC上的相同情况。</strong>在WDC测试集上，仅通过空间检索（选择增强、硬编码、点积）达到R@10 52.0（已见）和45.8（未见），而稠密检索为91.3和95.6；仅标题上的BM25达到90.9和94.9。独立问题向量是弱的第一阶段检索器，其价值在于它们为强检索器添加的内容以及对每个匹配可以说的内容。</p>
+<h2>附录C 推导细节</h2>
+<p><strong>限制和记录状态。</strong>问题有20–4,000个字符，空间在一个表上有2–1,024个维度。状态模板最多有12个输入字段加上可选的父行和子行。在STaRK上，状态有13个上限为8,000个字符的字段（平均1,442），标识符、查询和金标签被排除。</p>
+<p><strong>为什么需要第三个结果。</strong>在只提供"是"和"否"的初始探测中，记录未陈述的事实倾向于"否"：288个此类单元格中的225个𝑃(是) &lt; 0.20，只有20个落在0.35和0.65之间。有"未陈述"结果时，相同的单元格收到𝑝∅ = 0.90–1.00且|𝑥𝑑| ≤ 0.08。</p>
+<p><strong>编码。</strong>在两个消融中，二值（2𝑝⁺ − 1）和硬（arg max ↦ {+1,−1,0}），证据编码在余弦相似度下最好，硬编码在点积下略微最好，它也给出精确忠实的解释（表11；§4）。</p>
+<p><strong>表11：按编码和评分规则的WDC验证MRR（仅空间，32个问题）[E]。</strong></p>
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>证据𝑝⁺−𝑝⁻</th>
+<th>二值2𝑝⁺−1</th>
+<th>硬</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>余弦</td>
+<td>36.4</td>
+<td>35.4</td>
+<td>26.4</td>
+</tr>
+<tr>
+<td>点积</td>
+<td>22.1</td>
+<td>19.3</td>
+<td>23.7</td>
+</tr>
+</tbody>
+</table>
+<p><strong>选择维度。</strong>选择维度有𝐾个命名选项加上"未陈述"，编码为𝐾个坐标</p>
+<p>𝑐𝑘 = √(𝐾/(𝐾−1)) (𝑝𝑘 − 𝑆/𝐾)，𝑆 = Σ𝐾𝑗=1 𝑝𝑗，  (3)</p>
+<p>其中𝑝𝑗是选项𝑗的概率，因此𝑆 = 1 − 𝑝∅且"未陈述"位于原点。对于具有确定答案的两条记录，当选项匹配时维度贡献+𝑤²，当它们不同时贡献−𝑤²/(𝐾−1)；对于𝐾=2，这精确地简化为证据项。</p>
+<p><strong>打包和批处理。</strong>MD1每次调用接受2–255个问题（256个被拒绝）和最多100,000个主体字节；gpt-6-luna每次调用接收64个问题，12个调用在飞行中。16到64个问题之间的批大小不改变MD1答案（平均|Δ| = 2×10⁻¹¹）。单独询问的问题与批处理中的相同问题略有不同（平均|Δ𝑝| = 0.031，Pearson 0.956），因此我们总是批处理。每个额外问题在状态之上增加大约80–115个计费token，其中共享前言约占35。</p>
+<p><strong>查询编码器。</strong><strong>要求</strong>编码器（v2）将每个问题重新表述为要求："是"意味着请求要求或清楚暗示该属性，"否"意味着它排除该属性，沉默是"未陈述"。在I128上，它将fit、dev和val上的MRR从20.4、18.3和14.4（对称v1）提高到22.0、20.3和18.3 [E]。查询也可以写为最多12个期望答案𝑐 = (𝑑𝑐, 𝜎𝑐, 𝑤𝑐)，𝜎𝑐 = ±1，记录按</p>
+<p>score(𝑟) = Σ𝑐 𝑤𝑐𝜎𝑐𝑥𝑑𝑐(𝑟) / Σ𝑐 𝑤𝑐，  (4)</p>
+<p>排名，只保留具有正分数的记录。此搜索仅使用存储的答案，查询时没有向量、索引或模型调用（附录D）。</p>
+<p><strong>种子空间和增长轮。</strong>在WDC上，16个配置文件组产生了97个检查过的提案，合并为33个，其中描述报价措辞而非产品的一个被移除，留下32个。在STaRK上，试点筛选了48个诱导问题并准入32个，形成32问题种子空间stark-v1（I32），其行由MD1回答。第1轮从1,252个fit请求的普查和I32在其上的失败（正确产品在前20之外：1,069个请求，其中877个稠密检索排在前20）编写了107个候选，准入102个并选择32个，将I32增长到I64。第2轮从I64仅在fit、dev和val上的失败诊断（1,724个请求中的1,164个失败；附录B）和池类别的覆盖审计开始，考虑了134个候选（70个结转和64个新的），准入131个并选择64个，得到I128。轮候选由LLM编码助手在作者指导下编写，每个都有记录的理由，而不是由固定的生成提示。种子之外的所有问题都由gpt-6-luna回答，因此I64和I128是混合模型空间。选择使用fit拆分MRR。</p>
+<p><strong>准入规则。</strong>如果候选问题至少有25个"是"行、"是"份额最多0.98、最多5%拒绝、平均"未陈述"份额最多0.5，并且与每个现有维度的|𝜌| ≤ 0.9，则被准入。在第2轮选择的64个问题中，28个是新的，36个从第1轮结转。</p>
+<p><strong>数据。</strong>在WDC上，稠密检索编码标题、品牌和前64个描述词，BM25使用𝑘₁ = 1.2和𝑏 = 0.75。STaRK池包含每个查询的每个金答案（2,603个产品）加上每个查询的BM25和bge-small前50名，共25,919个产品。我们的BM25重现了已发布的全目录MRR（55.4对55.30）。查询被拆分为来自STaRK合成训练查询的fit（1,252）和dev（313）、STaRK的验证集（val，159）和测试集（281）；拆分构建在表20中。</p>
+<h2>附录D 属性细节</h2>
+<p>本附录给出表3背后的测量。</p>
+<h3>D.1 可追加</h3>
+<p>因为每个单元格由其自己的问题的哈希键控（§2），添加问题要求每行一个新答案并保持每个现有答案和哈希有效，而更改稠密编码器意味着重新编码和重新索引每一行。打包到已经为行评分的调用中，多一个MD1问题每行约115个计费token，大约每千行$0.005。在STaRK上，为所有25,919行回答64个新的gpt-6-luna问题花了26.7分钟，在WDC上，添加三个选择问题使所有32个现有答案字节相同[D]。表12给出了每次追加的测量成本。</p>
+<p><strong>表12：追加维度的测量成本[D]。"在行调用内"意味着问题被打包到已经为行评分的调用中。</strong></p>
+<table>
+<thead>
+<tr>
+<th>追加</th>
+<th>额外调用</th>
+<th>成本/时间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WDC，行调用内的1个MD1问题</td>
+<td>0</td>
+<td>每行+115个计费token；≈每1k行$0.005</td>
+</tr>
+<tr>
+<td>WDC，独立通道中的1个MD1问题</td>
+<td>每行1个</td>
+<td>每1k行$0.008</td>
+</tr>
+<tr>
+<td>WDC，3个MD1选择问题</td>
+<td>6,056</td>
+<td>159分钟；所有32个现有答案字节相同</td>
+</tr>
+<tr>
+<td>STaRK，64个gpt-6-luna问题（第2轮）</td>
+<td>25,919</td>
+<td>26.7分钟；31个重试，0个失败</td>
+</tr>
+<tr>
+<td>STaRK，107个gpt-6-luna候选（第1轮）</td>
+<td>51,838</td>
+<td>55分钟（每行两个64问题主体）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>增长。</strong>在64个问题时，设计的问题比相同数量的随机抽取好+2.25 [−0.15, 4.66]，这不显著。第2轮新编写的问题……</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 可解释嵌入, 实体匹配, 问题空间, 决策模型, 信息检索</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
