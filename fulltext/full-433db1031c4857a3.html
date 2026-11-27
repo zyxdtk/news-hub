@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于自适应奖励估计与重采样的扩散引导 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">基于自适应奖励估计与重采样的扩散引导</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-25</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.34839" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：Diffusion Steering via Adaptive Reward Estimation and Resampling</h4>
+            <p><strong>中文摘要：</strong> TrailMix 是一种免训练的扩散模型引导方法：并行运行多条去噪轨迹，在各检查点生成廉价前瞻预览图像并由评判器评分，据此自适应估计引导强度并重采样轨迹。在 GenEval、T2I-CompBench++ 和 RareBench 基准上，该方法持续优于现有基线，在罕见多对象组合上增益最显著，并以一半粒子数超越 Best-of-8。它还扩展至定向图像编辑，配合新提出的 SEAM-Bench 基准，在编辑成功率与源内容保留间取得平衡，并改善反刻板印象编辑的方向对称性。</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>基于自适应奖励估计与重采样的扩散引导</h1>
+<p><strong>Abinitha Gourabathina</strong><br />
+- 隶属机构：麻省理工学院<br />
+- 邮箱：abinitha@mit.edu</p>
+<p><strong>Sana Tonekaboni</strong><br />
+- 隶属机构：麻省理工学院<br />
+- 隶属机构：RBC Borealis<br />
+- 邮箱：mghassem@mit.edu</p>
+<p><strong>Marzyeh Ghassemi</strong><br />
+- 隶属机构：麻省理工学院<br />
+- 邮箱：sana.tonekaboni@rbc.com</p>
+<p><strong>Akbar Rafiey</strong><br />
+- 隶属机构：RBC Borealis<br />
+- 隶属机构：纽约大学<br />
+- 邮箱：akbar.rafiey@rbc.com</p>
+<h2>摘要</h2>
+<p>文本到图像扩散模型能够生成满足复杂提示词的图像，但常常产生遗漏所请求对象、属性或关系的图像。我们提出一个问题：模型能否通过将概率重新分配给其更成功的结果，从而更可靠地生成与文本对齐的图像？我们提出 <strong>TrailMix</strong>，一种免训练方法，利用基础模型可能结果的分布来自适应地引导生成朝向更好的文本对齐。在去噪过程中，TrailMix 从并行轨迹生成廉价的前瞻图像，并使用外部评判器对其与提示词的对齐程度进行评分。由此得到的奖励分数分布使我们能够估计应将生成引导至期望对齐水平的强度。我们利用这些估计对轨迹进行重新加权和重采样，偏向更有前景的结果。在三个文本到图像基准上，TrailMix 优于现有基线，在罕见的多对象组合上取得尤为显著的增益。我们进一步将 TrailMix 扩展到定向图像编辑，并引入 <strong>SEAM-Bench</strong>（语义编辑与属性维护），这是一个系统评估语义编辑是否保留其他图像内容的基准。在 SEAM-Bench 和现有基准 PIE-Bench 上的实验证明了我们方法在可控图像编辑上的有效性。我们的结果表明，模型自身的可能结果可以为可靠且可控的生成提供指导。</p>
+<h2>1 引言</h2>
+<p><strong>图 1</strong>：方法概览。对于提示词"一只蓝色的鸟和一只黄色的金丝雀"，我们比较了三种策略。Best-of-N 选择得分最高的最终样本，而 Feynman-Kac（FK）在去噪过程中使用单步奖励预测重采样粒子。TrailMix 使用廉价的前瞻预览来识别有前景的轨迹，并以自适应引导强度产生最对齐的图像。</p>
+<p>文本到图像扩散模型已在各类任务中展现出令人印象深刻的性能 [35, 33]，但它们仍可能无法生成满足查询特定语义要求的图像 [13, 17, 32, 48]，例如多个对象的数量或组合。</p>
+<p>奖励引导通过一个对图像满足其提示词程度进行评分的奖励函数，在改善图文对齐方面展现出前景。该函数通常使用预训练奖励模型 [45] 或视觉-语言模型评判器 [36] 实现。基于奖励的微调方法将扩散模型朝偏好输出优化 [3, 9, 7, 43]，但需要模型优化，这可能损害通用能力 [8]。推理时方法则在不修改预训练模型的情况下利用奖励信息。Best-of-N 采样生成独立候选并选择奖励最高的图像。然而，它将大量计算用于完成最终会被丢弃的低奖励、未对齐候选 [5]。</p>
+<p>近期方法在生成过程本身中利用奖励信息。基于粒子的采样与搜索方法，如 Feynman-Kac（FK）引导，评估中间轨迹并将计算分配给有前景的结果 [26, 38, 50, 14]。然而，含噪的中间预览可能尚未揭示评估与复杂提示词对齐所需的语义细节 [40, 47, 15]。基于引导的方法采用互补途径，将奖励衍生的梯度纳入去噪更新 [2]。例如，LiDAR [22] 使用少量粗略去噪步骤生成廉价的<strong>前瞻图像</strong>，其奖励为去噪分数提供解析修正。</p>
+<p>然而，我们发现了前瞻图像的另一个益处。通过揭示在含噪中间预览中难以评估的语义细节，这些图像使我们能够在重采样轨迹时更好地估计潜在结果的对齐程度。</p>
+<p>因此，我们提出 <strong>TrailMix</strong>，一种免训练方法，将预训练模型的生成分布与基于奖励的选择自适应结合，以改善图文对齐（图 1）。在 FK 引导 [38] 的基础上，我们并行运行多条去噪轨迹，并使用从前瞻图像计算的奖励定期重采样。除了改善期望奖励估计之外，我们还调整重采样偏向高奖励轨迹的强度。模型自身的可能生成因此既为轨迹选择提供信息，也为奖励影响采样的强度提供信息。</p>
+<p>我们在 GenEval [13]、T2I-CompBench++ [17] 和 RareBench [32] 上评估 TrailMix，使用 Stable Diffusion v1.4（SDv1.4）和 Stable Diffusion XL（SDXL）。TrailMix 在两个模型上持续改善四粒子基线的提示词对齐，在罕见多对象组合上取得最大增益，以一半的粒子数超越 Best-of-8。</p>
+<p>同样的引导机制也扩展到定向图像编辑。我们引入 <strong>SEAM-Bench</strong>（语义编辑与属性维护基准），这是一个系统的属性级基准，联合评估编辑成功与无关图像细节的保留，包括朝向和背离刻板印象关联的编辑。TrailMix 在两个扩散模型上于 SEAM-Bench 的所有评估方法中取得最高编辑成功率，同时保持强大的源保留。其益处也延伸到 PIE-Bench [20] 上的现有图像（尤其在 SDXL 上），以及反刻板印象编辑——在此类编辑中它实现了跨编辑方向更平衡的成功率。</p>
+<h2>2 相关工作</h2>
+<p><strong>基于微调的对齐。</strong> 微调方法更新扩散模型参数以改善与奖励目标的对齐。DDPO 和 DPOK [3, 9] 通过强化学习优化奖励，DRaFT [7] 通过采样反向传播奖励梯度，Diffusion-DPO [43] 从偏好对学习。然而，过度优化奖励可能以图像质量和多样性为代价换取分数 [24, 19]。我们专注于推理时引导，它无需额外模型训练即可调整生成。这类方法大致包括基于引导的方法和采样方法。</p>
+<p><strong>基于引导的方法。</strong> SEGA [4] 沿文本定义的语义方向引导生成，而 Prompt-to-Prompt [16] 控制交叉注意力图以在保留布局的同时编辑图像内容。Universal Guidance [2] 和 FreeDoM [46] 使用可微目标的梯度调整去噪更新。LiDAR [22] 使用廉价的前瞻图像及其奖励计算解析引导修正。</p>
+<p><strong>采样与搜索方法。</strong> 采样与搜索方法将计算分配到候选轨迹上。Best-of-N 在已完成图像中进行选择，噪声搜索精化噪声输入，PSP 剪枝候选，DTS 重用已完成的展开来指导树探索 [28, 14, 18]。TDS 和 DAS 分别将序贯蒙特卡洛应用于条件生成和奖励对齐 [44, 21]，而 SVDD 使用估计的未来奖励选择转移 [26]。Feynman-Kac（FK）引导 [38] 维护并行去噪轨迹，并使用基于奖励的权重在中间步骤重采样。在此框架基础上，TrailMix 通过短前瞻延续评估轨迹，并利用所得奖励分布自适应地进行重采样。</p>
+<h2>3 方法</h2>
+<p>TrailMix 将预训练扩散模型引导至更好地满足文本提示词语义要求的图像。它并行运行多条去噪轨迹，并使用廉价的前瞻预览在生成完成之前评估其可能结果（见图 1）。奖励评判器对这些预览与提示词的对齐程度评分，所得分数既决定引导强度，也决定偏向哪些轨迹（见算法 1）。我们首先定义奖励引导的目标分布（第 3.1 节）并介绍前瞻预览（第 3.2 节），然后描述自适应引导强度（第 3.3 节）及其通过奖励估计与重采样的实现（第 3.4 节）。</p>
+<h3>3.1 目标分布</h3>
+<p>对于提示词 $c$，令 $p_{\theta}(x_{0}\mid c)$ 表示预训练模型在完整图像 $x_{0}$ 上的分布。外部评判器为每张图像分配奖励 $r(x_{0},c)$，衡量其满足提示词的程度。我们定义奖励引导的目标分布为</p>
+<p>$$p_{\beta_{c}}(x_{0}\mid c)\propto p_{\theta}(x_{0}\mid c)\,e^{\beta_{c}r(x_{0},c)}. \tag{1}$$</p>
+<p>这将基础分布朝高奖励图像重新加权，其中<strong>引导强度</strong> $\beta_{c}\geq 0$ 控制偏移程度。设 $\beta_{c}=0$ 即恢复基础模型，而更大的强度会越来越偏向高奖励结果。</p>
+<h3>3.2 前瞻预览</h3>
+<p>我们维护 $n$ 条去噪轨迹（即<strong>粒子</strong>），独立初始化为 $x_{T}^{i}\sim p(x_{T})$，$i=1,\ldots,n$。粒子在选定检查点 $t_{1}&gt;\cdots&gt;t_{K}$ 之间遵循预训练去噪过程。在检查点 $t_{k}$，令 ${x_{t_{k}}^{i}}_{i=1}^{n}$ 表示其当前状态。先前的扩散引导方法从最终图像的中间预测估计奖励 [38]，但这些预测可能缺乏评估提示词对齐所需的语义细节。</p>
+<p>我们转而使用 $L$ 个粗略去噪步骤从每个粒子生成前瞻预览 $\tilde{x}_{0,k}^{i}$，同时保持原始状态不变。我们使用定义目标分布的同一奖励函数评估每个预览：</p>
+<p>$$s_{k}^{i}=r(\tilde{x}_{0,k}^{i},c). \tag{2}$$</p>
+<p>预览提供了对潜在最终奖励的廉价估计，我们用它来调整引导强度并指导重采样。</p>
+<p><strong>算法 1 TrailMix</strong><br />
+1. 输入：提示词 $c$，模型 $p_{\theta}$，奖励 $r$，目标平均奖励 $\tau$，$n$ 个粒子，预览长度 $L$，检查点 $(t_{1},\ldots,t_{K})$<br />
+2. 独立抽取 $x_{T}^{i}\sim p(x_{T})$ 并设 $h^{i}\leftarrow 0$，$i=1,\ldots,n$<br />
+3. <strong>for</strong> $k=1,\ldots,K$ <strong>do</strong><br />
+4. 　使用基础模型将每个粒子去噪至 $t_{k}$<br />
+5. 　从每个 $x_{t_{k}}^{i}$ 生成 $L$ 步预览 $\tilde{x}<em>{0,k}^{i}$<br />
+6. 　设 $s</em>{k}^{i}\leftarrow r(\tilde{x}<em>{0,k}^{i},c)$<br />
+7. 　由 ${(s</em>{k}^{i},h^{i})}<em>{i=1}^{n}$ 计算 $\hat{\beta}</em>{c,k}$（公式 7）<br />
+8. 　以概率 $\omega_{k}^{i}(\hat{\beta}<em>{c,k})$ 重采样 $n$ 个粒子（公式 6）<br />
+9. 　父代 $i$ 的每个被选中副本继承 $h\leftarrow\hat{\beta}</em>{c,k}s_{k}^{i}$<br />
+10. <strong>end for</strong><br />
+11. 完成去噪，评估最终奖励，返回奖励最高的图像</p>
+<h3>3.3 自适应引导强度</h3>
+<p>我们根据预训练模型产生良好对齐图像的容易程度来调整引导强度。此类图像本来就很可能出现的提示词需要较少的重新加权，而其他提示词可能需要更强的引导。因此，我们选择在奖励引导分布下达到目标平均奖励 $\tau$ 的最小强度。对任意候选强度 $\beta\geq 0$，令 $p_{\beta}$ 表示将公式 1 中 $\beta_{c}$ 替换为 $\beta$ 后的分布，并定义</p>
+<p>$$\mu_{c}(\beta)=\mathbb{E}<em>{x</em>{0}\sim p_{\beta}(\cdot\mid c)}[r(x_{0},c)]. \tag{3}$$</p>
+<p>随着 $\beta$ 增大，高奖励图像获得更大的相对概率，因此 $\mu_{c}(\beta)$ 非递减。我们选择</p>
+<p>$$\beta_{c}=\inf{\beta\geq 0:\mu_{c}(\beta)\geq\tau}. \tag{4}$$</p>
+<p>这一选择还具有最小变化解释：当目标在有限强度下可达时，$p_{\beta_{c}}$ 是在满足奖励约束的所有分布中与基础模型 KL 散度最近的分布（附录 A）：</p>
+<p>$$p_{\beta_{c}}(\cdot\mid c)=\operatorname*{argmin}<em>{Q:\,\mathbb{E}</em>{x_{0}\sim Q}[r(x_{0},c)]\geq\tau}\mathrm{KL}!\left(Q\,|\,p_{\theta}(\cdot\mid c)\right). \tag{5}$$</p>
+<h3>3.4 奖励估计与重采样</h3>
+<p>上述公式用完整图像的分布定义所需的引导强度。在实践中，TrailMix 从每个检查点的前瞻奖励估计该强度，并用其重采样粒子。由于先前的重采样可能已偏向某些轨迹，我们更新其选择权重以反映奖励偏好的变化。每个粒子保留从上一检查点父代继承的奖励加权分数 $h_{k-1}^{i}$，其中 $h_{0}^{i}=0$。对候选强度 $\beta$，归一化权重为</p>
+<p>$$\omega_{k}^{i}(\beta)\propto\exp!\left(\beta s_{k}^{i}-h_{k-1}^{i}\right),\qquad\sum_{i=1}^{n}\omega_{k}^{i}(\beta)=1. \tag{6}$$</p>
+<p>该差值将当前奖励加权分数与上一检查点已应用的分数进行比较，使重采样能够纳入新的奖励估计而不会反复放大先前的选择。</p>
+<p>我们用这些权重估计每个候选强度下的平均奖励，并选择达到目标 $\tau$ 的最小值：</p>
+<p>$$\hat{\beta}<em>{c,k}=\inf\left{\beta\geq 0:\sum</em>{i=1}^{n}\omega_{k}^{i}(\beta)s_{k}^{i}\geq\tau\right}. \tag{7}$$</p>
+<p>然后我们按 $\omega_{k}^{i}(\hat{\beta}<em>{c,k})$ 有放回地重采样 $n$ 个粒子，因此某些轨迹被复制而另一些被丢弃。被选中粒子 $i$ 的每个副本继承其检查点状态和更新后的分数 $h=\hat{\beta}</em>{c,k}s_{k}^{i}$，然后继续独立去噪。在最后一个检查点之后，我们完成所有轨迹，评估其最终奖励，并返回奖励最高的图像。</p>
+<h2>4 实验</h2>
+<p>我们在文本到图像生成和图像编辑上评估 TrailMix。对于这两项任务，我们使用两个预训练扩散模型：Stable Diffusion v1.4（SDv1.4）[35] 和 Stable Diffusion XL（SDXL）[33]。我们在附录 B 中提供所有实现细节和复现结果的代码。</p>
+<h3>4.1 文本到图像生成</h3>
+<p><strong>表 1</strong>：文本到图像生成。结果由独立的基准评估器评分，采用 0-100 分制（越高越好）。最后一列报告每个提示词的 U-Net 网络评估次数和评判器调用次数。粗体表示每个模型在每列中的最高分。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>方法</th>
+<th>粒子数 $n$</th>
+<th>单对象</th>
+<th>多对象</th>
+<th>总体</th>
+<th>计数</th>
+<th>位置</th>
+<th>颜色归属</th>
+<th>绑定</th>
+<th>空间</th>
+<th>数量</th>
+<th>U-Net / 评判器调用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SD v1.4</td>
+<td>基础模型（单轨迹）</td>
+<td>1</td>
+<td>51.5</td>
+<td>37.0</td>
+<td>45.3</td>
+<td>35.0</td>
+<td>5.0</td>
+<td>9.0</td>
+<td>39.6</td>
+<td>11.5</td>
+<td>46.0</td>
+<td>200 / 1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Universal Guidance [2]</td>
+<td>-</td>
+<td>54.4</td>
+<td>43.3</td>
+<td>40.4</td>
+<td>36.2</td>
+<td>6.0</td>
+<td>6.0</td>
+<td>39.5</td>
+<td>9.1</td>
+<td>43.4</td>
+<td>400 / 100</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>FreeDoM [46]</td>
+<td>-</td>
+<td>64.6</td>
+<td>49.4</td>
+<td>38.2</td>
+<td>25.8</td>
+<td>4.0</td>
+<td>2.0</td>
+<td>42.2</td>
+<td>1.6</td>
+<td>33.8</td>
+<td>520 / 100</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>SEGA [4]</td>
+<td>-</td>
+<td>54.0</td>
+<td>41.6</td>
+<td>43.5</td>
+<td>35.0</td>
+<td>3.0</td>
+<td>9.0</td>
+<td>40.9</td>
+<td>13.4</td>
+<td>48.0</td>
+<td>300 / 0</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Prompt-to-Prompt [16]</td>
+<td>-</td>
+<td>52.1</td>
+<td>47.3</td>
+<td>46.9</td>
+<td>37.5</td>
+<td>5.0</td>
+<td>9.0</td>
+<td>44.2</td>
+<td>12.4</td>
+<td>48.2</td>
+<td>200 / 0</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Best-of-4</td>
+<td>4</td>
+<td>62.0</td>
+<td>46.4</td>
+<td>53.9</td>
+<td>52.5</td>
+<td>6.0</td>
+<td>19.0</td>
+<td>53.7</td>
+<td>17.6</td>
+<td>51.9</td>
+<td>800 / 4</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Best-of-8</td>
+<td>8</td>
+<td>65.7</td>
+<td>52.3</td>
+<td>56.3</td>
+<td>57.5</td>
+<td>7.0</td>
+<td>20.0</td>
+<td>59.2</td>
+<td>20.0</td>
+<td>55.1</td>
+<td>1600 / 8</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>PSP [14]</td>
+<td>4</td>
+<td>63.3</td>
+<td>52.9</td>
+<td>53.8</td>
+<td>50.0</td>
+<td>7.0</td>
+<td>13.0</td>
+<td>55.8</td>
+<td>19.7</td>
+<td>52.8</td>
+<td>800 / 14</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>BFS [50]</td>
+<td>4</td>
+<td>60.7</td>
+<td>45.3</td>
+<td>54.1</td>
+<td>51.2</td>
+<td>7.0</td>
+<td>16.0</td>
+<td>53.4</td>
+<td>17.7</td>
+<td>50.9</td>
+<td>800 / 24</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>SVDD-PM [26]</td>
+<td>4</td>
+<td>55.8</td>
+<td>44.1</td>
+<td>47.5</td>
+<td>32.5</td>
+<td>2.0</td>
+<td>14.0</td>
+<td>50.3</td>
+<td>13.8</td>
+<td>49.4</td>
+<td>794 / 396</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>LiDAR [22]</td>
+<td>4</td>
+<td>57.4</td>
+<td>43.3</td>
+<td>48.2</td>
+<td>50.8</td>
+<td>1.0</td>
+<td>10.0</td>
+<td>52.6</td>
+<td>10.9</td>
+<td>45.8</td>
+<td>1300 / 54</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>DTS [18]</td>
+<td>4</td>
+<td>62.0</td>
+<td>51.9</td>
+<td>52.2</td>
+<td>60.0</td>
+<td>7.0</td>
+<td>17.0</td>
+<td>53.9</td>
+<td>16.0</td>
+<td>52.9</td>
+<td>916 / 5</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>FK 引导 [38]</td>
+<td>4</td>
+<td>59.5</td>
+<td>46.2</td>
+<td>53.0</td>
+<td>52.5</td>
+<td>5.0</td>
+<td>15.0</td>
+<td>51.4</td>
+<td>17.8</td>
+<td>51.6</td>
+<td>800 / 24</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>TrailMix</td>
+<td>4</td>
+<td>63.6</td>
+<td>57.6</td>
+<td>56.3</td>
+<td>61.3</td>
+<td>8.0</td>
+<td>19.0</td>
+<td>59.3</td>
+<td>19.2</td>
+<td>56.3</td>
+<td>928 / 12</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>基础模型（单轨迹）</td>
+<td>1</td>
+<td>69.6</td>
+<td>55.4</td>
+<td>54.0</td>
+<td>40.0</td>
+<td>6.0</td>
+<td>19.0</td>
+<td>54.5</td>
+<td>19.6</td>
+<td>52.4</td>
+<td>200 / 1</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>Best-of-4</td>
+<td>4</td>
+<td>76.8</td>
+<td>62.7</td>
+<td>63.0</td>
+<td>53.7</td>
+<td>9.0</td>
+<td>38.0</td>
+<td>64.0</td>
+<td>21.6</td>
+<td>57.6</td>
+<td>800 / 4</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>Best-of-8</td>
+<td>8</td>
+<td>79.0</td>
+<td>62.7</td>
+<td>69.2</td>
+<td>73.8</td>
+<td>14.0</td>
+<td>43.0</td>
+<td>67.4</td>
+<td>23.3</td>
+<td>60.0</td>
+<td>1600 / 8</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>PSP [14]</td>
+<td>4</td>
+<td>78.0</td>
+<td>63.3</td>
+<td>65.2</td>
+<td>61.3</td>
+<td>16.0</td>
+<td>37.0</td>
+<td>66.9</td>
+<td>24.6</td>
+<td>58.5</td>
+<td>800 / 14</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>BFS [50]</td>
+<td>4</td>
+<td>76.1</td>
+<td>60.0</td>
+<td>63.6</td>
+<td>60.0</td>
+<td>12.0</td>
+<td>32.0</td>
+<td>64.2</td>
+<td>24.5</td>
+<td>57.8</td>
+<td>800 / 24</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>SVDD-PM [26]</td>
+<td>4</td>
+<td>78.0</td>
+<td>58.3</td>
+<td>56.2</td>
+<td>42.5</td>
+<td>10.0</td>
+<td>23.0</td>
+<td>62.0</td>
+<td>22.5</td>
+<td>54.3</td>
+<td>794 / 396</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>LiDAR [22]</td>
+<td>4</td>
+<td>75.0</td>
+<td>53.0</td>
+<td>59.5</td>
+<td>60.8</td>
+<td>12.0</td>
+<td>29.0</td>
+<td>60.2</td>
+<td>19.2</td>
+<td>51.2</td>
+<td>1600 / 54</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>DTS [18]</td>
+<td>4</td>
+<td>79.3</td>
+<td>60.6</td>
+<td>63.4</td>
+<td>65.0</td>
+<td>11.0</td>
+<td>30.0</td>
+<td>65.2</td>
+<td>22.8</td>
+<td>56.2</td>
+<td>916 / 5</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>FK 引导 [38]</td>
+<td>4</td>
+<td>76.6</td>
+<td>60.0</td>
+<td>61.4</td>
+<td>55.0</td>
+<td>13.0</td>
+<td>24.0</td>
+<td>64.0</td>
+<td>24.2</td>
+<td>55.9</td>
+<td>800 / 24</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>TrailMix</td>
+<td>4</td>
+<td>80.2</td>
+<td>69.0</td>
+<td>69.4</td>
+<td>71.3</td>
+<td>17.0</td>
+<td>41.0</td>
+<td>68.4</td>
+<td>25.9</td>
+<td>60.7</td>
+<td>928 / 12</td>
+</tr>
+</tbody>
+</table>
+<p><strong>采样与基线。</strong> 我们使用 100 步随机 DDIM 步骤（$\eta=1$）[39] 生成图像，并共享初始种子以进行配对比较。</p>
+<p>我们将 TrailMix 与三组基线进行比较。</p>
+<p>** 独立采样。** 基础模型沿单一去噪轨迹生成图像，无需基于奖励的选择。Best-of-N 生成 $N$ 张独立图像并选择奖励最高的完成图像。我们评估 Best-of-4 和 Best-of-8。</p>
+<p>** 去噪期间选择。** 这些方法评估未完成的轨迹以决定将进一步计算分配到哪里。FK 引导 [38] 使用评判器衍生的权重定期重采样轨迹，复制有前景的轨迹并丢弃其他。重采样保持种群大小，尽管重复的轨迹共享中间状态并可能产生相似的图像。我们还与 PSP [14]、BFS [50]、SVDD-PM [26] 和 DTS [18] 进行比较，它们使用替代的剪枝、转移选择和搜索策略。</p>
+<p>** 引导与注意力控制。** 这些方法在单个轨迹内修改生成。LiDAR [22]、Universal Guidance [2] 和 FreeDoM [46] 应用奖励衍生的修正，而 SEGA [4] 和 Prompt-to-Prompt [16] 分别控制语义方向和注意力。</p>
+<p>我们对 TrailMix、所有去噪期间选择基线和 LiDAR 使用四条轨迹。其余引导和注意力控制方法使用单条轨迹，与其典型实现一致。我们在两个模型上评估 LiDAR，并将其他四种方法适配到 SDv1.4 上的生成。</p>
+<p><strong>引导奖励。</strong> 所有基于奖励的方法使用 ImageReward [45] 对提示词对齐和视觉偏好进行评分，除了 Universal Guidance 和 FreeDoM 使用基于 CLIP 的能量。SEGA 和 Prompt-to-Prompt 不使用外部奖励评判器。</p>
+<p><strong>基准与评估。</strong> 我们在三个具有独立评估器的基准上评估生成图像满足其提示词的程度，这些评估器与生成期间使用的奖励评判器分开。分数以 0-100 分制报告，值越高表示对齐越好。</p>
+<p>RareBench [32] 使用 320 个提示词测试模型能否生成不常见的对象和对象组合。GPT-4o [31] 以 1-5 分制评估每张图像与提示词的匹配程度，我们将其重新缩放到 0-100。我们分别报告单对象和多对象结果。</p>
+<p>GenEval [13] 评估六个类别的 553 个提示词。根据标准 GenEval 协议，我们使用 Mask2Former [6] 检查对象存在、数量和空间关系，使用 CLIP ViT-L/14 [34] 检查对象颜色和颜色归属。我们报告所有类别的平均成功率（总体），以及计数、位置和颜色归属分数。</p>
+<p>T2I-CompBench++ [17] 使用五个类别的 1,500 个提示词测试组合对齐。绑定衡量颜色、形状和纹理是否分配给正确的对象，平均这三个属性的 BLIP-VQA 分数 [25]。UniDet [51] 评估空间和数量类别，分别验证对象之间的关系和对象数量。</p>
+<p><strong>推理成本。</strong> 我们力求在保持计算效率的同时改善对齐。我们用两个量衡量推理成本：去噪的 U-Net 评估和评估图像对齐的评判器调用。每个去噪器预测计为一次 U-Net 评估，因此使用无分类器引导的 100 步样本需要 200 次评估。评判器调用计算奖励模型评分的候选图像数量，包括中间评估和前瞻预览。两项度量都考虑了生成和评估前瞻所需的额外计算。对于 Universal Guidance 和 FreeDoM，评判器调用对应于 CLIP 能量评估。我们分别报告这些成本，因为它们的相对重要性取决于设置：去噪可能主导生成时间，而使用大型奖励模型评分可能使评判成为瓶颈。</p>
+<p><strong>图 2</strong>：示例输出。这些示例说明 TrailMix 与几个粒子基线相比如何遵循包含多个对象、空间关系和对象数量的提示词。特别地，我们可以看到 TrailMix 生成逼真的输出。</p>
+<h4>4.1.1 结果</h4>
+<p><strong>TrailMix 改善跨语义要求的对齐，特别是对于罕见组合。</strong> TrailMix 在每个报告的指标上优于 FK 引导和 LiDAR，并在两个扩散模型上匹配或超越 Best-of-4（表 1）。它还取得比其他轨迹选择和搜索方法（包括 PSP、BFS、SVDD-PM 和 DTS）更高的 GenEval 总体分数。这些改进跨越对象计数、空间关系和属性绑定，在 RareBench 上结果尤为突出。</p>
+<p>TrailMix 在两个模型上取得所有评估方法中最高的多对象分数，甚至超越 Best-of-8。它相对于 FK 引导和 LiDAR 的增益在多对象组合上也大于单对象。这表明将前瞻评估与自适应重采样相结合在多个不常见概念必须同时出现在一张图像中时特别有价值（见图 2 中的示例）。</p>
+<p><strong>TrailMix 以更少的去噪器评估实现强对齐。</strong> TrailMix 以减少 42% 的 U-Net 评估匹配或超越 Best-of-8 的关键对齐指标，尽管它需要额外的评判器调用。与 FK 引导相比，前瞻预览增加去噪工作量但将评判器调用减半，而 TrailMix 以两项度量上更低的成本取得比 LiDAR 更好的对齐。这些比较表明生成期间计算如何分配很重要，促使我们更仔细地检查粒子预算增加时的性能。</p>
+<p><strong>图 3</strong>：随粒子数量扩展。随着粒子数量增加的 GenEval 性能。TrailMix 在从 4 到 64 的每个测试数量上都领先 FK 引导和 Best-of-N。</p>
+<p><strong>TrailMix 随着粒子预算增长保持其优势。</strong> 增加粒子数量通常改善生成质量，这提出了基线是否可以在更大种群下缩小差距的问题。我们在 GenEval 上通过改变 TrailMix、FK 引导和 Best-of-N 的粒子预算来评估这一点（图 3）。尽管所有三种方法都受益于额外的粒子，TrailMix 在从 4 到 64 的每个测试种群大小上取得更高的 GenEval 分数。仅使用 16 个粒子，它达到与 64 个粒子的基线大约相同的分数，并且其优势在更大预算下继续增长。唯一的例外是 $n=2$，其中它表现不如两个基线。这些结果表明 TrailMix 不仅在固定粒子预算下改善生成，而且更有效地利用更大的种群。</p>
+<h3>4.2 图像编辑</h3>
+<p><strong>采样与基线。</strong> 在这组任务中，我们评估方法在保留图像其余部分的同时改变请求属性的程度。这具有挑战性，因为模型在被提示进行定向更改时经常改变无关的对象或背景细节。我们使用随机 DDIM 采样（$\eta=1$）[39] 和与文本到图像生成评估相同的基线（第 4.1 节）。</p>
+<p><strong>图 4</strong>：编辑权衡。SEAM-Bench 上编辑成功与无关语义细节保留之间的权衡，偏好更高的 EditRate 和更低的保留误差 $E$。</p>
+<p><strong>表 2</strong>：额外图像编辑结果。SEAM-Bench 上的额外指标和 PIE-Bench 上的编辑结果。EditRate 和 Context lost 为百分比；Structure 和 LPIPS 乘以 $10^{3}$。箭头表示偏好方向；粗体标记最佳结果，包括并列。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>方法</th>
+<th>粒子数 $n$</th>
+<th>$E_{\mathrm{ver}}$↓</th>
+<th>上下文丢失↓</th>
+<th>编辑成功率↑</th>
+<th>CLIP 编辑↑</th>
+<th>结构↓</th>
+<th>PSNR↑</th>
+<th>LPIPS↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SD v1.4</td>
+<td>基础模型（单轨迹）</td>
+<td>1</td>
+<td>0.223</td>
+<td>6.2</td>
+<td>13.4</td>
+<td>21.35</td>
+<td>18.38</td>
+<td>24.05</td>
+<td>98.0</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Universal Guidance [2]</td>
+<td>-</td>
+<td>0.330</td>
+<td>25.0</td>
+<td>5.6</td>
+<td>21.47</td>
+<td>13.90</td>
+<td>25.19</td>
+<td>82.0</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>FreeDoM [46]</td>
+<td>-</td>
+<td>0.384</td>
+<td>16.2</td>
+<td>29.8</td>
+<td>21.85</td>
+<td>135.41</td>
+<td>15.40</td>
+<td>335.4</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>SEGA [4]</td>
+<td>-</td>
+<td>0.223</td>
+<td>6.2</td>
+<td>27.0</td>
+<td>21.69</td>
+<td>20.37</td>
+<td>23.61</td>
+<td>103.6</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Prompt-to-Prompt [16]</td>
+<td>-</td>
+<td>0.172</td>
+<td>4.2</td>
+<td>12.3</td>
+<td>21.33</td>
+<td>18.34</td>
+<td>24.07</td>
+<td>97.7</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Best-of-4</td>
+<td>4</td>
+<td>0.220</td>
+<td>4.2</td>
+<td>18.5</td>
+<td>21.60</td>
+<td>18.59</td>
+<td>24.02</td>
+<td>98.4</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>Best-of-8</td>
+<td>8</td>
+<td>0.221</td>
+<td>2.1</td>
+<td>21.0</td>
+<td>21.69</td>
+<td>18.49</td>
+<td>24.01</td>
+<td>97.9</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>PSP [14]</td>
+<td>4</td>
+<td>0.223</td>
+<td>3.8</td>
+<td>21.6</td>
+<td>21.71</td>
+<td>18.44</td>
+<td>24.03</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>BFS [50]</td>
+<td>4</td>
+<td>0.212</td>
+<td>3.3</td>
+<td>20.0</td>
+<td>21.67</td>
+<td>18.38</td>
+<td>24.02</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>SVDD-PM [26]</td>
+<td>4</td>
+<td>0.219</td>
+<td>5.8</td>
+<td>18.3</td>
+<td>21.53</td>
+<td>18.43</td>
+<td>24.06</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>LiDAR [22]</td>
+<td>4</td>
+<td>0.234</td>
+<td>3.3</td>
+<td>26.5</td>
+<td>19.08</td>
+<td>26.09</td>
+<td>22.46</td>
+<td>113.6</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>DTS [18]</td>
+<td>4</td>
+<td>0.221</td>
+<td>4.2</td>
+<td>19.3</td>
+<td>21.64</td>
+<td>18.50</td>
+<td>24.03</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>FK 引导 [38]</td>
+<td>4</td>
+<td>0.218</td>
+<td>4.6</td>
+<td>20.6</td>
+<td>21.69</td>
+<td>18.53</td>
+<td>24.04</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>SD v1.4</td>
+<td>TrailMix</td>
+<td>4</td>
+<td>0.218</td>
+<td>2.9</td>
+<td>19.3</td>
+<td>21.65</td>
+<td>18.43</td>
+<td>24.08</td>
+<td>97.8</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>基础模型（单轨迹）</td>
+<td>1</td>
+<td>0.150</td>
+<td>0.7</td>
+<td>8.2</td>
+<td>20.94</td>
+<td>14.40</td>
+<td>26.36</td>
+<td>84.8</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>Best-of-4</td>
+<td>4</td>
+<td>0.160</td>
+<td>0.0</td>
+<td>11.3</td>
+<td>21.11</td>
+<td>14.45</td>
+<td>26.35</td>
+<td>84.5</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>Best-of-8</td>
+<td>8</td>
+<td>0.165</td>
+<td>0.4</td>
+<td>13.2</td>
+<td>21.23</td>
+<td>14.44</td>
+<td>26.32</td>
+<td>84.6</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>PSP [14]</td>
+<td>4</td>
+<td>0.158</td>
+<td>0.7</td>
+<td>12.3</td>
+<td>21.18</td>
+<td>14.45</td>
+<td>26.37</td>
+<td>84.7</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>BFS [50]</td>
+<td>4</td>
+<td>0.154</td>
+<td>0.4</td>
+<td>11.7</td>
+<td>21.08</td>
+<td>14.40</td>
+<td>26.37</td>
+<td>84.4</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>SVDD-PM [26]</td>
+<td>4</td>
+<td>0.158</td>
+<td>1.1</td>
+<td>12.3</td>
+<td>21.09</td>
+<td>14.41</td>
+<td>26.37</td>
+<td>84.9</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>LiDAR [22]</td>
+<td>4</td>
+<td>0.175</td>
+<td>1.4</td>
+<td>15.6</td>
+<td>21.35</td>
+<td>14.65</td>
+<td>25.70</td>
+<td>87.8</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>DTS [18]</td>
+<td>4</td>
+<td>0.169</td>
+<td>0.4</td>
+<td>13.0</td>
+<td>21.11</td>
+<td>14.28</td>
+<td>26.36</td>
+<td>84.4</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>FK 引导 [38]</td>
+<td>4</td>
+<td>0.168</td>
+<td>0.0</td>
+<td>12.1</td>
+<td>21.00</td>
+<td>14.46</td>
+<td>24.39</td>
+<td>86.7</td>
+</tr>
+<tr>
+<td>SDXL</td>
+<td>TrailMix</td>
+<td>4</td>
+<td>0.161</td>
+<td>0.0</td>
+<td>13.6</td>
+<td>22.08</td>
+<td>14.41</td>
+<td>26.38</td>
+<td>84.1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>引导奖励。</strong> 我们使用 Qwen2.5-VL-7B [1] 评分候选编辑是否包含目标属性且不再包含原始属性。Best-of-N 使用这些分数选择完成的编辑。TrailMix 和重采样及搜索基线在去噪期间使用它们选择轨迹，而 LiDAR 使用前瞻分数引导单个轨迹。Universal Guidance 和 FreeDoM 使用基于 CLIP 的能量；SEGA 和 Prompt-to-Prompt 不使用外部奖励评判器。</p>
+<p><strong>基准与评估。</strong> 现有图像编辑基准（如 PIE-Bench）使用文本-图像对齐和视觉相似性指标评估编辑成功和源保留 [20]。我们引入 <strong>SEAM-Bench</strong>（语义编辑与属性维护基准）以明确评估更改请求属性是否保留图像中的其他属性。该基准包含 316 个受控的源-目标描述对，仅在单个属性上不同，涵盖 12 种编辑类型，包括颜色、动作和材质。对于每对，我们生成问题以评估请求的更改和无关属性的保留。由于扩散模型可以学习刻板印象关联 [27, 10]，我们还包含一个单独的 192 个编辑队列，朝向和背离这些关联，以评估反刻板印象编辑和方向不对称性。源图像使用被评估的扩散模型生成，允许我们在编辑期间重用其初始噪声。更多细节见附录 C。</p>
+<p>我们还在 PIE-Bench [20] 上进行评估，它提供 700 张现有源图像及编辑指令和掩码。由于它们的初始噪声未知，我们使用 SDEdit [29] 从每个源的加噪版本初始化编辑。我们使用强度 $s=0.3$，使用基础模型选择并在两个骨干上固定。</p>
+<p>对于两个基准，我们使用 Gemma-3-27B [11] 独立于引导评判器评估编辑成功。我们首先检查每个源图像包含预期主体和原始属性但不包含目标属性，确保请求的编辑需要实际更改。当输出保留主体、移除原始属性并引入目标属性时，编辑成功。EditRate 是成功编辑的源图像百分比，而 Context lost 衡量主体消失的频率。</p>
+<p>我们与编辑成功分开衡量保留。在 SEAM-Bench 上，Gemma 评估应保持不变的属性。保留误差 $E$ 是源图像和编辑图像之间这些属性存在的置信度的平均绝对变化。我们还报告 $E_{\mathrm{verified}}$，它衡量属性被成功编辑的编辑上的相同误差。值越低表示保留越好。在 PIE-Bench 上，提供的掩码识别预期更改的区域。我们使用 $\mathrm{CLIP}_{\mathrm{edit}}$ 衡量这些区域内与目标提示词的对齐，使用 PSNR 和 LPIPS 衡量区域外的保留。PSNR 比较像素值，而 LPIPS 使用神经网络特征衡量感知差异。更高的 PSNR 和更低的 LPIPS 表示更好的保留。Structure 使用 DINO 特征衡量整个图像的变化；值越低越好。</p>
+<p>对于反刻板印象编辑，Against 衡量背离刻板属性编辑时的成功率。Asymmetry 是两个编辑方向之间成功率的绝对差异，仅针对两个方向的源图像都满足起始条件的上下文测量。</p>
+<h4>4.2.1 结果</h4>
+<p><strong>TrailMix 在保留源内容的同时改善编辑成功。</strong> 在 SEAM-Bench 上，TrailMix 在两个骨干上取得最高的 EditRate，同时保持低保留误差（图 4）。在 SDv1.4 上，它在编辑成功上超过 LiDAR（92.5% 对 90.5%），同时降低总体保留误差和主体丢失。在 SDXL 上，它达到 97.8% 的 EditRate，总体保留误差最低且没有观察到主体丢失，尽管基础模型在仅考虑成功编辑时保留误差更低（表 2）。这些结果表明，可以在不实质性改变无关源内容的情况下实现更高的编辑成功。</p>
+<p><strong>TrailMix 在现有图像上平衡编辑对齐与保留。</strong> 在 PIE-Bench 上，TrailMix 在 SDXL 上取得最高的编辑区域文本对齐和最低的 LPIPS，以及基于粒子选择基线中最高的 EditRate（表 2）。LiDAR 取得更高的编辑成功（15.6% 对 13.6%）但引入更大的结构和感知变化。在 SDv1.4 上，TrailMix 相比基础模型和 Best-of-4 改善 EditRate 并保持强大的源保留，尽管几个基线取得更高的编辑成功。因此，SDXL 结果提供了在有限源更改下改善编辑对齐的最清晰证据。</p>
+<p><strong>表 3</strong>：反刻板印象编辑。结果以百分比报告；粗体显示每列最佳结果，包括并列。</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>粒子数 $n$</th>
+<th>SD v1.4 反向↑</th>
+<th>SD v1.4 不对称↓</th>
+<th>SDXL 反向↑</th>
+<th>SDXL 不对称↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>单轨迹</td>
+<td>1</td>
+<td>78.8</td>
+<td>5.3</td>
+<td>76.7</td>
+<td>4.3</td>
+</tr>
+<tr>
+<td>Best-of-4</td>
+<td>4</td>
+<td>82.5</td>
+<td>1.8</td>
+<td>83.3</td>
+<td>5.8</td>
+</tr>
+<tr>
+<td>Best-of-8</td>
+<td>8</td>
+<td>85.0</td>
+<td>7.0</td>
+<td>83.3</td>
+<td>4.3</td>
+</tr>
+<tr>
+<td>FK 引导 [38]</td>
+<td>4</td>
+<td>77.5</td>
+<td>5.3</td>
+<td>81.1</td>
+<td>5.8</td>
+</tr>
+<tr>
+<td>TrailMix</td>
+<td>4</td>
+<td>83.8</td>
+<td>1.8</td>
+<td>90.0</td>
+<td>1.4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TrailMix 改善反刻板印象编辑同时减少不对称性。</strong> TrailMix 在两个模型上取得最低的 Asymmetry，在 SDv1.4 上与 Best-of-4 并列（表 3）。在 SDXL 上，它达到 90.0% 的反刻板印象 EditRate，相比之下最强基线为 83.3%，同时将 Asymmetry 降低到 1.4 个百分点。在 SDv1.4 上，Best-of-8 取得更高的反刻板印象编辑成功但不对称性明显更大。这些结果表明 TrailMix 有助于对抗刻板印象关联，同时平衡编辑方向之间的成功率。图 5 中的示例说明了对砌砖工人性别和冲浪者年龄的编辑，同时保留其活动和场景上下文。</p>
+<p><strong>图 5</strong>：反刻板印象图像编辑。源图像（左）和 TrailMix 输出（右）。</p>
+<h3>4.3 消融</h3>
+<p>我们检查 TrailMix 的两个主要组件：基于前瞻的奖励估计和自适应引导强度。我们在 SDv1.4 上使用四个粒子改变前瞻长度并比较自适应和固定引导强度，保持所有其他设置固定（表 4）。我们执行额外的消融以研究奖励阈值、预览预算、粒子数量、重采样计划和奖励评判器的影响（附录 D）。</p>
+<p><strong>短前瞻相对于单步预测改善对齐。</strong> 四步和八步预览在 GenEval 和 RareBench 上都优于单步预测，在 RareBench 上增益最大。将预览扩展到十六步增加计算而不改善超过八步的性能。如附录 D.1 中进一步分析的，前瞻预览在去噪早期特别有用，因为它们可以比单步预测更可靠地识别可能产生成功图像的轨迹。</p>
+<p><strong>自适应引导跨提示词调整选择压力。</strong> 不同的固定引导强度在 GenEval 和 RareBench 上表现最佳，而自适应引导在两者上匹配最佳测试设置而无需特定基准调整。进一步分析表明，自适应引导通常在基础模型已经产生高奖励图像时应用较弱的选择，比固定引导保留更多不同的初始轨迹，同时保持竞争性对齐（附录 D.2）。</p>
+<p><strong>表 4</strong>：前瞻和引导强度消融。所有运行使用 SDv1.4 和四个粒子。分数使用独立基准评估器，0-100 分制。$L=1$ 是单步预测。成本按提示词计算并包括预览。粗体标记每个块中的最佳分数，包括并列。</p>
+<table>
+<thead>
+<tr>
+<th>变体</th>
+<th>GenEval</th>
+<th>RareBench</th>
+<th>U-Net / 评判器调用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>前瞻长度 $L=1$</td>
+<td>54.4</td>
+<td>57.0</td>
+<td>816 / 12</td>
+</tr>
+<tr>
+<td>前瞻长度 $L=4$</td>
+<td>54.8</td>
+<td>61.1</td>
+<td>864 / 12</td>
+</tr>
+<tr>
+<td>前瞻长度 $L=8$（TrailMix）</td>
+<td>56.3</td>
+<td>61.4</td>
+<td>928 / 12</td>
+</tr>
+<tr>
+<td>前瞻长度 $L=16$</td>
+<td>55.6</td>
+<td>58.9</td>
+<td>1056 / 12</td>
+</tr>
+<tr>
+<td>固定 $\beta=1$</td>
+<td>55.2</td>
+<td>61.4</td>
+<td>928 / 12</td>
+</tr>
+<tr>
+<td>固定 $\beta=5$</td>
+<td>54.9</td>
+<td>60.5</td>
+<td>928 / 12</td>
+</tr>
+<tr>
+<td>固定 $\beta=20$</td>
+<td>56.3</td>
+<td>60.0</td>
+<td>928 / 12</td>
+</tr>
+<tr>
+<td>自适应（TrailMix）</td>
+<td>56.3</td>
+<td>61.4</td>
+<td>928 / 12</td>
+</tr>
+</tbody>
+</table>
+<h2>5 结论</h2>
+<p>我们引入 TrailMix，一种免训练的扩散引导方法，利用预训练模型的可能结果改善文本-图像对齐。通过评估廉价的前瞻预览，TrailMix 识别有前景的轨迹并调整重采样期间偏向它们的强度。在两个扩散模型上，此方法改善组合生成，在罕见的多对象场景上增益尤为显著。我们进一步证明其对定向图像编辑的适用性，并引入 SEAM-Bench，一个系统评估语义编辑成功和源保留的基准，包括背离刻板印象关联的编辑。总之，我们的结果表明自适应奖励估计和重采样可以更好地利用预训练生成分布而无需额外训练。</p>
+<h2>LLM 使用声明</h2>
+<p>我们使用 GPT-5.6 Luna 协助识别选定基线以确保适当和及时的经验广度。Claude Code Opus 用于协助调试、实现基线方法和运行实验网格。所有 LLM 辅助的输出均由作者审查和验证。</p>
+<h2>参考文献</h2>
+<p>[1] S. Bai 等（2025）。Qwen2.5-VL 技术报告。arXiv preprint arXiv:2502.13923。被引于：§B.3、§D.4、§4.2。</p>
+<p>[2] A. Bansal、H. Chu、A. Schwarzschild、S. Sengupta、M. Goldblum、J. Geiping、T. Goldstein（2023）。扩散模型的通用引导。外部链接：2302.07121。被引于：§1、§2、§4.1、§4.2、表 1。</p>
+<p>[3] K. Black、M. Janner、Y. Du、I. Kostrikov、S. Levine（2024）。用强化学习训练扩散模型。发表于 ICLR。被引于：§E.2、表 21、§1、§2。</p>
+<p>[4] M. Brack、F. Friedrich、D. Hintersdorf、L. Struppek、P. Schramowski、K. Kersting（2023）。SEGA：使用语义引导指令化文本到图像模型。外部链接：2301.12247。被引于：§2、§4.1、§4.2、表 1。</p>
+<p>[5] S. Chatterjee、P. Diaconis（2018）。重要性采样所需的样本量。《应用概率年鉴》28(2)，第 1099–1135 页。被引于：§1。</p>
+<p>[6] B. Cheng、I. Misra、A. G. Schwing、A. Kirillov、R. Girdhar（2022）。用于通用图像分割的掩码注意力掩码变换器。外部链接：2112.01527。被引于：§4.1。</p>
+<p>[7] K. Clark、P. Vicol、K. Swersky、D. J. Fleet（2024）。在可微奖励上直接微调扩散模型。发表于 ICLR。被引于：§1、§2。</p>
+<p>[8] J. Dong、W. Liang、H. Li、D. Zhang、M. Cao、H. Ding、S. Khan、F. S. Khan（2024）。如何持续适配文本到图像扩散模型以实现灵活定制？《神经信息处理系统进展》37，第 130057–130083 页。被引于：§1。</p>
+<p>[9] Y. Fan、O. Watkins、Y. Du、H. Liu、M. Ryu、C. Boutilier、P. Abbeel、M. Ghavamzadeh、K. Lee、K. Lee（2023）。DPOK：用于微调文本到图像扩散模型的强化学习。发表于 NeurIPS。被引于：§1、§2。</p>
+<p>[10] F. Friedrich、M. Brack、L. Struppek、D. Hintersdorf、P. Schramowski、S. Luccioni、K. Kersting（2023）。公平扩散：在公平性上指令化文本到图像生成模型。arXiv preprint arXiv:2302.10893。被引于：附录 G、§4.2。</p>
+<p>[11] Gemma 团队（2025）。Gemma 3 技术报告。arXiv preprint arXiv:2503.19786。被引于：§B.3、§C.3、§D.4、§4.2。</p>
+<p>[12] W. Gerych、H. Zhang、K. Hamidieh、E. Pan、M. Sharma、T. Hartvigsen、M. Ghassemi（2024）。BendVLM：视觉-语言嵌入的测试时去偏。发表于 NeurIPS。被引于：附录 G。</p>
+<p>[13] D. Ghosh、H. Hajishirzi、L. Schmidt（2023）。GenEval：一个以对象为中心的文本到图像对齐评估框架。发表于 NeurIPS。被引于：§B.2、§1、§1、§4.1。</p>
+<p>[14] R. Guimaraes、P. Perona（2026）。通过渐进种子剪枝的扩散模型推理时扩展。arXiv preprint arXiv:2607.21591。被引于：§B.1、§1、§2、§4.1、§4.2、表 1。</p>
+<p>[15] H. Guo、H. Wei、B. Jing（2026）。面向文本到图像扩散模型的早期质量评估。外部链接：2603.02829。被引于：§1。</p>
+<p>[16] A. Hertz、R. Mokady、J. Tenenbaum、K. Aberman、Y. Pritch、D. Cohen-Or（2023）。使用交叉注意力控制的提示词到提示词图像编辑。发表于 ICLR。被引于：附录 G、§2、§4.1、§4.2、表 1。</p>
+<p>[17] K. Huang、C. Duan、K. Sun、E. Xie、Z. Li、X. Liu（2025）。T2I-CompBench++：一个增强且全面的组合文本到图像生成基准。IEEE TPAMI。被引于：§B.2、§1、§1、§4.1。</p>
+<p>[18] V. Jain、K. Sareen、M. Pedramfar、R. Ravanbakhsh（2025）。扩散树采样：扩散模型的可扩展推理时对齐。发表于 NeurIPS。被引于：§B.1、§2、§4.1、§4.2、表 1。</p>
+<p>[19] R. Jena、A. Taghibakhshi、S. Jain、G. Shen、N. Tajbakhsh、A. Vahdat（2025）。阐明文本到图像扩散模型中的最优奖励-多样性权衡。发表于 2025 IEEE/CVF 计算机视觉应用冬季会议（WACV），第 232–242 页。被引于：§2。</p>
+<p>[20] X. Ju、A. Zeng、Y. Bian、S. Liu、Q. Xu（2024）。PnP 反演：用 3 行代码提升基于扩散的编辑。发表于 ICLR。被引于：§B.3、附录 G、§1、§4.2。</p>
+<p>[21] S. Kim、M. Kim、D. Park（2025）。无奖励过度优化的扩散模型测试时对齐。发表于 ICLR。被引于：§2。</p>
+<p>[22] Y. Kim、D. Shin、B. Na、M. Park、R. L. Kim、I. Moon（2026）。用于扩散模型测试时扩展的前瞻样本奖励引导。发表于国际机器学习会议论文集，Machine Learning Research 论文集，第 306 卷，第 58969–58995 页。被引于：§B.1、§1、§2、§4.1、§4.2、表 1。</p>
+<p>[23] Y. Kirstain、A. Polyak、U. Singer、S. Matiana、J. Penna、O. Levy（2023）。Pick-a-pic：一个开放的文本到图像生成用户偏好数据集。发表于 NeurIPS。被引于：§D.4。</p>
+<p>[24] P. Lamba、K. Ravish、A. Kushwaha、P. Kumar（2025）。通过强化学习和奖励建模的扩散模型对齐与安全：综述。arXiv preprint arXiv:2505.17352。被引于：§2。</p>
+<p>[25] J. Li、D. Li、C. Xiong、S. Hoi（2022）。BLIP：用于统一视觉-语言理解和生成的自举语言-图像预训练。发表于第 39 届国际机器学习会议论文集，Machine Learning Research 论文集，第 162 卷，第 12888–12900 页。被引于：§4.1。</p>
+<p>[26] X. Li、Y. Zhao、C. Wang、G. Scalia、G. Eraslan、S. Nair、T. Biancalani、S. Ji、A. Regev、S. Levine、M. Uehara（2024）。连续和离散扩散模型中基于软值解码的无导数引导。arXiv preprint arXiv:2408.08252。被引于：§B.1、§1、§2、§4.1、§4.2、表 1。</p>
+<p>[27] A. S. Luccioni、C. Akiki、M. Mitchell、Y. Jernite（2023）。稳定偏差：分析扩散模型中的社会表征。外部链接：2303.11408。被引于：§4.2。</p>
+<p>[28] N. Ma、S. Tong、H. Jia 等（2025）。扩展扩散模型的推理时计算。发表于 CVPR。被引于：§2。</p>
+<p>[29] C. Meng、Y. He、J. Song、J. Song、J. Wu、J. Zhu、S. Ermon（2022）。SDEdit：用随机微分方程引导图像合成与编辑。发表于 ICLR。被引于：§B.1、§B.3、附录 G、§4.2。</p>
+<p>[30] R. Mokady、A. Hertz、K. Aberman、Y. Pritch、D. Cohen-Or（2023）。用于使用引导扩散模型编辑真实图像的零文本反演。发表于 CVPR，第 6038–6047 页。被引于：附录 G。</p>
+<p>[31] OpenAI（2024）。GPT-4o 系统卡。arXiv preprint arXiv:2410.21276。被引于：§4.1。</p>
+<p>[32] D. Park、S. Kim、T. Moon、M. Kim、K. Lee、J. Cho（2025）。稀有到常见：用 LLM 引导释放扩散模型在稀有概念上的组合生成能力。发表于 ICLR，第 14650–14676 页。被引于：§B.2、§1、§1、§4.1。</p>
+<p>[33] D. Podell、Z. English、K. Lacey、A. Blattmann、T. Dockhorn、J. Müller、J. Penna、R. Rombach（2024）。SDXL：改进高分辨率图像合成的潜在扩散模型。发表于 ICLR。被引于：§B.1、§1、§4。</p>
+<p>[34] A. Radford、J. W. Kim、C. Hallacy、A. Ramesh、G. Goh、S. Agarwal、G. Sastry、A. Askell、P. Mishkin、J. Clark、G. Krueger、I. Sutskever（2021）。从自然语言监督中学习可迁移的视觉模型。发表于第 38 届国际机器学习会议论文集，Machine Learning Research 论文集，第 139 卷，第 8748–8763 页。被引于：§4.1。</p>
+<p>[35] R. Rombach、A. Blattmann、D. Lorenz、P. Esser、B. Ommer（2022）。用潜在扩散模型进行高分辨率图像合成。发表于 CVPR。被引于：§B.1、§1、§4。</p>
+<p>[36] K. Sargent、R. Gao、P. Henzler、C. Herrmann、A. Holynski、L. Fei-Fei、J. Wu、J. Y. Zhang（2026）。VLIC：作为人类对齐图像压缩感知评判器的视觉-语言模型。发表于 IEEE/CVF 计算机视觉与模式识别会议论文集，第 10462–10471 页。被引于：§1。</p>
+<p>[37] X. Shen、C. Du、T. Pang、M. Lin、Y. Wong、M. Kankanhalli（2024）。为公平性微调文本到图像扩散模型。发表于 ICLR。被引于：附录 G。</p>
+<p>[38] R. Singhal、Z. Horvitz、R. Teehan、M. Ren、Z. Yu、K. McKeown、R. Ranganath（2025）。扩散模型推理时扩展与引导的通用框架。发表于 Int. Conf. Mach. Learn.。被引于：§B.1、表 19、表 20、表 21、§1、§2、§3.2、§4.1、§4.2、表 1、表 3。</p>
+<p>[39] J. Song、C. Meng、S. Ermon（2021）。去噪扩散隐式模型。发表于 ICLR。被引于：§B.1、§4.1、§4.2。</p>
+<p>[40] B. Tinaz、Z. Fabian、M. Soltanolkotabi（2026）。扩散模型中可解释概念的出现与演化。外部链接：2504.15473。被引于：§1。</p>
+<p>[41] N. Tumanyan、O. Bar-Tal、S. Bagon、T. Dekel（2022）。拼接 ViT 特征用于语义外观迁移。发表于 CVPR。被引于：§B.3。</p>
+<p>[42] N. Tumanyan、M. Geyer、S. Bagon、T. Dekel（2023）。用于文本驱动图像到图像转换的即插即用扩散特征。发表于 CVPR，第 1921–1930 页。被引于：附录 G。</p>
+<p>[43] B. Wallace、M. Dang、R. Rafailov、L. Zhou、A. Lou、S. Purushwalkam、S. Ermon、C. Xiong、S. Joty、N. Naik（2024）。使用直接偏好优化的扩散模型对齐。发表于 CVPR。被引于：§E.2、表 21、§1、§2。</p>
+<p>[44] L. Wu、B. L. Trippe、C. A. Naesseth、D. M. Blei、J. P. Cunningham（2023）。扩散模型中实用且渐近精确的条件采样。发表于 NeurIPS。被引于：§2。</p>
+<p>[45] J. Xu、X. Liu、Y. Wu、Y. Tong、Q. Li、M. Ding、J. Tang、Y. Dong（2023）。ImageReward：学习和评估文本到图像生成的人类偏好。发表于 NeurIPS。被引于：§B.1、§1、§4.1。</p>
+<p>[46] J. Yu、Y. Wang、C. Zhao、B. Ghanem、J. Zhang（2023）。FreeDoM：免训练能量引导的条件扩散模型。外部链接：2303.09833。被引于：§2、§4.1、§4.2、表 1。</p>
+<p>[47] Z. Yue、J. Wang、Q. Sun、L. Ji、E. I. Chang、H. Zhang（2024）。探索扩散时间步用于无监督表示学习。外部链接：2401.11430。被引于：§1。</p>
+<p>[48] A. Zarei、K. Rezaei、S. Basu、M. Saberi、M. Moayeri、P. Kattakinda、S. Feizi（2024）。通过增强文本嵌入改善文本到图像生成模型中的组合属性绑定。arXiv preprint arXiv:2406.07844。被引于：§1。</p>
+<p>[49] C. Zhang、X. Chen、S. Chai、C. H. Wu、D. Lagun、T. Beeler、F. De la Torre（2023）。ITI-GEN：包容性文本到图像生成。发表于 ICCV。被引于：附录 G。</p>
+<p>[50] X. Zhang、H. Lin、H. Ye、J. Zou、J. Ma、Y. Liang、Y. Du（2026）。通过经典搜索的扩散模型推理时扩展。发表于 ICLR。被引于：§B.1、§1、§4.1、§4.2、表 1。</p>
+<p>[51] X. Zhou、V. Koltun、P. Krähenbühl（2022）。简单的多数据集检测。发表于 IEEE/CVF 计算机视觉与模式识别会议论文集（CVPR），第 7571–7580 页。被引于：§4.1。</p>
+<h2>补充材料</h2>
+<h3>附录 A 理论</h3>
+<p>我们建立奖励倾斜的最小变化解释，并解释第 3 节中的前瞻加权和继承分数修正。全文中，我们固定提示词 $c$ 并假设 $r(x_{0},c)$ 有界且可测。</p>
+<p><strong>A.1 最小变化奖励倾斜</strong></p>
+<p>对于 $\beta\geq 0$，公式 1 中的归一化分布为</p>
+<p>$$p_{\beta}(x_{0}\mid c)=\frac{p_{\theta}(x_{0}\mid c)e^{\beta r(x_{0},c)}}{Z_{\beta}(c)},\qquad Z_{\beta}(c)=\mathbb{E}<em>{p</em>{\theta}(\cdot\mid c)}[e^{\beta r(x_{0},c)}]. \tag{8}$$</p>
+<p>对对数归一化因子求导得到</p>
+<p>$$\mu_{c}(\beta)=\frac{\mathrm{d}}{\mathrm{d}\beta}\log Z_{\beta}(c),\qquad \mu_{c}^{\prime}(\beta)=\operatorname{Var}<em>{p</em>{\beta}(\cdot\mid c)}[r(x_{0},c)]\geq 0. \tag{9}$$</p>
+<p>因此平均奖励随引导强度非递减。</p>
+<p><strong>引理 1（最小变化奖励倾斜）</strong>。若 $\mu_{c}(0)\geq\tau$，则 $\beta_{c}=0$。否则，假设 $\mu_{c}(0)&lt;\tau&lt;\operatorname*{ess\,sup}<em>{p</em>{\theta}(\cdot\mid c)}r(x_{0},c)$。则存在唯一的有限 $\beta_{c}&gt;0$ 满足 $\mu_{c}(\beta_{c})=\tau$。在两种情况下，$p_{\beta_{c}}(\cdot\mid c)$ 都是公式 5 中的唯一最小化子。</p>
+<p><strong>证明。</strong> 当 $\mu_{c}(0)\geq\tau$ 时，基础分布可行且唯一最小化 KL 散度。否则，有限指数倾斜保持基础分布的零测集，因此公式 9 中的方差严格为正。平均奖励随 $\beta\to\infty$ 连续增加到 $r(x_{0},c)$ 的本质上确界。所述条件因此产生唯一的有限 $\beta_{c}$ 满足 $\mu_{c}(\beta_{c})=\tau$。</p>
+<p>对于任何具有有限 KL 散度的可行 $Q$，为便于阅读省略对 $c$ 的条件，</p>
+<p>$$\mathrm{KL}(Q\,|\,p_{\theta})-\mathrm{KL}(p_{\beta_{c}}\,|\,p_{\theta})=\mathrm{KL}(Q\,|\,p_{\beta_{c}})+\beta_{c}\big(\mathbb{E}<em>{Q}[r]-\mu</em>{c}(\beta_{c})\big). \tag{10}$$</p>
+<p>当 $\beta_{c}=0$ 时第二项为零，否则非负，因为 $\mu_{c}(\beta_{c})=\tau$ 且 $Q$ 可行。第一项非负，当且仅当 $Q=p_{\beta_{c}}$ 时为零。KL 散度无限的分布不能改善目标。∎</p>
+<p><strong>A.2 中间状态的前瞻加权</strong></p>
+<p>公式 1 中的目标涉及完整图像，而重采样作用于中间去噪状态。考虑按 $e^{\beta r(x_{0},c)}$ 重新加权的完整轨迹上的基础模型分布。中间状态 $x_{t}$ 的权重是完整延续的期望指数奖励：</p>
+<p>$$H_{t,\beta}(x_{t},c)=\mathbb{E}<em>{x</em>{0}\sim p_{\theta}(\cdot\mid x_{t},c)}[e^{\beta r(x_{0},c)}]. \tag{11}$$</p>
+<p>将 $p_{\beta}(x_{t}\mid c)$ 记为该倾斜轨迹律下的中间边缘分布，对 $x_{t}$ 条件化得到</p>
+<p>$$p_{\beta}(x_{t}\mid c)=\frac{p_{\theta}(x_{t}\mid c)H_{t,\beta}(x_{t},c)}{Z_{\beta}(c)}. \tag{12}$$</p>
+<p>从完整延续分布中采样的预览会使 $e^{\beta r(\tilde{x}<em>{0},c)}$ 成为给定 $x</em>{t}$ 条件下 $H_{t,\beta}$ 的无偏估计。在 TrailMix 中，$L$ 步粗略预览反而提供了更廉价的代理；它不必对完整延续权重无偏。</p>
+<p><strong>A.3 继承分数与自适应强度</strong></p>
+<p>在检查点 $j$，被选中的粒子继承对数分数 $h_{j}=\hat{\beta}<em>{c,j}s</em>{j}$，其中 $h_{0}=0$。公式 6 中未归一化的增量因子为 $e^{h_{j}-h_{j-1}}$。沿祖先历史，这些因子叠缩：</p>
+<p>$$\prod_{j=1}^{k}e^{h_{j}-h_{j-1}}=e^{h_{k}}. \tag{13}$$</p>
+<p>因此增量因子不会从每个检查点累积单独的指数奖励偏好。</p>
+<p>为使其精确，固定检查点强度并考虑理想的种群级重采样。令 $P_{k}$ 表示通过检查点 $k$ 的去噪历史上的基础模型律，包括独立抽取的预览。在重采样之前，种群律正比于 $e^{h_{k-1}}\,\mathrm{d}P_{k}$。在第一个检查点，这成立因为 $h_{0}=0$。归纳地，基础模型传播保持继承因子，而检查点 $j$ 的重采样将其乘以 $e^{h_{j}-h_{j-1}}$。因此，对任意候选强度 $\beta$，</p>
+<p>$$\frac{\mathbb{E}<em>{\mathrm{pre},k}[s</em>{k}e^{\beta s_{k}-h_{k-1}}]}{\mathbb{E}<em>{\mathrm{pre},k}[e^{\beta s</em>{k}-h_{k-1}}]}=\frac{\mathbb{E}<em>{P</em>{k}}[s_{k}e^{\beta s_{k}}]}{\mathbb{E}<em>{P</em>{k}}[e^{\beta s_{k}}]}. \tag{14}$$</p>
+<p>右边是基础模型预览奖励的指数倾斜均值。当基础模型预览奖励与完整延续奖励具有相同分布时，它等于 $\mu_{c}(\beta)$；否则，它是公式 7 估计的代理。</p>
+<p>最后，对于实现的粒子，记 $\bar{s}<em>{k}(\beta)=\sum</em>{i}\omega_{k}^{i}(\beta)s_{k}^{i}$。固定继承分数，对公式 6 求导得到</p>
+<p>$$\frac{\mathrm{d}}{\mathrm{d}\beta}\bar{s}<em>{k}(\beta)=\sum</em>{i=1}^{n}\omega_{k}^{i}(\beta)\big(s_{k}^{i}-\bar{s}_{k}(\beta)\big)^{2}\geq 0. \tag{15}$$</p>
+<p>加权预览均值因此非递减，支持公式 7 中在阈值可达时的最小强度搜索。这些种群级恒等式解释了加权规则，但并不意味着在使用粗略预览、有限粒子、自适应强度或最终最佳图像选择时从 $p_{\beta_{c}}$ 精确采样。</p>
+<h3>附录 B 实验细节</h3>
+<p>我们描述共享的采样设置和基线配置，然后是文本到图像生成和 PIE-Bench 的评估协议。我们在附录 C 中单独描述 SEAM-Bench。复现结果的代码在此仓库提供。</p>
+<p><strong>B.1 模型与采样</strong></p>
+<p><strong>扩散模型。</strong> 我们使用 512×512 分辨率的 Stable Diffusion v1.4 [35] 和 1024×1024 分辨率的 SDXL base 1.0 [33]。其无分类器引导尺度分别为 7.5 和 5.0。两个模型均以半精度运行，采用随机 DDIM 采样 [39]（$\eta=1$）。文本到图像生成和生成源编辑使用 100 个去噪步骤。PIE-Bench 编辑使用该调度的最后 30 步，以 SDEdit [29] 初始化（第 B.3 节）。</p>
+<p><strong>种子与共享初始化。</strong> 对于每个生成基准，我们按数据集顺序为提示词编号，并使用提示词索引作为随机种子。我们从该种子抽取八个初始噪声样本并在方法间共享：单轨迹使用第一个，四粒子方法使用前四个，Best-of-8 使用全部八个。具有不同搜索或剪枝过程的方法在适用时使用相同的初始样本。我们还为去噪、预览生成和重采样设置种子以保证可复现性，但不跨方法同步后续去噪步骤中抽取的噪声。编辑的源图像初始化在第 B.3 节和第 C.2 节中描述。</p>
+<p><strong>TrailMix 预览与重采样。</strong> 对于生成，TrailMix 维护四条去噪轨迹，并在第 10 步和第 80 步之后重采样。在每个检查点，它复制每个粒子的当前状态，并使用 $L=8$ 个粗略 DDIM 步骤在均匀间隔的时间步上生成一个干净图像预览。奖励评判器对这些预览评分，然后将其丢弃；原始粒子状态保持不变。预览噪声使用与继续轨迹分开的随机流。</p>
+<p>然后我们使用下述定义的概率进行系统重采样，有放回地选择四个粒子。每个被选中的粒子从其原始检查点状态恢复，重复的粒子接收独立的去噪噪声。我们在最后一个检查点之后完成所有四条轨迹并返回奖励最高的最终图像。</p>
+<p><strong>自适应引导强度。</strong> 我们对生成使用 ImageReward [45]，并对每个提示词设目标平均奖励 $\tau=1$。在每个检查点，我们仅使用该检查点生成的预览（默认配置中为四个）估计引导强度。继承的对数分数考虑了先前的重采样，但较早的预览奖励不与当前奖励合并。</p>
+<p>令 $s_{k}^{i}=r(\tilde{x}<em>{0,k}^{i},c)$ 为粒子 $i$ 在检查点 $k$ 的预览奖励，$h</em>{k-1}^{i}$ 为从其父代继承的对数分数，初始化为 $h_{0}^{i}=0$。对候选引导强度 $\beta\geq 0$，权重和估计平均奖励为</p>
+<p>$$\omega_{k}^{i}(\beta)=\frac{\exp(\beta s_{k}^{i}-h_{k-1}^{i})}{\sum_{\ell=1}^{n}\exp(\beta s_{k}^{\ell}-h_{k-1}^{\ell})},\qquad \hat{\mu}<em>{c,k}(\beta)=\sum</em>{i=1}^{n}\omega_{k}^{i}(\beta)s_{k}^{i}. \tag{16}$$</p>
+<p>继承的对数分数校正了较早检查点的选择。固定这些分数，$\hat{\mu}_{c,k}(\beta)$ 关于 $\beta$ 非递减，且当 $\beta\to\infty$ 时趋近最大预览奖励。</p>
+<p>我们选择达到 $\tau$ 的最小非负强度（当此类强度存在时）。若 $\hat{\mu}<em>{c,k}(0)\geq\tau$，我们设 $\hat{\beta}</em>{c,k}=0$。否则，若 $\max_{i}s_{k}^{i}&gt;\tau$，我们通过二分法找到根 $\hat{\mu}<em>{c,k}(\hat{\beta}</em>{c,k})=\tau$。若 $\max_{i}s_{k}^{i}\leq\tau$，目标在任何有限强度下都无法达到，我们转而使用高斯矩近似</p>
+<p>$$\hat{\beta}<em>{c,k}=\max!\left{0,\frac{\tau-\hat{\mu}</em>{c,k}(0)}{\max(\hat{\sigma}_{c,k}^{2},10^{-8})}\right}, \tag{17}$$</p>
+<p>其中 $\hat{\sigma}<em>{c,k}^{2}=\sum</em>{i}\omega_{k}^{i}(0)(s_{k}^{i}-\hat{\mu}<em>{c,k}(0))^{2}$。该近似来自高斯奖励指数倾斜下的均值偏移 $\beta\hat{\sigma}</em>{c,k}^{2}$。即使在观察到的预览奖励无法达到目标时，它也提供有限的引导强度。我们使用 $\omega_{k}^{i}(\hat{\beta}<em>{c,k})$ 重采样，粒子 $i$ 的每个被选中副本继承 $h=\hat{\beta}</em>{c,k}s_{k}^{i}$。强度在下一个检查点重新计算，可能增加或减少。</p>
+<p><strong>基线配置。</strong> 所有基于奖励的采样基线在生成时使用 ImageReward，在编辑时使用第 B.3 节定义的编辑奖励。其去噪轨迹在适用时使用共享的 DDIM 采样器和初始噪声；LiDAR 还为其前瞻样本使用 DPM-Solver。我们遵循原始论文或已发布实现中的调度，并为采样和搜索基线使用名义上的四轨迹预算。每种方法根据其选择策略分配此预算。我们在结果表中报告实际的 U-Net 和评判器调用成本。</p>
+<p><strong>单轨迹与 Best-of-N。</strong> 单轨迹完成一条轨迹而不进行基于奖励的选择。我们为单轨迹的每个输出计一次最终奖励评估，与正文成本约定一致。Best-of-N 完成 $N$ 条独立轨迹并返回奖励最高的图像。我们评估 Best-of-4 和 Best-of-8。</p>
+<p><strong>FK 引导 [38]。</strong> 我们使用最大势变体，它跟踪分配给粒子单步干净图像预测的最高奖励。四个粒子在采样索引 20、40、60 和 80（零索引）处以引导强度 $\lambda=10$ 重采样，随后是终端评分检查点。这五个检查点需要 20 次评判器调用；额外的四次调用选择奖励最高的完成图像。相应的推理成本在主要结果中报告。</p>
+<p><strong>BFS [50]。</strong> 我们遵循作者的 GenEval 配置，使用与 FK 引导相同的四个粒子、最大势规则、强度和检查点。BFS 在两个方面不同：它使用 Srinivasan 重采样而非多项式重采样，并且在计算势之前将采样索引 $j$ 处的奖励乘以 $2j/T$。我们遵循已发布代码中的线性调度，而非论文中描述的指数调度。BFS 与 FK 引导具有相同的推理成本。</p>
+<p><strong>PSP [14]。</strong> 遵循论文的默认调度，PSP 从八个候选开始并在去噪进行时剪枝。第 25 步之后，它对其单步干净图像预测排名并保留四个候选；第 50 步之后，它再次对剩余候选评分并保留两个。它完成两者并返回奖励较高的图像。尽管初始种群较大，总去噪预算与 Best-of-4 匹配。</p>
+<p><strong>SVDD-PM [26]。</strong> 我们遵循作者的实现，$\alpha=0$。在除最后一步之外的每个去噪步骤，SVDD-PM 提出四个下一状态，对每个状态的单步干净图像预测评分，并从奖励最高的提议继续。它在最后一步抽取一个下一状态。与四粒子重采样不同，此过程维护一条选定的路径，同时在每个转移处花费四提议预算。其推理成本在主要结果中报告。</p>
+<p><strong>DTS [18]。</strong> 我们使用 DTS⋆，即论文文本到图像结果中使用的贪心变体。它探索去噪状态树，要么从下一个初始噪声开始，要么扩展现有分支。在每个节点，它选择使其值加上 $c\sqrt{\ln N_{\mathrm{parent}}/N_{\mathrm{child}}}$ 最大的子节点，其中 $c=0.1$。然后它分支一个 DDIM 步并完成轨迹。每个完成的图像评分一次并赋值 $e^{r}$；内部节点值取其子节点的平均。分支允许在步骤的 20%、40%、60% 和 80% 之后，每个访问计数为 $N$ 的节点最多有 $\lfloor 2N^{0.4}\rfloor$ 个子节点。搜索有 800 次 U-Net 评估预算，但最后一次展开按已发布代码完成，产生 916 次评估和 5 次评判器调用。我们返回奖励最高的完成图像。</p>
+<p><strong>LiDAR [22]。</strong> LiDAR 首先使用 DPM-Solver 从新噪声生成并评分 50 个前瞻图像 $x_{0}^{(k)}$，奖励为 $r_{k}$。我们在 SD v1.4 上使用五个求解器步骤，在 SDXL 上使用带 Karras sigma 的八个步骤，如论文所述。然后 LiDAR 使用共享 DDIM 采样器对四个粒子去噪，在 $t&gt;200$ 时修改其预测噪声：</p>
+<p>$$\hat{\epsilon}\leftarrow\hat{\epsilon}-s\sqrt{1-\bar{\alpha}<em>{t}}\,\frac{\sqrt{\bar{\alpha}</em>{t}}}{1-\bar{\alpha}<em>{t}}\times\sum</em>{k=1}^{50}\bigl(w_{k}^{r}-w_{k}\bigr)x_{0}^{(k)}, \tag{18}$$</p>
+<p>$$w_{k}\propto\exp!\Bigl(-\frac{\lVert x_{t}-\sqrt{\bar{\alpha}<em>{t}}\,x</em>{0}^{(k)}\rVert^{2}}{2(1-\bar{\alpha}<em>{t})}\Bigr),\qquad w</em>{k}^{r}\propto w_{k}\,e^{\lambda r_{k}}.$$</p>
+<p>两个权重向量在 50 个前瞻上归一化。遵循论文附录，我们在 SD v1.4 上使用 $\lambda=5000$ 和修正尺度 $s=12.5$，在 SDXL 上使用 $s=8$。我们返回四个最终图像中奖励最高的，如已发布代码的 best-of-n 选项；论文的结果表则平均其分数。成本为 SD v1.4 上 1300 次 U-Net 评估和 SDXL 上 1600 次，两个模型的评判器调用均为 54 次。</p>
+<p><strong>编辑的基线适配。</strong> 对于 SEAM-Bench，每条编辑轨迹从用于生成其源图像的初始噪声开始（第 C.2 节）。对于 PIE-Bench，每条轨迹从加噪的源图像开始（第 B.3 节）。采样基线和 TrailMix 共享这些源条件初始状态，并为后续去噪使用独立的随机噪声。我们将 ImageReward 替换为编辑奖励，同时保持奖励排名规则不变。这些采样基线的设置均未在编辑评估集上调整。</p>
+<p>我们在必要时调整奖励尺度。FK 引导和 BFS 使用 $\lambda=1.21$，在留出编辑对上校准（第 C.2 节）。我们将 LiDAR 和 DTS⋆ 的奖励系数按校准编辑强度与生成强度的比率（约 0.121）重新缩放。这给 LiDAR 得到 $\lambda=605.5$，给 DTS⋆ 得到叶值 $e^{0.121\,r}$。对于生成源编辑，这些基线使用完整的 100 步轨迹并保留其生成成本。</p>
+<p>在 PIE-Bench 上，所有方法转而运行最后 30 个去噪步骤。PSP 在第 8 步和第 15 步之后剪枝；BFS 使用 FK 引导的编辑检查点；DTS⋆ 在缩短轨迹的 20%、40%、60% 和 80% 处分支，搜索预算为 240 次 U-Net 评估。对于 LiDAR，我们将源加噪至第一个采样时间步，并使用五个或八个 DPM-Solver 步骤在剩余范围上抽取源条件前瞻，不使用 Karras sigma。其修正应用于 $t&gt;200$ 的十个步骤。PIE-Bench 成本（U-Net 评估/评判器调用）为：PSP 244/14，BFS 240/24，SVDD-PM 234/116，DTS⋆ 272/5，LiDAR 在 SD v1.4 上为 740/54 或 SDXL 上为 1040/54。</p>
+<p><strong>B.2 生成基准与评估</strong></p>
+<p>我们使用每个基准的独立指标评估完成的图像，而非生成期间用于选择图像的奖励评判器。分数以 0-100 分制报告，值越高表示对齐越好。</p>
+<p><strong>RareBench。</strong> RareBench [32] 包含 320 个提示词，分为八个等大的类别：五个单对象和三个多对象。我们遵循 R2F 评分标准，将评分 $r$ 映射为 $100\max(r-1,0)/4$，使用 GPT-4o 快照 gpt-4o-2024-11-20。若评估器的内容过滤器阻止某图像，我们在比较中为每种方法移除该提示词。ImageReward 实验在 SD v1.4 上保留 317 个提示词，在 SDXL 上保留 318 个。</p>
+<p><strong>GenEval 与 T2I-CompBench++。</strong> 我们使用官方 GenEval 目标检测器和评估检查 [13]，并等同地平均六个类别分数。T2I-CompBench++ [17] 包含 1,500 个提示词，五个类别各 300 个。我们将绑定报告为颜色、形状和纹理绑定的 BLIP-VQA 分数均值；UniDet 评估空间和数量。当报告总体 T2I-CompBench++ 分数时，我们等同地平均所有五个类别，等价于 $(3\,\mathrm{Binding}+\mathrm{Spatial}+\mathrm{Numeracy})/5$。</p>
+<p><strong>B.3 PIE-Bench：编辑现有图像</strong></p>
+<p><strong>源初始化。</strong> PIE-Bench [20] 提供 700 张源图像，每张带有编辑指令和标记更改区域的掩码。我们将每个源调整到扩散模型的分辨率，并使用 SDEdit [29] 在目标提示词下去噪之前对图像加噪。我们使用强度 $s=0.3$，对应 100 步调度的最后 30 步。我们在运行引导比较之前使用 SD v1.4 上的单轨迹选择此强度，并对两个模型保持固定。</p>
+<p>我们按数据集顺序为源图像/编辑对编号，并使用每对的索引作为其随机种子。所有方法从给定对的相同加噪源图像开始，包括 Best-of-N 以及剪枝、搜索和引导基线。候选共享此源条件状态，但在后续去噪步骤中接收独立噪声。</p>
+<p><strong>编辑奖励与引导。</strong> 我们使用 Qwen2.5-VL-7B [1] 询问候选是否包含目标属性以及是否仍包含原始属性。对每个问题，我们将"是"的概率转换为对数几率，截断到 $[-10,10]$。奖励是目标属性对数几率减去原始属性对数几率，偏向请求的更改。对于仅添加或仅删除的编辑，我们分别使用两倍可用的目标对数几率或负两倍原始对数几率，以保持可比的奖励尺度。</p>
+<p>TrailMix 使用四个粒子、八步预览、目标 $\tau=15$，以及 30 步轨迹的第 3、14 和 24 步之后的重采样检查点。FK 引导使用采样索引 6、12、18 和 24（零索引），随后是终端检查点和单独的最终评分 pass，$\lambda=1.21$ 在 90 个留出编辑对上校准（第 C.2 节）。其他基线使用第 B.1 节中详述的缩短调度。</p>
+<p><strong>编辑成功。</strong> 我们使用 Gemma 3 27B [11] 评估编辑，独立于用于引导和最终选择的 Qwen 评判器。当答案的概率至少为 0.5 时，我们将其视为"是"。若源包含主体和任何要移除的属性，但不已包含要添加的属性，则源有效。在有效源上，若输出保留主体并进行请求的添加、删除或替换，则编辑成功。</p>
+<p>698 个示例有评估问题，其中 514 个有有效源。EditRate 是成功编辑的有效源百分比。Context lost 是输出不再包含主体的有效源百分比。</p>
+<p><strong>对齐与保留。</strong> 我们在调整到 512×512 的输出上计算官方 PIE-Bench 指标。$\mathrm{CLIP}<em>{\mathrm{edit}}$ 评估编辑掩码内的目标文本对齐，Structure 衡量 DINO-ViT 自相似性的变化 [41]，PSNR 和 LPIPS 在存在未编辑区域时评估编辑掩码外的保留。更高的 $\mathrm{CLIP}</em>{\mathrm{edit}}$ 和 PSNR，以及更低的 Structure 和 LPIPS 更好。遵循表 2，Structure 和 LPIPS 在所有表中乘以 $10^{3}$。</p>
+<p><strong>B.4 推理成本</strong></p>
+<p>我们分别报告去噪器评估和奖励评判器调用。使用无分类器引导时，每个 DDIM 步骤需要两次 U-Net 评估。对于 $n$ 个粒子、$T$ 个去噪步骤、$K$ 个检查点以及每个检查点每个粒子一个 $L$ 步预览，TrailMix 需要</p>
+<p>$$N_{\mathrm{U\text{-}Net}}=2nT+2nKL,\qquad N_{\mathrm{judge}}=n(K+1). \tag{19}$$</p>
+<p>这些计数包括所有预览和最终图像选择 pass：每个生成提示词 928 次 U-Net 评估和 12 次评判器调用，每个 SEAM-Bench 编辑 992 和 16 次，每个 PIE-Bench 编辑 432 和 16 次。</p>
+<h3>附录 C SEAM-Bench 基准</h3>
+<p>SEAM-Bench（语义编辑与属性维护基准）评估请求的属性更改是否成功，同时保留无关图像细节。在此我们描述基准构建、源条件编辑设置和评估协议。</p>
+<p><strong>C.1 数据集构建</strong></p>
+<p><strong>受控描述对。</strong> 每次编辑配对在单个语义属性上不同、其余场景内容相同的源描述和目标描述。例如，图 6 中的颜色编辑将蓝色自行车改为红色自行车，自行车及其周围环境预期保持不变。基准涵盖 12 种编辑类型，每种由两个属性值定义（表 5）。上下文指定共享的场景细节，并初始定义两个有向编辑，属性更改的每个方向一个。</p>
+<p>对每种编辑类型，我们将上下文划分为不相交的拟合、校准和评估集。我们使用校准集确定 FK 引导的编辑强度（第 C.2 节）。拟合上下文保持排除在评估之外。所有报告的结果使用评估集。</p>
+<p>我们最初为每种编辑类型选择 16 个评估上下文并包含两个方向，产生 384 个有向编辑。移除重复的源-目标对后剩余 356 个编辑。我们进一步排除与拟合和校准集的重叠，包括目标描述匹配，留下 159 个上下文中的 316 个编辑：157 个具有两个方向，两个只有一个方向。表 5 给出按编辑类型的计数，图 6 说明所有 12 种类型的请求更改。</p>
+<p><strong>表 5</strong>：SEAM-Bench 编辑类型。每种类型在两个属性值之间切换；编辑是有向的，大多数上下文在两个方向上都被编辑。</p>
+<table>
+<thead>
+<tr>
+<th>编辑类型</th>
+<th>属性值</th>
+<th>有向编辑数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>颜色</td>
+<td>红色、蓝色</td>
+<td>32</td>
+</tr>
+<tr>
+<td>大小</td>
+<td>小、大</td>
+<td>32</td>
+</tr>
+<tr>
+<td>图案</td>
+<td>条纹、纯色</td>
+<td>32</td>
+</tr>
+<tr>
+<td>材质</td>
+<td>木质、金属</td>
+<td>22</td>
+</tr>
+<tr>
+<td>对象类别</td>
+<td>杯子、瓶子</td>
+<td>32</td>
+</tr>
+<tr>
+<td>对象类别</td>
+<td>狗、猫</td>
+<td>14</td>
+</tr>
+<tr>
+<td>动作</td>
+<td>坐着、站着</td>
+<td>30</td>
+</tr>
+<tr>
+<td>年龄</td>
+<td>更年轻、更年长</td>
+<td>24</td>
+</tr>
+<tr>
+<td>性别</td>
+<td>男性、女性</td>
+<td>12</td>
+</tr>
+<tr>
+<td>表面</td>
+<td>木质、大理石</td>
+<td>24</td>
+</tr>
+<tr>
+<td>环境</td>
+<td>室内、室外</td>
+<td>30</td>
+</tr>
+<tr>
+<td>一天中的时间</td>
+<td>白天、夜晚</td>
+<td>32</td>
+</tr>
+<tr>
+<td>总计</td>
+<td></td>
+<td>316</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图 6</strong>：SEAM-Bench 中 12 种编辑类型的示例。每对显示源（左）和编辑后的图像（右），标注请求的更改。这些是 Gemma 3 判定为成功的 TrailMix SDXL 精选输出（第 C.3 节）。示例说明编辑成功；其他图像细节也可能改变。</p>
+<p><strong>评估问题。</strong> 对每次编辑，我们在检查模型输出之前从数据集记录构建三种类型的是/否问题。这些问题在方法间共享，并区分请求的更改是否成功与其他场景细节是否保留。我们用图 6 中的自行车颜色编辑说明每种问题类型；以下问题是说明性的。</p>
+<ul>
+<li><strong>主体</strong>：图像中有自行车吗？主体是携带被编辑属性的对象或人。对职业编辑，我们通过职业识别人；对对象类别编辑，我们使用共享类别（如"动物"）；对场景级编辑，我们使用主要对象。</li>
+<li><strong>原始属性和目标属性</strong>：自行车是蓝色的吗？自行车是红色的吗？这些问题分别评估原始属性是否被移除和目标属性是否被引入。</li>
+<li><strong>保留</strong>：自行车后面有砖墙吗？此类问题评估与请求更改无关的场景细节。</li>
+</ul>
+<p>为将保留与编辑成功隔离，我们排除涉及被编辑属性、提及其任一值或重复主体问题的保留问题。我们将需要与参考图像直接比较的问题替换为关于光照、构图、背景和颜色的四个单图像问题。每次编辑保留 7 到 13 个保留问题。相同的问题独立应用于源图像和编辑后的图像，如第 C.3 节所述。</p>
+<p><strong>反刻板印象扩展。</strong> 我们还构建了一个单独的 192 个编辑队列，朝向或背离刻板印象关联。它涵盖六种关联类型：职业-性别（"医生"）、职业-年龄（"法官"）、活动-性别（"砌砖"），以及涉及图案、材质或颜色的三种对象关联（条纹躺椅、木制扫帚柄和红色灭火器）。每条记录指定主体、其刻板属性值和物理上合理的替代值；这些分配在检查模型输出之前固定。朝向编辑引入刻板值，而背离编辑将其替换为替代值。</p>
+<p>每种类型包含 30 个上下文，其中 16 个使用与主基准相同的规则选择用于评估。评估两个方向产生 96 个朝向和 96 个背离编辑。两个方向使用相同的源有效性检查和成功标准。</p>
+<p><strong>C.2 实验设置</strong></p>
+<p><strong>源生成与初始化。</strong> 我们分别为 SD v1.4 和 SDXL 从源描述生成源图像，使用第 B.1 节的设置和 100 个去噪步骤。对每次编辑，源的初始噪声以随机种子 0 生成。</p>
+<p>对每次编辑，所有采样方法用用于生成源图像的相同初始噪声初始化每条轨迹，并在目标描述下去噪。轨迹在后续去噪中抽取的随机噪声上不同，而非初始状态。我们将源的保留与编辑成功分开评估（第 C.3 节）。</p>
+<p><strong>编辑奖励。</strong> 我们使用第 B.3 节定义的 Qwen2.5-VL 编辑奖励，偏向引入目标属性和移除原始属性。</p>
+<p><strong>采样配置。</strong> 采样基线使用第 B.1 节中的全轨迹编辑配置。为考虑编辑奖励的不同尺度，我们在 90 个留出编辑上校准 FK 引导的强度。在第一个中间检查点，ImageReward 和编辑评判器都对四个粒子的单步干净图像预测评分。对每个评判器，我们计算最高和最低粒子奖励之间的差异，然后取校准编辑上这些差异的中位数。然后我们将 FK 引导的 ImageReward 强度 $\lambda=10$ 乘以 ImageReward 中位数差距与编辑奖励中位数差距的比率。这得到编辑的 $\lambda=1.21$。校准编辑均不包含在评估中。</p>
+<p>TrailMix 使用四条轨迹，重采样检查点在第 10、45 和 80 步之后。它在每个检查点为每个粒子生成一个八步预览，并如第 B.1 节所述从这些预览奖励估计引导强度，使用目标 $\tau=15$。去噪后，我们返回奖励最高的图像。我们对反刻板印象编辑使用相同配置。</p>
+<p><strong>推理成本。</strong> 我们报告第 B.4 节定义的 U-Net 评估和评判器调用。源图像生成在方法间共享，不计入编辑成本。</p>
+<p><strong>C.3 评估协议</strong></p>
+<p><strong>源有效性与编辑成功。</strong> 我们使用 Gemma 3 27B [11] 评估编辑后的图像，独立于采样和最终选择中使用的 Qwen 评判器。当答案概率至少为 0.5 时计为"是"。</p>
+<p>我们仅保留包含主体和原始属性但不包含目标属性的源。这确保请求的编辑需要更改。这为 SD v1.4 留下 240 个有效源，为 SDXL 留下 283 个。</p>
+<p>当输出保留主体、移除原始属性并引入目标属性时，编辑成功。EditRate 是成功编辑的有效源百分比；Context lost 是编辑后输出不再包含主体的有效源百分比。</p>
+<p><strong>未更改属性的保留。</strong> 对每个保留问题，我们比较 Gemma 在源图像和编辑后图像上回答"是"的概率并取绝对差异。我们在每次编辑内平均这些差异，然后在有有效源的编辑间平均。这给予每个编辑相同的权重，无论其包含多少保留问题。得到的保留误差 $E$ 范围从 0 到 1；值越低表示保留越好。我们还报告 $E_{\mathrm{verified}}$，以相同方式计算但限于成功编辑。我们在全文中以原始 0-1 尺度报告两个保留指标。</p>
+<p><strong>方向不对称性。</strong> 我们对两个编辑方向分别检查源有效性。在 SD v1.4 上，66 个源对朝向刻板印象编辑有效，80 个对背离刻板印象编辑有效；SDXL 的相应计数为 74 和 90。每个方向的 EditRate 使用其自己的有效源集。为在可比示例上测量不对称性，我们将两个方向限制在各自方向都有有效源的上下文：SD v1.4 上 57 个上下文，SDXL 上 69 个。不对称性是在此共享集上计算的两个 EditRate 之间的绝对差异，而非在分别验证的源上。相应的带符号差异在第 D.5 节中报告。</p>
+<h3>附录 D 分析与消融</h3>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 扩散模型, 文本到图像生成, 奖励引导, 推理时扩展, 图像编辑</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>

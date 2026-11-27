@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>从ELBO到极大似然：非线性混合效应VAE收敛性 - News Hub</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .fulltext-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .fulltext-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fulltext-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .fulltext-meta a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-meta a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content {
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        .fulltext-content h2 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+        .fulltext-content p {
+            margin-bottom: 1rem;
+        }
+        .fulltext-content h1, .fulltext-content h2, .fulltext-content h3,
+        .fulltext-content h4, .fulltext-content h5, .fulltext-content h6 {
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .fulltext-content h1 { font-size: 1.5rem; }
+        .fulltext-content h2 { font-size: 1.3rem; }
+        .fulltext-content h3 { font-size: 1.15rem; }
+        .fulltext-content h4 { font-size: 1rem; }
+        .fulltext-content ul, .fulltext-content ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .fulltext-content li {
+            margin-bottom: 0.25rem;
+        }
+        .fulltext-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            display: block;
+            overflow-x: auto;
+        }
+        .fulltext-content th, .fulltext-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .fulltext-content th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .fulltext-content tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .fulltext-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        }
+        .fulltext-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        .fulltext-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .fulltext-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            border-radius: 0 4px 4px 0;
+        }
+        .fulltext-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .fulltext-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .fulltext-content a:hover {
+            text-decoration: underline;
+        }
+        .fulltext-content hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .fulltext-highlight {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary-color);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .fulltext-highlight h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .fulltext-highlight p {
+            margin-bottom: 0;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    </style>
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <div class="fulltext-container">
+        <a href="../index.html" class="back-link">← 返回首页</a>
+        
+        <div class="fulltext-header">
+            <h1 class="fulltext-title">从ELBO到极大似然：非线性混合效应VAE收敛性</h1>
+            <div class="fulltext-meta">
+                <span>📅 2026-11-24</span>
+                <span>📄 arxiv</span>
+                <a href="https://arxiv.org/abs/2611.32372" target="_blank" rel="noopener noreferrer">🔗 原文链接</a>
+            </div>
+        </div>
+
+        <div class="fulltext-highlight">
+            <h4>原标题：From the ELBO to Maximum Likelihood: Convergence of Variational Autoencoders for Nonlinear Mixed-Effects Modeling</h4>
+            <p><strong>中文摘要：</strong> 本文研究了变分自编码器（VAE）用于非线性混合效应（NLME）建模的收敛性。NLME模型是药物计量学的核心统计模型，本质上是一个边际似然问题。作者提出了VAE-NLME算法，通过神经网络编码器摊销后验推断。主要贡献包括三个定理：（1）ELBO版本的算法几乎必然收敛到ELBO驻点集；（2）在持续内循环误差下给出定量收敛界；（3）最终算法通过重要性加权充分统计量，在不假设编码器精确训练的情况下几乎必然收敛到边际对数似然的驻点。该方法将VAE的快速梯度训练与极大似然估计的极限相结合，在茶碱数据集上进行</p>
+        </div>
+        
+        <div class="fulltext-content">
+<h1>从ELBO到极大似然：变分自编码器用于非线性混合效应建模的收敛性</h1>
+<p><strong>Jan Rohleff</strong>†<br />
+†通讯作者。<br />
+所属机构：数学与统计系，康斯坦茨大学，德国<br />
+邮箱：jan.rohleff@uni-konstanz.de</p>
+<p><strong>Johannes Schropp</strong><br />
+所属机构：数学与统计系，康斯坦茨大学，德国<br />
+邮箱：johannes.schropp@uni-konstanz.de</p>
+<h2>摘要</h2>
+<p>非线性混合效应（NLME）模型是药物计量学的核心统计模型，在药物开发中支持剂量选择、个体化给药和监管决策。从统计学角度看，NLME建模是一个边际似然问题。变分自编码器（VAE）通过神经网络编码器来摊销不可处理的后验分布的近似，从而解决此类问题，并允许将AI组件集成到NLME建模中。本文提供了VAE-NLME算法的收敛性分析。首先，证明了其证据下界（ELBO）版本在几乎必然意义下收敛到ELBO的驻点集，无需假设编码器被精确训练。其次，最终的VAE-NLME算法通过基于梯度的优化在ELBO上训练编码器，并将其用作重要性加权充分统计量的提议分布。该算法在几乎必然意义下收敛到边际对数似然的驻点集，对编码器的训练没有任何假设。因此，它将VAE的快速基于梯度的训练与极大似然估计的极限相结合。</p>
+<p><strong>关键词：</strong> 变分自编码器，极大似然估计，随机逼近，非线性混合效应建模，药物计量学，人工智能</p>
+<h2>1 引言</h2>
+<p>变分自编码器（VAE）[29, 43]是生成式人工智能的核心方法。它们通过摊销后验推断的编码器网络来拟合潜变量模型。本文分析了它们在非线性混合效应（NLME）模型[50, 40]中的收敛性，NLME模型是药物计量学（PMX）中用于药物开发监管决策的核心模型[4, 38]。</p>
+<p>NLME模型是一种分层潜变量模型。从所有患者的观测值 $x$ 中估计总体参数 $\theta$ 需要对个体参数 $z$ 进行积分，即NLME建模是一个边际似然问题：</p>
+<p>$$\max_{\theta}\ \log\int p(x|z;\theta)\,p(z;\theta)\,dz.$$</p>
+<p>在PMX中，NLME模型大多由非线性常微分方程（ODE）给出，因此该积分没有闭式解。工业界的黄金标准是一阶条件估计交互法（FOCEI），它对模型进行线性化[36, 54]，以及随机逼近期望最大化（SAEM）算法，它将期望最大化（EM）算法[19]与马尔可夫链蒙特卡洛（MCMC）采样[18, 32]相结合。</p>
+<p>为了自动化模型开发并整合更多患者数据（如医学影像，例如CT扫描），人们越来越有兴趣将具有神经网络组件的AI模型纳入NLME建模[44, 31, 37, 10]，而既有方法FOCEI和SAEM并不适合于此[49]。因此，VAE被适配到NLME模型[47, 46]。将VAE适配到NLME模型的相关方法也在[2, 35, 52, 3]中进行了探索。</p>
+<p>由此产生的证据下界（ELBO）VAE-NLME算法用通过随机梯度训练的神经网络编码器替代了SAEM的MCMC步骤。它速度快，适合AI应用，但从未在数学上被分析过。此外，它仅最大化ELBO，因此其极限（如果存在）是ELBO的最大值而非极大似然估计量。然而，在PMX中，似然是模型质量的硬通货，例如用于模型比较[17]。一个仅近似解决似然问题的算法在实践中是不可用的，无论它有多快。其监管使用也需要数学验证[53, 22]。</p>
+<p>首先，尽管神经网络的训练一般无法证明收敛，算法是否收敛？其次，能否在保持基于梯度训练的同时，将其扩展为收敛到极大似然估计量？</p>
+<p>关键思想是将ELBO和似然用于不同目的。ELBO通过随机梯度训练编码器，编码器作为重要性加权充分统计量的提议分布，将极限从ELBO转移到边际对数似然。与SAEM[18, 32]不同，这不需要来自后验分布的样本；与一般的有偏随机逼近[25]不同，它在不对编码器训练做任何假设的情况下控制偏差。因此，该算法收敛到极大似然估计量，同时保持基于梯度优化的计算效率[48]。第4节通过三个定理回答了这两个问题，其基于随机逼近[34, 7]的证明在第5节中概述。第6节通过数值实验验证了这些定理。</p>
+<p><strong>相关工作。</strong> 充分统计量的更新与在线EM[14]相同，带有有偏MCMC采样器的SAEM在[24]中进行了分析。黑盒变分推断被证明在固定模型参数且无编码器的情况下收敛[21, 20, 28]，由编码器引起的精度损失（摊销差距）在[16, 39]中进行了研究。以编码器为提议分布的重要性采样也用于重加权唤醒-睡眠[8]和重要性加权自编码器[12]。</p>
+<h2>2 背景</h2>
+<p>本节回顾NLME模型和[47]中用于NLME建模的VAE框架。</p>
+<h3>2.1 NLME模型</h3>
+<p>考虑一个包含 $N$ 个个体的数据集。对于个体 $i\in{1,\dots,N}$ 和观测 $j\in{1,\dots,n_{i}}$，在已知变量 $t_{ij}\in\mathbb{R}^{p}$（例如时间）处的观测值 $x_{ij}\in\mathbb{R}$ 建模为</p>
+<p>$$x_{ij}=f(t_{ij},\phi_{i})+g(t_{ij},\phi_{i})\,\sigma\,\varepsilon_{ij},\quad 1\leq i\leq N,\,1\leq j\leq n_{i}.$$</p>
+<p>其中，$f$ 是非线性结构模型，$g$ 是残差误差模型，$\sigma&gt;0$ 是残差误差参数。</p>
+<h4>2.1.1 个体参数</h4>
+<p>个体参数 $\phi_{i}\in\Phi$（其中 $\Phi\subseteq\mathbb{R}^{n_{z}}$ 表示其允许值的开集）由个体模型（先验分布）给出：</p>
+<p>$$h(\phi_{i})=z_{i},$$<br />
+$$z_{i}=z_{\mathsf{pop}}+\beta c_{i}+\eta_{i},\qquad\eta_{i}\overset{\text{i.i.d.}}{\sim}\mathcal{N}(0,\Omega),$$</p>
+<p>其中 $h:\Phi\to\mathbb{R}^{n_{z}}$ 是将先验调整为非高斯分布的光滑可逆变换，$z_{\mathsf{pop}}\in\mathbb{R}^{n_{z}}$ 是固定效应，$c_{i}=(c_{i1},\dots,c_{in_{c}})^{\top}\in\mathbb{R}^{n_{c}}$ 是个体 $i$ 的协变量，$\beta=(\beta_{1},\dots,\beta_{n_{c}})\in\mathbb{R}^{n_{z}\times n_{c}}$ 是协变量效应矩阵，$\eta_{i}$ 是具有正定协方差矩阵 $\Omega\in\mathbb{R}^{n_{z}\times n_{z}}$ 的随机效应，描述个体间变异。</p>
+<p>将固定效应和 $n_{\beta}$ 个待估计的协变量效应收集到</p>
+<p>$$\hat{z}<em>{\mathsf{pop}}=(z</em>{\mathsf{pop}},\beta)\in\mathbb{R}^{n_{z}+n_{\beta}},$$</p>
+<p>个体模型可写为</p>
+<p>$$z_{i}=C_{i}\hat{z}<em>{\mathsf{pop}}+\eta</em>{i},\quad\eta_{i}\overset{\mathrm{i.i.d.}}{\sim}\mathcal{N}(0,\Omega),$$</p>
+<p>其中设计矩阵 $C_{i}$ 具有满行秩 $n_{z}$。</p>
+<h4>2.1.2 误差模型</h4>
+<p>残差误差 $\varepsilon_{ij}\sim\mathcal{N}(0,1)$ 相互独立，且与 $\eta_{i}$ 独立。因此，给定 $z_{i}$ 时 $x_{ij}$ 服从均值为 $f(t_{ij},\phi_{i})$、标准差为 $g(t_{ij},\phi_{i})\sigma$ 的正态分布。</p>
+<h4>2.1.3 边际似然与目标函数</h4>
+<p>NLME模型(2.1)-(2.2)的总体参数为</p>
+<p>$$\theta=(\hat{z}_{\mathsf{pop}},\Omega,\sigma^{2}).$$</p>
+<p>$\theta$ 的开参数空间记为 $\Theta$：</p>
+<p>$$\Theta=\mathbb{R}^{n_{z}+n_{\beta}}\times\mathbb{S}^{n_{z}}<em>{++}\times\mathbb{R}</em>{&gt;0},$$</p>
+<p>其中 $\mathbb{S}^{n_{z}}<em>{++}$ 表示对称正定 $n</em>{z}\times n_{z}$ 矩锥。</p>
+<p>观测数据 $x=(x_{ij};\ 1\leq i\leq N,\,1\leq j\leq n_{i})$ 的似然函数为</p>
+<p>$$p(x)=p(x;\theta)=\int p(x,z)\,dz=\int p(x|z)p(z)\,dz,$$</p>
+<p>其中 $p(x|z)=\prod_{i=1}^{N}\prod_{j=1}^{n_{i}}p(x_{ij}|z_{i};\theta)$，$p(z)=\prod_{i=1}^{N}p(z_{i},\theta)$。</p>
+<p>相应的对数似然记为</p>
+<p>$$\mathcal{LL}(\theta)=\mathcal{LL}(\theta;x)=\log p(x;\theta).$$</p>
+<p>目标是关于总体参数 $\theta$ 最大化对数似然，即</p>
+<p>$$\max_{\theta}\mathcal{LL}(\theta),$$</p>
+<p>称为边际似然问题。</p>
+<h3>2.2 用于NLME模型的VAE</h3>
+<p>积分(2.3)也归一化个体参数的后验分布[5]。VAE用参数化近似 $q(z|x)$ [29, 43]替代这一不可处理的后验分布：</p>
+<p>$$q(z|x)\approx p(z|x)=\frac{p(x|z)p(z)}{p(x)}.$$</p>
+<p>编码器提供后验的变分近似，解码器是NLME模型(2.1)。</p>
+<h4>2.2.1 编码器</h4>
+<p>编码器用高斯分布近似后验 $p(z_{i}|x_{i})$。它是一个参数为 $\psi\in\Psi$ 的神经网络，对于NLME模型通常是循环网络[47]。它可表示为</p>
+<p>$$(\mu_{i},L_{i})=\mathrm{Encoder}<em>{\psi}(\mathcal{D}</em>{i}),\quad i=1,\dots,N,$$<br />
+$$q_{\psi}(z_{i}|x_{i})=\mathcal{N}(z_{i};\mu_{i},\Sigma_{i}),\quad\Sigma_{i}=L_{i}L_{i}^{\top},$$</p>
+<p>其中 $\mathcal{D}<em>{i}=(x</em>{i},(t_{ij})<em>{j=1}^{n</em>{i}},c_{i})$ 是个体 $i$ 的数据，$x_{i}=(x_{ij})<em>{j=1}^{n</em>{i}}$，$L_{i}$ 是具有正对角元素的下三角矩阵，因此 $\Sigma_{i}$ 正定。$\mu_{i}$ 和 $L_{i}$ 都依赖于 $\psi$。</p>
+<p>个体参数通过重参数化技巧[29]采样：</p>
+<p>$$z_{i}=\mu_{i}+L_{i}\varepsilon_{i},\quad\varepsilon_{i}\sim\mathcal{N}(0,I).$$</p>
+<p>重参数化允许通过采样步骤进行反向传播，即编码器可以通过基于随机梯度的优化来训练。</p>
+<h4>2.2.2 解码器</h4>
+<p>解码器是结构模型(2.1)。对于从(2.6)采样的个体参数 $z_{i}$，模型预测为</p>
+<p>$$\hat{x}<em>{ij}(z</em>{i})=f(t_{ij},h^{-1}(z_{i}))\quad\text{for}\ i=1,\dots,N\text{ and }j=1,\dots,n_{i}.$$</p>
+<h4>2.2.3 证据下界（ELBO）</h4>
+<p>由于边际似然问题(2.4)中的积分不可处理，VAE转而最大化ELBO：</p>
+<p>$$\mathcal{L}<em>{\psi}(x;\theta)=\mathbb{E}</em>{z\sim q_{\psi}(z|x)}\left[\log\frac{p(x|z)p(z)}{q_{\psi}(z|x)}\right].$$</p>
+<p>对于每个 $\psi$，有[29, 6]</p>
+<p>$$\mathcal{LL}(x;\theta)=\mathcal{L}<em>{\psi}(x;\theta)+D</em>{KL}\big(q_{\psi}(z|x)\,|\,p(z|x)\big)\geq\mathcal{L}_{\psi}(x;\theta),$$</p>
+<p>其中 $D_{KL}(q|p)=\mathbb{E}<em>{z\sim q}[\log(q(z)/p(z))]\geq 0$ 表示Kullback-Leibler（KL）散度。因此，ELBO是对数似然的下界，其差距是变分近似与后验之间的KL散度。与对数似然一样，数据在记号中被省略，即 $\mathcal{L}</em>{\psi}(\theta)=\mathcal{L}_{\psi}(x;\theta)$。边际似然问题(2.4)被替换为</p>
+<p>$$\max_{\theta,\psi}\mathcal{L}_{\psi}(x;\theta).$$</p>
+<p>分离似然项和先验项得</p>
+<p>$$\mathcal{L}<em>{\psi}(x;\theta)=\mathcal{L}</em>{\psi}(\theta)=\sum_{i=1}^{N}\Big(\mathbb{E}<em>{z</em>{i}\sim q_{\psi}(z_{i}|x_{i})}[\log p(x_{i}|z_{i})]-D_{KL}(q_{\psi}(z_{i}|x_{i})|p(z_{i}))\Big).$$</p>
+<p>NLME模型的似然项为</p>
+<p>$$\log p(x_{i}|z_{i})=-\frac{n_{i}}{2}\log(2\pi)-\sum_{j=1}^{n_{i}}\log\big(g(t_{ij},h^{-1}(z_{i}))\sigma\big)-\frac{1}{2\sigma^{2}}\sum_{j=1}^{n_{i}}r_{ij}(z_{i})^{2},$$</p>
+<p>其中 $r_{ij}(z_{i})=\frac{x_{ij}-\hat{x}<em>{ij}(z</em>{i})}{g(t_{ij},h^{-1}(z_{i}))}$ 是标准化残差。对于高斯变分分布和先验分布，KL散度有闭式解：</p>
+<p>$$D_{KL}(q_{\psi}(z_{i}|x_{i})|p(z_{i}))=D_{KL}\big(\mathcal{N}(\mu_{i},\Sigma_{i})\,|\,\mathcal{N}(C_{i}\hat{z}<em>{\mathsf{pop}},\Omega)\big)$$<br />
+$$=\frac{1}{2}\Big[\operatorname{tr}(\Omega^{-1}\Sigma</em>{i})+(\mu_{i}-C_{i}\hat{z}<em>{\mathsf{pop}})^{\top}\Omega^{-1}(\mu</em>{i}-C_{i}\hat{z}<em>{\mathsf{pop}})-n</em>{z}+\log\frac{|\Omega|}{|\Sigma_{i}|}\Big].$$</p>
+<h4>2.2.4 ELBO的梯度与蒙特卡洛估计</h4>
+<p>由于KL散度有闭式解，ELBO通过重参数化(2.6)和 $M\in\mathbb{N}$ 个蒙特卡洛样本估计：</p>
+<p>$$\widehat{\mathcal{L}}<em>{\psi}(\theta;\varepsilon)=\frac{1}{M}\sum</em>{m=1}^{M}\sum_{i=1}^{N}\log p\big(x_{i}|\mu_{i}+L_{i}\varepsilon_{i}^{(m)}\big)-\sum_{i=1}^{N}D_{KL}\big(q_{\psi}(z_{i}|x_{i})\,|\,p(z_{i})\big),$$</p>
+<p>其中 $\varepsilon_{i}^{(m)}\sim\mathcal{N}(0,I)$（$m=1,\dots,M$）为独立同分布样本，收集在噪声变量 $\varepsilon=(\varepsilon_{i}^{(m)})<em>{i=1,\dots,N,\,m=1,\dots,M}$ 中。由于噪声不依赖于 $\psi$，对于具有有界导数的光滑模型，$\nabla</em>{\psi}\widehat{\mathcal{L}}<em>{\psi}(\theta;\varepsilon)$ 是 $\nabla</em>{\psi}\mathcal{L}_{\psi}(\theta)$ 的无偏估计量。</p>
+<h4>2.2.5 指数族结构与ELBO的充分统计量</h4>
+<p>分布 $p(x|z)$、$p(z)$ 和 $q_{\psi}(z|x)$ 均为高斯分布，属于指数族。因此，ELBO估计量 $\widehat{\mathcal{L}}_{\psi}(\theta;\varepsilon)$ 分解为充分统计量和自然参数：</p>
+<p>$$\widehat{\mathcal{L}}_{\psi}(\theta;\varepsilon)=\big\langle S(x,\psi;\varepsilon),\zeta(\theta)\big\rangle-\kappa(\theta)+\mathcal{H}(\psi;\varepsilon)+\mathcal{C}.$$</p>
+<p>前两项收集所有依赖于 $\theta$ 的内容。充分统计量 $S(x,\psi;\varepsilon)=(S_{1},S_{2},S_{3})$ 有三个块：</p>
+<p>$$S_{1}=\big(\mu_{i}\big)<em>{i=1}^{N},\qquad S</em>{2}=\sum_{i=1}^{N}\big(\mu_{i}\mu_{i}^{\top}+L_{i}L_{i}^{\top}\big),\qquad S_{3}=\frac{1}{M}\sum_{m=1}^{M}\sum_{i=1}^{N}\sum_{j=1}^{n_{i}}r_{ij}\big(z_{i}(\varepsilon_{i}^{(m)})\big)^{2},$$</p>
+<p>其中 $z_{i}(\varepsilon_{i}^{(m)})=\mu_{i}+L_{i}\varepsilon_{i}^{(m)}$，自然参数为</p>
+<p>$$\zeta(\theta)=\Big((\Omega^{-1}C_{i}\hat{z}<em>{\mathsf{pop}})</em>{i=1}^{N},\ -\tfrac{1}{2}\Omega^{-1},\ -\tfrac{1}{2\sigma^{2}}\Big),$$</p>
+<p>以及</p>
+<p>$$\kappa(\theta)=\frac{N}{2}\log|\Omega|+\frac{1}{2}\sum_{i=1}^{N}(C_{i}\hat{z}<em>{\mathsf{pop}})^{\top}\Omega^{-1}(C</em>{i}\hat{z}<em>{\mathsf{pop}})+\frac{N</em>{\mathrm{tot}}}{2}\log(\sigma^{2}),$$</p>
+<p>其中 $N_{\mathrm{tot}}=\sum_{i=1}^{N}n_{i}$ 表示总观测数。内积按分量理解：</p>
+<p>$$\langle S,\zeta\rangle=\sum_{i=1}^{N}\langle S_{1,i},\zeta_{1,i}\rangle+\operatorname{tr}(S_{2}^{\top}\zeta_{2})+S_{3}\zeta_{3}.$$</p>
+<p>熵项收集仅依赖于 $\psi$ 和 $\varepsilon$ 的所有项，$\mathcal{C}$ 收集其余常数：</p>
+<p>$$\mathcal{H}(\psi;\varepsilon)=\sum_{i=1}^{N}\log\big|\det L_{i}\big|-\frac{1}{M}\sum_{m=1}^{M}\sum_{i=1}^{N}\sum_{j=1}^{n_{i}}\log\big(g(t_{ij},h^{-1}(z_{i}(\varepsilon_{i}^{(m)})))\big),$$</p>
+<p>$$\mathcal{C}=-\frac{N_{\mathrm{tot}}}{2}\log(2\pi)+\frac{Nn_{z}}{2}.$$</p>
+<p>充分统计量通过重参数化(2.6)依赖于 $\varepsilon$。对噪声取平均消除这种依赖性。记</p>
+<p>$$S(\psi):=\mathbb{E}<em>{\varepsilon\sim\mathcal{N}(0,I)}\big[S(x,\psi;\varepsilon)\big],\qquad\mathcal{H}(\psi):=\mathbb{E}</em>{\varepsilon\sim\mathcal{N}(0,I)}\big[\mathcal{H}(\psi;\varepsilon)\big],$$</p>
+<p>精确的ELBO为</p>
+<p>$$\mathcal{L}_{\psi}(\theta)=J\big(\theta,S(\psi)\big)+\mathcal{H}(\psi)+\mathcal{C},\qquad J(\theta,s)=\langle s,\zeta(\theta)\rangle-\kappa(\theta).$$</p>
+<h2>3 VAE-NLME算法</h2>
+<p>本节从ELBO问题(2.8)出发推导VAE-NLME算法。该算法在内循环（更新编码器）和外循环（更新总体参数）之间交替。这一结构遵循EM算法[19, 5]及其随机逼近版本SAEM[18]。重要性加权统计量随后以边际对数似然（而非ELBO）为目标，给出最终算法。</p>
+<h3>3.1 一般算法框架</h3>
+<p>设初始参数 $\psi^{(0)}$ 和 $\theta^{(0)}$ 给定。ELBO VAE-NLME算法的第 $k$ 次迭代包含三个步骤。</p>
+<p><strong>1. 模拟步骤：</strong> 对于固定的总体参数 $\theta^{(k-1)}$，关于编码器近似最大化ELBO。精确解为</p>
+<p>$$\arg\max_{\psi\in\Psi}\mathcal{L}_{\psi}(\theta^{(k-1)}).$$</p>
+<p>它通过 $L$ 个关于编码器参数 $\psi$ 的随机梯度步来近似：</p>
+<p>$$\psi_{\ell}=\psi_{\ell-1}+\alpha_{k}\,\nabla_{\psi}\widehat{\mathcal{L}}<em>{\psi</em>{\ell-1}}\big(\theta^{(k-1)};\varepsilon_{\ell}\big),\quad\ell=1,\dots,L,$$</p>
+<p>其中 $\varepsilon_{\ell}\sim\mathcal{N}(0,I)$ 为独立同分布样本，$\psi^{(k)}=\psi_{L}$。</p>
+<p><strong>2. 随机逼近：</strong> 抽取噪声样本 $\varepsilon^{(k)}\sim\mathcal{N}(0,I)$，更新 $Q^{(k)}(\theta)$：</p>
+<p>$$Q^{(k)}(\theta)=Q^{(k-1)}(\theta)+\gamma_{k}\big(\widehat{\mathcal{L}}_{\psi^{(k)}}(\theta;\varepsilon^{(k)})-Q^{(k-1)}(\theta)\big).$$</p>
+<p><strong>3. 最大化步骤（M步）：</strong> 总体参数更新为</p>
+<p>$$\theta^{(k)}=\arg\max_{\theta}Q^{(k)}(\theta).$$</p>
+<h3>3.2 利用指数族结构</h3>
+<p>递推(3.2)-(3.3)更新一个关于 $\theta$ 的函数。指数族结构将其简化为充分统计量中的递推，其维数记为 $n_{\mathcal{S}}=Nn_{z}+n_{z}(n_{z}+1)/2+1$。如果辅助函数 $Q^{(0)}$ 初始化为 $\langle s^{(0)},\zeta(\theta)\rangle-\kappa(\theta)+b^{(0)}$ 的形式（其中 $s^{(0)}\in\mathbb{R}^{n_{\mathcal{S}}}$，$b^{(0)}$ 为标量），则该形式沿递推(3.2)保持：</p>
+<p>$$Q^{(k)}(\theta)=\big\langle s^{(k)},\zeta(\theta)\big\rangle-\kappa(\theta)+b^{(k)},$$</p>
+<p>其中均值充分统计量和标量通过以下方式更新：</p>
+<p>$$s^{(k)}=s^{(k-1)}+\gamma_{k}\Big(S\big(x,\psi^{(k)};\varepsilon^{(k)}\big)-s^{(k-1)}\Big),$$<br />
+$$b^{(k)}=b^{(k-1)}+\gamma_{k}\Big(\mathcal{H}\big(\psi^{(k)};\varepsilon^{(k)}\big)+\mathcal{C}-b^{(k-1)}\Big).$$</p>
+<p>推导在附录A.1中给出。</p>
+<p>由于 $b^{(k)}$ 不依赖于 $\theta$，M步仅需要 $s^{(k)}$。利用(2.15)中的 $J$，M步算子定义为</p>
+<p>$$\mathcal{M}:\mathbb{R}^{n_{\mathcal{S}}}\to\Theta,\quad\mathcal{M}(s):=\arg\max_{\theta\in\Theta}J(\theta,s),$$</p>
+<p>使得 $\theta^{(k)}=\mathcal{M}(s^{(k)})$。如同EM算法[19, Section 2]中那样，$J(\cdot,s)$ 是具有充分统计量 $s$ 的指数族的对数似然。如果该族是正则的（例如对角 $\Omega$），则只要 $s$ 位于充分统计量的凸支撑内部，最大化器就是唯一的[11, Theorem 5.5]。</p>
+<p>此外，统计量空间定义为</p>
+<p>$$\mathcal{S}:=\overline{\operatorname{conv}}\left{S(x,\psi;\varepsilon):\psi\in\Psi,\;\varepsilon\in\mathbb{R}^{NMn_{z}}\right},$$</p>
+<p>以及M步可达的相应参数集</p>
+<p>$$\Theta_{\mathcal{S}}:=\mathcal{M}(\mathcal{S}).$$</p>
+<h3>3.3 ELBO VAE-NLME算法</h3>
+<p>算法更新均值充分统计量而非函数 $Q^{(k)}(\theta)$。第3.1节的步骤2和3如下：</p>
+<p><strong>2. 随机逼近：</strong> 抽取噪声样本 $\varepsilon^{(k)}\sim\mathcal{N}(0,I)$，计算充分统计量 $S(x,\psi^{(k)};\varepsilon^{(k)})$，更新均值充分统计量：</p>
+<p>$$s^{(k)}=s^{(k-1)}+\gamma_{k}\Big(S\big(x,\psi^{(k)};\varepsilon^{(k)}\big)-s^{(k-1)}\Big).$$</p>
+<p><strong>3. 最大化步骤：</strong> 用M步算子(3.6)更新总体参数：</p>
+<p>$$\theta^{(k)}=\mathcal{M}(s^{(k)}).$$</p>
+<p>该算法称为ELBO VAE-NLME算法，因为它最大化ELBO(2.8)。</p>
+<h3>3.4 重要性加权统计量</h3>
+<p>根据(2.7)，ELBO VAE-NLME算法最大化的ELBO与边际对数似然之间相差一个依赖于 $\theta$ 的KL散度。因此，其最大值一般不是极大似然估计量。ELBO仅通过统计量进入M步。对于 $z=(z_{i})_{i=1}^{N}$，完备数据统计量为</p>
+<p>$$S(x,z)=\Big(\,(z_{i})<em>{i=1}^{N},\ \sum</em>{i=1}^{N}z_{i}z_{i}^{\top},\ \sum_{i=1}^{N}\sum_{j=1}^{n_{i}}r_{ij}(z_{i})^{2}\Big),$$</p>
+<p>即 $\log p(x,z;\theta)=\langle S(x,z),\zeta(\theta)\rangle-\kappa(\theta)+c(x,z)$，其中 $\zeta$、$\kappa$ 来自(2.12)-(2.13)，$c$ 与 $\theta$ 无关。(2.14)中的平均变分统计量 $S(\psi)$ 是它们在 $q_{\psi}$ 下的期望。如同EM算法和SAEM[19, 18]中那样，这个期望被精确后验分布下的期望替代：</p>
+<p>$$\bar{S}<em>{p}(\theta)=\mathbb{E}</em>{z\sim p(\cdot|x;\theta)}\big[S(x,z)\big].$$</p>
+<p>后验统计量 $\bar{S}<em>{p}(\theta)$ 通过以编码器为提议分布的重要性采样来估计。在第 $k$ 次迭代中，对每个个体从多元 $t$ 分布 $r^{(k)}</em>{i}=t_{\nu}(\mu_{i},L_{i}L_{i}^{\top})$（自由度为 $\nu$，编码器输出为 $(\mu_{i},L_{i})$，来自 $\psi^{(k)}$）抽取 $K$ 个样本 $z_{i1},\dots,z_{iK}$。自归一化权重和加权统计量为</p>
+<p>$$w_{ij}=\frac{p(x_{i},z_{ij};\theta^{(k-1)})}{r^{(k)}<em>{i}(z</em>{ij})},\qquad\tilde{w}<em>{ij}=\frac{w</em>{ij}}{\sum_{j^{\prime}=1}^{K}w_{ij^{\prime}}},$$</p>
+<p>$$\widehat{S}<em>{K}=\Big(\Big(\sum</em>{j=1}^{K}\tilde{w}<em>{ij}z</em>{ij}\Big)<em>{i=1}^{N},\ \sum</em>{i,j}\tilde{w}<em>{ij}\,z</em>{ij}z_{ij}^{\top},\ \sum_{i,j}\tilde{w}<em>{ij}\sum</em>{l=1}^{n_{i}}r_{il}(z_{ij})^{2}\Big).$$</p>
+<p>$t$ 提议分布比后验分布有更重的尾部，这使权重保持有界[23, 41]。在第3.3节的随机逼近中，加权统计量 $\widehat{S}_{K}$ 替代变分统计量 $S(x,\psi^{(k)};\varepsilon^{(k)})$。模拟步骤和M步不变。额外代价是每个个体每次迭代 $K$ 次解码器评估。</p>
+<h3>3.5 最终VAE-NLME算法</h3>
+<p>最终VAE-NLME算法将第3.1节的模拟步骤与第3.4节的加权统计量相结合。算法1总结了该算法。</p>
+<p><strong>算法 1: VAE-NLME算法</strong></p>
+<p>1: <strong>输入：</strong> 初始参数 $\psi^{(0)},\theta^{(0)},s^{(0)}$，步长 ${\alpha_{k}},{\gamma_{k}}$，内循环长度 $L$，样本数 $K$<br />
+2: <strong>for</strong> $k=1,2,\dots$ <strong>do</strong><br />
+3: 　设 $\psi_{0}=\psi^{(k-1)}$<br />
+4: 　<strong>模拟步骤：</strong><br />
+5: 　<strong>for</strong> $\ell=1,\dots,L$ <strong>do</strong><br />
+6: 　　$\psi_{\ell}=\psi_{\ell-1}+\alpha_{k}\,\nabla_{\psi}\widehat{\mathcal{L}}<em>{\psi</em>{\ell-1}}(\theta^{(k-1)};\varepsilon_{\ell})$，其中 $\varepsilon_{\ell}\sim\mathcal{N}(0,I)$ 独立同分布<br />
+7: 　<strong>end for</strong><br />
+8: 　设 $\psi^{(k)}=\psi_{L}$<br />
+9: 　<strong>随机逼近：</strong><br />
+10: 　设 $r^{(k)}<em>{i}=t</em>{\nu}(\mu_{i},L_{i}L_{i}^{\top})$，其中 $(\mu_{i},L_{i})=\mathrm{Encoder}<em>{\psi^{(k)}}(\mathcal{D}</em>{i})$，$i=1,\dots,N$<br />
+11: 　对 $i=1,\dots,N$ 抽取 $z_{i1},\dots,z_{iK}\sim r^{(k)}<em>{i}$，并由(3.9)计算 $\widehat{S}</em>{K}$<br />
+12: 　更新 $s^{(k)}=s^{(k-1)}+\gamma_{k}\big(\widehat{S}_{K}-s^{(k-1)}\big)$<br />
+13: 　<strong>最大化步骤：</strong> $\theta^{(k)}=\mathcal{M}(s^{(k)})$<br />
+14: <strong>end for</strong></p>
+<p><strong>注记1（实际实现）。</strong> 一次运行经历四个阶段-，由两个迭代计数 $K_{\mathrm{KL}}\leq K_{\mathrm{sm}}$ 分隔。</p>
+<p>(a) <strong>预热期</strong>（$k\leq 0$）。编码器在KL项上以较小权重预训练，使最初的充分统计量已包含数据信息。</p>
+<p>(b) <strong>KL退火</strong>（$1\leq k&lt;K_{\mathrm{KL}}$）[9, 51]。KL项(2.9)的权重在 $K_{\mathrm{KL}}$ 处增加到一，使编码器首先拟合数据。与一起，这降低了陷入不良局部最优的风险。</p>
+<p>(c) <strong>探索阶段</strong>（$K_{\mathrm{KL}}\leq k\leq K_{\mathrm{sm}}$）。此处 $\gamma_{k}=1$，即 $s^{(k)}$ 等于当前迭代的统计量。这加速了收敛，但总体参数会波动。</p>
+<p>(d) <strong>平滑阶段</strong>（$k&gt;K_{\mathrm{sm}}$）。步长 $\gamma_{k}=1/(k-K_{\mathrm{sm}})$ 满足Robbins-Monro条件[45]，平均掉的波动，而 $\alpha_{k}$ 和 $L$ 保持固定。</p>
+<p>(e) <strong>优化器。</strong> 梯度步(3.1)可替换为其他优化器，如Adam。</p>
+<p>计数 $K_{\mathrm{KL}}$ 和 $K_{\mathrm{sm}}$ 有限且可自适应选择。</p>
+<h2>4 主要结果</h2>
+<p>本节陈述三个主要定理。</p>
+<h3>4.1 变分参数与假设</h3>
+<h4>4.1.1 变分参数</h4>
+<p><strong>定义1（变分参数）。</strong> 变分参数为</p>
+<p>$$\mathsf{q}=(\mathsf{q}<em>{1},\dots,\mathsf{q}</em>{N}),\qquad\mathsf{q}<em>{i}=(\mu</em>{i},L_{i})\in\mathbb{R}^{n_{z}}\times\mathcal{T}_{+},$$</p>
+<p>其中 $\mathcal{T}<em>{+}$ 表示具有正对角元素的下三角 $n</em>{z}\times n_{z}$ 矩阵集合，由编码器(2.5)实现的<strong>摊销映射</strong>为</p>
+<p>$$\mathsf{q}(\cdot):\ \Psi\to\mathbb{R}^{Nn_{z}}\times\mathcal{T}<em>{+}^{N},\qquad\psi\mapsto\mathsf{q}(\psi)=\big(\mathrm{Encoder}</em>{\psi}(\mathcal{D}<em>{i})\big)</em>{i=1}^{N}.$$</p>
+<p>算法的所有量仅通过编码器的输出 $\mathsf{q}(\psi)$ 依赖于编码器：</p>
+<p>$$\mathcal{L}_{\psi}(\theta)=\mathcal{L}\big(\theta,\mathsf{q}(\psi)\big),\qquad S(x,\psi;\varepsilon)=S\big(x,\mathsf{q}(\psi);\varepsilon\big),\qquad\mathcal{H}(\psi;\varepsilon)=\mathcal{H}\big(\mathsf{q}(\psi);\varepsilon\big).$$</p>
+<p>因此，下面的假设约束的是编码器输出而非网络参数 $\psi$。</p>
+<p>由于(2.15)中的 $\mathcal{H}$ 和 $\mathcal{C}$ 与 $\theta$ 无关，总体参数仅通过代理 $J$ 进入ELBO：</p>
+<p>$$\nabla_{\theta}\mathcal{L}(\theta,\mathsf{q})=\nabla_{\theta}J\big(\theta,S(\mathsf{q})\big)\qquad\text{for every }\mathsf{q}.$$</p>
+<p>全文中，$|\cdot|$ 表示欧几里得范数。作为 $\theta$、$s$ 或 $\mathsf{q}$ 分量的矩阵按其元素进入，即对于 $\theta=(\hat{z}<em>{\mathsf{pop}},\Omega,\sigma^{2})$，$|\theta|^{2}=|\hat{z}</em>{\mathsf{pop}}|^{2}+|\Omega|<em>{F}^{2}+(\sigma^{2})^{2}$（Frobenius范数 $|\cdot|</em>{F}$），对于线性映射，$|\cdot|$ 是诱导算子范数。</p>
+<h4>4.1.2 假设</h4>
+<p><strong>假设1（正则性）。</strong><br />
+(i) <strong>有界模型。</strong> 对所有 $i$ 和 $j$，$f$ 有界且 $g\geq g_{\min}&gt;0$。<br />
+(ii) <strong>光滑模型。</strong> 对所有 $i$ 和 $j$，映射 $z\mapsto f(t_{ij},h^{-1}(z))$ 和 $z\mapsto g(t_{ij},h^{-1}(z))$ 三次连续可微且直到三阶的导数有界。<br />
+(iii) <strong>变分参数。</strong> 编码器输出取值于紧凸集</p>
+<p>$$\mathcal{Q}=\Big{\mathsf{q}=(\mu_{i},L_{i})<em>{i=1}^{N}:\ |\mu</em>{i}|\leq\mu_{\max},\ \ell_{\min}\leq(L_{i})<em>{aa}\leq\ell</em>{\max},\ |(L_{i})<em>{ab}|\leq\ell</em>{\max}\ \Big}$$</p>
+<p>其中常数 $0&lt;\ell_{\min}\leq\ell_{\max}&lt;\infty$，$\mu_{\max}&lt;\infty$。特别地，存在 $0&lt;\tau_{\min}\leq\tau_{\max}&lt;\infty$ 使得对所有 $\mathsf{q}\in\mathcal{Q}$ 和所有 $i$，$\tau_{\min}I\preceq\Sigma_{i}\preceq\tau_{\max}I$。由于 $\mathsf{q}(\Psi)\subseteq\mathcal{Q}$，统计量空间(3.7)从此处起为</p>
+<p>$$\mathcal{S}=\overline{\mathrm{conv}}{S(x,\mathsf{q};\varepsilon):\mathsf{q}\in\mathcal{Q},\ \varepsilon\in\mathbb{R}^{NMn_{z}}}.$$</p>
+<p>(iv) <strong>非消失残差。</strong> 至少一个个体的拟合不精确，即</p>
+<p>$$s_{\min}:=\sum_{i=1}^{N}\ \inf_{z\in\mathbb{R}^{n_{z}}}\ \sum_{j=1}^{n_{i}}r_{ij}(z)^{2}&gt;0.$$</p>
+<p><strong>假设2（M步局部最大化器）。</strong> 存在连续可微映射 $\mathcal{M}:\mathcal{S}\to\Theta$ 使得对每个 $s\in\mathcal{S}$，</p>
+<p>$$\nabla_{\theta}J\big(\mathcal{M}(s),s\big)=0,$$<br />
+$$\nabla^{2}_{\theta}J\big(\mathcal{M}(s),s\big)\prec 0.$$</p>
+<p><strong>假设3（变分局部最大化器）。</strong> 存在常数 $\mathcal{K}<em>{\min}&gt;0$，$r\in(0,\ell</em>{\min})$，开集 $\mathcal{O}\supseteq\Theta_{\mathcal{S}}$ 和连续可微映射</p>
+<p>$$\mathsf{q}^{\star}:\ \mathcal{O}\ \longrightarrow\ \mathcal{Q},\qquad\theta\ \longmapsto\ \mathsf{q}^{\star}(\theta)=\big(\mu^{\star}<em>{i}(\theta),L^{\star}</em>{i}(\theta)\big)_{i=1}^{N},$$</p>
+<p>使得对每个 $\theta\in\Theta_{\mathcal{S}}$，</p>
+<p>$$\nabla_{\mathsf{q}}\mathcal{L}\big(\theta,\mathsf{q}^{\star}(\theta)\big)=0,$$<br />
+$$\nabla^{2}<em>{\mathsf{q}}\mathcal{L}\big(\theta,\mathsf{q}\big)\preceq-\mathcal{K}</em>{\min}I\qquad\text{for all }\mathsf{q}\in\mathcal{U}(\theta),$$</p>
+<p>其中 $\mathcal{U}(\theta):=\big{\mathsf{q}:\ \big|\mathsf{q}-\mathsf{q}^{\star}(\theta)\big|\leq r\big}$。定义</p>
+<p>$$\mathcal{L}^{\star}(\theta):=\mathcal{L}\big(\theta,\mathsf{q}^{\star}(\theta)\big),\qquad\bar{S}(\theta):=S\big(\mathsf{q}^{\star}(\theta)\big).$$</p>
+<p><strong>假设4（步长）。</strong> 外步长满足 $\gamma_{k}\in(0,1]$，$\gamma_{k}$ 非增且 $\gamma_{k-1}/\gamma_{k}\to 1$，以及Robbins-Monro条件[45]：</p>
+<p>$$\sum_{k}\gamma_{k}=\infty,\qquad\sum_{k}\gamma_{k}^{2}&lt;\infty.$$</p>
+<p><strong>假设5（内循环）。</strong><br />
+(i) <strong>收缩性。</strong> 存在 $\rho\in[0,1)$ 和 $c_{0}&lt;\infty$ 使得几乎必然地，对每个 $k\geq 1$，模拟步骤的编码器输出 $\mathsf{q}^{(k)}=\mathsf{q}(\psi^{(k)})$ 的内循环误差满足</p>
+<p>$$\delta_{k}:=\big|\mathsf{q}^{(k)}-\mathsf{q}^{\star}(\theta^{(k-1)})\big|\leq\rho\,\big|\mathsf{q}^{(k-1)}-\mathsf{q}^{\star}(\theta^{(k-1)})\big|+c_{0}\,\alpha_{k}.$$</p>
+<p>(ii) <strong>耦合步长。</strong> 内步长满足 $\alpha_{k}\leq c_{\alpha}\gamma_{k}$（某个 $c_{\alpha}&lt;\infty$）。</p>
+<p><strong>假设6（加权统计量的紧迭代）。</strong> VAE-NLME（算法1）的迭代 $s^{(k)}$（即使用加权统计量(3.9)）几乎必然保持在紧凸集 $\mathcal{S}<em>{p}\subset\mathbb{R}^{n</em>{\mathcal{S}}}$ 中，在该集上 $s_{3}&gt;0$ 且</p>
+<p>$$\Sigma^{\mathsf{tot}}(s):=s_{2}-\sum_{i=1}^{N}s_{1,i}s_{1,i}^{\top}\succ 0\qquad\text{for }s=(s_{1},s_{2},s_{3}),\ s_{1}=(s_{1,i})_{i=1}^{N}.$$</p>
+<p>设 $\Theta_{\mathcal{S}<em>{p}}:=\mathcal{M}(\mathcal{S}</em>{p})$。</p>
+<h3>4.2 收敛到ELBO的驻点</h3>
+<p>前两个定理涉及第3.3节的ELBO VAE-NLME算法。</p>
+<p><strong>定理1（ELBO VAE-NLME算法的收敛性）。</strong> 设假设1-5成立，${(s^{(k)},\theta^{(k)})}$ 由ELBO VAE-NLME算法生成。则集合</p>
+<p>$$\Theta^{\star}:=\big{\theta\in\Theta_{\mathcal{S}}:\ \nabla_{\theta}\mathcal{L}^{\star}(\theta)=0\big}$$</p>
+<p>非空且紧，且几乎必然地，</p>
+<p>$$\lim_{k\to\infty}\big|\nabla_{\theta}\mathcal{L}^{\star}\big(\theta^{(k)}\big)\big|=0\qquad\text{and}\qquad\lim_{k\to\infty}\ \min_{\theta^{\star}\in\Theta^{\star}}\big|\theta^{(k)}-\theta^{\star}\big|=0.$$</p>
+<p>对 ${\theta^{(k)}}$ 的每个极限点 $\theta^{\star}$，对 $(\theta^{\star},\mathsf{q}^{\star}(\theta^{\star}))$ 是ELBO(2.8)的驻点。如果 $\Theta^{\star}$ 的元素还是孤立的，则 $\theta^{(k)}$ 几乎必然收敛到单点 $\theta^{\star}\in\Theta^{\star}$ 且 $s^{(k)}\to\bar{S}(\theta^{\star})$。</p>
+<p>如果内循环不收缩，内循环误差不一定消失。在这种情况下，可以得到定量陈述。</p>
+<p><strong>定理2（持续的内循环不精确性）。</strong> 考虑ELBO VAE-NLME算法，设假设1-4成立，并假设代替假设5，(4.6)中的内循环误差 $\delta_{k}$ 满足</p>
+<p>$$\limsup_{k\to\infty}\ \delta_{k}\leq\delta$$</p>
+<p>对某个 $\delta\geq 0$。则存在常数 $C&lt;\infty$（与 $\delta$ 无关）使得几乎必然地：</p>
+<p>(i) <strong>下限。</strong><br />
+$$\liminf_{k\to\infty}\ \big|\nabla_{\theta}\mathcal{L}^{\star}\big(\theta^{(k)}\big)\big|\leq C\,\delta.$$</p>
+<p>(ii) <strong>局部收敛。</strong> 如果 $\theta^{\star}\in\Theta^{\star}$ 是 $\mathcal{L}^{\star}$ 的局部最大化器且 $m=\lambda_{\min}\big(-\nabla^{2}_{\theta}\mathcal{L}^{\star}(\theta^{\star})\big)&gt;0$，则存在 $\theta^{\star}$ 的邻域 $\mathcal{U}$ 使得对足够小的 $\delta$，在 $\theta^{(k)}\in\mathcal{U}$ 对无穷多个 $k$ 成立的事件上，</p>
+<p>$$\limsup_{k\to\infty}\ \big|\theta^{(k)}-\theta^{\star}\big|\leq C_{\delta},\qquad C_{\delta}:=\frac{2C}{m}\,\delta.$$</p>
+<p><strong>注记2（固定内循环）。</strong> 定理1不涵盖算法的通常实现。对于固定长度 $L$ 的随机内循环（$c_{0}&gt;0$），假设5的两部分互斥。对于 $\alpha_{k}\to 0$，收缩因子 $(1-\alpha_{k}\mathcal{K}<em>{\min})^{L}$ 趋于一；对于固定 $\alpha</em>{k}=\alpha$，内循环误差稳定在 $c_{0}\alpha/(1-\rho)&gt;0$。两部分一起要求 $L\propto 1/\gamma_{k}$。定理2涵盖了实践中使用的固定内循环，且不需要任何一部分。</p>
+<h3>4.3 收敛到对数似然的驻点</h3>
+<p>第三个定理涉及VAE-NLME（算法1）。</p>
+<p>定理1和2涉及ELBO，而感兴趣的目标是边际对数似然(2.4)。由于(2.7)对每个 $\mathsf{q}$ 成立，在 $\mathsf{q}^{\star}(\theta)$ 处取值给出</p>
+<p>$$\mathcal{LL}(\theta)=\mathcal{L}^{\star}(\theta)+\mathcal{G}<em>{\mathrm{var}}(\theta),\qquad\mathcal{G}</em>{\mathrm{var}}(\theta):=\sum_{i=1}^{N}D_{KL}\Big(q_{\mathsf{q}^{\star}<em>{i}(\theta)}\big(\cdot|x</em>{i}\big)\ \Big|\ p\big(\cdot|x_{i};\theta\big)\Big)\geq 0,$$</p>
+<p>因此在定理1的任何极限点 $\theta^{\star}$ 处，</p>
+<p>$$\nabla_{\theta}\mathcal{LL}(\theta^{\star})=\nabla_{\theta}\mathcal{G}_{\mathrm{var}}(\theta^{\star}).$$</p>
+<p>如果高斯族包含真实后验，则 $\mathcal{G}<em>{\mathrm{var}}\equiv 0$。加权统计量(3.9)在不改变编码器或M步的情况下消除了(4.10)的右端。它们的精度取决于编码器对后验分布的近似程度[1, 15]。设 $\theta</em>{\mathrm{ML}}$ 表示极大似然估计量，即(2.4)的解。</p>
+<p><strong>定理3（VAE-NLME算法的收敛性）。</strong> 设假设1和成立，假设2以 $\mathcal{S}_{p}$ 代替 $\mathcal{S}$ 成立，假设4和6成立，${(s^{(k)},\theta^{(k)})}$ 由VAE-NLME（算法1）生成。则存在常数 $C&lt;\infty$（与 $K$ 无关，仅通过迭代中权重的矩依赖于编码器）使得几乎必然地：</p>
+<p>(i) <strong>下限。</strong><br />
+$$\liminf_{k\to\infty}\ \big|\nabla_{\theta}\mathcal{LL}\big(\theta^{(k)}\big)\big|\leq\frac{C}{K}.$$</p>
+<p>(ii) <strong>增长的样本量。</strong> 如果 $K=K_{k}\to\infty$ 且 $\sum_{k}\gamma_{k}/K_{k}&lt;\infty$，则 $\nabla_{\theta}\mathcal{LL}(\theta^{(k)})\to 0$，且 $\theta^{(k)}$ 收敛到 $\Theta_{\mathcal{S}<em>{p}}$ 中 $\mathcal{LL}$ 的驻点集。如果 $\theta</em>{\mathrm{ML}}$ 是那里唯一的驻点，则 $\theta^{(k)}\to\theta_{\mathrm{ML}}$。</p>
+<p>(iii) <strong>局部收敛。</strong> 如果 $\theta_{\mathrm{ML}}\in\Theta_{\mathcal{S}<em>{p}}$ 满足 $m=\lambda</em>{\min}\big(-\nabla^{2}<em>{\theta}\mathcal{LL}(\theta</em>{\mathrm{ML}})\big)&gt;0$，则存在 $\theta_{\mathrm{ML}}$ 的邻域 $\mathcal{U}$ 使得在 $\theta^{(k)}\in\mathcal{U}$ 对无穷多个 $k$ 成立的事件上，</p>
+<p>$$\limsup_{k\to\infty}\ \big|\theta^{(k)}-\theta_{\mathrm{ML}}\big|\leq C_{K},\qquad C_{K}:=\frac{2C}{m\,K},$$</p>
+<p>如果 $C_{K}$ 足够小；且如果 $K=K_{k}\to\infty$，则 $\theta^{(k)}\to\theta_{\mathrm{ML}}$。</p>
+<p>与定理1和2不同，定理3不需要关于编码器训练的假设（既不需要假设3也不需要假设5），也不需要模型的光滑性（即不需要假设1）。编码器仅作为提议分布并影响常数 $C$。</p>
+<h3>4.4 讨论</h3>
+<h4>4.4.1 假设</h4>
+<p>这些假设是随机逼近和EM型算法收敛性分析的通常条件[34, 18]，增加了关于编码器的条件。每个假设对典型NLME模型成立或由实现保证。</p>
+<ul>
+<li>
+<p><strong>模型。</strong> 假设1-由通过具有光滑右端的ODE定义的结构模型自然满足，只要个体参数限制在有界的生理学合理范围内，这在实际NLME建模中是标准做法。部分对含噪数据自然满足，因为没有个体被精确拟合。</p>
+</li>
+<li>
+<p><strong>M步。</strong> 假设2自然满足，因为 $J(\cdot,s)$ 对应于指数族的对数似然（第3.2节）。对于正则指数族（例如对角 $\Omega$），最大化器存在、唯一且在凸支撑内部光滑地依赖于 $s$ [11, Theorem 5.5]。</p>
+</li>
+<li>
+<p><strong>E步。</strong> 假设3对E步施加类似的正则性条件。它要求ELBO关于 $\mathsf{q}$ 的局部最大化器具有负定Hessian矩阵。该条件自然关联到个体参数的局部可识别性。在PMX中，结构模型的开发通常旨在确保个体参数从可用数据中可识别。不能可靠识别的参数通常在模型开发过程中被移除或以其他方式简化模型。因此，假设3反映了良好指定和可识别的NLME模型的自然期望属性。</p>
+</li>
+<li>
+<p><strong>步长。</strong> 假设4包含随机逼近的经典Robbins-Monro条件[45]，由所选步长序列满足。假设5是唯一专门涉及编码器训练的假设。部分在假设3下由变分参数的梯度更新满足。部分确保内循环跟踪移动目标 $\mathsf{q}^{\star}(\theta^{(k-1)})$，这在双时间尺度随机逼近中是必需的[7]。重要的是，没有假设5，定理2仍然适用。</p>
+</li>
+<li>
+<p><strong>稳定性。</strong> 假设6仅对加权统计量需要。变分统计量是有界统计量的凸组合，构造上保持在 $\mathcal{S}$ 中。相比之下，$\widehat{S}<em>{K}$ 无界，且当一个权重占主导时 $\Sigma^{\mathsf{tot}}(\widehat{S}</em>{K})$ 变得奇异，即加权统计量塌缩到单个样本上。如同SAEM[18, Theorem 5], [32]中那样，迭代的稳定性因此被假设，并可通过重新初始化来强制[32]。</p>
+</li>
+</ul>
+<h4>4.4.2 编码器的角色</h4>
+<p>分析以变分参数 $\mathsf{q}$ 而非编码器参数 $\psi$ 的形式表述。实际上，由链式法则，</p>
+<p>$$\nabla_{\psi}\mathcal{L}\big(\theta,\mathsf{q}(\psi)\big)=D\mathsf{q}(\psi)^{\top}\nabla_{\mathsf{q}}\mathcal{L}\big(\theta,\mathsf{q}(\psi)\big).$$</p>
+<p>对于过参数化的神经网络，$D\mathsf{q}(\psi)$ 通常是秩亏的。因此，关于 $\psi$ 的驻点性不一定蕴含关于 $\mathsf{q}$ 的驻点性。编码器参数因此仅通过近似误差 $\delta_{k}$ 进入收敛性分析。</p>
+<p>为刻画该误差，设 $\mathcal{L}^{\star}_{\Psi}(\theta)$ 表示编码器在 $\mathsf{q}(\psi)\in\mathcal{U}(\theta)$ 约束下可达到的最佳ELBO。差</p>
+<p>$$\mathcal{G}<em>{\mathrm{am}}=\mathcal{L}^{\star}-\mathcal{L}^{\star}</em>{\Psi}\geq 0$$</p>
+<p>是摊销差距，量化了由于将变分参数限制为编码器可表示的参数而导致的ELBO损失。在 $\theta=\theta^{(k-1)}$ 处，推断差距可分解为三个分量[16]：</p>
+<p>$$\underbrace{\mathcal{LL}(\theta)-\mathcal{L}\big(\theta,\mathsf{q}^{(k)}\big)}<em>{\text{推断差距}}=\underbrace{\mathcal{LL}(\theta)-\mathcal{L}^{\star}(\theta)}</em>{\text{(a) 变分族差距}}+\underbrace{\mathcal{G}<em>{\mathrm{am}}(\theta)}</em>{\text{(b) 摊销差距}}+\underbrace{\mathcal{L}^{\star}<em>{\Psi}(\theta)-\mathcal{L}\big(\theta,\mathsf{q}^{(k)}\big)}</em>{\text{(c) 优化差距}}$$<br />
+$$=\mathcal{G}<em>{\mathrm{var}}(\theta)+\mathcal{G}</em>{\mathrm{am}}(\theta)+\mathcal{G}_{\mathrm{opt}}(\theta).$$</p>
+<p>部分是(4.9)的变分差距，即高斯族的近似误差，不影响定理1。部分和由 $\delta_{k}$ 度量。一旦 $\mathsf{q}^{(k)}\in\mathcal{U}(\theta^{(k-1)})$，在 $\mathsf{q}^{\star}(\theta^{(k-1)})$ 处的Taylor展开给出（利用假设3的 $\mathcal{K}<em>{\min}$ 和 $\mathcal{Q}$ 上 $|\nabla</em>{\mathsf{q}}^{2}\mathcal{L}|$ 的界 $\mathcal{K}_{\max}&lt;\infty$）：</p>
+<p>$$\frac{\mathcal{K}<em>{\min}}{2}\,\delta</em>{k}^{2}\leq\mathcal{L}^{\star}\big(\theta^{(k-1)}\big)-\mathcal{L}\big(\theta^{(k-1)},\mathsf{q}^{(k)}\big)\leq\frac{\mathcal{K}<em>{\max}}{2}\,\delta</em>{k}^{2}.$$</p>
+<p>因此，持续的摊销差距以 $\sqrt{\mathcal{G}<em>{\mathrm{am}}+\mathcal{G}</em>{\mathrm{opt}}}$ 的阶数贡献于定理2中的残差，其中 $\mathcal{G}<em>{\mathrm{opt}}$ 表示中优化差距的上极限。如果内优化问题关于 $\psi$ 被精确求解，残差降低到 $\sqrt{\mathcal{G}</em>{\mathrm{am}}}$。</p>
+<h4>4.4.3 与SAEM的关系</h4>
+<p>VAE-NLME算法是一个SAEM算法[18]，具有相同的统计量、M步和Lyapunov函数 $-\mathcal{LL}\circ\mathcal{M}$。只有模拟步骤不同。SAEM通过MCMC从精确后验分布中采样个体参数[32, 33]，而VAE-NLME算法从编码器中抽取并加权。因此，模拟步骤是可微的，模型的神经网络组件在同一迭代中训练。</p>
+<h2>5 证明策略</h2>
+<p>定理1和2的证明遵循算法的两个部分：内循环和外更新。图1给出了四个步骤的概述。</p>
+<p><strong>图1：收敛性证明的四个步骤。</strong></p>
+<p>定理3遵循相同的步骤，用重要性采样偏差代替内循环误差。所有证明在附录中给出，三个定理的证明在附录A.7中。</p>
+<h3>5.1 预备知识：统计量空间与M步算子</h3>
+<p><strong>预备知识</strong></p>
+<p><strong>思想。</strong> 算法仅存储平均充分统计量 $s^{(k)}$，总体参数由M步从中得出：$\theta^{(k)}=\mathcal{M}(s^{(k)})$。因此，算法在统计量空间中研究。需要两个性质：</p>
+<ol>
+<li>统计量保持在有界集 $\mathcal{S}$ 中。</li>
+<li>M步对统计量的变化反应光滑。</li>
+</ol>
+<p><strong>使用。</strong> 正则模型和具有局部最大化器的M步（假设1和2）。</p>
+<p><strong>提供。</strong> 无需进一步假设的有界迭代（因为每次更新是凸组合），以及具有显式导数的Lipschitz M步。所有四个步骤都使用这两者。</p>
+<p><strong>引理1（统计量空间）。</strong> 设假设1成立。则 $\mathcal{S}$ 紧且凸，$\mathcal{S}$ 上 $s_{3}\geq s_{\min}&gt;0$，且</p>
+<p>$$\Sigma^{\mathsf{tot}}(s)\succeq N\tau_{\min}I\succ 0\qquad\text{for every }s\in\mathcal{S}.$$</p>
+<p>此外，如果对所有 $k$ 有 $\gamma_{k}\in[0,1]$ 且 $s^{(0)}\in\mathcal{S}$，则ELBO VAE-NLME算法的迭代几乎必然满足对所有 $k$ 有 $s^{(k)}\in\mathcal{S}$。</p>
+<p>最后一个陈述很重要，因为将迭代保持在统计量空间的紧子集中是随机逼近中最难验证的条件。这里它构造上成立，因为 $\gamma_{k}\in[0,1]$ 使(3.5)成为凸组合。</p>
+<p><strong>引理2（M步算子的性质）。</strong> 设假设1和2成立，记 $\theta_{s}=\mathcal{M}(s)$。则</p>
+<p>(i) 矩阵 $H_{s}:=-\nabla_{\theta}^{2}J(\theta_{s},s)$ 对每个 $s\in\mathcal{S}$ 正定，且 $\sup_{s\in\mathcal{S}}|H_{s}|&lt;\infty$ 以及 $\sup_{s\in\mathcal{S}}|H_{s}^{-1}|&lt;\infty$。</p>
+<p>(ii) $\Theta_{\mathcal{S}}=\mathcal{M}(\mathcal{S})$ 是 $\Theta$ 的紧子集，且 $\mathcal{M}$ 在 $\mathcal{S}$ 上Lipschitz连续。</p>
+<p>(iii) M步通过以下方式对统计量的变化做出反应：</p>
+<p>$$\nabla_{s}\mathcal{M}(s)=H_{s}^{-1}\,D\zeta(\theta_{s})^{\top},$$</p>
+<p>其中 $D\zeta$ 是自然参数映射 $\zeta$ 从(2.12)的Jacobi矩阵。</p>
+<h3>5.2 步骤1：变分E步</h3>
+<p><strong>步骤1</strong></p>
+<p><strong>思想。</strong> 对固定总体参数 $\theta$，编码器求解E步，即在 $\mathsf{q}$ 上最大化ELBO。该问题有局部解 $\mathsf{q}^{\star}(\theta)$，随 $\theta$ 光滑变化。因此，具有最佳编码器输出的ELBO $\mathcal{L}^{\star}(\theta)=\mathcal{L}(\theta,\mathsf{q}^{\star}(\theta))$ 是仅关于 $\theta$ 的光滑函数，其梯度具有M步目标的简单形式。</p>
+<p><strong>使用。</strong> 正则模型和局部凹E步（假设1-3）。</p>
+<p><strong>提供。</strong> 内循环的目标 $\mathsf{q}^{\star}(\theta)$（步骤2），算法递增的目标 $\mathcal{L}^{\star}$（步骤3和4），以及包络恒等式。</p>
+<p>在变分参数中，E步在各个体上分裂：</p>
+<p>$$\mathcal{L}(\theta,\mathsf{q})=\sum_{i=1}^{N}\mathcal{L}<em>{i}(\theta,\mathsf{q}</em>{i})$$</p>
+<p>其中</p>
+<p>$$\mathcal{L}<em>{i}(\theta,\mathsf{q}</em>{i})=\mathbb{E}<em>{\varepsilon\sim\mathcal{N}(0,I)}\big[\log p(x</em>{i},\mu_{i}+L_{i}\varepsilon;\theta)\big]+\log\big|\det L_{i}\big|+\tfrac{n_{z}}{2}\log(2\pi e),$$</p>
+<p>且重参数化(2.6)关于 $\mathsf{q}<em>{i}=(\mu</em>{i},L_{i})$ 是仿射的。因此，假设3是关于模型的条件。</p>
+<p><strong>引理3（光滑性与 $\mathcal{U}(\theta)$ 上的最大化器）。</strong> 设假设1-3成立。则 $\mathsf{q}\mapsto\mathcal{L}(\theta,\mathsf{q})$ 在 $\mathcal{Q}$ 上是 $\mathcal{K}_{\max}$-光滑的，即</p>
+<p>$$\big|\nabla_{\mathsf{q}}\mathcal{L}(\theta,\mathsf{q}<em>{1})-\nabla</em>{\mathsf{q}}\mathcal{L}(\theta,\mathsf{q}<em>{2})\big|\leq\mathcal{K}</em>{\max}\,\big|\mathsf{q}<em>{1}-\mathsf{q}</em>{2}\big|\qquad\text{for all }\mathsf{q}<em>{1},\mathsf{q}</em>{2}\in\mathcal{Q},$$</p>
+<p>其中 $\mathcal{K}<em>{\max}&lt;\infty$ 仅依赖于假设1的界和紧集 $\Theta</em>{\mathcal{S}}$，且对每个 $\theta\in\Theta_{\mathcal{S}}$，点 $\mathsf{q}^{\star}(\theta)$ 是 $\mathcal{L}(\theta,\cdot)$ 在 $\mathcal{U}(\theta)$ 上的唯一最大化器。</p>
+<p><strong>引理4（变分包络恒等式）。</strong> 设假设1-3成立。则 $\mathsf{q}^{\star}$ 和 $\bar{S}=S\circ\mathsf{q}^{\star}$ 在 $\Theta_{\mathcal{S}}$ 上Lipschitz，$\bar{S}$ 取值于 $\mathcal{S}$，且 $\mathcal{L}^{\star}$ 连续可微具有Lipschitz梯度，且</p>
+<p>$$\nabla_{\theta}\mathcal{L}^{\star}(\theta)=\nabla_{\theta}\mathcal{L}\big(\theta,\mathsf{q}^{\star}(\theta)\big)=\nabla_{\theta}J\big(\theta,\bar{S}(\theta)\big)=D\zeta(\theta)^{\top}\bar{S}(\theta)-\nabla_{\theta}\kappa(\theta).$$</p>
+<h3>5.3 步骤2：Robbins-Monro形式、内循环误差与极限ODE</h3>
+<p><strong>步骤2</strong></p>
+<p><strong>思想。</strong> 一次迭代仅以大小为 $\gamma_{k}$ 的小步改变充分统计量。因此，迭代表现得像被蒙特卡洛噪声和内循环误差扰动的ODE $\dot{s}=\mathcal{F}(s)$ 的解。两种扰动平均消失，因此对大的 $k$，迭代遵循ODE。</p>
+<p><strong>使用。</strong> 步骤1的目标 $\mathsf{q}^{\star}(\theta)$ 和统计量 $\bar{S}$，预备知识中的Lipschitz M步，步长（假设4）和收缩内循环（假设5）。</p>
+<p><strong>提供。</strong> 平均场 $\mathcal{F}$ 和迭代遵循其ODE的陈述。因此，只需在步骤3中研究ODE。</p>
+<h4>5.3.1 Robbins-Monro分解</h4>
+<p>设 $\theta^{(k-1)}=\mathcal{M}(s^{(k-1)})$，定义平均场 $\mathcal{F}:\mathcal{S}\to\mathbb{R}^{n_{\mathcal{S}}}$：</p>
+<p>$$\mathcal{F}(s)=\bar{S}\big(\mathcal{M}(s)\big)-s.$$</p>
+<p>由引理2和4，平均场在 $\mathcal{S}$ 上Lipschitz且有界。更新(3.5)具有精确的Robbins-Monro形式：</p>
+<p>$$s^{(k)}=s^{(k-1)}+\gamma_{k}\Big(\mathcal{F}\big(s^{(k-1)}\big)+\Delta^{\mathrm{mc}}<em>{k}+\Delta^{\mathrm{in}}</em>{k}\Big),$$</p>
+<p>其中</p>
+<p>$$\Delta^{\mathrm{mc}}<em>{k}:=S\big(x,\mathsf{q}^{(k)};\varepsilon^{(k)}\big)-S\big(\mathsf{q}^{(k)}\big),\qquad\Delta^{\mathrm{in}}</em>{k}:=S\big(\mathsf{q}^{(k)}\big)-\bar{S}\big(\theta^{(k-1)}\big),$$</p>
+<p>$\Delta^{\mathrm{mc}}<em>{k}$ 是蒙特卡洛噪声，$\Delta^{\mathrm{in}}</em>{k}$ 是内循环误差。下一个引理收集了收敛证明所需的这两项的性质。</p>
+<p><strong>引理5（噪声条件）。</strong> 设假设1-4成立，$\mathcal{G}<em>{k}$ 是由直到并包括第 $k$ 次内循环的所有随机变量生成的 $\sigma$-代数。则 $\mathbb{E}[\Delta^{\mathrm{mc}}</em>{k}\mid\mathcal{G}<em>{k}]=0$，蒙特卡洛项以 $2C</em>{S}$ 为界（其中 $C_{S}=\sup_{\mathsf{q}\in\mathcal{Q},\varepsilon}|S(x,\mathsf{q};\varepsilon)|&lt;\infty$），级数 $\sum_{k}\gamma_{k}\Delta^{\mathrm{mc}}_{k}$ 几乎必然收敛，且</p>
+<p>$$\big|\Delta^{\mathrm{in}}<em>{k}\big|\leq L</em>{S}\,\delta_{k}$$</p>
+<p>其中 $L_{S}$ 是 $\mathsf{q}\mapsto S(\mathsf{q})$ 在 $\mathcal{Q}$ 上的Lipschitz常数。</p>
+<h4>5.3.2 内循环误差消失</h4>
+<p><strong>命题1（消失的内循环误差）。</strong> 设假设1-5成立。则几乎必然地，</p>
+<p>$$\delta_{k}=O(\gamma_{k})\xrightarrow[k\to\infty]{}0\qquad\text{and}\qquad\sum_{k\geq 1}\gamma_{k}\,\delta_{k}&lt;\infty.$$</p>
+<h4>5.3.3 极限ODE</h4>
+<p>定义插值时间 $t_{0}=0$，$t_{k}=\sum_{j=1}^{k}\gamma_{j}$，以及插值过程</p>
+<p>$$\bar{s}(t_{k})=s^{(k)},\quad\bar{s}(t)=s^{(k)}+\frac{t-t_{k}}{t_{k+1}-t_{k}}\big(s^{(k+1)}-s^{(k)}\big)\text{ for }t\in[t_{k},t_{k+1}].$$</p>
+<p>设 $\Phi^{\mathcal{F}}$ 表示自治ODE</p>
+<p>$$\dot{s}(t)=\mathcal{F}(s(t))=\bar{S}\big(\mathcal{M}(s(t))\big)-s(t).$$</p>
+<p>的半流。由于 $\mathcal{F}$ 在 $\mathcal{S}$ 上Lipschitz，(5.6)对每个初值有唯一解[27]。由于 $\mathcal{S}$ 凸且 $\bar{S}(\Theta_{\mathcal{S}})\subseteq\mathcal{S}$，场在 $\partial\mathcal{S}$ 上指向 $\mathcal{S}$ 内部，因此 $\mathcal{S}$ 前向不变，$\Phi^{\mathcal{F}}_{v}(s)$ 对所有 $v\geq 0$ 和所有 $s\in\mathcal{S}$ 有定义。</p>
+<p><strong>命题2（插值过程是渐近伪轨迹）。</strong> 设假设1-5成立。则几乎必然地，对每个 $T&gt;0$，</p>
+<p>$$\lim_{t\to\infty}\ \sup_{0\leq v\leq T}\ \big|\bar{s}(t+v)-\Phi^{\mathcal{F}}_{v}\big(\bar{s}(t)\big)\big|=0,$$</p>
+<p>且 ${s^{(k)}}$ 的极限点集是 $\mathcal{S}$ 的非空、紧、连通不变子集（对(5.6)的流）。</p>
+<h3>5.4 步骤3：Lyapunov稳定性</h3>
+<p><strong>步骤3</strong></p>
+<p><strong>思想。</strong> 沿步骤2的ODE，ELBO $\mathcal{L}^{\star}$ 递增，即 $\mathcal{V}=-\mathcal{L}^{\star}\circ\mathcal{M}$ 递减。除非 $\mathcal{L}^{\star}$ 的梯度消失，递减是严格的。由于迭代遵循ODE，算法显示相同的递减（至消失的扰动）。</p>
+<p><strong>使用。</strong> 步骤1的 $\mathcal{L}^{\star}$ 梯度，预备知识中M步的导数，以及步骤2的ODE及其扰动。</p>
+<p><strong>提供。</strong> $\mathcal{L}^{\star}$ 的梯度沿迭代消失。</p>
+<p>Lyapunov函数定义为</p>
+<p>$$\mathcal{V}:\mathcal{S}\to\mathbb{R},\qquad\mathcal{V}=-\mathcal{L}^{\star}\big(\mathcal{M}(s)\big),\qquad\theta_{s}=\mathcal{M}(s),$$</p>
+<p>由引理2和4，它在 $\mathcal{S}$ 上有界且连续可微，具有Lipschitz梯度（附录A.5）。</p>
+<p><strong>引理6（Lyapunov衰减）。</strong> 设假设1-3成立。则对每个 $s\in\mathcal{S}$，</p>
+<p>$$\big\langle\nabla_{s}\mathcal{V}(s),\,\mathcal{F}(s)\big\rangle=-\,\big|\nabla_{\theta}\mathcal{L}^{\star}(\theta_{s})\big|^{2}<em>{H</em>{s}^{-1}}\leq 0,$$</p>
+<p>且存在常数 $c_{\mathsf{dec}},c_{\mathsf{grad}}\in(0,\infty)$ 使得</p>
+<p>$$\big\langle\nabla_{s}\mathcal{V}(s),\,\mathcal{F}(s)\big\rangle\leq-c_{\mathsf{dec}}\,\big|\nabla_{\theta}\mathcal{L}^{\star}(\theta_{s})\big|^{2},\qquad\big|\nabla_{s}\mathcal{V}(s)\big|\leq c_{\mathsf{grad}}\,\big|\nabla_{\theta}\mathcal{L}^{\star}(\theta_{s})\big|.$$</p>
+<p>特别地，$\mathcal{V}$ 沿(5.6)在驻点集</p>
+<p>$$\mathcal{S}^{\star}:=\big{s\in\mathcal{S}:\ \nabla_{\theta}\mathcal{L}^{\star}(\mathcal{M}(s))=0\big}.$$</p>
+<p>之外严格递减。</p>
+<p><strong>命题3（离散Lyapunov衰减）。</strong> 设假设1-5成立。则几乎必然地，$\mathcal{V}(s^{(k)})$ 收敛到有限极限且</p>
+<p>$$\sum_{k\geq 1}\gamma_{k}\,\big|\nabla_{\theta}\mathcal{L}^{\star}\big(\theta^{(k-1)}\big)\big|^{2}&lt;\infty.$$</p>
+<p><strong>命题4（消失的驻点残差）。</strong> 在命题3的假设下，几乎必然地</p>
+<p>$$\lim_{k\to\infty}\big|\nabla_{\theta}\mathcal{L}^{\star}\big(\theta^{(k)}\big)\big|=0.$$</p>
+<h3>5.5 步骤4：驻点最优性条件</h3>
+<p>步骤3是关于 $\mathcal{L}^{\star}$ 的陈述，即仅关于 $\theta$。最后一步将其转化回ELBO，后者依赖于 $\theta$ 和编码器输出 $\mathsf{q}$。</p>
+<p><strong>引理7（极限集的刻画）。</strong> 设假设1-3成立，$\theta^{\star}\in\Theta_{\mathcal{S}}$ 满足 $\nabla_{\theta}\mathcal{L}^{\star}(\theta^{\star})=0$。设 $\mathsf{q}^{\star}=\mathsf{q}^{\star}(\theta^{\star})$，$s^{\star}=\bar{S}(\theta^{\star})$。则</p>
+<p>$$\nabla_{\theta}\mathcal{L}(\theta^{\star},\mathsf{q}^{\star})=0,\qquad\nabla_{\mathsf{q}}\mathcal{L}(\theta^{\star},\mathsf{q}^{\star})=0,\qquad\nabla_{\theta}J\big(\theta^{\star},s^{\star}\big)=0.$$</p>
+<p>前两个恒等式说明 $(\theta^{\star},\mathsf{q}^{\star})$ 是ELBO(2.8)的驻点，第三个说明 $\theta^{\star}$ 在 $s^{\star}$ 处求解M步，因此算法不会从 $(s^{\star},\theta^{\star})$ 移开。反之，每个具有这三个性质的对（其中 $\mathsf{q}^{\star}=\mathsf{q}^{\star}(\theta^{\star})$ 来自假设3）满足 $\nabla_{\theta}\mathcal{L}^{\star}(\theta^{\star})=0$。</p>
+<p>命题4和引理7给出定理1。对于定理2，内循环误差不消失。由(5.5)，它以大小为 $L_{S}\delta_{k}$ 的扰动进入步骤3的衰减，留下下限(4.7)，其中 $C=c_{\mathsf{grad}}L_{S}/c_{\mathsf{dec}}$。</p>
+<h3>5.6 推广到重要性加权统计量</h3>
+<p>定理3的证明遵循相同的四个步骤，用精确后验分布代替变分分布。这是SAEM的收敛证明[18, Theorem 5]，只是带有有偏和无界噪声。</p>
+<p>加权统计量由于Fisher恒等式[19, 18]消除了(4.10)的右端：</p>
+<p>$$\nabla_{\theta}\mathcal{LL}(\theta)=D\zeta(\theta)^{\top}\bar{S}<em>{p}(\theta)-\nabla</em>{\theta}\kappa(\theta)=\nabla_{\theta}J\big(\theta,\bar{S}_{p}(\theta)\big).$$</p>
+<p>这是包络恒等式(5.3)，以 $\mathcal{LL}$ 和 $\bar{S}<em>{p}$ 代替 $\mathcal{L}^{\star}$ 和 $\bar{S}$。因此，如果统计量由 $\bar{S}</em>{p}$ 驱动，则不动点 $s=\bar{S}<em>{p}(\mathcal{M}(s))$ 满足 $\nabla</em>{\theta}\mathcal{LL}(\mathcal{M}(s))=\nabla_{\theta}J(\mathcal{M}(s),s)=0$（由(4.2)），即算法的不动点是对数似然的驻点。</p>
+<p>以 $\bar{S}<em>{p}$ 代替 $\bar{S}$，步骤3的平均场和Lyapunov函数为 $\mathcal{F}</em>{p}(s)=\bar{S}<em>{p}(\mathcal{M}(s))-s$ 和 $\mathcal{V}</em>{p}=-\mathcal{LL}(\mathcal{M}(s))$。更新再次具有Robbins-Monro形式(5.4)：</p>
+<p>$$s^{(k)}=s^{(k-1)}+\gamma_{k}\Big(\mathcal{F}<em>{p}\big(s^{(k-1)}\big)+\Delta^{\mathrm{mc}}</em>{k}+\Delta^{\mathrm{is}}<em>{k}\Big),\qquad\Delta^{\mathrm{is}}</em>{k}:=\mathbb{E}\big[\widehat{S}<em>{K}\,\big|\,\mathcal{G}</em>{k}\big]-\bar{S}_{p}\big(\theta^{(k-1)}\big),$$</p>
+<p>其中蒙特卡洛噪声 $\Delta^{\mathrm{mc}}<em>{k}=\widehat{S}</em>{K}-\mathbb{E}[\widehat{S}<em>{K}|\mathcal{G}</em>{k}]$。</p>
+<p>重要性采样偏差 $\Delta^{\mathrm{is}}_{k}$ 代替内循环误差。其大小依赖于权重的矩，特别是二阶矩[1, 15]：</p>
+<p>$$\rho(\theta,\mathsf{q})=\max_{i\leq N}\ \mathbb{E}<em>{z\sim r</em>{i}}\Big[\Big(\frac{p(z|x_{i};\theta)}{r_{i}(z)}\Big)^{2}\Big]=1+\max_{i\leq N}\chi^{2}\Big(p(\cdot|x_{i};\theta)\,\Big|\,r_{i}\Big),$$</p>
+<p>其中卡方散度 $\chi^{2}(p|r)=\int\big(p(z)-r(z)\big)^{2}/r(z)\,dz$。因此 $\rho\geq 1$ 度量编码器对后验分布的近似程度，$\rho=1$ 当且仅当两者一致。以下引理控制偏差。</p>
+<p><strong>引理8（加权统计量的一致性）。</strong> 设假设1成立，$\theta\in\Theta$，$\mathsf{q}\in\mathcal{Q}$，$\widehat{S}<em>{K}$ 由(3.9)给出，$\nu&gt;4$。则 $\widehat{S}</em>{K}\to\bar{S}_{p}(\theta)$ 几乎必然（当 $K\to\infty$），且对每个有限的 $K$，</p>
+<p>$$\big|\mathbb{E}[\widehat{S}<em>{K}]-\bar{S}</em>{p}(\theta)\big|\leq\frac{c_{\mathrm{is}}(\theta,\mathsf{q})}{K},\qquad\mathbb{E}\Big[\big|\widehat{S}<em>{K}-\bar{S}</em>{p}(\theta)\big|^{2}\Big]\leq\frac{c_{\mathrm{is}}(\theta,\mathsf{q})}{K},$$</p>
+<p>其中 $c_{\mathrm{is}}(\theta,\mathsf{q})&lt;\infty$ 与 $K$ 无关，在 $\Theta\times\mathcal{Q}$ 的紧子集上有界，且仅通过权重的矩依赖于编码器。对于 $\widehat{S}_{K}$ 的有界第三块，它与 $\rho(\theta,\mathsf{q})$ 成比例。</p>
+<p>因此 $|\Delta^{\mathrm{is}}<em>{k}|\leq\bar{c}</em>{\mathrm{is}}/K$，其中 $\bar{c}<em>{\mathrm{is}}=\sup{c</em>{\mathrm{is}}(\theta,\mathsf{q}):\theta\in\Theta_{\mathcal{S}<em>{p}},\ \mathsf{q}\in\mathcal{Q}}&lt;\infty$。因此，定理2的证明适用于 $L</em>{S}\delta$ 被 $\bar{c}<em>{\mathrm{is}}/K$ 替换的情形，即 $C=c</em>{\mathsf{grad}}\bar{c}<em>{\mathrm{is}}/c</em>{\mathsf{dec}}$ 以及 $\mathcal{S}<em>{p}$ 上 $\mathcal{V}</em>{p}$ 的(5.9)常数。对于 $K_{k}\to\infty$ 且 $\sum_{k}\gamma_{k}/K_{k}&lt;\infty$，偏差消失且 $\sum_{k}\gamma_{k}|\Delta^{\mathrm{is}}<em>{k}|&lt;\infty$，这是步骤2-4中使用的内循环误差性质（命题1）。假设6代替引理1，因为 $\widehat{S}</em>{K}$ 不一定位于 $\mathcal{S}$ 中。此外，$\widehat{S}_{K}$ 无界。因此，引理5的有界蒙特卡洛噪声被具有有界条件二阶矩的噪声替代。</p>
+<h2>6 数值实验</h2>
+<p>本节说明VAE-NLME（算法1）和ELBO VAE-NLME算法的理论结果如何在数值实验中体现。</p>
+<p>VAE-NLME算法的全面实证评估在单独的基准研究中提供，与SAEM和FOCEI对比，包含16个药代动力学和药效学模型的1,224次拟合[48]。该基准评估了算法的精度、鲁棒性和计算效率。本节因此专注于使用更简单的例子——真实茶碱数据集[42]（NLME建模中的标准基准）来验证理论结果。其低维性允许关键量（如 $\mathsf{q}^{\star}(\theta)$ 和 $\nabla_{\theta}\mathcal{L}^{\star}$）以高精度计算。</p>
+<p>首先，介绍模型和总体参数的收敛性。其次，在理想化设置和实际应用中使用的实际实现中验证定理。最后，比较内循环误差和第4节中引入的差距。</p>
+<p>VAE-NLME算法（具有注记1的实际实现）可在VAE Studio中获得，即基准研究的软件[48]。VAE Studio是一个适用于Windows、macOS和Linux的桌面应用程序，具有图形用户界面，其中算法可以在高度优化的实现中试用。截至2026年11月，VAE Studio处于测试阶段，可在 https://www.math.uni-konstanz.de/vae-studio 免费申请限时试用许可证。</p>
+<h3>6.1 模型</h3>
+<p>茶碱数据包含 $N=12$ 个个体，每个个体在单次口服给药后有 $n_{i}=10$ 次浓度测量。结构模型是具有一阶吸收的单室模型。对于剂量 $D$，它为</p>
+<p>$$\frac{dAbs(t)}{dt}=-k_{a}\,Abs(t),\qquad Abs(0)=D,$$<br />
+$$\frac{dA(t)}{dt}=k_{a}\,Abs(t)-k_{e}\,A(t),\qquad A(0)=0,$$</p>
+<p>个体参数为 $\phi=(k_{a},k_{e},V)$，浓度 $f(t,\phi)=A(t)/V$ 作为(2.1)中的结构模型。解码器使用解析解</p>
+<p>$$f(t,\phi)=\frac{D\,k_{a}}{V(k_{a}-k_{e})}\left(e^{-k_{e}t}-e^{-k_{a}t}\right).$$</p>
+<p>对于个体 $i$，剂量为 $D_{i}$，个体参数为 $\phi_{i}=(k_{a,i},k_{e,i},V_{i})$。它们为正，即 $\Phi=\mathbb{R}^{3}_{&gt;0}$。因此 $h=\log$，每个参数为对数正态，以体重作为体积的协变量：</p>
+<p>$$\log(k_{a,i})=\log(k_{a,\mathsf{pop}})+\eta_{a,i},\qquad\eta_{a,i}\sim\mathcal{N}\big(0,\omega_{k_{a}}^{2}\big),$$<br />
+$$\log(k_{e,i})=\log(k_{e,\mathsf{pop}})+\eta_{e,i},\qquad\eta_{e,i}\sim\mathcal{N}\big(0,\omega_{k_{e}}^{2}\big),$$<br />
+$$\log(V_{i})=\log(V_{\mathsf{pop}})+\beta_{V}\,c_{i}+\eta_{V,i},\qquad\eta_{V,i}\sim\mathcal{N}\big(0,\omega_{V}^{2}\big),\qquad c_{i}=\log!\Big(\frac{W_{i}}{W_{\mathsf{pop}}}\Big),$$</p>
+<p>其中 $W_{i}$ 是个体 $i$ 的体重，$W_{\mathsf{pop}}$ 是平均体重。在(2.2)的记号中，$z_{i}=C_{i}\hat{z}<em>{\mathsf{pop}}+\eta</em>{i}$，其中</p>
+<p>$$C_{i}=\begin{pmatrix}1&amp;0&amp;0&amp;0\ 0&amp;1&amp;0&amp;0\ 0&amp;0&amp;1&amp;c_{i}\end{pmatrix},\qquad\Omega=\mathrm{diag}\big(\omega_{k_{a}}^{2},\omega_{k_{e}}^{2},\omega_{V}^{2}\big),$$</p>
+<p>$$\hat{z}<em>{\mathsf{pop}}=\big(\log(k</em>{a,\mathsf{pop}}),\log(k_{e,\mathsf{pop}}),\log(V_{\mathsf{pop}}),\beta_{V}\big).$$</p>
+<p>连同残差误差参数 $\sigma$，共估计八个总体参数 $\theta=(\hat{z}<em>{\mathsf{pop}},\Omega,\sigma^{2})$。参数 $k</em>{a,\mathsf{pop}}$、$k_{e,\mathsf{pop}}$ 和 $V_{\mathsf{pop}}$ 在原始尺度上报告（即对数正态先验的中位数），$\beta_{V}$ 和 $\omega$ 在 $z$ 的尺度上报告。</p>
+<h3>6.2 总体参数的收敛性</h3>
+<p>本节的所有运行遵循注记1，具有自适应选择的 $K_{\mathrm{KL}}$ 和 $K_{\mathrm{sm}}$ 以及表1的设置。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$L$</td>
+<td>8</td>
+<td>每次迭代的Adam步数</td>
+</tr>
+<tr>
+<td>$\alpha$</td>
+<td>$5\cdot 10^{-3}$</td>
+<td>Adam学习率</td>
+</tr>
+<tr>
+<td>$M$</td>
+<td>1</td>
+<td>ELBO梯度的样本数</td>
+</tr>
+<tr>
+<td>$K$</td>
+<td>10</td>
+<td>加权统计量的样本数</td>
+</tr>
+<tr>
+<td>$\nu$</td>
+<td>5</td>
+<td>提议分布的自由度</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表1：</strong> 茶碱数据上所有运行的设置。</p>
+<p>本小节的运行从初始猜测开始：</p>
+<p>$$\phi^{\mathsf{init}}=(k_{a},k_{e},V)=(1,\,1,\,15),\qquad\omega^{\mathsf{init}}=(\omega_{k_{a}},\omega_{k_{e}},\omega_{V})=(0.5,\,0.5,\,0.5),\qquad\sigma^{\mathsf{init}}=1.$$</p>
+<p>协变量效应 $\beta_{V}$ 不需要初始值，从零开始。</p>
+<p>图2比较了VAE-NLME（算法1）与ELBO VAE-NLME算法。VAE-NLME算法波动更大，因为加权统计量具有更大的方差。平滑阶段平均掉的波动，$\theta$ 的所有分量收敛。VAE-NLME达到更大的对数似然，如(4.10)所预期。</p>
+<p><strong>图2：</strong> 茶碱数据上VAE-NLME（算法1，$-2\mathcal{LL}=335.7$）和ELBO VAE-NLME算法（$-2\mathcal{LL}=335.9$）的总体参数 $\theta^{(k)}$，以及最后面板中负ELBO的蒙特卡洛估计。VAE-NLME的运行在205次迭代后停止，延续到相同的迭代次数。阴影部分为预热期。</p>
+<h3>6.3 收敛到驻点</h3>
+<p>两个参考点 $\theta^{\star}<em>{\mathrm{ELBO}}$（$\mathcal{L}^{\star}$ 的驻点）和 $\theta</em>{\mathrm{ML}}$（$\mathcal{LL}$ 的驻点）通过(4.10)确定彼此的残差下限：</p>
+<p>$$\big|\nabla_{\theta}\mathcal{LL}(\theta^{\star}<em>{\mathrm{ELBO}})\big|=\big|\nabla</em>{\theta}\mathcal{G}<em>{\mathrm{var}}(\theta^{\star}</em>{\mathrm{ELBO}})\big|=4.8\cdot 10^{-2},$$</p>
+<p>$$\big|\nabla_{\theta}\mathcal{L}^{\star}(\theta_{\mathrm{ML}})\big|=\big|\nabla_{\theta}\mathcal{G}<em>{\mathrm{var}}(\theta</em>{\mathrm{ML}})\big|=4.8\cdot 10^{-2}.$$</p>
+        </div>
+        
+        <hr style="margin: 3rem 0; border: 0; border-top: 1px solid var(--border-color);">
+        
+        <div class="fulltext-footer">
+            <p><strong>标签：</strong> 变分自编码器, 非线性混合效应模型, 极大似然估计, 随机逼近, 药物计量学</p>
+        </div>
+    </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ]
+        });
+    });
+    </script>
+</body>
+</html>
